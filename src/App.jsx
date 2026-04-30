@@ -12,21 +12,9 @@ function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   const [items, setItems] = useState([]);
-
-  const [expenses, setExpenses] = useState(() => {
-    const savedExpenses = localStorage.getItem("emberLedgerExpenses");
-    return savedExpenses ? JSON.parse(savedExpenses) : [];
-  });
-
-  const [mileageTrips, setMileageTrips] = useState(() => {
-    const savedTrips = localStorage.getItem("emberLedgerMileageTrips");
-    return savedTrips ? JSON.parse(savedTrips) : [];
-  });
-
-  const [sales, setSales] = useState(() => {
-    const savedSales = localStorage.getItem("emberLedgerSales");
-    return savedSales ? JSON.parse(savedSales) : [];
-  });
+  const [expenses, setExpenses] = useState([]);
+  const [mileageTrips, setMileageTrips] = useState([]);
+  const [sales, setSales] = useState([]);
 
   const [itemName, setItemName] = useState("");
   const [buyer, setBuyer] = useState("Zena");
@@ -72,25 +60,26 @@ function App() {
 
   useEffect(() => {
     checkUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
     if (user) {
-      loadInventory();
+      loadAllCloudData();
+    } else {
+      setItems([]);
+      setExpenses([]);
+      setMileageTrips([]);
+      setSales([]);
     }
   }, [user]);
-
-  useEffect(() => {
-    localStorage.setItem("emberLedgerExpenses", JSON.stringify(expenses));
-  }, [expenses]);
-
-  useEffect(() => {
-    localStorage.setItem("emberLedgerMileageTrips", JSON.stringify(mileageTrips));
-  }, [mileageTrips]);
-
-  useEffect(() => {
-    localStorage.setItem("emberLedgerSales", JSON.stringify(sales));
-  }, [sales]);
 
   async function checkUser() {
     const { data, error } = await supabase.auth.getUser();
@@ -119,7 +108,14 @@ function App() {
           return;
         }
 
-        alert("Account created. Check your email if Supabase requires confirmation.");
+        if (!data.session) {
+          alert(
+            "Account created. Please check your email, confirm your account, then come back and log in."
+          );
+          setAuthMode("login");
+          return;
+        }
+
         setUser(data.user);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -142,7 +138,6 @@ function App() {
   async function signOut() {
     await supabase.auth.signOut();
     setUser(null);
-    setItems([]);
   }
 
   function dbItemToAppItem(row) {
@@ -161,6 +156,65 @@ function App() {
     };
   }
 
+  function dbExpenseToAppExpense(row) {
+    return {
+      id: row.id,
+      vendor: row.vendor,
+      category: row.category,
+      buyer: row.buyer,
+      amount: Number(row.amount || 0),
+      notes: row.notes || "",
+      receiptImage: row.receipt_image || "",
+      createdAt: row.created_at,
+    };
+  }
+
+  function dbTripToAppTrip(row) {
+    return {
+      id: row.id,
+      purpose: row.purpose,
+      driver: row.driver,
+      startMiles: Number(row.start_miles || 0),
+      endMiles: Number(row.end_miles || 0),
+      businessMiles: Number(row.business_miles || 0),
+      gasCost: Number(row.gas_cost || 0),
+      mileageValue: Number(row.mileage_value || 0),
+      notes: row.notes || "",
+      createdAt: row.created_at,
+    };
+  }
+
+  function dbSaleToAppSale(row) {
+    return {
+      id: row.id,
+      itemId: row.item_id,
+      itemName: row.item_name,
+      sku: row.sku,
+      originalBuyer: row.original_buyer,
+      category: row.category,
+      store: row.store,
+      platform: row.platform,
+      quantitySold: Number(row.quantity_sold || 0),
+      finalSalePrice: Number(row.final_sale_price || 0),
+      grossSale: Number(row.gross_sale || 0),
+      itemCost: Number(row.item_cost || 0),
+      shippingCost: Number(row.shipping_cost || 0),
+      platformFees: Number(row.platform_fees || 0),
+      netProfit: Number(row.net_profit || 0),
+      notes: row.notes || "",
+      createdAt: row.created_at,
+    };
+  }
+
+  async function loadAllCloudData() {
+    await Promise.all([
+      loadInventory(),
+      loadExpenses(),
+      loadMileageTrips(),
+      loadSales(),
+    ]);
+  }
+
   async function loadInventory() {
     const { data, error } = await supabase
       .from("inventory_items")
@@ -173,6 +227,48 @@ function App() {
     }
 
     setItems(data.map(dbItemToAppItem));
+  }
+
+  async function loadExpenses() {
+    const { data, error } = await supabase
+      .from("business_expenses")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("Could not load expenses: " + error.message);
+      return;
+    }
+
+    setExpenses(data.map(dbExpenseToAppExpense));
+  }
+
+  async function loadMileageTrips() {
+    const { data, error } = await supabase
+      .from("mileage_trips")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("Could not load mileage trips: " + error.message);
+      return;
+    }
+
+    setMileageTrips(data.map(dbTripToAppTrip));
+  }
+
+  async function loadSales() {
+    const { data, error } = await supabase
+      .from("sales_records")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("Could not load sales: " + error.message);
+      return;
+    }
+
+    setSales(data.map(dbSaleToAppSale));
   }
 
   function handleImageUpload(event, setterFunction) {
@@ -308,30 +404,50 @@ function App() {
       return;
     }
 
-    setItems(items.map((item) => (item.id === editingItemId ? dbItemToAppItem(data) : item)));
+    setItems(
+      items.map((item) =>
+        item.id === editingItemId ? dbItemToAppItem(data) : item
+      )
+    );
+
     cancelEditingItem();
   }
 
-  function addExpense(event) {
+  async function addExpense(event) {
     event.preventDefault();
+
+    if (!user) {
+      alert("Please log in first.");
+      return;
+    }
 
     if (!expenseVendor || !expenseAmount) {
       alert("Please enter vendor and amount.");
       return;
     }
 
-    const newExpense = {
-      id: Date.now(),
+    const rowToInsert = {
+      user_id: user.id,
       vendor: expenseVendor,
       category: expenseCategory,
       buyer: expenseBuyer,
       amount: Number(expenseAmount),
       notes: expenseNotes,
-      receiptImage: expenseReceiptImage,
-      createdAt: new Date().toISOString(),
+      receipt_image: expenseReceiptImage,
     };
 
-    setExpenses([newExpense, ...expenses]);
+    const { data, error } = await supabase
+      .from("business_expenses")
+      .insert(rowToInsert)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not add expense: " + error.message);
+      return;
+    }
+
+    setExpenses([dbExpenseToAppExpense(data), ...expenses]);
 
     setExpenseVendor("");
     setExpenseCategory("Supplies");
@@ -341,12 +457,24 @@ function App() {
     setExpenseReceiptImage("");
   }
 
-  function deleteExpense(id) {
+  async function deleteExpense(id) {
+    const { error } = await supabase.from("business_expenses").delete().eq("id", id);
+
+    if (error) {
+      alert("Could not delete expense: " + error.message);
+      return;
+    }
+
     setExpenses(expenses.filter((expense) => expense.id !== id));
   }
 
-  function addMileageTrip(event) {
+  async function addMileageTrip(event) {
     event.preventDefault();
+
+    if (!user) {
+      alert("Please log in first.");
+      return;
+    }
 
     if (!tripPurpose || !startMiles || !endMiles) {
       alert("Please enter trip purpose, starting miles, and ending miles.");
@@ -360,20 +488,32 @@ function App() {
       return;
     }
 
-    const newTrip = {
-      id: Date.now(),
+    const mileageValue = businessMiles * 0.725;
+
+    const rowToInsert = {
+      user_id: user.id,
       purpose: tripPurpose,
       driver: tripDriver,
-      startMiles: Number(startMiles),
-      endMiles: Number(endMiles),
-      businessMiles,
-      gasCost: Number(gasCost || 0),
-      mileageValue: businessMiles * 0.725,
+      start_miles: Number(startMiles),
+      end_miles: Number(endMiles),
+      business_miles: businessMiles,
+      gas_cost: Number(gasCost || 0),
+      mileage_value: mileageValue,
       notes: tripNotes,
-      createdAt: new Date().toISOString(),
     };
 
-    setMileageTrips([newTrip, ...mileageTrips]);
+    const { data, error } = await supabase
+      .from("mileage_trips")
+      .insert(rowToInsert)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not add mileage trip: " + error.message);
+      return;
+    }
+
+    setMileageTrips([dbTripToAppTrip(data), ...mileageTrips]);
 
     setTripPurpose("");
     setTripDriver("Zena");
@@ -383,12 +523,24 @@ function App() {
     setTripNotes("");
   }
 
-  function deleteMileageTrip(id) {
+  async function deleteMileageTrip(id) {
+    const { error } = await supabase.from("mileage_trips").delete().eq("id", id);
+
+    if (error) {
+      alert("Could not delete mileage trip: " + error.message);
+      return;
+    }
+
     setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
   }
 
-  function addSale(event) {
+  async function addSale(event) {
     event.preventDefault();
+
+    if (!user) {
+      alert("Please log in first.");
+      return;
+    }
 
     if (!soldItemId || !quantitySold || !finalSalePrice) {
       alert("Please choose an item, quantity sold, and final sale price.");
@@ -415,40 +567,76 @@ function App() {
     const itemCost = itemSold.unitCost * qtySold;
     const grossSale = salePriceNumber * qtySold;
     const netProfit = grossSale - itemCost - shipping - fees;
+    const remainingQuantity = itemSold.quantity - qtySold;
 
-    const newSale = {
-      id: Date.now(),
-      itemId: itemSold.id,
-      itemName: itemSold.name,
+    const saleRow = {
+      user_id: user.id,
+      item_id: itemSold.id,
+      item_name: itemSold.name,
       sku: itemSold.sku,
-      originalBuyer: itemSold.buyer,
+      original_buyer: itemSold.buyer,
       category: itemSold.category,
       store: itemSold.store,
       platform: salePlatform,
-      quantitySold: qtySold,
-      finalSalePrice: salePriceNumber,
-      grossSale,
-      itemCost,
-      shippingCost: shipping,
-      platformFees: fees,
-      netProfit,
+      quantity_sold: qtySold,
+      final_sale_price: salePriceNumber,
+      gross_sale: grossSale,
+      item_cost: itemCost,
+      shipping_cost: shipping,
+      platform_fees: fees,
+      net_profit: netProfit,
       notes: saleNotes,
-      createdAt: new Date().toISOString(),
     };
 
-    setSales([newSale, ...sales]);
+    const { data: saleData, error: saleError } = await supabase
+      .from("sales_records")
+      .insert(saleRow)
+      .select()
+      .single();
 
-    const updatedItems = items
-      .map((item) => {
-        if (item.id === itemSold.id) {
-          return { ...item, quantity: item.quantity - qtySold };
-        }
+    if (saleError) {
+      alert("Could not add sale: " + saleError.message);
+      return;
+    }
 
-        return item;
-      })
-      .filter((item) => item.quantity > 0);
+    if (remainingQuantity > 0) {
+      const { data: updatedInventoryItem, error: updateError } = await supabase
+        .from("inventory_items")
+        .update({
+          quantity: remainingQuantity,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", itemSold.id)
+        .select()
+        .single();
 
-    setItems(updatedItems);
+      if (updateError) {
+        alert("Sale saved, but inventory quantity did not update: " + updateError.message);
+        await loadAllCloudData();
+        return;
+      }
+
+      setItems(
+        items.map((item) =>
+          item.id === itemSold.id ? dbItemToAppItem(updatedInventoryItem) : item
+        )
+      );
+    } else {
+      const { error: deleteError } = await supabase
+        .from("inventory_items")
+        .delete()
+        .eq("id", itemSold.id);
+
+      if (deleteError) {
+        alert("Sale saved, but sold-out inventory item did not delete: " + deleteError.message);
+        await loadAllCloudData();
+        return;
+      }
+
+      setItems(items.filter((item) => item.id !== itemSold.id));
+    }
+
+    setSales([dbSaleToAppSale(saleData), ...sales]);
 
     setSoldItemId("");
     setSalePlatform("eBay");
@@ -460,7 +648,14 @@ function App() {
     setActiveTab("sales");
   }
 
-  function deleteSale(id) {
+  async function deleteSale(id) {
+    const { error } = await supabase.from("sales_records").delete().eq("id", id);
+
+    if (error) {
+      alert("Could not delete sale: " + error.message);
+      return;
+    }
+
     setSales(sales.filter((sale) => sale.id !== id));
   }
 
@@ -499,7 +694,7 @@ function App() {
     const backupData = {
       createdAt: new Date().toISOString(),
       appName: "Ember Ledger",
-      version: "1.1-cloud-inventory",
+      version: "1.2-cloud-sync",
       items,
       sales,
       expenses,
@@ -518,62 +713,10 @@ function App() {
     URL.revokeObjectURL(url);
   }
 
-  function restoreBackup(event) {
-    const file = event.target.files[0];
-
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = function (loadEvent) {
-      try {
-        const backupData = JSON.parse(loadEvent.target.result);
-
-        if (
-          !backupData.items ||
-          !backupData.sales ||
-          !backupData.expenses ||
-          !backupData.mileageTrips
-        ) {
-          alert("This does not look like a valid Ember Ledger backup file.");
-          return;
-        }
-
-        const confirmRestore = window.confirm(
-          "This will replace local sales, expenses, mileage, and visible inventory with the backup file. Are you sure?"
-        );
-
-        if (!confirmRestore) return;
-
-        setItems(backupData.items);
-        setSales(backupData.sales);
-        setExpenses(backupData.expenses);
-        setMileageTrips(backupData.mileageTrips);
-
-        alert("Backup restored locally. Cloud inventory sync will be improved later.");
-      } catch (error) {
-        alert("Could not restore backup. Make sure you selected the correct JSON backup file.");
-      }
-    };
-
-    reader.readAsText(file);
-  }
-
-  function clearAllData() {
-    const confirmClear = window.confirm(
-      "This will clear local sales, expenses, mileage, and visible inventory from this browser. It will not clear Supabase cloud inventory unless you delete items individually. Are you sure?"
-    );
-
-    if (!confirmClear) return;
-
-    setItems([]);
-    setSales([]);
-    setExpenses([]);
-    setMileageTrips([]);
-    alert("Local app data cleared.");
-  }
-
-  const totalSpent = items.reduce((sum, item) => sum + item.quantity * item.unitCost, 0);
+  const totalSpent = items.reduce(
+    (sum, item) => sum + item.quantity * item.unitCost,
+    0
+  );
 
   const totalPotentialSales = items.reduce(
     (sum, item) => sum + item.quantity * item.salePrice,
@@ -582,7 +725,10 @@ function App() {
 
   const estimatedProfit = totalPotentialSales - totalSpent;
 
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalExpenses = expenses.reduce(
+    (sum, expense) => sum + expense.amount,
+    0
+  );
 
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
 
@@ -591,18 +737,30 @@ function App() {
     0
   );
 
-  const totalGasCost = mileageTrips.reduce((sum, trip) => sum + trip.gasCost, 0);
+  const totalGasCost = mileageTrips.reduce(
+    (sum, trip) => sum + trip.gasCost,
+    0
+  );
 
   const totalMileageValue = mileageTrips.reduce(
     (sum, trip) => sum + trip.mileageValue,
     0
   );
 
-  const totalSalesRevenue = sales.reduce((sum, sale) => sum + sale.grossSale, 0);
+  const totalSalesRevenue = sales.reduce(
+    (sum, sale) => sum + sale.grossSale,
+    0
+  );
 
-  const totalSalesProfit = sales.reduce((sum, sale) => sum + sale.netProfit, 0);
+  const totalSalesProfit = sales.reduce(
+    (sum, sale) => sum + sale.netProfit,
+    0
+  );
 
-  const totalItemsSold = sales.reduce((sum, sale) => sum + sale.quantitySold, 0);
+  const totalItemsSold = sales.reduce(
+    (sum, sale) => sum + sale.quantitySold,
+    0
+  );
 
   const zenaSpent =
     items
@@ -665,7 +823,7 @@ function App() {
       <div className="app">
         <header className="header">
           <h1>Ember Ledger</h1>
-          <p>Log in to sync inventory across devices.</p>
+          <p>Log in to sync your business records across devices.</p>
         </header>
 
         <main className="main">
@@ -720,7 +878,7 @@ function App() {
     <div className="app">
       <header className="header">
         <h1>Ember Ledger</h1>
-        <p>Cloud inventory sync is active for: {user.email}</p>
+        <p>Cloud sync active for: {user.email}</p>
         <button className="secondary-button" onClick={signOut}>
           Sign Out
         </button>
@@ -850,32 +1008,9 @@ function App() {
             </section>
 
             <section className="panel">
-              <h2>Backup & Restore</h2>
-              <p>
-                Download one backup file with all visible app data. Inventory is cloud synced;
-                sales, expenses, and mileage are still local for now.
-              </p>
-
-              <div className="backup-actions">
-                <button onClick={downloadBackup}>Download Full Backup</button>
-
-                <label className="restore-label">
-                  Restore Backup
-                  <input
-                    type="file"
-                    accept="application/json"
-                    onChange={restoreBackup}
-                  />
-                </label>
-              </div>
-            </section>
-
-            <section className="panel">
-              <h2>Danger Zone</h2>
-              <p>Only use this if you already downloaded a backup.</p>
-              <button className="delete-button" onClick={clearAllData}>
-                Clear Local Data
-              </button>
+              <h2>Backup</h2>
+              <p>Download one backup file with all visible app data.</p>
+              <button onClick={downloadBackup}>Download Full Backup</button>
             </section>
           </>
         )}
