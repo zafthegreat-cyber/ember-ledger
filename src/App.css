@@ -1,0 +1,305 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f7f3ef;
+  color: #211c18;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.header {
+  padding: 24px;
+  background: linear-gradient(135deg, #2f1f18, #8b4b2f);
+  color: white;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 34px;
+}
+
+.header p {
+  margin: 8px 0 0;
+  opacity: 0.9;
+}
+
+.main {
+  padding: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.card,
+.panel,
+.inventory-card {
+  background: white;
+  border: 1px solid #eaded5;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(71, 44, 29, 0.08);
+}
+
+.card {
+  padding: 18px;
+}
+
+.card p {
+  margin: 0;
+  color: #725c50;
+  font-weight: bold;
+}
+
+.card h2 {
+  margin: 8px 0 0;
+  font-size: 28px;
+}
+
+.panel {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-weight: bold;
+}
+
+input,
+select {
+  border: 1px solid #d7c7bc;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 16px;
+  background: #fffaf7;
+}
+
+button {
+  border: none;
+  border-radius: 16px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background: #8b4b2f;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #6f3823;
+}
+
+.inventory-list {
+  display: grid;
+  gap: 14px;
+}
+
+.inventory-card {
+  padding: 16px;
+}
+
+.inventory-card h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.inventory-card p {
+  margin: 6px 0;
+}
+
+@media (max-width: 750px) {
+  .header {
+    padding: 20px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+  }
+
+  .main {
+    padding: 14px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .card h2 {
+    font-size: 24px;
+  }
+}
+.buyer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.buyer-card {
+  background: #fff7ef;
+  border: 1px solid #eaded5;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.buyer-card p {
+  margin: 0;
+  color: #725c50;
+  font-weight: bold;
+}
+
+.buyer-card h3 {
+  margin: 6px 0 0;
+  font-size: 22px;
+}
+
+.delete-button {
+  margin-top: 10px;
+  background: #991b1b;
+}
+
+.delete-button:hover {
+  background: #7f1d1d;
+}
+
+@media (max-width: 750px) {
+  .buyer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}.nav {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 12px;
+  background: white;
+  border-bottom: 1px solid #e4d8cf;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nav button {
+  border: none;
+  background: #f1e8df;
+  color: #372820;
+  padding: 10px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.nav button:hover {
+  background: #8b4b2f;
+  color: white;
+}.export-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.export-grid button {
+  background: #2f1f18;
+}
+
+.export-grid button:hover {
+  background: #8b4b2f;
+}
+
+@media (max-width: 750px) {
+  .export-grid {
+    grid-template-columns: 1fr;
+  }
+}.backup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.restore-label {
+  border: none;
+  border-radius: 16px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background: #2f1f18;
+  cursor: pointer;
+  text-align: center;
+}
+
+.restore-label:hover {
+  background: #8b4b2f;
+}
+
+.restore-label input {
+  display: none;
+}
+
+@media (max-width: 750px) {
+  .backup-actions {
+    grid-template-columns: 1fr;
+  }
+}
+.search-input {
+  width: 100%;
+  margin-bottom: 16px;
+}
+.edit-button {
+  margin-top: 10px;
+  margin-right: 8px;
+  background: #2f1f18;
+}
+
+.edit-button:hover {
+  background: #8b4b2f;
+}
+
+.secondary-button {
+  background: #725c50;
+}
+
+.secondary-button:hover {
+  background: #4b3a31;
+}
+.receipt-preview {
+  margin-top: 12px;
+  padding: 10px;
+  background: #fff7ef;
+  border: 1px solid #eaded5;
+  border-radius: 14px;
+}
+
+.receipt-preview p {
+  margin: 0 0 8px;
+  font-weight: bold;
+  color: #725c50;
+}
+
+.receipt-preview img {
+  width: 100%;
+  max-width: 220px;
+  border-radius: 12px;
+  border: 1px solid #d7c7bc;
+  display: block;
+}
