@@ -302,4 +302,60 @@ button:hover {
   border-radius: 12px;
   border: 1px solid #d7c7bc;
   display: block;
+}.app {
+  min-height: 100vh;
+  background: #f7f3ef;
+  color: #2f1f18;
+}
+
+.header,
+.main,
+.panel,
+.card,
+.inventory-card,
+.buyer-card {
+  color: #2f1f18;
+}
+
+.header h1,
+.header p,
+.panel h2,
+.panel p,
+.card p,
+.card h2,
+.inventory-card h3,
+.inventory-card p,
+.buyer-card p,
+.buyer-card h3,
+label {
+  color: #2f1f18;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d7c7bc;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #2f1f18;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8a766a;
+}
+
+button {
+  color: white;
+}
+
+.search-input {
+  background: #ffffff;
+  color: #2f1f18;
+}
+
+.restore-label {
+  color: white;
 }
