@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+import { supabase } from "./supabaseClient";
 
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  const [items, setItems] = useState(() => {
-    const savedItems = localStorage.getItem("emberLedgerItems");
-    return savedItems ? JSON.parse(savedItems) : [];
-  });
+  const [user, setUser] = useState(null);
+  const [authMode, setAuthMode] = useState("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const [items, setItems] = useState([]);
 
   const [expenses, setExpenses] = useState(() => {
     const savedExpenses = localStorage.getItem("emberLedgerExpenses");
@@ -67,8 +71,14 @@ function App() {
   const [editSalePrice, setEditSalePrice] = useState("");
 
   useEffect(() => {
-    localStorage.setItem("emberLedgerItems", JSON.stringify(items));
-  }, [items]);
+    checkUser();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadInventory();
+    }
+  }, [user]);
 
   useEffect(() => {
     localStorage.setItem("emberLedgerExpenses", JSON.stringify(expenses));
@@ -82,12 +92,93 @@ function App() {
     localStorage.setItem("emberLedgerSales", JSON.stringify(sales));
   }, [sales]);
 
+  async function checkUser() {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error) {
+      setUser(null);
+      return;
+    }
+
+    setUser(data.user);
+  }
+
+  async function handleAuth(event) {
+    event.preventDefault();
+    setAuthLoading(true);
+
+    try {
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+        });
+
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        alert("Account created. Check your email if Supabase requires confirmation.");
+        setUser(data.user);
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        });
+
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        setUser(data.user);
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    setUser(null);
+    setItems([]);
+  }
+
+  function dbItemToAppItem(row) {
+    return {
+      id: row.id,
+      name: row.name,
+      sku: row.sku,
+      buyer: row.buyer,
+      category: row.category,
+      store: row.store,
+      quantity: Number(row.quantity || 0),
+      unitCost: Number(row.unit_cost || 0),
+      salePrice: Number(row.sale_price || 0),
+      receiptImage: row.receipt_image || "",
+      createdAt: row.created_at,
+    };
+  }
+
+  async function loadInventory() {
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("Could not load inventory: " + error.message);
+      return;
+    }
+
+    setItems(data.map(dbItemToAppItem));
+  }
+
   function handleImageUpload(event, setterFunction) {
     const file = event.target.files[0];
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       alert("Please upload an image file.");
@@ -103,29 +194,44 @@ function App() {
     reader.readAsDataURL(file);
   }
 
-  function addItem(event) {
+  async function addItem(event) {
     event.preventDefault();
+
+    if (!user) {
+      alert("Please log in first.");
+      return;
+    }
 
     if (!itemName || !unitCost || !quantity) {
       alert("Please fill out item name, quantity, and unit cost.");
       return;
     }
 
-    const newItem = {
-      id: Date.now(),
+    const rowToInsert = {
+      user_id: user.id,
       name: itemName,
       buyer,
       category,
       store,
       quantity: Number(quantity),
-      unitCost: Number(unitCost),
-      salePrice: Number(salePrice || 0),
+      unit_cost: Number(unitCost),
+      sale_price: Number(salePrice || 0),
       sku: "ET-" + Date.now(),
-      receiptImage: itemReceiptImage,
-      createdAt: new Date().toISOString(),
+      receipt_image: itemReceiptImage,
     };
 
-    setItems([newItem, ...items]);
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .insert(rowToInsert)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not add item: " + error.message);
+      return;
+    }
+
+    setItems([dbItemToAppItem(data), ...items]);
 
     setItemName("");
     setBuyer("Zena");
@@ -138,7 +244,14 @@ function App() {
     setActiveTab("inventory");
   }
 
-  function deleteItem(id) {
+  async function deleteItem(id) {
+    const { error } = await supabase.from("inventory_items").delete().eq("id", id);
+
+    if (error) {
+      alert("Could not delete item: " + error.message);
+      return;
+    }
+
     setItems(items.filter((item) => item.id !== id));
   }
 
@@ -164,7 +277,7 @@ function App() {
     setEditSalePrice("");
   }
 
-  function saveEditedItem(event) {
+  async function saveEditedItem(event) {
     event.preventDefault();
 
     if (!editName || !editUnitCost || !editQuantity) {
@@ -172,24 +285,30 @@ function App() {
       return;
     }
 
-    const updatedItems = items.map((item) => {
-      if (item.id === editingItemId) {
-        return {
-          ...item,
-          name: editName,
-          buyer: editBuyer,
-          category: editCategory,
-          store: editStore,
-          quantity: Number(editQuantity),
-          unitCost: Number(editUnitCost),
-          salePrice: Number(editSalePrice || 0),
-        };
-      }
+    const rowToUpdate = {
+      name: editName,
+      buyer: editBuyer,
+      category: editCategory,
+      store: editStore,
+      quantity: Number(editQuantity),
+      unit_cost: Number(editUnitCost),
+      sale_price: Number(editSalePrice || 0),
+      updated_at: new Date().toISOString(),
+    };
 
-      return item;
-    });
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .update(rowToUpdate)
+      .eq("id", editingItemId)
+      .select()
+      .single();
 
-    setItems(updatedItems);
+    if (error) {
+      alert("Could not update item: " + error.message);
+      return;
+    }
+
+    setItems(items.map((item) => (item.id === editingItemId ? dbItemToAppItem(data) : item)));
     cancelEditingItem();
   }
 
@@ -322,10 +441,7 @@ function App() {
     const updatedItems = items
       .map((item) => {
         if (item.id === itemSold.id) {
-          return {
-            ...item,
-            quantity: item.quantity - qtySold,
-          };
+          return { ...item, quantity: item.quantity - qtySold };
         }
 
         return item;
@@ -383,7 +499,7 @@ function App() {
     const backupData = {
       createdAt: new Date().toISOString(),
       appName: "Ember Ledger",
-      version: "1.0",
+      version: "1.1-cloud-inventory",
       items,
       sales,
       expenses,
@@ -405,9 +521,7 @@ function App() {
   function restoreBackup(event) {
     const file = event.target.files[0];
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     const reader = new FileReader();
 
@@ -426,23 +540,19 @@ function App() {
         }
 
         const confirmRestore = window.confirm(
-          "This will replace your current app data with the backup file. Are you sure?"
+          "This will replace local sales, expenses, mileage, and visible inventory with the backup file. Are you sure?"
         );
 
-        if (!confirmRestore) {
-          return;
-        }
+        if (!confirmRestore) return;
 
         setItems(backupData.items);
         setSales(backupData.sales);
         setExpenses(backupData.expenses);
         setMileageTrips(backupData.mileageTrips);
 
-        alert("Backup restored successfully.");
+        alert("Backup restored locally. Cloud inventory sync will be improved later.");
       } catch (error) {
-        alert(
-          "Could not restore backup. Make sure you selected the correct JSON backup file."
-        );
+        alert("Could not restore backup. Make sure you selected the correct JSON backup file.");
       }
     };
 
@@ -451,24 +561,19 @@ function App() {
 
   function clearAllData() {
     const confirmClear = window.confirm(
-      "This will delete all Ember Ledger data from this browser. Are you sure?"
+      "This will clear local sales, expenses, mileage, and visible inventory from this browser. It will not clear Supabase cloud inventory unless you delete items individually. Are you sure?"
     );
 
-    if (!confirmClear) {
-      return;
-    }
+    if (!confirmClear) return;
 
     setItems([]);
     setSales([]);
     setExpenses([]);
     setMileageTrips([]);
-    alert("All app data cleared.");
+    alert("Local app data cleared.");
   }
 
-  const totalSpent = items.reduce(
-    (sum, item) => sum + item.quantity * item.unitCost,
-    0
-  );
+  const totalSpent = items.reduce((sum, item) => sum + item.quantity * item.unitCost, 0);
 
   const totalPotentialSales = items.reduce(
     (sum, item) => sum + item.quantity * item.salePrice,
@@ -477,10 +582,7 @@ function App() {
 
   const estimatedProfit = totalPotentialSales - totalSpent;
 
-  const totalExpenses = expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
 
@@ -489,30 +591,18 @@ function App() {
     0
   );
 
-  const totalGasCost = mileageTrips.reduce(
-    (sum, trip) => sum + trip.gasCost,
-    0
-  );
+  const totalGasCost = mileageTrips.reduce((sum, trip) => sum + trip.gasCost, 0);
 
   const totalMileageValue = mileageTrips.reduce(
     (sum, trip) => sum + trip.mileageValue,
     0
   );
 
-  const totalSalesRevenue = sales.reduce(
-    (sum, sale) => sum + sale.grossSale,
-    0
-  );
+  const totalSalesRevenue = sales.reduce((sum, sale) => sum + sale.grossSale, 0);
 
-  const totalSalesProfit = sales.reduce(
-    (sum, sale) => sum + sale.netProfit,
-    0
-  );
+  const totalSalesProfit = sales.reduce((sum, sale) => sum + sale.netProfit, 0);
 
-  const totalItemsSold = sales.reduce(
-    (sum, sale) => sum + sale.quantitySold,
-    0
-  );
+  const totalItemsSold = sales.reduce((sum, sale) => sum + sale.quantitySold, 0);
 
   const zenaSpent =
     items
@@ -570,11 +660,70 @@ function App() {
     );
   });
 
+  if (!user) {
+    return (
+      <div className="app">
+        <header className="header">
+          <h1>Ember Ledger</h1>
+          <p>Log in to sync inventory across devices.</p>
+        </header>
+
+        <main className="main">
+          <section className="panel">
+            <h2>{authMode === "login" ? "Log In" : "Create Account"}</h2>
+
+            <form onSubmit={handleAuth} className="form">
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={authEmail}
+                  onChange={(event) => setAuthEmail(event.target.value)}
+                  placeholder="you@example.com"
+                />
+              </label>
+
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(event) => setAuthPassword(event.target.value)}
+                  placeholder="At least 6 characters"
+                />
+              </label>
+
+              <button type="submit" disabled={authLoading}>
+                {authLoading
+                  ? "Working..."
+                  : authMode === "login"
+                  ? "Log In"
+                  : "Create Account"}
+              </button>
+            </form>
+
+            <button
+              className="secondary-button"
+              onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
+            >
+              {authMode === "login"
+                ? "Need an account? Sign up"
+                : "Already have an account? Log in"}
+            </button>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="header">
         <h1>Ember Ledger</h1>
-        <p>Inventory, expenses, mileage, sales, and receipt tracker</p>
+        <p>Cloud inventory sync is active for: {user.email}</p>
+        <button className="secondary-button" onClick={signOut}>
+          Sign Out
+        </button>
       </header>
 
       <nav className="nav">
@@ -703,8 +852,8 @@ function App() {
             <section className="panel">
               <h2>Backup & Restore</h2>
               <p>
-                Download one backup file with all your app data, or restore from a previous
-                backup file.
+                Download one backup file with all visible app data. Inventory is cloud synced;
+                sales, expenses, and mileage are still local for now.
               </p>
 
               <div className="backup-actions">
@@ -725,7 +874,7 @@ function App() {
               <h2>Danger Zone</h2>
               <p>Only use this if you already downloaded a backup.</p>
               <button className="delete-button" onClick={clearAllData}>
-                Clear All Data
+                Clear Local Data
               </button>
             </section>
           </>
