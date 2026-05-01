@@ -3,8 +3,8 @@
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light;
-  color: #2f1f18;
-  background-color: #f7f3ef;
+  color: #1f2329;
+  background-color: #f2efec;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,8 +21,8 @@ body,
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #f7f3ef;
-  color: #2f1f18;
+  background: #f2efec;
+  color: #1f2329;
 }
 
 body {
