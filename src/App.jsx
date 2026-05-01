@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabaseClient";
 
+const IRS_MILEAGE_RATE = 0.725;
+
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -15,6 +17,7 @@ function App() {
   const [expenses, setExpenses] = useState([]);
   const [mileageTrips, setMileageTrips] = useState([]);
   const [sales, setSales] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
 
   const [itemName, setItemName] = useState("");
   const [buyer, setBuyer] = useState("Zena");
@@ -34,10 +37,18 @@ function App() {
 
   const [tripPurpose, setTripPurpose] = useState("");
   const [tripDriver, setTripDriver] = useState("Zena");
+  const [tripVehicleId, setTripVehicleId] = useState("");
   const [startMiles, setStartMiles] = useState("");
   const [endMiles, setEndMiles] = useState("");
-  const [gasCost, setGasCost] = useState("");
+  const [tripGasPrice, setTripGasPrice] = useState("");
   const [tripNotes, setTripNotes] = useState("");
+  const [tripGasReceiptImage, setTripGasReceiptImage] = useState("");
+
+  const [vehicleName, setVehicleName] = useState("");
+  const [vehicleOwner, setVehicleOwner] = useState("Zena");
+  const [vehicleMpg, setVehicleMpg] = useState("");
+  const [vehicleWearCost, setVehicleWearCost] = useState("");
+  const [vehicleNotes, setVehicleNotes] = useState("");
 
   const [soldItemId, setSoldItemId] = useState("");
   const [salePlatform, setSalePlatform] = useState("eBay");
@@ -57,6 +68,37 @@ function App() {
   const [editQuantity, setEditQuantity] = useState(1);
   const [editUnitCost, setEditUnitCost] = useState("");
   const [editSalePrice, setEditSalePrice] = useState("");
+
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [editExpenseVendor, setEditExpenseVendor] = useState("");
+  const [editExpenseCategory, setEditExpenseCategory] = useState("Supplies");
+  const [editExpenseBuyer, setEditExpenseBuyer] = useState("Zena");
+  const [editExpenseAmount, setEditExpenseAmount] = useState("");
+  const [editExpenseNotes, setEditExpenseNotes] = useState("");
+
+  const [editingTripId, setEditingTripId] = useState(null);
+  const [editTripPurpose, setEditTripPurpose] = useState("");
+  const [editTripDriver, setEditTripDriver] = useState("Zena");
+  const [editTripVehicleId, setEditTripVehicleId] = useState("");
+  const [editStartMiles, setEditStartMiles] = useState("");
+  const [editEndMiles, setEditEndMiles] = useState("");
+  const [editTripGasPrice, setEditTripGasPrice] = useState("");
+  const [editTripNotes, setEditTripNotes] = useState("");
+
+  const [editingSaleId, setEditingSaleId] = useState(null);
+  const [editSalePlatform, setEditSalePlatform] = useState("eBay");
+  const [editQuantitySold, setEditQuantitySold] = useState(1);
+  const [editFinalSalePrice, setEditFinalSalePrice] = useState("");
+  const [editShippingCost, setEditShippingCost] = useState("");
+  const [editPlatformFees, setEditPlatformFees] = useState("");
+  const [editSaleNotes, setEditSaleNotes] = useState("");
+
+  const [editingVehicleId, setEditingVehicleId] = useState(null);
+  const [editVehicleName, setEditVehicleName] = useState("");
+  const [editVehicleOwner, setEditVehicleOwner] = useState("Zena");
+  const [editVehicleMpg, setEditVehicleMpg] = useState("");
+  const [editVehicleWearCost, setEditVehicleWearCost] = useState("");
+  const [editVehicleNotes, setEditVehicleNotes] = useState("");
 
   useEffect(() => {
     checkUser();
@@ -78,6 +120,7 @@ function App() {
       setExpenses([]);
       setMileageTrips([]);
       setSales([]);
+      setVehicles([]);
     }
   }, [user]);
 
@@ -169,16 +212,35 @@ function App() {
     };
   }
 
+  function dbVehicleToAppVehicle(row) {
+    return {
+      id: row.id,
+      name: row.name,
+      owner: row.owner,
+      averageMpg: Number(row.average_mpg || 0),
+      wearCostPerMile: Number(row.wear_cost_per_mile || 0),
+      notes: row.notes || "",
+      createdAt: row.created_at,
+    };
+  }
+
   function dbTripToAppTrip(row) {
     return {
       id: row.id,
+      vehicleId: row.vehicle_id,
+      vehicleName: row.vehicle_name || "",
       purpose: row.purpose,
       driver: row.driver,
       startMiles: Number(row.start_miles || 0),
       endMiles: Number(row.end_miles || 0),
       businessMiles: Number(row.business_miles || 0),
-      gasCost: Number(row.gas_cost || 0),
+      gasPrice: Number(row.gas_price || 0),
+      fuelCost: Number(row.fuel_cost || 0),
+      wearCostPerMile: Number(row.wear_cost_per_mile || 0),
+      wearCost: Number(row.wear_cost || 0),
+      totalVehicleCost: Number(row.total_vehicle_cost || 0),
       mileageValue: Number(row.mileage_value || 0),
+      gasReceiptImage: row.gas_receipt_image || "",
       notes: row.notes || "",
       createdAt: row.created_at,
     };
@@ -212,6 +274,7 @@ function App() {
       loadExpenses(),
       loadMileageTrips(),
       loadSales(),
+      loadVehicles(),
     ]);
   }
 
@@ -271,6 +334,20 @@ function App() {
     setSales(data.map(dbSaleToAppSale));
   }
 
+  async function loadVehicles() {
+    const { data, error } = await supabase
+      .from("vehicles")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert("Could not load vehicles: " + error.message);
+      return;
+    }
+
+    setVehicles(data.map(dbVehicleToAppVehicle));
+  }
+
   function handleImageUpload(event, setterFunction) {
     const file = event.target.files[0];
 
@@ -288,6 +365,26 @@ function App() {
     };
 
     reader.readAsDataURL(file);
+  }
+
+  function calculateTripCosts({ businessMiles, vehicle, gasPrice }) {
+    const mpg = Number(vehicle?.averageMpg || 0);
+    const wearRate = Number(vehicle?.wearCostPerMile || 0);
+    const gasPriceNumber = Number(gasPrice || 0);
+
+    const fuelCost = mpg > 0 ? (businessMiles / mpg) * gasPriceNumber : 0;
+    const wearCost = businessMiles * wearRate;
+    const totalVehicleCost = fuelCost + wearCost;
+    const mileageValue = businessMiles * IRS_MILEAGE_RATE;
+
+    return {
+      fuelCost,
+      wearCost,
+      totalVehicleCost,
+      mileageValue,
+      wearRate,
+      gasPriceNumber,
+    };
   }
 
   async function addItem(event) {
@@ -468,6 +565,171 @@ function App() {
     setExpenses(expenses.filter((expense) => expense.id !== id));
   }
 
+  function startEditingExpense(expense) {
+    setEditingExpenseId(expense.id);
+    setEditExpenseVendor(expense.vendor);
+    setEditExpenseCategory(expense.category || "Supplies");
+    setEditExpenseBuyer(expense.buyer || "Zena");
+    setEditExpenseAmount(expense.amount);
+    setEditExpenseNotes(expense.notes || "");
+  }
+
+  function cancelEditingExpense() {
+    setEditingExpenseId(null);
+    setEditExpenseVendor("");
+    setEditExpenseCategory("Supplies");
+    setEditExpenseBuyer("Zena");
+    setEditExpenseAmount("");
+    setEditExpenseNotes("");
+  }
+
+  async function saveEditedExpense(event) {
+    event.preventDefault();
+
+    if (!editExpenseVendor || !editExpenseAmount) {
+      alert("Please enter vendor and amount.");
+      return;
+    }
+
+    const rowToUpdate = {
+      vendor: editExpenseVendor,
+      category: editExpenseCategory,
+      buyer: editExpenseBuyer,
+      amount: Number(editExpenseAmount),
+      notes: editExpenseNotes,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("business_expenses")
+      .update(rowToUpdate)
+      .eq("id", editingExpenseId)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not update expense: " + error.message);
+      return;
+    }
+
+    setExpenses(
+      expenses.map((expense) =>
+        expense.id === editingExpenseId ? dbExpenseToAppExpense(data) : expense
+      )
+    );
+
+    cancelEditingExpense();
+  }
+
+  async function addVehicle(event) {
+    event.preventDefault();
+
+    if (!user) {
+      alert("Please log in first.");
+      return;
+    }
+
+    if (!vehicleName || !vehicleMpg) {
+      alert("Please enter vehicle name and average MPG.");
+      return;
+    }
+
+    const rowToInsert = {
+      user_id: user.id,
+      name: vehicleName,
+      owner: vehicleOwner,
+      average_mpg: Number(vehicleMpg),
+      wear_cost_per_mile: Number(vehicleWearCost || 0),
+      notes: vehicleNotes,
+    };
+
+    const { data, error } = await supabase
+      .from("vehicles")
+      .insert(rowToInsert)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not add vehicle: " + error.message);
+      return;
+    }
+
+    setVehicles([dbVehicleToAppVehicle(data), ...vehicles]);
+
+    setVehicleName("");
+    setVehicleOwner("Zena");
+    setVehicleMpg("");
+    setVehicleWearCost("");
+    setVehicleNotes("");
+  }
+
+  async function deleteVehicle(id) {
+    const { error } = await supabase.from("vehicles").delete().eq("id", id);
+
+    if (error) {
+      alert("Could not delete vehicle: " + error.message);
+      return;
+    }
+
+    setVehicles(vehicles.filter((vehicle) => vehicle.id !== id));
+  }
+
+  function startEditingVehicle(vehicle) {
+    setEditingVehicleId(vehicle.id);
+    setEditVehicleName(vehicle.name);
+    setEditVehicleOwner(vehicle.owner || "Zena");
+    setEditVehicleMpg(vehicle.averageMpg);
+    setEditVehicleWearCost(vehicle.wearCostPerMile);
+    setEditVehicleNotes(vehicle.notes || "");
+  }
+
+  function cancelEditingVehicle() {
+    setEditingVehicleId(null);
+    setEditVehicleName("");
+    setEditVehicleOwner("Zena");
+    setEditVehicleMpg("");
+    setEditVehicleWearCost("");
+    setEditVehicleNotes("");
+  }
+
+  async function saveEditedVehicle(event) {
+    event.preventDefault();
+
+    if (!editVehicleName || !editVehicleMpg) {
+      alert("Please enter vehicle name and average MPG.");
+      return;
+    }
+
+    const rowToUpdate = {
+      name: editVehicleName,
+      owner: editVehicleOwner,
+      average_mpg: Number(editVehicleMpg),
+      wear_cost_per_mile: Number(editVehicleWearCost || 0),
+      notes: editVehicleNotes,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("vehicles")
+      .update(rowToUpdate)
+      .eq("id", editingVehicleId)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not update vehicle: " + error.message);
+      return;
+    }
+
+    setVehicles(
+      vehicles.map((vehicle) =>
+        vehicle.id === editingVehicleId ? dbVehicleToAppVehicle(data) : vehicle
+      )
+    );
+
+    cancelEditingVehicle();
+  }
+
   async function addMileageTrip(event) {
     event.preventDefault();
 
@@ -481,6 +743,15 @@ function App() {
       return;
     }
 
+    if (!tripGasPrice) {
+      alert("Please enter the gas price paid for this trip.");
+      return;
+    }
+
+    const selectedVehicle = vehicles.find(
+      (vehicle) => String(vehicle.id) === String(tripVehicleId)
+    );
+
     const businessMiles = Number(endMiles) - Number(startMiles);
 
     if (businessMiles < 0) {
@@ -488,17 +759,28 @@ function App() {
       return;
     }
 
-    const mileageValue = businessMiles * 0.725;
+    const costs = calculateTripCosts({
+      businessMiles,
+      vehicle: selectedVehicle,
+      gasPrice: tripGasPrice,
+    });
 
     const rowToInsert = {
       user_id: user.id,
+      vehicle_id: selectedVehicle?.id || null,
+      vehicle_name: selectedVehicle?.name || "",
       purpose: tripPurpose,
       driver: tripDriver,
       start_miles: Number(startMiles),
       end_miles: Number(endMiles),
       business_miles: businessMiles,
-      gas_cost: Number(gasCost || 0),
-      mileage_value: mileageValue,
+      gas_price: costs.gasPriceNumber,
+      fuel_cost: costs.fuelCost,
+      wear_cost_per_mile: costs.wearRate,
+      wear_cost: costs.wearCost,
+      total_vehicle_cost: costs.totalVehicleCost,
+      mileage_value: costs.mileageValue,
+      gas_receipt_image: tripGasReceiptImage,
       notes: tripNotes,
     };
 
@@ -517,10 +799,12 @@ function App() {
 
     setTripPurpose("");
     setTripDriver("Zena");
+    setTripVehicleId("");
     setStartMiles("");
     setEndMiles("");
-    setGasCost("");
+    setTripGasPrice("");
     setTripNotes("");
+    setTripGasReceiptImage("");
   }
 
   async function deleteMileageTrip(id) {
@@ -532,6 +816,97 @@ function App() {
     }
 
     setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
+  }
+
+  function startEditingTrip(trip) {
+    setEditingTripId(trip.id);
+    setEditTripPurpose(trip.purpose);
+    setEditTripDriver(trip.driver || "Zena");
+    setEditTripVehicleId(trip.vehicleId || "");
+    setEditStartMiles(trip.startMiles);
+    setEditEndMiles(trip.endMiles);
+    setEditTripGasPrice(trip.gasPrice);
+    setEditTripNotes(trip.notes || "");
+  }
+
+  function cancelEditingTrip() {
+    setEditingTripId(null);
+    setEditTripPurpose("");
+    setEditTripDriver("Zena");
+    setEditTripVehicleId("");
+    setEditStartMiles("");
+    setEditEndMiles("");
+    setEditTripGasPrice("");
+    setEditTripNotes("");
+  }
+
+  async function saveEditedTrip(event) {
+    event.preventDefault();
+
+    if (!editTripPurpose || !editStartMiles || !editEndMiles) {
+      alert("Please enter trip purpose, starting miles, and ending miles.");
+      return;
+    }
+
+    if (!editTripGasPrice) {
+      alert("Please enter the gas price paid for this trip.");
+      return;
+    }
+
+    const selectedVehicle = vehicles.find(
+      (vehicle) => String(vehicle.id) === String(editTripVehicleId)
+    );
+
+    const businessMiles = Number(editEndMiles) - Number(editStartMiles);
+
+    if (businessMiles < 0) {
+      alert("Ending mileage must be higher than starting mileage.");
+      return;
+    }
+
+    const costs = calculateTripCosts({
+      businessMiles,
+      vehicle: selectedVehicle,
+      gasPrice: editTripGasPrice,
+    });
+
+    const rowToUpdate = {
+      vehicle_id: selectedVehicle?.id || null,
+      vehicle_name: selectedVehicle?.name || "",
+      purpose: editTripPurpose,
+      driver: editTripDriver,
+      start_miles: Number(editStartMiles),
+      end_miles: Number(editEndMiles),
+      business_miles: businessMiles,
+      gas_price: costs.gasPriceNumber,
+      fuel_cost: costs.fuelCost,
+      wear_cost_per_mile: costs.wearRate,
+      wear_cost: costs.wearCost,
+      total_vehicle_cost: costs.totalVehicleCost,
+      mileage_value: costs.mileageValue,
+      notes: editTripNotes,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("mileage_trips")
+      .update(rowToUpdate)
+      .eq("id", editingTripId)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not update mileage trip: " + error.message);
+      return;
+    }
+
+    setMileageTrips(
+      mileageTrips.map((trip) =>
+        trip.id === editingTripId ? dbTripToAppTrip(data) : trip
+      )
+    );
+
+    cancelEditingTrip();
   }
 
   async function addSale(event) {
@@ -659,6 +1034,89 @@ function App() {
     setSales(sales.filter((sale) => sale.id !== id));
   }
 
+  function startEditingSale(sale) {
+    setEditingSaleId(sale.id);
+    setEditSalePlatform(sale.platform || "eBay");
+    setEditQuantitySold(sale.quantitySold);
+    setEditFinalSalePrice(sale.finalSalePrice);
+    setEditShippingCost(sale.shippingCost);
+    setEditPlatformFees(sale.platformFees);
+    setEditSaleNotes(sale.notes || "");
+  }
+
+  function cancelEditingSale() {
+    setEditingSaleId(null);
+    setEditSalePlatform("eBay");
+    setEditQuantitySold(1);
+    setEditFinalSalePrice("");
+    setEditShippingCost("");
+    setEditPlatformFees("");
+    setEditSaleNotes("");
+  }
+
+  async function saveEditedSale(event) {
+    event.preventDefault();
+
+    const saleBeingEdited = sales.find((sale) => sale.id === editingSaleId);
+
+    if (!saleBeingEdited) {
+      alert("Sale not found.");
+      return;
+    }
+
+    if (!editQuantitySold || !editFinalSalePrice) {
+      alert("Please enter quantity sold and final sale price.");
+      return;
+    }
+
+    const qtySold = Number(editQuantitySold);
+    const salePriceNumber = Number(editFinalSalePrice);
+    const shipping = Number(editShippingCost || 0);
+    const fees = Number(editPlatformFees || 0);
+
+    const costPerItem =
+      saleBeingEdited.quantitySold > 0
+        ? saleBeingEdited.itemCost / saleBeingEdited.quantitySold
+        : 0;
+
+    const itemCost = costPerItem * qtySold;
+    const grossSale = salePriceNumber * qtySold;
+    const netProfit = grossSale - itemCost - shipping - fees;
+
+    const rowToUpdate = {
+      platform: editSalePlatform,
+      quantity_sold: qtySold,
+      final_sale_price: salePriceNumber,
+      gross_sale: grossSale,
+      item_cost: itemCost,
+      shipping_cost: shipping,
+      platform_fees: fees,
+      net_profit: netProfit,
+      notes: editSaleNotes,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("sales_records")
+      .update(rowToUpdate)
+      .eq("id", editingSaleId)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not update sale: " + error.message);
+      return;
+    }
+
+    setSales(
+      sales.map((sale) =>
+        sale.id === editingSaleId ? dbSaleToAppSale(data) : sale
+      )
+    );
+
+    cancelEditingSale();
+  }
+
   function downloadCSV(filename, rows) {
     if (!rows || rows.length === 0) {
       alert("No data to export yet.");
@@ -694,11 +1152,12 @@ function App() {
     const backupData = {
       createdAt: new Date().toISOString(),
       appName: "Ember Ledger",
-      version: "1.2-cloud-sync",
+      version: "1.3-vehicles-mileage",
       items,
       sales,
       expenses,
       mileageTrips,
+      vehicles,
     };
 
     const fileContent = JSON.stringify(backupData, null, 2);
@@ -737,8 +1196,18 @@ function App() {
     0
   );
 
-  const totalGasCost = mileageTrips.reduce(
-    (sum, trip) => sum + trip.gasCost,
+  const totalFuelCost = mileageTrips.reduce(
+    (sum, trip) => sum + trip.fuelCost,
+    0
+  );
+
+  const totalWearCost = mileageTrips.reduce(
+    (sum, trip) => sum + trip.wearCost,
+    0
+  );
+
+  const totalVehicleCost = mileageTrips.reduce(
+    (sum, trip) => sum + trip.totalVehicleCost,
     0
   );
 
@@ -771,7 +1240,7 @@ function App() {
       .reduce((sum, expense) => sum + expense.amount, 0) +
     mileageTrips
       .filter((trip) => trip.driver === "Zena")
-      .reduce((sum, trip) => sum + trip.gasCost, 0);
+      .reduce((sum, trip) => sum + trip.totalVehicleCost, 0);
 
   const dillonSpent =
     items
@@ -782,7 +1251,7 @@ function App() {
       .reduce((sum, expense) => sum + expense.amount, 0) +
     mileageTrips
       .filter((trip) => trip.driver === "Dillon")
-      .reduce((sum, trip) => sum + trip.gasCost, 0);
+      .reduce((sum, trip) => sum + trip.totalVehicleCost, 0);
 
   const jointSpent =
     items
@@ -793,7 +1262,7 @@ function App() {
       .reduce((sum, expense) => sum + expense.amount, 0) +
     mileageTrips
       .filter((trip) => trip.driver === "Joint")
-      .reduce((sum, trip) => sum + trip.gasCost, 0);
+      .reduce((sum, trip) => sum + trip.totalVehicleCost, 0);
 
   const otherSpent =
     items
@@ -804,7 +1273,7 @@ function App() {
       .reduce((sum, expense) => sum + expense.amount, 0) +
     mileageTrips
       .filter((trip) => trip.driver === "Other")
-      .reduce((sum, trip) => sum + trip.gasCost, 0);
+      .reduce((sum, trip) => sum + trip.totalVehicleCost, 0);
 
   const filteredItems = items.filter((item) => {
     const search = inventorySearch.toLowerCase();
@@ -886,6 +1355,7 @@ function App() {
 
       <nav className="nav">
         <button onClick={() => setActiveTab("dashboard")}>Dashboard</button>
+        <button onClick={() => setActiveTab("vehicles")}>Vehicles</button>
         <button onClick={() => setActiveTab("addInventory")}>Add Inventory</button>
         <button onClick={() => setActiveTab("addSale")}>Add Sale</button>
         <button onClick={() => setActiveTab("expenses")}>Expenses</button>
@@ -944,12 +1414,22 @@ function App() {
               </div>
 
               <div className="card">
-                <p>Gas Tracked</p>
-                <h2>${totalGasCost.toFixed(2)}</h2>
+                <p>Fuel Cost</p>
+                <h2>${totalFuelCost.toFixed(2)}</h2>
               </div>
 
               <div className="card">
-                <p>Mileage Value</p>
+                <p>Wear / Maintenance</p>
+                <h2>${totalWearCost.toFixed(2)}</h2>
+              </div>
+
+              <div className="card">
+                <p>Total Vehicle Cost</p>
+                <h2>${totalVehicleCost.toFixed(2)}</h2>
+              </div>
+
+              <div className="card">
+                <p>IRS Mileage Value</p>
                 <h2>${totalMileageValue.toFixed(2)}</h2>
               </div>
             </section>
@@ -997,12 +1477,12 @@ function App() {
                   Export Expenses
                 </button>
 
-                <button
-                  onClick={() =>
-                    downloadCSV("ember-ledger-mileage-trips.csv", mileageTrips)
-                  }
-                >
+                <button onClick={() => downloadCSV("ember-ledger-mileage-trips.csv", mileageTrips)}>
                   Export Mileage
+                </button>
+
+                <button onClick={() => downloadCSV("ember-ledger-vehicles.csv", vehicles)}>
+                  Export Vehicles
                 </button>
               </div>
             </section>
@@ -1011,6 +1491,175 @@ function App() {
               <h2>Backup</h2>
               <p>Download one backup file with all visible app data.</p>
               <button onClick={downloadBackup}>Download Full Backup</button>
+            </section>
+          </>
+        )}
+
+        {activeTab === "vehicles" && (
+          <>
+            <section className="panel">
+              <h2>Add Vehicle</h2>
+
+              <form onSubmit={addVehicle} className="form">
+                <label>
+                  Vehicle Name
+                  <input
+                    value={vehicleName}
+                    onChange={(event) => setVehicleName(event.target.value)}
+                    placeholder="Example: Zena SUV"
+                  />
+                </label>
+
+                <label>
+                  Owner / Driver
+                  <select
+                    value={vehicleOwner}
+                    onChange={(event) => setVehicleOwner(event.target.value)}
+                  >
+                    <option>Zena</option>
+                    <option>Dillon</option>
+                    <option>Joint</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+
+                <label>
+                  Average MPG
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={vehicleMpg}
+                    onChange={(event) => setVehicleMpg(event.target.value)}
+                    placeholder="Example: 22"
+                  />
+                </label>
+
+                <label>
+                  Maintenance / Wear Cost Per Mile
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={vehicleWearCost}
+                    onChange={(event) => setVehicleWearCost(event.target.value)}
+                    placeholder="Example: 0.15"
+                  />
+                </label>
+
+                <label>
+                  Notes
+                  <input
+                    value={vehicleNotes}
+                    onChange={(event) => setVehicleNotes(event.target.value)}
+                    placeholder="Oil, tires, older car, new car, etc."
+                  />
+                </label>
+
+                <button type="submit">Add Vehicle</button>
+              </form>
+            </section>
+
+            <section className="panel">
+              <h2>Vehicles</h2>
+
+              {vehicles.length === 0 ? (
+                <p>No vehicles added yet.</p>
+              ) : (
+                <div className="inventory-list">
+                  {vehicles.map((vehicle) => (
+                    <div className="inventory-card" key={vehicle.id}>
+                      {editingVehicleId === vehicle.id ? (
+                        <form onSubmit={saveEditedVehicle} className="form">
+                          <label>
+                            Vehicle Name
+                            <input
+                              value={editVehicleName}
+                              onChange={(event) => setEditVehicleName(event.target.value)}
+                            />
+                          </label>
+
+                          <label>
+                            Owner / Driver
+                            <select
+                              value={editVehicleOwner}
+                              onChange={(event) => setEditVehicleOwner(event.target.value)}
+                            >
+                              <option>Zena</option>
+                              <option>Dillon</option>
+                              <option>Joint</option>
+                              <option>Other</option>
+                            </select>
+                          </label>
+
+                          <label>
+                            Average MPG
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={editVehicleMpg}
+                              onChange={(event) => setEditVehicleMpg(event.target.value)}
+                            />
+                          </label>
+
+                          <label>
+                            Maintenance / Wear Cost Per Mile
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editVehicleWearCost}
+                              onChange={(event) =>
+                                setEditVehicleWearCost(event.target.value)
+                              }
+                            />
+                          </label>
+
+                          <label>
+                            Notes
+                            <input
+                              value={editVehicleNotes}
+                              onChange={(event) => setEditVehicleNotes(event.target.value)}
+                            />
+                          </label>
+
+                          <button type="submit">Save Vehicle</button>
+
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={cancelEditingVehicle}
+                          >
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <>
+                          <h3>{vehicle.name}</h3>
+                          <p>Owner: {vehicle.owner}</p>
+                          <p>Average MPG: {vehicle.averageMpg}</p>
+                          <p>
+                            Wear / Maintenance: $
+                            {vehicle.wearCostPerMile.toFixed(2)} per mile
+                          </p>
+                          {vehicle.notes && <p>Notes: {vehicle.notes}</p>}
+
+                          <button
+                            className="edit-button"
+                            onClick={() => startEditingVehicle(vehicle)}
+                          >
+                            Edit Vehicle
+                          </button>
+
+                          <button
+                            className="delete-button"
+                            onClick={() => deleteVehicle(vehicle.id)}
+                          >
+                            Delete Vehicle
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </>
         )}
@@ -1031,10 +1680,7 @@ function App() {
 
               <label>
                 Who Purchased It?
-                <select
-                  value={buyer}
-                  onChange={(event) => setBuyer(event.target.value)}
-                >
+                <select value={buyer} onChange={(event) => setBuyer(event.target.value)}>
                   <option>Zena</option>
                   <option>Dillon</option>
                   <option>Joint</option>
@@ -1309,27 +1955,119 @@ function App() {
                 <div className="inventory-list">
                   {expenses.map((expense) => (
                     <div className="inventory-card" key={expense.id}>
-                      <h3>{expense.vendor}</h3>
-                      <p>Category: {expense.category}</p>
-                      <p>Paid By: {expense.buyer}</p>
-                      <p>Amount: ${expense.amount.toFixed(2)}</p>
-                      {expense.notes && <p>Notes: {expense.notes}</p>}
+                      {editingExpenseId === expense.id ? (
+                        <form onSubmit={saveEditedExpense} className="form">
+                          <label>
+                            Vendor / Store
+                            <input
+                              value={editExpenseVendor}
+                              onChange={(event) =>
+                                setEditExpenseVendor(event.target.value)
+                              }
+                            />
+                          </label>
 
-                      {expense.receiptImage && (
-                        <div className="receipt-preview">
-                          <p>Receipt / Screenshot:</p>
-                          <a href={expense.receiptImage} target="_blank" rel="noreferrer">
-                            <img src={expense.receiptImage} alt="Expense receipt" />
-                          </a>
-                        </div>
+                          <label>
+                            Expense Category
+                            <select
+                              value={editExpenseCategory}
+                              onChange={(event) =>
+                                setEditExpenseCategory(event.target.value)
+                              }
+                            >
+                              <option>Supplies</option>
+                              <option>Shipping</option>
+                              <option>Gas</option>
+                              <option>Software</option>
+                              <option>Storage</option>
+                              <option>Equipment</option>
+                              <option>Other</option>
+                            </select>
+                          </label>
+
+                          <label>
+                            Who Paid?
+                            <select
+                              value={editExpenseBuyer}
+                              onChange={(event) =>
+                                setEditExpenseBuyer(event.target.value)
+                              }
+                            >
+                              <option>Zena</option>
+                              <option>Dillon</option>
+                              <option>Joint</option>
+                              <option>Other</option>
+                            </select>
+                          </label>
+
+                          <label>
+                            Amount
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editExpenseAmount}
+                              onChange={(event) =>
+                                setEditExpenseAmount(event.target.value)
+                              }
+                            />
+                          </label>
+
+                          <label>
+                            Notes
+                            <input
+                              value={editExpenseNotes}
+                              onChange={(event) =>
+                                setEditExpenseNotes(event.target.value)
+                              }
+                            />
+                          </label>
+
+                          <button type="submit">Save Expense</button>
+
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={cancelEditingExpense}
+                          >
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <>
+                          <h3>{expense.vendor}</h3>
+                          <p>Category: {expense.category}</p>
+                          <p>Paid By: {expense.buyer}</p>
+                          <p>Amount: ${expense.amount.toFixed(2)}</p>
+                          {expense.notes && <p>Notes: {expense.notes}</p>}
+
+                          {expense.receiptImage && (
+                            <div className="receipt-preview">
+                              <p>Receipt / Screenshot:</p>
+                              <a
+                                href={expense.receiptImage}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <img src={expense.receiptImage} alt="Expense receipt" />
+                              </a>
+                            </div>
+                          )}
+
+                          <button
+                            className="edit-button"
+                            onClick={() => startEditingExpense(expense)}
+                          >
+                            Edit Expense
+                          </button>
+
+                          <button
+                            className="delete-button"
+                            onClick={() => deleteExpense(expense.id)}
+                          >
+                            Delete Expense
+                          </button>
+                        </>
                       )}
-
-                      <button
-                        className="delete-button"
-                        onClick={() => deleteExpense(expense.id)}
-                      >
-                        Delete Expense
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -1367,6 +2105,21 @@ function App() {
                 </label>
 
                 <label>
+                  Vehicle
+                  <select
+                    value={tripVehicleId}
+                    onChange={(event) => setTripVehicleId(event.target.value)}
+                  >
+                    <option value="">No vehicle selected</option>
+                    {vehicles.map((vehicle) => (
+                      <option key={vehicle.id} value={vehicle.id}>
+                        {vehicle.name} — {vehicle.averageMpg} MPG
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
                   Starting Odometer
                   <input
                     type="number"
@@ -1387,15 +2140,33 @@ function App() {
                 </label>
 
                 <label>
-                  Gas Cost
+                  Gas Price Paid
                   <input
                     type="number"
                     step="0.01"
-                    value={gasCost}
-                    onChange={(event) => setGasCost(event.target.value)}
-                    placeholder="Optional, example: 8.00"
+                    value={tripGasPrice}
+                    onChange={(event) => setTripGasPrice(event.target.value)}
+                    placeholder="Example: 3.25"
                   />
                 </label>
+
+                <label>
+                  Gas Receipt / Screenshot
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) =>
+                      handleImageUpload(event, setTripGasReceiptImage)
+                    }
+                  />
+                </label>
+
+                {tripGasReceiptImage && (
+                  <div className="receipt-preview">
+                    <p>Gas receipt attached</p>
+                    <img src={tripGasReceiptImage} alt="Gas receipt preview" />
+                  </div>
+                )}
 
                 <label>
                   Notes
@@ -1419,19 +2190,148 @@ function App() {
                 <div className="inventory-list">
                   {mileageTrips.map((trip) => (
                     <div className="inventory-card" key={trip.id}>
-                      <h3>{trip.purpose}</h3>
-                      <p>Driver: {trip.driver}</p>
-                      <p>Business Miles: {trip.businessMiles}</p>
-                      <p>Gas Cost: ${trip.gasCost.toFixed(2)}</p>
-                      <p>Mileage Value: ${trip.mileageValue.toFixed(2)}</p>
-                      {trip.notes && <p>Notes: {trip.notes}</p>}
+                      {editingTripId === trip.id ? (
+                        <form onSubmit={saveEditedTrip} className="form">
+                          <label>
+                            Trip Purpose
+                            <input
+                              value={editTripPurpose}
+                              onChange={(event) =>
+                                setEditTripPurpose(event.target.value)
+                              }
+                            />
+                          </label>
 
-                      <button
-                        className="delete-button"
-                        onClick={() => deleteMileageTrip(trip.id)}
-                      >
-                        Delete Trip
-                      </button>
+                          <label>
+                            Driver
+                            <select
+                              value={editTripDriver}
+                              onChange={(event) =>
+                                setEditTripDriver(event.target.value)
+                              }
+                            >
+                              <option>Zena</option>
+                              <option>Dillon</option>
+                              <option>Joint</option>
+                              <option>Other</option>
+                            </select>
+                          </label>
+
+                          <label>
+                            Vehicle
+                            <select
+                              value={editTripVehicleId}
+                              onChange={(event) =>
+                                setEditTripVehicleId(event.target.value)
+                              }
+                            >
+                              <option value="">No vehicle selected</option>
+                              {vehicles.map((vehicle) => (
+                                <option key={vehicle.id} value={vehicle.id}>
+                                  {vehicle.name} — {vehicle.averageMpg} MPG
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label>
+                            Starting Odometer
+                            <input
+                              type="number"
+                              value={editStartMiles}
+                              onChange={(event) =>
+                                setEditStartMiles(event.target.value)
+                              }
+                            />
+                          </label>
+
+                          <label>
+                            Ending Odometer
+                            <input
+                              type="number"
+                              value={editEndMiles}
+                              onChange={(event) =>
+                                setEditEndMiles(event.target.value)
+                              }
+                            />
+                          </label>
+
+                          <label>
+                            Gas Price Paid
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editTripGasPrice}
+                              onChange={(event) =>
+                                setEditTripGasPrice(event.target.value)
+                              }
+                            />
+                          </label>
+
+                          <label>
+                            Notes
+                            <input
+                              value={editTripNotes}
+                              onChange={(event) =>
+                                setEditTripNotes(event.target.value)
+                              }
+                            />
+                          </label>
+
+                          <button type="submit">Save Trip</button>
+
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={cancelEditingTrip}
+                          >
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <>
+                          <h3>{trip.purpose}</h3>
+                          <p>Driver: {trip.driver}</p>
+                          <p>Vehicle: {trip.vehicleName || "Not selected"}</p>
+                          <p>Business Miles: {trip.businessMiles}</p>
+                          <p>Gas Price Paid: ${trip.gasPrice.toFixed(2)}</p>
+                          <p>Fuel Cost: ${trip.fuelCost.toFixed(2)}</p>
+                          <p>Wear / Maintenance: ${trip.wearCost.toFixed(2)}</p>
+                          <p>
+                            Total Vehicle Cost: $
+                            {trip.totalVehicleCost.toFixed(2)}
+                          </p>
+                          <p>IRS Mileage Value: ${trip.mileageValue.toFixed(2)}</p>
+                          {trip.notes && <p>Notes: {trip.notes}</p>}
+
+                          {trip.gasReceiptImage && (
+                            <div className="receipt-preview">
+                              <p>Gas Receipt / Screenshot:</p>
+                              <a
+                                href={trip.gasReceiptImage}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <img src={trip.gasReceiptImage} alt="Gas receipt" />
+                              </a>
+                            </div>
+                          )}
+
+                          <button
+                            className="edit-button"
+                            onClick={() => startEditingTrip(trip)}
+                          >
+                            Edit Trip
+                          </button>
+
+                          <button
+                            className="delete-button"
+                            onClick={() => deleteMileageTrip(trip.id)}
+                          >
+                            Delete Trip
+                          </button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1484,7 +2384,9 @@ function App() {
                           Category
                           <select
                             value={editCategory}
-                            onChange={(event) => setEditCategory(event.target.value)}
+                            onChange={(event) =>
+                              setEditCategory(event.target.value)
+                            }
                           >
                             <option>Pokemon</option>
                             <option>Makeup</option>
@@ -1510,7 +2412,9 @@ function App() {
                             type="number"
                             min="0"
                             value={editQuantity}
-                            onChange={(event) => setEditQuantity(event.target.value)}
+                            onChange={(event) =>
+                              setEditQuantity(event.target.value)
+                            }
                           />
                         </label>
 
@@ -1520,7 +2424,9 @@ function App() {
                             type="number"
                             step="0.01"
                             value={editUnitCost}
-                            onChange={(event) => setEditUnitCost(event.target.value)}
+                            onChange={(event) =>
+                              setEditUnitCost(event.target.value)
+                            }
                           />
                         </label>
 
@@ -1530,7 +2436,9 @@ function App() {
                             type="number"
                             step="0.01"
                             value={editSalePrice}
-                            onChange={(event) => setEditSalePrice(event.target.value)}
+                            onChange={(event) =>
+                              setEditSalePrice(event.target.value)
+                            }
                           />
                         </label>
 
@@ -1565,7 +2473,11 @@ function App() {
                         {item.receiptImage && (
                           <div className="receipt-preview">
                             <p>Receipt / Screenshot:</p>
-                            <a href={item.receiptImage} target="_blank" rel="noreferrer">
+                            <a
+                              href={item.receiptImage}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
                               <img src={item.receiptImage} alt="Inventory receipt" />
                             </a>
                           </div>
@@ -1603,24 +2515,124 @@ function App() {
               <div className="inventory-list">
                 {sales.map((sale) => (
                   <div className="inventory-card" key={sale.id}>
-                    <h3>{sale.itemName}</h3>
-                    <p>SKU: {sale.sku}</p>
-                    <p>Platform: {sale.platform}</p>
-                    <p>Quantity Sold: {sale.quantitySold}</p>
-                    <p>Sale Price Each: ${sale.finalSalePrice.toFixed(2)}</p>
-                    <p>Gross Sale: ${sale.grossSale.toFixed(2)}</p>
-                    <p>Item Cost: ${sale.itemCost.toFixed(2)}</p>
-                    <p>Shipping: ${sale.shippingCost.toFixed(2)}</p>
-                    <p>Fees: ${sale.platformFees.toFixed(2)}</p>
-                    <p>Net Profit: ${sale.netProfit.toFixed(2)}</p>
-                    {sale.notes && <p>Notes: {sale.notes}</p>}
+                    {editingSaleId === sale.id ? (
+                      <form onSubmit={saveEditedSale} className="form">
+                        <label>
+                          Platform
+                          <select
+                            value={editSalePlatform}
+                            onChange={(event) =>
+                              setEditSalePlatform(event.target.value)
+                            }
+                          >
+                            <option>eBay</option>
+                            <option>Mercari</option>
+                            <option>Whatnot</option>
+                            <option>Facebook Marketplace</option>
+                            <option>In-Store</option>
+                            <option>Instagram</option>
+                            <option>TikTok Shop</option>
+                            <option>Other</option>
+                          </select>
+                        </label>
 
-                    <button
-                      className="delete-button"
-                      onClick={() => deleteSale(sale.id)}
-                    >
-                      Delete Sale
-                    </button>
+                        <label>
+                          Quantity Sold
+                          <input
+                            type="number"
+                            min="1"
+                            value={editQuantitySold}
+                            onChange={(event) =>
+                              setEditQuantitySold(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          Final Sale Price Per Item
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editFinalSalePrice}
+                            onChange={(event) =>
+                              setEditFinalSalePrice(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          Shipping Cost
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editShippingCost}
+                            onChange={(event) =>
+                              setEditShippingCost(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          Platform Fees
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editPlatformFees}
+                            onChange={(event) =>
+                              setEditPlatformFees(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          Notes
+                          <input
+                            value={editSaleNotes}
+                            onChange={(event) =>
+                              setEditSaleNotes(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <button type="submit">Save Sale</button>
+
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={cancelEditingSale}
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <>
+                        <h3>{sale.itemName}</h3>
+                        <p>SKU: {sale.sku}</p>
+                        <p>Platform: {sale.platform}</p>
+                        <p>Quantity Sold: {sale.quantitySold}</p>
+                        <p>Sale Price Each: ${sale.finalSalePrice.toFixed(2)}</p>
+                        <p>Gross Sale: ${sale.grossSale.toFixed(2)}</p>
+                        <p>Item Cost: ${sale.itemCost.toFixed(2)}</p>
+                        <p>Shipping: ${sale.shippingCost.toFixed(2)}</p>
+                        <p>Fees: ${sale.platformFees.toFixed(2)}</p>
+                        <p>Net Profit: ${sale.netProfit.toFixed(2)}</p>
+                        {sale.notes && <p>Notes: {sale.notes}</p>}
+
+                        <button
+                          className="edit-button"
+                          onClick={() => startEditingSale(sale)}
+                        >
+                          Edit Sale
+                        </button>
+
+                        <button
+                          className="delete-button"
+                          onClick={() => deleteSale(sale.id)}
+                        >
+                          Delete Sale
+                        </button>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
