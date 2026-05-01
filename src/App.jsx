@@ -27,6 +27,16 @@ function App() {
   const [unitCost, setUnitCost] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [itemReceiptImage, setItemReceiptImage] = useState("");
+  const [itemImage, setItemImage] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const [externalProductSource, setExternalProductSource] = useState("Manual");
+  const [externalProductId, setExternalProductId] = useState("");
+  const [tcgplayerProductId, setTcgplayerProductId] = useState("");
+  const [tcgplayerUrl, setTcgplayerUrl] = useState("");
+  const [marketPrice, setMarketPrice] = useState("");
+  const [lowPrice, setLowPrice] = useState("");
+  const [midPrice, setMidPrice] = useState("");
+  const [highPrice, setHighPrice] = useState("");
 
   const [expenseVendor, setExpenseVendor] = useState("");
   const [expenseCategory, setExpenseCategory] = useState("Supplies");
@@ -68,6 +78,16 @@ function App() {
   const [editQuantity, setEditQuantity] = useState(1);
   const [editUnitCost, setEditUnitCost] = useState("");
   const [editSalePrice, setEditSalePrice] = useState("");
+  const [editBarcode, setEditBarcode] = useState("");
+  const [editExternalProductSource, setEditExternalProductSource] =
+    useState("Manual");
+  const [editExternalProductId, setEditExternalProductId] = useState("");
+  const [editTcgplayerProductId, setEditTcgplayerProductId] = useState("");
+  const [editTcgplayerUrl, setEditTcgplayerUrl] = useState("");
+  const [editMarketPrice, setEditMarketPrice] = useState("");
+  const [editLowPrice, setEditLowPrice] = useState("");
+  const [editMidPrice, setEditMidPrice] = useState("");
+  const [editHighPrice, setEditHighPrice] = useState("");
 
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editExpenseVendor, setEditExpenseVendor] = useState("");
@@ -195,6 +215,17 @@ function App() {
       unitCost: Number(row.unit_cost || 0),
       salePrice: Number(row.sale_price || 0),
       receiptImage: row.receipt_image || "",
+      itemImage: row.item_image || "",
+      barcode: row.barcode || "",
+      externalProductId: row.external_product_id || "",
+      externalProductSource: row.external_product_source || "Manual",
+      tcgplayerProductId: row.tcgplayer_product_id || "",
+      tcgplayerUrl: row.tcgplayer_url || "",
+      marketPrice: Number(row.market_price || 0),
+      lowPrice: Number(row.low_price || 0),
+      midPrice: Number(row.mid_price || 0),
+      highPrice: Number(row.high_price || 0),
+      lastPriceChecked: row.last_price_checked || "",
       createdAt: row.created_at,
     };
   }
@@ -348,7 +379,7 @@ function App() {
     setVehicles(data.map(dbVehicleToAppVehicle));
   }
 
-  function handleImageUpload(event, setterFunction) {
+  async function handleImageUpload(event, setterFunction, folderName = "misc") {
     const file = event.target.files[0];
 
     if (!file) return;
@@ -358,13 +389,34 @@ function App() {
       return;
     }
 
-    const reader = new FileReader();
+    if (!user) {
+      alert("Please log in before uploading images.");
+      return;
+    }
 
-    reader.onload = function (loadEvent) {
-      setterFunction(loadEvent.target.result);
-    };
+    const fileExt = file.name.split(".").pop();
+    const safeFileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${fileExt}`;
 
-    reader.readAsDataURL(file);
+    const filePath = `${user.id}/${folderName}/${safeFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("receipts")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+
+    if (uploadError) {
+      alert("Could not upload image: " + uploadError.message);
+      return;
+    }
+
+    const { data } = supabase.storage.from("receipts").getPublicUrl(filePath);
+
+    setterFunction(data.publicUrl);
   }
 
   function calculateTripCosts({ businessMiles, vehicle, gasPrice }) {
@@ -385,6 +437,27 @@ function App() {
       wearRate,
       gasPriceNumber,
     };
+  }
+
+  function resetInventoryForm() {
+    setItemName("");
+    setBuyer("Zena");
+    setCategory("Pokemon");
+    setStore("");
+    setQuantity(1);
+    setUnitCost("");
+    setSalePrice("");
+    setItemReceiptImage("");
+    setItemImage("");
+    setBarcode("");
+    setExternalProductSource("Manual");
+    setExternalProductId("");
+    setTcgplayerProductId("");
+    setTcgplayerUrl("");
+    setMarketPrice("");
+    setLowPrice("");
+    setMidPrice("");
+    setHighPrice("");
   }
 
   async function addItem(event) {
@@ -411,6 +484,17 @@ function App() {
       sale_price: Number(salePrice || 0),
       sku: "ET-" + Date.now(),
       receipt_image: itemReceiptImage,
+      item_image: itemImage,
+      barcode,
+      external_product_source: externalProductSource,
+      external_product_id: externalProductId,
+      tcgplayer_product_id: tcgplayerProductId,
+      tcgplayer_url: tcgplayerUrl,
+      market_price: Number(marketPrice || 0),
+      low_price: Number(lowPrice || 0),
+      mid_price: Number(midPrice || 0),
+      high_price: Number(highPrice || 0),
+      last_price_checked: marketPrice ? new Date().toISOString() : null,
     };
 
     const { data, error } = await supabase
@@ -425,15 +509,7 @@ function App() {
     }
 
     setItems([dbItemToAppItem(data), ...items]);
-
-    setItemName("");
-    setBuyer("Zena");
-    setCategory("Pokemon");
-    setStore("");
-    setQuantity(1);
-    setUnitCost("");
-    setSalePrice("");
-    setItemReceiptImage("");
+    resetInventoryForm();
     setActiveTab("inventory");
   }
 
@@ -457,6 +533,15 @@ function App() {
     setEditQuantity(item.quantity);
     setEditUnitCost(item.unitCost);
     setEditSalePrice(item.salePrice);
+    setEditBarcode(item.barcode || "");
+    setEditExternalProductSource(item.externalProductSource || "Manual");
+    setEditExternalProductId(item.externalProductId || "");
+    setEditTcgplayerProductId(item.tcgplayerProductId || "");
+    setEditTcgplayerUrl(item.tcgplayerUrl || "");
+    setEditMarketPrice(item.marketPrice || "");
+    setEditLowPrice(item.lowPrice || "");
+    setEditMidPrice(item.midPrice || "");
+    setEditHighPrice(item.highPrice || "");
   }
 
   function cancelEditingItem() {
@@ -468,6 +553,15 @@ function App() {
     setEditQuantity(1);
     setEditUnitCost("");
     setEditSalePrice("");
+    setEditBarcode("");
+    setEditExternalProductSource("Manual");
+    setEditExternalProductId("");
+    setEditTcgplayerProductId("");
+    setEditTcgplayerUrl("");
+    setEditMarketPrice("");
+    setEditLowPrice("");
+    setEditMidPrice("");
+    setEditHighPrice("");
   }
 
   async function saveEditedItem(event) {
@@ -486,6 +580,16 @@ function App() {
       quantity: Number(editQuantity),
       unit_cost: Number(editUnitCost),
       sale_price: Number(editSalePrice || 0),
+      barcode: editBarcode,
+      external_product_source: editExternalProductSource,
+      external_product_id: editExternalProductId,
+      tcgplayer_product_id: editTcgplayerProductId,
+      tcgplayer_url: editTcgplayerUrl,
+      market_price: Number(editMarketPrice || 0),
+      low_price: Number(editLowPrice || 0),
+      mid_price: Number(editMidPrice || 0),
+      high_price: Number(editHighPrice || 0),
+      last_price_checked: editMarketPrice ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     };
 
@@ -1152,7 +1256,7 @@ function App() {
     const backupData = {
       createdAt: new Date().toISOString(),
       appName: "Ember Ledger",
-      version: "1.3-vehicles-mileage",
+      version: "1.4-smart-inventory",
       items,
       sales,
       expenses,
@@ -1182,7 +1286,13 @@ function App() {
     0
   );
 
+  const totalMarketValue = items.reduce(
+    (sum, item) => sum + item.quantity * item.marketPrice,
+    0
+  );
+
   const estimatedProfit = totalPotentialSales - totalSpent;
+  const estimatedMarketProfit = totalMarketValue - totalSpent;
 
   const totalExpenses = expenses.reduce(
     (sum, expense) => sum + expense.amount,
@@ -1283,7 +1393,9 @@ function App() {
       item.sku.toLowerCase().includes(search) ||
       item.buyer.toLowerCase().includes(search) ||
       item.category.toLowerCase().includes(search) ||
-      String(item.store || "").toLowerCase().includes(search)
+      String(item.store || "").toLowerCase().includes(search) ||
+      String(item.barcode || "").toLowerCase().includes(search) ||
+      String(item.externalProductSource || "").toLowerCase().includes(search)
     );
   });
 
@@ -1379,8 +1491,18 @@ function App() {
               </div>
 
               <div className="card">
-                <p>Estimated Inventory Profit</p>
+                <p>Market Value</p>
+                <h2>${totalMarketValue.toFixed(2)}</h2>
+              </div>
+
+              <div className="card">
+                <p>Planned Profit</p>
                 <h2>${estimatedProfit.toFixed(2)}</h2>
+              </div>
+
+              <div className="card">
+                <p>Market Profit</p>
+                <h2>${estimatedMarketProfit.toFixed(2)}</h2>
               </div>
 
               <div className="card">
@@ -1679,6 +1801,24 @@ function App() {
               </label>
 
               <label>
+                Product Photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    handleImageUpload(event, setItemImage, "item-photos")
+                  }
+                />
+              </label>
+
+              {itemImage && (
+                <div className="receipt-preview">
+                  <p>Product photo attached</p>
+                  <img src={itemImage} alt="Product preview" />
+                </div>
+              )}
+
+              <label>
                 Who Purchased It?
                 <select value={buyer} onChange={(event) => setBuyer(event.target.value)}>
                   <option>Zena</option>
@@ -1710,6 +1850,15 @@ function App() {
                   value={store}
                   onChange={(event) => setStore(event.target.value)}
                   placeholder="Target, Walmart, Sam's, Facebook, etc."
+                />
+              </label>
+
+              <label>
+                Barcode / UPC
+                <input
+                  value={barcode}
+                  onChange={(event) => setBarcode(event.target.value)}
+                  placeholder="Scan or type barcode"
                 />
               </label>
 
@@ -1746,11 +1895,101 @@ function App() {
               </label>
 
               <label>
+                Market Source
+                <select
+                  value={externalProductSource}
+                  onChange={(event) =>
+                    setExternalProductSource(event.target.value)
+                  }
+                >
+                  <option>Manual</option>
+                  <option>TCGplayer</option>
+                  <option>PriceCharting</option>
+                  <option>Collectr</option>
+                  <option>eBay Sold</option>
+                  <option>Other</option>
+                </select>
+              </label>
+
+              <label>
+                External Product ID
+                <input
+                  value={externalProductId}
+                  onChange={(event) => setExternalProductId(event.target.value)}
+                  placeholder="Optional product/source ID"
+                />
+              </label>
+
+              <label>
+                TCGplayer Product ID
+                <input
+                  value={tcgplayerProductId}
+                  onChange={(event) => setTcgplayerProductId(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+
+              <label>
+                TCGplayer / Market URL
+                <input
+                  value={tcgplayerUrl}
+                  onChange={(event) => setTcgplayerUrl(event.target.value)}
+                  placeholder="Paste TCGplayer, PriceCharting, Collectr, or eBay URL"
+                />
+              </label>
+
+              <label>
+                Current Market Price
+                <input
+                  type="number"
+                  step="0.01"
+                  value={marketPrice}
+                  onChange={(event) => setMarketPrice(event.target.value)}
+                  placeholder="Example: 72.50"
+                />
+              </label>
+
+              <label>
+                Low Price
+                <input
+                  type="number"
+                  step="0.01"
+                  value={lowPrice}
+                  onChange={(event) => setLowPrice(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+
+              <label>
+                Mid Price
+                <input
+                  type="number"
+                  step="0.01"
+                  value={midPrice}
+                  onChange={(event) => setMidPrice(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+
+              <label>
+                High Price
+                <input
+                  type="number"
+                  step="0.01"
+                  value={highPrice}
+                  onChange={(event) => setHighPrice(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+
+              <label>
                 Receipt / Screenshot
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(event) => handleImageUpload(event, setItemReceiptImage)}
+                  onChange={(event) =>
+                    handleImageUpload(event, setItemReceiptImage, "inventory")
+                  }
                 />
               </label>
 
@@ -1930,7 +2169,7 @@ function App() {
                     type="file"
                     accept="image/*"
                     onChange={(event) =>
-                      handleImageUpload(event, setExpenseReceiptImage)
+                      handleImageUpload(event, setExpenseReceiptImage, "expenses")
                     }
                   />
                 </label>
@@ -2156,7 +2395,7 @@ function App() {
                     type="file"
                     accept="image/*"
                     onChange={(event) =>
-                      handleImageUpload(event, setTripGasReceiptImage)
+                      handleImageUpload(event, setTripGasReceiptImage, "gas")
                     }
                   />
                 </label>
@@ -2348,7 +2587,7 @@ function App() {
               className="search-input"
               value={inventorySearch}
               onChange={(event) => setInventorySearch(event.target.value)}
-              placeholder="Search by item, SKU, buyer, category, or store..."
+              placeholder="Search by item, SKU, buyer, category, store, barcode, or market source..."
             />
 
             {filteredItems.length === 0 ? (
@@ -2407,6 +2646,14 @@ function App() {
                         </label>
 
                         <label>
+                          Barcode / UPC
+                          <input
+                            value={editBarcode}
+                            onChange={(event) => setEditBarcode(event.target.value)}
+                          />
+                        </label>
+
+                        <label>
                           Quantity
                           <input
                             type="number"
@@ -2442,6 +2689,95 @@ function App() {
                           />
                         </label>
 
+                        <label>
+                          Market Source
+                          <select
+                            value={editExternalProductSource}
+                            onChange={(event) =>
+                              setEditExternalProductSource(event.target.value)
+                            }
+                          >
+                            <option>Manual</option>
+                            <option>TCGplayer</option>
+                            <option>PriceCharting</option>
+                            <option>Collectr</option>
+                            <option>eBay Sold</option>
+                            <option>Other</option>
+                          </select>
+                        </label>
+
+                        <label>
+                          External Product ID
+                          <input
+                            value={editExternalProductId}
+                            onChange={(event) =>
+                              setEditExternalProductId(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          TCGplayer Product ID
+                          <input
+                            value={editTcgplayerProductId}
+                            onChange={(event) =>
+                              setEditTcgplayerProductId(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          TCGplayer / Market URL
+                          <input
+                            value={editTcgplayerUrl}
+                            onChange={(event) =>
+                              setEditTcgplayerUrl(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          Current Market Price
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editMarketPrice}
+                            onChange={(event) =>
+                              setEditMarketPrice(event.target.value)
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          Low Price
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editLowPrice}
+                            onChange={(event) => setEditLowPrice(event.target.value)}
+                          />
+                        </label>
+
+                        <label>
+                          Mid Price
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editMidPrice}
+                            onChange={(event) => setEditMidPrice(event.target.value)}
+                          />
+                        </label>
+
+                        <label>
+                          High Price
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editHighPrice}
+                            onChange={(event) => setEditHighPrice(event.target.value)}
+                          />
+                        </label>
+
                         <button type="submit">Save Changes</button>
 
                         <button
@@ -2454,21 +2790,64 @@ function App() {
                       </form>
                     ) : (
                       <>
+                        {item.itemImage && (
+                          <div className="receipt-preview">
+                            <p>Product Photo:</p>
+                            <a
+                              href={item.itemImage}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <img src={item.itemImage} alt={item.name} />
+                            </a>
+                          </div>
+                        )}
+
                         <h3>{item.name}</h3>
                         <p>SKU: {item.sku}</p>
+                        <p>Barcode / UPC: {item.barcode || "Not listed"}</p>
                         <p>Buyer: {item.buyer}</p>
                         <p>Category: {item.category || "Not listed"}</p>
                         <p>Store / Source: {item.store || "Not listed"}</p>
                         <p>Quantity: {item.quantity}</p>
                         <p>Unit Cost: ${item.unitCost.toFixed(2)}</p>
                         <p>Planned Sale Price: ${item.salePrice.toFixed(2)}</p>
+                        <p>Market Source: {item.externalProductSource || "Manual"}</p>
+                        <p>Market Price: ${item.marketPrice.toFixed(2)}</p>
+                        <p>Low / Mid / High: ${item.lowPrice.toFixed(2)} / ${item.midPrice.toFixed(2)} / ${item.highPrice.toFixed(2)}</p>
                         <p>
-                          Estimated Profit: $
+                          Planned Profit: $
                           {(
                             item.quantity * item.salePrice -
                             item.quantity * item.unitCost
                           ).toFixed(2)}
                         </p>
+                        <p>
+                          Market Profit: $
+                          {(
+                            item.quantity * item.marketPrice -
+                            item.quantity * item.unitCost
+                          ).toFixed(2)}
+                        </p>
+                        {item.lastPriceChecked && (
+                          <p>
+                            Last Price Checked:{" "}
+                            {new Date(item.lastPriceChecked).toLocaleDateString()}
+                          </p>
+                        )}
+
+                        {item.tcgplayerUrl && (
+                          <p>
+                            Market Link:{" "}
+                            <a
+                              href={item.tcgplayerUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Open
+                            </a>
+                          </p>
+                        )}
 
                         {item.receiptImage && (
                           <div className="receipt-preview">
