@@ -7,7 +7,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.86.2",
     "@vitejs/plugin-react": "^5.0.4",
-    "html5-qrcode": "^2.3.8",
+    "@zxing/browser": "^0.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "vite": "^8.0.10"
