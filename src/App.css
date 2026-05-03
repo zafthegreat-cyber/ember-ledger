@@ -722,3 +722,203 @@ video {
     grid-template-columns: 1fr;
   }
 }
+
+/* Phase 1 UI Polish: status badges + compact inventory cards */
+
+.compact-inventory-list {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.compact-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.compact-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.compact-title-block {
+  min-width: 0;
+}
+
+.compact-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.compact-subtitle {
+  margin: 6px 0 0 !important;
+  font-size: 0.78rem !important;
+  color: var(--muted) !important;
+  font-weight: 800;
+}
+
+.status-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.01em;
+  color: var(--water-dark);
+  background: rgba(31, 111, 139, 0.12);
+  border: 1px solid rgba(31, 111, 139, 0.18);
+  max-width: 150px;
+  text-align: center;
+}
+
+.status-badge.in-stock {
+  color: #1c5d36;
+  background: rgba(54, 160, 99, 0.14);
+  border-color: rgba(54, 160, 99, 0.24);
+}
+
+.status-badge.needs-photos,
+.status-badge.needs-decktradr-check {
+  color: #7b3c13;
+  background: rgba(180, 87, 53, 0.16);
+  border-color: rgba(180, 87, 53, 0.28);
+}
+
+.status-badge.ready-to-list {
+  color: #124f73;
+  background: rgba(31, 111, 139, 0.15);
+  border-color: rgba(31, 111, 139, 0.28);
+}
+
+.status-badge.listed {
+  color: #45227a;
+  background: rgba(108, 71, 180, 0.14);
+  border-color: rgba(108, 71, 180, 0.24);
+}
+
+.status-badge.sold {
+  color: #6b1f1f;
+  background: rgba(159, 47, 47, 0.14);
+  border-color: rgba(159, 47, 47, 0.24);
+}
+
+.status-badge.held,
+.status-badge.personal-collection {
+  color: #66521b;
+  background: rgba(198, 158, 54, 0.16);
+  border-color: rgba(198, 158, 54, 0.26);
+}
+
+.status-badge.damaged {
+  color: #5c1b1b;
+  background: rgba(120, 30, 30, 0.18);
+  border-color: rgba(120, 30, 30, 0.3);
+}
+
+.compact-image-wrap {
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #f6f8fb;
+  max-height: 180px;
+}
+
+.compact-image-wrap img {
+  display: block;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.compact-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.compact-metrics div {
+  padding: 10px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(31, 111, 139, 0.07), rgba(180, 87, 53, 0.07));
+  border: 1px solid rgba(22, 32, 51, 0.08);
+}
+
+.compact-metrics span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.compact-metrics strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--navy);
+}
+
+.compact-details {
+  display: grid;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.compact-details p {
+  margin: 0 !important;
+  font-size: 0.83rem !important;
+  color: #46546a !important;
+}
+
+.compact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compact-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(31, 111, 139, 0.09);
+  color: var(--water-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.compact-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: auto;
+}
+
+.compact-actions button {
+  width: 100%;
+  padding: 10px 8px;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .compact-card-header {
+    flex-direction: column;
+  }
+
+  .status-badge {
+    max-width: none;
+  }
+
+  .compact-actions {
+    grid-template-columns: 1fr;
+  }
+}

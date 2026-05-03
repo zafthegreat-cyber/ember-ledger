@@ -13,6 +13,13 @@ function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
 
+function statusClass(status) {
+  return `status-badge ${String(status || "In Stock")
+    .toLowerCase()
+    .replaceAll(" ", "-")
+    .replaceAll("/", "-")}`;
+}
+
 function Field({ label, children }) {
   return (
     <label>
@@ -1182,34 +1189,15 @@ Zena`}
                 <button type="button" className="secondary-button" onClick={() => { setEditingItemId(null); setItemForm(blankItem); }}>Cancel Edit</button>
               </section>
             )}
-            <div className="inventory-list">
+            <div className="inventory-list compact-inventory-list">
               {filteredItems.map((item) => (
-                <div className="inventory-card" key={item.id}>
-                  {item.itemImage && <div className="receipt-preview"><p>Product Photo</p><img src={item.itemImage} alt={item.name} /></div>}
-                  <h3>{item.name}</h3>
-                  <p>SKU: {item.sku}</p>
-                  <p>Status: {item.status}</p>
-                  <p>Buyer: {item.buyer}</p>
-                  <p>Category: {item.category}</p>
-                  <p>Store: {item.store || "Not listed"}</p>
-                  <p>Barcode: {item.barcode || "Not listed"}</p>
-                  <p>Quantity: {item.quantity}</p>
-                  <p>Avg Unit Cost: {money(item.unitCost)}</p>
-                  <p>Total Cost Basis: {money(item.quantity * item.unitCost)}</p>
-                  <p>Planned Sale Price: {money(item.salePrice)}</p>
-                  <p>DeckTradr Market Price: {money(item.marketPrice)}</p>
-                  <p>Planned Profit: {money(item.quantity * item.salePrice - item.quantity * item.unitCost)}</p>
-                  <p>DeckTradr Profit: {money(item.quantity * item.marketPrice - item.quantity * item.unitCost)}</p>
-                  {item.listingPlatform && <p>Listing Platform: {item.listingPlatform}</p>}
-                  {item.listedPrice > 0 && <p>Listed Price: {money(item.listedPrice)}</p>}
-                  {item.listingUrl && <p><a href={item.listingUrl} target="_blank" rel="noreferrer">Open Listing</a></p>}
-                  {item.actionNotes && <p>Action Notes: {item.actionNotes}</p>}
-                  {item.decktradrUrl && <p><a href={item.decktradrUrl} target="_blank" rel="noreferrer">Open DeckTradr Link</a></p>}
-                  {item.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={item.receiptImage} alt="Receipt" /></div>}
-                  <button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button>
-                  <button className="edit-button" onClick={() => startEditingItem(item)}>Edit Item</button>
-                  <button className="delete-button" onClick={() => deleteItem(item.id)}>Delete Item</button>
-                </div>
+                <CompactInventoryCard
+                  key={item.id}
+                  item={item}
+                  onRestock={prepareRestock}
+                  onEdit={startEditingItem}
+                  onDelete={deleteItem}
+                />
               ))}
             </div>
           </section>
@@ -1393,6 +1381,69 @@ Zena`}
   );
 }
 
+function CompactInventoryCard({ item, onRestock, onEdit, onDelete }) {
+  const decktradrProfit = item.quantity * item.marketPrice - item.quantity * item.unitCost;
+  const plannedProfit = item.quantity * item.salePrice - item.quantity * item.unitCost;
+
+  return (
+    <div className="inventory-card compact-card">
+      <div className="compact-card-header">
+        <div className="compact-title-block">
+          <h3>{item.name}</h3>
+          <p className="compact-subtitle">
+            {item.category} • {item.buyer} • Qty {item.quantity}
+          </p>
+        </div>
+        <span className={statusClass(item.status)}>{item.status || "In Stock"}</span>
+      </div>
+
+      {item.itemImage && (
+        <div className="compact-image-wrap">
+          <img src={item.itemImage} alt={item.name} />
+        </div>
+      )}
+
+      <div className="compact-metrics">
+        <div>
+          <span>Avg Cost</span>
+          <strong>{money(item.unitCost)}</strong>
+        </div>
+        <div>
+          <span>DeckTradr</span>
+          <strong>{money(item.marketPrice)}</strong>
+        </div>
+        <div>
+          <span>Profit</span>
+          <strong>{money(decktradrProfit)}</strong>
+        </div>
+      </div>
+
+      <div className="compact-details">
+        <p><strong>SKU:</strong> {item.sku}</p>
+        <p><strong>Store:</strong> {item.store || "Not listed"}</p>
+        <p><strong>Barcode:</strong> {item.barcode || "Not listed"}</p>
+        <p><strong>Total Cost:</strong> {money(item.quantity * item.unitCost)}</p>
+        <p><strong>Planned Profit:</strong> {money(plannedProfit)}</p>
+        {item.listingPlatform && <p><strong>Listing:</strong> {item.listingPlatform}</p>}
+        {item.listedPrice > 0 && <p><strong>Listed Price:</strong> {money(item.listedPrice)}</p>}
+        {item.actionNotes && <p><strong>Action:</strong> {item.actionNotes}</p>}
+      </div>
+
+      <div className="compact-links">
+        {item.decktradrUrl && <a href={item.decktradrUrl} target="_blank" rel="noreferrer">DeckTradr</a>}
+        {item.listingUrl && <a href={item.listingUrl} target="_blank" rel="noreferrer">Listing</a>}
+        {item.receiptImage && <a href={item.receiptImage} target="_blank" rel="noreferrer">Receipt</a>}
+      </div>
+
+      <div className="compact-actions">
+        <button className="edit-button" onClick={() => onRestock(item)}>Restock</button>
+        <button className="edit-button" onClick={() => onEdit(item)}>Edit</button>
+        <button className="delete-button" onClick={() => onDelete(item.id)}>Delete</button>
+      </div>
+    </div>
+  );
+}
+
 function InventoryForm({ form, setForm, catalogProducts, applyCatalogProduct, handleImageUpload, onSubmit, submitLabel }) {
   return (
     <form onSubmit={onSubmit} className="form">
@@ -1455,13 +1506,21 @@ function ActionReport({ title, items, button, action }) {
     <section className="panel">
       <h2>{title}</h2>
       {items.length === 0 ? <p>No items.</p> : (
-        <div className="inventory-list">
+        <div className="inventory-list compact-inventory-list">
           {items.map((item) => (
-            <div className="inventory-card" key={item.id}>
-              <h3>{item.name}</h3>
-              <p>Qty: {item.quantity}</p>
-              <p>Status: {item.status}</p>
-              <p>DeckTradr Market Price: {money(item.marketPrice)}</p>
+            <div className="inventory-card compact-card" key={item.id}>
+              <div className="compact-card-header">
+                <div>
+                  <h3>{item.name}</h3>
+                  <p className="compact-subtitle">Qty {item.quantity} • {item.category}</p>
+                </div>
+                <span className={statusClass(item.status)}>{item.status || "In Stock"}</span>
+              </div>
+              <div className="compact-metrics">
+                <div><span>Cost</span><strong>{money(item.unitCost)}</strong></div>
+                <div><span>DeckTradr</span><strong>{money(item.marketPrice)}</strong></div>
+                <div><span>Profit</span><strong>{money(item.quantity * item.marketPrice - item.quantity * item.unitCost)}</strong></div>
+              </div>
               <button className="edit-button" onClick={() => action(item)}>{button}</button>
             </div>
           ))}
