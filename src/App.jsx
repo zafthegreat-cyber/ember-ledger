@@ -4,6 +4,23 @@ import "./App.css";
 import { supabase } from "./supabaseClient";
 
 const IRS_MILEAGE_RATE = 0.725;
+const PEOPLE = ["Zena", "Dillon", "Joint", "Other"];
+const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
+const STATUSES = ["In Stock", "Needs Photos", "Needs DeckTradr Check", "Ready to List", "Listed", "Sold", "Held", "Personal Collection", "Damaged"];
+const PLATFORMS = ["eBay", "Mercari", "Whatnot", "Facebook Marketplace", "In-Store", "Instagram", "TikTok Shop", "Other"];
+
+function money(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function Field({ label, children }) {
+  return (
+    <label>
+      {label}
+      {children}
+    </label>
+  );
+}
 
 function BarcodeScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
@@ -11,40 +28,27 @@ function BarcodeScanner({ onScan, onClose }) {
   const [scannerError, setScannerError] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    async function startScanner() {
+    async function start() {
       try {
-        const codeReader = new BrowserMultiFormatReader();
-
-        controlsRef.current = await codeReader.decodeFromVideoDevice(
-          undefined,
-          videoRef.current,
-          (result) => {
-            if (result && isMounted) {
-              onScan(result.getText());
-
-              if (controlsRef.current) {
-                controlsRef.current.stop();
-              }
-            }
+        const reader = new BrowserMultiFormatReader();
+        controlsRef.current = await reader.decodeFromVideoDevice(undefined, videoRef.current, (result) => {
+          if (result && mounted) {
+            onScan(result.getText());
+            controlsRef.current?.stop();
           }
-        );
-      } catch (error) {
-        setScannerError(
-          "Camera could not start. Check browser camera permissions or try the live HTTPS site."
-        );
+        });
+      } catch {
+        setScannerError("Camera could not start. Check permissions or use the manual barcode field.");
       }
     }
 
-    startScanner();
+    start();
 
     return () => {
-      isMounted = false;
-
-      if (controlsRef.current) {
-        controlsRef.current.stop();
-      }
+      mounted = false;
+      controlsRef.current?.stop();
     };
   }, [onScan]);
 
@@ -55,6 +59,9 @@ function BarcodeScanner({ onScan, onClose }) {
       {scannerError && <p>{scannerError}</p>}
       <video
         ref={videoRef}
+        autoPlay
+        muted
+        playsInline
         style={{
           width: "100%",
           maxWidth: "420px",
@@ -63,15 +70,15 @@ function BarcodeScanner({ onScan, onClose }) {
           background: "#000",
         }}
       />
-      <button type="button" className="secondary-button" onClick={onClose}>
-        Close Scanner
-      </button>
+      <button type="button" className="secondary-button" onClick={onClose}>Close Scanner</button>
     </div>
   );
 }
 
-function App() {
+export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const [user, setUser] = useState(null);
   const [authMode, setAuthMode] = useState("login");
   const [authEmail, setAuthEmail] = useState("");
@@ -79,230 +86,128 @@ function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   const [items, setItems] = useState([]);
+  const [catalogProducts, setCatalogProducts] = useState([]);
   const [expenses, setExpenses] = useState([]);
-  const [mileageTrips, setMileageTrips] = useState([]);
   const [sales, setSales] = useState([]);
   const [vehicles, setVehicles] = useState([]);
-  const [catalogProducts, setCatalogProducts] = useState([]);
+  const [mileageTrips, setMileageTrips] = useState([]);
 
   const [showInventoryScanner, setShowInventoryScanner] = useState(false);
   const [showCatalogScanner, setShowCatalogScanner] = useState(false);
-
-  const [itemName, setItemName] = useState("");
-  const [buyer, setBuyer] = useState("Zena");
-  const [category, setCategory] = useState("Pokemon");
-  const [store, setStore] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [unitCost, setUnitCost] = useState("");
-  const [salePrice, setSalePrice] = useState("");
-  const [itemReceiptImage, setItemReceiptImage] = useState("");
-  const [itemImage, setItemImage] = useState("");
-  const [barcode, setBarcode] = useState("");
-  const [catalogProductId, setCatalogProductId] = useState("");
-  const [externalProductSource, setExternalProductSource] = useState("Manual");
-  const [externalProductId, setExternalProductId] = useState("");
-  const [tcgplayerProductId, setTcgplayerProductId] = useState("");
-  const [tcgplayerUrl, setTcgplayerUrl] = useState("");
-  const [marketPrice, setMarketPrice] = useState("");
-  const [lowPrice, setLowPrice] = useState("");
-  const [midPrice, setMidPrice] = useState("");
-  const [highPrice, setHighPrice] = useState("");
-
-  const [catalogName, setCatalogName] = useState("");
-  const [catalogCategory, setCatalogCategory] = useState("Pokemon");
-  const [catalogSetName, setCatalogSetName] = useState("");
-  const [catalogProductType, setCatalogProductType] = useState("");
-  const [catalogBarcode, setCatalogBarcode] = useState("");
-  const [catalogMarketSource, setCatalogMarketSource] = useState("Manual");
-  const [catalogExternalProductId, setCatalogExternalProductId] = useState("");
-  const [catalogTcgplayerProductId, setCatalogTcgplayerProductId] = useState("");
-  const [catalogMarketUrl, setCatalogMarketUrl] = useState("");
-  const [catalogImageUrl, setCatalogImageUrl] = useState("");
-  const [catalogMarketPrice, setCatalogMarketPrice] = useState("");
-  const [catalogLowPrice, setCatalogLowPrice] = useState("");
-  const [catalogMidPrice, setCatalogMidPrice] = useState("");
-  const [catalogHighPrice, setCatalogHighPrice] = useState("");
-  const [catalogNotes, setCatalogNotes] = useState("");
-  const [catalogSearch, setCatalogSearch] = useState("");
-
-  const [editingCatalogId, setEditingCatalogId] = useState(null);
-  const [editCatalogName, setEditCatalogName] = useState("");
-  const [editCatalogCategory, setEditCatalogCategory] = useState("Pokemon");
-  const [editCatalogSetName, setEditCatalogSetName] = useState("");
-  const [editCatalogProductType, setEditCatalogProductType] = useState("");
-  const [editCatalogBarcode, setEditCatalogBarcode] = useState("");
-  const [editCatalogMarketSource, setEditCatalogMarketSource] = useState("Manual");
-  const [editCatalogExternalProductId, setEditCatalogExternalProductId] = useState("");
-  const [editCatalogTcgplayerProductId, setEditCatalogTcgplayerProductId] = useState("");
-  const [editCatalogMarketUrl, setEditCatalogMarketUrl] = useState("");
-  const [editCatalogImageUrl, setEditCatalogImageUrl] = useState("");
-  const [editCatalogMarketPrice, setEditCatalogMarketPrice] = useState("");
-  const [editCatalogLowPrice, setEditCatalogLowPrice] = useState("");
-  const [editCatalogMidPrice, setEditCatalogMidPrice] = useState("");
-  const [editCatalogHighPrice, setEditCatalogHighPrice] = useState("");
-  const [editCatalogNotes, setEditCatalogNotes] = useState("");
-
-  const [expenseVendor, setExpenseVendor] = useState("");
-  const [expenseCategory, setExpenseCategory] = useState("Supplies");
-  const [expenseBuyer, setExpenseBuyer] = useState("Zena");
-  const [expenseAmount, setExpenseAmount] = useState("");
-  const [expenseNotes, setExpenseNotes] = useState("");
-  const [expenseReceiptImage, setExpenseReceiptImage] = useState("");
-
-  const [tripPurpose, setTripPurpose] = useState("");
-  const [tripDriver, setTripDriver] = useState("Zena");
-  const [tripVehicleId, setTripVehicleId] = useState("");
-  const [startMiles, setStartMiles] = useState("");
-  const [endMiles, setEndMiles] = useState("");
-  const [tripGasPrice, setTripGasPrice] = useState("");
-  const [tripNotes, setTripNotes] = useState("");
-  const [tripGasReceiptImage, setTripGasReceiptImage] = useState("");
-
-  const [vehicleName, setVehicleName] = useState("");
-  const [vehicleOwner, setVehicleOwner] = useState("Zena");
-  const [vehicleMpg, setVehicleMpg] = useState("");
-  const [vehicleWearCost, setVehicleWearCost] = useState("");
-  const [vehicleNotes, setVehicleNotes] = useState("");
-
-  const [soldItemId, setSoldItemId] = useState("");
-  const [salePlatform, setSalePlatform] = useState("eBay");
-  const [quantitySold, setQuantitySold] = useState(1);
-  const [finalSalePrice, setFinalSalePrice] = useState("");
-  const [shippingCost, setShippingCost] = useState("");
-  const [platformFees, setPlatformFees] = useState("");
-  const [saleNotes, setSaleNotes] = useState("");
-
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
-
-  const [status, setStatus] = useState("In Stock");
-  const [listingPlatform, setListingPlatform] = useState("");
-  const [listingUrl, setListingUrl] = useState("");
-  const [listedPrice, setListedPrice] = useState("");
-  const [actionNotes, setActionNotes] = useState("");
+  const [catalogSearch, setCatalogSearch] = useState("");
 
   const [editingItemId, setEditingItemId] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editBuyer, setEditBuyer] = useState("Zena");
-  const [editCategory, setEditCategory] = useState("Pokemon");
-  const [editStore, setEditStore] = useState("");
-  const [editQuantity, setEditQuantity] = useState(1);
-  const [editUnitCost, setEditUnitCost] = useState("");
-  const [editSalePrice, setEditSalePrice] = useState("");
-  const [editBarcode, setEditBarcode] = useState("");
-  const [editExternalProductSource, setEditExternalProductSource] = useState("Manual");
-  const [editExternalProductId, setEditExternalProductId] = useState("");
-  const [editTcgplayerProductId, setEditTcgplayerProductId] = useState("");
-  const [editTcgplayerUrl, setEditTcgplayerUrl] = useState("");
-  const [editMarketPrice, setEditMarketPrice] = useState("");
-  const [editLowPrice, setEditLowPrice] = useState("");
-  const [editMidPrice, setEditMidPrice] = useState("");
-  const [editHighPrice, setEditHighPrice] = useState("");
-  const [editStatus, setEditStatus] = useState("In Stock");
-  const [editListingPlatform, setEditListingPlatform] = useState("");
-  const [editListingUrl, setEditListingUrl] = useState("");
-  const [editListedPrice, setEditListedPrice] = useState("");
-  const [editActionNotes, setEditActionNotes] = useState("");
-
+  const [editingCatalogId, setEditingCatalogId] = useState(null);
   const [editingExpenseId, setEditingExpenseId] = useState(null);
-  const [editExpenseVendor, setEditExpenseVendor] = useState("");
-  const [editExpenseCategory, setEditExpenseCategory] = useState("Supplies");
-  const [editExpenseBuyer, setEditExpenseBuyer] = useState("Zena");
-  const [editExpenseAmount, setEditExpenseAmount] = useState("");
-  const [editExpenseNotes, setEditExpenseNotes] = useState("");
-
-  const [editingTripId, setEditingTripId] = useState(null);
-  const [editTripPurpose, setEditTripPurpose] = useState("");
-  const [editTripDriver, setEditTripDriver] = useState("Zena");
-  const [editTripVehicleId, setEditTripVehicleId] = useState("");
-  const [editStartMiles, setEditStartMiles] = useState("");
-  const [editEndMiles, setEditEndMiles] = useState("");
-  const [editTripGasPrice, setEditTripGasPrice] = useState("");
-  const [editTripNotes, setEditTripNotes] = useState("");
-
-  const [editingSaleId, setEditingSaleId] = useState(null);
-  const [editSalePlatform, setEditSalePlatform] = useState("eBay");
-  const [editQuantitySold, setEditQuantitySold] = useState(1);
-  const [editFinalSalePrice, setEditFinalSalePrice] = useState("");
-  const [editShippingCost, setEditShippingCost] = useState("");
-  const [editPlatformFees, setEditPlatformFees] = useState("");
-  const [editSaleNotes, setEditSaleNotes] = useState("");
-
   const [editingVehicleId, setEditingVehicleId] = useState(null);
-  const [editVehicleName, setEditVehicleName] = useState("");
-  const [editVehicleOwner, setEditVehicleOwner] = useState("Zena");
-  const [editVehicleMpg, setEditVehicleMpg] = useState("");
-  const [editVehicleWearCost, setEditVehicleWearCost] = useState("");
-  const [editVehicleNotes, setEditVehicleNotes] = useState("");
+  const [editingTripId, setEditingTripId] = useState(null);
+  const [editingSaleId, setEditingSaleId] = useState(null);
+
+  const blankItem = {
+    name: "",
+    buyer: "Zena",
+    category: "Pokemon",
+    store: "",
+    quantity: 1,
+    unitCost: "",
+    salePrice: "",
+    receiptImage: "",
+    itemImage: "",
+    barcode: "",
+    catalogProductId: "",
+    externalProductId: "",
+    decktradrUrl: "",
+    marketPrice: "",
+    lowPrice: "",
+    midPrice: "",
+    highPrice: "",
+    status: "In Stock",
+    listingPlatform: "",
+    listingUrl: "",
+    listedPrice: "",
+    actionNotes: "",
+  };
+
+  const blankCatalog = {
+    name: "",
+    category: "Pokemon",
+    setName: "",
+    productType: "",
+    barcode: "",
+    externalProductId: "",
+    marketUrl: "",
+    imageUrl: "",
+    marketPrice: "",
+    lowPrice: "",
+    midPrice: "",
+    highPrice: "",
+    notes: "",
+  };
+
+  const [itemForm, setItemForm] = useState(blankItem);
+  const [catalogForm, setCatalogForm] = useState(blankCatalog);
+  const [expenseForm, setExpenseForm] = useState({ vendor: "", category: "Supplies", buyer: "Zena", amount: "", notes: "", receiptImage: "" });
+  const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "Zena", averageMpg: "", wearCostPerMile: "", notes: "" });
+  const [tripForm, setTripForm] = useState({ purpose: "", driver: "Zena", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" });
+  const [saleForm, setSaleForm] = useState({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCost: "", platformFees: "", notes: "" });
+
+  const navSections = [
+    { title: "Overview", items: [{ key: "dashboard", label: "Dashboard" }, { key: "reports", label: "Reports" }, { key: "decktradr", label: "DeckTradr API" }] },
+    { title: "Inventory", items: [{ key: "inventory", label: "Inventory" }, { key: "addInventory", label: "Add Inventory" }, { key: "catalog", label: "Catalog" }] },
+    { title: "Sales & Money", items: [{ key: "sales", label: "Sales" }, { key: "addSale", label: "Add Sale" }, { key: "expenses", label: "Expenses" }] },
+    { title: "Operations", items: [{ key: "mileage", label: "Mileage" }, { key: "vehicles", label: "Vehicles" }] },
+  ];
+
+  const activeTabLabel = navSections.flatMap((s) => s.items).find((i) => i.key === activeTab)?.label || "Dashboard";
+
+  const updateItemForm = (field, value) => setItemForm((old) => ({ ...old, [field]: value }));
+  const updateCatalogForm = (field, value) => setCatalogForm((old) => ({ ...old, [field]: value }));
+  const updateExpenseForm = (field, value) => setExpenseForm((old) => ({ ...old, [field]: value }));
+  const updateVehicleForm = (field, value) => setVehicleForm((old) => ({ ...old, [field]: value }));
+  const updateTripForm = (field, value) => setTripForm((old) => ({ ...old, [field]: value }));
+  const updateSaleForm = (field, value) => setSaleForm((old) => ({ ...old, [field]: value }));
 
   useEffect(() => {
     checkUser();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-    });
-
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user || null));
     return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (user) {
-      loadAllCloudData();
-    } else {
+    if (user) loadAllData();
+    else {
       setItems([]);
+      setCatalogProducts([]);
       setExpenses([]);
-      setMileageTrips([]);
       setSales([]);
       setVehicles([]);
-      setCatalogProducts([]);
+      setMileageTrips([]);
     }
   }, [user]);
 
   async function checkUser() {
     const { data, error } = await supabase.auth.getUser();
-    if (error) {
-      setUser(null);
-      return;
-    }
-    setUser(data.user);
+    if (!error) setUser(data.user);
   }
 
   async function handleAuth(event) {
     event.preventDefault();
     setAuthLoading(true);
-
     try {
       if (authMode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email: authEmail,
-          password: authPassword,
-        });
-
-        if (error) {
-          alert(error.message);
-          return;
-        }
-
+        const { data, error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+        if (error) return alert(error.message);
         if (!data.session) {
-          alert("Account created. Please check your email, confirm your account, then come back and log in.");
+          alert("Account created. Please check your email, confirm your account, then log in.");
           setAuthMode("login");
           return;
         }
-
         setUser(data.user);
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: authEmail,
-          password: authPassword,
-        });
-
-        if (error) {
-          alert(error.message);
-          return;
-        }
-
+        const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+        if (error) return alert(error.message);
         setUser(data.user);
       }
     } finally {
@@ -315,14 +220,18 @@ function App() {
     setUser(null);
   }
 
-  function dbItemToAppItem(row) {
+  async function loadAllData() {
+    await Promise.all([loadInventory(), loadCatalog(), loadExpenses(), loadSales(), loadVehicles(), loadTrips()]);
+  }
+
+  function mapItem(row) {
     return {
       id: row.id,
-      name: row.name,
-      sku: row.sku,
-      buyer: row.buyer,
-      category: row.category,
-      store: row.store,
+      name: row.name || "",
+      sku: row.sku || "",
+      buyer: row.buyer || "Zena",
+      category: row.category || "Pokemon",
+      store: row.store || "",
       quantity: Number(row.quantity || 0),
       unitCost: Number(row.unit_cost || 0),
       salePrice: Number(row.sale_price || 0),
@@ -332,34 +241,32 @@ function App() {
       catalogProductId: row.catalog_product_id || "",
       catalogProductName: row.catalog_product_name || "",
       externalProductId: row.external_product_id || "",
-      externalProductSource: row.external_product_source || "Manual",
-      tcgplayerProductId: row.tcgplayer_product_id || "",
-      tcgplayerUrl: row.tcgplayer_url || "",
+      decktradrUrl: row.tcgplayer_url || "",
+      externalProductSource: row.external_product_source || "DeckTradr",
       marketPrice: Number(row.market_price || 0),
       lowPrice: Number(row.low_price || 0),
       midPrice: Number(row.mid_price || 0),
       highPrice: Number(row.high_price || 0),
-      lastPriceChecked: row.last_price_checked || "",
       status: row.status || "In Stock",
       listingPlatform: row.listing_platform || "",
       listingUrl: row.listing_url || "",
       listedPrice: Number(row.listed_price || 0),
       actionNotes: row.action_notes || "",
+      lastPriceChecked: row.last_price_checked || "",
       createdAt: row.created_at,
     };
   }
 
-  function dbCatalogToAppProduct(row) {
+  function mapCatalog(row) {
     return {
       id: row.id,
-      name: row.name,
+      name: row.name || "",
       category: row.category || "Pokemon",
       setName: row.set_name || "",
       productType: row.product_type || "",
       barcode: row.barcode || "",
-      marketSource: row.market_source || "Manual",
+      marketSource: row.market_source || "DeckTradr",
       externalProductId: row.external_product_id || "",
-      tcgplayerProductId: row.tcgplayer_product_id || "",
       marketUrl: row.market_url || "",
       imageUrl: row.image_url || "",
       marketPrice: Number(row.market_price || 0),
@@ -367,502 +274,274 @@ function App() {
       midPrice: Number(row.mid_price || 0),
       highPrice: Number(row.high_price || 0),
       notes: row.notes || "",
-      lastPriceChecked: row.last_price_checked || "",
       createdAt: row.created_at,
     };
   }
 
-  function dbExpenseToAppExpense(row) {
-    return {
-      id: row.id,
-      vendor: row.vendor,
-      category: row.category,
-      buyer: row.buyer,
-      amount: Number(row.amount || 0),
-      notes: row.notes || "",
-      receiptImage: row.receipt_image || "",
-      createdAt: row.created_at,
-    };
+  function mapExpense(row) {
+    return { id: row.id, vendor: row.vendor || "", category: row.category || "Supplies", buyer: row.buyer || "Zena", amount: Number(row.amount || 0), notes: row.notes || "", receiptImage: row.receipt_image || "", createdAt: row.created_at };
   }
 
-  function dbVehicleToAppVehicle(row) {
-    return {
-      id: row.id,
-      name: row.name,
-      owner: row.owner,
-      averageMpg: Number(row.average_mpg || 0),
-      wearCostPerMile: Number(row.wear_cost_per_mile || 0),
-      notes: row.notes || "",
-      createdAt: row.created_at,
-    };
+  function mapVehicle(row) {
+    return { id: row.id, name: row.name || "", owner: row.owner || "Zena", averageMpg: Number(row.average_mpg || 0), wearCostPerMile: Number(row.wear_cost_per_mile || 0), notes: row.notes || "", createdAt: row.created_at };
   }
 
-  function dbTripToAppTrip(row) {
-    return {
-      id: row.id,
-      vehicleId: row.vehicle_id,
-      vehicleName: row.vehicle_name || "",
-      purpose: row.purpose,
-      driver: row.driver,
-      startMiles: Number(row.start_miles || 0),
-      endMiles: Number(row.end_miles || 0),
-      businessMiles: Number(row.business_miles || 0),
-      gasPrice: Number(row.gas_price || 0),
-      fuelCost: Number(row.fuel_cost || 0),
-      wearCostPerMile: Number(row.wear_cost_per_mile || 0),
-      wearCost: Number(row.wear_cost || 0),
-      totalVehicleCost: Number(row.total_vehicle_cost || 0),
-      mileageValue: Number(row.mileage_value || 0),
-      gasReceiptImage: row.gas_receipt_image || "",
-      notes: row.notes || "",
-      createdAt: row.created_at,
-    };
+  function mapTrip(row) {
+    return { id: row.id, vehicleId: row.vehicle_id, vehicleName: row.vehicle_name || "", purpose: row.purpose || "", driver: row.driver || "Zena", startMiles: Number(row.start_miles || 0), endMiles: Number(row.end_miles || 0), businessMiles: Number(row.business_miles || 0), gasPrice: Number(row.gas_price || 0), fuelCost: Number(row.fuel_cost || 0), wearCost: Number(row.wear_cost || 0), totalVehicleCost: Number(row.total_vehicle_cost || 0), mileageValue: Number(row.mileage_value || 0), gasReceiptImage: row.gas_receipt_image || "", notes: row.notes || "", createdAt: row.created_at };
   }
 
-  function dbSaleToAppSale(row) {
-    return {
-      id: row.id,
-      itemId: row.item_id,
-      itemName: row.item_name,
-      sku: row.sku,
-      originalBuyer: row.original_buyer,
-      category: row.category,
-      store: row.store,
-      platform: row.platform,
-      quantitySold: Number(row.quantity_sold || 0),
-      finalSalePrice: Number(row.final_sale_price || 0),
-      grossSale: Number(row.gross_sale || 0),
-      itemCost: Number(row.item_cost || 0),
-      shippingCost: Number(row.shipping_cost || 0),
-      platformFees: Number(row.platform_fees || 0),
-      netProfit: Number(row.net_profit || 0),
-      notes: row.notes || "",
-      createdAt: row.created_at,
-    };
-  }
-
-  async function loadAllCloudData() {
-    await Promise.all([
-      loadInventory(),
-      loadExpenses(),
-      loadMileageTrips(),
-      loadSales(),
-      loadVehicles(),
-      loadCatalogProducts(),
-    ]);
+  function mapSale(row) {
+    return { id: row.id, itemId: row.item_id, itemName: row.item_name || "", sku: row.sku || "", platform: row.platform || "", quantitySold: Number(row.quantity_sold || 0), finalSalePrice: Number(row.final_sale_price || 0), grossSale: Number(row.gross_sale || 0), itemCost: Number(row.item_cost || 0), shippingCost: Number(row.shipping_cost || 0), platformFees: Number(row.platform_fees || 0), netProfit: Number(row.net_profit || 0), notes: row.notes || "", createdAt: row.created_at };
   }
 
   async function loadInventory() {
     const { data, error } = await supabase.from("inventory_items").select("*").order("created_at", { ascending: false });
-    if (error) {
-      alert("Could not load inventory: " + error.message);
-      return;
-    }
-    setItems(data.map(dbItemToAppItem));
+    if (error) return alert("Could not load inventory: " + error.message);
+    setItems(data.map(mapItem));
   }
 
-  async function loadCatalogProducts() {
+  async function loadCatalog() {
     const { data, error } = await supabase.from("product_catalog").select("*").order("created_at", { ascending: false });
-    if (error) {
-      alert("Could not load catalog products: " + error.message);
-      return;
-    }
-    setCatalogProducts(data.map(dbCatalogToAppProduct));
+    if (error) return alert("Could not load catalog: " + error.message);
+    setCatalogProducts(data.map(mapCatalog));
   }
 
   async function loadExpenses() {
     const { data, error } = await supabase.from("business_expenses").select("*").order("created_at", { ascending: false });
-    if (error) {
-      alert("Could not load expenses: " + error.message);
-      return;
-    }
-    setExpenses(data.map(dbExpenseToAppExpense));
-  }
-
-  async function loadMileageTrips() {
-    const { data, error } = await supabase.from("mileage_trips").select("*").order("created_at", { ascending: false });
-    if (error) {
-      alert("Could not load mileage trips: " + error.message);
-      return;
-    }
-    setMileageTrips(data.map(dbTripToAppTrip));
+    if (error) return alert("Could not load expenses: " + error.message);
+    setExpenses(data.map(mapExpense));
   }
 
   async function loadSales() {
     const { data, error } = await supabase.from("sales_records").select("*").order("created_at", { ascending: false });
-    if (error) {
-      alert("Could not load sales: " + error.message);
-      return;
-    }
-    setSales(data.map(dbSaleToAppSale));
+    if (error) return alert("Could not load sales: " + error.message);
+    setSales(data.map(mapSale));
   }
 
   async function loadVehicles() {
     const { data, error } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
-    if (error) {
-      alert("Could not load vehicles: " + error.message);
-      return;
-    }
-    setVehicles(data.map(dbVehicleToAppVehicle));
+    if (error) return alert("Could not load vehicles: " + error.message);
+    setVehicles(data.map(mapVehicle));
   }
 
-  async function handleImageUpload(event, setterFunction, folderName = "misc") {
+  async function loadTrips() {
+    const { data, error } = await supabase.from("mileage_trips").select("*").order("created_at", { ascending: false });
+    if (error) return alert("Could not load mileage trips: " + error.message);
+    setMileageTrips(data.map(mapTrip));
+  }
+
+  async function handleImageUpload(event, setter, folder = "misc") {
     const file = event.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file.");
-      return;
-    }
-    if (!user) {
-      alert("Please log in before uploading images.");
-      return;
-    }
+    if (!file.type.startsWith("image/")) return alert("Please upload an image file.");
+    if (!user) return alert("Please log in before uploading images.");
 
-    const fileExt = file.name.split(".").pop();
-    const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-    const filePath = `${user.id}/${folderName}/${safeFileName}`;
+    const ext = file.name.split(".").pop();
+    const filePath = `${user.id}/${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage.from("receipts").upload(filePath, file, {
+    const { error } = await supabase.storage.from("receipts").upload(filePath, file, {
       cacheControl: "3600",
       upsert: false,
       contentType: file.type,
     });
 
-    if (uploadError) {
-      alert("Could not upload image: " + uploadError.message);
-      return;
-    }
+    if (error) return alert("Could not upload image: " + error.message);
 
     const { data } = supabase.storage.from("receipts").getPublicUrl(filePath);
-    setterFunction(data.publicUrl);
+    setter(data.publicUrl);
   }
 
-  function calculateTripCosts({ businessMiles, vehicle, gasPrice }) {
-    const mpg = Number(vehicle?.averageMpg || 0);
-    const wearRate = Number(vehicle?.wearCostPerMile || 0);
-    const gasPriceNumber = Number(gasPrice || 0);
-    const fuelCost = mpg > 0 ? (businessMiles / mpg) * gasPriceNumber : 0;
-    const wearCost = businessMiles * wearRate;
-    const totalVehicleCost = fuelCost + wearCost;
-    const mileageValue = businessMiles * IRS_MILEAGE_RATE;
-    return { fuelCost, wearCost, totalVehicleCost, mileageValue, wearRate, gasPriceNumber };
-  }
-
-  function applyCatalogProduct(productId) {
-    setCatalogProductId(productId);
-    const product = catalogProducts.find((p) => String(p.id) === String(productId));
-    if (!product) return;
-    setItemName(product.name);
-    setCategory(product.category || "Pokemon");
-    setBarcode(product.barcode || "");
-    setExternalProductSource(product.marketSource || "Manual");
-    setExternalProductId(product.externalProductId || "");
-    setTcgplayerProductId(product.tcgplayerProductId || "");
-    setTcgplayerUrl(product.marketUrl || "");
-    setMarketPrice(product.marketPrice || "");
-    setLowPrice(product.lowPrice || "");
-    setMidPrice(product.midPrice || "");
-    setHighPrice(product.highPrice || "");
-    setItemImage(product.imageUrl || "");
-  }
-
-  function resetInventoryForm() {
-    setItemName("");
-    setBuyer("Zena");
-    setCategory("Pokemon");
-    setStore("");
-    setQuantity(1);
-    setUnitCost("");
-    setSalePrice("");
-    setItemReceiptImage("");
-    setItemImage("");
-    setBarcode("");
-    setCatalogProductId("");
-    setExternalProductSource("Manual");
-    setExternalProductId("");
-    setTcgplayerProductId("");
-    setTcgplayerUrl("");
-    setMarketPrice("");
-    setLowPrice("");
-    setMidPrice("");
-    setHighPrice("");
-    setStatus("In Stock");
-    setListingPlatform("");
-    setListingUrl("");
-    setListedPrice("");
-    setActionNotes("");
-  }
-
-  function findMatchingInventoryItem() {
-    const cleanName = itemName.trim().toLowerCase();
-    const cleanBarcode = String(barcode || "").trim();
+  function getMatchingItem(form) {
+    const cleanName = form.name.trim().toLowerCase();
+    const cleanBarcode = String(form.barcode || "").trim();
 
     return items.find((item) => {
-      const sameCatalog = catalogProductId && item.catalogProductId === catalogProductId;
+      const sameCatalog = form.catalogProductId && item.catalogProductId === form.catalogProductId;
       const sameBarcode = cleanBarcode && item.barcode === cleanBarcode;
-      const sameNameCategory =
-        item.name.trim().toLowerCase() === cleanName &&
-        String(item.category || "").toLowerCase() === String(category || "").toLowerCase();
-
+      const sameNameCategory = item.name.trim().toLowerCase() === cleanName && String(item.category || "").toLowerCase() === String(form.category || "").toLowerCase();
       return sameCatalog || sameBarcode || sameNameCategory;
     });
-  }
-
-  async function mergeIntoExistingInventory(existingItem) {
-    const addedQty = Number(quantity);
-    const addedUnitCost = Number(unitCost);
-    const oldQty = Number(existingItem.quantity || 0);
-    const oldUnitCost = Number(existingItem.unitCost || 0);
-    const newQty = oldQty + addedQty;
-    const weightedAverageCost = newQty > 0 ? ((oldQty * oldUnitCost) + (addedQty * addedUnitCost)) / newQty : addedUnitCost;
-
-    const row = {
-      quantity: newQty,
-      unit_cost: weightedAverageCost,
-      sale_price: Number(salePrice || existingItem.salePrice || 0),
-      market_price: Number(marketPrice || existingItem.marketPrice || 0),
-      low_price: Number(lowPrice || existingItem.lowPrice || 0),
-      mid_price: Number(midPrice || existingItem.midPrice || 0),
-      high_price: Number(highPrice || existingItem.highPrice || 0),
-      receipt_image: itemReceiptImage || existingItem.receiptImage || "",
-      item_image: itemImage || existingItem.itemImage || "",
-      barcode: barcode || existingItem.barcode || "",
-      external_product_source: externalProductSource || existingItem.externalProductSource || "Manual",
-      external_product_id: externalProductId || existingItem.externalProductId || "",
-      tcgplayer_product_id: tcgplayerProductId || existingItem.tcgplayerProductId || "",
-      tcgplayer_url: tcgplayerUrl || existingItem.tcgplayerUrl || "",
-      last_price_checked: marketPrice ? new Date().toISOString() : existingItem.lastPriceChecked || null,
-      status: status || existingItem.status || "In Stock",
-      listing_platform: listingPlatform || existingItem.listingPlatform || "",
-      listing_url: listingUrl || existingItem.listingUrl || "",
-      listed_price: Number(listedPrice || existingItem.listedPrice || 0),
-      action_notes: actionNotes || existingItem.actionNotes || "",
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase
-      .from("inventory_items")
-      .update(row)
-      .eq("id", existingItem.id)
-      .select()
-      .single();
-
-    if (error) {
-      alert("Could not merge restock: " + error.message);
-      return false;
-    }
-
-    setItems(items.map((item) => item.id === existingItem.id ? dbItemToAppItem(data) : item));
-    return true;
-  }
-
-  function prepareRestock(item) {
-    setCatalogProductId(item.catalogProductId || "");
-    setItemName(item.name || "");
-    setBuyer(item.buyer || "Zena");
-    setCategory(item.category || "Pokemon");
-    setStore(item.store || "");
-    setQuantity(1);
-    setUnitCost(item.unitCost || "");
-    setSalePrice(item.salePrice || "");
-    setItemImage(item.itemImage || "");
-    setBarcode(item.barcode || "");
-    setExternalProductSource(item.externalProductSource || "Manual");
-    setExternalProductId(item.externalProductId || "");
-    setTcgplayerProductId(item.tcgplayerProductId || "");
-    setTcgplayerUrl(item.tcgplayerUrl || "");
-    setMarketPrice(item.marketPrice || "");
-    setLowPrice(item.lowPrice || "");
-    setMidPrice(item.midPrice || "");
-    setHighPrice(item.highPrice || "");
-    setStatus(item.status || "In Stock");
-    setListingPlatform(item.listingPlatform || "");
-    setListingUrl(item.listingUrl || "");
-    setListedPrice(item.listedPrice || "");
-    setActionNotes(item.actionNotes || "");
-    setItemReceiptImage("");
-    setActiveTab("addInventory");
-  }
-
-  function resetCatalogForm() {
-    setCatalogName("");
-    setCatalogCategory("Pokemon");
-    setCatalogSetName("");
-    setCatalogProductType("");
-    setCatalogBarcode("");
-    setCatalogMarketSource("Manual");
-    setCatalogExternalProductId("");
-    setCatalogTcgplayerProductId("");
-    setCatalogMarketUrl("");
-    setCatalogImageUrl("");
-    setCatalogMarketPrice("");
-    setCatalogLowPrice("");
-    setCatalogMidPrice("");
-    setCatalogHighPrice("");
-    setCatalogNotes("");
-  }
-
-  async function addCatalogProduct(event) {
-    event.preventDefault();
-    if (!user) return alert("Please log in first.");
-    if (!catalogName) return alert("Please enter a product name.");
-
-    const row = {
-      user_id: user.id,
-      name: catalogName,
-      category: catalogCategory,
-      set_name: catalogSetName,
-      product_type: catalogProductType,
-      barcode: catalogBarcode,
-      market_source: catalogMarketSource,
-      external_product_id: catalogExternalProductId,
-      tcgplayer_product_id: catalogTcgplayerProductId,
-      market_url: catalogMarketUrl,
-      image_url: catalogImageUrl,
-      market_price: Number(catalogMarketPrice || 0),
-      low_price: Number(catalogLowPrice || 0),
-      mid_price: Number(catalogMidPrice || 0),
-      high_price: Number(catalogHighPrice || 0),
-      notes: catalogNotes,
-      last_price_checked: catalogMarketPrice ? new Date().toISOString() : null,
-    };
-
-    const { data, error } = await supabase.from("product_catalog").insert(row).select().single();
-    if (error) return alert("Could not add catalog product: " + error.message);
-    setCatalogProducts([dbCatalogToAppProduct(data), ...catalogProducts]);
-    resetCatalogForm();
-  }
-
-  async function deleteCatalogProduct(id) {
-    const { error } = await supabase.from("product_catalog").delete().eq("id", id);
-    if (error) return alert("Could not delete catalog product: " + error.message);
-    setCatalogProducts(catalogProducts.filter((p) => p.id !== id));
-  }
-
-  function startEditingCatalogProduct(product) {
-    setEditingCatalogId(product.id);
-    setEditCatalogName(product.name || "");
-    setEditCatalogCategory(product.category || "Pokemon");
-    setEditCatalogSetName(product.setName || "");
-    setEditCatalogProductType(product.productType || "");
-    setEditCatalogBarcode(product.barcode || "");
-    setEditCatalogMarketSource(product.marketSource || "Manual");
-    setEditCatalogExternalProductId(product.externalProductId || "");
-    setEditCatalogTcgplayerProductId(product.tcgplayerProductId || "");
-    setEditCatalogMarketUrl(product.marketUrl || "");
-    setEditCatalogImageUrl(product.imageUrl || "");
-    setEditCatalogMarketPrice(product.marketPrice || "");
-    setEditCatalogLowPrice(product.lowPrice || "");
-    setEditCatalogMidPrice(product.midPrice || "");
-    setEditCatalogHighPrice(product.highPrice || "");
-    setEditCatalogNotes(product.notes || "");
-  }
-
-  function cancelEditingCatalogProduct() {
-    setEditingCatalogId(null);
-    setEditCatalogName("");
-    setEditCatalogCategory("Pokemon");
-    setEditCatalogSetName("");
-    setEditCatalogProductType("");
-    setEditCatalogBarcode("");
-    setEditCatalogMarketSource("Manual");
-    setEditCatalogExternalProductId("");
-    setEditCatalogTcgplayerProductId("");
-    setEditCatalogMarketUrl("");
-    setEditCatalogImageUrl("");
-    setEditCatalogMarketPrice("");
-    setEditCatalogLowPrice("");
-    setEditCatalogMidPrice("");
-    setEditCatalogHighPrice("");
-    setEditCatalogNotes("");
-  }
-
-  async function saveEditedCatalogProduct(event) {
-    event.preventDefault();
-    if (!editCatalogName) return alert("Please enter a product name.");
-
-    const row = {
-      name: editCatalogName,
-      category: editCatalogCategory,
-      set_name: editCatalogSetName,
-      product_type: editCatalogProductType,
-      barcode: editCatalogBarcode,
-      market_source: editCatalogMarketSource,
-      external_product_id: editCatalogExternalProductId,
-      tcgplayer_product_id: editCatalogTcgplayerProductId,
-      market_url: editCatalogMarketUrl,
-      image_url: editCatalogImageUrl,
-      market_price: Number(editCatalogMarketPrice || 0),
-      low_price: Number(editCatalogLowPrice || 0),
-      mid_price: Number(editCatalogMidPrice || 0),
-      high_price: Number(editCatalogHighPrice || 0),
-      notes: editCatalogNotes,
-      last_price_checked: editCatalogMarketPrice ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase.from("product_catalog").update(row).eq("id", editingCatalogId).select().single();
-    if (error) return alert("Could not update catalog product: " + error.message);
-
-    const updatedProduct = dbCatalogToAppProduct(data);
-    setCatalogProducts(catalogProducts.map((product) => product.id === editingCatalogId ? updatedProduct : product));
-    cancelEditingCatalogProduct();
   }
 
   async function addItem(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
-    if (!itemName || !unitCost || !quantity) return alert("Please fill out item name, quantity, and unit cost.");
+    if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) return alert("Please fill out item name, quantity, and unit cost.");
 
-    const existingItem = findMatchingInventoryItem();
+    const existing = getMatchingItem(itemForm);
+    if (existing && !editingItemId) {
+      const addedQty = Number(itemForm.quantity);
+      const addedCost = Number(itemForm.unitCost);
+      const oldQty = Number(existing.quantity || 0);
+      const oldCost = Number(existing.unitCost || 0);
+      const newQty = oldQty + addedQty;
+      const weightedCost = newQty > 0 ? (oldQty * oldCost + addedQty * addedCost) / newQty : addedCost;
 
-    if (existingItem) {
-      const merged = await mergeIntoExistingInventory(existingItem);
-      if (merged) {
-        resetInventoryForm();
-        setActiveTab("inventory");
-      }
+      const row = {
+        quantity: newQty,
+        unit_cost: weightedCost,
+        sale_price: Number(itemForm.salePrice || existing.salePrice || 0),
+        market_price: Number(itemForm.marketPrice || existing.marketPrice || 0),
+        low_price: Number(itemForm.lowPrice || existing.lowPrice || 0),
+        mid_price: Number(itemForm.midPrice || existing.midPrice || 0),
+        high_price: Number(itemForm.highPrice || existing.highPrice || 0),
+        receipt_image: itemForm.receiptImage || existing.receiptImage || "",
+        item_image: itemForm.itemImage || existing.itemImage || "",
+        barcode: itemForm.barcode || existing.barcode || "",
+        external_product_source: "DeckTradr",
+        external_product_id: itemForm.externalProductId || existing.externalProductId || "",
+        tcgplayer_url: itemForm.decktradrUrl || existing.decktradrUrl || "",
+        status: itemForm.status || existing.status || "In Stock",
+        listing_platform: itemForm.listingPlatform || existing.listingPlatform || "",
+        listing_url: itemForm.listingUrl || existing.listingUrl || "",
+        listed_price: Number(itemForm.listedPrice || existing.listedPrice || 0),
+        action_notes: itemForm.actionNotes || existing.actionNotes || "",
+        last_price_checked: itemForm.marketPrice ? new Date().toISOString() : existing.lastPriceChecked || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase.from("inventory_items").update(row).eq("id", existing.id).select().single();
+      if (error) return alert("Could not merge restock: " + error.message);
+      setItems(items.map((item) => (item.id === existing.id ? mapItem(data) : item)));
+      setItemForm(blankItem);
+      setActiveTab("inventory");
       return;
     }
 
-    const selectedCatalogProduct = catalogProducts.find((p) => String(p.id) === String(catalogProductId));
+    const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(itemForm.catalogProductId));
 
     const row = {
       user_id: user.id,
-      name: itemName,
-      buyer,
-      category,
-      store,
-      quantity: Number(quantity),
-      unit_cost: Number(unitCost),
-      sale_price: Number(salePrice || 0),
+      name: itemForm.name,
+      buyer: itemForm.buyer,
+      category: itemForm.category,
+      store: itemForm.store,
+      quantity: Number(itemForm.quantity),
+      unit_cost: Number(itemForm.unitCost),
+      sale_price: Number(itemForm.salePrice || 0),
       sku: "ET-" + Date.now(),
-      receipt_image: itemReceiptImage,
-      item_image: itemImage,
-      barcode,
-      catalog_product_id: selectedCatalogProduct?.id || null,
-      catalog_product_name: selectedCatalogProduct?.name || "",
-      external_product_source: externalProductSource,
-      external_product_id: externalProductId,
-      tcgplayer_product_id: tcgplayerProductId,
-      tcgplayer_url: tcgplayerUrl,
-      market_price: Number(marketPrice || 0),
-      low_price: Number(lowPrice || 0),
-      mid_price: Number(midPrice || 0),
-      high_price: Number(highPrice || 0),
-      last_price_checked: marketPrice ? new Date().toISOString() : null,
-      status,
-      listing_platform: listingPlatform,
-      listing_url: listingUrl,
-      listed_price: Number(listedPrice || 0),
-      action_notes: actionNotes,
+      receipt_image: itemForm.receiptImage,
+      item_image: itemForm.itemImage,
+      barcode: itemForm.barcode,
+      catalog_product_id: selectedCatalog?.id || null,
+      catalog_product_name: selectedCatalog?.name || "",
+      external_product_source: "DeckTradr",
+      external_product_id: itemForm.externalProductId,
+      tcgplayer_url: itemForm.decktradrUrl,
+      market_price: Number(itemForm.marketPrice || 0),
+      low_price: Number(itemForm.lowPrice || 0),
+      mid_price: Number(itemForm.midPrice || 0),
+      high_price: Number(itemForm.highPrice || 0),
+      last_price_checked: itemForm.marketPrice ? new Date().toISOString() : null,
+      status: itemForm.status,
+      listing_platform: itemForm.listingPlatform,
+      listing_url: itemForm.listingUrl,
+      listed_price: Number(itemForm.listedPrice || 0),
+      action_notes: itemForm.actionNotes,
     };
 
     const { data, error } = await supabase.from("inventory_items").insert(row).select().single();
     if (error) return alert("Could not add item: " + error.message);
-    setItems([dbItemToAppItem(data), ...items]);
-    resetInventoryForm();
+
+    setItems([mapItem(data), ...items]);
+    setItemForm(blankItem);
     setActiveTab("inventory");
+  }
+
+  async function saveEditedItem(event) {
+    event.preventDefault();
+    if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) return alert("Please fill out item name, quantity, and unit cost.");
+
+    const row = {
+      name: itemForm.name,
+      buyer: itemForm.buyer,
+      category: itemForm.category,
+      store: itemForm.store,
+      quantity: Number(itemForm.quantity),
+      unit_cost: Number(itemForm.unitCost),
+      sale_price: Number(itemForm.salePrice || 0),
+      receipt_image: itemForm.receiptImage,
+      item_image: itemForm.itemImage,
+      barcode: itemForm.barcode,
+      external_product_source: "DeckTradr",
+      external_product_id: itemForm.externalProductId,
+      tcgplayer_url: itemForm.decktradrUrl,
+      market_price: Number(itemForm.marketPrice || 0),
+      low_price: Number(itemForm.lowPrice || 0),
+      mid_price: Number(itemForm.midPrice || 0),
+      high_price: Number(itemForm.highPrice || 0),
+      last_price_checked: itemForm.marketPrice ? new Date().toISOString() : null,
+      status: itemForm.status,
+      listing_platform: itemForm.listingPlatform,
+      listing_url: itemForm.listingUrl,
+      listed_price: Number(itemForm.listedPrice || 0),
+      action_notes: itemForm.actionNotes,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase.from("inventory_items").update(row).eq("id", editingItemId).select().single();
+    if (error) return alert("Could not update item: " + error.message);
+
+    setItems(items.map((item) => (item.id === editingItemId ? mapItem(data) : item)));
+    setEditingItemId(null);
+    setItemForm(blankItem);
+  }
+
+  function startEditingItem(item) {
+    setEditingItemId(item.id);
+    setItemForm({
+      name: item.name,
+      buyer: item.buyer,
+      category: item.category,
+      store: item.store,
+      quantity: item.quantity,
+      unitCost: item.unitCost,
+      salePrice: item.salePrice,
+      receiptImage: item.receiptImage,
+      itemImage: item.itemImage,
+      barcode: item.barcode,
+      catalogProductId: item.catalogProductId,
+      externalProductId: item.externalProductId,
+      decktradrUrl: item.decktradrUrl,
+      marketPrice: item.marketPrice,
+      lowPrice: item.lowPrice,
+      midPrice: item.midPrice,
+      highPrice: item.highPrice,
+      status: item.status,
+      listingPlatform: item.listingPlatform,
+      listingUrl: item.listingUrl,
+      listedPrice: item.listedPrice,
+      actionNotes: item.actionNotes,
+    });
+    setActiveTab("inventory");
+  }
+
+  function prepareRestock(item) {
+    setEditingItemId(null);
+    setItemForm({
+      ...blankItem,
+      name: item.name,
+      buyer: item.buyer,
+      category: item.category,
+      store: item.store,
+      unitCost: item.unitCost,
+      salePrice: item.salePrice,
+      itemImage: item.itemImage,
+      barcode: item.barcode,
+      catalogProductId: item.catalogProductId,
+      externalProductId: item.externalProductId,
+      decktradrUrl: item.decktradrUrl,
+      marketPrice: item.marketPrice,
+      lowPrice: item.lowPrice,
+      midPrice: item.midPrice,
+      highPrice: item.highPrice,
+      status: item.status,
+      listingPlatform: item.listingPlatform,
+      listingUrl: item.listingUrl,
+      listedPrice: item.listedPrice,
+      actionNotes: item.actionNotes,
+    });
+    setActiveTab("addInventory");
   }
 
   async function deleteItem(id) {
@@ -871,116 +550,118 @@ function App() {
     setItems(items.filter((item) => item.id !== id));
   }
 
-  function startEditingItem(item) {
-    setEditingItemId(item.id);
-    setEditName(item.name);
-    setEditBuyer(item.buyer);
-    setEditCategory(item.category || "Pokemon");
-    setEditStore(item.store || "");
-    setEditQuantity(item.quantity);
-    setEditUnitCost(item.unitCost);
-    setEditSalePrice(item.salePrice);
-    setEditBarcode(item.barcode || "");
-    setEditExternalProductSource(item.externalProductSource || "Manual");
-    setEditExternalProductId(item.externalProductId || "");
-    setEditTcgplayerProductId(item.tcgplayerProductId || "");
-    setEditTcgplayerUrl(item.tcgplayerUrl || "");
-    setEditMarketPrice(item.marketPrice || "");
-    setEditLowPrice(item.lowPrice || "");
-    setEditMidPrice(item.midPrice || "");
-    setEditHighPrice(item.highPrice || "");
-    setEditStatus(item.status || "In Stock");
-    setEditListingPlatform(item.listingPlatform || "");
-    setEditListingUrl(item.listingUrl || "");
-    setEditListedPrice(item.listedPrice || "");
-    setEditActionNotes(item.actionNotes || "");
-  }
-
-  function cancelEditingItem() {
-    setEditingItemId(null);
-    setEditName("");
-    setEditBuyer("Zena");
-    setEditCategory("Pokemon");
-    setEditStore("");
-    setEditQuantity(1);
-    setEditUnitCost("");
-    setEditSalePrice("");
-    setEditBarcode("");
-    setEditExternalProductSource("Manual");
-    setEditExternalProductId("");
-    setEditTcgplayerProductId("");
-    setEditTcgplayerUrl("");
-    setEditMarketPrice("");
-    setEditLowPrice("");
-    setEditMidPrice("");
-    setEditHighPrice("");
-    setEditStatus("In Stock");
-    setEditListingPlatform("");
-    setEditListingUrl("");
-    setEditListedPrice("");
-    setEditActionNotes("");
-  }
-
-  async function saveEditedItem(event) {
+  async function addCatalogProduct(event) {
     event.preventDefault();
-    if (!editName || !editUnitCost || !editQuantity) return alert("Please enter item name, quantity, and unit cost.");
+    if (!user) return alert("Please log in first.");
+    if (!catalogForm.name) return alert("Please enter a product name.");
 
     const row = {
-      name: editName,
-      buyer: editBuyer,
-      category: editCategory,
-      store: editStore,
-      quantity: Number(editQuantity),
-      unit_cost: Number(editUnitCost),
-      sale_price: Number(editSalePrice || 0),
-      barcode: editBarcode,
-      external_product_source: editExternalProductSource,
-      external_product_id: editExternalProductId,
-      tcgplayer_product_id: editTcgplayerProductId,
-      tcgplayer_url: editTcgplayerUrl,
-      market_price: Number(editMarketPrice || 0),
-      low_price: Number(editLowPrice || 0),
-      mid_price: Number(editMidPrice || 0),
-      high_price: Number(editHighPrice || 0),
-      last_price_checked: editMarketPrice ? new Date().toISOString() : null,
-      status: editStatus,
-      listing_platform: editListingPlatform,
-      listing_url: editListingUrl,
-      listed_price: Number(editListedPrice || 0),
-      action_notes: editActionNotes,
-      updated_at: new Date().toISOString(),
+      user_id: user.id,
+      name: catalogForm.name,
+      category: catalogForm.category,
+      set_name: catalogForm.setName,
+      product_type: catalogForm.productType,
+      barcode: catalogForm.barcode,
+      market_source: "DeckTradr",
+      external_product_id: catalogForm.externalProductId,
+      market_url: catalogForm.marketUrl,
+      image_url: catalogForm.imageUrl,
+      market_price: Number(catalogForm.marketPrice || 0),
+      low_price: Number(catalogForm.lowPrice || 0),
+      mid_price: Number(catalogForm.midPrice || 0),
+      high_price: Number(catalogForm.highPrice || 0),
+      notes: catalogForm.notes,
+      last_price_checked: catalogForm.marketPrice ? new Date().toISOString() : null,
     };
 
-    const { data, error } = await supabase.from("inventory_items").update(row).eq("id", editingItemId).select().single();
-    if (error) return alert("Could not update item: " + error.message);
-    setItems(items.map((item) => (item.id === editingItemId ? dbItemToAppItem(data) : item)));
-    cancelEditingItem();
+    const { data, error } = editingCatalogId
+      ? await supabase.from("product_catalog").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingCatalogId).select().single()
+      : await supabase.from("product_catalog").insert(row).select().single();
+
+    if (error) return alert("Could not save catalog product: " + error.message);
+
+    const mapped = mapCatalog(data);
+    setCatalogProducts(editingCatalogId ? catalogProducts.map((p) => (p.id === editingCatalogId ? mapped : p)) : [mapped, ...catalogProducts]);
+    setEditingCatalogId(null);
+    setCatalogForm(blankCatalog);
+  }
+
+  function startEditingCatalogProduct(product) {
+    setEditingCatalogId(product.id);
+    setCatalogForm({
+      name: product.name,
+      category: product.category,
+      setName: product.setName,
+      productType: product.productType,
+      barcode: product.barcode,
+      externalProductId: product.externalProductId,
+      marketUrl: product.marketUrl,
+      imageUrl: product.imageUrl,
+      marketPrice: product.marketPrice,
+      lowPrice: product.lowPrice,
+      midPrice: product.midPrice,
+      highPrice: product.highPrice,
+      notes: product.notes,
+    });
+  }
+
+  async function deleteCatalogProduct(id) {
+    const { error } = await supabase.from("product_catalog").delete().eq("id", id);
+    if (error) return alert("Could not delete catalog product: " + error.message);
+    setCatalogProducts(catalogProducts.filter((product) => product.id !== id));
+  }
+
+  function applyCatalogProduct(productId) {
+    updateItemForm("catalogProductId", productId);
+    const product = catalogProducts.find((p) => String(p.id) === String(productId));
+    if (!product) return;
+
+    setItemForm((old) => ({
+      ...old,
+      catalogProductId: productId,
+      name: product.name,
+      category: product.category,
+      barcode: product.barcode,
+      externalProductId: product.externalProductId,
+      decktradrUrl: product.marketUrl,
+      marketPrice: product.marketPrice,
+      lowPrice: product.lowPrice,
+      midPrice: product.midPrice,
+      highPrice: product.highPrice,
+      itemImage: product.imageUrl,
+    }));
   }
 
   async function addExpense(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
-    if (!expenseVendor || !expenseAmount) return alert("Please enter vendor and amount.");
+    if (!expenseForm.vendor || !expenseForm.amount) return alert("Please enter vendor and amount.");
 
     const row = {
       user_id: user.id,
-      vendor: expenseVendor,
-      category: expenseCategory,
-      buyer: expenseBuyer,
-      amount: Number(expenseAmount),
-      notes: expenseNotes,
-      receipt_image: expenseReceiptImage,
+      vendor: expenseForm.vendor,
+      category: expenseForm.category,
+      buyer: expenseForm.buyer,
+      amount: Number(expenseForm.amount),
+      notes: expenseForm.notes,
+      receipt_image: expenseForm.receiptImage,
     };
 
-    const { data, error } = await supabase.from("business_expenses").insert(row).select().single();
-    if (error) return alert("Could not add expense: " + error.message);
-    setExpenses([dbExpenseToAppExpense(data), ...expenses]);
-    setExpenseVendor("");
-    setExpenseCategory("Supplies");
-    setExpenseBuyer("Zena");
-    setExpenseAmount("");
-    setExpenseNotes("");
-    setExpenseReceiptImage("");
+    const { data, error } = editingExpenseId
+      ? await supabase.from("business_expenses").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingExpenseId).select().single()
+      : await supabase.from("business_expenses").insert(row).select().single();
+
+    if (error) return alert("Could not save expense: " + error.message);
+
+    const mapped = mapExpense(data);
+    setExpenses(editingExpenseId ? expenses.map((e) => (e.id === editingExpenseId ? mapped : e)) : [mapped, ...expenses]);
+    setEditingExpenseId(null);
+    setExpenseForm({ vendor: "", category: "Supplies", buyer: "Zena", amount: "", notes: "", receiptImage: "" });
+  }
+
+  function startEditingExpense(expense) {
+    setEditingExpenseId(expense.id);
+    setExpenseForm(expense);
   }
 
   async function deleteExpense(id) {
@@ -989,65 +670,35 @@ function App() {
     setExpenses(expenses.filter((expense) => expense.id !== id));
   }
 
-  function startEditingExpense(expense) {
-    setEditingExpenseId(expense.id);
-    setEditExpenseVendor(expense.vendor);
-    setEditExpenseCategory(expense.category || "Supplies");
-    setEditExpenseBuyer(expense.buyer || "Zena");
-    setEditExpenseAmount(expense.amount);
-    setEditExpenseNotes(expense.notes || "");
-  }
-
-  function cancelEditingExpense() {
-    setEditingExpenseId(null);
-    setEditExpenseVendor("");
-    setEditExpenseCategory("Supplies");
-    setEditExpenseBuyer("Zena");
-    setEditExpenseAmount("");
-    setEditExpenseNotes("");
-  }
-
-  async function saveEditedExpense(event) {
-    event.preventDefault();
-    if (!editExpenseVendor || !editExpenseAmount) return alert("Please enter vendor and amount.");
-
-    const row = {
-      vendor: editExpenseVendor,
-      category: editExpenseCategory,
-      buyer: editExpenseBuyer,
-      amount: Number(editExpenseAmount),
-      notes: editExpenseNotes,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase.from("business_expenses").update(row).eq("id", editingExpenseId).select().single();
-    if (error) return alert("Could not update expense: " + error.message);
-    setExpenses(expenses.map((expense) => (expense.id === editingExpenseId ? dbExpenseToAppExpense(data) : expense)));
-    cancelEditingExpense();
-  }
-
   async function addVehicle(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
-    if (!vehicleName || !vehicleMpg) return alert("Please enter vehicle name and average MPG.");
+    if (!vehicleForm.name || !vehicleForm.averageMpg) return alert("Please enter vehicle name and average MPG.");
 
     const row = {
       user_id: user.id,
-      name: vehicleName,
-      owner: vehicleOwner,
-      average_mpg: Number(vehicleMpg),
-      wear_cost_per_mile: Number(vehicleWearCost || 0),
-      notes: vehicleNotes,
+      name: vehicleForm.name,
+      owner: vehicleForm.owner,
+      average_mpg: Number(vehicleForm.averageMpg),
+      wear_cost_per_mile: Number(vehicleForm.wearCostPerMile || 0),
+      notes: vehicleForm.notes,
     };
 
-    const { data, error } = await supabase.from("vehicles").insert(row).select().single();
-    if (error) return alert("Could not add vehicle: " + error.message);
-    setVehicles([dbVehicleToAppVehicle(data), ...vehicles]);
-    setVehicleName("");
-    setVehicleOwner("Zena");
-    setVehicleMpg("");
-    setVehicleWearCost("");
-    setVehicleNotes("");
+    const { data, error } = editingVehicleId
+      ? await supabase.from("vehicles").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingVehicleId).select().single()
+      : await supabase.from("vehicles").insert(row).select().single();
+
+    if (error) return alert("Could not save vehicle: " + error.message);
+
+    const mapped = mapVehicle(data);
+    setVehicles(editingVehicleId ? vehicles.map((v) => (v.id === editingVehicleId ? mapped : v)) : [mapped, ...vehicles]);
+    setEditingVehicleId(null);
+    setVehicleForm({ name: "", owner: "Zena", averageMpg: "", wearCostPerMile: "", notes: "" });
+  }
+
+  function startEditingVehicle(vehicle) {
+    setEditingVehicleId(vehicle.id);
+    setVehicleForm(vehicle);
   }
 
   async function deleteVehicle(id) {
@@ -1056,220 +707,140 @@ function App() {
     setVehicles(vehicles.filter((vehicle) => vehicle.id !== id));
   }
 
-  function startEditingVehicle(vehicle) {
-    setEditingVehicleId(vehicle.id);
-    setEditVehicleName(vehicle.name);
-    setEditVehicleOwner(vehicle.owner || "Zena");
-    setEditVehicleMpg(vehicle.averageMpg);
-    setEditVehicleWearCost(vehicle.wearCostPerMile);
-    setEditVehicleNotes(vehicle.notes || "");
+  function calculateTripCosts(form) {
+    const vehicle = vehicles.find((v) => String(v.id) === String(form.vehicleId));
+    const businessMiles = Number(form.endMiles) - Number(form.startMiles);
+    const mpg = Number(vehicle?.averageMpg || 0);
+    const wearRate = Number(vehicle?.wearCostPerMile || 0);
+    const gasPrice = Number(form.gasPrice || 0);
+    const fuelCost = mpg > 0 ? (businessMiles / mpg) * gasPrice : 0;
+    const wearCost = businessMiles * wearRate;
+
+    return { vehicle, businessMiles, gasPrice, fuelCost, wearCost, totalVehicleCost: fuelCost + wearCost, mileageValue: businessMiles * IRS_MILEAGE_RATE };
   }
 
-  function cancelEditingVehicle() {
-    setEditingVehicleId(null);
-    setEditVehicleName("");
-    setEditVehicleOwner("Zena");
-    setEditVehicleMpg("");
-    setEditVehicleWearCost("");
-    setEditVehicleNotes("");
-  }
-
-  async function saveEditedVehicle(event) {
-    event.preventDefault();
-    if (!editVehicleName || !editVehicleMpg) return alert("Please enter vehicle name and average MPG.");
-
-    const row = {
-      name: editVehicleName,
-      owner: editVehicleOwner,
-      average_mpg: Number(editVehicleMpg),
-      wear_cost_per_mile: Number(editVehicleWearCost || 0),
-      notes: editVehicleNotes,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase.from("vehicles").update(row).eq("id", editingVehicleId).select().single();
-    if (error) return alert("Could not update vehicle: " + error.message);
-    setVehicles(vehicles.map((vehicle) => (vehicle.id === editingVehicleId ? dbVehicleToAppVehicle(data) : vehicle)));
-    cancelEditingVehicle();
-  }
-
-  async function addMileageTrip(event) {
+  async function addTrip(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
-    if (!tripPurpose || !startMiles || !endMiles) return alert("Please enter trip purpose, starting miles, and ending miles.");
-    if (!tripGasPrice) return alert("Please enter the gas price paid for this trip.");
+    if (!tripForm.purpose || !tripForm.startMiles || !tripForm.endMiles) return alert("Please enter purpose, start miles, and end miles.");
+    if (!tripForm.gasPrice) return alert("Please enter gas price paid.");
 
-    const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === String(tripVehicleId));
-    const businessMiles = Number(endMiles) - Number(startMiles);
-    if (businessMiles < 0) return alert("Ending mileage must be higher than starting mileage.");
-    const costs = calculateTripCosts({ businessMiles, vehicle: selectedVehicle, gasPrice: tripGasPrice });
+    const costs = calculateTripCosts(tripForm);
+    if (costs.businessMiles < 0) return alert("Ending mileage must be higher than starting mileage.");
 
     const row = {
       user_id: user.id,
-      vehicle_id: selectedVehicle?.id || null,
-      vehicle_name: selectedVehicle?.name || "",
-      purpose: tripPurpose,
-      driver: tripDriver,
-      start_miles: Number(startMiles),
-      end_miles: Number(endMiles),
-      business_miles: businessMiles,
-      gas_price: costs.gasPriceNumber,
+      vehicle_id: costs.vehicle?.id || null,
+      vehicle_name: costs.vehicle?.name || "",
+      purpose: tripForm.purpose,
+      driver: tripForm.driver,
+      start_miles: Number(tripForm.startMiles),
+      end_miles: Number(tripForm.endMiles),
+      business_miles: costs.businessMiles,
+      gas_price: costs.gasPrice,
       fuel_cost: costs.fuelCost,
-      wear_cost_per_mile: costs.wearRate,
+      wear_cost_per_mile: Number(costs.vehicle?.wearCostPerMile || 0),
       wear_cost: costs.wearCost,
       total_vehicle_cost: costs.totalVehicleCost,
       mileage_value: costs.mileageValue,
-      gas_receipt_image: tripGasReceiptImage,
-      notes: tripNotes,
+      gas_receipt_image: tripForm.gasReceiptImage,
+      notes: tripForm.notes,
     };
 
-    const { data, error } = await supabase.from("mileage_trips").insert(row).select().single();
-    if (error) return alert("Could not add mileage trip: " + error.message);
-    setMileageTrips([dbTripToAppTrip(data), ...mileageTrips]);
-    setTripPurpose("");
-    setTripDriver("Zena");
-    setTripVehicleId("");
-    setStartMiles("");
-    setEndMiles("");
-    setTripGasPrice("");
-    setTripNotes("");
-    setTripGasReceiptImage("");
-  }
+    const { data, error } = editingTripId
+      ? await supabase.from("mileage_trips").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingTripId).select().single()
+      : await supabase.from("mileage_trips").insert(row).select().single();
 
-  async function deleteMileageTrip(id) {
-    const { error } = await supabase.from("mileage_trips").delete().eq("id", id);
-    if (error) return alert("Could not delete mileage trip: " + error.message);
-    setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
+    if (error) return alert("Could not save mileage trip: " + error.message);
+
+    const mapped = mapTrip(data);
+    setMileageTrips(editingTripId ? mileageTrips.map((t) => (t.id === editingTripId ? mapped : t)) : [mapped, ...mileageTrips]);
+    setEditingTripId(null);
+    setTripForm({ purpose: "", driver: "Zena", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" });
   }
 
   function startEditingTrip(trip) {
     setEditingTripId(trip.id);
-    setEditTripPurpose(trip.purpose);
-    setEditTripDriver(trip.driver || "Zena");
-    setEditTripVehicleId(trip.vehicleId || "");
-    setEditStartMiles(trip.startMiles);
-    setEditEndMiles(trip.endMiles);
-    setEditTripGasPrice(trip.gasPrice);
-    setEditTripNotes(trip.notes || "");
+    setTripForm({ purpose: trip.purpose, driver: trip.driver, vehicleId: trip.vehicleId || "", startMiles: trip.startMiles, endMiles: trip.endMiles, gasPrice: trip.gasPrice, notes: trip.notes, gasReceiptImage: trip.gasReceiptImage });
   }
 
-  function cancelEditingTrip() {
-    setEditingTripId(null);
-    setEditTripPurpose("");
-    setEditTripDriver("Zena");
-    setEditTripVehicleId("");
-    setEditStartMiles("");
-    setEditEndMiles("");
-    setEditTripGasPrice("");
-    setEditTripNotes("");
-  }
-
-  async function saveEditedTrip(event) {
-    event.preventDefault();
-    if (!editTripPurpose || !editStartMiles || !editEndMiles) return alert("Please enter trip purpose, starting miles, and ending miles.");
-    if (!editTripGasPrice) return alert("Please enter the gas price paid for this trip.");
-
-    const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === String(editTripVehicleId));
-    const businessMiles = Number(editEndMiles) - Number(editStartMiles);
-    if (businessMiles < 0) return alert("Ending mileage must be higher than starting mileage.");
-    const costs = calculateTripCosts({ businessMiles, vehicle: selectedVehicle, gasPrice: editTripGasPrice });
-
-    const row = {
-      vehicle_id: selectedVehicle?.id || null,
-      vehicle_name: selectedVehicle?.name || "",
-      purpose: editTripPurpose,
-      driver: editTripDriver,
-      start_miles: Number(editStartMiles),
-      end_miles: Number(editEndMiles),
-      business_miles: businessMiles,
-      gas_price: costs.gasPriceNumber,
-      fuel_cost: costs.fuelCost,
-      wear_cost_per_mile: costs.wearRate,
-      wear_cost: costs.wearCost,
-      total_vehicle_cost: costs.totalVehicleCost,
-      mileage_value: costs.mileageValue,
-      notes: editTripNotes,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase.from("mileage_trips").update(row).eq("id", editingTripId).select().single();
-    if (error) return alert("Could not update mileage trip: " + error.message);
-    setMileageTrips(mileageTrips.map((trip) => (trip.id === editingTripId ? dbTripToAppTrip(data) : trip)));
-    cancelEditingTrip();
+  async function deleteTrip(id) {
+    const { error } = await supabase.from("mileage_trips").delete().eq("id", id);
+    if (error) return alert("Could not delete trip: " + error.message);
+    setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
   }
 
   async function addSale(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
-    if (!soldItemId || !quantitySold || !finalSalePrice) return alert("Please choose an item, quantity sold, and final sale price.");
+    if (!saleForm.itemId || !saleForm.quantitySold || !saleForm.finalSalePrice) return alert("Please choose item, quantity, and price.");
 
-    const itemSold = items.find((item) => String(item.id) === String(soldItemId));
-    if (!itemSold) return alert("Item not found.");
-    const qtySold = Number(quantitySold);
-    if (qtySold > itemSold.quantity) return alert("You cannot sell more than you have in inventory.");
+    const item = items.find((i) => String(i.id) === String(saleForm.itemId));
+    if (!item) return alert("Item not found.");
 
-    const salePriceNumber = Number(finalSalePrice);
-    const shipping = Number(shippingCost || 0);
-    const fees = Number(platformFees || 0);
-    const itemCost = itemSold.unitCost * qtySold;
-    const grossSale = salePriceNumber * qtySold;
+    const qty = Number(saleForm.quantitySold);
+    if (qty > item.quantity) return alert("You cannot sell more than you have.");
+
+    const price = Number(saleForm.finalSalePrice);
+    const shipping = Number(saleForm.shippingCost || 0);
+    const fees = Number(saleForm.platformFees || 0);
+    const itemCost = item.unitCost * qty;
+    const grossSale = price * qty;
     const netProfit = grossSale - itemCost - shipping - fees;
-    const remainingQuantity = itemSold.quantity - qtySold;
+    const remaining = item.quantity - qty;
 
-    const saleRow = {
+    const row = {
       user_id: user.id,
-      item_id: itemSold.id,
-      item_name: itemSold.name,
-      sku: itemSold.sku,
-      original_buyer: itemSold.buyer,
-      category: itemSold.category,
-      store: itemSold.store,
-      platform: salePlatform,
-      quantity_sold: qtySold,
-      final_sale_price: salePriceNumber,
+      item_id: item.id,
+      item_name: item.name,
+      sku: item.sku,
+      original_buyer: item.buyer,
+      category: item.category,
+      store: item.store,
+      platform: saleForm.platform,
+      quantity_sold: qty,
+      final_sale_price: price,
       gross_sale: grossSale,
       item_cost: itemCost,
       shipping_cost: shipping,
       platform_fees: fees,
       net_profit: netProfit,
-      notes: saleNotes,
+      notes: saleForm.notes,
     };
 
-    const { data: saleData, error: saleError } = await supabase.from("sales_records").insert(saleRow).select().single();
-    if (saleError) return alert("Could not add sale: " + saleError.message);
+    const { data: saleData, error: saleError } = editingSaleId
+      ? await supabase.from("sales_records").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingSaleId).select().single()
+      : await supabase.from("sales_records").insert(row).select().single();
 
-    if (remainingQuantity > 0) {
-      const { data: updatedInventoryItem, error: updateError } = await supabase
+    if (saleError) return alert("Could not save sale: " + saleError.message);
+
+    if (!editingSaleId) {
+      const { data: updatedItem, error: updateError } = await supabase
         .from("inventory_items")
-        .update({ quantity: remainingQuantity, updated_at: new Date().toISOString() })
-        .eq("id", itemSold.id)
+        .update({ quantity: remaining, status: remaining === 0 ? "Sold" : item.status, updated_at: new Date().toISOString() })
+        .eq("id", item.id)
         .select()
         .single();
+
       if (updateError) {
         alert("Sale saved, but inventory quantity did not update: " + updateError.message);
-        await loadAllCloudData();
+        await loadAllData();
         return;
       }
-      setItems(items.map((item) => (item.id === itemSold.id ? dbItemToAppItem(updatedInventoryItem) : item)));
-    } else {
-      const { error: deleteError } = await supabase.from("inventory_items").delete().eq("id", itemSold.id);
-      if (deleteError) {
-        alert("Sale saved, but sold-out inventory item did not delete: " + deleteError.message);
-        await loadAllCloudData();
-        return;
-      }
-      setItems(items.filter((item) => item.id !== itemSold.id));
+
+      setItems(items.map((i) => (i.id === item.id ? mapItem(updatedItem) : i)));
     }
 
-    setSales([dbSaleToAppSale(saleData), ...sales]);
-    setSoldItemId("");
-    setSalePlatform("eBay");
-    setQuantitySold(1);
-    setFinalSalePrice("");
-    setShippingCost("");
-    setPlatformFees("");
-    setSaleNotes("");
+    const mapped = mapSale(saleData);
+    setSales(editingSaleId ? sales.map((s) => (s.id === editingSaleId ? mapped : s)) : [mapped, ...sales]);
+    setEditingSaleId(null);
+    setSaleForm({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCost: "", platformFees: "", notes: "" });
     setActiveTab("sales");
+  }
+
+  function startEditingSale(sale) {
+    setEditingSaleId(sale.id);
+    setSaleForm({ itemId: sale.itemId, platform: sale.platform, quantitySold: sale.quantitySold, finalSalePrice: sale.finalSalePrice, shippingCost: sale.shippingCost, platformFees: sale.platformFees, notes: sale.notes });
   }
 
   async function deleteSale(id) {
@@ -1278,68 +849,11 @@ function App() {
     setSales(sales.filter((sale) => sale.id !== id));
   }
 
-  function startEditingSale(sale) {
-    setEditingSaleId(sale.id);
-    setEditSalePlatform(sale.platform || "eBay");
-    setEditQuantitySold(sale.quantitySold);
-    setEditFinalSalePrice(sale.finalSalePrice);
-    setEditShippingCost(sale.shippingCost);
-    setEditPlatformFees(sale.platformFees);
-    setEditSaleNotes(sale.notes || "");
-  }
-
-  function cancelEditingSale() {
-    setEditingSaleId(null);
-    setEditSalePlatform("eBay");
-    setEditQuantitySold(1);
-    setEditFinalSalePrice("");
-    setEditShippingCost("");
-    setEditPlatformFees("");
-    setEditSaleNotes("");
-  }
-
-  async function saveEditedSale(event) {
-    event.preventDefault();
-    const saleBeingEdited = sales.find((sale) => sale.id === editingSaleId);
-    if (!saleBeingEdited) return alert("Sale not found.");
-    if (!editQuantitySold || !editFinalSalePrice) return alert("Please enter quantity sold and final sale price.");
-
-    const qtySold = Number(editQuantitySold);
-    const salePriceNumber = Number(editFinalSalePrice);
-    const shipping = Number(editShippingCost || 0);
-    const fees = Number(editPlatformFees || 0);
-    const costPerItem = saleBeingEdited.quantitySold > 0 ? saleBeingEdited.itemCost / saleBeingEdited.quantitySold : 0;
-    const itemCost = costPerItem * qtySold;
-    const grossSale = salePriceNumber * qtySold;
-    const netProfit = grossSale - itemCost - shipping - fees;
-
-    const row = {
-      platform: editSalePlatform,
-      quantity_sold: qtySold,
-      final_sale_price: salePriceNumber,
-      gross_sale: grossSale,
-      item_cost: itemCost,
-      shipping_cost: shipping,
-      platform_fees: fees,
-      net_profit: netProfit,
-      notes: editSaleNotes,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase.from("sales_records").update(row).eq("id", editingSaleId).select().single();
-    if (error) return alert("Could not update sale: " + error.message);
-    setSales(sales.map((sale) => (sale.id === editingSaleId ? dbSaleToAppSale(data) : sale)));
-    cancelEditingSale();
-  }
-
   function downloadCSV(filename, rows) {
-    if (!rows || rows.length === 0) return alert("No data to export yet.");
+    if (!rows.length) return alert("No data to export yet.");
     const headers = Object.keys(rows[0]);
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => headers.map((header) => `"${String(row[header] ?? "").replaceAll('"', '""')}"`).join(",")),
-    ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => `"${String(row[h] ?? "").replaceAll('"', '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -1349,18 +863,8 @@ function App() {
   }
 
   function downloadBackup() {
-    const backupData = {
-      createdAt: new Date().toISOString(),
-      appName: "Ember Ledger",
-      version: "1.5-scan-catalog-reports",
-      items,
-      sales,
-      expenses,
-      mileageTrips,
-      vehicles,
-      catalogProducts,
-    };
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+    const backup = { createdAt: new Date().toISOString(), items, catalogProducts, expenses, sales, vehicles, mileageTrips };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -1369,55 +873,37 @@ function App() {
     URL.revokeObjectURL(url);
   }
 
-  const totalSpent = items.reduce((sum, item) => sum + item.quantity * item.unitCost, 0);
-  const totalPotentialSales = items.reduce((sum, item) => sum + item.quantity * item.salePrice, 0);
-  const totalMarketValue = items.reduce((sum, item) => sum + item.quantity * item.marketPrice, 0);
+  const totalSpent = items.reduce((s, i) => s + i.quantity * i.unitCost, 0);
+  const totalPotentialSales = items.reduce((s, i) => s + i.quantity * i.salePrice, 0);
+  const totalMarketValue = items.reduce((s, i) => s + i.quantity * i.marketPrice, 0);
   const estimatedProfit = totalPotentialSales - totalSpent;
   const estimatedMarketProfit = totalMarketValue - totalSpent;
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
-  const totalBusinessMiles = mileageTrips.reduce((sum, trip) => sum + trip.businessMiles, 0);
-  const totalFuelCost = mileageTrips.reduce((sum, trip) => sum + trip.fuelCost, 0);
-  const totalWearCost = mileageTrips.reduce((sum, trip) => sum + trip.wearCost, 0);
-  const totalVehicleCost = mileageTrips.reduce((sum, trip) => sum + trip.totalVehicleCost, 0);
-  const totalMileageValue = mileageTrips.reduce((sum, trip) => sum + trip.mileageValue, 0);
-  const totalSalesRevenue = sales.reduce((sum, sale) => sum + sale.grossSale, 0);
-  const totalSalesProfit = sales.reduce((sum, sale) => sum + sale.netProfit, 0);
-  const totalItemsSold = sales.reduce((sum, sale) => sum + sale.quantitySold, 0);
+  const totalSalesRevenue = sales.reduce((s, sale) => s + sale.grossSale, 0);
+  const totalSalesProfit = sales.reduce((s, sale) => s + sale.netProfit, 0);
+  const totalItemsSold = sales.reduce((s, sale) => s + sale.quantitySold, 0);
+  const totalBusinessMiles = mileageTrips.reduce((s, t) => s + t.businessMiles, 0);
+  const totalFuelCost = mileageTrips.reduce((s, t) => s + t.fuelCost, 0);
+  const totalWearCost = mileageTrips.reduce((s, t) => s + t.wearCost, 0);
+  const totalVehicleCost = mileageTrips.reduce((s, t) => s + t.totalVehicleCost, 0);
+  const totalMileageValue = mileageTrips.reduce((s, t) => s + t.mileageValue, 0);
 
   const spendingFor = (person) =>
-    items.filter((item) => item.buyer === person).reduce((sum, item) => sum + item.quantity * item.unitCost, 0) +
-    expenses.filter((expense) => expense.buyer === person).reduce((sum, expense) => sum + expense.amount, 0) +
-    mileageTrips.filter((trip) => trip.driver === person).reduce((sum, trip) => sum + trip.totalVehicleCost, 0);
+    items.filter((i) => i.buyer === person).reduce((s, i) => s + i.quantity * i.unitCost, 0) +
+    expenses.filter((e) => e.buyer === person).reduce((s, e) => s + e.amount, 0) +
+    mileageTrips.filter((t) => t.driver === person).reduce((s, t) => s + t.totalVehicleCost, 0);
 
-  const salesByPlatform = sales.reduce((acc, sale) => {
-    acc[sale.platform] = (acc[sale.platform] || 0) + sale.grossSale;
-    return acc;
-  }, {});
+  const salesByPlatform = sales.reduce((a, s) => ({ ...a, [s.platform]: (a[s.platform] || 0) + s.grossSale }), {});
+  const expensesByCategory = expenses.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + e.amount }), {});
+  const inventoryByCategory = items.reduce((a, i) => ({ ...a, [i.category || "Uncategorized"]: (a[i.category || "Uncategorized"] || 0) + i.quantity }), {});
+  const inventoryByStatus = items.reduce((a, i) => ({ ...a, [i.status || "In Stock"]: (a[i.status || "In Stock"] || 0) + i.quantity }), {});
 
-  const expensesByCategory = expenses.reduce((acc, expense) => {
-    acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
-    return acc;
-  }, {});
-
-  const inventoryByCategory = items.reduce((acc, item) => {
-    acc[item.category || "Uncategorized"] = (acc[item.category || "Uncategorized"] || 0) + item.quantity;
-    return acc;
-  }, {});
-
-  const inventoryByMarketSource = items.reduce((acc, item) => {
-    acc[item.externalProductSource || "Manual"] = (acc[item.externalProductSource || "Manual"] || 0) + item.quantity;
-    return acc;
-  }, {});
-
-  const lowStockItems = items.filter((item) => item.quantity <= 1);
-  const needsPhotosItems = items.filter((item) => item.status === "Needs Photos" || !item.itemImage);
-  const needsPriceCheckItems = items.filter((item) => item.status === "Needs Price Check" || item.marketPrice <= 0);
-  const listedItems = items.filter((item) => item.status === "Listed");
-  const inventoryByStatus = items.reduce((acc, item) => {
-    acc[item.status || "In Stock"] = (acc[item.status || "In Stock"] || 0) + item.quantity;
-    return acc;
-  }, {});
+  const lowStockItems = items.filter((i) => i.quantity <= 1);
+  const needsPhotosItems = items.filter((i) => i.status === "Needs Photos" || !i.itemImage);
+  const needsDeckTradrItems = items.filter((i) => i.status === "Needs DeckTradr Check" || Number(i.marketPrice) <= 0);
+  const readyToListItems = items.filter((i) => i.status === "Ready to List");
+  const listedItems = items.filter((i) => i.status === "Listed");
 
   const filteredItems = items.filter((item) => {
     const search = inventorySearch.toLowerCase();
@@ -1428,11 +914,9 @@ function App() {
       item.category.toLowerCase().includes(search) ||
       String(item.store || "").toLowerCase().includes(search) ||
       String(item.barcode || "").toLowerCase().includes(search) ||
-      String(item.externalProductSource || "").toLowerCase().includes(search) ||
       String(item.status || "").toLowerCase().includes(search);
 
     const matchesStatus = inventoryStatusFilter === "All" || item.status === inventoryStatusFilter;
-
     return matchesSearch && matchesStatus;
   });
 
@@ -1442,8 +926,7 @@ function App() {
       product.name.toLowerCase().includes(search) ||
       product.category.toLowerCase().includes(search) ||
       String(product.setName || "").toLowerCase().includes(search) ||
-      String(product.barcode || "").toLowerCase().includes(search) ||
-      String(product.marketSource || "").toLowerCase().includes(search)
+      String(product.barcode || "").toLowerCase().includes(search)
     );
   });
 
@@ -1458,11 +941,13 @@ function App() {
           <section className="panel">
             <h2>{authMode === "login" ? "Log In" : "Create Account"}</h2>
             <form onSubmit={handleAuth} className="form">
-              <label>Email<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" /></label>
-              <label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="At least 6 characters" /></label>
+              <Field label="Email"><input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} /></Field>
+              <Field label="Password"><input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} /></Field>
               <button type="submit" disabled={authLoading}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
             </form>
-            <button className="secondary-button" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}>{authMode === "login" ? "Need an account? Sign up" : "Already have an account? Log in"}</button>
+            <button className="secondary-button" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}>
+              {authMode === "login" ? "Need an account? Sign up" : "Already have an account? Log in"}
+            </button>
           </section>
         </main>
       </div>
@@ -1477,50 +962,80 @@ function App() {
         <button className="secondary-button" onClick={signOut}>Sign Out</button>
       </header>
 
-      <nav className="nav">
-        <button onClick={() => setActiveTab("dashboard")}>Dashboard</button>
-        <button onClick={() => setActiveTab("catalog")}>Catalog</button>
-        <button onClick={() => setActiveTab("decktradr")}>DeckTradr API</button>
-        <button onClick={() => setActiveTab("vehicles")}>Vehicles</button>
-        <button onClick={() => setActiveTab("addInventory")}>Add Inventory</button>
-        <button onClick={() => setActiveTab("addSale")}>Add Sale</button>
-        <button onClick={() => setActiveTab("expenses")}>Expenses</button>
-        <button onClick={() => setActiveTab("mileage")}>Mileage</button>
-        <button onClick={() => setActiveTab("inventory")}>Inventory</button>
-        <button onClick={() => setActiveTab("sales")}>Sales</button>
-        <button onClick={() => setActiveTab("reports")}>Reports</button>
-      </nav>
+      <div className="topbar">
+        <button type="button" className="menu-button" onClick={() => setMenuOpen(true)}>☰ Menu</button>
+        <div className="topbar-title"><p>Current Section</p><h2>{activeTabLabel}</h2></div>
+        <div className="topbar-actions">
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("addInventory")}>+ Inventory</button>
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("addSale")}>+ Sale</button>
+        </div>
+      </div>
+
+      {menuOpen && <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />}
+
+      <aside className={`drawer ${menuOpen ? "open" : ""}`}>
+        <div className="drawer-header">
+          <div><p>Ember Ledger</p><h3>Navigation</h3></div>
+          <button type="button" className="secondary-button" onClick={() => setMenuOpen(false)}>Close</button>
+        </div>
+        {navSections.map((section) => (
+          <div className="drawer-section" key={section.title}>
+            <p className="drawer-section-title">{section.title}</p>
+            <div className="drawer-links">
+              {section.items.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={activeTab === item.key ? "drawer-link active" : "drawer-link"}
+                  onClick={() => {
+                    setActiveTab(item.key);
+                    setMenuOpen(false);
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </aside>
 
       <main className="main">
         {activeTab === "dashboard" && (
           <>
             <section className="cards">
-              <div className="card"><p>Inventory Cost</p><h2>${totalSpent.toFixed(2)}</h2></div>
-              <div className="card"><p>Potential Sales</p><h2>${totalPotentialSales.toFixed(2)}</h2></div>
-              <div className="card"><p>Market Value</p><h2>${totalMarketValue.toFixed(2)}</h2></div>
-              <div className="card"><p>Planned Profit</p><h2>${estimatedProfit.toFixed(2)}</h2></div>
-              <div className="card"><p>Market Profit</p><h2>${estimatedMarketProfit.toFixed(2)}</h2></div>
-              <div className="card"><p>Expenses</p><h2>${totalExpenses.toFixed(2)}</h2></div>
-              <div className="card"><p>Profit After Expenses</p><h2>${estimatedProfitAfterExpenses.toFixed(2)}</h2></div>
-              <div className="card"><p>Sales Revenue</p><h2>${totalSalesRevenue.toFixed(2)}</h2></div>
-              <div className="card"><p>Real Sales Profit</p><h2>${totalSalesProfit.toFixed(2)}</h2></div>
+              <div className="card"><p>Inventory Cost</p><h2>{money(totalSpent)}</h2></div>
+              <div className="card"><p>DeckTradr Value</p><h2>{money(totalMarketValue)}</h2></div>
+              <div className="card"><p>DeckTradr Profit</p><h2>{money(estimatedMarketProfit)}</h2></div>
+              <div className="card"><p>Potential Sales</p><h2>{money(totalPotentialSales)}</h2></div>
+              <div className="card"><p>Planned Profit</p><h2>{money(estimatedProfit)}</h2></div>
+              <div className="card"><p>Sales Revenue</p><h2>{money(totalSalesRevenue)}</h2></div>
+              <div className="card"><p>Real Sales Profit</p><h2>{money(totalSalesProfit)}</h2></div>
+              <div className="card"><p>Expenses</p><h2>{money(totalExpenses)}</h2></div>
+              <div className="card"><p>Profit After Expenses</p><h2>{money(estimatedProfitAfterExpenses)}</h2></div>
               <div className="card"><p>Items Sold</p><h2>{totalItemsSold}</h2></div>
               <div className="card"><p>Business Miles</p><h2>{totalBusinessMiles.toFixed(1)}</h2></div>
-              <div className="card"><p>Total Vehicle Cost</p><h2>${totalVehicleCost.toFixed(2)}</h2></div>
+              <div className="card"><p>Total Vehicle Cost</p><h2>{money(totalVehicleCost)}</h2></div>
             </section>
-
+            <section className="panel">
+              <h2>Action Center</h2>
+              <div className="cards">
+                <div className="card"><p>Needs Photos</p><h2>{needsPhotosItems.length}</h2></div>
+                <div className="card"><p>Needs DeckTradr</p><h2>{needsDeckTradrItems.length}</h2></div>
+                <div className="card"><p>Ready to List</p><h2>{readyToListItems.length}</h2></div>
+                <div className="card"><p>Low Stock</p><h2>{lowStockItems.length}</h2></div>
+              </div>
+            </section>
             <section className="panel">
               <h2>Buyer Spending</h2>
               <div className="buyer-grid">
-                <div className="buyer-card"><p>Zena</p><h3>${spendingFor("Zena").toFixed(2)}</h3></div>
-                <div className="buyer-card"><p>Dillon</p><h3>${spendingFor("Dillon").toFixed(2)}</h3></div>
-                <div className="buyer-card"><p>Joint</p><h3>${spendingFor("Joint").toFixed(2)}</h3></div>
-                <div className="buyer-card"><p>Other</p><h3>${spendingFor("Other").toFixed(2)}</h3></div>
+                {PEOPLE.map((person) => (
+                  <div className="buyer-card" key={person}><p>{person}</p><h3>{money(spendingFor(person))}</h3></div>
+                ))}
               </div>
             </section>
-
             <section className="panel">
-              <h2>Export Reports</h2>
+              <h2>Exports</h2>
               <div className="export-grid">
                 <button onClick={() => downloadCSV("ember-ledger-inventory.csv", items)}>Export Inventory</button>
                 <button onClick={() => downloadCSV("ember-ledger-catalog.csv", catalogProducts)}>Export Catalog</button>
@@ -1528,103 +1043,8 @@ function App() {
                 <button onClick={() => downloadCSV("ember-ledger-expenses.csv", expenses)}>Export Expenses</button>
                 <button onClick={() => downloadCSV("ember-ledger-mileage.csv", mileageTrips)}>Export Mileage</button>
                 <button onClick={() => downloadCSV("ember-ledger-vehicles.csv", vehicles)}>Export Vehicles</button>
+                <button onClick={downloadBackup}>Full Backup</button>
               </div>
-            </section>
-
-            <section className="panel">
-              <h2>Backup</h2>
-              <button onClick={downloadBackup}>Download Full Backup</button>
-            </section>
-          </>
-        )}
-
-        {activeTab === "catalog" && (
-          <>
-            <section className="panel">
-              <h2>Add Product Catalog Item</h2>
-              {showCatalogScanner && (
-                <BarcodeScanner
-                  onScan={(code) => {
-                    setCatalogBarcode(code);
-                    setShowCatalogScanner(false);
-                  }}
-                  onClose={() => setShowCatalogScanner(false)}
-                />
-              )}
-              <form onSubmit={addCatalogProduct} className="form">
-                <label>Product Name<input value={catalogName} onChange={(e) => setCatalogName(e.target.value)} placeholder="Perfect Order ETB" /></label>
-                <label>Category<select value={catalogCategory} onChange={(e) => setCatalogCategory(e.target.value)}><option>Pokemon</option><option>Makeup</option><option>Clothes</option><option>Candy</option><option>Collectibles</option><option>Supplies</option><option>Other</option></select></label>
-                <label>Set / Collection<input value={catalogSetName} onChange={(e) => setCatalogSetName(e.target.value)} placeholder="Example: Perfect Order" /></label>
-                <label>Product Type<input value={catalogProductType} onChange={(e) => setCatalogProductType(e.target.value)} placeholder="ETB, Booster Bundle, Tin, Blister" /></label>
-                <label>Barcode / UPC<input value={catalogBarcode} onChange={(e) => setCatalogBarcode(e.target.value)} placeholder="Scan or type barcode" /></label>
-                <button type="button" className="secondary-button" onClick={() => setShowCatalogScanner(true)}>Scan Catalog Barcode</button>
-                <label>Product Image<input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setCatalogImageUrl, "catalog-products")} /></label>
-                {catalogImageUrl && <div className="receipt-preview"><p>Catalog photo attached</p><img src={catalogImageUrl} alt="Catalog preview" /></div>}
-                <label>Market Source<select value={catalogMarketSource} onChange={(e) => setCatalogMarketSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label>
-                <label>External Product ID<input value={catalogExternalProductId} onChange={(e) => setCatalogExternalProductId(e.target.value)} /></label>
-                <label>TCGplayer Product ID<input value={catalogTcgplayerProductId} onChange={(e) => setCatalogTcgplayerProductId(e.target.value)} /></label>
-                <label>Market URL<input value={catalogMarketUrl} onChange={(e) => setCatalogMarketUrl(e.target.value)} /></label>
-                <label>Market Price<input type="number" step="0.01" value={catalogMarketPrice} onChange={(e) => setCatalogMarketPrice(e.target.value)} /></label>
-                <label>Low Price<input type="number" step="0.01" value={catalogLowPrice} onChange={(e) => setCatalogLowPrice(e.target.value)} /></label>
-                <label>Mid Price<input type="number" step="0.01" value={catalogMidPrice} onChange={(e) => setCatalogMidPrice(e.target.value)} /></label>
-                <label>High Price<input type="number" step="0.01" value={catalogHighPrice} onChange={(e) => setCatalogHighPrice(e.target.value)} /></label>
-                <label>Notes<input value={catalogNotes} onChange={(e) => setCatalogNotes(e.target.value)} /></label>
-                <button type="submit">Add Catalog Product</button>
-              </form>
-            </section>
-
-            <section className="panel">
-              <h2>Product Catalog</h2>
-              <input className="search-input" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search catalog by name, set, barcode, or source..." />
-              {filteredCatalogProducts.length === 0 ? <p>No catalog products found.</p> : (
-                <div className="inventory-list">
-                  {filteredCatalogProducts.map((product) => (
-                    <div className="inventory-card" key={product.id}>
-                      {editingCatalogId === product.id ? (
-                        <form onSubmit={saveEditedCatalogProduct} className="form">
-                          <label>Product Name<input value={editCatalogName} onChange={(e) => setEditCatalogName(e.target.value)} /></label>
-                          <label>Category<select value={editCatalogCategory} onChange={(e) => setEditCatalogCategory(e.target.value)}><option>Pokemon</option><option>Makeup</option><option>Clothes</option><option>Candy</option><option>Collectibles</option><option>Supplies</option><option>Other</option></select></label>
-                          <label>Set / Collection<input value={editCatalogSetName} onChange={(e) => setEditCatalogSetName(e.target.value)} /></label>
-                          <label>Product Type<input value={editCatalogProductType} onChange={(e) => setEditCatalogProductType(e.target.value)} /></label>
-                          <label>Barcode / UPC<input value={editCatalogBarcode} onChange={(e) => setEditCatalogBarcode(e.target.value)} /></label>
-                          <label>Market Source<select value={editCatalogMarketSource} onChange={(e) => setEditCatalogMarketSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label>
-                          <label>External Product ID<input value={editCatalogExternalProductId} onChange={(e) => setEditCatalogExternalProductId(e.target.value)} /></label>
-                          <label>TCGplayer Product ID<input value={editCatalogTcgplayerProductId} onChange={(e) => setEditCatalogTcgplayerProductId(e.target.value)} /></label>
-                          <label>Market URL<input value={editCatalogMarketUrl} onChange={(e) => setEditCatalogMarketUrl(e.target.value)} /></label>
-                          <label>Image URL<input value={editCatalogImageUrl} onChange={(e) => setEditCatalogImageUrl(e.target.value)} /></label>
-                          <label>Market Price<input type="number" step="0.01" value={editCatalogMarketPrice} onChange={(e) => setEditCatalogMarketPrice(e.target.value)} /></label>
-                          <label>Low Price<input type="number" step="0.01" value={editCatalogLowPrice} onChange={(e) => setEditCatalogLowPrice(e.target.value)} /></label>
-                          <label>Mid Price<input type="number" step="0.01" value={editCatalogMidPrice} onChange={(e) => setEditCatalogMidPrice(e.target.value)} /></label>
-                          <label>High Price<input type="number" step="0.01" value={editCatalogHighPrice} onChange={(e) => setEditCatalogHighPrice(e.target.value)} /></label>
-                          <label>Notes<input value={editCatalogNotes} onChange={(e) => setEditCatalogNotes(e.target.value)} /></label>
-                          <button type="submit">Save Catalog Product</button>
-                          <button type="button" className="secondary-button" onClick={cancelEditingCatalogProduct}>Cancel</button>
-                        </form>
-                      ) : (
-                        <>
-                          {product.imageUrl && <div className="receipt-preview"><p>Product Photo:</p><img src={product.imageUrl} alt={product.name} /></div>}
-                          <h3>{product.name}</h3>
-                          <p>Category: {product.category}</p>
-                          <p>Set: {product.setName || "Not listed"}</p>
-                          <p>Type: {product.productType || "Not listed"}</p>
-                          <p>Barcode: {product.barcode || "Not listed"}</p>
-                          <p>Source: {product.marketSource}</p>
-                          <p>Market Price: ${product.marketPrice.toFixed(2)}</p>
-                          <p>Low / Mid / High: ${product.lowPrice.toFixed(2)} / ${product.midPrice.toFixed(2)} / ${product.highPrice.toFixed(2)}</p>
-                          {product.marketUrl && <p><a href={product.marketUrl} target="_blank" rel="noreferrer">Open Market Link</a></p>}
-                          {product.notes && <p>Notes: {product.notes}</p>}
-                          <button className="edit-button" onClick={() => {
-                            applyCatalogProduct(product.id);
-                            setActiveTab("addInventory");
-                          }}>Use for Inventory</button>
-                          <button className="edit-button" onClick={() => startEditingCatalogProduct(product)}>Edit Catalog Product</button>
-                          <button className="delete-button" onClick={() => deleteCatalogProduct(product.id)}>Delete Catalog Product</button>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </section>
           </>
         )}
@@ -1633,50 +1053,13 @@ function App() {
           <>
             <section className="panel">
               <h2>DeckTradr API / Partnership Request</h2>
-              <p>
-                Use this section to explain what Ember Ledger needs from DeckTradr.
-                The goal is to connect DeckTradr product data and market values directly
-                into your reseller inventory workflow.
-              </p>
-
+              <p>Use this page to explain what Ember Ledger needs from DeckTradr. The goal is to connect DeckTradr product data and market values directly into your reseller workflow.</p>
               <div className="cards">
-                <div className="card">
-                  <p>Current Integration</p>
-                  <h2>Manual</h2>
-                </div>
-                <div className="card">
-                  <p>Needed Access</p>
-                  <h2>API</h2>
-                </div>
-                <div className="card">
-                  <p>Main Use</p>
-                  <h2>Pricing</h2>
-                </div>
+                <div className="card"><p>Current Integration</p><h2>Manual</h2></div>
+                <div className="card"><p>Needed Access</p><h2>API</h2></div>
+                <div className="card"><p>Main Use</p><h2>Pricing</h2></div>
               </div>
             </section>
-
-            <section className="panel">
-              <h2>API Access Needed</h2>
-              <div className="inventory-list">
-                <div className="inventory-card">
-                  <h3>Product Search</h3>
-                  <p>Search DeckTradr by product name, sealed product name, barcode, UPC, set, or product type.</p>
-                </div>
-                <div className="inventory-card">
-                  <h3>Market Pricing</h3>
-                  <p>Pull current DeckTradr market price, low price, mid price, high price, and last updated date.</p>
-                </div>
-                <div className="inventory-card">
-                  <h3>Product Details</h3>
-                  <p>Retrieve product image, product URL, category, set name, product type, and DeckTradr product ID.</p>
-                </div>
-                <div className="inventory-card">
-                  <h3>Inventory Matching</h3>
-                  <p>Match scanned barcodes or saved catalog products to DeckTradr records.</p>
-                </div>
-              </div>
-            </section>
-
             <section className="panel">
               <h2>Message to DeckTradr</h2>
               <textarea
@@ -1696,7 +1079,7 @@ The API access I am looking for would ideally include:
 3. Current market pricing including market price, low price, mid price, high price, and last updated timestamp.
 4. Ability to match scanned inventory barcodes to DeckTradr products.
 
-My goal is not to replace DeckTradr. I want Ember Ledger to use DeckTradr as the trusted pricing and product-data source while helping resellers track business expenses, mileage, receipts, inventory cost basis, listing status, and profit/loss.
+My goal is not to replace DeckTradr. I want Ember Ledger to use DeckTradr as the trusted pricing and product-data source while helping resellers track receipts, cost basis, mileage, listings, expenses, and true P/L.
 
 Could you let me know whether DeckTradr currently offers API access, affiliate/partner access, or another approved way to connect product and market data into a third-party inventory workflow?
 
@@ -1704,129 +1087,305 @@ Thank you,
 Zena`}
               />
             </section>
-
-            <section className="panel">
-              <h2>Planned DeckTradr App Flow</h2>
-              <div className="inventory-list">
-                <div className="inventory-card">
-                  <h3>1. Scan or Search</h3>
-                  <p>User scans a barcode or searches a product name inside Ember Ledger.</p>
-                </div>
-                <div className="inventory-card">
-                  <h3>2. Pull DeckTradr Match</h3>
-                  <p>App returns matching DeckTradr products with images, names, product IDs, and prices.</p>
-                </div>
-                <div className="inventory-card">
-                  <h3>3. Save to Catalog</h3>
-                  <p>User saves the DeckTradr product to Ember Ledger's Product Catalog.</p>
-                </div>
-                <div className="inventory-card">
-                  <h3>4. Track Profit</h3>
-                  <p>Inventory uses DeckTradr value against cost basis to estimate profit and listing strategy.</p>
-                </div>
-              </div>
-            </section>
           </>
         )}
 
-        {activeTab === "vehicles" && (
+        {activeTab === "catalog" && (
           <>
-            <section className="panel"><h2>Add Vehicle</h2><form onSubmit={addVehicle} className="form">
-              <label>Vehicle Name<input value={vehicleName} onChange={(e) => setVehicleName(e.target.value)} placeholder="Zena SUV" /></label>
-              <label>Owner / Driver<select value={vehicleOwner} onChange={(e) => setVehicleOwner(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label>
-              <label>Average MPG<input type="number" step="0.1" value={vehicleMpg} onChange={(e) => setVehicleMpg(e.target.value)} /></label>
-              <label>Maintenance / Wear Cost Per Mile<input type="number" step="0.01" value={vehicleWearCost} onChange={(e) => setVehicleWearCost(e.target.value)} /></label>
-              <label>Notes<input value={vehicleNotes} onChange={(e) => setVehicleNotes(e.target.value)} /></label>
-              <button type="submit">Add Vehicle</button>
-            </form></section>
-            <section className="panel"><h2>Vehicles</h2>{vehicles.length === 0 ? <p>No vehicles added yet.</p> : <div className="inventory-list">{vehicles.map((vehicle) => <div className="inventory-card" key={vehicle.id}>{editingVehicleId === vehicle.id ? <form onSubmit={saveEditedVehicle} className="form"><label>Vehicle Name<input value={editVehicleName} onChange={(e) => setEditVehicleName(e.target.value)} /></label><label>Owner<select value={editVehicleOwner} onChange={(e) => setEditVehicleOwner(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Average MPG<input type="number" step="0.1" value={editVehicleMpg} onChange={(e) => setEditVehicleMpg(e.target.value)} /></label><label>Wear Cost Per Mile<input type="number" step="0.01" value={editVehicleWearCost} onChange={(e) => setEditVehicleWearCost(e.target.value)} /></label><label>Notes<input value={editVehicleNotes} onChange={(e) => setEditVehicleNotes(e.target.value)} /></label><button type="submit">Save Vehicle</button><button type="button" className="secondary-button" onClick={cancelEditingVehicle}>Cancel</button></form> : <><h3>{vehicle.name}</h3><p>Owner: {vehicle.owner}</p><p>Average MPG: {vehicle.averageMpg}</p><p>Wear / Maintenance: ${vehicle.wearCostPerMile.toFixed(2)} per mile</p>{vehicle.notes && <p>Notes: {vehicle.notes}</p>}<button className="edit-button" onClick={() => startEditingVehicle(vehicle)}>Edit Vehicle</button><button className="delete-button" onClick={() => deleteVehicle(vehicle.id)}>Delete Vehicle</button></>}</div>)}</div>}</section>
+            <section className="panel">
+              <h2>{editingCatalogId ? "Edit Catalog Product" : "Add Product Catalog Item"}</h2>
+              <button type="button" className="secondary-button" onClick={() => setShowCatalogScanner(true)}>Open Catalog Scanner</button>
+              {showCatalogScanner && <BarcodeScanner onScan={(code) => { updateCatalogForm("barcode", code); setShowCatalogScanner(false); }} onClose={() => setShowCatalogScanner(false)} />}
+              <form onSubmit={addCatalogProduct} className="form">
+                <Field label="Product Name"><input value={catalogForm.name} onChange={(e) => updateCatalogForm("name", e.target.value)} /></Field>
+                <Field label="Category"><select value={catalogForm.category} onChange={(e) => updateCatalogForm("category", e.target.value)}>{CATEGORIES.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                <Field label="Set / Collection"><input value={catalogForm.setName} onChange={(e) => updateCatalogForm("setName", e.target.value)} /></Field>
+                <Field label="Product Type"><input value={catalogForm.productType} onChange={(e) => updateCatalogForm("productType", e.target.value)} /></Field>
+                <Field label="Barcode / UPC"><input value={catalogForm.barcode} onChange={(e) => updateCatalogForm("barcode", e.target.value)} /></Field>
+                <Field label="Product Image"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateCatalogForm("imageUrl", url), "catalog-products")} /></Field>
+                {catalogForm.imageUrl && <div className="receipt-preview"><p>Catalog Photo</p><img src={catalogForm.imageUrl} alt="Catalog" /></div>}
+                <Field label="DeckTradr Product ID"><input value={catalogForm.externalProductId} onChange={(e) => updateCatalogForm("externalProductId", e.target.value)} /></Field>
+                <Field label="DeckTradr URL"><input value={catalogForm.marketUrl} onChange={(e) => updateCatalogForm("marketUrl", e.target.value)} /></Field>
+                <Field label="DeckTradr Market Price"><input type="number" step="0.01" value={catalogForm.marketPrice} onChange={(e) => updateCatalogForm("marketPrice", e.target.value)} /></Field>
+                <Field label="Low Price"><input type="number" step="0.01" value={catalogForm.lowPrice} onChange={(e) => updateCatalogForm("lowPrice", e.target.value)} /></Field>
+                <Field label="Mid Price"><input type="number" step="0.01" value={catalogForm.midPrice} onChange={(e) => updateCatalogForm("midPrice", e.target.value)} /></Field>
+                <Field label="High Price"><input type="number" step="0.01" value={catalogForm.highPrice} onChange={(e) => updateCatalogForm("highPrice", e.target.value)} /></Field>
+                <Field label="Notes"><input value={catalogForm.notes} onChange={(e) => updateCatalogForm("notes", e.target.value)} /></Field>
+                <button type="submit">{editingCatalogId ? "Save Catalog Product" : "Add Catalog Product"}</button>
+                {editingCatalogId && <button type="button" className="secondary-button" onClick={() => { setEditingCatalogId(null); setCatalogForm(blankCatalog); }}>Cancel Edit</button>}
+              </form>
+            </section>
+            <section className="panel">
+              <h2>Product Catalog</h2>
+              <input className="search-input" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search catalog..." />
+              <div className="inventory-list">
+                {filteredCatalogProducts.map((p) => (
+                  <div className="inventory-card" key={p.id}>
+                    {p.imageUrl && <div className="receipt-preview"><p>Product Photo</p><img src={p.imageUrl} alt={p.name} /></div>}
+                    <h3>{p.name}</h3>
+                    <p>Category: {p.category}</p>
+                    <p>Set: {p.setName || "Not listed"}</p>
+                    <p>Type: {p.productType || "Not listed"}</p>
+                    <p>Barcode: {p.barcode || "Not listed"}</p>
+                    <p>DeckTradr Market Price: {money(p.marketPrice)}</p>
+                    <p>Low / Mid / High: {money(p.lowPrice)} / {money(p.midPrice)} / {money(p.highPrice)}</p>
+                    {p.marketUrl && <p><a href={p.marketUrl} target="_blank" rel="noreferrer">Open DeckTradr Link</a></p>}
+                    {p.notes && <p>Notes: {p.notes}</p>}
+                    <button className="edit-button" onClick={() => { applyCatalogProduct(p.id); setActiveTab("addInventory"); }}>Use for Inventory</button>
+                    <button className="edit-button" onClick={() => startEditingCatalogProduct(p)}>Edit Catalog Product</button>
+                    <button className="delete-button" onClick={() => deleteCatalogProduct(p.id)}>Delete Catalog Product</button>
+                  </div>
+                ))}
+              </div>
+            </section>
           </>
         )}
 
         {activeTab === "addInventory" && (
           <section className="panel">
             <h2>Add Inventory</h2>
-            {showInventoryScanner && <BarcodeScanner onScan={(code) => { setBarcode(code); setShowInventoryScanner(false); }} onClose={() => setShowInventoryScanner(false)} />}
-            <form onSubmit={addItem} className="form">
-              <label>Choose Saved Catalog Product<select value={catalogProductId} onChange={(e) => applyCatalogProduct(e.target.value)}><option value="">No catalog product selected</option>{catalogProducts.map((product) => <option key={product.id} value={product.id}>{product.name} — ${product.marketPrice.toFixed(2)}</option>)}</select></label>
-              <label>Item Name<input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Perfect Order ETB" /></label>
-              <label>Product Photo<input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setItemImage, "item-photos")} /></label>
-              {itemImage && <div className="receipt-preview"><p>Product photo attached</p><img src={itemImage} alt="Product preview" /></div>}
-              <label>Who Purchased It?<select value={buyer} onChange={(e) => setBuyer(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label>
-              <label>Category<select value={category} onChange={(e) => setCategory(e.target.value)}><option>Pokemon</option><option>Makeup</option><option>Clothes</option><option>Candy</option><option>Collectibles</option><option>Supplies</option><option>Other</option></select></label>
-              <label>Store / Source<input value={store} onChange={(e) => setStore(e.target.value)} /></label>
-              <label>Barcode / UPC<input value={barcode} onChange={(e) => setBarcode(e.target.value)} /></label>
-              <button type="button" className="secondary-button" onClick={() => setShowInventoryScanner(true)}>Scan Item Barcode</button>
-              <label>Quantity Purchased<input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
-              <label>Unit Cost<input type="number" step="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} /></label>
-              <label>Planned Sale Price<input type="number" step="0.01" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} /></label>
-              <label>Market Source<select value={externalProductSource} onChange={(e) => setExternalProductSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label>
-              <label>External Product ID<input value={externalProductId} onChange={(e) => setExternalProductId(e.target.value)} /></label>
-              <label>TCGplayer Product ID<input value={tcgplayerProductId} onChange={(e) => setTcgplayerProductId(e.target.value)} /></label>
-              <label>Market URL<input value={tcgplayerUrl} onChange={(e) => setTcgplayerUrl(e.target.value)} /></label>
-              <label>Market Price<input type="number" step="0.01" value={marketPrice} onChange={(e) => setMarketPrice(e.target.value)} /></label>
-              <label>Low Price<input type="number" step="0.01" value={lowPrice} onChange={(e) => setLowPrice(e.target.value)} /></label>
-              <label>Mid Price<input type="number" step="0.01" value={midPrice} onChange={(e) => setMidPrice(e.target.value)} /></label>
-              <label>High Price<input type="number" step="0.01" value={highPrice} onChange={(e) => setHighPrice(e.target.value)} /></label>
-              <label>Status<select value={status} onChange={(e) => setStatus(e.target.value)}><option>In Stock</option><option>Listed</option><option>Sold</option><option>Held</option><option>Personal Collection</option><option>Damaged</option><option>Needs Photos</option><option>Needs Price Check</option></select></label>
-              <label>Listing Platform<input value={listingPlatform} onChange={(e) => setListingPlatform(e.target.value)} placeholder="eBay, Mercari, Whatnot, FB" /></label>
-              <label>Listing URL<input value={listingUrl} onChange={(e) => setListingUrl(e.target.value)} placeholder="Optional listing link" /></label>
-              <label>Listed Price<input type="number" step="0.01" value={listedPrice} onChange={(e) => setListedPrice(e.target.value)} /></label>
-              <label>Action Notes<input value={actionNotes} onChange={(e) => setActionNotes(e.target.value)} placeholder="Need photos, price check, list today..." /></label>
-              <label>Receipt / Screenshot<input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setItemReceiptImage, "inventory")} /></label>
-              {itemReceiptImage && <div className="receipt-preview"><p>Receipt attached</p><img src={itemReceiptImage} alt="Receipt preview" /></div>}
-              <button type="submit">Add Item</button>
-            </form>
+            <button type="button" className="secondary-button" onClick={() => setShowInventoryScanner(true)}>Open Scanner</button>
+            {showInventoryScanner && <BarcodeScanner onScan={(code) => { updateItemForm("barcode", code); setShowInventoryScanner(false); }} onClose={() => setShowInventoryScanner(false)} />}
+            <InventoryForm
+              form={itemForm}
+              setForm={updateItemForm}
+              catalogProducts={catalogProducts}
+              applyCatalogProduct={applyCatalogProduct}
+              handleImageUpload={handleImageUpload}
+              onSubmit={addItem}
+              submitLabel="Add Item"
+            />
+          </section>
+        )}
+
+        {activeTab === "inventory" && (
+          <section className="panel">
+            <h2>Inventory</h2>
+            <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search inventory..." />
+            <div className="export-grid">
+              <button type="button" onClick={() => setInventoryStatusFilter("All")}>All</button>
+              {STATUSES.map((x) => <button key={x} type="button" onClick={() => setInventoryStatusFilter(x)}>{x}</button>)}
+            </div>
+            <p>Current filter: {inventoryStatusFilter}</p>
+            {editingItemId && (
+              <section className="panel">
+                <h2>Edit Item</h2>
+                <InventoryForm
+                  form={itemForm}
+                  setForm={updateItemForm}
+                  catalogProducts={catalogProducts}
+                  applyCatalogProduct={applyCatalogProduct}
+                  handleImageUpload={handleImageUpload}
+                  onSubmit={saveEditedItem}
+                  submitLabel="Save Changes"
+                />
+                <button type="button" className="secondary-button" onClick={() => { setEditingItemId(null); setItemForm(blankItem); }}>Cancel Edit</button>
+              </section>
+            )}
+            <div className="inventory-list">
+              {filteredItems.map((item) => (
+                <div className="inventory-card" key={item.id}>
+                  {item.itemImage && <div className="receipt-preview"><p>Product Photo</p><img src={item.itemImage} alt={item.name} /></div>}
+                  <h3>{item.name}</h3>
+                  <p>SKU: {item.sku}</p>
+                  <p>Status: {item.status}</p>
+                  <p>Buyer: {item.buyer}</p>
+                  <p>Category: {item.category}</p>
+                  <p>Store: {item.store || "Not listed"}</p>
+                  <p>Barcode: {item.barcode || "Not listed"}</p>
+                  <p>Quantity: {item.quantity}</p>
+                  <p>Avg Unit Cost: {money(item.unitCost)}</p>
+                  <p>Total Cost Basis: {money(item.quantity * item.unitCost)}</p>
+                  <p>Planned Sale Price: {money(item.salePrice)}</p>
+                  <p>DeckTradr Market Price: {money(item.marketPrice)}</p>
+                  <p>Planned Profit: {money(item.quantity * item.salePrice - item.quantity * item.unitCost)}</p>
+                  <p>DeckTradr Profit: {money(item.quantity * item.marketPrice - item.quantity * item.unitCost)}</p>
+                  {item.listingPlatform && <p>Listing Platform: {item.listingPlatform}</p>}
+                  {item.listedPrice > 0 && <p>Listed Price: {money(item.listedPrice)}</p>}
+                  {item.listingUrl && <p><a href={item.listingUrl} target="_blank" rel="noreferrer">Open Listing</a></p>}
+                  {item.actionNotes && <p>Action Notes: {item.actionNotes}</p>}
+                  {item.decktradrUrl && <p><a href={item.decktradrUrl} target="_blank" rel="noreferrer">Open DeckTradr Link</a></p>}
+                  {item.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={item.receiptImage} alt="Receipt" /></div>}
+                  <button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button>
+                  <button className="edit-button" onClick={() => startEditingItem(item)}>Edit Item</button>
+                  <button className="delete-button" onClick={() => deleteItem(item.id)}>Delete Item</button>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 
         {activeTab === "addSale" && (
-          <section className="panel"><h2>Add Sale</h2><form onSubmit={addSale} className="form">
-            <label>Item Sold<select value={soldItemId} onChange={(e) => setSoldItemId(e.target.value)}><option value="">Choose item</option>{items.map((item) => <option key={item.id} value={item.id}>{item.name} — Qty {item.quantity} — {item.sku}</option>)}</select></label>
-            <label>Platform<select value={salePlatform} onChange={(e) => setSalePlatform(e.target.value)}><option>eBay</option><option>Mercari</option><option>Whatnot</option><option>Facebook Marketplace</option><option>In-Store</option><option>Instagram</option><option>TikTok Shop</option><option>Other</option></select></label>
-            <label>Quantity Sold<input type="number" min="1" value={quantitySold} onChange={(e) => setQuantitySold(e.target.value)} /></label>
-            <label>Final Sale Price Per Item<input type="number" step="0.01" value={finalSalePrice} onChange={(e) => setFinalSalePrice(e.target.value)} /></label>
-            <label>Shipping Cost<input type="number" step="0.01" value={shippingCost} onChange={(e) => setShippingCost(e.target.value)} /></label>
-            <label>Platform Fees<input type="number" step="0.01" value={platformFees} onChange={(e) => setPlatformFees(e.target.value)} /></label>
-            <label>Notes<input value={saleNotes} onChange={(e) => setSaleNotes(e.target.value)} /></label>
-            <button type="submit">Add Sale</button>
-          </form></section>
+          <section className="panel">
+            <h2>{editingSaleId ? "Edit Sale" : "Add Sale"}</h2>
+            <form onSubmit={addSale} className="form">
+              <Field label="Item Sold">
+                <select value={saleForm.itemId} onChange={(e) => updateSaleForm("itemId", e.target.value)}>
+                  <option value="">Choose item</option>
+                  {items.filter((i) => i.quantity > 0).map((i) => <option key={i.id} value={i.id}>{i.name} — Qty {i.quantity} — {i.sku}</option>)}
+                </select>
+              </Field>
+              <Field label="Platform"><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+              <Field label="Quantity Sold"><input type="number" min="1" value={saleForm.quantitySold} onChange={(e) => updateSaleForm("quantitySold", e.target.value)} /></Field>
+              <Field label="Final Sale Price Per Item"><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
+              <Field label="Shipping Cost"><input type="number" step="0.01" value={saleForm.shippingCost} onChange={(e) => updateSaleForm("shippingCost", e.target.value)} /></Field>
+              <Field label="Platform Fees"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
+              <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
+              <button type="submit">{editingSaleId ? "Save Sale" : "Add Sale"}</button>
+              {editingSaleId && <button type="button" className="secondary-button" onClick={() => { setEditingSaleId(null); setSaleForm({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCost: "", platformFees: "", notes: "" }); }}>Cancel Edit</button>}
+            </form>
+          </section>
+        )}
+
+        {activeTab === "sales" && (
+          <ListPanel title="Sales" emptyText="No sales added yet.">
+            {sales.map((sale) => (
+              <div className="inventory-card" key={sale.id}>
+                <h3>{sale.itemName}</h3>
+                <p>SKU: {sale.sku}</p>
+                <p>Platform: {sale.platform}</p>
+                <p>Quantity Sold: {sale.quantitySold}</p>
+                <p>Sale Price Each: {money(sale.finalSalePrice)}</p>
+                <p>Gross Sale: {money(sale.grossSale)}</p>
+                <p>Item Cost: {money(sale.itemCost)}</p>
+                <p>Shipping: {money(sale.shippingCost)}</p>
+                <p>Fees: {money(sale.platformFees)}</p>
+                <p>Net Profit: {money(sale.netProfit)}</p>
+                {sale.notes && <p>Notes: {sale.notes}</p>}
+                <button className="edit-button" onClick={() => { startEditingSale(sale); setActiveTab("addSale"); }}>Edit Sale</button>
+                <button className="delete-button" onClick={() => deleteSale(sale.id)}>Delete Sale</button>
+              </div>
+            ))}
+          </ListPanel>
         )}
 
         {activeTab === "expenses" && (
           <>
-            <section className="panel"><h2>Add Business Expense</h2><form onSubmit={addExpense} className="form"><label>Vendor / Store<input value={expenseVendor} onChange={(e) => setExpenseVendor(e.target.value)} /></label><label>Expense Category<select value={expenseCategory} onChange={(e) => setExpenseCategory(e.target.value)}><option>Supplies</option><option>Shipping</option><option>Gas</option><option>Software</option><option>Storage</option><option>Equipment</option><option>Other</option></select></label><label>Who Paid?<select value={expenseBuyer} onChange={(e) => setExpenseBuyer(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Amount<input type="number" step="0.01" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} /></label><label>Notes<input value={expenseNotes} onChange={(e) => setExpenseNotes(e.target.value)} /></label><label>Receipt / Screenshot<input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setExpenseReceiptImage, "expenses")} /></label>{expenseReceiptImage && <div className="receipt-preview"><p>Receipt attached</p><img src={expenseReceiptImage} alt="Expense receipt preview" /></div>}<button type="submit">Add Expense</button></form></section>
-            <section className="panel"><h2>Business Expenses</h2>{expenses.length === 0 ? <p>No expenses added yet.</p> : <div className="inventory-list">{expenses.map((expense) => <div className="inventory-card" key={expense.id}>{editingExpenseId === expense.id ? <form onSubmit={saveEditedExpense} className="form"><label>Vendor<input value={editExpenseVendor} onChange={(e) => setEditExpenseVendor(e.target.value)} /></label><label>Category<select value={editExpenseCategory} onChange={(e) => setEditExpenseCategory(e.target.value)}><option>Supplies</option><option>Shipping</option><option>Gas</option><option>Software</option><option>Storage</option><option>Equipment</option><option>Other</option></select></label><label>Who Paid?<select value={editExpenseBuyer} onChange={(e) => setEditExpenseBuyer(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Amount<input type="number" step="0.01" value={editExpenseAmount} onChange={(e) => setEditExpenseAmount(e.target.value)} /></label><label>Notes<input value={editExpenseNotes} onChange={(e) => setEditExpenseNotes(e.target.value)} /></label><button type="submit">Save Expense</button><button type="button" className="secondary-button" onClick={cancelEditingExpense}>Cancel</button></form> : <><h3>{expense.vendor}</h3><p>Category: {expense.category}</p><p>Paid By: {expense.buyer}</p><p>Amount: ${expense.amount.toFixed(2)}</p>{expense.notes && <p>Notes: {expense.notes}</p>}{expense.receiptImage && <div className="receipt-preview"><p>Receipt:</p><img src={expense.receiptImage} alt="Expense receipt" /></div>}<button className="edit-button" onClick={() => startEditingExpense(expense)}>Edit Expense</button><button className="delete-button" onClick={() => deleteExpense(expense.id)}>Delete Expense</button></>}</div>)}</div>}</section>
+            <section className="panel">
+              <h2>{editingExpenseId ? "Edit Expense" : "Add Business Expense"}</h2>
+              <form onSubmit={addExpense} className="form">
+                <Field label="Vendor / Store"><input value={expenseForm.vendor} onChange={(e) => updateExpenseForm("vendor", e.target.value)} /></Field>
+                <Field label="Expense Category"><select value={expenseForm.category} onChange={(e) => updateExpenseForm("category", e.target.value)}><option>Supplies</option><option>Shipping</option><option>Gas</option><option>Software</option><option>Storage</option><option>Equipment</option><option>Other</option></select></Field>
+                <Field label="Who Paid?"><select value={expenseForm.buyer} onChange={(e) => updateExpenseForm("buyer", e.target.value)}>{PEOPLE.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
+                <Field label="Notes"><input value={expenseForm.notes} onChange={(e) => updateExpenseForm("notes", e.target.value)} /></Field>
+                <Field label="Receipt / Screenshot"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateExpenseForm("receiptImage", url), "expenses")} /></Field>
+                {expenseForm.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={expenseForm.receiptImage} alt="Receipt" /></div>}
+                <button type="submit">{editingExpenseId ? "Save Expense" : "Add Expense"}</button>
+                {editingExpenseId && <button type="button" className="secondary-button" onClick={() => { setEditingExpenseId(null); setExpenseForm({ vendor: "", category: "Supplies", buyer: "Zena", amount: "", notes: "", receiptImage: "" }); }}>Cancel Edit</button>}
+              </form>
+            </section>
+            <ListPanel title="Business Expenses" emptyText="No expenses added yet.">
+              {expenses.map((expense) => (
+                <div className="inventory-card" key={expense.id}>
+                  <h3>{expense.vendor}</h3>
+                  <p>Category: {expense.category}</p>
+                  <p>Paid By: {expense.buyer}</p>
+                  <p>Amount: {money(expense.amount)}</p>
+                  {expense.notes && <p>Notes: {expense.notes}</p>}
+                  {expense.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={expense.receiptImage} alt="Receipt" /></div>}
+                  <button className="edit-button" onClick={() => startEditingExpense(expense)}>Edit Expense</button>
+                  <button className="delete-button" onClick={() => deleteExpense(expense.id)}>Delete Expense</button>
+                </div>
+              ))}
+            </ListPanel>
+          </>
+        )}
+
+        {activeTab === "vehicles" && (
+          <>
+            <section className="panel">
+              <h2>{editingVehicleId ? "Edit Vehicle" : "Add Vehicle"}</h2>
+              <form onSubmit={addVehicle} className="form">
+                <Field label="Vehicle Name"><input value={vehicleForm.name} onChange={(e) => updateVehicleForm("name", e.target.value)} /></Field>
+                <Field label="Owner / Driver"><select value={vehicleForm.owner} onChange={(e) => updateVehicleForm("owner", e.target.value)}>{PEOPLE.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                <Field label="Average MPG"><input type="number" step="0.1" value={vehicleForm.averageMpg} onChange={(e) => updateVehicleForm("averageMpg", e.target.value)} /></Field>
+                <Field label="Wear Cost Per Mile"><input type="number" step="0.01" value={vehicleForm.wearCostPerMile} onChange={(e) => updateVehicleForm("wearCostPerMile", e.target.value)} /></Field>
+                <Field label="Notes"><input value={vehicleForm.notes} onChange={(e) => updateVehicleForm("notes", e.target.value)} /></Field>
+                <button type="submit">{editingVehicleId ? "Save Vehicle" : "Add Vehicle"}</button>
+                {editingVehicleId && <button type="button" className="secondary-button" onClick={() => { setEditingVehicleId(null); setVehicleForm({ name: "", owner: "Zena", averageMpg: "", wearCostPerMile: "", notes: "" }); }}>Cancel Edit</button>}
+              </form>
+            </section>
+            <ListPanel title="Vehicles" emptyText="No vehicles added yet.">
+              {vehicles.map((v) => (
+                <div className="inventory-card" key={v.id}>
+                  <h3>{v.name}</h3>
+                  <p>Owner: {v.owner}</p>
+                  <p>Average MPG: {v.averageMpg}</p>
+                  <p>Wear / Maintenance: {money(v.wearCostPerMile)} per mile</p>
+                  {v.notes && <p>Notes: {v.notes}</p>}
+                  <button className="edit-button" onClick={() => startEditingVehicle(v)}>Edit Vehicle</button>
+                  <button className="delete-button" onClick={() => deleteVehicle(v.id)}>Delete Vehicle</button>
+                </div>
+              ))}
+            </ListPanel>
           </>
         )}
 
         {activeTab === "mileage" && (
           <>
-            <section className="panel"><h2>Add Mileage Trip</h2><form onSubmit={addMileageTrip} className="form"><label>Trip Purpose<input value={tripPurpose} onChange={(e) => setTripPurpose(e.target.value)} /></label><label>Driver<select value={tripDriver} onChange={(e) => setTripDriver(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Vehicle<select value={tripVehicleId} onChange={(e) => setTripVehicleId(e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.averageMpg} MPG</option>)}</select></label><label>Starting Odometer<input type="number" value={startMiles} onChange={(e) => setStartMiles(e.target.value)} /></label><label>Ending Odometer<input type="number" value={endMiles} onChange={(e) => setEndMiles(e.target.value)} /></label><label>Gas Price Paid<input type="number" step="0.01" value={tripGasPrice} onChange={(e) => setTripGasPrice(e.target.value)} /></label><label>Gas Receipt<input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setTripGasReceiptImage, "gas")} /></label>{tripGasReceiptImage && <div className="receipt-preview"><p>Gas receipt attached</p><img src={tripGasReceiptImage} alt="Gas receipt preview" /></div>}<label>Notes<input value={tripNotes} onChange={(e) => setTripNotes(e.target.value)} /></label><button type="submit">Add Mileage Trip</button></form></section>
-            <section className="panel"><h2>Mileage Trips</h2>{mileageTrips.length === 0 ? <p>No mileage trips added yet.</p> : <div className="inventory-list">{mileageTrips.map((trip) => <div className="inventory-card" key={trip.id}>{editingTripId === trip.id ? <form onSubmit={saveEditedTrip} className="form"><label>Trip Purpose<input value={editTripPurpose} onChange={(e) => setEditTripPurpose(e.target.value)} /></label><label>Driver<select value={editTripDriver} onChange={(e) => setEditTripDriver(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Vehicle<select value={editTripVehicleId} onChange={(e) => setEditTripVehicleId(e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.averageMpg} MPG</option>)}</select></label><label>Start<input type="number" value={editStartMiles} onChange={(e) => setEditStartMiles(e.target.value)} /></label><label>End<input type="number" value={editEndMiles} onChange={(e) => setEditEndMiles(e.target.value)} /></label><label>Gas Price<input type="number" step="0.01" value={editTripGasPrice} onChange={(e) => setEditTripGasPrice(e.target.value)} /></label><label>Notes<input value={editTripNotes} onChange={(e) => setEditTripNotes(e.target.value)} /></label><button type="submit">Save Trip</button><button type="button" className="secondary-button" onClick={cancelEditingTrip}>Cancel</button></form> : <><h3>{trip.purpose}</h3><p>Driver: {trip.driver}</p><p>Vehicle: {trip.vehicleName || "Not selected"}</p><p>Business Miles: {trip.businessMiles}</p><p>Gas Price Paid: ${trip.gasPrice.toFixed(2)}</p><p>Fuel Cost: ${trip.fuelCost.toFixed(2)}</p><p>Wear / Maintenance: ${trip.wearCost.toFixed(2)}</p><p>Total Vehicle Cost: ${trip.totalVehicleCost.toFixed(2)}</p><p>IRS Mileage Value: ${trip.mileageValue.toFixed(2)}</p>{trip.notes && <p>Notes: {trip.notes}</p>}{trip.gasReceiptImage && <div className="receipt-preview"><p>Gas Receipt:</p><img src={trip.gasReceiptImage} alt="Gas receipt" /></div>}<button className="edit-button" onClick={() => startEditingTrip(trip)}>Edit Trip</button><button className="delete-button" onClick={() => deleteMileageTrip(trip.id)}>Delete Trip</button></>}</div>)}</div>}</section>
+            <section className="panel">
+              <h2>{editingTripId ? "Edit Mileage Trip" : "Add Mileage Trip"}</h2>
+              <form onSubmit={addTrip} className="form">
+                <Field label="Trip Purpose"><input value={tripForm.purpose} onChange={(e) => updateTripForm("purpose", e.target.value)} /></Field>
+                <Field label="Driver"><select value={tripForm.driver} onChange={(e) => updateTripForm("driver", e.target.value)}>{PEOPLE.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                <Field label="Vehicle"><select value={tripForm.vehicleId} onChange={(e) => updateTripForm("vehicleId", e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.averageMpg} MPG</option>)}</select></Field>
+                <Field label="Starting Odometer"><input type="number" value={tripForm.startMiles} onChange={(e) => updateTripForm("startMiles", e.target.value)} /></Field>
+                <Field label="Ending Odometer"><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
+                <Field label="Gas Price Paid"><input type="number" step="0.01" value={tripForm.gasPrice} onChange={(e) => updateTripForm("gasPrice", e.target.value)} /></Field>
+                <Field label="Gas Receipt"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateTripForm("gasReceiptImage", url), "gas")} /></Field>
+                {tripForm.gasReceiptImage && <div className="receipt-preview"><p>Gas Receipt</p><img src={tripForm.gasReceiptImage} alt="Gas Receipt" /></div>}
+                <Field label="Notes"><input value={tripForm.notes} onChange={(e) => updateTripForm("notes", e.target.value)} /></Field>
+                <button type="submit">{editingTripId ? "Save Trip" : "Add Mileage Trip"}</button>
+                {editingTripId && <button type="button" className="secondary-button" onClick={() => { setEditingTripId(null); setTripForm({ purpose: "", driver: "Zena", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" }); }}>Cancel Edit</button>}
+              </form>
+            </section>
+            <ListPanel title="Mileage Trips" emptyText="No mileage trips added yet.">
+              {mileageTrips.map((t) => (
+                <div className="inventory-card" key={t.id}>
+                  <h3>{t.purpose}</h3>
+                  <p>Driver: {t.driver}</p>
+                  <p>Vehicle: {t.vehicleName || "Not selected"}</p>
+                  <p>Business Miles: {t.businessMiles}</p>
+                  <p>Gas Price Paid: {money(t.gasPrice)}</p>
+                  <p>Fuel Cost: {money(t.fuelCost)}</p>
+                  <p>Wear / Maintenance: {money(t.wearCost)}</p>
+                  <p>Total Vehicle Cost: {money(t.totalVehicleCost)}</p>
+                  <p>IRS Mileage Value: {money(t.mileageValue)}</p>
+                  {t.notes && <p>Notes: {t.notes}</p>}
+                  {t.gasReceiptImage && <div className="receipt-preview"><p>Gas Receipt</p><img src={t.gasReceiptImage} alt="Gas Receipt" /></div>}
+                  <button className="edit-button" onClick={() => startEditingTrip(t)}>Edit Trip</button>
+                  <button className="delete-button" onClick={() => deleteTrip(t.id)}>Delete Trip</button>
+                </div>
+              ))}
+            </ListPanel>
           </>
-        )}
-
-        {activeTab === "inventory" && (
-          <section className="panel"><h2>Inventory</h2><input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search by item, SKU, buyer, category, store, barcode, status, or market source..." /><div className="export-grid"><button type="button" onClick={() => setInventoryStatusFilter("All")}>All</button><button type="button" onClick={() => setInventoryStatusFilter("In Stock")}>In Stock</button><button type="button" onClick={() => setInventoryStatusFilter("Listed")}>Listed</button><button type="button" onClick={() => setInventoryStatusFilter("Needs Photos")}>Needs Photos</button><button type="button" onClick={() => setInventoryStatusFilter("Needs Price Check")}>Needs Price Check</button><button type="button" onClick={() => setInventoryStatusFilter("Held")}>Held</button><button type="button" onClick={() => setInventoryStatusFilter("Personal Collection")}>Personal</button><button type="button" onClick={() => setInventoryStatusFilter("Damaged")}>Damaged</button></div><p>Current filter: {inventoryStatusFilter}</p>{filteredItems.length === 0 ? <p>No inventory items found.</p> : <div className="inventory-list">{filteredItems.map((item) => <div className="inventory-card" key={item.id}>{editingItemId === item.id ? <form onSubmit={saveEditedItem} className="form"><label>Item Name<input value={editName} onChange={(e) => setEditName(e.target.value)} /></label><label>Buyer<select value={editBuyer} onChange={(e) => setEditBuyer(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Category<select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}><option>Pokemon</option><option>Makeup</option><option>Clothes</option><option>Candy</option><option>Collectibles</option><option>Supplies</option><option>Other</option></select></label><label>Store<input value={editStore} onChange={(e) => setEditStore(e.target.value)} /></label><label>Barcode<input value={editBarcode} onChange={(e) => setEditBarcode(e.target.value)} /></label><label>Quantity<input type="number" min="0" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} /></label><label>Unit Cost<input type="number" step="0.01" value={editUnitCost} onChange={(e) => setEditUnitCost(e.target.value)} /></label><label>Planned Sale Price<input type="number" step="0.01" value={editSalePrice} onChange={(e) => setEditSalePrice(e.target.value)} /></label><label>Market Source<select value={editExternalProductSource} onChange={(e) => setEditExternalProductSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label><label>External Product ID<input value={editExternalProductId} onChange={(e) => setEditExternalProductId(e.target.value)} /></label><label>TCGplayer Product ID<input value={editTcgplayerProductId} onChange={(e) => setEditTcgplayerProductId(e.target.value)} /></label><label>Market URL<input value={editTcgplayerUrl} onChange={(e) => setEditTcgplayerUrl(e.target.value)} /></label><label>Market Price<input type="number" step="0.01" value={editMarketPrice} onChange={(e) => setEditMarketPrice(e.target.value)} /></label><label>Low<input type="number" step="0.01" value={editLowPrice} onChange={(e) => setEditLowPrice(e.target.value)} /></label><label>Mid<input type="number" step="0.01" value={editMidPrice} onChange={(e) => setEditMidPrice(e.target.value)} /></label><label>High<input type="number" step="0.01" value={editHighPrice} onChange={(e) => setEditHighPrice(e.target.value)} /></label><label>Status<select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}><option>In Stock</option><option>Listed</option><option>Sold</option><option>Held</option><option>Personal Collection</option><option>Damaged</option><option>Needs Photos</option><option>Needs Price Check</option></select></label><label>Listing Platform<input value={editListingPlatform} onChange={(e) => setEditListingPlatform(e.target.value)} /></label><label>Listing URL<input value={editListingUrl} onChange={(e) => setEditListingUrl(e.target.value)} /></label><label>Listed Price<input type="number" step="0.01" value={editListedPrice} onChange={(e) => setEditListedPrice(e.target.value)} /></label><label>Action Notes<input value={editActionNotes} onChange={(e) => setEditActionNotes(e.target.value)} /></label><button type="submit">Save Changes</button><button type="button" className="secondary-button" onClick={cancelEditingItem}>Cancel</button></form> : <>{item.itemImage && <div className="receipt-preview"><p>Product Photo:</p><img src={item.itemImage} alt={item.name} /></div>}<h3>{item.name}</h3><p>SKU: {item.sku}</p><p>Catalog: {item.catalogProductName || "Not linked"}</p><p>Status: {item.status || "In Stock"}</p><p>Barcode / UPC: {item.barcode || "Not listed"}</p><p>Buyer: {item.buyer}</p><p>Category: {item.category}</p><p>Store: {item.store || "Not listed"}</p><p>Quantity: {item.quantity}</p><p>Avg Unit Cost: ${item.unitCost.toFixed(2)}</p><p>Total Cost Basis: ${(item.quantity * item.unitCost).toFixed(2)}</p><p>Planned Sale Price: ${item.salePrice.toFixed(2)}</p><p>Market Source: {item.externalProductSource}</p><p>Market Price: ${item.marketPrice.toFixed(2)}</p><p>Low / Mid / High: ${item.lowPrice.toFixed(2)} / ${item.midPrice.toFixed(2)} / ${item.highPrice.toFixed(2)}</p><p>Planned Profit: ${(item.quantity * item.salePrice - item.quantity * item.unitCost).toFixed(2)}</p><p>Market Profit: ${(item.quantity * item.marketPrice - item.quantity * item.unitCost).toFixed(2)}</p>{item.listingPlatform && <p>Listing Platform: {item.listingPlatform}</p>}{item.listedPrice > 0 && <p>Listed Price: ${item.listedPrice.toFixed(2)}</p>}{item.listingUrl && <p><a href={item.listingUrl} target="_blank" rel="noreferrer">Open Listing</a></p>}{item.actionNotes && <p>Action Notes: {item.actionNotes}</p>}{item.tcgplayerUrl && <p><a href={item.tcgplayerUrl} target="_blank" rel="noreferrer">Open Market Link</a></p>}{item.receiptImage && <div className="receipt-preview"><p>Receipt:</p><img src={item.receiptImage} alt="Inventory receipt" /></div>}<button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button><button className="edit-button" onClick={() => startEditingItem(item)}>Edit Item</button><button className="delete-button" onClick={() => deleteItem(item.id)}>Delete Item</button></>}</div>)}</div>}</section>
-        )}
-
-        {activeTab === "sales" && (
-          <section className="panel"><h2>Sales</h2>{sales.length === 0 ? <p>No sales added yet.</p> : <div className="inventory-list">{sales.map((sale) => <div className="inventory-card" key={sale.id}>{editingSaleId === sale.id ? <form onSubmit={saveEditedSale} className="form"><label>Platform<select value={editSalePlatform} onChange={(e) => setEditSalePlatform(e.target.value)}><option>eBay</option><option>Mercari</option><option>Whatnot</option><option>Facebook Marketplace</option><option>In-Store</option><option>Instagram</option><option>TikTok Shop</option><option>Other</option></select></label><label>Quantity Sold<input type="number" min="1" value={editQuantitySold} onChange={(e) => setEditQuantitySold(e.target.value)} /></label><label>Final Sale Price<input type="number" step="0.01" value={editFinalSalePrice} onChange={(e) => setEditFinalSalePrice(e.target.value)} /></label><label>Shipping<input type="number" step="0.01" value={editShippingCost} onChange={(e) => setEditShippingCost(e.target.value)} /></label><label>Fees<input type="number" step="0.01" value={editPlatformFees} onChange={(e) => setEditPlatformFees(e.target.value)} /></label><label>Notes<input value={editSaleNotes} onChange={(e) => setEditSaleNotes(e.target.value)} /></label><button type="submit">Save Sale</button><button type="button" className="secondary-button" onClick={cancelEditingSale}>Cancel</button></form> : <><h3>{sale.itemName}</h3><p>SKU: {sale.sku}</p><p>Platform: {sale.platform}</p><p>Quantity Sold: {sale.quantitySold}</p><p>Sale Price Each: ${sale.finalSalePrice.toFixed(2)}</p><p>Gross Sale: ${sale.grossSale.toFixed(2)}</p><p>Item Cost: ${sale.itemCost.toFixed(2)}</p><p>Shipping: ${sale.shippingCost.toFixed(2)}</p><p>Fees: ${sale.platformFees.toFixed(2)}</p><p>Net Profit: ${sale.netProfit.toFixed(2)}</p>{sale.notes && <p>Notes: {sale.notes}</p>}<button className="edit-button" onClick={() => startEditingSale(sale)}>Edit Sale</button><button className="delete-button" onClick={() => deleteSale(sale.id)}>Delete Sale</button></>}</div>)}</div>}</section>
         )}
 
         {activeTab === "reports" && (
           <>
-            <section className="panel"><h2>Reports</h2><div className="cards"><div className="card"><p>Inventory Units</p><h2>{items.reduce((s, i) => s + i.quantity, 0)}</h2></div><div className="card"><p>Catalog Products</p><h2>{catalogProducts.length}</h2></div><div className="card"><p>Avg Profit / Sale</p><h2>${sales.length ? (totalSalesProfit / sales.length).toFixed(2) : "0.00"}</h2></div><div className="card"><p>Fuel Cost</p><h2>${totalFuelCost.toFixed(2)}</h2></div><div className="card"><p>Wear Cost</p><h2>${totalWearCost.toFixed(2)}</h2></div><div className="card"><p>IRS Mileage Value</p><h2>${totalMileageValue.toFixed(2)}</h2></div></div></section>
-            <section className="panel"><h2>Sales by Platform</h2>{Object.keys(salesByPlatform).length === 0 ? <p>No sales yet.</p> : Object.entries(salesByPlatform).map(([platform, amount]) => <p key={platform}>{platform}: ${amount.toFixed(2)}</p>)}</section>
-            <section className="panel"><h2>Expenses by Category</h2>{Object.keys(expensesByCategory).length === 0 ? <p>No expenses yet.</p> : Object.entries(expensesByCategory).map(([cat, amount]) => <p key={cat}>{cat}: ${amount.toFixed(2)}</p>)}</section>
-            <section className="panel"><h2>Inventory by Category</h2>{Object.keys(inventoryByCategory).length === 0 ? <p>No inventory yet.</p> : Object.entries(inventoryByCategory).map(([cat, qty]) => <p key={cat}>{cat}: {qty} units</p>)}</section>
-            <section className="panel"><h2>Inventory by Market Source</h2>{Object.keys(inventoryByMarketSource).length === 0 ? <p>No inventory yet.</p> : Object.entries(inventoryByMarketSource).map(([source, qty]) => <p key={source}>{source}: {qty} units</p>)}</section>
-            <section className="panel"><h2>Inventory by Status</h2>{Object.keys(inventoryByStatus).length === 0 ? <p>No inventory yet.</p> : Object.entries(inventoryByStatus).map(([statusName, qty]) => <p key={statusName}>{statusName}: {qty} units</p>)}</section>
-            <section className="panel"><h2>Needs Photos</h2>{needsPhotosItems.length === 0 ? <p>No items need photos.</p> : <div className="inventory-list">{needsPhotosItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>Status: {item.status}</p><button className="edit-button" onClick={() => startEditingItem(item)}>Update Item</button></div>)}</div>}</section>
-            <section className="panel"><h2>Needs Price Check</h2>{needsPriceCheckItems.length === 0 ? <p>No items need price checks.</p> : <div className="inventory-list">{needsPriceCheckItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>Market Price: ${item.marketPrice.toFixed(2)}</p><button className="edit-button" onClick={() => startEditingItem(item)}>Update Price</button></div>)}</div>}</section>
-            <section className="panel"><h2>Listed Items</h2>{listedItems.length === 0 ? <p>No listed items yet.</p> : <div className="inventory-list">{listedItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>Listed Price: ${item.listedPrice.toFixed(2)}</p>{item.listingUrl && <p><a href={item.listingUrl} target="_blank" rel="noreferrer">Open Listing</a></p>}</div>)}</div>}</section>
-            <section className="panel"><h2>Low Stock / Sold Out</h2>{lowStockItems.length === 0 ? <p>No low-stock items.</p> : <div className="inventory-list">{lowStockItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>Store: {item.store || "Not listed"}</p><p>Market Price: ${item.marketPrice.toFixed(2)}</p><button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button></div>)}</div>}</section>
+            <section className="panel">
+              <h2>Reports</h2>
+              <div className="cards">
+                <div className="card"><p>Inventory Units</p><h2>{items.reduce((s, i) => s + i.quantity, 0)}</h2></div>
+                <div className="card"><p>Catalog Products</p><h2>{catalogProducts.length}</h2></div>
+                <div className="card"><p>Avg Profit / Sale</p><h2>{money(sales.length ? totalSalesProfit / sales.length : 0)}</h2></div>
+                <div className="card"><p>IRS Mileage Value</p><h2>{money(totalMileageValue)}</h2></div>
+                <div className="card"><p>Fuel Cost</p><h2>{money(totalFuelCost)}</h2></div>
+                <div className="card"><p>Wear Cost</p><h2>{money(totalWearCost)}</h2></div>
+              </div>
+            </section>
+
+            <ReportList title="Sales by Platform" data={salesByPlatform} moneyValues />
+            <ReportList title="Expenses by Category" data={expensesByCategory} moneyValues />
+            <ReportList title="Inventory by Category" data={inventoryByCategory} />
+            <ReportList title="Inventory by Status" data={inventoryByStatus} />
+
+            <ActionReport title="Needs Photos" items={needsPhotosItems} button="Update Item" action={startEditingItem} />
+            <ActionReport title="Needs DeckTradr Check" items={needsDeckTradrItems} button="Update Price" action={startEditingItem} />
+            <ActionReport title="Ready to List" items={readyToListItems} button="Update Listing" action={startEditingItem} />
+            <ActionReport title="Listed Items" items={listedItems} button="Update Item" action={startEditingItem} />
+            <ActionReport title="Low Stock / Sold Out" items={lowStockItems} button="Restock / Rebuy" action={prepareRestock} />
           </>
         )}
       </main>
@@ -1834,4 +1393,80 @@ Zena`}
   );
 }
 
-export default App;
+function InventoryForm({ form, setForm, catalogProducts, applyCatalogProduct, handleImageUpload, onSubmit, submitLabel }) {
+  return (
+    <form onSubmit={onSubmit} className="form">
+      <Field label="Choose Saved Catalog Product">
+        <select value={form.catalogProductId} onChange={(e) => applyCatalogProduct(e.target.value)}>
+          <option value="">No catalog product selected</option>
+          {catalogProducts.map((p) => <option key={p.id} value={p.id}>{p.name} — {money(p.marketPrice)}</option>)}
+        </select>
+      </Field>
+      <Field label="Item Name"><input value={form.name} onChange={(e) => setForm("name", e.target.value)} /></Field>
+      <Field label="Product Photo"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => setForm("itemImage", url), "item-photos")} /></Field>
+      {form.itemImage && <div className="receipt-preview"><p>Product Photo</p><img src={form.itemImage} alt="Product" /></div>}
+      <Field label="Who Purchased It?"><select value={form.buyer} onChange={(e) => setForm("buyer", e.target.value)}>{PEOPLE.map((x) => <option key={x}>{x}</option>)}</select></Field>
+      <Field label="Category"><select value={form.category} onChange={(e) => setForm("category", e.target.value)}>{CATEGORIES.map((x) => <option key={x}>{x}</option>)}</select></Field>
+      <Field label="Store / Source"><input value={form.store} onChange={(e) => setForm("store", e.target.value)} /></Field>
+      <Field label="Barcode / UPC"><input value={form.barcode} onChange={(e) => setForm("barcode", e.target.value)} /></Field>
+      <Field label="Quantity Purchased"><input type="number" min="0" value={form.quantity} onChange={(e) => setForm("quantity", e.target.value)} /></Field>
+      <Field label="Unit Cost"><input type="number" step="0.01" value={form.unitCost} onChange={(e) => setForm("unitCost", e.target.value)} /></Field>
+      <Field label="Planned Sale Price"><input type="number" step="0.01" value={form.salePrice} onChange={(e) => setForm("salePrice", e.target.value)} /></Field>
+      <Field label="DeckTradr Product ID"><input value={form.externalProductId} onChange={(e) => setForm("externalProductId", e.target.value)} /></Field>
+      <Field label="DeckTradr URL"><input value={form.decktradrUrl} onChange={(e) => setForm("decktradrUrl", e.target.value)} /></Field>
+      <Field label="DeckTradr Market Price"><input type="number" step="0.01" value={form.marketPrice} onChange={(e) => setForm("marketPrice", e.target.value)} /></Field>
+      <Field label="Low Price"><input type="number" step="0.01" value={form.lowPrice} onChange={(e) => setForm("lowPrice", e.target.value)} /></Field>
+      <Field label="Mid Price"><input type="number" step="0.01" value={form.midPrice} onChange={(e) => setForm("midPrice", e.target.value)} /></Field>
+      <Field label="High Price"><input type="number" step="0.01" value={form.highPrice} onChange={(e) => setForm("highPrice", e.target.value)} /></Field>
+      <Field label="Status"><select value={form.status} onChange={(e) => setForm("status", e.target.value)}>{STATUSES.map((x) => <option key={x}>{x}</option>)}</select></Field>
+      <Field label="Listing Platform"><input value={form.listingPlatform} onChange={(e) => setForm("listingPlatform", e.target.value)} /></Field>
+      <Field label="Listing URL"><input value={form.listingUrl} onChange={(e) => setForm("listingUrl", e.target.value)} /></Field>
+      <Field label="Listed Price"><input type="number" step="0.01" value={form.listedPrice} onChange={(e) => setForm("listedPrice", e.target.value)} /></Field>
+      <Field label="Action Notes"><input value={form.actionNotes} onChange={(e) => setForm("actionNotes", e.target.value)} /></Field>
+      <Field label="Receipt / Screenshot"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => setForm("receiptImage", url), "inventory")} /></Field>
+      {form.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={form.receiptImage} alt="Receipt" /></div>}
+      <button type="submit">{submitLabel}</button>
+    </form>
+  );
+}
+
+function ListPanel({ title, emptyText, children }) {
+  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
+  return (
+    <section className="panel">
+      <h2>{title}</h2>
+      {!hasChildren ? <p>{emptyText}</p> : <div className="inventory-list">{children}</div>}
+    </section>
+  );
+}
+
+function ReportList({ title, data, moneyValues = false }) {
+  const entries = Object.entries(data);
+  return (
+    <section className="panel">
+      <h2>{title}</h2>
+      {entries.length === 0 ? <p>No data yet.</p> : entries.map(([key, value]) => <p key={key}>{key}: {moneyValues ? money(value) : `${value} units`}</p>)}
+    </section>
+  );
+}
+
+function ActionReport({ title, items, button, action }) {
+  return (
+    <section className="panel">
+      <h2>{title}</h2>
+      {items.length === 0 ? <p>No items.</p> : (
+        <div className="inventory-list">
+          {items.map((item) => (
+            <div className="inventory-card" key={item.id}>
+              <h3>{item.name}</h3>
+              <p>Qty: {item.quantity}</p>
+              <p>Status: {item.status}</p>
+              <p>DeckTradr Market Price: {money(item.marketPrice)}</p>
+              <button className="edit-button" onClick={() => action(item)}>{button}</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
