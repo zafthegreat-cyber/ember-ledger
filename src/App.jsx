@@ -571,6 +571,64 @@ function App() {
     setHighPrice("");
   }
 
+  function findMatchingInventoryItem() {
+    const cleanName = itemName.trim().toLowerCase();
+    const cleanBarcode = String(barcode || "").trim();
+
+    return items.find((item) => {
+      const sameCatalog = catalogProductId && item.catalogProductId === catalogProductId;
+      const sameBarcode = cleanBarcode && item.barcode === cleanBarcode;
+      const sameNameCategory =
+        item.name.trim().toLowerCase() === cleanName &&
+        String(item.category || "").toLowerCase() === String(category || "").toLowerCase();
+
+      return sameCatalog || sameBarcode || sameNameCategory;
+    });
+  }
+
+  async function mergeIntoExistingInventory(existingItem) {
+    const addedQty = Number(quantity);
+    const addedUnitCost = Number(unitCost);
+    const oldQty = Number(existingItem.quantity || 0);
+    const oldUnitCost = Number(existingItem.unitCost || 0);
+    const newQty = oldQty + addedQty;
+    const weightedAverageCost = newQty > 0 ? ((oldQty * oldUnitCost) + (addedQty * addedUnitCost)) / newQty : addedUnitCost;
+
+    const row = {
+      quantity: newQty,
+      unit_cost: weightedAverageCost,
+      sale_price: Number(salePrice || existingItem.salePrice || 0),
+      market_price: Number(marketPrice || existingItem.marketPrice || 0),
+      low_price: Number(lowPrice || existingItem.lowPrice || 0),
+      mid_price: Number(midPrice || existingItem.midPrice || 0),
+      high_price: Number(highPrice || existingItem.highPrice || 0),
+      receipt_image: itemReceiptImage || existingItem.receiptImage || "",
+      item_image: itemImage || existingItem.itemImage || "",
+      barcode: barcode || existingItem.barcode || "",
+      external_product_source: externalProductSource || existingItem.externalProductSource || "Manual",
+      external_product_id: externalProductId || existingItem.externalProductId || "",
+      tcgplayer_product_id: tcgplayerProductId || existingItem.tcgplayerProductId || "",
+      tcgplayer_url: tcgplayerUrl || existingItem.tcgplayerUrl || "",
+      last_price_checked: marketPrice ? new Date().toISOString() : existingItem.lastPriceChecked || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .update(row)
+      .eq("id", existingItem.id)
+      .select()
+      .single();
+
+    if (error) {
+      alert("Could not merge restock: " + error.message);
+      return false;
+    }
+
+    setItems(items.map((item) => item.id === existingItem.id ? dbItemToAppItem(data) : item));
+    return true;
+  }
+
   function prepareRestock(item) {
     setCatalogProductId(item.catalogProductId || "");
     setItemName(item.name || "");
@@ -723,6 +781,17 @@ function App() {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
     if (!itemName || !unitCost || !quantity) return alert("Please fill out item name, quantity, and unit cost.");
+
+    const existingItem = findMatchingInventoryItem();
+
+    if (existingItem) {
+      const merged = await mergeIntoExistingInventory(existingItem);
+      if (merged) {
+        resetInventoryForm();
+        setActiveTab("inventory");
+      }
+      return;
+    }
 
     const selectedCatalogProduct = catalogProducts.find((p) => String(p.id) === String(catalogProductId));
 
@@ -1570,7 +1639,7 @@ function App() {
         )}
 
         {activeTab === "inventory" && (
-          <section className="panel"><h2>Inventory</h2><input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search by item, SKU, buyer, category, store, barcode, or market source..." />{filteredItems.length === 0 ? <p>No inventory items found.</p> : <div className="inventory-list">{filteredItems.map((item) => <div className="inventory-card" key={item.id}>{editingItemId === item.id ? <form onSubmit={saveEditedItem} className="form"><label>Item Name<input value={editName} onChange={(e) => setEditName(e.target.value)} /></label><label>Buyer<select value={editBuyer} onChange={(e) => setEditBuyer(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Category<select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}><option>Pokemon</option><option>Makeup</option><option>Clothes</option><option>Candy</option><option>Collectibles</option><option>Supplies</option><option>Other</option></select></label><label>Store<input value={editStore} onChange={(e) => setEditStore(e.target.value)} /></label><label>Barcode<input value={editBarcode} onChange={(e) => setEditBarcode(e.target.value)} /></label><label>Quantity<input type="number" min="0" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} /></label><label>Unit Cost<input type="number" step="0.01" value={editUnitCost} onChange={(e) => setEditUnitCost(e.target.value)} /></label><label>Planned Sale Price<input type="number" step="0.01" value={editSalePrice} onChange={(e) => setEditSalePrice(e.target.value)} /></label><label>Market Source<select value={editExternalProductSource} onChange={(e) => setEditExternalProductSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label><label>External Product ID<input value={editExternalProductId} onChange={(e) => setEditExternalProductId(e.target.value)} /></label><label>TCGplayer Product ID<input value={editTcgplayerProductId} onChange={(e) => setEditTcgplayerProductId(e.target.value)} /></label><label>Market URL<input value={editTcgplayerUrl} onChange={(e) => setEditTcgplayerUrl(e.target.value)} /></label><label>Market Price<input type="number" step="0.01" value={editMarketPrice} onChange={(e) => setEditMarketPrice(e.target.value)} /></label><label>Low<input type="number" step="0.01" value={editLowPrice} onChange={(e) => setEditLowPrice(e.target.value)} /></label><label>Mid<input type="number" step="0.01" value={editMidPrice} onChange={(e) => setEditMidPrice(e.target.value)} /></label><label>High<input type="number" step="0.01" value={editHighPrice} onChange={(e) => setEditHighPrice(e.target.value)} /></label><button type="submit">Save Changes</button><button type="button" className="secondary-button" onClick={cancelEditingItem}>Cancel</button></form> : <>{item.itemImage && <div className="receipt-preview"><p>Product Photo:</p><img src={item.itemImage} alt={item.name} /></div>}<h3>{item.name}</h3><p>SKU: {item.sku}</p><p>Catalog: {item.catalogProductName || "Not linked"}</p><p>Barcode / UPC: {item.barcode || "Not listed"}</p><p>Buyer: {item.buyer}</p><p>Category: {item.category}</p><p>Store: {item.store || "Not listed"}</p><p>Quantity: {item.quantity}</p><p>Unit Cost: ${item.unitCost.toFixed(2)}</p><p>Planned Sale Price: ${item.salePrice.toFixed(2)}</p><p>Market Source: {item.externalProductSource}</p><p>Market Price: ${item.marketPrice.toFixed(2)}</p><p>Low / Mid / High: ${item.lowPrice.toFixed(2)} / ${item.midPrice.toFixed(2)} / ${item.highPrice.toFixed(2)}</p><p>Planned Profit: ${(item.quantity * item.salePrice - item.quantity * item.unitCost).toFixed(2)}</p><p>Market Profit: ${(item.quantity * item.marketPrice - item.quantity * item.unitCost).toFixed(2)}</p>{item.tcgplayerUrl && <p><a href={item.tcgplayerUrl} target="_blank" rel="noreferrer">Open Market Link</a></p>}{item.receiptImage && <div className="receipt-preview"><p>Receipt:</p><img src={item.receiptImage} alt="Inventory receipt" /></div>}<button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button><button className="edit-button" onClick={() => startEditingItem(item)}>Edit Item</button><button className="delete-button" onClick={() => deleteItem(item.id)}>Delete Item</button></>}</div>)}</div>}</section>
+          <section className="panel"><h2>Inventory</h2><input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search by item, SKU, buyer, category, store, barcode, or market source..." />{filteredItems.length === 0 ? <p>No inventory items found.</p> : <div className="inventory-list">{filteredItems.map((item) => <div className="inventory-card" key={item.id}>{editingItemId === item.id ? <form onSubmit={saveEditedItem} className="form"><label>Item Name<input value={editName} onChange={(e) => setEditName(e.target.value)} /></label><label>Buyer<select value={editBuyer} onChange={(e) => setEditBuyer(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Category<select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}><option>Pokemon</option><option>Makeup</option><option>Clothes</option><option>Candy</option><option>Collectibles</option><option>Supplies</option><option>Other</option></select></label><label>Store<input value={editStore} onChange={(e) => setEditStore(e.target.value)} /></label><label>Barcode<input value={editBarcode} onChange={(e) => setEditBarcode(e.target.value)} /></label><label>Quantity<input type="number" min="0" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} /></label><label>Unit Cost<input type="number" step="0.01" value={editUnitCost} onChange={(e) => setEditUnitCost(e.target.value)} /></label><label>Planned Sale Price<input type="number" step="0.01" value={editSalePrice} onChange={(e) => setEditSalePrice(e.target.value)} /></label><label>Market Source<select value={editExternalProductSource} onChange={(e) => setEditExternalProductSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label><label>External Product ID<input value={editExternalProductId} onChange={(e) => setEditExternalProductId(e.target.value)} /></label><label>TCGplayer Product ID<input value={editTcgplayerProductId} onChange={(e) => setEditTcgplayerProductId(e.target.value)} /></label><label>Market URL<input value={editTcgplayerUrl} onChange={(e) => setEditTcgplayerUrl(e.target.value)} /></label><label>Market Price<input type="number" step="0.01" value={editMarketPrice} onChange={(e) => setEditMarketPrice(e.target.value)} /></label><label>Low<input type="number" step="0.01" value={editLowPrice} onChange={(e) => setEditLowPrice(e.target.value)} /></label><label>Mid<input type="number" step="0.01" value={editMidPrice} onChange={(e) => setEditMidPrice(e.target.value)} /></label><label>High<input type="number" step="0.01" value={editHighPrice} onChange={(e) => setEditHighPrice(e.target.value)} /></label><button type="submit">Save Changes</button><button type="button" className="secondary-button" onClick={cancelEditingItem}>Cancel</button></form> : <>{item.itemImage && <div className="receipt-preview"><p>Product Photo:</p><img src={item.itemImage} alt={item.name} /></div>}<h3>{item.name}</h3><p>SKU: {item.sku}</p><p>Catalog: {item.catalogProductName || "Not linked"}</p><p>Barcode / UPC: {item.barcode || "Not listed"}</p><p>Buyer: {item.buyer}</p><p>Category: {item.category}</p><p>Store: {item.store || "Not listed"}</p><p>Quantity: {item.quantity}</p><p>Avg Unit Cost: ${item.unitCost.toFixed(2)}</p><p>Total Cost Basis: ${(item.quantity * item.unitCost).toFixed(2)}</p><p>Planned Sale Price: ${item.salePrice.toFixed(2)}</p><p>Market Source: {item.externalProductSource}</p><p>Market Price: ${item.marketPrice.toFixed(2)}</p><p>Low / Mid / High: ${item.lowPrice.toFixed(2)} / ${item.midPrice.toFixed(2)} / ${item.highPrice.toFixed(2)}</p><p>Planned Profit: ${(item.quantity * item.salePrice - item.quantity * item.unitCost).toFixed(2)}</p><p>Market Profit: ${(item.quantity * item.marketPrice - item.quantity * item.unitCost).toFixed(2)}</p>{item.tcgplayerUrl && <p><a href={item.tcgplayerUrl} target="_blank" rel="noreferrer">Open Market Link</a></p>}{item.receiptImage && <div className="receipt-preview"><p>Receipt:</p><img src={item.receiptImage} alt="Inventory receipt" /></div>}<button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button><button className="edit-button" onClick={() => startEditingItem(item)}>Edit Item</button><button className="delete-button" onClick={() => deleteItem(item.id)}>Delete Item</button></>}</div>)}</div>}</section>
         )}
 
         {activeTab === "sales" && (
