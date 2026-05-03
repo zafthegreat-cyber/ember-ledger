@@ -86,6 +86,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const [treasureClicks, setTreasureClicks] = useState(0);
+  const [showTreasure, setShowTreasure] = useState(false);
+
   const [user, setUser] = useState(null);
   const [authMode, setAuthMode] = useState("login");
   const [authEmail, setAuthEmail] = useState("");
@@ -104,6 +107,8 @@ export default function App() {
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
   const [catalogSearch, setCatalogSearch] = useState("");
+  const [bulkImportText, setBulkImportText] = useState("");
+  const [bulkImportPreview, setBulkImportPreview] = useState([]);
 
   const [editingItemId, setEditingItemId] = useState(null);
   const [editingCatalogId, setEditingCatalogId] = useState(null);
@@ -636,7 +641,117 @@ export default function App() {
       midPrice: product.midPrice,
       highPrice: product.highPrice,
       itemImage: product.imageUrl,
+
+      
     }));
+    function parseBulkCatalogText(text) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.map((line, index) => {
+    const parts = line
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return {
+      tempId: index + 1,
+      name: parts[0] || "",
+      category: parts[1] || "Pokemon",
+      setName: parts[2] || "",
+      productType: parts[3] || "",
+      barcode: parts[4] || "",
+      marketPrice: Number(parts[5] || 0),
+      lowPrice: Number(parts[6] || 0),
+      midPrice: Number(parts[7] || 0),
+      highPrice: Number(parts[8] || 0),
+      notes: parts[9] || "",
+    };
+  });
+}
+
+function previewBulkCatalogImport() {
+  const parsed = parseBulkCatalogText(bulkImportText).filter(
+    (item) => item.name
+  );
+
+  if (parsed.length === 0) {
+    alert("No valid items found. Each line should start with a product name.");
+    return;
+  }
+
+  setBulkImportPreview(parsed);
+}
+
+function handleBulkCatalogFileUpload(event) {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    const text = String(reader.result || "");
+    setBulkImportText(text);
+    const parsed = parseBulkCatalogText(text).filter((item) => item.name);
+    setBulkImportPreview(parsed);
+  };
+
+  reader.readAsText(file);
+}
+
+async function importBulkCatalogProducts() {
+  if (!user) {
+    alert("Please log in first.");
+    return;
+  }
+
+  if (bulkImportPreview.length === 0) {
+    alert("Preview items before importing.");
+    return;
+  }
+
+  const rows = bulkImportPreview.map((item) => ({
+    user_id: user.id,
+    name: item.name,
+    category: item.category || "Pokemon",
+    set_name: item.setName || "",
+    product_type: item.productType || "",
+    barcode: item.barcode || "",
+    market_source: "DeckTradr",
+    external_product_id: "",
+    market_url: "",
+    image_url: "",
+    market_price: Number(item.marketPrice || 0),
+    low_price: Number(item.lowPrice || 0),
+    mid_price: Number(item.midPrice || 0),
+    high_price: Number(item.highPrice || 0),
+    notes: item.notes || "",
+    last_price_checked: item.marketPrice ? new Date().toISOString() : null,
+  }));
+
+  const { data, error } = await supabase
+    .from("product_catalog")
+    .insert(rows)
+    .select();
+
+  if (error) {
+    alert("Could not import catalog products: " + error.message);
+    return;
+  }
+
+  setCatalogProducts([
+    ...data.map(mapCatalog),
+    ...catalogProducts,
+  ]);
+
+  setBulkImportText("");
+  setBulkImportPreview([]);
+
+  alert(`Imported ${data.length} catalog products.`);
+}
   }
 
   async function addExpense(event) {
@@ -941,7 +1056,19 @@ export default function App() {
     return (
       <div className="app">
         <header className="header">
-          <h1>Ember Ledger</h1>
+          <h1
+  onClick={() => {
+    const nextClicks = treasureClicks + 1;
+    setTreasureClicks(nextClicks);
+
+    if (nextClicks >= 7) {
+      setShowTreasure(true);
+    }
+  }}
+  title="There might be something hidden here..."
+>
+  Ember Ledger
+</h1>
           <p>Log in to sync your business records across devices.</p>
         </header>
         <main className="main">
@@ -963,11 +1090,34 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="header">
-        <h1>Ember Ledger</h1>
-        <p>Cloud sync active for: {user.email}</p>
-        <button className="secondary-button" onClick={signOut}>Sign Out</button>
-      </header>
+    <header className="header">
+  <h1
+    onClick={() => {
+      const nextClicks = treasureClicks + 1;
+      setTreasureClicks(nextClicks);
+
+      if (nextClicks >= 7) {
+        setShowTreasure(true);
+      }
+    }}
+    title="There might be something hidden here..."
+  >
+    Ember Ledger
+  </h1>
+
+  <p>Cloud sync active for: {user.email}</p>
+
+  <button className="secondary-button" onClick={signOut}>
+    Sign Out
+  </button>
+
+  {showTreasure && (
+    <div className="hidden-treasure">
+      <p>Hidden Treasure Found ✨</p>
+      <h2>I love you Dillon — with you by my side we can do anything.</h2>
+    </div>
+  )}
+</header>
 
       <div className="topbar">
         <button type="button" className="menu-button" onClick={() => setMenuOpen(true)}>☰ Menu</button>
@@ -1099,6 +1249,63 @@ Zena`}
 
         {activeTab === "catalog" && (
           <>
+          <section className="panel">
+  <h2>Bulk Import Catalog Items</h2>
+  <p>
+    Paste a list or upload a CSV/text file. Format each line like:
+  </p>
+
+  <pre className="import-example">
+Product Name, Category, Set, Product Type, Barcode, Market Price, Low, Mid, High, Notes
+Perfect Order ETB, Pokemon, Perfect Order, ETB, 123456789, 49.99, 42, 49.99, 60, Target restock item
+Perfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321, 24.99, 20, 24.99, 32, Good flip
+  </pre>
+
+  <div className="form">
+    <Field label="Upload CSV / Text File">
+      <input
+        type="file"
+        accept=".csv,.txt"
+        onChange={handleBulkCatalogFileUpload}
+      />
+    </Field>
+
+    <button type="button" onClick={previewBulkCatalogImport}>
+      Preview Import
+    </button>
+  </div>
+
+  <textarea
+    className="search-input"
+    style={{ minHeight: "220px" }}
+    value={bulkImportText}
+    onChange={(event) => setBulkImportText(event.target.value)}
+    placeholder="Paste one item per line..."
+  />
+
+  {bulkImportPreview.length > 0 && (
+    <div>
+      <h3>Preview: {bulkImportPreview.length} items</h3>
+
+      <div className="inventory-list">
+        {bulkImportPreview.map((item) => (
+          <div className="inventory-card compact-card" key={item.tempId}>
+            <h3>{item.name}</h3>
+            <p>Category: {item.category}</p>
+            <p>Set: {item.setName || "Not listed"}</p>
+            <p>Type: {item.productType || "Not listed"}</p>
+            <p>Barcode: {item.barcode || "Not listed"}</p>
+            <p>DeckTradr Value: ${Number(item.marketPrice || 0).toFixed(2)}</p>
+          </div>
+        ))}
+      </div>
+
+      <button type="button" onClick={importBulkCatalogProducts}>
+        Import {bulkImportPreview.length} Products to Catalog
+      </button>
+    </div>
+  )}
+</section>
             <section className="panel">
               <h2>{editingCatalogId ? "Edit Catalog Product" : "Add Product Catalog Item"}</h2>
               <button type="button" className="secondary-button" onClick={() => setShowCatalogScanner(true)}>Open Catalog Scanner</button>
