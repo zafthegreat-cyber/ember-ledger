@@ -99,7 +99,7 @@ function App() {
   const [itemImage, setItemImage] = useState("");
   const [barcode, setBarcode] = useState("");
   const [catalogProductId, setCatalogProductId] = useState("");
-  const [externalProductSource, setExternalProductSource] = useState("Manual");
+  const [externalProductSource, setExternalProductSource] = useState("DeckTradr");
   const [externalProductId, setExternalProductId] = useState("");
   const [tcgplayerProductId, setTcgplayerProductId] = useState("");
   const [tcgplayerUrl, setTcgplayerUrl] = useState("");
@@ -113,7 +113,7 @@ function App() {
   const [catalogSetName, setCatalogSetName] = useState("");
   const [catalogProductType, setCatalogProductType] = useState("");
   const [catalogBarcode, setCatalogBarcode] = useState("");
-  const [catalogMarketSource, setCatalogMarketSource] = useState("Manual");
+  const [catalogMarketSource, setCatalogMarketSource] = useState("DeckTradr");
   const [catalogExternalProductId, setCatalogExternalProductId] = useState("");
   const [catalogTcgplayerProductId, setCatalogTcgplayerProductId] = useState("");
   const [catalogMarketUrl, setCatalogMarketUrl] = useState("");
@@ -131,7 +131,7 @@ function App() {
   const [editCatalogSetName, setEditCatalogSetName] = useState("");
   const [editCatalogProductType, setEditCatalogProductType] = useState("");
   const [editCatalogBarcode, setEditCatalogBarcode] = useState("");
-  const [editCatalogMarketSource, setEditCatalogMarketSource] = useState("Manual");
+  const [editCatalogMarketSource, setEditCatalogMarketSource] = useState("DeckTradr");
   const [editCatalogExternalProductId, setEditCatalogExternalProductId] = useState("");
   const [editCatalogTcgplayerProductId, setEditCatalogTcgplayerProductId] = useState("");
   const [editCatalogMarketUrl, setEditCatalogMarketUrl] = useState("");
@@ -173,6 +173,13 @@ function App() {
   const [saleNotes, setSaleNotes] = useState("");
 
   const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
+
+  const [status, setStatus] = useState("In Stock");
+  const [listingPlatform, setListingPlatform] = useState("");
+  const [listingUrl, setListingUrl] = useState("");
+  const [listedPrice, setListedPrice] = useState("");
+  const [actionNotes, setActionNotes] = useState("");
 
   const [editingItemId, setEditingItemId] = useState(null);
   const [editName, setEditName] = useState("");
@@ -183,7 +190,7 @@ function App() {
   const [editUnitCost, setEditUnitCost] = useState("");
   const [editSalePrice, setEditSalePrice] = useState("");
   const [editBarcode, setEditBarcode] = useState("");
-  const [editExternalProductSource, setEditExternalProductSource] = useState("Manual");
+  const [editExternalProductSource, setEditExternalProductSource] = useState("DeckTradr");
   const [editExternalProductId, setEditExternalProductId] = useState("");
   const [editTcgplayerProductId, setEditTcgplayerProductId] = useState("");
   const [editTcgplayerUrl, setEditTcgplayerUrl] = useState("");
@@ -191,6 +198,11 @@ function App() {
   const [editLowPrice, setEditLowPrice] = useState("");
   const [editMidPrice, setEditMidPrice] = useState("");
   const [editHighPrice, setEditHighPrice] = useState("");
+  const [editStatus, setEditStatus] = useState("In Stock");
+  const [editListingPlatform, setEditListingPlatform] = useState("");
+  const [editListingUrl, setEditListingUrl] = useState("");
+  const [editListedPrice, setEditListedPrice] = useState("");
+  const [editActionNotes, setEditActionNotes] = useState("");
 
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editExpenseVendor, setEditExpenseVendor] = useState("");
@@ -320,7 +332,7 @@ function App() {
       catalogProductId: row.catalog_product_id || "",
       catalogProductName: row.catalog_product_name || "",
       externalProductId: row.external_product_id || "",
-      externalProductSource: row.external_product_source || "Manual",
+      externalProductSource: row.external_product_source || "DeckTradr",
       tcgplayerProductId: row.tcgplayer_product_id || "",
       tcgplayerUrl: row.tcgplayer_url || "",
       marketPrice: Number(row.market_price || 0),
@@ -328,6 +340,11 @@ function App() {
       midPrice: Number(row.mid_price || 0),
       highPrice: Number(row.high_price || 0),
       lastPriceChecked: row.last_price_checked || "",
+      status: row.status || "In Stock",
+      listingPlatform: row.listing_platform || "",
+      listingUrl: row.listing_url || "",
+      listedPrice: Number(row.listed_price || 0),
+      actionNotes: row.action_notes || "",
       createdAt: row.created_at,
     };
   }
@@ -340,7 +357,7 @@ function App() {
       setName: row.set_name || "",
       productType: row.product_type || "",
       barcode: row.barcode || "",
-      marketSource: row.market_source || "Manual",
+      marketSource: row.market_source || "DeckTradr",
       externalProductId: row.external_product_id || "",
       tcgplayerProductId: row.tcgplayer_product_id || "",
       marketUrl: row.market_url || "",
@@ -538,7 +555,7 @@ function App() {
     setItemName(product.name);
     setCategory(product.category || "Pokemon");
     setBarcode(product.barcode || "");
-    setExternalProductSource(product.marketSource || "Manual");
+    setExternalProductSource(product.marketSource || "DeckTradr");
     setExternalProductId(product.externalProductId || "");
     setTcgplayerProductId(product.tcgplayerProductId || "");
     setTcgplayerUrl(product.marketUrl || "");
@@ -561,7 +578,7 @@ function App() {
     setItemImage("");
     setBarcode("");
     setCatalogProductId("");
-    setExternalProductSource("Manual");
+    setExternalProductSource("DeckTradr");
     setExternalProductId("");
     setTcgplayerProductId("");
     setTcgplayerUrl("");
@@ -569,6 +586,11 @@ function App() {
     setLowPrice("");
     setMidPrice("");
     setHighPrice("");
+    setStatus("In Stock");
+    setListingPlatform("");
+    setListingUrl("");
+    setListedPrice("");
+    setActionNotes("");
   }
 
   function findMatchingInventoryItem() {
@@ -605,11 +627,16 @@ function App() {
       receipt_image: itemReceiptImage || existingItem.receiptImage || "",
       item_image: itemImage || existingItem.itemImage || "",
       barcode: barcode || existingItem.barcode || "",
-      external_product_source: externalProductSource || existingItem.externalProductSource || "Manual",
+      external_product_source: externalProductSource || existingItem.externalProductSource || "DeckTradr",
       external_product_id: externalProductId || existingItem.externalProductId || "",
       tcgplayer_product_id: tcgplayerProductId || existingItem.tcgplayerProductId || "",
       tcgplayer_url: tcgplayerUrl || existingItem.tcgplayerUrl || "",
       last_price_checked: marketPrice ? new Date().toISOString() : existingItem.lastPriceChecked || null,
+      status: status || existingItem.status || "In Stock",
+      listing_platform: listingPlatform || existingItem.listingPlatform || "",
+      listing_url: listingUrl || existingItem.listingUrl || "",
+      listed_price: Number(listedPrice || existingItem.listedPrice || 0),
+      action_notes: actionNotes || existingItem.actionNotes || "",
       updated_at: new Date().toISOString(),
     };
 
@@ -640,7 +667,7 @@ function App() {
     setSalePrice(item.salePrice || "");
     setItemImage(item.itemImage || "");
     setBarcode(item.barcode || "");
-    setExternalProductSource(item.externalProductSource || "Manual");
+    setExternalProductSource(item.externalProductSource || "DeckTradr");
     setExternalProductId(item.externalProductId || "");
     setTcgplayerProductId(item.tcgplayerProductId || "");
     setTcgplayerUrl(item.tcgplayerUrl || "");
@@ -648,6 +675,11 @@ function App() {
     setLowPrice(item.lowPrice || "");
     setMidPrice(item.midPrice || "");
     setHighPrice(item.highPrice || "");
+    setStatus(item.status || "In Stock");
+    setListingPlatform(item.listingPlatform || "");
+    setListingUrl(item.listingUrl || "");
+    setListedPrice(item.listedPrice || "");
+    setActionNotes(item.actionNotes || "");
     setItemReceiptImage("");
     setActiveTab("addInventory");
   }
@@ -658,7 +690,7 @@ function App() {
     setCatalogSetName("");
     setCatalogProductType("");
     setCatalogBarcode("");
-    setCatalogMarketSource("Manual");
+    setCatalogMarketSource("DeckTradr");
     setCatalogExternalProductId("");
     setCatalogTcgplayerProductId("");
     setCatalogMarketUrl("");
@@ -714,7 +746,7 @@ function App() {
     setEditCatalogSetName(product.setName || "");
     setEditCatalogProductType(product.productType || "");
     setEditCatalogBarcode(product.barcode || "");
-    setEditCatalogMarketSource(product.marketSource || "Manual");
+    setEditCatalogMarketSource(product.marketSource || "DeckTradr");
     setEditCatalogExternalProductId(product.externalProductId || "");
     setEditCatalogTcgplayerProductId(product.tcgplayerProductId || "");
     setEditCatalogMarketUrl(product.marketUrl || "");
@@ -733,7 +765,7 @@ function App() {
     setEditCatalogSetName("");
     setEditCatalogProductType("");
     setEditCatalogBarcode("");
-    setEditCatalogMarketSource("Manual");
+    setEditCatalogMarketSource("DeckTradr");
     setEditCatalogExternalProductId("");
     setEditCatalogTcgplayerProductId("");
     setEditCatalogMarketUrl("");
@@ -819,6 +851,11 @@ function App() {
       mid_price: Number(midPrice || 0),
       high_price: Number(highPrice || 0),
       last_price_checked: marketPrice ? new Date().toISOString() : null,
+      status,
+      listing_platform: listingPlatform,
+      listing_url: listingUrl,
+      listed_price: Number(listedPrice || 0),
+      action_notes: actionNotes,
     };
 
     const { data, error } = await supabase.from("inventory_items").insert(row).select().single();
@@ -844,7 +881,7 @@ function App() {
     setEditUnitCost(item.unitCost);
     setEditSalePrice(item.salePrice);
     setEditBarcode(item.barcode || "");
-    setEditExternalProductSource(item.externalProductSource || "Manual");
+    setEditExternalProductSource(item.externalProductSource || "DeckTradr");
     setEditExternalProductId(item.externalProductId || "");
     setEditTcgplayerProductId(item.tcgplayerProductId || "");
     setEditTcgplayerUrl(item.tcgplayerUrl || "");
@@ -852,6 +889,11 @@ function App() {
     setEditLowPrice(item.lowPrice || "");
     setEditMidPrice(item.midPrice || "");
     setEditHighPrice(item.highPrice || "");
+    setEditStatus(item.status || "In Stock");
+    setEditListingPlatform(item.listingPlatform || "");
+    setEditListingUrl(item.listingUrl || "");
+    setEditListedPrice(item.listedPrice || "");
+    setEditActionNotes(item.actionNotes || "");
   }
 
   function cancelEditingItem() {
@@ -864,7 +906,7 @@ function App() {
     setEditUnitCost("");
     setEditSalePrice("");
     setEditBarcode("");
-    setEditExternalProductSource("Manual");
+    setEditExternalProductSource("DeckTradr");
     setEditExternalProductId("");
     setEditTcgplayerProductId("");
     setEditTcgplayerUrl("");
@@ -872,6 +914,11 @@ function App() {
     setEditLowPrice("");
     setEditMidPrice("");
     setEditHighPrice("");
+    setEditStatus("In Stock");
+    setEditListingPlatform("");
+    setEditListingUrl("");
+    setEditListedPrice("");
+    setEditActionNotes("");
   }
 
   async function saveEditedItem(event) {
@@ -896,6 +943,11 @@ function App() {
       mid_price: Number(editMidPrice || 0),
       high_price: Number(editHighPrice || 0),
       last_price_checked: editMarketPrice ? new Date().toISOString() : null,
+      status: editStatus,
+      listing_platform: editListingPlatform,
+      listing_url: editListingUrl,
+      listed_price: Number(editListedPrice || 0),
+      action_notes: editActionNotes,
       updated_at: new Date().toISOString(),
     };
 
@@ -1354,23 +1406,34 @@ function App() {
   }, {});
 
   const inventoryByMarketSource = items.reduce((acc, item) => {
-    acc[item.externalProductSource || "Manual"] = (acc[item.externalProductSource || "Manual"] || 0) + item.quantity;
+    acc[item.externalProductSource || "DeckTradr"] = (acc[item.externalProductSource || "DeckTradr"] || 0) + item.quantity;
     return acc;
   }, {});
 
   const lowStockItems = items.filter((item) => item.quantity <= 1);
+  const needsPhotosItems = items.filter((item) => item.status === "Needs Photos" || !item.itemImage);
+  const needsPriceCheckItems = items.filter((item) => item.status === "Needs Price Check" || item.marketPrice <= 0);
+  const listedItems = items.filter((item) => item.status === "Listed");
+  const inventoryByStatus = items.reduce((acc, item) => {
+    acc[item.status || "In Stock"] = (acc[item.status || "In Stock"] || 0) + item.quantity;
+    return acc;
+  }, {});
 
   const filteredItems = items.filter((item) => {
     const search = inventorySearch.toLowerCase();
-    return (
+    const matchesSearch =
       item.name.toLowerCase().includes(search) ||
       item.sku.toLowerCase().includes(search) ||
       item.buyer.toLowerCase().includes(search) ||
       item.category.toLowerCase().includes(search) ||
       String(item.store || "").toLowerCase().includes(search) ||
       String(item.barcode || "").toLowerCase().includes(search) ||
-      String(item.externalProductSource || "").toLowerCase().includes(search)
-    );
+      String(item.externalProductSource || "").toLowerCase().includes(search) ||
+      String(item.status || "").toLowerCase().includes(search);
+
+    const matchesStatus = inventoryStatusFilter === "All" || item.status === inventoryStatusFilter;
+
+    return matchesSearch && matchesStatus;
   });
 
   const filteredCatalogProducts = catalogProducts.filter((product) => {
@@ -1435,7 +1498,7 @@ function App() {
               <div className="card"><p>Potential Sales</p><h2>${totalPotentialSales.toFixed(2)}</h2></div>
               <div className="card"><p>Market Value</p><h2>${totalMarketValue.toFixed(2)}</h2></div>
               <div className="card"><p>Planned Profit</p><h2>${estimatedProfit.toFixed(2)}</h2></div>
-              <div className="card"><p>Market Profit</p><h2>${estimatedMarketProfit.toFixed(2)}</h2></div>
+              <div className="card"><p>DeckTradr Profit</p><h2>${estimatedMarketProfit.toFixed(2)}</h2></div>
               <div className="card"><p>Expenses</p><h2>${totalExpenses.toFixed(2)}</h2></div>
               <div className="card"><p>Profit After Expenses</p><h2>${estimatedProfitAfterExpenses.toFixed(2)}</h2></div>
               <div className="card"><p>Sales Revenue</p><h2>${totalSalesRevenue.toFixed(2)}</h2></div>
@@ -1496,11 +1559,11 @@ function App() {
                 <button type="button" className="secondary-button" onClick={() => setShowCatalogScanner(true)}>Scan Catalog Barcode</button>
                 <label>Product Image<input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setCatalogImageUrl, "catalog-products")} /></label>
                 {catalogImageUrl && <div className="receipt-preview"><p>Catalog photo attached</p><img src={catalogImageUrl} alt="Catalog preview" /></div>}
-                <label>Market Source<select value={catalogMarketSource} onChange={(e) => setCatalogMarketSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label>
+                <label>DeckTradr Source<select value={catalogMarketSource} onChange={(e) => setCatalogMarketSource(e.target.value)}><option>DeckTradr</option></select></label>
                 <label>External Product ID<input value={catalogExternalProductId} onChange={(e) => setCatalogExternalProductId(e.target.value)} /></label>
-                <label>TCGplayer Product ID<input value={catalogTcgplayerProductId} onChange={(e) => setCatalogTcgplayerProductId(e.target.value)} /></label>
-                <label>Market URL<input value={catalogMarketUrl} onChange={(e) => setCatalogMarketUrl(e.target.value)} /></label>
-                <label>Market Price<input type="number" step="0.01" value={catalogMarketPrice} onChange={(e) => setCatalogMarketPrice(e.target.value)} /></label>
+                <label>DeckTradr Product ID<input value={catalogTcgplayerProductId} onChange={(e) => setCatalogTcgplayerProductId(e.target.value)} /></label>
+                <label>DeckTradr URL<input value={catalogMarketUrl} onChange={(e) => setCatalogMarketUrl(e.target.value)} /></label>
+                <label>DeckTradr Value<input type="number" step="0.01" value={catalogMarketPrice} onChange={(e) => setCatalogMarketPrice(e.target.value)} /></label>
                 <label>Low Price<input type="number" step="0.01" value={catalogLowPrice} onChange={(e) => setCatalogLowPrice(e.target.value)} /></label>
                 <label>Mid Price<input type="number" step="0.01" value={catalogMidPrice} onChange={(e) => setCatalogMidPrice(e.target.value)} /></label>
                 <label>High Price<input type="number" step="0.01" value={catalogHighPrice} onChange={(e) => setCatalogHighPrice(e.target.value)} /></label>
@@ -1523,12 +1586,12 @@ function App() {
                           <label>Set / Collection<input value={editCatalogSetName} onChange={(e) => setEditCatalogSetName(e.target.value)} /></label>
                           <label>Product Type<input value={editCatalogProductType} onChange={(e) => setEditCatalogProductType(e.target.value)} /></label>
                           <label>Barcode / UPC<input value={editCatalogBarcode} onChange={(e) => setEditCatalogBarcode(e.target.value)} /></label>
-                          <label>Market Source<select value={editCatalogMarketSource} onChange={(e) => setEditCatalogMarketSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label>
+                          <label>DeckTradr Source<select value={editCatalogMarketSource} onChange={(e) => setEditCatalogMarketSource(e.target.value)}><option>DeckTradr</option></select></label>
                           <label>External Product ID<input value={editCatalogExternalProductId} onChange={(e) => setEditCatalogExternalProductId(e.target.value)} /></label>
-                          <label>TCGplayer Product ID<input value={editCatalogTcgplayerProductId} onChange={(e) => setEditCatalogTcgplayerProductId(e.target.value)} /></label>
-                          <label>Market URL<input value={editCatalogMarketUrl} onChange={(e) => setEditCatalogMarketUrl(e.target.value)} /></label>
+                          <label>DeckTradr Product ID<input value={editCatalogTcgplayerProductId} onChange={(e) => setEditCatalogTcgplayerProductId(e.target.value)} /></label>
+                          <label>DeckTradr URL<input value={editCatalogMarketUrl} onChange={(e) => setEditCatalogMarketUrl(e.target.value)} /></label>
                           <label>Image URL<input value={editCatalogImageUrl} onChange={(e) => setEditCatalogImageUrl(e.target.value)} /></label>
-                          <label>Market Price<input type="number" step="0.01" value={editCatalogMarketPrice} onChange={(e) => setEditCatalogMarketPrice(e.target.value)} /></label>
+                          <label>DeckTradr Value<input type="number" step="0.01" value={editCatalogMarketPrice} onChange={(e) => setEditCatalogMarketPrice(e.target.value)} /></label>
                           <label>Low Price<input type="number" step="0.01" value={editCatalogLowPrice} onChange={(e) => setEditCatalogLowPrice(e.target.value)} /></label>
                           <label>Mid Price<input type="number" step="0.01" value={editCatalogMidPrice} onChange={(e) => setEditCatalogMidPrice(e.target.value)} /></label>
                           <label>High Price<input type="number" step="0.01" value={editCatalogHighPrice} onChange={(e) => setEditCatalogHighPrice(e.target.value)} /></label>
@@ -1545,9 +1608,9 @@ function App() {
                           <p>Type: {product.productType || "Not listed"}</p>
                           <p>Barcode: {product.barcode || "Not listed"}</p>
                           <p>Source: {product.marketSource}</p>
-                          <p>Market Price: ${product.marketPrice.toFixed(2)}</p>
+                          <p>DeckTradr Value: ${product.marketPrice.toFixed(2)}</p>
                           <p>Low / Mid / High: ${product.lowPrice.toFixed(2)} / ${product.midPrice.toFixed(2)} / ${product.highPrice.toFixed(2)}</p>
-                          {product.marketUrl && <p><a href={product.marketUrl} target="_blank" rel="noreferrer">Open Market Link</a></p>}
+                          {product.marketUrl && <p><a href={product.marketUrl} target="_blank" rel="noreferrer">Open DeckTradr Link</a></p>}
                           {product.notes && <p>Notes: {product.notes}</p>}
                           <button className="edit-button" onClick={() => {
                             applyCatalogProduct(product.id);
@@ -1596,14 +1659,19 @@ function App() {
               <label>Quantity Purchased<input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
               <label>Unit Cost<input type="number" step="0.01" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} /></label>
               <label>Planned Sale Price<input type="number" step="0.01" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} /></label>
-              <label>Market Source<select value={externalProductSource} onChange={(e) => setExternalProductSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label>
+              <label>DeckTradr Source<select value={externalProductSource} onChange={(e) => setExternalProductSource(e.target.value)}><option>DeckTradr</option></select></label>
               <label>External Product ID<input value={externalProductId} onChange={(e) => setExternalProductId(e.target.value)} /></label>
-              <label>TCGplayer Product ID<input value={tcgplayerProductId} onChange={(e) => setTcgplayerProductId(e.target.value)} /></label>
-              <label>Market URL<input value={tcgplayerUrl} onChange={(e) => setTcgplayerUrl(e.target.value)} /></label>
-              <label>Market Price<input type="number" step="0.01" value={marketPrice} onChange={(e) => setMarketPrice(e.target.value)} /></label>
+              <label>DeckTradr Product ID<input value={tcgplayerProductId} onChange={(e) => setTcgplayerProductId(e.target.value)} /></label>
+              <label>DeckTradr URL<input value={tcgplayerUrl} onChange={(e) => setTcgplayerUrl(e.target.value)} /></label>
+              <label>DeckTradr Value<input type="number" step="0.01" value={marketPrice} onChange={(e) => setMarketPrice(e.target.value)} /></label>
               <label>Low Price<input type="number" step="0.01" value={lowPrice} onChange={(e) => setLowPrice(e.target.value)} /></label>
               <label>Mid Price<input type="number" step="0.01" value={midPrice} onChange={(e) => setMidPrice(e.target.value)} /></label>
               <label>High Price<input type="number" step="0.01" value={highPrice} onChange={(e) => setHighPrice(e.target.value)} /></label>
+              <label>Status<select value={status} onChange={(e) => setStatus(e.target.value)}><option>In Stock</option><option>Listed</option><option>Sold</option><option>Held</option><option>Personal Collection</option><option>Damaged</option><option>Needs Photos</option><option>Needs Price Check</option></select></label>
+              <label>Listing Platform<input value={listingPlatform} onChange={(e) => setListingPlatform(e.target.value)} placeholder="eBay, Mercari, Whatnot, FB" /></label>
+              <label>Listing URL<input value={listingUrl} onChange={(e) => setListingUrl(e.target.value)} placeholder="Optional listing link" /></label>
+              <label>Listed Price<input type="number" step="0.01" value={listedPrice} onChange={(e) => setListedPrice(e.target.value)} /></label>
+              <label>Action Notes<input value={actionNotes} onChange={(e) => setActionNotes(e.target.value)} placeholder="Need photos, price check, list today..." /></label>
               <label>Receipt / Screenshot<input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setItemReceiptImage, "inventory")} /></label>
               {itemReceiptImage && <div className="receipt-preview"><p>Receipt attached</p><img src={itemReceiptImage} alt="Receipt preview" /></div>}
               <button type="submit">Add Item</button>
@@ -1639,7 +1707,7 @@ function App() {
         )}
 
         {activeTab === "inventory" && (
-          <section className="panel"><h2>Inventory</h2><input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search by item, SKU, buyer, category, store, barcode, or market source..." />{filteredItems.length === 0 ? <p>No inventory items found.</p> : <div className="inventory-list">{filteredItems.map((item) => <div className="inventory-card" key={item.id}>{editingItemId === item.id ? <form onSubmit={saveEditedItem} className="form"><label>Item Name<input value={editName} onChange={(e) => setEditName(e.target.value)} /></label><label>Buyer<select value={editBuyer} onChange={(e) => setEditBuyer(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Category<select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}><option>Pokemon</option><option>Makeup</option><option>Clothes</option><option>Candy</option><option>Collectibles</option><option>Supplies</option><option>Other</option></select></label><label>Store<input value={editStore} onChange={(e) => setEditStore(e.target.value)} /></label><label>Barcode<input value={editBarcode} onChange={(e) => setEditBarcode(e.target.value)} /></label><label>Quantity<input type="number" min="0" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} /></label><label>Unit Cost<input type="number" step="0.01" value={editUnitCost} onChange={(e) => setEditUnitCost(e.target.value)} /></label><label>Planned Sale Price<input type="number" step="0.01" value={editSalePrice} onChange={(e) => setEditSalePrice(e.target.value)} /></label><label>Market Source<select value={editExternalProductSource} onChange={(e) => setEditExternalProductSource(e.target.value)}><option>Manual</option><option>TCGplayer</option><option>PriceCharting</option><option>Collectr</option><option>eBay Sold</option><option>Other</option></select></label><label>External Product ID<input value={editExternalProductId} onChange={(e) => setEditExternalProductId(e.target.value)} /></label><label>TCGplayer Product ID<input value={editTcgplayerProductId} onChange={(e) => setEditTcgplayerProductId(e.target.value)} /></label><label>Market URL<input value={editTcgplayerUrl} onChange={(e) => setEditTcgplayerUrl(e.target.value)} /></label><label>Market Price<input type="number" step="0.01" value={editMarketPrice} onChange={(e) => setEditMarketPrice(e.target.value)} /></label><label>Low<input type="number" step="0.01" value={editLowPrice} onChange={(e) => setEditLowPrice(e.target.value)} /></label><label>Mid<input type="number" step="0.01" value={editMidPrice} onChange={(e) => setEditMidPrice(e.target.value)} /></label><label>High<input type="number" step="0.01" value={editHighPrice} onChange={(e) => setEditHighPrice(e.target.value)} /></label><button type="submit">Save Changes</button><button type="button" className="secondary-button" onClick={cancelEditingItem}>Cancel</button></form> : <>{item.itemImage && <div className="receipt-preview"><p>Product Photo:</p><img src={item.itemImage} alt={item.name} /></div>}<h3>{item.name}</h3><p>SKU: {item.sku}</p><p>Catalog: {item.catalogProductName || "Not linked"}</p><p>Barcode / UPC: {item.barcode || "Not listed"}</p><p>Buyer: {item.buyer}</p><p>Category: {item.category}</p><p>Store: {item.store || "Not listed"}</p><p>Quantity: {item.quantity}</p><p>Avg Unit Cost: ${item.unitCost.toFixed(2)}</p><p>Total Cost Basis: ${(item.quantity * item.unitCost).toFixed(2)}</p><p>Planned Sale Price: ${item.salePrice.toFixed(2)}</p><p>Market Source: {item.externalProductSource}</p><p>Market Price: ${item.marketPrice.toFixed(2)}</p><p>Low / Mid / High: ${item.lowPrice.toFixed(2)} / ${item.midPrice.toFixed(2)} / ${item.highPrice.toFixed(2)}</p><p>Planned Profit: ${(item.quantity * item.salePrice - item.quantity * item.unitCost).toFixed(2)}</p><p>Market Profit: ${(item.quantity * item.marketPrice - item.quantity * item.unitCost).toFixed(2)}</p>{item.tcgplayerUrl && <p><a href={item.tcgplayerUrl} target="_blank" rel="noreferrer">Open Market Link</a></p>}{item.receiptImage && <div className="receipt-preview"><p>Receipt:</p><img src={item.receiptImage} alt="Inventory receipt" /></div>}<button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button><button className="edit-button" onClick={() => startEditingItem(item)}>Edit Item</button><button className="delete-button" onClick={() => deleteItem(item.id)}>Delete Item</button></>}</div>)}</div>}</section>
+          <section className="panel"><h2>Inventory</h2><input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search by item, SKU, buyer, category, store, barcode, status, or market source..." /><div className="export-grid"><button type="button" onClick={() => setInventoryStatusFilter("All")}>All</button><button type="button" onClick={() => setInventoryStatusFilter("In Stock")}>In Stock</button><button type="button" onClick={() => setInventoryStatusFilter("Listed")}>Listed</button><button type="button" onClick={() => setInventoryStatusFilter("Needs Photos")}>Needs Photos</button><button type="button" onClick={() => setInventoryStatusFilter("Needs Price Check")}>Needs Price Check</button><button type="button" onClick={() => setInventoryStatusFilter("Held")}>Held</button><button type="button" onClick={() => setInventoryStatusFilter("Personal Collection")}>Personal</button><button type="button" onClick={() => setInventoryStatusFilter("Damaged")}>Damaged</button></div><p>Current filter: {inventoryStatusFilter}</p>{filteredItems.length === 0 ? <p>No inventory items found.</p> : <div className="inventory-list">{filteredItems.map((item) => <div className="inventory-card" key={item.id}>{editingItemId === item.id ? <form onSubmit={saveEditedItem} className="form"><label>Item Name<input value={editName} onChange={(e) => setEditName(e.target.value)} /></label><label>Buyer<select value={editBuyer} onChange={(e) => setEditBuyer(e.target.value)}><option>Zena</option><option>Dillon</option><option>Joint</option><option>Other</option></select></label><label>Category<select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}><option>Pokemon</option><option>Makeup</option><option>Clothes</option><option>Candy</option><option>Collectibles</option><option>Supplies</option><option>Other</option></select></label><label>Store<input value={editStore} onChange={(e) => setEditStore(e.target.value)} /></label><label>Barcode<input value={editBarcode} onChange={(e) => setEditBarcode(e.target.value)} /></label><label>Quantity<input type="number" min="0" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} /></label><label>Unit Cost<input type="number" step="0.01" value={editUnitCost} onChange={(e) => setEditUnitCost(e.target.value)} /></label><label>Planned Sale Price<input type="number" step="0.01" value={editSalePrice} onChange={(e) => setEditSalePrice(e.target.value)} /></label><label>DeckTradr Source<select value={editExternalProductSource} onChange={(e) => setEditExternalProductSource(e.target.value)}><option>DeckTradr</option></select></label><label>External Product ID<input value={editExternalProductId} onChange={(e) => setEditExternalProductId(e.target.value)} /></label><label>DeckTradr Product ID<input value={editTcgplayerProductId} onChange={(e) => setEditTcgplayerProductId(e.target.value)} /></label><label>DeckTradr URL<input value={editTcgplayerUrl} onChange={(e) => setEditTcgplayerUrl(e.target.value)} /></label><label>DeckTradr Value<input type="number" step="0.01" value={editMarketPrice} onChange={(e) => setEditMarketPrice(e.target.value)} /></label><label>Low<input type="number" step="0.01" value={editLowPrice} onChange={(e) => setEditLowPrice(e.target.value)} /></label><label>Mid<input type="number" step="0.01" value={editMidPrice} onChange={(e) => setEditMidPrice(e.target.value)} /></label><label>High<input type="number" step="0.01" value={editHighPrice} onChange={(e) => setEditHighPrice(e.target.value)} /></label><label>Status<select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}><option>In Stock</option><option>Listed</option><option>Sold</option><option>Held</option><option>Personal Collection</option><option>Damaged</option><option>Needs Photos</option><option>Needs Price Check</option></select></label><label>Listing Platform<input value={editListingPlatform} onChange={(e) => setEditListingPlatform(e.target.value)} /></label><label>Listing URL<input value={editListingUrl} onChange={(e) => setEditListingUrl(e.target.value)} /></label><label>Listed Price<input type="number" step="0.01" value={editListedPrice} onChange={(e) => setEditListedPrice(e.target.value)} /></label><label>Action Notes<input value={editActionNotes} onChange={(e) => setEditActionNotes(e.target.value)} /></label><button type="submit">Save Changes</button><button type="button" className="secondary-button" onClick={cancelEditingItem}>Cancel</button></form> : <>{item.itemImage && <div className="receipt-preview"><p>Product Photo:</p><img src={item.itemImage} alt={item.name} /></div>}<h3>{item.name}</h3><p>SKU: {item.sku}</p><p>Catalog: {item.catalogProductName || "Not linked"}</p><p>Status: {item.status || "In Stock"}</p><p>Barcode / UPC: {item.barcode || "Not listed"}</p><p>Buyer: {item.buyer}</p><p>Category: {item.category}</p><p>Store: {item.store || "Not listed"}</p><p>Quantity: {item.quantity}</p><p>Avg Unit Cost: ${item.unitCost.toFixed(2)}</p><p>Total Cost Basis: ${(item.quantity * item.unitCost).toFixed(2)}</p><p>Planned Sale Price: ${item.salePrice.toFixed(2)}</p><p>DeckTradr Source: {item.externalProductSource}</p><p>DeckTradr Value: ${item.marketPrice.toFixed(2)}</p><p>Low / Mid / High: ${item.lowPrice.toFixed(2)} / ${item.midPrice.toFixed(2)} / ${item.highPrice.toFixed(2)}</p><p>Planned Profit: ${(item.quantity * item.salePrice - item.quantity * item.unitCost).toFixed(2)}</p><p>DeckTradr Profit: ${(item.quantity * item.marketPrice - item.quantity * item.unitCost).toFixed(2)}</p>{item.listingPlatform && <p>Listing Platform: {item.listingPlatform}</p>}{item.listedPrice > 0 && <p>Listed Price: ${item.listedPrice.toFixed(2)}</p>}{item.listingUrl && <p><a href={item.listingUrl} target="_blank" rel="noreferrer">Open Listing</a></p>}{item.actionNotes && <p>Action Notes: {item.actionNotes}</p>}{item.tcgplayerUrl && <p><a href={item.tcgplayerUrl} target="_blank" rel="noreferrer">Open DeckTradr Link</a></p>}{item.receiptImage && <div className="receipt-preview"><p>Receipt:</p><img src={item.receiptImage} alt="Inventory receipt" /></div>}<button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button><button className="edit-button" onClick={() => startEditingItem(item)}>Edit Item</button><button className="delete-button" onClick={() => deleteItem(item.id)}>Delete Item</button></>}</div>)}</div>}</section>
         )}
 
         {activeTab === "sales" && (
@@ -1652,8 +1720,12 @@ function App() {
             <section className="panel"><h2>Sales by Platform</h2>{Object.keys(salesByPlatform).length === 0 ? <p>No sales yet.</p> : Object.entries(salesByPlatform).map(([platform, amount]) => <p key={platform}>{platform}: ${amount.toFixed(2)}</p>)}</section>
             <section className="panel"><h2>Expenses by Category</h2>{Object.keys(expensesByCategory).length === 0 ? <p>No expenses yet.</p> : Object.entries(expensesByCategory).map(([cat, amount]) => <p key={cat}>{cat}: ${amount.toFixed(2)}</p>)}</section>
             <section className="panel"><h2>Inventory by Category</h2>{Object.keys(inventoryByCategory).length === 0 ? <p>No inventory yet.</p> : Object.entries(inventoryByCategory).map(([cat, qty]) => <p key={cat}>{cat}: {qty} units</p>)}</section>
-            <section className="panel"><h2>Inventory by Market Source</h2>{Object.keys(inventoryByMarketSource).length === 0 ? <p>No inventory yet.</p> : Object.entries(inventoryByMarketSource).map(([source, qty]) => <p key={source}>{source}: {qty} units</p>)}</section>
-            <section className="panel"><h2>Low Stock / Sold Out</h2>{lowStockItems.length === 0 ? <p>No low-stock items.</p> : <div className="inventory-list">{lowStockItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>Store: {item.store || "Not listed"}</p><p>Market Price: ${item.marketPrice.toFixed(2)}</p><button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button></div>)}</div>}</section>
+            <section className="panel"><h2>Inventory by DeckTradr Source</h2>{Object.keys(inventoryByMarketSource).length === 0 ? <p>No inventory yet.</p> : Object.entries(inventoryByMarketSource).map(([source, qty]) => <p key={source}>{source}: {qty} units</p>)}</section>
+            <section className="panel"><h2>Inventory by Status</h2>{Object.keys(inventoryByStatus).length === 0 ? <p>No inventory yet.</p> : Object.entries(inventoryByStatus).map(([statusName, qty]) => <p key={statusName}>{statusName}: {qty} units</p>)}</section>
+            <section className="panel"><h2>Needs Photos</h2>{needsPhotosItems.length === 0 ? <p>No items need photos.</p> : <div className="inventory-list">{needsPhotosItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>Status: {item.status}</p><button className="edit-button" onClick={() => startEditingItem(item)}>Update Item</button></div>)}</div>}</section>
+            <section className="panel"><h2>Needs Price Check</h2>{needsPriceCheckItems.length === 0 ? <p>No items need price checks.</p> : <div className="inventory-list">{needsPriceCheckItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>DeckTradr Value: ${item.marketPrice.toFixed(2)}</p><button className="edit-button" onClick={() => startEditingItem(item)}>Update Price</button></div>)}</div>}</section>
+            <section className="panel"><h2>Listed Items</h2>{listedItems.length === 0 ? <p>No listed items yet.</p> : <div className="inventory-list">{listedItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>Listed Price: ${item.listedPrice.toFixed(2)}</p>{item.listingUrl && <p><a href={item.listingUrl} target="_blank" rel="noreferrer">Open Listing</a></p>}</div>)}</div>}</section>
+            <section className="panel"><h2>Low Stock / Sold Out</h2>{lowStockItems.length === 0 ? <p>No low-stock items.</p> : <div className="inventory-list">{lowStockItems.map((item) => <div className="inventory-card" key={item.id}><h3>{item.name}</h3><p>Qty: {item.quantity}</p><p>Store: {item.store || "Not listed"}</p><p>DeckTradr Value: ${item.marketPrice.toFixed(2)}</p><button className="edit-button" onClick={() => prepareRestock(item)}>Restock / Rebuy</button></div>)}</div>}</section>
           </>
         )}
       </main>
