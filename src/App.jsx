@@ -623,38 +623,39 @@ export default function App() {
     setCatalogProducts(catalogProducts.filter((product) => product.id !== id));
   }
 
-  function applyCatalogProduct(productId) {
-    updateItemForm("catalogProductId", productId);
-    const product = catalogProducts.find((p) => String(p.id) === String(productId));
-    if (!product) return;
+ function applyCatalogProduct(productId) {
+  updateItemForm("catalogProductId", productId);
 
-    setItemForm((old) => ({
-      ...old,
-      catalogProductId: productId,
-      name: product.name,
-      category: product.category,
-      barcode: product.barcode,
-      externalProductId: product.externalProductId,
-      decktradrUrl: product.marketUrl,
-      marketPrice: product.marketPrice,
-      lowPrice: product.lowPrice,
-      midPrice: product.midPrice,
-      highPrice: product.highPrice,
-      itemImage: product.imageUrl,
+  const product = catalogProducts.find(
+    (p) => String(p.id) === String(productId)
+  );
 
-      
-    }));
-    function parseBulkCatalogText(text) {
+  if (!product) return;
+
+  setItemForm((old) => ({
+    ...old,
+    catalogProductId: productId,
+    name: product.name,
+    category: product.category,
+    barcode: product.barcode,
+    externalProductId: product.externalProductId,
+    decktradrUrl: product.marketUrl,
+    marketPrice: product.marketPrice,
+    lowPrice: product.lowPrice,
+    midPrice: product.midPrice,
+    highPrice: product.highPrice,
+    itemImage: product.imageUrl,
+  }));
+}
+
+function parseBulkCatalogText(text) {
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
 
   return lines.map((line, index) => {
-    const parts = line
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean);
+    const parts = line.split(",").map((part) => part.trim());
 
     return {
       tempId: index + 1,
@@ -695,8 +696,9 @@ function handleBulkCatalogFileUpload(event) {
   reader.onload = () => {
     const text = String(reader.result || "");
     setBulkImportText(text);
-    const parsed = parseBulkCatalogText(text).filter((item) => item.name);
-    setBulkImportPreview(parsed);
+    setBulkImportPreview(
+      parseBulkCatalogText(text).filter((item) => item.name)
+    );
   };
 
   reader.readAsText(file);
@@ -742,17 +744,12 @@ async function importBulkCatalogProducts() {
     return;
   }
 
-  setCatalogProducts([
-    ...data.map(mapCatalog),
-    ...catalogProducts,
-  ]);
-
+  setCatalogProducts([...data.map(mapCatalog), ...catalogProducts]);
   setBulkImportText("");
   setBulkImportPreview([]);
 
   alert(`Imported ${data.length} catalog products.`);
 }
-  }
 
   async function addExpense(event) {
     event.preventDefault();
