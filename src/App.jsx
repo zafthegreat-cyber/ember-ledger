@@ -1114,7 +1114,7 @@ async function importBulkCatalogProducts() {
   {showTreasure && (
     <div className="hidden-treasure">
       <p>Hidden Treasure Found ✨</p>
-      <h2>I love you Dillon — with you by my side we can do anything.</h2>
+      <h2>I love you Dillon — with you by my side I can do anything.</h2>
     </div>
   )}
 </header>
