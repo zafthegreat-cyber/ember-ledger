@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import "./App.css";
 import { supabase } from "./supabaseClient";
+import SmartAddInventory from "./components/SmartAddInventory";
+import SmartAddCatalog from "./components/SmartAddCatalog";
 
 const IRS_MILEAGE_RATE = 0.725;
 const PEOPLE = ["Zena", "Dillon", "Joint", "Other"];
@@ -85,6 +87,7 @@ function BarcodeScanner({ onScan, onClose }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reportFocus, setReportFocus] = useState("");
 
   const [treasureClicks, setTreasureClicks] = useState(0);
   const [showTreasure, setShowTreasure] = useState(false);
@@ -106,6 +109,7 @@ export default function App() {
   const [showCatalogScanner, setShowCatalogScanner] = useState(false);
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
+  const [inventorySort, setInventorySort] = useState("newest");
   const [catalogSearch, setCatalogSearch] = useState("");
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
@@ -118,45 +122,56 @@ export default function App() {
   const [editingSaleId, setEditingSaleId] = useState(null);
 
   const blankItem = {
-    name: "",
-    buyer: "Zena",
-    category: "Pokemon",
-    store: "",
-    quantity: 1,
-    unitCost: "",
-    salePrice: "",
-    receiptImage: "",
-    itemImage: "",
-    barcode: "",
-    catalogProductId: "",
-    externalProductId: "",
-    decktradrUrl: "",
-    marketPrice: "",
-    lowPrice: "",
-    midPrice: "",
-    highPrice: "",
-    status: "In Stock",
-    listingPlatform: "",
-    listingUrl: "",
-    listedPrice: "",
-    actionNotes: "",
-  };
+  name: "",
+  buyer: "Zena",
+  category: "Pokemon",
+  store: "",
+  quantity: 1,
+  unitCost: "",
+  salePrice: "",
+  receiptImage: "",
+  itemImage: "",
+  barcode: "",
+  catalogProductId: "",
+  externalProductId: "",
+  decktradrUrl: "",
+  marketPrice: "",
+  lowPrice: "",
+  midPrice: "",
+  highPrice: "",
+  msrpPrice: "",
+  setCode: "",
+  expansion: "",
+  productLine: "",
+  productType: "",
+  packCount: "",
+  status: "In Stock",
+  listingPlatform: "",
+  listingUrl: "",
+  listedPrice: "",
+  actionNotes: "",
+};
 
   const blankCatalog = {
-    name: "",
-    category: "Pokemon",
-    setName: "",
-    productType: "",
-    barcode: "",
-    externalProductId: "",
-    marketUrl: "",
-    imageUrl: "",
-    marketPrice: "",
-    lowPrice: "",
-    midPrice: "",
-    highPrice: "",
-    notes: "",
-  };
+  name: "",
+  category: "Pokemon",
+  setName: "",
+  productType: "",
+  barcode: "",
+  externalProductId: "",
+  marketUrl: "",
+  imageUrl: "",
+  marketPrice: "",
+  lowPrice: "",
+  midPrice: "",
+  highPrice: "",
+  msrpPrice: "",
+  setCode: "",
+  expansion: "",
+  productLine: "",
+  packCount: "",
+  notes: "",
+};
 
   const [itemForm, setItemForm] = useState(blankItem);
   const [catalogForm, setCatalogForm] = useState(blankCatalog);
@@ -176,6 +191,34 @@ export default function App() {
 
   const updateItemForm = (field, value) => setItemForm((old) => ({ ...old, [field]: value }));
   const updateCatalogForm = (field, value) => setCatalogForm((old) => ({ ...old, [field]: value }));
+
+  function useSmartCatalogProduct(product) {
+  setCatalogForm((old) => ({
+    ...old,
+    name: product.name,
+    category: "Pokemon",
+    setName: product.expansion || "",
+    productType: product.itemType || "",
+    barcode: product.upcs?.[0] || "",
+    marketPrice: product.marketPrice || "",
+    lowPrice: "",
+    midPrice: product.marketPrice || "",
+    highPrice: "",
+    msrpPrice: product.msrpPrice || "",
+    setCode: product.setCode || "",
+    expansion: product.expansion || "",
+    productLine: product.productLine || "",
+    packCount: product.packCount || "",
+    notes: [
+      product.conditionDefault ? `Condition: ${product.conditionDefault}` : "",
+      product.languageDefault ? `Language: ${product.languageDefault}` : "",
+      product.upcs?.length ? `UPC(s): ${product.upcs.join(", ")}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | "),
+  }));
+}
+
   const updateExpenseForm = (field, value) => setExpenseForm((old) => ({ ...old, [field]: value }));
   const updateVehicleForm = (field, value) => setVehicleForm((old) => ({ ...old, [field]: value }));
   const updateTripForm = (field, value) => setTripForm((old) => ({ ...old, [field]: value }));
@@ -259,7 +302,15 @@ export default function App() {
       lowPrice: Number(row.low_price || 0),
       midPrice: Number(row.mid_price || 0),
       highPrice: Number(row.high_price || 0),
+      msrpPrice: Number(row.msrp_price || 0),
+      setCode: row.set_code || "",
+      expansion: row.expansion || "",
+      productLine: row.product_line || "",
+      productType: row.product_type || "",
+      packCount: Number(row.pack_count || 0),
+      notes: row.notes || "",
       status: row.status || "In Stock",
+      listingPlatform: row.listing_platform || "",
       listingPlatform: row.listing_platform || "",
       listingUrl: row.listing_url || "",
       listedPrice: Number(row.listed_price || 0),
@@ -269,26 +320,31 @@ export default function App() {
     };
   }
 
-  function mapCatalog(row) {
-    return {
-      id: row.id,
-      name: row.name || "",
-      category: row.category || "Pokemon",
-      setName: row.set_name || "",
-      productType: row.product_type || "",
-      barcode: row.barcode || "",
-      marketSource: row.market_source || "DeckTradr",
-      externalProductId: row.external_product_id || "",
-      marketUrl: row.market_url || "",
-      imageUrl: row.image_url || "",
-      marketPrice: Number(row.market_price || 0),
-      lowPrice: Number(row.low_price || 0),
-      midPrice: Number(row.mid_price || 0),
-      highPrice: Number(row.high_price || 0),
-      notes: row.notes || "",
-      createdAt: row.created_at,
-    };
-  }
+function mapCatalog(row) {
+  return {
+    id: row.id,
+    name: row.name || "",
+    category: row.category || "Pokemon",
+    setName: row.set_name || "",
+    productType: row.product_type || "",
+    barcode: row.barcode || "",
+    marketSource: row.market_source || "DeckTradr",
+    externalProductId: row.external_product_id || "",
+    marketUrl: row.market_url || "",
+    imageUrl: row.image_url || "",
+    marketPrice: Number(row.market_price || 0),
+    lowPrice: Number(row.low_price || 0),
+    midPrice: Number(row.mid_price || 0),
+    highPrice: Number(row.high_price || 0),
+    msrpPrice: Number(row.msrp_price || 0),
+    setCode: row.set_code || "",
+    expansion: row.expansion || "",
+    productLine: row.product_line || "",
+    packCount: Number(row.pack_count || 0),
+    notes: row.notes || "",
+    createdAt: row.created_at,
+  };
+}
 
   function mapExpense(row) {
     return { id: row.id, vendor: row.vendor || "", category: row.category || "Supplies", buyer: row.buyer || "Zena", amount: Number(row.amount || 0), notes: row.notes || "", receiptImage: row.receipt_image || "", createdAt: row.created_at };
@@ -364,14 +420,40 @@ export default function App() {
   }
 
   function getMatchingItem(form) {
-    const cleanName = form.name.trim().toLowerCase();
+    const cleanName = String(form.name || "").trim().toLowerCase();
     const cleanBarcode = String(form.barcode || "").trim();
+    const cleanCatalogId = String(form.catalogProductId || "").trim();
+    const cleanExpansion = String(form.expansion || "").trim().toLowerCase();
+    const cleanProductType = String(form.productType || "").trim().toLowerCase();
 
     return items.find((item) => {
-      const sameCatalog = form.catalogProductId && item.catalogProductId === form.catalogProductId;
-      const sameBarcode = cleanBarcode && item.barcode === cleanBarcode;
-      const sameNameCategory = item.name.trim().toLowerCase() === cleanName && String(item.category || "").toLowerCase() === String(form.category || "").toLowerCase();
-      return sameCatalog || sameBarcode || sameNameCategory;
+      const itemName = String(item.name || "").trim().toLowerCase();
+      const itemBarcode = String(item.barcode || "").trim();
+      const itemCatalogId = String(item.catalogProductId || "").trim();
+      const itemExpansion = String(item.expansion || "").trim().toLowerCase();
+      const itemProductType = String(item.productType || "").trim().toLowerCase();
+
+      const sameCatalog =
+        cleanCatalogId && itemCatalogId && cleanCatalogId === itemCatalogId;
+
+      const sameBarcode =
+        cleanBarcode && itemBarcode && cleanBarcode === itemBarcode;
+
+      const sameExactName =
+        cleanName && itemName && cleanName === itemName;
+
+      const sameExpansionAndType =
+        cleanName &&
+        itemName &&
+        cleanName === itemName &&
+        cleanExpansion &&
+        itemExpansion &&
+        cleanExpansion === itemExpansion &&
+        cleanProductType &&
+        itemProductType &&
+        cleanProductType === itemProductType;
+
+      return sameCatalog || sameBarcode || sameExactName || sameExpansionAndType;
     });
   }
 
@@ -393,10 +475,19 @@ export default function App() {
         quantity: newQty,
         unit_cost: weightedCost,
         sale_price: Number(itemForm.salePrice || existing.salePrice || 0),
+
         market_price: Number(itemForm.marketPrice || existing.marketPrice || 0),
         low_price: Number(itemForm.lowPrice || existing.lowPrice || 0),
         mid_price: Number(itemForm.midPrice || existing.midPrice || 0),
         high_price: Number(itemForm.highPrice || existing.highPrice || 0),
+
+        msrp_price: Number(itemForm.msrpPrice || existing.msrpPrice || 0),
+        set_code: itemForm.setCode || existing.setCode || "",
+        expansion: itemForm.expansion || existing.expansion || "",
+        product_line: itemForm.productLine || existing.productLine || "",
+        product_type: itemForm.productType || existing.productType || "",
+        pack_count: Number(itemForm.packCount || existing.packCount || 0),
+
         receipt_image: itemForm.receiptImage || existing.receiptImage || "",
         item_image: itemForm.itemImage || existing.itemImage || "",
         barcode: itemForm.barcode || existing.barcode || "",
@@ -408,15 +499,17 @@ export default function App() {
         listing_url: itemForm.listingUrl || existing.listingUrl || "",
         listed_price: Number(itemForm.listedPrice || existing.listedPrice || 0),
         action_notes: itemForm.actionNotes || existing.actionNotes || "",
-        last_price_checked: itemForm.marketPrice ? new Date().toISOString() : existing.lastPriceChecked || null,
+        last_price_checked: itemForm.marketPrice
+          ? new Date().toISOString()
+          : existing.lastPriceChecked || null,
         updated_at: new Date().toISOString(),
       };
-
       const { data, error } = await supabase.from("inventory_items").update(row).eq("id", existing.id).select().single();
       if (error) return alert("Could not merge restock: " + error.message);
       setItems(items.map((item) => (item.id === existing.id ? mapItem(data) : item)));
       setItemForm(blankItem);
       setActiveTab("inventory");
+      alert(`Restock merged into existing item: ${existing.name}`);
       return;
     }
 
@@ -444,6 +537,12 @@ export default function App() {
       low_price: Number(itemForm.lowPrice || 0),
       mid_price: Number(itemForm.midPrice || 0),
       high_price: Number(itemForm.highPrice || 0),
+      msrp_price: Number(itemForm.msrpPrice || 0),
+      set_code: itemForm.setCode || "",
+      expansion: itemForm.expansion || "",
+      product_line: itemForm.productLine || "",
+      product_type: itemForm.productType || "",
+      pack_count: Number(itemForm.packCount || 0),
       last_price_checked: itemForm.marketPrice ? new Date().toISOString() : null,
       status: itemForm.status,
       listing_platform: itemForm.listingPlatform,
@@ -482,6 +581,12 @@ export default function App() {
       low_price: Number(itemForm.lowPrice || 0),
       mid_price: Number(itemForm.midPrice || 0),
       high_price: Number(itemForm.highPrice || 0),
+      msrp_price: Number(itemForm.msrpPrice || 0),
+      set_code: itemForm.setCode || "",
+      expansion: itemForm.expansion || "",
+      product_line: itemForm.productLine || "",
+      product_type: itemForm.productType || "",
+      pack_count: Number(itemForm.packCount || 0),
       last_price_checked: itemForm.marketPrice ? new Date().toISOString() : null,
       status: itemForm.status,
       listing_platform: itemForm.listingPlatform,
@@ -519,6 +624,12 @@ export default function App() {
       lowPrice: item.lowPrice,
       midPrice: item.midPrice,
       highPrice: item.highPrice,
+      msrpPrice: item.msrpPrice,
+      setCode: item.setCode,
+      expansion: item.expansion,
+      productLine: item.productLine,
+      productType: item.productType,
+      packCount: item.packCount,
       status: item.status,
       listingPlatform: item.listingPlatform,
       listingUrl: item.listingUrl,
@@ -547,6 +658,12 @@ export default function App() {
       lowPrice: item.lowPrice,
       midPrice: item.midPrice,
       highPrice: item.highPrice,
+      msrpPrice: item.msrpPrice,
+      setCode: item.setCode,
+      expansion: item.expansion,
+      productLine: item.productLine,
+      productType: item.productType,
+      packCount: item.packCount,
       status: item.status,
       listingPlatform: item.listingPlatform,
       listingUrl: item.listingUrl,
@@ -561,30 +678,59 @@ export default function App() {
     if (error) return alert("Could not delete item: " + error.message);
     setItems(items.filter((item) => item.id !== id));
   }
+  async function updateItemStatus(item, newStatus) {
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .update({
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", item.id)
+      .select()
+      .single();
 
+    if (error) {
+      alert("Could not update status: " + error.message);
+      return;
+    }
+
+    setItems((currentItems) =>
+      currentItems.map((currentItem) =>
+        currentItem.id === item.id ? mapItem(data) : currentItem
+      )
+    );
+  }
   async function addCatalogProduct(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
     if (!catalogForm.name) return alert("Please enter a product name.");
 
     const row = {
-      user_id: user.id,
-      name: catalogForm.name,
-      category: catalogForm.category,
-      set_name: catalogForm.setName,
-      product_type: catalogForm.productType,
-      barcode: catalogForm.barcode,
-      market_source: "DeckTradr",
-      external_product_id: catalogForm.externalProductId,
-      market_url: catalogForm.marketUrl,
-      image_url: catalogForm.imageUrl,
-      market_price: Number(catalogForm.marketPrice || 0),
-      low_price: Number(catalogForm.lowPrice || 0),
-      mid_price: Number(catalogForm.midPrice || 0),
-      high_price: Number(catalogForm.highPrice || 0),
-      notes: catalogForm.notes,
-      last_price_checked: catalogForm.marketPrice ? new Date().toISOString() : null,
-    };
+  user_id: user.id,
+  name: catalogForm.name,
+  category: catalogForm.category,
+  set_name: catalogForm.setName,
+  product_type: catalogForm.productType,
+  barcode: catalogForm.barcode,
+  market_source: "DeckTradr",
+  external_product_id: catalogForm.externalProductId,
+  market_url: catalogForm.marketUrl,
+  image_url: catalogForm.imageUrl,
+
+  market_price: Number(catalogForm.marketPrice || 0),
+  low_price: Number(catalogForm.lowPrice || 0),
+  mid_price: Number(catalogForm.midPrice || 0),
+  high_price: Number(catalogForm.highPrice || 0),
+
+  msrp_price: Number(catalogForm.msrpPrice || 0),
+  set_code: catalogForm.setCode || "",
+  expansion: catalogForm.expansion || "",
+  product_line: catalogForm.productLine || "",
+  pack_count: Number(catalogForm.packCount || 0),
+
+  notes: catalogForm.notes,
+  last_price_checked: catalogForm.marketPrice ? new Date().toISOString() : null,
+};
 
     const { data, error } = editingCatalogId
       ? await supabase.from("product_catalog").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingCatalogId).select().single()
@@ -599,23 +745,32 @@ export default function App() {
   }
 
   function startEditingCatalogProduct(product) {
-    setEditingCatalogId(product.id);
-    setCatalogForm({
-      name: product.name,
-      category: product.category,
-      setName: product.setName,
-      productType: product.productType,
-      barcode: product.barcode,
-      externalProductId: product.externalProductId,
-      marketUrl: product.marketUrl,
-      imageUrl: product.imageUrl,
-      marketPrice: product.marketPrice,
-      lowPrice: product.lowPrice,
-      midPrice: product.midPrice,
-      highPrice: product.highPrice,
-      notes: product.notes,
-    });
-  }
+  setEditingCatalogId(product.id);
+
+  setCatalogForm({
+    name: product.name,
+    category: product.category,
+    setName: product.setName,
+    productType: product.productType,
+    barcode: product.barcode,
+    externalProductId: product.externalProductId,
+    marketUrl: product.marketUrl,
+    imageUrl: product.imageUrl,
+
+    marketPrice: product.marketPrice,
+    lowPrice: product.lowPrice,
+    midPrice: product.midPrice,
+    highPrice: product.highPrice,
+
+    msrpPrice: product.msrpPrice,
+    setCode: product.setCode,
+    expansion: product.expansion,
+    productLine: product.productLine,
+    packCount: product.packCount,
+
+    notes: product.notes,
+  });
+}
 
   async function deleteCatalogProduct(id) {
     const { error } = await supabase.from("product_catalog").delete().eq("id", id);
@@ -623,7 +778,7 @@ export default function App() {
     setCatalogProducts(catalogProducts.filter((product) => product.id !== id));
   }
 
- function applyCatalogProduct(productId) {
+function applyCatalogProduct(productId) {
   updateItemForm("catalogProductId", productId);
 
   const product = catalogProducts.find(
@@ -635,17 +790,34 @@ export default function App() {
   setItemForm((old) => ({
     ...old,
     catalogProductId: productId,
-    name: product.name,
-    category: product.category,
-    barcode: product.barcode,
-    externalProductId: product.externalProductId,
-    decktradrUrl: product.marketUrl,
-    marketPrice: product.marketPrice,
-    lowPrice: product.lowPrice,
-    midPrice: product.midPrice,
-    highPrice: product.highPrice,
-    itemImage: product.imageUrl,
+
+    name: product.name || "",
+    category: product.category || "Pokemon",
+    barcode: product.barcode || "",
+    externalProductId: product.externalProductId || "",
+    decktradrUrl: product.marketUrl || "",
+    itemImage: product.imageUrl || "",
+
+    marketPrice: product.marketPrice || "",
+    lowPrice: product.lowPrice || "",
+    midPrice: product.midPrice || "",
+    highPrice: product.highPrice || "",
+    msrpPrice: product.msrpPrice || "",
+
+    setCode: product.setCode || "",
+    expansion: product.expansion || product.setName || "",
+    productLine: product.productLine || "",
+    productType: product.productType || "",
+    packCount: product.packCount || "",
+
+    unitCost: product.msrpPrice || old.unitCost || "",
+    salePrice: product.marketPrice || old.salePrice || "",
   }));
+}
+
+function goToReport(focus) {
+  setReportFocus(focus);
+  setActiveTab("reports");
 }
 
 function parseBulkCatalogText(text) {
@@ -668,7 +840,12 @@ function parseBulkCatalogText(text) {
       lowPrice: Number(parts[6] || 0),
       midPrice: Number(parts[7] || 0),
       highPrice: Number(parts[8] || 0),
-      notes: parts[9] || "",
+      msrpPrice: Number(parts[9] || 0),
+      setCode: parts[10] || "",
+      expansion: parts[11] || "",
+      productLine: parts[12] || "",
+      packCount: Number(parts[13] || 0),
+      notes: parts[14] || "",
     };
   });
 }
@@ -730,6 +907,11 @@ async function importBulkCatalogProducts() {
     low_price: Number(item.lowPrice || 0),
     mid_price: Number(item.midPrice || 0),
     high_price: Number(item.highPrice || 0),
+    msrp_price: Number(item.msrpPrice || 0),
+    set_code: item.setCode || "",
+    expansion: item.expansion || "",
+    product_line: item.productLine || "",
+    pack_count: Number(item.packCount || 0),
     notes: item.notes || "",
     last_price_checked: item.marketPrice ? new Date().toISOString() : null,
   }));
@@ -992,11 +1174,38 @@ async function importBulkCatalogProducts() {
     URL.revokeObjectURL(url);
   }
 
-  const totalSpent = items.reduce((s, i) => s + i.quantity * i.unitCost, 0);
-  const totalPotentialSales = items.reduce((s, i) => s + i.quantity * i.salePrice, 0);
-  const totalMarketValue = items.reduce((s, i) => s + i.quantity * i.marketPrice, 0);
+    const totalSpent = items.reduce(
+      (s, i) => s + Number(i.quantity || 0) * Number(i.unitCost || 0),
+      0
+    );
+
+    const totalMsrpValue = items.reduce(
+      (s, i) => s + Number(i.quantity || 0) * Number(i.msrpPrice || 0),
+      0
+    );
+
+    const totalPotentialSales = items.reduce(
+      (s, i) => s + Number(i.quantity || 0) * Number(i.salePrice || 0),
+      0
+    );
+
+    const totalMarketValue = items.reduce(
+      (s, i) => s + Number(i.quantity || 0) * Number(i.marketPrice || 0),
+      0
+    );
+
   const estimatedProfit = totalPotentialSales - totalSpent;
   const estimatedMarketProfit = totalMarketValue - totalSpent;
+  const profitOverMsrp = totalMarketValue - totalMsrpValue;
+  const savingsAgainstMsrp = totalMsrpValue - totalSpent;
+  const marketRoiPercent =
+    totalSpent > 0 ? (estimatedMarketProfit / totalSpent) * 100 : 0;
+
+  const plannedRoiPercent =
+    totalSpent > 0 ? (estimatedProfit / totalSpent) * 100 : 0;
+
+  const msrpRoiPercent =
+    totalMsrpValue > 0 ? (profitOverMsrp / totalMsrpValue) * 100 : 0;
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
   const totalSalesRevenue = sales.reduce((s, sale) => s + sale.grossSale, 0);
@@ -1021,8 +1230,68 @@ async function importBulkCatalogProducts() {
   const lowStockItems = items.filter((i) => i.quantity <= 1);
   const needsPhotosItems = items.filter((i) => i.status === "Needs Photos" || !i.itemImage);
   const needsDeckTradrItems = items.filter((i) => i.status === "Needs DeckTradr Check" || Number(i.marketPrice) <= 0);
+  const missingMsrpItems = items.filter((i) => Number(i.msrpPrice || 0) <= 0);
+
+  const missingMarketPriceItems = items.filter(
+    (i) => Number(i.marketPrice || 0) <= 0
+  );
+
+  const missingProductTypeItems = items.filter(
+    (i) => !i.productType || String(i.productType).trim() === ""
+  );
+
+  const missingBarcodeItems = items.filter(
+    (i) => !i.barcode || String(i.barcode).trim() === ""
+  );
+
+  const missingSalePriceItems = items.filter(
+    (i) => Number(i.salePrice || 0) <= 0
+  );
   const readyToListItems = items.filter((i) => i.status === "Ready to List");
   const listedItems = items.filter((i) => i.status === "Listed");
+
+  const quickInventoryFilters = [
+    {
+      label: "All",
+      status: "All",
+      search: "",
+    },
+    {
+      label: "Pokemon",
+      status: "All",
+      search: "Pokemon",
+    },
+    {
+      label: "Needs Photos",
+      status: "Needs Photos",
+      search: "",
+    },
+    {
+      label: "Needs DeckTradr",
+      status: "Needs DeckTradr Check",
+      search: "",
+    },
+    {
+      label: "Ready to List",
+      status: "Ready to List",
+      search: "",
+    },
+    {
+      label: "Listed",
+      status: "Listed",
+      search: "",
+    },
+    {
+      label: "Personal",
+      status: "Personal Collection",
+      search: "",
+    },
+    {
+      label: "Sold",
+      status: "Sold",
+      search: "",
+    },
+  ];
 
   const filteredItems = items.filter((item) => {
     const search = inventorySearch.toLowerCase();
@@ -1038,6 +1307,44 @@ async function importBulkCatalogProducts() {
     const matchesStatus = inventoryStatusFilter === "All" || item.status === inventoryStatusFilter;
     return matchesSearch && matchesStatus;
   });
+const sortedFilteredItems = [...filteredItems].sort((a, b) => {
+  const aQty = Number(a.quantity || 0);
+  const bQty = Number(b.quantity || 0);
+
+  const aCost = Number(a.unitCost || 0);
+  const bCost = Number(b.unitCost || 0);
+
+  const aMarket = Number(a.marketPrice || 0);
+  const bMarket = Number(b.marketPrice || 0);
+
+  const aProfit = aQty * aMarket - aQty * aCost;
+  const bProfit = bQty * bMarket - bQty * bCost;
+
+  const aRoi = aCost > 0 ? ((aMarket - aCost) / aCost) * 100 : 0;
+  const bRoi = bCost > 0 ? ((bMarket - bCost) / bCost) * 100 : 0;
+
+  if (inventorySort === "highestProfit") {
+    return bProfit - aProfit;
+  }
+
+  if (inventorySort === "highestMarket") {
+    return bQty * bMarket - aQty * aMarket;
+  }
+
+  if (inventorySort === "highestRoi") {
+    return bRoi - aRoi;
+  }
+
+  if (inventorySort === "lowestStock") {
+    return aQty - bQty;
+  }
+
+  if (inventorySort === "az") {
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  }
+
+  return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+});
 
   const filteredCatalogProducts = catalogProducts.filter((product) => {
     const search = catalogSearch.toLowerCase();
@@ -1104,10 +1411,6 @@ async function importBulkCatalogProducts() {
 
   <p>Cloud sync active for: {user.email}</p>
 
-  <button className="secondary-button" onClick={signOut}>
-    Sign Out
-  </button>
-
   {showTreasure && (
     <div className="hidden-treasure">
       <p>Hidden Treasure Found ✨</p>
@@ -1116,14 +1419,46 @@ async function importBulkCatalogProducts() {
   )}
 </header>
 
-      <div className="topbar">
-        <button type="button" className="menu-button" onClick={() => setMenuOpen(true)}>☰ Menu</button>
-        <div className="topbar-title"><p>Current Section</p><h2>{activeTabLabel}</h2></div>
-        <div className="topbar-actions">
-          <button type="button" className="secondary-button" onClick={() => setActiveTab("addInventory")}>+ Inventory</button>
-          <button type="button" className="secondary-button" onClick={() => setActiveTab("addSale")}>+ Sale</button>
-        </div>
-      </div>
+    <div className="topbar">
+  <button
+    type="button"
+    className="menu-button"
+    onClick={() => setMenuOpen(true)}
+  >
+    ☰ Menu
+  </button>
+
+  <div className="topbar-title">
+    <p>Current Section</p>
+    <h2>{activeTabLabel}</h2>
+  </div>
+
+  <div className="topbar-actions">
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={() => setActiveTab("addInventory")}
+    >
+      + Inventory
+    </button>
+
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={() => setActiveTab("addSale")}
+    >
+      + Sale
+    </button>
+
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={signOut}
+    >
+      Sign Out
+    </button>
+  </div>
+</div>
 
       {menuOpen && <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />}
 
@@ -1158,10 +1493,54 @@ async function importBulkCatalogProducts() {
         {activeTab === "dashboard" && (
           <>
             <section className="cards">
-              <div className="card"><p>Inventory Cost</p><h2>{money(totalSpent)}</h2></div>
-              <div className="card"><p>DeckTradr Value</p><h2>{money(totalMarketValue)}</h2></div>
-              <div className="card"><p>DeckTradr Profit</p><h2>{money(estimatedMarketProfit)}</h2></div>
-              <div className="card"><p>Potential Sales</p><h2>{money(totalPotentialSales)}</h2></div>
+              <div className="card">
+                <p>What We Paid</p>
+                <h2>{money(totalSpent)}</h2>
+              </div>
+
+              <div className="card">
+                <p>MSRP Value</p>
+                <h2>{money(totalMsrpValue)}</h2>
+              </div>
+
+              <div className="card">
+                <p>Market Value</p>
+                <h2>{money(totalMarketValue)}</h2>
+              </div>
+
+              <div className="card">
+                <p>Profit Over Paid</p>
+                <h2>{money(estimatedMarketProfit)}</h2>
+              </div>
+              <div className="card">
+                <p>Market ROI</p>
+                <h2>{marketRoiPercent.toFixed(1)}%</h2>
+              </div>
+
+              <div className="card">
+                <p>Planned ROI</p>
+                <h2>{plannedRoiPercent.toFixed(1)}%</h2>
+              </div>
+
+              <div className="card">
+                <p>Market vs MSRP %</p>
+                <h2>{msrpRoiPercent.toFixed(1)}%</h2>
+              </div>
+
+              <div className="card">
+                <p>Market Over MSRP</p>
+                <h2>{money(profitOverMsrp)}</h2>
+              </div>
+
+              <div className="card">
+                <p>Savings vs MSRP</p>
+                <h2>{money(savingsAgainstMsrp)}</h2>
+              </div>
+
+              <div className="card">
+                <p>Potential Sales</p>
+                <h2>{money(totalPotentialSales)}</h2>
+              </div>
               <div className="card"><p>Planned Profit</p><h2>{money(estimatedProfit)}</h2></div>
               <div className="card"><p>Sales Revenue</p><h2>{money(totalSalesRevenue)}</h2></div>
               <div className="card"><p>Real Sales Profit</p><h2>{money(totalSalesProfit)}</h2></div>
@@ -1173,13 +1552,90 @@ async function importBulkCatalogProducts() {
             </section>
             <section className="panel">
               <h2>Action Center</h2>
-              <div className="cards">
-                <div className="card"><p>Needs Photos</p><h2>{needsPhotosItems.length}</h2></div>
-                <div className="card"><p>Needs DeckTradr</p><h2>{needsDeckTradrItems.length}</h2></div>
-                <div className="card"><p>Ready to List</p><h2>{readyToListItems.length}</h2></div>
-                <div className="card"><p>Low Stock</p><h2>{lowStockItems.length}</h2></div>
-              </div>
-            </section>
+
+                <div className="cards">
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("needsPhotos")}
+                  >
+                    <p>Needs Photos</p>
+                    <h2>{needsPhotosItems.length}</h2>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("needsDeckTradr")}
+                  >
+                    <p>Needs DeckTradr</p>
+                    <h2>{needsDeckTradrItems.length}</h2>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("missingMsrp")}
+                  >
+                    <p>Missing MSRP</p>
+                    <h2>{missingMsrpItems.length}</h2>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("missingMarket")}
+                  >
+                    <p>Missing Market</p>
+                    <h2>{missingMarketPriceItems.length}</h2>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("missingBarcode")}
+                  >
+                    <p>Missing UPC</p>
+                    <h2>{missingBarcodeItems.length}</h2>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("missingType")}
+                  >
+                    <p>Missing Type</p>
+                    <h2>{missingProductTypeItems.length}</h2>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("missingSalePrice")}
+                  >
+                    <p>Missing Sale Price</p>
+                    <h2>{missingSalePriceItems.length}</h2>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("readyToList")}
+                  >
+                    <p>Ready to List</p>
+                    <h2>{readyToListItems.length}</h2>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="card action-card"
+                    onClick={() => goToReport("lowStock")}
+                  >
+                    <p>Low Stock</p>
+                    <h2>{lowStockItems.length}</h2>
+                  </button>
+                </div>
+              </section>
             <section className="panel">
               <h2>Buyer Spending</h2>
               <div className="buyer-grid">
@@ -1246,6 +1702,7 @@ Zena`}
 
         {activeTab === "catalog" && (
           <>
+          <SmartAddCatalog onUseProduct={useSmartCatalogProduct} />
           <section className="panel">
   <h2>Bulk Import Catalog Items</h2>
   <p>
@@ -1253,9 +1710,8 @@ Zena`}
   </p>
 
   <pre className="import-example">
-Product Name, Category, Set, Product Type, Barcode, Market Price, Low, Mid, High, Notes
-Perfect Order ETB, Pokemon, Perfect Order, ETB, 123456789, 49.99, 42, 49.99, 60, Target restock item
-Perfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321, 24.99, 20, 24.99, 32, Good flip
+Product Name, Category, Set, Product Type, Barcode, Market Price, Low, Mid, High, MSRP, Set Code, Expansion, Product Line, Pack Count, Notes
+Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 60, 70.27, 85, 59.99, POR, Perfect Order, Mega Evolution, 9, Target restock itemPerfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321, 24.99, 20, 24.99, 32, Good flip
   </pre>
 
   <div className="form">
@@ -1317,6 +1773,43 @@ Perfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321,
                 {catalogForm.imageUrl && <div className="receipt-preview"><p>Catalog Photo</p><img src={catalogForm.imageUrl} alt="Catalog" /></div>}
                 <Field label="DeckTradr Product ID"><input value={catalogForm.externalProductId} onChange={(e) => updateCatalogForm("externalProductId", e.target.value)} /></Field>
                 <Field label="DeckTradr URL"><input value={catalogForm.marketUrl} onChange={(e) => updateCatalogForm("marketUrl", e.target.value)} /></Field>
+                <Field label="MSRP Price">
+  <input
+    type="number"
+    step="0.01"
+    value={catalogForm.msrpPrice}
+    onChange={(e) => updateCatalogForm("msrpPrice", e.target.value)}
+  />
+</Field>
+
+<Field label="Set Code">
+  <input
+    value={catalogForm.setCode}
+    onChange={(e) => updateCatalogForm("setCode", e.target.value)}
+  />
+</Field>
+
+<Field label="Expansion">
+  <input
+    value={catalogForm.expansion}
+    onChange={(e) => updateCatalogForm("expansion", e.target.value)}
+  />
+</Field>
+
+<Field label="Product Line">
+  <input
+    value={catalogForm.productLine}
+    onChange={(e) => updateCatalogForm("productLine", e.target.value)}
+  />
+</Field>
+
+<Field label="Pack Count">
+  <input
+    type="number"
+    value={catalogForm.packCount}
+    onChange={(e) => updateCatalogForm("packCount", e.target.value)}
+  />
+</Field>
                 <Field label="DeckTradr Market Price"><input type="number" step="0.01" value={catalogForm.marketPrice} onChange={(e) => updateCatalogForm("marketPrice", e.target.value)} /></Field>
                 <Field label="Low Price"><input type="number" step="0.01" value={catalogForm.lowPrice} onChange={(e) => updateCatalogForm("lowPrice", e.target.value)} /></Field>
                 <Field label="Mid Price"><input type="number" step="0.01" value={catalogForm.midPrice} onChange={(e) => updateCatalogForm("midPrice", e.target.value)} /></Field>
@@ -1329,6 +1822,19 @@ Perfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321,
             <section className="panel">
               <h2>Product Catalog</h2>
               <input className="search-input" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search catalog..." />
+              <Field label="Sort Inventory">
+                <select
+                  value={inventorySort}
+                  onChange={(e) => setInventorySort(e.target.value)}
+                >
+                  <option value="newest">Newest Added</option>
+                  <option value="highestProfit">Highest Profit</option>
+                  <option value="highestMarket">Highest Market Value</option>
+                  <option value="highestRoi">Highest ROI</option>
+                  <option value="lowestStock">Lowest Stock</option>
+                  <option value="az">A–Z</option>
+                </select>
+              </Field>
               <div className="inventory-list">
                 {filteredCatalogProducts.map((p) => (
                   <div className="inventory-card" key={p.id}>
@@ -1338,6 +1844,10 @@ Perfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321,
                     <p>Set: {p.setName || "Not listed"}</p>
                     <p>Type: {p.productType || "Not listed"}</p>
                     <p>Barcode: {p.barcode || "Not listed"}</p>
+                   <p>MSRP: {money(p.msrpPrice)}</p>
+<p>Set Code: {p.setCode || "Not listed"}</p>
+<p>Expansion: {p.expansion || p.setName || "Not listed"}</p>
+<p>Pack Count: {p.packCount || "Not listed"}</p>
                     <p>DeckTradr Market Price: {money(p.marketPrice)}</p>
                     <p>Low / Mid / High: {money(p.lowPrice)} / {money(p.midPrice)} / {money(p.highPrice)}</p>
                     {p.marketUrl && <p><a href={p.marketUrl} target="_blank" rel="noreferrer">Open DeckTradr Link</a></p>}
@@ -1353,31 +1863,102 @@ Perfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321,
         )}
 
         {activeTab === "addInventory" && (
-          <section className="panel">
-            <h2>Add Inventory</h2>
-            <button type="button" className="secondary-button" onClick={() => setShowInventoryScanner(true)}>Open Scanner</button>
-            {showInventoryScanner && <BarcodeScanner onScan={(code) => { updateItemForm("barcode", code); setShowInventoryScanner(false); }} onClose={() => setShowInventoryScanner(false)} />}
-            <InventoryForm
-              form={itemForm}
-              setForm={updateItemForm}
-              catalogProducts={catalogProducts}
-              applyCatalogProduct={applyCatalogProduct}
-              handleImageUpload={handleImageUpload}
-              onSubmit={addItem}
-              submitLabel="Add Item"
-            />
-          </section>
-        )}
+  <section className="panel">
+    <h2>Add Inventory</h2>
+
+    <SmartAddInventory
+  onAddInventory={(newItem) => {
+    const product = newItem.product;
+
+    setItemForm((old) => ({
+      ...old,
+
+      name: product?.name || old.name,
+      category: "Pokemon",
+      quantity: newItem.quantity || 1,
+
+      barcode: product?.upcs?.[0] || old.barcode,
+      marketPrice: product?.marketPrice || old.marketPrice || "",
+      msrpPrice: product?.msrpPrice || old.msrpPrice || "",
+
+      setCode: product?.setCode || old.setCode || "",
+      expansion: product?.expansion || old.expansion || "",
+      productLine: product?.productLine || old.productLine || "",
+      productType: product?.itemType || old.productType || "",
+      packCount: product?.packCount || old.packCount || "",
+
+      unitCost:
+        newItem.paidPriceEach ||
+        product?.msrpPrice ||
+        old.unitCost ||
+        "",
+
+      salePrice:
+        newItem.sellingPriceEach ||
+        product?.marketPrice ||
+        old.salePrice ||
+        "",
+
+      status: "In Stock",
+    }));
+  }}
+/>
+
+    {showInventoryScanner && (
+      <BarcodeScanner
+        onScan={(code) => {
+          updateItemForm("barcode", code);
+          setShowInventoryScanner(false);
+        }}
+        onClose={() => setShowInventoryScanner(false)}
+      />
+    )}
+
+    <InventoryForm
+      form={itemForm}
+      setForm={updateItemForm}
+      catalogProducts={catalogProducts}
+      applyCatalogProduct={applyCatalogProduct}
+      handleImageUpload={handleImageUpload}
+      onSubmit={addItem}
+      submitLabel="Add Item"
+    />
+  </section>
+)}
 
         {activeTab === "inventory" && (
           <section className="panel">
             <h2>Inventory</h2>
             <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search inventory..." />
-            <div className="export-grid">
-              <button type="button" onClick={() => setInventoryStatusFilter("All")}>All</button>
-              {STATUSES.map((x) => <button key={x} type="button" onClick={() => setInventoryStatusFilter(x)}>{x}</button>)}
+            <div className="chip-row">
+              {quickInventoryFilters.map((filter) => (
+                <button
+                  key={filter.label}
+                  type="button"
+                  className={
+                    inventoryStatusFilter === filter.status &&
+                    inventorySearch === filter.search
+                      ? "chip active"
+                      : "chip"
+                  }
+                  onClick={() => {
+                    setInventoryStatusFilter(filter.status);
+                    setInventorySearch(filter.search);
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
             </div>
-            <p>Current filter: {inventoryStatusFilter}</p>
+
+            <p>Current filter: {inventoryStatusFilter}
+
+            <p>
+              Showing {sortedFilteredItems.length} of {items.length} inventory records
+            </p>
+
+              {inventorySearch ? ` · Search: ${inventorySearch}` : ""}
+            </p>
             {editingItemId && (
               <section className="panel">
                 <h2>Edit Item</h2>
@@ -1394,13 +1975,14 @@ Perfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321,
               </section>
             )}
             <div className="inventory-list compact-inventory-list">
-              {filteredItems.map((item) => (
+              {sortedFilteredItems.map((item) => (
                 <CompactInventoryCard
                   key={item.id}
                   item={item}
                   onRestock={prepareRestock}
                   onEdit={startEditingItem}
                   onDelete={deleteItem}
+                  onStatusChange={updateItemStatus}
                 />
               ))}
             </div>
@@ -1555,40 +2137,256 @@ Perfect Order Booster Bundle, Pokemon, Perfect Order, Booster Bundle, 987654321,
         )}
 
         {activeTab === "reports" && (
-          <>
-            <section className="panel">
-              <h2>Reports</h2>
-              <div className="cards">
-                <div className="card"><p>Inventory Units</p><h2>{items.reduce((s, i) => s + i.quantity, 0)}</h2></div>
-                <div className="card"><p>Catalog Products</p><h2>{catalogProducts.length}</h2></div>
-                <div className="card"><p>Avg Profit / Sale</p><h2>{money(sales.length ? totalSalesProfit / sales.length : 0)}</h2></div>
-                <div className="card"><p>IRS Mileage Value</p><h2>{money(totalMileageValue)}</h2></div>
-                <div className="card"><p>Fuel Cost</p><h2>{money(totalFuelCost)}</h2></div>
-                <div className="card"><p>Wear Cost</p><h2>{money(totalWearCost)}</h2></div>
-              </div>
-            </section>
+  <>
+    <section className="panel">
+      <h2>Reports</h2>
 
-            <ReportList title="Sales by Platform" data={salesByPlatform} moneyValues />
-            <ReportList title="Expenses by Category" data={expensesByCategory} moneyValues />
-            <ReportList title="Inventory by Category" data={inventoryByCategory} />
-            <ReportList title="Inventory by Status" data={inventoryByStatus} />
+      {reportFocus && (
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => setReportFocus("")}
+        >
+          Show All Report Sections
+        </button>
+      )}
 
-            <ActionReport title="Needs Photos" items={needsPhotosItems} button="Update Item" action={startEditingItem} />
-            <ActionReport title="Needs DeckTradr Check" items={needsDeckTradrItems} button="Update Price" action={startEditingItem} />
-            <ActionReport title="Ready to List" items={readyToListItems} button="Update Listing" action={startEditingItem} />
-            <ActionReport title="Listed Items" items={listedItems} button="Update Item" action={startEditingItem} />
-            <ActionReport title="Low Stock / Sold Out" items={lowStockItems} button="Restock / Rebuy" action={prepareRestock} />
-          </>
-        )}
+      <div className="cards">
+        <div className="card">
+          <p>Inventory Units</p>
+          <h2>{items.reduce((s, i) => s + i.quantity, 0)}</h2>
+        </div>
+
+        <div className="card">
+          <p>Catalog Products</p>
+          <h2>{catalogProducts.length}</h2>
+        </div>
+
+        <div className="card">
+          <p>Avg Profit / Sale</p>
+          <h2>{money(sales.length ? totalSalesProfit / sales.length : 0)}</h2>
+        </div>
+
+        <div className="card">
+          <p>IRS Mileage Value</p>
+          <h2>{money(totalMileageValue)}</h2>
+        </div>
+
+        <div className="card">
+          <p>Fuel Cost</p>
+          <h2>{money(totalFuelCost)}</h2>
+        </div>
+
+        <div className="card">
+          <p>Wear Cost</p>
+          <h2>{money(totalWearCost)}</h2>
+        </div>
+      </div>
+    </section>
+
+                {!reportFocus && (
+                  <>
+                    <ReportList title="Sales by Platform" data={salesByPlatform} moneyValues />
+                    <ReportList title="Expenses by Category" data={expensesByCategory} moneyValues />
+                    <ReportList title="Inventory by Category" data={inventoryByCategory} />
+                    <ReportList title="Inventory by Status" data={inventoryByStatus} />
+                  </>
+                )}
+
+                {(!reportFocus || reportFocus === "needsPhotos") && (
+                  <ActionReport
+                    title="Needs Photos"
+                    items={needsPhotosItems}
+                    button="Update Item"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "needsDeckTradr") && (
+                  <ActionReport
+                    title="Needs DeckTradr Check"
+                    items={needsDeckTradrItems}
+                    button="Update Price"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "missingMsrp") && (
+                  <ActionReport
+                    title="Missing MSRP"
+                    items={missingMsrpItems}
+                    button="Add MSRP"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "missingMarket") && (
+                  <ActionReport
+                    title="Missing Market Price"
+                    items={missingMarketPriceItems}
+                    button="Add Market Price"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "missingBarcode") && (
+                  <ActionReport
+                    title="Missing UPC / Barcode"
+                    items={missingBarcodeItems}
+                    button="Add UPC"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "missingType") && (
+                  <ActionReport
+                    title="Missing Product Type"
+                    items={missingProductTypeItems}
+                    button="Add Type"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "missingSalePrice") && (
+                  <ActionReport
+                    title="Missing Sale Price"
+                    items={missingSalePriceItems}
+                    button="Add Sale Price"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "readyToList") && (
+                  <ActionReport
+                    title="Ready to List"
+                    items={readyToListItems}
+                    button="Update Listing"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "listed") && (
+                  <ActionReport
+                    title="Listed Items"
+                    items={listedItems}
+                    button="Update Item"
+                    action={startEditingItem}
+                  />
+                )}
+
+                {(!reportFocus || reportFocus === "lowStock") && (
+                  <ActionReport
+                    title="Low Stock / Sold Out"
+                    items={lowStockItems}
+                    button="Restock / Rebuy"
+                    action={prepareRestock}
+                  />
+                )}
+              </>
+            )}
+
+            {(!reportFocus || reportFocus === "needsDeckTradr") && (
+              <ActionReport
+                title="Needs DeckTradr Check"
+                items={needsDeckTradrItems}
+                button="Update Price"
+                action={startEditingItem}
+              />
+            )}
+
+            {(!reportFocus || reportFocus === "missingMsrp") && (
+              <ActionReport
+                title="Missing MSRP"
+                items={missingMsrpItems}
+                button="Add MSRP"
+                action={startEditingItem}
+              />
+            )}
+
+            {(!reportFocus || reportFocus === "missingMarket") && (
+              <ActionReport
+                title="Missing Market Price"
+                items={missingMarketPriceItems}
+                button="Add Market Price"
+                action={startEditingItem}
+              />
+            )}
+
+            {(!reportFocus || reportFocus === "missingBarcode") && (
+              <ActionReport
+                title="Missing UPC / Barcode"
+                items={missingBarcodeItems}
+                button="Add UPC"
+                action={startEditingItem}
+              />
+            )}
+
+            {(!reportFocus || reportFocus === "missingType") && (
+              <ActionReport
+                title="Missing Product Type"
+                items={missingProductTypeItems}
+                button="Add Type"
+                action={startEditingItem}
+              />
+            )}
+
+            {(!reportFocus || reportFocus === "missingSalePrice") && (
+              <ActionReport
+                title="Missing Sale Price"
+                items={missingSalePriceItems}
+                button="Add Sale Price"
+                action={startEditingItem}
+              />
+            )}
+
+            {(!reportFocus || reportFocus === "readyToList") && (
+              <ActionReport
+                title="Ready to List"
+                items={readyToListItems}
+                button="Update Listing"
+                action={startEditingItem}
+              />
+            )}
+
+            {(!reportFocus || reportFocus === "listed") && (
+              <ActionReport
+                title="Listed Items"
+                items={listedItems}
+                button="Update Item"
+                action={startEditingItem}
+              />
+            )}
+
+            {(!reportFocus || reportFocus === "lowStock") && (
+              <ActionReport
+                title="Low Stock / Sold Out"
+                items={lowStockItems}
+                button="Restock / Rebuy"
+                action={prepareRestock}
+              />
+            )}
       </main>
     </div>
   );
 }
 
-function CompactInventoryCard({ item, onRestock, onEdit, onDelete }) {
-  const decktradrProfit = item.quantity * item.marketPrice - item.quantity * item.unitCost;
-  const plannedProfit = item.quantity * item.salePrice - item.quantity * item.unitCost;
+function CompactInventoryCard({
+  item,
+  onRestock,
+  onEdit,
+  onDelete,
+  onStatusChange,
+}) {
+  const quantity = Number(item.quantity || 0);
+  const unitCost = Number(item.unitCost || 0);
+  const marketPrice = Number(item.marketPrice || 0);
+  const salePrice = Number(item.salePrice || 0);
 
+  const decktradrProfit = quantity * marketPrice - quantity * unitCost;
+  const plannedProfit = quantity * salePrice - quantity * unitCost;
+
+  const roiPercent =
+    unitCost > 0 ? ((marketPrice - unitCost) / unitCost) * 100 : 0;
   return (
     <div className="inventory-card compact-card">
       <div className="compact-card-header">
@@ -1607,26 +2405,37 @@ function CompactInventoryCard({ item, onRestock, onEdit, onDelete }) {
         </div>
       )}
 
-      <div className="compact-metrics">
-        <div>
-          <span>Avg Cost</span>
-          <strong>{money(item.unitCost)}</strong>
-        </div>
-        <div>
-          <span>DeckTradr</span>
-          <strong>{money(item.marketPrice)}</strong>
-        </div>
-        <div>
-          <span>Profit</span>
-          <strong>{money(decktradrProfit)}</strong>
-        </div>
-      </div>
+  <div className="compact-metrics">
+    <div>
+      <span>Avg Cost</span>
+      <strong>{money(item.unitCost)}</strong>
+    </div>
+    <div>
+      <span>MSRP</span>
+      <strong>{money(item.msrpPrice)}</strong>
+    </div>
+    <div>
+      <span>Market</span>
+      <strong>{money(item.marketPrice)}</strong>
+    </div>
+    <div>
+      <span>Profit</span>
+      <strong>{money(decktradrProfit)}</strong>
+    </div>
+  </div>
 
       <div className="compact-details">
         <p><strong>SKU:</strong> {item.sku}</p>
         <p><strong>Store:</strong> {item.store || "Not listed"}</p>
+        <p><strong>Type:</strong> {item.productType || "Not listed"}</p>
+        <p><strong>Expansion:</strong> {item.expansion || "Not listed"}</p>
+        <p><strong>Set Code:</strong> {item.setCode || "Not listed"}</p>
+        <p><strong>Pack Count:</strong> {item.packCount || "Not listed"}</p>
         <p><strong>Barcode:</strong> {item.barcode || "Not listed"}</p>
         <p><strong>Total Cost:</strong> {money(item.quantity * item.unitCost)}</p>
+        <p><strong>Total MSRP:</strong> {money(item.quantity * item.msrpPrice)}</p>
+        <p><strong>ROI:</strong> {roiPercent.toFixed(1)}%</p>
+        <p><strong>Total Market:</strong> {money(item.quantity * item.marketPrice)}</p>
         <p><strong>Planned Profit:</strong> {money(plannedProfit)}</p>
         {item.listingPlatform && <p><strong>Listing:</strong> {item.listingPlatform}</p>}
         {item.listedPrice > 0 && <p><strong>Listed Price:</strong> {money(item.listedPrice)}</p>}
@@ -1640,15 +2449,62 @@ function CompactInventoryCard({ item, onRestock, onEdit, onDelete }) {
       </div>
 
       <div className="compact-actions">
-        <button className="edit-button" onClick={() => onRestock(item)}>Restock</button>
-        <button className="edit-button" onClick={() => onEdit(item)}>Edit</button>
-        <button className="delete-button" onClick={() => onDelete(item.id)}>Delete</button>
+        <select
+          value={item.status || "In Stock"}
+          onChange={(event) => onStatusChange(item, event.target.value)}
+        >
+          {STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+
+        <button className="edit-button" onClick={() => onRestock(item)}>
+          Restock
+        </button>
+
+        <button className="edit-button" onClick={() => onEdit(item)}>
+          Edit
+        </button>
+
+        <button className="delete-button" onClick={() => onDelete(item.id)}>
+          Delete
+        </button>
       </div>
     </div>
   );
 }
 
-function InventoryForm({ form, setForm, catalogProducts, applyCatalogProduct, handleImageUpload, onSubmit, submitLabel }) {
+function InventoryForm({
+  form,
+  setForm,
+  catalogProducts,
+  applyCatalogProduct,
+  handleImageUpload,
+  onSubmit,
+  submitLabel,
+}) {
+  const quantity = Number(form.quantity || 0);
+  const unitCost = Number(form.unitCost || 0);
+  const msrpPrice = Number(form.msrpPrice || 0);
+  const marketPrice = Number(form.marketPrice || 0);
+  const salePrice = Number(form.salePrice || 0);
+
+  const totalPaid = quantity * unitCost;
+  const totalMsrp = quantity * msrpPrice;
+  const totalMarket = quantity * marketPrice;
+  const totalPlannedSale = quantity * salePrice;
+
+  const estimatedMarketProfit = totalMarket - totalPaid;
+  const estimatedPlannedProfit = totalPlannedSale - totalPaid;
+
+  const marketRoi =
+    totalPaid > 0 ? (estimatedMarketProfit / totalPaid) * 100 : 0;
+
+  const plannedRoi =
+    totalPaid > 0 ? (estimatedPlannedProfit / totalPaid) * 100 : 0;
+
   return (
     <form onSubmit={onSubmit} className="form">
       <Field label="Choose Saved Catalog Product">
@@ -1667,8 +2523,97 @@ function InventoryForm({ form, setForm, catalogProducts, applyCatalogProduct, ha
       <Field label="Quantity Purchased"><input type="number" min="0" value={form.quantity} onChange={(e) => setForm("quantity", e.target.value)} /></Field>
       <Field label="Unit Cost"><input type="number" step="0.01" value={form.unitCost} onChange={(e) => setForm("unitCost", e.target.value)} /></Field>
       <Field label="Planned Sale Price"><input type="number" step="0.01" value={form.salePrice} onChange={(e) => setForm("salePrice", e.target.value)} /></Field>
+      <div className="profit-preview">
+        <h3>Profit Preview</h3>
+
+        <div className="preview-grid">
+          <div>
+            <span>Total Paid</span>
+            <strong>{money(totalPaid)}</strong>
+          </div>
+
+          <div>
+            <span>Total MSRP</span>
+            <strong>{money(totalMsrp)}</strong>
+          </div>
+
+          <div>
+            <span>Total Market</span>
+            <strong>{money(totalMarket)}</strong>
+          </div>
+
+          <div>
+            <span>Planned Sale Total</span>
+            <strong>{money(totalPlannedSale)}</strong>
+          </div>
+
+          <div>
+            <span>Market Profit</span>
+            <strong>{money(estimatedMarketProfit)}</strong>
+          </div>
+
+          <div>
+            <span>Planned Profit</span>
+            <strong>{money(estimatedPlannedProfit)}</strong>
+          </div>
+
+          <div>
+            <span>Market ROI</span>
+            <strong>{marketRoi.toFixed(1)}%</strong>
+          </div>
+
+          <div>
+            <span>Planned ROI</span>
+            <strong>{plannedRoi.toFixed(1)}%</strong>
+          </div>
+        </div>
+      </div>
       <Field label="DeckTradr Product ID"><input value={form.externalProductId} onChange={(e) => setForm("externalProductId", e.target.value)} /></Field>
       <Field label="DeckTradr URL"><input value={form.decktradrUrl} onChange={(e) => setForm("decktradrUrl", e.target.value)} /></Field>
+      <Field label="MSRP Price">
+  <input
+    type="number"
+    step="0.01"
+    value={form.msrpPrice}
+    onChange={(e) => setForm("msrpPrice", e.target.value)}
+  />
+</Field>
+
+<Field label="Product Type">
+  <input
+    value={form.productType}
+    onChange={(e) => setForm("productType", e.target.value)}
+  />
+</Field>
+
+<Field label="Set Code">
+  <input
+    value={form.setCode}
+    onChange={(e) => setForm("setCode", e.target.value)}
+  />
+</Field>
+
+<Field label="Expansion">
+  <input
+    value={form.expansion}
+    onChange={(e) => setForm("expansion", e.target.value)}
+  />
+</Field>
+
+<Field label="Product Line">
+  <input
+    value={form.productLine}
+    onChange={(e) => setForm("productLine", e.target.value)}
+  />
+</Field>
+
+<Field label="Pack Count">
+  <input
+    type="number"
+    value={form.packCount}
+    onChange={(e) => setForm("packCount", e.target.value)}
+  />
+</Field>
       <Field label="DeckTradr Market Price"><input type="number" step="0.01" value={form.marketPrice} onChange={(e) => setForm("marketPrice", e.target.value)} /></Field>
       <Field label="Low Price"><input type="number" step="0.01" value={form.lowPrice} onChange={(e) => setForm("lowPrice", e.target.value)} /></Field>
       <Field label="Mid Price"><input type="number" step="0.01" value={form.midPrice} onChange={(e) => setForm("midPrice", e.target.value)} /></Field>

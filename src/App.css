@@ -978,3 +978,72 @@ video {
   letter-spacing: -0.04em;
 }
 
+.action-card {
+  text-align: left;
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+}
+
+.action-card:hover {
+  transform: translateY(-2px);
+  filter: brightness(0.98);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.chip {
+  border: 1px solid #ddd7d2;
+  background: #fff;
+  color: #2a2522;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chip.active {
+  background: #2a2522;
+  color: #fff;
+  border-color: #2a2522;
+}
+
+.profit-preview {
+  border: 1px solid #ddd7d2;
+  border-radius: 16px;
+  padding: 16px;
+  background: #fffaf5;
+}
+
+.profit-preview h3 {
+  margin: 0 0 12px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.preview-grid div {
+  background: white;
+  border: 1px solid #eee3da;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.preview-grid span {
+  display: block;
+  font-size: 0.82rem;
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
+
+.preview-grid strong {
+  font-size: 1.05rem;
+}
