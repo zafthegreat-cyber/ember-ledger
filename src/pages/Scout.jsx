@@ -288,6 +288,10 @@ export default function Scout() {
   const [stores, setStores] = useState([]);
   const [selectedStoreId, setSelectedStoreId] = useState("");
   const [selectedChain, setSelectedChain] = useState("All");
+  const [selectedRegion, setSelectedRegion] = useState("All");
+  const [selectedCity, setSelectedCity] = useState("All");
+  const [selectedStoreType, setSelectedStoreType] = useState("All");
+  const [storeSearch, setStoreSearch] = useState("");
   const [reports, setReports] = useState([]);
   const [allReports, setAllReports] = useState([]);
   const [items, setItems] = useState([]);
@@ -1051,10 +1055,39 @@ async function handleUpdateStore(e) {
     return ["All", ...chains.sort()];
   }, [stores]);
 
+  const regionOptions = useMemo(() => {
+    const regions = Array.from(new Set(stores.map((s) => s.region).filter(Boolean)));
+    return ["All", ...regions.sort()];
+  }, [stores]);
+
+  const cityOptions = useMemo(() => {
+    const cities = Array.from(new Set(stores.map((s) => s.city).filter(Boolean)));
+    return ["All", ...cities.sort()];
+  }, [stores]);
+
+  const storeTypeOptions = useMemo(() => {
+    const types = Array.from(new Set(stores.map((s) => s.storeType || s.store_type || s.type).filter(Boolean)));
+    return ["All", ...types.sort()];
+  }, [stores]);
+
   const filteredStores = useMemo(() => {
-    if (selectedChain === "All") return stores;
-    return stores.filter((store) => store.chain === selectedChain);
-  }, [stores, selectedChain]);
+    const search = storeSearch.trim().toLowerCase();
+    return stores.filter((store) => {
+      const storeType = store.storeType || store.store_type || store.type || "";
+      const matchesSearch =
+        !search ||
+        String(store.name || "").toLowerCase().includes(search) ||
+        String(store.nickname || "").toLowerCase().includes(search) ||
+        String(store.address || "").toLowerCase().includes(search) ||
+        String(store.city || "").toLowerCase().includes(search) ||
+        String(store.notes || "").toLowerCase().includes(search);
+      const matchesChain = selectedChain === "All" || store.chain === selectedChain;
+      const matchesRegion = selectedRegion === "All" || store.region === selectedRegion;
+      const matchesCity = selectedCity === "All" || store.city === selectedCity;
+      const matchesType = selectedStoreType === "All" || storeType === selectedStoreType;
+      return matchesSearch && matchesChain && matchesRegion && matchesCity && matchesType;
+    });
+  }, [stores, selectedChain, selectedRegion, selectedCity, selectedStoreType, storeSearch]);
 
   const totals = useMemo(() => {
     const found = stores.filter((s) => s.status === "Found").length;
@@ -1183,7 +1216,7 @@ async function handleUpdateStore(e) {
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Daily Scout Report</h2>
             {dailyLocalReport.length === 0 ? (
-              <p style={styles.empty}>Add stores and restock reports to build today's local report.</p>
+              <p style={styles.empty}>Shared stores are ready for reports once the Virginia directory is seeded. Add Scout Tips to build today's local report.</p>
             ) : (
               dailyLocalReport.map(({ store, score, commonDay, commonDayCount, commonHour, reason }) => (
                 <div key={store.id} style={styles.calloutCard}>
@@ -1256,7 +1289,7 @@ async function handleUpdateStore(e) {
             />
             <div style={styles.reportGrid}>
               {stores.length === 0 ? (
-                <p style={styles.empty}>Add stores before building a route.</p>
+                <p style={styles.empty}>Import shared Virginia stores before building a route.</p>
               ) : (
                 stores.map((store) => (
                   <button
@@ -1305,58 +1338,53 @@ async function handleUpdateStore(e) {
         <div style={styles.mainGrid}>
           <div style={styles.col}>
             <div style={styles.card}>
-              <h2 style={styles.sectionTitle}>Add Store</h2>
-              <form onSubmit={handleCreateStore} style={styles.formGrid}>
-                <input
-                  style={styles.input}
-                  value={storeForm.name}
-                  onChange={(e) =>
-                    setStoreForm({ ...storeForm, name: e.target.value })
-                  }
-                  placeholder="Store name"
-                />
-                <input
-                  style={styles.input}
-                  value={storeForm.chain}
-                  onChange={(e) =>
-                    setStoreForm({ ...storeForm, chain: e.target.value })
-                  }
-                  placeholder="Chain"
-                />
-                <input
-                  style={styles.input}
-                  value={storeForm.city}
-                  onChange={(e) =>
-                    setStoreForm({ ...storeForm, city: e.target.value })
-                  }
-                  placeholder="City"
-                />
-                <input
-                  style={styles.input}
-                  value={storeForm.address}
-                  onChange={(e) =>
-                    setStoreForm({ ...storeForm, address: e.target.value })
-                  }
-                  placeholder="Address"
-                />
-                <input
-                  style={styles.input}
-                  value={storeForm.phone}
-                  onChange={(e) =>
-                    setStoreForm({ ...storeForm, phone: e.target.value })
-                  }
-                  placeholder="Phone"
-                />
-                <button type="submit" style={styles.buttonPrimary}>
-                  Add Store
-                </button>
-              </form>
+              <h2 style={styles.sectionTitle}>Shared Store Directory</h2>
+              <p style={styles.empty}>
+                Stores are shared Virginia-wide master data. Regular users add Scout Tips, restock reports, tracked items, and routes instead of duplicating store records.
+              </p>
+              <p style={styles.tiny}>
+                Add or update master stores through the regional seed importer so every E&T TCG user sees the same directory.
+              </p>
             </div>
 
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Find Store Fast</h2>
 
               <div style={styles.formGrid}>
+                <input
+                  style={styles.input}
+                  value={storeSearch}
+                  onChange={(e) => setStoreSearch(e.target.value)}
+                  placeholder="Search store, nickname, address, notes..."
+                />
+                <select
+                  style={styles.input}
+                  value={selectedRegion}
+                  onChange={(e) => {
+                    setSelectedRegion(e.target.value);
+                    setSelectedStoreId("");
+                  }}
+                >
+                  {regionOptions.map((region) => (
+                    <option key={region} value={region}>
+                      {region === "All" ? "All regions" : region}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  style={styles.input}
+                  value={selectedCity}
+                  onChange={(e) => {
+                    setSelectedCity(e.target.value);
+                    setSelectedStoreId("");
+                  }}
+                >
+                  {cityOptions.map((city) => (
+                    <option key={city} value={city}>
+                      {city === "All" ? "All cities" : city}
+                    </option>
+                  ))}
+                </select>
                 <select
                   style={styles.input}
                   value={selectedChain}
@@ -1368,6 +1396,20 @@ async function handleUpdateStore(e) {
                   {chainOptions.map((chain) => (
                     <option key={chain} value={chain}>
                       {chain}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  style={styles.input}
+                  value={selectedStoreType}
+                  onChange={(e) => {
+                    setSelectedStoreType(e.target.value);
+                    setSelectedStoreId("");
+                  }}
+                >
+                  {storeTypeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type === "All" ? "All store types" : type}
                     </option>
                   ))}
                 </select>
@@ -1390,7 +1432,7 @@ async function handleUpdateStore(e) {
                 {loading ? (
                   <p style={styles.empty}>Loading stores...</p>
                 ) : filteredStores.length === 0 ? (
-                  <p style={styles.empty}>No stores found for that chain.</p>
+                  <p style={styles.empty}>No shared stores match those filters.</p>
                 ) : (
                   filteredStores.slice(0, 8).map((store) => (
                     <div
@@ -1399,14 +1441,16 @@ async function handleUpdateStore(e) {
                       style={styles.storeChoiceCard}
                     >
                       <h3 style={{ margin: "0 0 6px 0", fontSize: "16px", fontWeight: 800 }}>
-                        {store.name}
+                        {store.nickname || store.name}
                       </h3>
+                      {store.nickname ? <p style={{ margin: 0, color: "#64748b" }}>{store.name}</p> : null}
                       <p style={{ margin: 0, color: "#475569" }}>
                         {store.address || "No address"}
                       </p>
                       <p style={{ margin: "4px 0 0 0", color: "#475569" }}>
-                        {store.city || "No city"} {store.phone ? `• ${store.phone}` : ""}
+                        {store.city || "No city"} {store.region ? ` - ${store.region}` : ""} {store.phone ? ` - ${store.phone}` : ""}
                       </p>
+                      {store.notes ? <p style={{ margin: "6px 0 0 0", color: "#64748b" }}>{store.notes}</p> : null}
                     </div>
                   ))
                 )}
@@ -1441,67 +1485,8 @@ async function handleUpdateStore(e) {
                         {selectedStore.nextRestockReason || "No prediction reason yet."}
                       </p>
                     </div>
-                    <StatusBadge value={selectedStore.status} />
+                    <span style={styles.badge}>Shared directory store</span>
                   </div>
-
-                  <div style={styles.row}>
-                    <OverflowMenu
-                      editLabel={isEditingStore ? "Cancel Edit" : "Edit"}
-                      onEdit={() => setIsEditingStore((prev) => !prev)}
-                      onDelete={() => handleDeleteStore(selectedStore.id)}
-                    />
-                  </div>
-
-                  {isEditingStore ? (
-                    <div style={{ ...styles.card, marginTop: "16px" }}>
-                      <h2 style={styles.sectionTitle}>Edit Store</h2>
-                      <form onSubmit={handleUpdateStore} style={styles.formGrid}>
-                        <input
-                          style={styles.input}
-                          value={editStoreForm.name}
-                          onChange={(e) =>
-                            setEditStoreForm({ ...editStoreForm, name: e.target.value })
-                          }
-                          placeholder="Store name"
-                        />
-                        <input
-                          style={styles.input}
-                          value={editStoreForm.chain}
-                          onChange={(e) =>
-                            setEditStoreForm({ ...editStoreForm, chain: e.target.value })
-                          }
-                          placeholder="Chain"
-                        />
-                        <input
-                          style={styles.input}
-                          value={editStoreForm.city}
-                          onChange={(e) =>
-                            setEditStoreForm({ ...editStoreForm, city: e.target.value })
-                          }
-                          placeholder="City"
-                        />
-                        <input
-                          style={styles.input}
-                          value={editStoreForm.address}
-                          onChange={(e) =>
-                            setEditStoreForm({ ...editStoreForm, address: e.target.value })
-                          }
-                          placeholder="Address"
-                        />
-                        <input
-                          style={styles.input}
-                          value={editStoreForm.phone}
-                          onChange={(e) =>
-                            setEditStoreForm({ ...editStoreForm, phone: e.target.value })
-                          }
-                          placeholder="Phone"
-                        />
-                        <button type="submit" style={styles.buttonPrimary}>
-                          Save Store Changes
-                        </button>
-                      </form>
-                    </div>
-                  ) : null}
                 </div>
 
                 <div style={styles.card}>
@@ -1892,3 +1877,4 @@ async function handleUpdateStore(e) {
     </div>
   );
 }
+

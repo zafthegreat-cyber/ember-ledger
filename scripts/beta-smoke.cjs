@@ -35,6 +35,30 @@ async function main() {
       localStorage.removeItem("et-tcg-beta-scout");
     });
     await page.reload({ waitUntil: "domcontentloaded" });
+    await page.evaluate(() => {
+      const sharedStore = {
+        id: "shared-store-smoke-target",
+        name: "Smoke Shared Target",
+        chain: "Target",
+        nickname: "Smoke Shared Target",
+        address: "123 Verified Beta Way",
+        city: "Suffolk",
+        state: "VA",
+        zip: "23434",
+        region: "Hampton Roads / 757",
+        phone: "757-555-0100",
+        storeType: "Big Box",
+        sellsPokemon: true,
+        notes: "Seeded shared directory store for beta smoke testing.",
+        status: "Unknown",
+      };
+      localStorage.setItem("et-tcg-beta-scout", JSON.stringify({
+        stores: [sharedStore],
+        reports: [],
+        items: [],
+        routes: [],
+      }));
+    });
   }
 
   async function fillByLabel(scope, label, value) {
@@ -60,25 +84,12 @@ async function main() {
     await assert.ok(await page.getByText(text, { exact: false }).first().isVisible());
   }
 
-  await step("Scout: add/edit/delete store", async () => {
+  await step("Scout: shared store directory loads", async () => {
     await nav("Scout");
-    const addStoreForm = page.locator("form").filter({ has: page.getByPlaceholder("Store name") }).first();
-    await addStoreForm.getByPlaceholder("Store name").fill("Smoke Cards");
-    await addStoreForm.getByPlaceholder("Chain").fill("Target");
-    await addStoreForm.getByPlaceholder("City").fill("Suffolk");
-    await addStoreForm.getByPlaceholder("Address").fill("123 Beta Way");
-    await addStoreForm.getByPlaceholder("Phone").fill("757-555-0100");
-    await addStoreForm.getByRole("button", { name: "Add Store" }).click();
-    await assertVisibleText("Smoke Cards");
-
-    await overflowAction(page, "Edit");
-    await page.locator('input[placeholder="Store name"]').nth(1).fill("Smoke Cards Edited");
-    await page.locator('input[placeholder="Chain"]').nth(1).fill("Walmart");
-    await page.locator('input[placeholder="City"]').nth(1).fill("Chesapeake");
-    await page.locator('input[placeholder="Address"]').nth(1).fill("456 Beta Road");
-    await page.locator('input[placeholder="Phone"]').nth(1).fill("757-555-0199");
-    await page.getByRole("button", { name: "Save Store Changes" }).click();
-    await assertVisibleText("Smoke Cards Edited");
+    await page.waitForTimeout(500);
+    await assertVisibleText("Shared Store Directory");
+    await assert.match(await page.locator("body").innerText(), /Smoke Shared Target/);
+    await assert.equal(await page.getByRole("button", { name: "Add Store" }).count(), 0);
   });
 
   await step("Scout: add/edit/delete restock report", async () => {
@@ -157,7 +168,7 @@ async function main() {
     await form.getByPlaceholder("New purchaser name").fill("Smoke Buyer");
     await form.getByRole("button", { name: "Save Purchaser" }).click();
     await fillByLabel(form, "Item Name", "Smoke Forge ETB");
-    await fillByLabel(form, "Store / Source", "Smoke Cards Edited");
+    await fillByLabel(form, "Store / Source", "Smoke Shared Target");
     await fillByLabel(form, "Barcode / UPC", "098765432109");
     await fillByLabel(form, "Quantity Purchased", "2");
     await fillByLabel(form, "Unit Cost", "40");
@@ -219,9 +230,9 @@ async function main() {
 
   await step("Home: totals update", async () => {
     await nav("Home");
-    await assertVisibleText("COLLECTION VALUE");
+    await assertVisibleText("Collection Value");
     await assertVisibleText("$0.00");
-    await assertVisibleText("Daily Scout Report");
+    await assertVisibleText("Quick Actions");
   });
 
   await browser.close();

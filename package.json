@@ -5,6 +5,8 @@
     "start": "vite preview",
     "preview": "vite preview",
     "smoke:beta": "node scripts/beta-smoke.cjs",
+    "seed:stores:virginia": "node scripts/import-virginia-stores.cjs",
+    "seed:stores:virginia:dry": "node scripts/import-virginia-stores.cjs --dry-run",
     "backend:dev": "npm --prefix backend run dev",
     "backend:build": "npm --prefix backend run build",
     "backend:start": "npm --prefix backend run start"

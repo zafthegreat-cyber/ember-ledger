@@ -1,0 +1,47 @@
+-- Shared Virginia-wide store seed.
+-- This file is intentionally conservative: do not add rows here unless the address
+-- has been verified from a stable public source such as an official store locator.
+-- Use virginia_stores_import_template.csv to collect/import verified rows by region.
+--
+-- Example upsert pattern:
+--
+-- insert into public.stores (
+--   chain, name, nickname, address, city, state, zip, region, county,
+--   store_type, sells_pokemon, notes, phone, website, latitude, longitude
+-- ) values (
+--   'Target',
+--   'Target Example Store',
+--   'Example Target',
+--   '123 Verified Public Address',
+--   'Example City',
+--   'VA',
+--   '00000',
+--   'Hampton Roads / 757',
+--   'Example County',
+--   'Big Box',
+--   true,
+--   'Verified from official store locator on YYYY-MM-DD.',
+--   null,
+--   null,
+--   null,
+--   null
+-- )
+-- on conflict (lower(chain), lower(address))
+-- do update set
+--   name = excluded.name,
+--   nickname = excluded.nickname,
+--   city = excluded.city,
+--   state = excluded.state,
+--   zip = excluded.zip,
+--   region = excluded.region,
+--   county = excluded.county,
+--   store_type = excluded.store_type,
+--   sells_pokemon = excluded.sells_pokemon,
+--   notes = excluded.notes,
+--   phone = excluded.phone,
+--   website = excluded.website,
+--   latitude = excluded.latitude,
+--   longitude = excluded.longitude,
+--   updated_at = now();
+--
+-- No unverified addresses are inserted by this starter file.

@@ -6,6 +6,18 @@ import SmartAddInventory from "./components/SmartAddInventory";
 import SmartAddCatalog from "./components/SmartAddCatalog";
 import OverflowMenu from "./components/OverflowMenu";
 import Scout from "./pages/Scout";
+import { SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
+import {
+  FEATURE_LABELS,
+  PAID_HOME_STATS,
+  PLAN_TYPES,
+  FEATURE_ACCESS,
+  getUpgradePrompt,
+  getUserPlan,
+  hasPlanAccess,
+  isAdminUser,
+  isPaidUser,
+} from "./constants/plans";
 
 const IRS_MILEAGE_RATE = 0.725;
 const BETA_LOCAL_MODE = true;
@@ -17,6 +29,85 @@ const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Su
 const STATUSES = ["In Stock", "Needs Photos", "Needs Market Check", "Ready to List", "Listed", "Sold", "Held", "Personal Collection", "Damaged"];
 const PLATFORMS = ["eBay", "Mercari", "Whatnot", "Facebook Marketplace", "In-Store", "Instagram", "TikTok Shop", "Other"];
 const VAULT_CATEGORIES = ["Personal collection", "Keep sealed", "Rip later", "Trade", "Favorite", "Wishlist", "Set goal", "Kid collection"];
+const USER_TYPES = ["collector", "seller", "scout", "parent", "advanced"];
+const HOME_STATS = [
+  { key: "collection_value", label: "Collection Value", group: "Collection & Spending" },
+  { key: "monthly_spending", label: "Monthly Spending", group: "Collection & Spending" },
+  { key: "market_value", label: "Market Value", group: "Collection & Spending" },
+  { key: "savings_vs_msrp", label: "Savings vs MSRP", group: "Collection & Spending" },
+  { key: "forge_inventory_value", label: "Forge Inventory Value", group: "Inventory & Sales" },
+  { key: "forge_planned_sales", label: "Forge Planned Sales", group: "Inventory & Sales" },
+  { key: "forge_sales_revenue", label: "Forge Sales Revenue", group: "Inventory & Sales" },
+  { key: "items_sold", label: "Items Sold", group: "Inventory & Sales" },
+  { key: "monthly_profit_loss", label: "Monthly Profit/Loss", group: "Profit & ROI" },
+  { key: "market_roi", label: "Market ROI", group: "Profit & ROI" },
+  { key: "planned_roi", label: "Planned ROI", group: "Profit & ROI" },
+  { key: "planned_profit", label: "Planned Profit", group: "Profit & ROI" },
+  { key: "forge_profit", label: "Forge Profit", group: "Profit & ROI" },
+  { key: "expenses", label: "Expenses", group: "Profit & ROI" },
+  { key: "profit_after_expenses", label: "Profit After Expenses", group: "Profit & ROI" },
+  { key: "market_vs_msrp_percent", label: "Market vs MSRP %", group: "MSRP / Deal Metrics" },
+  { key: "market_over_msrp", label: "Market Over MSRP", group: "MSRP / Deal Metrics" },
+  { key: "business_miles", label: "Business Miles", group: "Mileage & Vehicle" },
+  { key: "total_vehicle_cost", label: "Total Vehicle Cost", group: "Mileage & Vehicle" },
+];
+const HOME_STAT_GROUPS = [...new Set(HOME_STATS.map((stat) => stat.group))];
+const HOME_STAT_KEYS = HOME_STATS.map((stat) => stat.key);
+const HOME_STAT_DEFAULTS = {
+  collector: ["collection_value", "monthly_spending", "market_value", "savings_vs_msrp"],
+  seller: [
+    "forge_inventory_value",
+    "market_value",
+    "monthly_profit_loss",
+    "market_roi",
+    "planned_roi",
+    "forge_planned_sales",
+    "planned_profit",
+    "forge_sales_revenue",
+    "forge_profit",
+    "expenses",
+    "profit_after_expenses",
+    "items_sold",
+    "business_miles",
+    "total_vehicle_cost",
+  ],
+  scout: ["monthly_spending", "market_value", "market_vs_msrp_percent", "market_over_msrp", "savings_vs_msrp"],
+  parent: ["monthly_spending", "market_value", "market_vs_msrp_percent", "market_over_msrp", "savings_vs_msrp"],
+  advanced: HOME_STAT_KEYS,
+};
+const DASHBOARD_CARD_STYLES = ["compact", "comfortable", "detailed"];
+const DASHBOARD_PRESETS = ["simple", "collector", "seller", "scout", "parent", "advanced"];
+const DASHBOARD_SECTIONS = [
+  { key: "quick_actions", label: "Quick Actions", group: "Core" },
+  { key: "home_stats", label: "Home Stats", group: "Core" },
+  { key: "catalog_shortcut", label: "Catalog Shortcut", group: "Collection" },
+  { key: "recent_inventory", label: "Recent Inventory", group: "Collection" },
+  { key: "recent_sales", label: "Recent Sales", group: "Seller" },
+  { key: "wishlist", label: "Wishlist", group: "Collection" },
+  { key: "watchlist", label: "Watchlist", group: "Market" },
+  { key: "deal_checker", label: "Deal Checker", group: "Market" },
+  { key: "store_reports", label: "Store Reports", group: "Scout" },
+  { key: "nearby_stores", label: "Nearby Stores", group: "Scout" },
+  { key: "restock_calendar", label: "Restock Calendar", group: "Scout" },
+  { key: "alerts", label: "Alerts", group: "Core" },
+  { key: "mileage_summary", label: "Mileage Summary", group: "Seller" },
+  { key: "expenses_summary", label: "Expenses Summary", group: "Seller" },
+  { key: "people_wishlists", label: "People Wishlists", group: "Parent" },
+  { key: "market_summary", label: "Market Summary", group: "Market" },
+  { key: "pack_it_forward", label: "Pack It Forward", group: "Parent" },
+  { key: "action_center", label: "Action Center", group: "Core" },
+  { key: "purchaser_spending", label: "Purchaser Spending", group: "Seller" },
+  { key: "exports", label: "Exports", group: "Advanced" },
+  { key: "settings", label: "Settings", group: "Core", locked: true },
+];
+const DASHBOARD_PRESET_SECTIONS = {
+  simple: ["quick_actions", "home_stats", "catalog_shortcut", "recent_inventory", "deal_checker", "settings"],
+  collector: ["home_stats", "quick_actions", "catalog_shortcut", "recent_inventory", "wishlist", "market_summary", "settings"],
+  seller: ["home_stats", "quick_actions", "recent_inventory", "recent_sales", "expenses_summary", "mileage_summary", "action_center", "settings"],
+  scout: ["quick_actions", "store_reports", "nearby_stores", "restock_calendar", "watchlist", "alerts", "settings"],
+  parent: ["quick_actions", "deal_checker", "people_wishlists", "home_stats", "wishlist", "nearby_stores", "settings"],
+  advanced: DASHBOARD_SECTIONS.map((section) => section.key),
+};
 
 function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
@@ -69,6 +160,100 @@ function normalizePurchasers(savedPurchasers = []) {
 
 function itemPurchaserName(item) {
   return item.purchaserName || item.purchaser_name || item.buyer || "Unassigned";
+}
+
+function normalizeUserType(userType) {
+  return USER_TYPES.includes(userType) ? userType : "collector";
+}
+
+function getDefaultHomeStatsForUserType(userType = "collector") {
+  const enabledKeys = HOME_STAT_DEFAULTS[normalizeUserType(userType)] || HOME_STAT_DEFAULTS.collector;
+  return HOME_STATS.reduce((settings, stat) => ({ ...settings, [stat.key]: enabledKeys.includes(stat.key) }), {});
+}
+
+function normalizeHomeStatsEnabled(savedStats, userType = "collector") {
+  const defaults = getDefaultHomeStatsForUserType(userType);
+  if (!savedStats || typeof savedStats !== "object") return defaults;
+  return HOME_STATS.reduce(
+    (settings, stat) => ({ ...settings, [stat.key]: savedStats[stat.key] ?? defaults[stat.key] }),
+    {}
+  );
+}
+
+function isHomeStatEnabled(profile, statKey) {
+  const userType = normalizeUserType(profile?.userType || profile?.user_type);
+  const enabled = normalizeHomeStatsEnabled(profile?.homeStatsEnabled || profile?.home_stats_enabled, userType);
+  return enabled[statKey] !== false;
+}
+
+function normalizeDashboardPreset(preset) {
+  return DASHBOARD_PRESETS.includes(preset) ? preset : "simple";
+}
+
+function normalizeDashboardCardStyle(style) {
+  return DASHBOARD_CARD_STYLES.includes(style) ? style : "comfortable";
+}
+
+function getDashboardPresetForUserType(userType = "collector") {
+  const map = { collector: "collector", seller: "seller", scout: "scout", parent: "parent", advanced: "advanced" };
+  return map[normalizeUserType(userType)] || "simple";
+}
+
+function getDefaultDashboardLayoutForPreset(preset = "simple") {
+  const normalized = normalizeDashboardPreset(preset);
+  const enabledKeys = DASHBOARD_PRESET_SECTIONS[normalized] || DASHBOARD_PRESET_SECTIONS.simple;
+  return {
+    sections: DASHBOARD_SECTIONS.map((section, index) => ({
+      key: section.key,
+      enabled: section.locked ? true : enabledKeys.includes(section.key),
+      order: enabledKeys.includes(section.key) ? enabledKeys.indexOf(section.key) + 1 : index + 100,
+      collapsed: false,
+    })).sort((a, b) => a.order - b.order),
+  };
+}
+
+function normalizeDashboardLayout(layout, preset = "simple") {
+  const defaults = getDefaultDashboardLayoutForPreset(preset);
+  const savedSections = Array.isArray(layout?.sections) ? layout.sections : [];
+  return {
+    sections: DASHBOARD_SECTIONS.map((section) => {
+      const saved = savedSections.find((candidate) => candidate.key === section.key);
+      const fallback = defaults.sections.find((candidate) => candidate.key === section.key);
+      return {
+        key: section.key,
+        enabled: section.locked ? true : saved?.enabled ?? fallback?.enabled ?? false,
+        order: Number(saved?.order ?? fallback?.order ?? 100),
+        collapsed: Boolean(saved?.collapsed ?? fallback?.collapsed ?? false),
+      };
+    }).sort((a, b) => a.order - b.order),
+  };
+}
+
+function isDashboardSectionEnabled(profile, sectionKey) {
+  const preset = normalizeDashboardPreset(profile?.dashboardPreset || profile?.dashboard_preset);
+  const layout = normalizeDashboardLayout(profile?.dashboardLayout || profile?.dashboard_layout, preset);
+  return layout.sections.find((section) => section.key === sectionKey)?.enabled !== false;
+}
+
+function createSharedCatalogProducts() {
+  const now = new Date().toISOString();
+  return SHARED_POKEMON_PRODUCTS.map((product, index) => ({
+    id: `shared-product-${index + 1}`,
+    category: "Pokemon",
+    barcode: "",
+    externalProductId: "",
+    marketUrl: "",
+    imageUrl: "",
+    marketPrice: 0,
+    lowPrice: 0,
+    midPrice: 0,
+    highPrice: 0,
+    setCode: "",
+    packCount: "",
+    notes: "Shared beta starter catalog item.",
+    createdAt: now,
+    ...product,
+  }));
 }
 
 function statusClass(status) {
@@ -140,15 +325,40 @@ function BarcodeScanner({ onScan, onClose }) {
   );
 }
 
+function UpgradeScreen({ featureKey, onBack }) {
+  return (
+    <section className="panel upgrade-panel">
+      <h2>Upgrade Required</h2>
+      <p>{getUpgradePrompt(featureKey)}</p>
+      <div className="quick-actions">
+        <button type="button" disabled>Upgrade to Paid</button>
+        <button type="button" className="secondary-button" disabled>Manage Subscription</button>
+        <button type="button" className="secondary-button" onClick={onBack}>Back to Home</button>
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showTopbarActions, setShowTopbarActions] = useState(true);
   const [reportFocus, setReportFocus] = useState("");
 
   const [treasureClicks, setTreasureClicks] = useState(0);
   const [showTreasure, setShowTreasure] = useState(false);
 
   const [user, setUser] = useState(BETA_LOCAL_MODE ? { id: "local-beta", email: "local beta mode" } : null);
+  const [userType, setUserType] = useState("collector");
+  const [homeStatsEnabled, setHomeStatsEnabled] = useState(() => getDefaultHomeStatsForUserType("collector"));
+  const [dashboardPreset, setDashboardPreset] = useState("simple");
+  const [dashboardLayout, setDashboardLayout] = useState(() => getDefaultDashboardLayoutForPreset("simple"));
+  const [dashboardCardStyle, setDashboardCardStyle] = useState("comfortable");
+  const [subscriptionProfile, setSubscriptionProfile] = useState({
+    subscriptionPlan: PLAN_TYPES.FREE,
+    subscriptionStatus: "active",
+    lifetimeAccess: false,
+  });
   const [authMode, setAuthMode] = useState("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -169,6 +379,10 @@ export default function App() {
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
   const [inventorySort, setInventorySort] = useState("newest");
   const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogSetFilter, setCatalogSetFilter] = useState("All");
+  const [catalogTypeFilter, setCatalogTypeFilter] = useState("All");
+  const [catalogEraFilter, setCatalogEraFilter] = useState("All");
+  const [catalogYearFilter, setCatalogYearFilter] = useState("All");
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
@@ -272,26 +486,39 @@ export default function App() {
   ];
 
   const navSections = [
-    { title: "Home", items: [{ key: "dashboard", label: "Home" }] },
-    { title: "Vault / The Vault", items: [{ key: "vault", label: "Vault" }] },
-    { title: "Scout", items: [{ key: "scout", label: "Scout" }] },
-    { title: "Market / TideTradr", items: [{ key: "market", label: "Market" }, { key: "catalog", label: "Market Catalog" }] },
     {
-      title: "Forge / The Forge",
+      title: "Menu",
       items: [
-        { key: "inventory", label: "Forge Inventory" },
-        { key: "addInventory", label: "Add Forge Item" },
-        { key: "sales", label: "Forge Sales" },
-        { key: "addSale", label: "Add Sale" },
-        { key: "expenses", label: "Forge Expenses" },
-        { key: "reports", label: "Forge Reports" },
-        { key: "mileage", label: "Mileage" },
-        { key: "vehicles", label: "Vehicles" },
+        { key: "dashboard", label: "Dashboard" },
+        { key: "catalog", label: "Catalog" },
+        { key: "scout", label: "Stores" },
+        { key: "inventory", label: "Inventory" },
+        { key: "sales", label: "Sales", feature: "seller_tools" },
+        { key: "settings", label: "Settings", target: "dashboard" },
+      ],
+    },
+    { title: "Main Tabs", items: [
+      { key: "home", label: "Home", target: "dashboard" },
+      { key: "vault", label: "Vault" },
+      { key: "scout-main", label: "Scout", target: "scout" },
+      { key: "market", label: "Market" },
+      { key: "forge", label: "Forge", target: "inventory" },
+    ] },
+    {
+      title: "Forge Tools",
+      items: [
+        { key: "addInventory", label: "Add Forge Item", feature: "seller_tools" },
+        { key: "addSale", label: "Add Sale", feature: "seller_tools" },
+        { key: "expenses", label: "Forge Expenses", feature: "expenses" },
+        { key: "reports", label: "Forge Reports", feature: "seller_tools" },
+        { key: "mileage", label: "Mileage", feature: "mileage" },
+        { key: "vehicles", label: "Vehicles", feature: "mileage" },
       ],
     },
   ];
 
-  const activeTabLabel = navSections.flatMap((s) => s.items).find((i) => i.key === activeTab)?.label || "Dashboard";
+  const activeTabLabel =
+    navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Dashboard";
   const activeMainTab =
     activeTab === "dashboard"
       ? "home"
@@ -300,6 +527,38 @@ export default function App() {
         : activeTab === "catalog"
           ? "market"
           : "forge";
+
+  useEffect(() => {
+    let frameId = 0;
+    const lastScrollY = { current: window.scrollY || 0 };
+
+    function handleScroll() {
+      if (frameId) return;
+
+      frameId = window.requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY || 0;
+        const delta = currentScrollY - lastScrollY.current;
+
+        if (currentScrollY <= 5) {
+          setShowTopbarActions(true);
+        } else if (currentScrollY > 20 && delta > 4) {
+          setShowTopbarActions(false);
+        } else if (delta < -4) {
+          setShowTopbarActions(true);
+        }
+
+        lastScrollY.current = currentScrollY;
+        frameId = 0;
+      });
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, []);
 
   const updateItemForm = (field, value) => setItemForm((old) => ({ ...old, [field]: value }));
   const updateCatalogForm = (field, value) => setCatalogForm((old) => ({ ...old, [field]: value }));
@@ -431,6 +690,62 @@ export default function App() {
     );
   }
 
+  function updateHomeStatsEnabled(updates) {
+    setHomeStatsEnabled((current) => normalizeHomeStatsEnabled({ ...current, ...updates }, userType));
+  }
+
+  function resetHomeStatsForUserType(nextUserType = userType) {
+    setHomeStatsEnabled(getDefaultHomeStatsForUserType(nextUserType));
+  }
+
+  function setAllHomeStats(enabled) {
+    setHomeStatsEnabled(HOME_STATS.reduce((settings, stat) => ({ ...settings, [stat.key]: enabled }), {}));
+  }
+
+  function updateUserType(nextUserType) {
+    const normalized = normalizeUserType(nextUserType);
+    setUserType(normalized);
+    setHomeStatsEnabled((current) => normalizeHomeStatsEnabled(current, normalized));
+  }
+
+  function updateDashboardPreset(nextPreset) {
+    const normalized = normalizeDashboardPreset(nextPreset);
+    setDashboardPreset(normalized);
+    setDashboardLayout(getDefaultDashboardLayoutForPreset(normalized));
+  }
+
+  function updateDashboardLayout(updater) {
+    setDashboardLayout((current) => normalizeDashboardLayout(typeof updater === "function" ? updater(current) : updater, dashboardPreset));
+  }
+
+  function updateDashboardCardStyle(nextStyle) {
+    setDashboardCardStyle(normalizeDashboardCardStyle(nextStyle));
+  }
+
+  function resetDashboardLayoutForPreset(preset = dashboardPreset) {
+    setDashboardLayout(getDefaultDashboardLayoutForPreset(preset));
+  }
+
+  function updateDashboardSection(key, updates) {
+    updateDashboardLayout((current) => ({
+      sections: normalizeDashboardLayout(current, dashboardPreset).sections.map((section) =>
+        section.key === key ? { ...section, ...updates } : section
+      ),
+    }));
+  }
+
+  function moveDashboardSection(key, direction) {
+    updateDashboardLayout((current) => {
+      const sections = normalizeDashboardLayout(current, dashboardPreset).sections;
+      const index = sections.findIndex((section) => section.key === key);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= sections.length) return current;
+      const next = [...sections];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return { sections: next.map((section, orderIndex) => ({ ...section, order: orderIndex + 1 })) };
+    });
+  }
+
   function loadScoutSnapshot() {
     const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
     setScoutSnapshot({
@@ -442,9 +757,23 @@ export default function App() {
   useEffect(() => {
     if (BETA_LOCAL_MODE) {
       const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
+      const savedUserType = normalizeUserType(saved.userType);
+      const savedPreset = normalizeDashboardPreset(saved.dashboardPreset || getDashboardPresetForUserType(savedUserType));
+      setUserType(savedUserType);
+      setHomeStatsEnabled(normalizeHomeStatsEnabled(saved.homeStatsEnabled, savedUserType));
+      setDashboardPreset(savedPreset);
+      setDashboardLayout(normalizeDashboardLayout(saved.dashboardLayout, savedPreset));
+      setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
+      setSubscriptionProfile({
+        subscriptionPlan: saved.subscriptionProfile?.subscriptionPlan || PLAN_TYPES.FREE,
+        subscriptionStatus: saved.subscriptionProfile?.subscriptionStatus || "active",
+        subscriptionStartedAt: saved.subscriptionProfile?.subscriptionStartedAt || "",
+        subscriptionExpiresAt: saved.subscriptionProfile?.subscriptionExpiresAt || "",
+        lifetimeAccess: Boolean(saved.subscriptionProfile?.lifetimeAccess),
+      });
       setItems(saved.items || []);
       setPurchasers(normalizePurchasers(saved.purchasers));
-      setCatalogProducts(saved.catalogProducts || []);
+      setCatalogProducts(saved.catalogProducts?.length ? saved.catalogProducts : createSharedCatalogProducts());
       setExpenses(saved.expenses || []);
       setSales(saved.sales || []);
       setVehicles(saved.vehicles || []);
@@ -493,9 +822,15 @@ export default function App() {
         vehicles,
         mileageTrips,
         dealForm,
+        userType,
+        homeStatsEnabled,
+        dashboardPreset,
+        dashboardLayout,
+        dashboardCardStyle,
+        subscriptionProfile,
       })
     );
-  }, [items, purchasers, catalogProducts, expenses, sales, vehicles, mileageTrips, dealForm, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || activeTab !== "dashboard") return;
@@ -1910,6 +2245,65 @@ async function importBulkCatalogProducts() {
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || 0),
     0
   );
+  const homeStatsProfile = { userType, homeStatsEnabled };
+  const dashboardStats = [
+    { key: "collection_value", label: "Collection Value", value: money(vaultValue) },
+    { key: "monthly_spending", label: "Monthly Spending", value: money(monthlySpending) },
+    { key: "forge_inventory_value", label: "Forge Inventory Value", value: money(totalMsrpValue) },
+    { key: "market_value", label: "Market Value", value: money(totalMarketValue) },
+    { key: "monthly_profit_loss", label: "Monthly Profit/Loss", value: money(monthlyProfitLoss) },
+    { key: "market_roi", label: "Market ROI", value: `${marketRoiPercent.toFixed(1)}%` },
+    { key: "planned_roi", label: "Planned ROI", value: `${plannedRoiPercent.toFixed(1)}%` },
+    { key: "market_vs_msrp_percent", label: "Market vs MSRP %", value: `${msrpRoiPercent.toFixed(1)}%` },
+    { key: "market_over_msrp", label: "Market Over MSRP", value: money(profitOverMsrp) },
+    { key: "savings_vs_msrp", label: "Savings vs MSRP", value: money(savingsAgainstMsrp) },
+    { key: "forge_planned_sales", label: "Forge Planned Sales", value: money(totalPotentialSales) },
+    { key: "planned_profit", label: "Planned Profit", value: money(estimatedProfit) },
+    { key: "forge_sales_revenue", label: "Forge Sales Revenue", value: money(totalSalesRevenue) },
+    { key: "forge_profit", label: "Forge Profit", value: money(totalSalesProfit) },
+    { key: "expenses", label: "Expenses", value: money(totalExpenses) },
+    { key: "profit_after_expenses", label: "Profit After Expenses", value: money(estimatedProfitAfterExpenses) },
+    { key: "items_sold", label: "Items Sold", value: totalItemsSold },
+    { key: "business_miles", label: "Business Miles", value: totalBusinessMiles.toFixed(1) },
+    { key: "total_vehicle_cost", label: "Total Vehicle Cost", value: money(totalVehicleCost) },
+  ];
+  const dashboardProfile = { dashboardPreset, dashboardLayout };
+  const planProfile = subscriptionProfile;
+  const currentPlan = getUserPlan(planProfile);
+  const paidUser = isPaidUser(planProfile);
+  const adminUser = isAdminUser(planProfile);
+  const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
+  const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
+  const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
+  const normalizedDashboardLayout = normalizeDashboardLayout(dashboardLayout, dashboardPreset);
+  const dashboardSectionState = (key) =>
+    normalizedDashboardLayout.sections.find((section) => section.key === key) || { key, enabled: false, order: 100, collapsed: false };
+  const dashboardSectionFeature = (key) => ({
+    recent_sales: "seller_tools",
+    store_reports: "restock_predictions",
+    restock_calendar: "restock_predictions",
+    watchlist: "alerts_advanced",
+    alerts: "alerts_advanced",
+    mileage_summary: "mileage",
+    expenses_summary: "expenses",
+    action_center: "seller_tools",
+    purchaser_spending: "seller_tools",
+    exports: "seller_tools",
+  })[key];
+  const dashboardSectionEnabled = (key) => {
+    const featureKey = dashboardSectionFeature(key);
+    return isDashboardSectionEnabled(dashboardProfile, key) && (!featureKey || featureAllowed(featureKey));
+  };
+  const activeTabFeature = {
+    sales: "seller_tools",
+    addSale: "seller_tools",
+    expenses: "expenses",
+    vehicles: "mileage",
+    mileage: "mileage",
+    reports: "seller_tools",
+  }[activeTab];
+  const activeTabLocked = activeTabFeature && !featureAllowed(activeTabFeature);
+  const dashboardSectionStyle = (key) => ({ order: dashboardSectionState(key).order });
   const packItForwardItems = items.filter((item) =>
     item.status === "Donated" ||
     String(item.actionNotes || "").toLowerCase().includes("kid") ||
@@ -2073,13 +2467,27 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   const filteredCatalogProducts = catalogProducts.filter((product) => {
     const search = catalogSearch.toLowerCase();
-    return (
+    const matchesSearch =
       product.name.toLowerCase().includes(search) ||
       product.category.toLowerCase().includes(search) ||
       String(product.setName || "").toLowerCase().includes(search) ||
-      String(product.barcode || "").toLowerCase().includes(search)
-    );
+      String(product.productType || "").toLowerCase().includes(search) ||
+      String(product.expansion || "").toLowerCase().includes(search) ||
+      String(product.productLine || "").toLowerCase().includes(search) ||
+      String(product.releaseYear || "").toLowerCase().includes(search) ||
+      String(product.barcode || "").toLowerCase().includes(search);
+
+    const matchesSet = catalogSetFilter === "All" || product.setName === catalogSetFilter || product.expansion === catalogSetFilter;
+    const matchesType = catalogTypeFilter === "All" || product.productType === catalogTypeFilter;
+    const matchesEra = catalogEraFilter === "All" || product.productLine === catalogEraFilter;
+    const matchesYear = catalogYearFilter === "All" || String(product.releaseYear || "") === catalogYearFilter;
+
+    return matchesSearch && matchesSet && matchesType && matchesEra && matchesYear;
   });
+  const catalogSetOptions = ["All", ...new Set(catalogProducts.map((product) => product.setName || product.expansion).filter(Boolean))].sort();
+  const catalogTypeOptions = ["All", ...new Set(catalogProducts.map((product) => product.productType).filter(Boolean))].sort();
+  const catalogEraOptions = ["All", ...new Set(catalogProducts.map((product) => product.productLine).filter(Boolean))].sort();
+  const catalogYearOptions = ["All", ...new Set(catalogProducts.map((product) => String(product.releaseYear || "")).filter(Boolean))].sort();
 
   if (!user) {
     return (
@@ -2144,7 +2552,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   )}
 </header>
 
-    <div className="topbar">
+    <div className={showTopbarActions ? "topbar topbar-actions-visible" : "topbar topbar-actions-hidden"}>
   <button
     type="button"
     className="menu-button"
@@ -2175,13 +2583,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       + Sale
     </button>
 
-    <button
-      type="button"
-      className="secondary-button"
-      onClick={signOut}
-    >
-      Sign Out
-    </button>
   </div>
 </div>
 
@@ -2211,93 +2612,71 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="drawer-section" key={section.title}>
                 <p className="drawer-section-title">{section.title}</p>
                 <div className="drawer-links">
-                  {section.items.map((item) => (
+                  {section.items.map((item) => {
+                    const targetTab = item.target || item.key;
+                    const locked = item.feature && !hasPlanAccess(subscriptionProfile, item.feature);
+                    if (locked && section.title === "Forge Tools") return null;
+                    return (
                     <button
                       key={item.key}
                       type="button"
-                      className={activeTab === item.key ? "drawer-link active" : "drawer-link"}
+                      className={activeTab === targetTab ? "drawer-link active" : "drawer-link"}
                       onClick={() => {
-                        setActiveTab(item.key);
+                        setActiveTab(targetTab);
                         setMenuOpen(false);
                       }}
                     >
-                      {item.label}
+                      {locked ? `Lock ${item.label} - Upgrade` : item.label}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
+            <div className="drawer-section">
+              <p className="drawer-section-title">Account</p>
+              <div className="drawer-links">
+                <button
+                  type="button"
+                  className="drawer-link"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    signOut();
+                  }}
+                >
+                  Log Out
+                </button>
+              </div>
+            </div>
           </aside>
         </>
       ) : null}
 
-      <main className="main">
-        {activeTab === "dashboard" && (
-          <>
-            <section className="cards">
-              <div className="card">
-                <p>Collection Value</p>
-                <h2>{money(vaultValue)}</h2>
-              </div>
-
-              <div className="card">
-                <p>Monthly Spending</p>
-                <h2>{money(monthlySpending)}</h2>
-              </div>
-
-              <div className="card">
-                <p>Forge Inventory Value</p>
-                <h2>{money(totalMsrpValue)}</h2>
-              </div>
-
-              <div className="card">
-                <p>Market Value</p>
-                <h2>{money(totalMarketValue)}</h2>
-              </div>
-
-              <div className="card">
-                <p>Monthly Profit/Loss</p>
-                <h2>{money(monthlyProfitLoss)}</h2>
-              </div>
-              <div className="card">
-                <p>Market ROI</p>
-                <h2>{marketRoiPercent.toFixed(1)}%</h2>
-              </div>
-
-              <div className="card">
-                <p>Planned ROI</p>
-                <h2>{plannedRoiPercent.toFixed(1)}%</h2>
-              </div>
-
-              <div className="card">
-                <p>Market vs MSRP %</p>
-                <h2>{msrpRoiPercent.toFixed(1)}%</h2>
-              </div>
-
-              <div className="card">
-                <p>Market Over MSRP</p>
-                <h2>{money(profitOverMsrp)}</h2>
-              </div>
-
-              <div className="card">
-                <p>Savings vs MSRP</p>
-                <h2>{money(savingsAgainstMsrp)}</h2>
-              </div>
-
-              <div className="card">
-                <p>Forge Planned Sales</p>
-                <h2>{money(totalPotentialSales)}</h2>
-              </div>
-              <div className="card"><p>Planned Profit</p><h2>{money(estimatedProfit)}</h2></div>
-              <div className="card"><p>Forge Sales Revenue</p><h2>{money(totalSalesRevenue)}</h2></div>
-              <div className="card"><p>Forge Profit</p><h2>{money(totalSalesProfit)}</h2></div>
-              <div className="card"><p>Expenses</p><h2>{money(totalExpenses)}</h2></div>
-              <div className="card"><p>Profit After Expenses</p><h2>{money(estimatedProfitAfterExpenses)}</h2></div>
-              <div className="card"><p>Items Sold</p><h2>{totalItemsSold}</h2></div>
-              <div className="card"><p>Business Miles</p><h2>{totalBusinessMiles.toFixed(1)}</h2></div>
-              <div className="card"><p>Total Vehicle Cost</p><h2>{money(totalVehicleCost)}</h2></div>
+      <main className={`main dashboard-card-style-${dashboardCardStyle}`}>
+        {activeTabLocked ? (
+          <UpgradeScreen featureKey={activeTabFeature} onBack={() => setActiveTab("dashboard")} />
+        ) : null}
+        {!activeTabLocked && activeTab === "dashboard" && (
+          <div className="dashboard-layout">
+            {dashboardSectionEnabled("home_stats") ? (
+            <section className="cards dashboard-section" style={dashboardSectionStyle("home_stats")}>
+              {visibleDashboardStats.length === 0 ? (
+                <div className="card">
+                  <p>Home Page Stats</p>
+                  <h2>Hidden</h2>
+                </div>
+              ) : (
+                visibleDashboardStats.map((stat) => (
+                  <div className="card" key={stat.key}>
+                    <p>{stat.label}</p>
+                    <h2>{stat.value}</h2>
+                  </div>
+                ))
+              )}
             </section>
-            <section className="panel">
+            ) : null}
+            {dashboardSectionEnabled("quick_actions") ? (
+            <section className="panel dashboard-section" style={dashboardSectionStyle("quick_actions")}>
               <h2>Quick Actions</h2>
               <div className="quick-actions">
                 <button type="button" onClick={() => setActiveTab("addInventory")}>Quick Add Item</button>
@@ -2307,7 +2686,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <button type="button" onClick={() => setActiveTab("scout")}>Upload Tip Screenshot</button>
               </div>
             </section>
-            <section className="panel">
+            ) : null}
+            <section className="panel dashboard-section" style={dashboardSectionStyle("settings")}>
               <h2>Beta Settings</h2>
               <p>
                 Ember & Tide TCG is running in local beta mode. Your beta data is stored in this browser with localStorage.
@@ -2327,7 +2707,70 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </button>
               </div>
             </section>
-            <section className="panel">
+            {["catalog_shortcut", "deal_checker", "wishlist", "nearby_stores", "mileage_summary", "expenses_summary", "people_wishlists"].some(dashboardSectionEnabled) ? (
+            <section className="home-grid dashboard-section" style={dashboardSectionStyle("catalog_shortcut")}>
+              {dashboardSectionEnabled("catalog_shortcut") ? (
+                <div className="panel" style={dashboardSectionStyle("catalog_shortcut")}>
+                  <h2>Catalog Search</h2>
+                  <div className="home-callout">
+                    <p>Search the shared Pokemon product catalog and add known products to The Forge.</p>
+                    <button type="button" onClick={() => setActiveTab("catalog")}>Open Catalog</button>
+                  </div>
+                </div>
+              ) : null}
+              {dashboardSectionEnabled("deal_checker") ? (
+                <div className="panel" style={dashboardSectionStyle("deal_checker")}>
+                  <h2>Deal Checker</h2>
+                  <div className="home-callout">
+                    <p>Run TideTradr before buying so collectors and parents can avoid overpaying.</p>
+                    <button type="button" onClick={() => setActiveTab("market")}>Check Deal</button>
+                  </div>
+                </div>
+              ) : null}
+              {dashboardSectionEnabled("wishlist") || dashboardSectionEnabled("people_wishlists") ? (
+                <div className="panel" style={dashboardSectionStyle(dashboardSectionEnabled("wishlist") ? "wishlist" : "people_wishlists")}>
+                  <h2>{dashboardSectionEnabled("people_wishlists") ? "Wishlists by Person" : "Wishlist"}</h2>
+                  <div className="home-list">
+                    {vaultItems.filter((item) => String(item.actionNotes || "").toLowerCase().includes("wish")).slice(0, 5).map((item) => (
+                      <button type="button" className="home-list-row" key={item.id} onClick={() => setActiveTab("vault")}>
+                        <span><strong>{item.name}</strong><small>{item.productType || "Vault item"}</small></span>
+                        <b>{money(item.marketPrice)}</b>
+                      </button>
+                    ))}
+                    {vaultItems.filter((item) => String(item.actionNotes || "").toLowerCase().includes("wish")).length === 0 ? <p>No wishlist items yet.</p> : null}
+                  </div>
+                </div>
+              ) : null}
+              {dashboardSectionEnabled("nearby_stores") ? (
+                <div className="panel" style={dashboardSectionStyle("nearby_stores")}>
+                  <h2>Nearby Stores</h2>
+                  <div className="home-callout">
+                    <p>Use Scout to find shared Virginia stores and submit restock reports.</p>
+                    <button type="button" onClick={() => setActiveTab("scout")}>Open Scout</button>
+                  </div>
+                </div>
+              ) : null}
+              {dashboardSectionEnabled("expenses_summary") ? (
+                <div className="panel" style={dashboardSectionStyle("expenses_summary")}>
+                  <h2>Expenses Summary</h2>
+                  <div className="cards mini-cards">
+                    <div className="card"><p>Expenses</p><h2>{money(totalExpenses)}</h2></div>
+                    <div className="card"><p>After Expenses</p><h2>{money(estimatedProfitAfterExpenses)}</h2></div>
+                  </div>
+                </div>
+              ) : null}
+              {dashboardSectionEnabled("mileage_summary") ? (
+                <div className="panel" style={dashboardSectionStyle("mileage_summary")}>
+                  <h2>Mileage Summary</h2>
+                  <div className="cards mini-cards">
+                    <div className="card"><p>Business Miles</p><h2>{totalBusinessMiles.toFixed(1)}</h2></div>
+                    <div className="card"><p>Vehicle Cost</p><h2>{money(totalVehicleCost)}</h2></div>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+            ) : null}
+            <section className="panel dashboard-section" style={dashboardSectionStyle("settings")}>
               <h2>Settings / About</h2>
               <p>
                 Ember & Tide TCG helps collectors stay organized, helps parents avoid overpaying, and helps keep Pokemon fun, fair, and accessible for kids.
@@ -2344,6 +2787,145 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="card">
                   <p>Beta Storage</p>
                   <h2>Local</h2>
+                </div>
+              </div>
+
+              <div className="settings-subsection">
+                <h3>Plan & Access</h3>
+                <p>User type controls the app experience. Subscription plan controls what features are unlocked.</p>
+                <div className="cards mini-cards">
+                  <div className="card"><p>Current Plan</p><h2>{currentPlan}</h2></div>
+                  <div className="card"><p>Status</p><h2>{subscriptionProfile.subscriptionStatus || "active"}</h2></div>
+                  <div className="card"><p>Lifetime Access</p><h2>{subscriptionProfile.lifetimeAccess ? "Yes" : "No"}</h2></div>
+                </div>
+                <div className="quick-actions">
+                  <button type="button" disabled>Upgrade to Paid</button>
+                  <button type="button" className="secondary-button" disabled>Manage Subscription</button>
+                </div>
+                <div className="settings-groups">
+                  <div className="settings-group">
+                    <h4>Unlocked</h4>
+                    <div className="toggle-list">
+                      {Object.keys(FEATURE_ACCESS).filter((featureKey) => featureAllowed(featureKey)).map((featureKey) => (
+                        <p className="compact-subtitle" key={featureKey}>{FEATURE_LABELS[featureKey] || featureKey}</p>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="settings-group">
+                    <h4>Locked</h4>
+                    <div className="toggle-list">
+                      {Object.keys(FEATURE_ACCESS).filter((featureKey) => !featureAllowed(featureKey)).map((featureKey) => (
+                        <p className="compact-subtitle" key={featureKey}>Lock {FEATURE_LABELS[featureKey] || featureKey}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <p className="compact-subtitle">
+                  {adminUser ? "Admin tools unlocked." : paidUser ? "Paid features unlocked." : "Free plan: advanced Scout, alerts, seller tools, mileage, expenses, and admin tools stay locked."}
+                </p>
+              </div>
+
+              <div className="settings-subsection">
+                <h3>Dashboard Layout</h3>
+                <p>Pick a preset, choose a card density, and decide which Home sections show first.</p>
+                <div className="settings-toolbar">
+                  <Field label="Dashboard Preset">
+                    <select value={dashboardPreset} onChange={(event) => updateDashboardPreset(event.target.value)}>
+                      {DASHBOARD_PRESETS.map((preset) => (
+                        <option key={preset} value={preset}>
+                          {preset === "parent" ? "Parent / Kid-Focused" : preset.charAt(0).toUpperCase() + preset.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Card Style">
+                    <select value={dashboardCardStyle} onChange={(event) => updateDashboardCardStyle(event.target.value)}>
+                      {DASHBOARD_CARD_STYLES.map((style) => (
+                        <option key={style} value={style}>
+                          {style.charAt(0).toUpperCase() + style.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <button type="button" className="secondary-button" onClick={() => resetDashboardLayoutForPreset(dashboardPreset)}>
+                    Reset Layout
+                  </button>
+                </div>
+
+                <div className="dashboard-layout-list">
+                  {normalizedDashboardLayout.sections.map((section, index) => {
+                    const meta = DASHBOARD_SECTIONS.find((candidate) => candidate.key === section.key);
+                    if (!meta) return null;
+                    const featureKey = dashboardSectionFeature(section.key);
+                    const lockedByPlan = featureKey && !featureAllowed(featureKey);
+                    return (
+                      <div className="dashboard-layout-row" key={section.key}>
+                        <label className="toggle-row">
+                          <span>{lockedByPlan ? `Lock ${meta.label} - Paid` : meta.label}</span>
+                          <input
+                            type="checkbox"
+                            checked={section.enabled && !lockedByPlan}
+                            disabled={meta.locked || lockedByPlan}
+                            onChange={(event) => updateDashboardSection(section.key, { enabled: event.target.checked })}
+                          />
+                        </label>
+                        <div className="dashboard-layout-actions">
+                          <button type="button" className="secondary-button" disabled={index === 0} onClick={() => moveDashboardSection(section.key, -1)}>
+                            Up
+                          </button>
+                          <button type="button" className="secondary-button" disabled={index === normalizedDashboardLayout.sections.length - 1} onClick={() => moveDashboardSection(section.key, 1)}>
+                            Down
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="settings-subsection">
+                <h3>Home Page Stats</h3>
+                <p>Choose exactly which dashboard stat cards show on Home. This only changes visibility, not the underlying data.</p>
+                <div className="settings-toolbar">
+                  <Field label="User Type">
+                    <select value={userType} onChange={(event) => updateUserType(event.target.value)}>
+                      {USER_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <button type="button" className="secondary-button" onClick={() => setAllHomeStats(true)}>
+                    Toggle All On
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => setAllHomeStats(false)}>
+                    Toggle All Off
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => resetHomeStatsForUserType(userType)}>
+                    Reset Recommended
+                  </button>
+                </div>
+
+                <div className="settings-groups">
+                  {HOME_STAT_GROUPS.map((group) => (
+                    <div className="settings-group" key={group}>
+                      <h4>{group}</h4>
+                      <div className="toggle-list">
+                        {HOME_STATS.filter((stat) => stat.group === group).map((stat) => (
+                          <label className="toggle-row" key={stat.key}>
+                            <span>{paidStatLocked(stat.key) ? `Lock ${stat.label} - Paid` : stat.label}</span>
+                            <input
+                              type="checkbox"
+                              checked={homeStatsEnabled[stat.key] !== false && !paidStatLocked(stat.key)}
+                              disabled={paidStatLocked(stat.key)}
+                              onChange={(event) => updateHomeStatsEnabled({ [stat.key]: event.target.checked })}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -2425,8 +3007,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               </div>
             </section>
-            <section className="home-grid">
-              <div className="panel">
+            <section className="home-grid dashboard-section" style={dashboardSectionStyle("recent_inventory")}>
+              {dashboardSectionEnabled("recent_inventory") ? (
+              <div className="panel" style={dashboardSectionStyle("recent_inventory")}>
                 <h2>Recent Purchases</h2>
                 <div className="home-list">
                   {recentPurchases.length === 0 ? (
@@ -2444,8 +3027,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   )}
                 </div>
               </div>
+              ) : null}
 
-              <div className="panel">
+              {dashboardSectionEnabled("recent_sales") ? (
+              <div className="panel" style={dashboardSectionStyle("recent_sales")}>
                 <h2>Recent Sales</h2>
                 <div className="home-list">
                   {recentSales.length === 0 ? (
@@ -2463,8 +3048,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   )}
                 </div>
               </div>
+              ) : null}
 
-              <div className="panel">
+              {dashboardSectionEnabled("market_summary") ? (
+              <div className="panel" style={dashboardSectionStyle("market_summary")}>
                 <h2>Market Updates</h2>
                 <div className="home-list">
                   {recentMarketUpdates.length === 0 ? (
@@ -2482,8 +3069,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   )}
                 </div>
               </div>
+              ) : null}
 
-              <div className="panel">
+              {dashboardSectionEnabled("store_reports") ? (
+              <div className="panel" style={dashboardSectionStyle("store_reports")}>
                 <h2>Daily Scout Report</h2>
                 {homeScoutPreview.length === 0 ? (
                   <div className="home-callout">
@@ -2507,16 +3096,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 )}
               </div>
+              ) : null}
 
-              <div className="panel">
+              {dashboardSectionEnabled("restock_calendar") ? (
+              <div className="panel" style={dashboardSectionStyle("restock_calendar")}>
                 <h2>Upcoming Restocks</h2>
                 <div className="home-callout">
                   <p>Prediction cards will come from Scout store history: usual truck days, stock days, last restock, and verified reports.</p>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>Review Stores</button>
                 </div>
               </div>
+              ) : null}
 
-              <div className="panel">
+              {dashboardSectionEnabled("watchlist") ? (
+              <div className="panel" style={dashboardSectionStyle("watchlist")}>
                 <h2>Watchlist Preview</h2>
                 <div className="home-list">
                   {watchlistPreview.length === 0 ? (
@@ -2534,8 +3127,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   )}
                 </div>
               </div>
+              ) : null}
 
-              <div className="panel">
+              {dashboardSectionEnabled("pack_it_forward") ? (
+              <div className="panel" style={dashboardSectionStyle("pack_it_forward")}>
                 <h2>Pack It Forward</h2>
                 <div className="cards mini-cards">
                   <div className="card">
@@ -2549,8 +3144,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
                 <p>For now, mark notes with kid, donation, or donate to include items here.</p>
               </div>
+              ) : null}
 
-              <div className="panel">
+              {dashboardSectionEnabled("alerts") ? (
+              <div className="panel" style={dashboardSectionStyle("alerts")}>
                 <h2>Alerts Preview</h2>
                 <div className="home-alerts">
                   <span>{needsPhotosItems.length} need photos</span>
@@ -2558,8 +3155,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <span>{readyToListItems.length} ready to list</span>
                 </div>
               </div>
+              ) : null}
             </section>
-            <section className="panel">
+            {dashboardSectionEnabled("action_center") ? (
+            <section className="panel dashboard-section" style={dashboardSectionStyle("action_center")}>
               <h2>Action Center</h2>
 
                 <div className="cards">
@@ -2645,7 +3244,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </button>
                 </div>
               </section>
-            <section className="panel">
+            ) : null}
+            {dashboardSectionEnabled("purchaser_spending") ? (
+            <section className="panel dashboard-section" style={dashboardSectionStyle("purchaser_spending")}>
               <h2>Purchaser Spending</h2>
               <div className="buyer-grid">
                 {monthlyPurchaserSpending.map((row) => (
@@ -2657,7 +3258,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 ))}
               </div>
             </section>
-            <section className="panel">
+            ) : null}
+            {dashboardSectionEnabled("exports") ? (
+            <section className="panel dashboard-section" style={dashboardSectionStyle("exports")}>
               <h2>Exports</h2>
               <div className="export-grid">
                 <button onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Forge Inventory</button>
@@ -2669,7 +3272,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <button onClick={downloadBackup}>Full Backup</button>
               </div>
             </section>
-          </>
+            ) : null}
+          </div>
         )}
 
         {activeTab === "vault" && (
@@ -2884,6 +3488,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "catalog" && (
           <>
+            <section className="panel">
+              <h2>Shared Pokemon Product Catalog</h2>
+              <p>
+                This is the shared master catalog for E&T TCG. Use products here to add personal Forge inventory, Scout reports, or Market checks without creating duplicate master product records.
+              </p>
+              <p>
+                Master catalog additions are handled through seed/import files so every user sees the same Pokemon product list.
+              </p>
+            </section>
+          {false && (
+            <>
           <SmartAddCatalog onUseProduct={useSmartCatalogProduct} />
           <section className="panel">
   <h2>Bulk Import Catalog Items</h2>
@@ -3001,10 +3616,35 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 {editingCatalogId && <button type="button" className="secondary-button" onClick={() => { setEditingCatalogId(null); setCatalogForm(blankCatalog); }}>Cancel Edit</button>}
               </form>
             </section>
+            </>
+          )}
             <section className="panel">
               <h2>Product Catalog</h2>
               <input className="search-input" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search catalog..." />
-              <Field label="Sort Inventory">
+              <div className="filter-grid">
+                <Field label="Filter by Set">
+                  <select value={catalogSetFilter} onChange={(e) => setCatalogSetFilter(e.target.value)}>
+                    {catalogSetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </Field>
+                <Field label="Filter by Product Type">
+                  <select value={catalogTypeFilter} onChange={(e) => setCatalogTypeFilter(e.target.value)}>
+                    {catalogTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </Field>
+                <Field label="Filter by Era">
+                  <select value={catalogEraFilter} onChange={(e) => setCatalogEraFilter(e.target.value)}>
+                    {catalogEraOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </Field>
+                <Field label="Filter by Year">
+                  <select value={catalogYearFilter} onChange={(e) => setCatalogYearFilter(e.target.value)}>
+                    {catalogYearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <p>Showing {filteredCatalogProducts.length} of {catalogProducts.length} shared Pokemon catalog products.</p>
+              <Field label="Sort Catalog">
                 <select
                   value={inventorySort}
                   onChange={(e) => setInventorySort(e.target.value)}
@@ -3028,17 +3668,16 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     <p>Barcode: {p.barcode || "Not listed"}</p>
                    <p>MSRP: {money(p.msrpPrice)}</p>
 <p>Set Code: {p.setCode || "Not listed"}</p>
-<p>Expansion: {p.expansion || p.setName || "Not listed"}</p>
-<p>Pack Count: {p.packCount || "Not listed"}</p>
+                    <p>Expansion: {p.expansion || p.setName || "Not listed"}</p>
+                    <p>Era: {p.productLine || "Not listed"}</p>
+                    <p>Release Year: {p.releaseYear || "Not listed"}</p>
+                    <p>Pack Count: {p.packCount || "Not listed"}</p>
                     <p>TideTradr Market Price: {money(p.marketPrice)}</p>
                     <p>Low / Mid / High: {money(p.lowPrice)} / {money(p.midPrice)} / {money(p.highPrice)}</p>
                     {p.marketUrl && <p><a href={p.marketUrl} target="_blank" rel="noreferrer">Open Market Source</a></p>}
                     {p.notes && <p>Notes: {p.notes}</p>}
                     <button className="edit-button" onClick={() => { applyCatalogProduct(p.id); setActiveTab("addInventory"); }}>Use for Forge</button>
-                    <OverflowMenu
-                      onEdit={() => startEditingCatalogProduct(p)}
-                      onDelete={() => deleteCatalogProduct(p.id)}
-                    />
+                    <p className="compact-subtitle">Shared master product</p>
                   </div>
                 ))}
               </div>
@@ -3247,7 +3886,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </section>
         )}
 
-        {activeTab === "sales" && (
+        {!activeTabLocked && activeTab === "sales" && (
           <ListPanel title="Forge Sales" emptyText="No sales added yet.">
             {sales.map((sale) => (
               <div className="inventory-card" key={sale.id}>
@@ -3271,7 +3910,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </ListPanel>
         )}
 
-        {activeTab === "expenses" && (
+        {!activeTabLocked && activeTab === "expenses" && (
           <>
             <section className="panel">
               <h2>{editingExpenseId ? "Edit Expense" : "Add Business Expense"}</h2>
@@ -3306,7 +3945,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {activeTab === "vehicles" && (
+        {!activeTabLocked && activeTab === "vehicles" && (
           <>
             <section className="panel">
               <h2>{editingVehicleId ? "Edit Vehicle" : "Add Vehicle"}</h2>
@@ -3338,7 +3977,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {activeTab === "mileage" && (
+        {!activeTabLocked && activeTab === "mileage" && (
           <>
             <section className="panel">
               <h2>{editingTripId ? "Edit Mileage Trip" : "Add Mileage Trip"}</h2>
@@ -3380,7 +4019,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {activeTab === "reports" && (
+        {!activeTabLocked && activeTab === "reports" && (
           <>
             <section className="panel">
               <h2>Forge Reports</h2>

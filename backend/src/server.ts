@@ -574,6 +574,29 @@ function mapTrackedItemRow(row: any): TrackedItem {
     updatedAt: row.updated_at,
   };
 }
+
+function mapPokemonProductRow(row: any) {
+  return {
+    id: row.id,
+    productName: row.product_name,
+    name: row.product_name,
+    setName: row.set_name,
+    productType: row.product_type,
+    era: row.era,
+    releaseYear: row.release_year,
+    msrp: row.msrp,
+    msrpPrice: row.msrp,
+    upc: row.upc,
+    barcode: row.upc,
+    tcgplayerUrl: row.tcgplayer_url,
+    imageUrl: row.image_url,
+    marketPrice: row.market_price,
+    source: row.source,
+    active: row.active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 /** DB Test */
 app.get("/db-test", async (_req: Request, res: Response) => {
   try {
@@ -594,15 +617,166 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({ ok: true, time: nowIso() });
 });
 
-/** Stores */
-app.get("/stores", async (_req: Request, res: Response) => {
+/** Shared Pokemon products */
+app.get("/pokemon-products", async (req: Request, res: Response) => {
   try {
+    const { set, productType, era, releaseYear } = req.query;
+    const filters = ["active = true"];
+    const params: unknown[] = [];
+
+    if (set) {
+      params.push(set);
+      filters.push(`set_name = $${params.length}`);
+    }
+
+    if (productType) {
+      params.push(productType);
+      filters.push(`product_type = $${params.length}`);
+    }
+
+    if (era) {
+      params.push(era);
+      filters.push(`era = $${params.length}`);
+    }
+
+    if (releaseYear) {
+      params.push(Number(releaseYear));
+      filters.push(`release_year = $${params.length}`);
+    }
+
+    const result = await pool.query(
+      `
+      select *
+      from pokemon_products
+      where ${filters.join(" and ")}
+      order by release_year desc nulls last, set_name asc, product_name asc
+      `,
+      params
+    );
+
+    res.json(result.rows.map(mapPokemonProductRow));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch Pokemon products" });
+  }
+});
+
+app.get("/pokemon-products/search", async (req: Request, res: Response) => {
+  try {
+    const query = String(req.query.q || "").trim();
+    const result = await pool.query(
+      `
+      select *
+      from pokemon_products
+      where active = true
+        and (
+          $1 = ''
+          or product_name ilike '%' || $1 || '%'
+          or set_name ilike '%' || $1 || '%'
+          or product_type ilike '%' || $1 || '%'
+          or coalesce(upc, '') ilike '%' || $1 || '%'
+        )
+      order by release_year desc nulls last, set_name asc, product_name asc
+      limit 100
+      `,
+      [query]
+    );
+
+    res.json(result.rows.map(mapPokemonProductRow));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to search Pokemon products" });
+  }
+});
+
+app.get("/pokemon-products/:id", async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `
+      select *
+      from pokemon_products
+      where id = $1
+      limit 1
+      `,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+    res.json(mapPokemonProductRow(result.rows[0]));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch Pokemon product" });
+  }
+});
+
+app.post("/user-inventory", async (req: Request, res: Response) => {
+  try {
+    const body = req.body;
+    const result = await pool.query(
+      `
+      insert into user_inventory (
+        user_id,
+        product_id,
+        quantity,
+        cost_each,
+        location,
+        notes
+      )
+      values ($1,$2,$3,$4,$5,$6)
+      returning *
+      `,
+      [
+        body.userId,
+        body.productId,
+        Number(body.quantity || 1),
+        body.costEach ?? null,
+        body.location || null,
+        body.notes || null,
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to add inventory item from catalog" });
+  }
+});
+
+/** Stores */
+app.get("/stores", async (req: Request, res: Response) => {
+  try {
+    const { region, city, chain, storeType } = req.query;
+    const filters: string[] = [];
+    const params: unknown[] = [];
+
+    if (region) {
+      params.push(region);
+      filters.push(`region = $${params.length}`);
+    }
+
+    if (city) {
+      params.push(city);
+      filters.push(`city = $${params.length}`);
+    }
+
+    if (chain) {
+      params.push(chain);
+      filters.push(`chain = $${params.length}`);
+    }
+
+    if (storeType) {
+      params.push(storeType);
+      filters.push(`coalesce(store_type, type) = $${params.length}`);
+    }
+
     const storeResult = await pool.query(
       `
       select *
       from stores
+      ${filters.length ? `where ${filters.join(" and ")}` : ""}
       order by created_at desc
-      `
+      `,
+      params
     );
 
     const storesWithPredictions = await Promise.all(
