@@ -14,12 +14,190 @@ import {
   deleteTrackedItem,
 } from "../api";
 import OverflowMenu from "../components/OverflowMenu";
+import hamptonRoadsStoreSeed from "../../seeds/stores/virginia-hampton-roads.json";
 
 const BETA_LOCAL_SCOUT = true;
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
+const LOCAL_SCOUT_USER_ID = "local-beta-scout";
+
+const TIDEPOOL_REPORT_TYPES = [
+  "Restock sighting",
+  "Product sighting",
+  "Nothing in stock",
+  "Store limit update",
+  "Price/deal sighting",
+  "Online drop alert",
+  "Store condition/update",
+  "General tip",
+];
+
+const TIDEPOOL_FILTERS = [
+  "Latest",
+  "Nearby",
+  "Verified",
+  "Favorite Stores",
+  "Online Drops",
+  "Deals",
+  "Watchlist Items",
+  "High Confidence",
+  "Needs Verification",
+  "My Reports",
+];
 
 function makeScoutId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function makeSeedStoreId(store) {
+  return `seed-${String(`${store.chain}-${store.address}-${store.city}`)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")}`;
+}
+
+function normalizeSeedStore(store, defaults = {}) {
+  return {
+    id: makeSeedStoreId(store),
+    name: store.name,
+    chain: store.chain,
+    nickname: store.nickname || "",
+    address: store.address,
+    city: store.city,
+    state: store.state || defaults.state || "VA",
+    zip: store.zip || "",
+    region: store.region || defaults.region || "Hampton Roads / 757",
+    phone: store.phone || "",
+    website: store.website || "",
+    type: store.store_type || store.storeType || "Retail",
+    storeType: store.store_type || store.storeType || "Retail",
+    status: "Unknown",
+    stockDays: [],
+    truckDays: [],
+    limitPolicy: "Unknown",
+    priority: false,
+    sellsPokemon: store.sells_pokemon !== false,
+    notes: store.notes || "Restock days: Unknown. Truck days: Unknown. Purchase limits: Unknown.",
+    createdAt: "seed",
+    updatedAt: "seed",
+  };
+}
+
+const HAMPTON_ROADS_SEED_STORES = (hamptonRoadsStoreSeed.stores || []).map((store) =>
+  normalizeSeedStore(store, hamptonRoadsStoreSeed)
+);
+
+function createDefaultScoutProfile() {
+  return {
+    userId: LOCAL_SCOUT_USER_ID,
+    displayName: "Local Scout",
+    trustScore: 72,
+    verifiedReportCount: 0,
+    rejectedReportCount: 0,
+    disputedReportCount: 0,
+    helpfulVotes: 0,
+    reportStreak: 0,
+    rewardPoints: 0,
+    badgeLevel: "New Scout",
+    cooldownUntil: "",
+    warningCount: 0,
+    lastReportDate: "",
+  };
+}
+
+function createDefaultAlertSettings() {
+  return {
+    enabled: true,
+    radiusMiles: 15,
+    favoriteStoresOnly: false,
+    watchlistAlerts: true,
+    onlineDropAlerts: false,
+    verifiedOnly: false,
+    quietHours: false,
+  };
+}
+
+function makeTidepoolReport(overrides = {}) {
+  const now = new Date().toISOString();
+  const hasPhoto = Boolean(overrides.photoUrl);
+  const verificationStatus = overrides.verificationStatus || "pending";
+  return {
+    reportId: overrides.reportId || makeScoutId("tidepool"),
+    userId: overrides.userId || "mock-scout",
+    displayName: overrides.displayName || "Verified Scout",
+    anonymous: Boolean(overrides.anonymous),
+    storeId: overrides.storeId || "",
+    storeName: overrides.storeName || "Online / Unknown store",
+    catalogItemId: overrides.catalogItemId || "",
+    productName: overrides.productName || "",
+    reportType: overrides.reportType || "General tip",
+    reportText: overrides.reportText || "",
+    photoUrl: overrides.photoUrl || "",
+    quantitySeen: overrides.quantitySeen || "",
+    price: overrides.price || "",
+    purchaseLimit: overrides.purchaseLimit || "",
+    reportTime: overrides.reportTime || now,
+    city: overrides.city || "",
+    state: overrides.state || "VA",
+    zip: overrides.zip || "",
+    distanceMiles: overrides.distanceMiles || "",
+    verificationStatus,
+    confidenceScore: overrides.confidenceScore ?? (verificationStatus === "verified" ? 82 : hasPhoto ? 70 : 48),
+    verifiedByCount: overrides.verifiedByCount || 0,
+    disputedByCount: overrides.disputedByCount || 0,
+    helpfulVotes: overrides.helpfulVotes || 0,
+    sourceType: overrides.sourceType || (hasPhoto ? "photo" : "mock"),
+    favoriteStore: Boolean(overrides.favoriteStore),
+    watchlistItem: Boolean(overrides.watchlistItem),
+    lastUpdated: overrides.lastUpdated || now,
+  };
+}
+
+function createMockTidepoolReports(stores = []) {
+  const first = stores[0] || {};
+  const second = stores[1] || first;
+  const third = stores[2] || first;
+  return [
+    makeTidepoolReport({
+      storeId: first.id,
+      storeName: first.name || "Hampton Roads Target",
+      productName: "Scarlet & Violet 151 Booster Bundle",
+      reportType: "Restock sighting",
+      reportText: "Beta mock: several booster bundles seen near the cards section. Needs real user confirmation.",
+      quantitySeen: "6",
+      purchaseLimit: "Unknown",
+      city: first.city || "Suffolk",
+      zip: first.zip || "",
+      verificationStatus: "pending",
+      confidenceScore: 62,
+      sourceType: "mock",
+      watchlistItem: true,
+    }),
+    makeTidepoolReport({
+      storeId: second.id,
+      storeName: second.name || "Hampton Roads Walmart",
+      productName: "Pokemon ETBs",
+      reportType: "Nothing in stock",
+      reportText: "Beta mock: checked shelves, no Pokemon cards visible.",
+      city: second.city || "Chesapeake",
+      zip: second.zip || "",
+      verificationStatus: "verified",
+      confidenceScore: 76,
+      verifiedByCount: 2,
+      helpfulVotes: 3,
+      sourceType: "mock",
+    }),
+    makeTidepoolReport({
+      storeId: third.id,
+      storeName: third.name || "Online Drop",
+      productName: "Prismatic Evolutions ETB",
+      reportType: "Online drop alert",
+      reportText: "Beta mock online drop placeholder. Alert-only, no checkout automation.",
+      city: third.city || "Virginia Beach",
+      verificationStatus: "pending",
+      confidenceScore: 55,
+      sourceType: "mock",
+    }),
+  ];
 }
 
 function getReportDate(report) {
@@ -294,6 +472,21 @@ export default function Scout() {
   const [storeSearch, setStoreSearch] = useState("");
   const [reports, setReports] = useState([]);
   const [allReports, setAllReports] = useState([]);
+  const [tidepoolReports, setTidepoolReports] = useState([]);
+  const [tidepoolFilter, setTidepoolFilter] = useState("Latest");
+  const [scoutProfile, setScoutProfile] = useState(createDefaultScoutProfile);
+  const [alertSettings, setAlertSettings] = useState(createDefaultAlertSettings);
+  const [tidepoolForm, setTidepoolForm] = useState({
+    displayName: "Local Scout",
+    anonymous: false,
+    reportType: "Restock sighting",
+    reportText: "",
+    productName: "",
+    quantitySeen: "",
+    price: "",
+    purchaseLimit: "",
+    photoUrl: "",
+  });
   const [items, setItems] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [routeForm, setRouteForm] = useState({
@@ -455,10 +648,33 @@ export default function Scout() {
   async function loadStores() {
     if (BETA_LOCAL_SCOUT) {
       const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
-      const savedStores = saved.stores || [];
+      const savedStores = saved.stores?.length ? saved.stores : HAMPTON_ROADS_SEED_STORES;
       const savedReports = saved.reports || [];
+      const savedTidepoolReports = saved.tidepoolReports?.length
+        ? saved.tidepoolReports
+        : createMockTidepoolReports(savedStores);
+      const savedScoutProfile = saved.scoutProfile || createDefaultScoutProfile();
+      const savedAlertSettings = saved.alertSettings || createDefaultAlertSettings();
+      if (!saved.stores?.length) {
+        localStorage.setItem(
+          SCOUT_STORAGE_KEY,
+          JSON.stringify({
+            ...saved,
+            stores: savedStores,
+            reports: savedReports,
+            tidepoolReports: savedTidepoolReports,
+            scoutProfile: savedScoutProfile,
+            alertSettings: savedAlertSettings,
+            items: saved.items || [],
+            routes: saved.routes || [],
+          })
+        );
+      }
       setStores(savedStores);
       setAllReports(savedReports);
+      setTidepoolReports(savedTidepoolReports);
+      setScoutProfile(savedScoutProfile);
+      setAlertSettings(savedAlertSettings);
       setRoutes(saved.routes || []);
       setError("");
       setLoading(false);
@@ -555,6 +771,147 @@ export default function Scout() {
 function saveLocalScout(next) {
   const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
   localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, ...next }));
+}
+
+function saveTidepoolReports(nextReports) {
+  setTidepoolReports(nextReports);
+  saveLocalScout({ tidepoolReports: nextReports });
+}
+
+function saveScoutProfile(nextProfile) {
+  setScoutProfile(nextProfile);
+  saveLocalScout({ scoutProfile: nextProfile });
+}
+
+function updateAlertSetting(field, value) {
+  const next = { ...alertSettings, [field]: value };
+  setAlertSettings(next);
+  saveLocalScout({ alertSettings: next });
+}
+
+function updateTidepoolForm(field, value) {
+  setTidepoolForm((current) => ({ ...current, [field]: value }));
+}
+
+function submitTidepoolReport(event) {
+  event.preventDefault();
+  if (scoutProfile.cooldownUntil && new Date(scoutProfile.cooldownUntil) > new Date()) {
+    setError("Reporting is paused until your cooldown ends.");
+    return;
+  }
+  if (!tidepoolForm.reportText.trim()) {
+    setError("Add report details before submitting to Tidepool.");
+    return;
+  }
+
+  const selected = selectedStore || {};
+  const report = makeTidepoolReport({
+    userId: LOCAL_SCOUT_USER_ID,
+    displayName: tidepoolForm.anonymous ? "Anonymous Scout" : tidepoolForm.displayName || scoutProfile.displayName,
+    anonymous: tidepoolForm.anonymous,
+    storeId: selected.id || "",
+    storeName: selected.name || "Online / Unknown store",
+    productName: tidepoolForm.productName,
+    reportType: tidepoolForm.reportType,
+    reportText: tidepoolForm.reportText,
+    photoUrl: tidepoolForm.photoUrl,
+    quantitySeen: tidepoolForm.quantitySeen,
+    price: tidepoolForm.price,
+    purchaseLimit: tidepoolForm.purchaseLimit,
+    city: selected.city || "",
+    state: selected.state || "VA",
+    zip: selected.zip || "",
+    verificationStatus: "pending",
+    confidenceScore: tidepoolForm.photoUrl ? 68 : Math.max(30, Math.min(95, scoutProfile.trustScore - 10)),
+    sourceType: tidepoolForm.photoUrl ? "photo" : "user",
+  });
+  const nextReports = [report, ...tidepoolReports];
+  const nextProfile = {
+    ...scoutProfile,
+    displayName: tidepoolForm.displayName || scoutProfile.displayName,
+    reportStreak: Number(scoutProfile.reportStreak || 0) + 1,
+    rewardPoints: Number(scoutProfile.rewardPoints || 0) + 2,
+    lastReportDate: new Date().toISOString(),
+  };
+  saveTidepoolReports(nextReports);
+  saveScoutProfile(nextProfile);
+  setTidepoolForm({
+    displayName: nextProfile.displayName,
+    anonymous: false,
+    reportType: "Restock sighting",
+    reportText: "",
+    productName: "",
+    quantitySeen: "",
+    price: "",
+    purchaseLimit: "",
+    photoUrl: "",
+  });
+  setError("");
+}
+
+function updateTidepoolReport(reportId, updater) {
+  const nextReports = tidepoolReports.map((report) =>
+    report.reportId === reportId ? updater(report) : report
+  );
+  saveTidepoolReports(nextReports);
+}
+
+function confirmTidepoolReport(reportId) {
+  const report = tidepoolReports.find((item) => item.reportId === reportId);
+  if (!report) return;
+  if (report.userId === LOCAL_SCOUT_USER_ID) {
+    setError("You cannot verify your own report.");
+    return;
+  }
+  updateTidepoolReport(reportId, (current) => {
+    const verifiedByCount = Number(current.verifiedByCount || 0) + 1;
+    const confidenceScore = Math.min(99, Number(current.confidenceScore || 0) + 12);
+    return {
+      ...current,
+      verifiedByCount,
+      helpfulVotes: Number(current.helpfulVotes || 0) + 1,
+      confidenceScore,
+      verificationStatus: verifiedByCount >= 2 || confidenceScore >= 80 ? "verified" : current.verificationStatus,
+      lastUpdated: new Date().toISOString(),
+    };
+  });
+  saveScoutProfile({
+    ...scoutProfile,
+    rewardPoints: Number(scoutProfile.rewardPoints || 0) + 1,
+    helpfulVotes: Number(scoutProfile.helpfulVotes || 0) + 1,
+  });
+  setError("");
+}
+
+function disputeTidepoolReport(reportId) {
+  const report = tidepoolReports.find((item) => item.reportId === reportId);
+  if (!report) return;
+  if (report.userId === LOCAL_SCOUT_USER_ID) {
+    setError("Use edit/delete for your own reports instead of disputing them.");
+    return;
+  }
+  updateTidepoolReport(reportId, (current) => {
+    const disputedByCount = Number(current.disputedByCount || 0) + 1;
+    const confidenceScore = Math.max(0, Number(current.confidenceScore || 0) - 15);
+    return {
+      ...current,
+      disputedByCount,
+      confidenceScore,
+      verificationStatus: disputedByCount >= 2 ? "disputed" : "pending",
+      lastUpdated: new Date().toISOString(),
+    };
+  });
+  setError("");
+}
+
+function adminSetTidepoolStatus(reportId, verificationStatus) {
+  updateTidepoolReport(reportId, (current) => ({
+    ...current,
+    verificationStatus,
+    confidenceScore: verificationStatus === "verified" ? 95 : current.confidenceScore,
+    sourceType: verificationStatus === "verified" ? "admin" : current.sourceType,
+    lastUpdated: new Date().toISOString(),
+  }));
 }
 
 function toggleRouteStore(storeId) {
@@ -1182,6 +1539,58 @@ async function handleUpdateStore(e) {
       .slice(0, 20);
   }, [allReports]);
 
+  const enrichedTidepoolReports = useMemo(() => {
+    return tidepoolReports
+      .map((report) => {
+        const ageHours = (Date.now() - new Date(report.reportTime || report.lastUpdated || Date.now()).getTime()) / 3600000;
+        const expired = ageHours > 6 && ["Restock sighting", "Product sighting", "Online drop alert"].includes(report.reportType);
+        const status = expired && report.verificationStatus !== "verified" ? "expired" : report.verificationStatus;
+        const weightedScore =
+          Number(report.confidenceScore || 0) +
+          (status === "verified" ? 20 : 0) +
+          (report.photoUrl ? 10 : 0) -
+          Number(report.disputedByCount || 0) * 12;
+        return { ...report, computedStatus: status, weightedScore: Math.max(0, Math.min(100, weightedScore)) };
+      })
+      .sort((a, b) => new Date(b.reportTime || b.lastUpdated || 0) - new Date(a.reportTime || a.lastUpdated || 0));
+  }, [tidepoolReports]);
+
+  const filteredTidepoolReports = useMemo(() => {
+    return enrichedTidepoolReports.filter((report) => {
+      if (tidepoolFilter === "Verified") return report.computedStatus === "verified";
+      if (tidepoolFilter === "Online Drops") return report.reportType === "Online drop alert";
+      if (tidepoolFilter === "Deals") return report.reportType === "Price/deal sighting";
+      if (tidepoolFilter === "High Confidence") return report.weightedScore >= 75;
+      if (tidepoolFilter === "Needs Verification") return report.computedStatus === "pending";
+      if (tidepoolFilter === "My Reports") return report.userId === LOCAL_SCOUT_USER_ID;
+      if (tidepoolFilter === "Favorite Stores") return report.favoriteStore;
+      if (tidepoolFilter === "Watchlist Items") return report.watchlistItem;
+      return true;
+    });
+  }, [enrichedTidepoolReports, tidepoolFilter]);
+
+  const tidepoolAlerts = useMemo(() => {
+    return enrichedTidepoolReports
+      .filter((report) => {
+        if (!alertSettings.enabled) return false;
+        if (alertSettings.verifiedOnly && report.computedStatus !== "verified") return false;
+        if (alertSettings.favoriteStoresOnly && !report.favoriteStore) return false;
+        if (!alertSettings.onlineDropAlerts && report.reportType === "Online drop alert") return false;
+        if (!alertSettings.watchlistAlerts && report.watchlistItem) return false;
+        return report.weightedScore >= 60 || report.computedStatus === "verified";
+      })
+      .slice(0, 5);
+  }, [enrichedTidepoolReports, alertSettings]);
+
+  const scoutBadge =
+    scoutProfile.verifiedReportCount >= 30 || scoutProfile.trustScore >= 90
+      ? "Verified Scout"
+      : scoutProfile.verifiedReportCount >= 15 || scoutProfile.trustScore >= 82
+        ? "Trusted Scout"
+        : scoutProfile.verifiedReportCount >= 5
+          ? "Community Helper"
+          : scoutProfile.badgeLevel || "New Scout";
+
   return (
     <div style={styles.page}>
       <div style={styles.shell}>
@@ -1211,6 +1620,132 @@ async function handleUpdateStore(e) {
             {error}
           </div>
         ) : null}
+
+        <div style={styles.reportGrid}>
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>My Scout Score</h2>
+            <div style={styles.statsRow}>
+              <Metric label="Trust Score" value={scoutProfile.trustScore} />
+              <Metric label="Verified" value={scoutProfile.verifiedReportCount} />
+              <Metric label="Rewards" value={scoutProfile.rewardPoints} />
+              <Metric label="Streak" value={scoutProfile.reportStreak} />
+            </div>
+            <p style={styles.empty}>Badge: {scoutBadge}</p>
+            {scoutProfile.warningCount ? <p style={styles.tiny}>Warnings: {scoutProfile.warningCount}</p> : null}
+            {scoutProfile.cooldownUntil ? <p style={styles.tiny}>Cooldown until: {scoutProfile.cooldownUntil}</p> : null}
+          </div>
+
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Rewards</h2>
+            <p style={styles.empty}>Earn points for verified, helpful, photo-supported, and first-at-store reports.</p>
+            <div style={styles.row}>
+              <span style={styles.badge}>New Scout</span>
+              <span style={styles.badge}>Trusted Scout</span>
+              <span style={styles.badge}>Verified Scout</span>
+              <span style={styles.badge}>Deal Finder</span>
+            </div>
+            <p style={styles.tiny}>Bad reports use warnings, lower trust, photo review, cooldowns, and admin review first. No automatic permanent bans in beta.</p>
+          </div>
+        </div>
+
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>Tidepool</h2>
+          <p style={styles.empty}>Community-powered Scout reports for restocks, products, limits, deals, online drops, and store updates.</p>
+          <div style={styles.row}>
+            {TIDEPOOL_FILTERS.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                style={filter === tidepoolFilter ? styles.buttonPrimary : styles.buttonSoft}
+                onClick={() => setTidepoolFilter(filter)}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: "16px", display: "grid", gap: "12px" }}>
+            {filteredTidepoolReports.slice(0, tidepoolFilter === "Latest" ? 8 : 20).map((report) => (
+              <div key={report.reportId} style={styles.listCard}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                  <strong>{report.productName || report.reportType}</strong>
+                  <span style={styles.badge}>{report.computedStatus} | {report.weightedScore}%</span>
+                </div>
+                <p style={{ margin: "6px 0", color: "#334155" }}>{report.storeName} - {report.city || "No city"} {report.distanceMiles ? `- ${report.distanceMiles} mi` : ""}</p>
+                <p style={{ margin: "6px 0", color: "#475569" }}>{report.reportText}</p>
+                <p style={styles.tiny}>
+                  {report.reportType} | {report.displayName} | Source: {report.sourceType} | Helpful: {report.helpfulVotes} | Confirmed: {report.verifiedByCount} | Disputed: {report.disputedByCount}
+                </p>
+                <div style={styles.row}>
+                  <button type="button" style={styles.buttonSoft} onClick={() => confirmTidepoolReport(report.reportId)}>Confirm</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => disputeTidepoolReport(report.reportId)}>Dispute</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => adminSetTidepoolStatus(report.reportId, "verified")}>Admin Verify</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => adminSetTidepoolStatus(report.reportId, "expired")}>Expire</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={styles.reportGrid}>
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Submit Report</h2>
+            <form onSubmit={submitTidepoolReport} style={styles.formGrid}>
+              <input style={styles.input} value={tidepoolForm.displayName} onChange={(e) => updateTidepoolForm("displayName", e.target.value)} placeholder="Display name" />
+              <select style={styles.input} value={tidepoolForm.reportType} onChange={(e) => updateTidepoolForm("reportType", e.target.value)}>
+                {TIDEPOOL_REPORT_TYPES.map((type) => <option key={type}>{type}</option>)}
+              </select>
+              <input style={styles.input} value={tidepoolForm.productName} onChange={(e) => updateTidepoolForm("productName", e.target.value)} placeholder="Product/card name" />
+              <input style={styles.input} value={tidepoolForm.quantitySeen} onChange={(e) => updateTidepoolForm("quantitySeen", e.target.value)} placeholder="Quantity seen" />
+              <input style={styles.input} value={tidepoolForm.price} onChange={(e) => updateTidepoolForm("price", e.target.value)} placeholder="Price/deal seen" />
+              <input style={styles.input} value={tidepoolForm.purchaseLimit} onChange={(e) => updateTidepoolForm("purchaseLimit", e.target.value)} placeholder="Purchase limit" />
+              <input style={styles.input} value={tidepoolForm.photoUrl} onChange={(e) => updateTidepoolForm("photoUrl", e.target.value)} placeholder="Photo URL / local placeholder" />
+              <textarea style={styles.textarea} value={tidepoolForm.reportText} onChange={(e) => updateTidepoolForm("reportText", e.target.value)} placeholder="What did you see? Include store, time, quantity, and limits." />
+              <label style={{ ...styles.tiny, display: "flex", gap: "8px", alignItems: "center" }}>
+                <input type="checkbox" checked={tidepoolForm.anonymous} onChange={(e) => updateTidepoolForm("anonymous", e.target.checked)} />
+                Submit anonymously
+              </label>
+              <button type="submit" style={styles.buttonPrimary}>Submit to Tidepool</button>
+            </form>
+          </div>
+
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Scout Alerts</h2>
+            <div style={styles.formGrid}>
+              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.enabled} onChange={(e) => updateAlertSetting("enabled", e.target.checked)} /> Alerts on</label>
+              <input style={styles.input} type="number" value={alertSettings.radiusMiles} onChange={(e) => updateAlertSetting("radiusMiles", e.target.value)} placeholder="Radius miles" />
+              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.favoriteStoresOnly} onChange={(e) => updateAlertSetting("favoriteStoresOnly", e.target.checked)} /> Favorite stores only</label>
+              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.watchlistAlerts} onChange={(e) => updateAlertSetting("watchlistAlerts", e.target.checked)} /> Watchlist product alerts</label>
+              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.onlineDropAlerts} onChange={(e) => updateAlertSetting("onlineDropAlerts", e.target.checked)} /> Online drop alerts</label>
+              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.verifiedOnly} onChange={(e) => updateAlertSetting("verifiedOnly", e.target.checked)} /> Verified-only alerts</label>
+              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.quietHours} onChange={(e) => updateAlertSetting("quietHours", e.target.checked)} /> Quiet hours placeholder</label>
+            </div>
+            <h3 style={{ marginTop: "16px" }}>In-app Alerts</h3>
+            {tidepoolAlerts.length === 0 ? <p style={styles.empty}>No matching alerts yet.</p> : tidepoolAlerts.map((alert) => (
+              <div key={alert.reportId} style={styles.listCard}>
+                <strong>{alert.reportType}</strong>
+                <p style={{ margin: "6px 0", color: "#475569" }}>{alert.storeName} - {alert.productName || "No product"}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={styles.reportGrid}>
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Report Guidelines</h2>
+            <ul style={{ margin: 0, paddingLeft: "20px", color: "#475569" }}>
+              <li>Do not fake restocks or report old information as current.</li>
+              <li>Add photos when possible.</li>
+              <li>Include product name, quantity, store, time, and limits.</li>
+              <li>Be honest if you are unsure.</li>
+              <li>Repeated false reports lower trust and may pause reporting access.</li>
+            </ul>
+          </div>
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Tidepool Access</h2>
+            <p style={styles.empty}>Free users get limited/basic report views. Paid users can unlock fuller real-time feed and alerts later. Trusted users can earn extra access through verified reports.</p>
+            <p style={styles.tiny}>Examples: 5 verified reports = extra views, 15 = faster alerts, 30 = Trusted/Verified Scout path.</p>
+          </div>
+        </div>
 
         <div style={styles.reportGrid}>
           <div style={styles.card}>

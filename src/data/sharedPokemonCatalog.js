@@ -1,22 +1,203 @@
-// Shared beta starter catalog. The database seed in supabase/seeds is the source
-// to use for production; this keeps localStorage beta useful before Supabase sync.
-export const SHARED_POKEMON_PRODUCTS = [
-  { name: "Scarlet & Violet Elite Trainer Box", setName: "Scarlet & Violet Base Set", productType: "Elite Trainer Box", expansion: "Scarlet & Violet Base Set", productLine: "Scarlet & Violet", releaseYear: 2023, msrpPrice: 49.99 },
-  { name: "Scarlet & Violet Booster Bundle", setName: "Scarlet & Violet Base Set", productType: "Booster Bundle", expansion: "Scarlet & Violet Base Set", productLine: "Scarlet & Violet", releaseYear: 2023, msrpPrice: 26.94 },
-  { name: "151 Elite Trainer Box", setName: "Scarlet & Violet 151", productType: "Elite Trainer Box", expansion: "Scarlet & Violet 151", productLine: "Scarlet & Violet", releaseYear: 2023, msrpPrice: 49.99 },
-  { name: "151 Booster Bundle", setName: "Scarlet & Violet 151", productType: "Booster Bundle", expansion: "Scarlet & Violet 151", productLine: "Scarlet & Violet", releaseYear: 2023, msrpPrice: 26.94 },
-  { name: "151 Ultra-Premium Collection", setName: "Scarlet & Violet 151", productType: "Ultra Premium Collection", expansion: "Scarlet & Violet 151", productLine: "Scarlet & Violet", releaseYear: 2023, msrpPrice: 119.99 },
-  { name: "Paldean Fates Elite Trainer Box", setName: "Paldean Fates", productType: "Elite Trainer Box", expansion: "Paldean Fates", productLine: "Scarlet & Violet", releaseYear: 2024, msrpPrice: 49.99 },
-  { name: "Temporal Forces Booster Bundle", setName: "Temporal Forces", productType: "Booster Bundle", expansion: "Temporal Forces", productLine: "Scarlet & Violet", releaseYear: 2024, msrpPrice: 26.94 },
-  { name: "Twilight Masquerade Elite Trainer Box", setName: "Twilight Masquerade", productType: "Elite Trainer Box", expansion: "Twilight Masquerade", productLine: "Scarlet & Violet", releaseYear: 2024, msrpPrice: 49.99 },
-  { name: "Surging Sparks Elite Trainer Box", setName: "Surging Sparks", productType: "Elite Trainer Box", expansion: "Surging Sparks", productLine: "Scarlet & Violet", releaseYear: 2024, msrpPrice: 49.99 },
-  { name: "Prismatic Evolutions Booster Bundle", setName: "Prismatic Evolutions", productType: "Booster Bundle", expansion: "Prismatic Evolutions", productLine: "Scarlet & Violet", releaseYear: 2025, msrpPrice: 26.94 },
-  { name: "Sleeved Booster Pack", setName: "Any Standard Set", productType: "Sleeved Booster Pack", expansion: "Any Standard Set", productLine: "Scarlet & Violet", releaseYear: "", msrpPrice: 4.99 },
-  { name: "3-Pack Blister", setName: "Any Standard Set", productType: "3-Pack Blister", expansion: "Any Standard Set", productLine: "Scarlet & Violet", releaseYear: "", msrpPrice: 13.99 },
-  { name: "Checklane Blister", setName: "Any Standard Set", productType: "Checklane Blister", expansion: "Any Standard Set", productLine: "Scarlet & Violet", releaseYear: "", msrpPrice: 5.99 },
-  { name: "Mini Tin", setName: "Any Standard Set", productType: "Mini Tin", expansion: "Any Standard Set", productLine: "Scarlet & Violet", releaseYear: "", msrpPrice: 9.99 },
-  { name: "Pokemon ex Box", setName: "Assorted", productType: "ex Box", expansion: "Assorted", productLine: "Scarlet & Violet", releaseYear: "", msrpPrice: 19.99 },
-  { name: "Premium Collection Box", setName: "Assorted", productType: "Premium Collection Box", expansion: "Assorted", productLine: "Scarlet & Violet", releaseYear: "", msrpPrice: 39.99 },
-  { name: "Build & Battle Box", setName: "Any Standard Set", productType: "Build & Battle Box", expansion: "Any Standard Set", productLine: "Scarlet & Violet", releaseYear: "", msrpPrice: 19.99 },
-  { name: "Build & Battle Stadium", setName: "Any Standard Set", productType: "Build & Battle Stadium", expansion: "Any Standard Set", productLine: "Scarlet & Violet", releaseYear: "", msrpPrice: 59.99 },
+// TideTradr shared beta catalog.
+// Unknown UPC/SKU/MSRP values are intentionally kept as "Unknown".
+// Market values are not live unless sourceType is "live".
+
+export const SEALED_PRODUCT_TYPES = [
+  "Elite Trainer Box",
+  "Booster Bundle",
+  "Booster Box",
+  "Sleeved Booster",
+  "3-Pack Blister",
+  "Checklane Blister",
+  "Mini Tin",
+  "Collection Box",
+  "Ex Box",
+  "Premium Collection",
+  "Ultra Premium Collection",
+  "Tin",
+  "Build & Battle Box",
+  "Build & Battle Stadium",
+  "First Partner Pack",
+  "Special Collection",
+  "Poster Collection",
+  "Binder Collection",
+  "Battle Deck",
+  "League Battle Deck",
+  "Trainer's Toolkit",
+  "Mystery/Bundle item",
 ];
+
+const STANDARD_RELEASES = [
+  { setName: "Destined Rivals", series: "Scarlet & Violet", releaseYear: 2025, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister"] },
+  { setName: "Journey Together", series: "Scarlet & Violet", releaseYear: 2025, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister"] },
+  { setName: "Surging Sparks", series: "Scarlet & Violet", releaseYear: 2024, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Stellar Crown", series: "Scarlet & Violet", releaseYear: 2024, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Twilight Masquerade", series: "Scarlet & Violet", releaseYear: 2024, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Temporal Forces", series: "Scarlet & Violet", releaseYear: 2024, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Paradox Rift", series: "Scarlet & Violet", releaseYear: 2023, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Obsidian Flames", series: "Scarlet & Violet", releaseYear: 2023, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Paldea Evolved", series: "Scarlet & Violet", releaseYear: 2023, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Scarlet & Violet Base", series: "Scarlet & Violet", releaseYear: 2023, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Brilliant Stars", series: "Sword & Shield", releaseYear: 2022, types: ["Elite Trainer Box", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Fusion Strike", series: "Sword & Shield", releaseYear: 2021, types: ["Elite Trainer Box", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Chilling Reign", series: "Sword & Shield", releaseYear: 2021, types: ["Elite Trainer Box", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Lost Origin", series: "Sword & Shield", releaseYear: 2022, types: ["Elite Trainer Box", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Silver Tempest", series: "Sword & Shield", releaseYear: 2022, types: ["Elite Trainer Box", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Astral Radiance", series: "Sword & Shield", releaseYear: 2022, types: ["Elite Trainer Box", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+  { setName: "Evolving Skies", series: "Sword & Shield", releaseYear: 2021, types: ["Elite Trainer Box", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister", "Build & Battle Box", "Build & Battle Stadium"] },
+];
+
+const SPECIAL_RELEASES = [
+  { setName: "Prismatic Evolutions", series: "Scarlet & Violet", releaseYear: 2025, types: ["Elite Trainer Box", "Booster Bundle", "Poster Collection", "Binder Collection", "Surprise Box", "Mini Tin", "Tin", "Special Collection", "Premium Collection"] },
+  { setName: "Shrouded Fable", series: "Scarlet & Violet", releaseYear: 2024, types: ["Elite Trainer Box", "Booster Bundle", "Mini Tin", "Collection Box", "Special Collection"] },
+  { setName: "Paldean Fates", series: "Scarlet & Violet", releaseYear: 2024, types: ["Elite Trainer Box", "Booster Bundle", "Mini Tin", "Tin", "Premium Collection", "Collection Box", "Special Collection"] },
+  { setName: "Scarlet & Violet 151", series: "Scarlet & Violet", releaseYear: 2023, types: ["Elite Trainer Box", "Booster Bundle", "Ultra Premium Collection", "Poster Collection", "Binder Collection", "Mini Tin", "Collection Box", "Special Collection"] },
+  { setName: "Crown Zenith", series: "Sword & Shield", releaseYear: 2023, types: ["Elite Trainer Box", "Mini Tin", "Tin", "Premium Collection", "Collection Box", "Special Collection"] },
+  { setName: "Celebrations", series: "Sword & Shield", releaseYear: 2021, types: ["Elite Trainer Box", "Ultra Premium Collection", "Collection Box", "Premium Collection", "Mini Tin", "First Partner Pack", "Special Collection"] },
+];
+
+function msrpFor(type) {
+  const values = {
+    "Elite Trainer Box": 49.99,
+    "Booster Bundle": "Unknown",
+    "Booster Box": "Unknown",
+    "Sleeved Booster": 4.99,
+    "3-Pack Blister": 13.99,
+    "Checklane Blister": 5.99,
+    "Mini Tin": 9.99,
+    "Collection Box": "Unknown",
+    "Ex Box": 19.99,
+    "Premium Collection": "Unknown",
+    "Ultra Premium Collection": "Unknown",
+    "Tin": "Unknown",
+    "Build & Battle Box": 19.99,
+    "Build & Battle Stadium": 59.99,
+    "First Partner Pack": 9.99,
+    "Special Collection": "Unknown",
+    "Poster Collection": "Unknown",
+    "Binder Collection": "Unknown",
+    "Battle Deck": 14.99,
+    "League Battle Deck": 29.99,
+    "Trainer's Toolkit": 34.99,
+    "Mystery/Bundle item": "Unknown",
+    "Surprise Box": "Unknown",
+  };
+  return values[type] ?? "Unknown";
+}
+
+function packCountFor(type) {
+  const values = {
+    "Elite Trainer Box": 9,
+    "Booster Bundle": 6,
+    "Booster Box": 36,
+    "Sleeved Booster": 1,
+    "3-Pack Blister": 3,
+    "Checklane Blister": 1,
+    "Mini Tin": 2,
+    "Collection Box": "Unknown",
+    "Ex Box": 4,
+    "Premium Collection": "Unknown",
+    "Ultra Premium Collection": "Unknown",
+    "Tin": "Unknown",
+    "Build & Battle Box": 4,
+    "Build & Battle Stadium": 12,
+    "First Partner Pack": 2,
+    "Special Collection": "Unknown",
+    "Poster Collection": "Unknown",
+    "Binder Collection": "Unknown",
+    "Battle Deck": 0,
+    "League Battle Deck": 0,
+    "Trainer's Toolkit": 4,
+    "Mystery/Bundle item": "Unknown",
+    "Surprise Box": "Unknown",
+  };
+  return values[type] ?? "Unknown";
+}
+
+function sealedProduct({ setName, series, releaseYear, type, productName }) {
+  return {
+    catalogType: "sealed",
+    productName: productName || `${setName} ${type}`,
+    productType: type,
+    setName,
+    series,
+    releaseYear,
+    releaseDate: "Unknown",
+    msrp: msrpFor(type),
+    upc: "Unknown",
+    sku: "Unknown",
+    packCount: packCountFor(type),
+    imageUrl: "",
+    marketValue: 0,
+    marketSource: "Manual",
+    marketLastUpdated: "Unknown",
+    marketConfidenceLevel: "Manual needed",
+    notes: "Starter beta sealed catalog row. UPC/SKU/live market value not verified yet.",
+    sourceType: "manual",
+    lastUpdated: "Unknown",
+  };
+}
+
+const sealedProducts = [
+  ...STANDARD_RELEASES.flatMap((release) =>
+    release.types.map((type) => sealedProduct({ ...release, type }))
+  ),
+  ...SPECIAL_RELEASES.flatMap((release) =>
+    release.types.map((type) => sealedProduct({ ...release, type }))
+  ),
+  sealedProduct({ setName: "Assorted", series: "Scarlet & Violet", releaseYear: "Unknown", type: "Ex Box", productName: "Pokemon ex Box" }),
+  sealedProduct({ setName: "Assorted", series: "Scarlet & Violet", releaseYear: "Unknown", type: "Premium Collection", productName: "Pokemon Premium Collection Box" }),
+  sealedProduct({ setName: "Assorted", series: "Scarlet & Violet", releaseYear: "Unknown", type: "Tin", productName: "Pokemon Tin" }),
+  sealedProduct({ setName: "Assorted", series: "Scarlet & Violet", releaseYear: "Unknown", type: "Battle Deck", productName: "Pokemon Battle Deck" }),
+  sealedProduct({ setName: "Assorted", series: "Scarlet & Violet", releaseYear: "Unknown", type: "League Battle Deck", productName: "Pokemon League Battle Deck" }),
+  sealedProduct({ setName: "Assorted", series: "Scarlet & Violet", releaseYear: "Unknown", type: "Trainer's Toolkit", productName: "Pokemon Trainer's Toolkit" }),
+  sealedProduct({ setName: "Assorted", series: "Mixed", releaseYear: "Unknown", type: "Mystery/Bundle item", productName: "Pokemon Mystery/Bundle Item" }),
+];
+
+const individualCards = [
+  { catalogType: "card", cardName: "Charizard ex", pokemonName: "Charizard", setName: "Scarlet & Violet 151", series: "Scarlet & Violet", cardNumber: "199/165", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueRaw: 0, marketValueNearMint: 120, marketValueLightPlayed: 95, marketValueGraded: 260, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Charizard ex", pokemonName: "Charizard", setName: "Obsidian Flames", series: "Scarlet & Violet", cardNumber: "223/197", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 45, marketValueLightPlayed: 34, marketValueGraded: 120, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Charizard V", pokemonName: "Charizard", setName: "Brilliant Stars", series: "Sword & Shield", cardNumber: "154/172", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 165, marketValueLightPlayed: 130, marketValueGraded: 360, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Charizard VSTAR", pokemonName: "Charizard", setName: "Crown Zenith", series: "Sword & Shield", cardNumber: "SWSH262", rarity: "Promo", variant: "Promo", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 12, marketValueLightPlayed: 9, marketValueGraded: 45, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Blastoise ex", pokemonName: "Blastoise", setName: "Scarlet & Violet 151", series: "Scarlet & Violet", cardNumber: "200/165", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 55, marketValueLightPlayed: 42, marketValueGraded: 130, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Venusaur ex", pokemonName: "Venusaur", setName: "Scarlet & Violet 151", series: "Scarlet & Violet", cardNumber: "198/165", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 45, marketValueLightPlayed: 35, marketValueGraded: 110, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Pikachu", pokemonName: "Pikachu", setName: "Scarlet & Violet 151", series: "Scarlet & Violet", cardNumber: "173/165", rarity: "Illustration Rare", variant: "IR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 22, marketValueLightPlayed: 17, marketValueGraded: 65, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Pikachu VMAX", pokemonName: "Pikachu", setName: "Celebrations", series: "Sword & Shield", cardNumber: "SWSH062", rarity: "Promo", variant: "Promo", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 8, marketValueLightPlayed: 6, marketValueGraded: 35, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Pikachu V-UNION", pokemonName: "Pikachu", setName: "Celebrations", series: "Sword & Shield", cardNumber: "SWSH139-142", rarity: "Promo", variant: "V-UNION", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 18, marketValueLightPlayed: 14, marketValueGraded: 60, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Eevee", pokemonName: "Eevee", setName: "Twilight Masquerade", series: "Scarlet & Violet", cardNumber: "188/167", rarity: "Illustration Rare", variant: "IR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 45, marketValueLightPlayed: 35, marketValueGraded: 110, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Mew ex", pokemonName: "Mew", setName: "Paldean Fates", series: "Scarlet & Violet", cardNumber: "232/091", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 90, marketValueLightPlayed: 72, marketValueGraded: 210, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Mewtwo VSTAR", pokemonName: "Mewtwo", setName: "Crown Zenith", series: "Sword & Shield", cardNumber: "GG44/GG70", rarity: "Galarian Gallery", variant: "GG", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 65, marketValueLightPlayed: 50, marketValueGraded: 150, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Mewtwo ex", pokemonName: "Mewtwo", setName: "Scarlet & Violet 151", series: "Scarlet & Violet", cardNumber: "193/165", rarity: "Ultra Rare", variant: "Full Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 18, marketValueLightPlayed: 14, marketValueGraded: 55, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Gardevoir ex", pokemonName: "Gardevoir", setName: "Paldean Fates", series: "Scarlet & Violet", cardNumber: "233/091", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 55, marketValueLightPlayed: 43, marketValueGraded: 130, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Iono", pokemonName: "", setName: "Paldea Evolved", series: "Scarlet & Violet", cardNumber: "269/193", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 75, marketValueLightPlayed: 58, marketValueGraded: 180, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Magikarp", pokemonName: "Magikarp", setName: "Paldea Evolved", series: "Scarlet & Violet", cardNumber: "203/193", rarity: "Illustration Rare", variant: "IR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 125, marketValueLightPlayed: 100, marketValueGraded: 300, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Gengar VMAX", pokemonName: "Gengar", setName: "Fusion Strike", series: "Sword & Shield", cardNumber: "271/264", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 420, marketValueLightPlayed: 340, marketValueGraded: 760, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Snorlax", pokemonName: "Snorlax", setName: "Scarlet & Violet 151", series: "Scarlet & Violet", cardNumber: "051/165", rarity: "Rare", variant: "Holo", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 2, marketValueLightPlayed: 1, marketValueGraded: 20, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Ditto", pokemonName: "Ditto", setName: "Crown Zenith", series: "Sword & Shield", cardNumber: "GG22/GG70", rarity: "Galarian Gallery", variant: "GG", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 4, marketValueLightPlayed: 3, marketValueGraded: 28, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Mimikyu", pokemonName: "Mimikyu", setName: "Paldea Evolved", series: "Scarlet & Violet", cardNumber: "097/193", rarity: "Rare", variant: "Holo", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 2, marketValueLightPlayed: 1, marketValueGraded: 18, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Phantump", pokemonName: "Phantump", setName: "Obsidian Flames", series: "Scarlet & Violet", cardNumber: "011/197", rarity: "Common", variant: "Common", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 0.25, marketValueLightPlayed: 0.1, marketValueGraded: 0, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Giratina V", pokemonName: "Giratina", setName: "Lost Origin", series: "Sword & Shield", cardNumber: "186/196", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 360, marketValueLightPlayed: 300, marketValueGraded: 650, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Giratina VSTAR", pokemonName: "Giratina", setName: "Crown Zenith", series: "Sword & Shield", cardNumber: "GG69/GG70", rarity: "Galarian Gallery", variant: "Gold GG", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 115, marketValueLightPlayed: 90, marketValueGraded: 230, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Arceus VSTAR", pokemonName: "Arceus", setName: "Crown Zenith", series: "Sword & Shield", cardNumber: "GG70/GG70", rarity: "Galarian Gallery", variant: "Gold GG", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 75, marketValueLightPlayed: 58, marketValueGraded: 160, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Lugia V", pokemonName: "Lugia", setName: "Silver Tempest", series: "Sword & Shield", cardNumber: "186/195", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 170, marketValueLightPlayed: 135, marketValueGraded: 320, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Moonbreon - Umbreon VMAX", pokemonName: "Umbreon", setName: "Evolving Skies", series: "Sword & Shield", cardNumber: "215/203", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 1200, marketValueLightPlayed: 1000, marketValueGraded: 2200, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Umbreon V", pokemonName: "Umbreon", setName: "Evolving Skies", series: "Sword & Shield", cardNumber: "189/203", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 115, marketValueLightPlayed: 90, marketValueGraded: 230, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Rayquaza VMAX", pokemonName: "Rayquaza", setName: "Evolving Skies", series: "Sword & Shield", cardNumber: "218/203", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 430, marketValueLightPlayed: 350, marketValueGraded: 760, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Rayquaza V", pokemonName: "Rayquaza", setName: "Evolving Skies", series: "Sword & Shield", cardNumber: "194/203", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 95, marketValueLightPlayed: 75, marketValueGraded: 190, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Sylveon VMAX", pokemonName: "Sylveon", setName: "Evolving Skies", series: "Sword & Shield", cardNumber: "212/203", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 250, marketValueLightPlayed: 200, marketValueGraded: 460, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Sylveon V", pokemonName: "Sylveon", setName: "Evolving Skies", series: "Sword & Shield", cardNumber: "184/203", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 75, marketValueLightPlayed: 58, marketValueGraded: 150, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Greninja ex", pokemonName: "Greninja", setName: "Twilight Masquerade", series: "Scarlet & Violet", cardNumber: "214/167", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 250, marketValueLightPlayed: 200, marketValueGraded: 450, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Radiant Greninja", pokemonName: "Greninja", setName: "Astral Radiance", series: "Sword & Shield", cardNumber: "046/189", rarity: "Radiant Rare", variant: "Radiant", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 5, marketValueLightPlayed: 4, marketValueGraded: 35, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Pikachu ex", pokemonName: "Pikachu", setName: "Surging Sparks", series: "Scarlet & Violet", cardNumber: "238/191", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 420, marketValueLightPlayed: 340, marketValueGraded: 760, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Latias ex", pokemonName: "Latias", setName: "Surging Sparks", series: "Scarlet & Violet", cardNumber: "239/191", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 190, marketValueLightPlayed: 150, marketValueGraded: 340, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Terapagos ex", pokemonName: "Terapagos", setName: "Stellar Crown", series: "Scarlet & Violet", cardNumber: "170/142", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 95, marketValueLightPlayed: 75, marketValueGraded: 190, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Lillie's Clefairy ex", pokemonName: "Clefairy", setName: "Journey Together", series: "Scarlet & Violet", cardNumber: "184/159", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 160, marketValueLightPlayed: 125, marketValueGraded: 300, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "N's Zoroark ex", pokemonName: "Zoroark", setName: "Journey Together", series: "Scarlet & Violet", cardNumber: "185/159", rarity: "Special Illustration Rare", variant: "SIR", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 95, marketValueLightPlayed: 75, marketValueGraded: 190, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Leafeon VMAX", pokemonName: "Leafeon", setName: "Evolving Skies", series: "Sword & Shield", cardNumber: "205/203", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 300, marketValueLightPlayed: 240, marketValueGraded: 540, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Glaceon VMAX", pokemonName: "Glaceon", setName: "Evolving Skies", series: "Sword & Shield", cardNumber: "209/203", rarity: "Alternate Art Secret", variant: "Alt Art", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 230, marketValueLightPlayed: 180, marketValueGraded: 420, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Snorlax VMAX", pokemonName: "Snorlax", setName: "Sword & Shield Base", series: "Sword & Shield", cardNumber: "142/202", rarity: "Ultra Rare", variant: "VMAX", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 10, marketValueLightPlayed: 7, marketValueGraded: 45, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Mimikyu VMAX", pokemonName: "Mimikyu", setName: "Brilliant Stars", series: "Sword & Shield", cardNumber: "TG17/TG30", rarity: "Trainer Gallery", variant: "TG", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 14, marketValueLightPlayed: 10, marketValueGraded: 55, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+  { catalogType: "card", cardName: "Ditto - Peelable", pokemonName: "Ditto", setName: "Pokemon GO", series: "Sword & Shield", cardNumber: "053/078", rarity: "Rare", variant: "Peelable", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 3, marketValueLightPlayed: 2, marketValueGraded: 25, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
+];
+
+export const SHARED_POKEMON_PRODUCTS = [...sealedProducts, ...individualCards];
