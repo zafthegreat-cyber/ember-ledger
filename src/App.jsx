@@ -117,6 +117,38 @@ const HOME_STAT_DEFAULTS = {
   parent: CORE_HOME_STAT_KEYS,
   advanced: HOME_STAT_KEYS,
 };
+const HOME_VIEW_PRESETS = {
+  collector: {
+    label: "Collector",
+    userType: "collector",
+    dashboardPreset: "collector",
+    stats: ["collection_value", "monthly_spending", "market_value", "savings_vs_msrp"],
+  },
+  seller: {
+    label: "Seller",
+    userType: "seller",
+    dashboardPreset: "seller",
+    stats: ["forge_inventory_value", "monthly_spending", "profit_after_expenses", "items_sold"],
+  },
+  budget: {
+    label: "Budget",
+    userType: "parent",
+    dashboardPreset: "parent",
+    stats: ["monthly_spending", "market_value", "market_vs_msrp_percent", "savings_vs_msrp"],
+  },
+  scout: {
+    label: "Scout",
+    userType: "scout",
+    dashboardPreset: "scout",
+    stats: ["monthly_spending", "market_value", "savings_vs_msrp", "collection_value"],
+  },
+  full: {
+    label: "Full",
+    userType: "advanced",
+    dashboardPreset: "advanced",
+    stats: HOME_STAT_KEYS,
+  },
+};
 const DASHBOARD_CARD_STYLES = ["compact", "comfortable", "detailed"];
 const DASHBOARD_PRESETS = ["simple", "collector", "seller", "scout", "parent", "advanced"];
 const DASHBOARD_SECTIONS = [
@@ -1407,6 +1439,25 @@ export default function App() {
     const normalized = normalizeUserType(nextUserType);
     setUserType(normalized);
     setHomeStatsEnabled((current) => normalizeHomeStatsEnabled(current, normalized));
+  }
+
+  function applyHomeViewPreset(presetKey) {
+    const preset = HOME_VIEW_PRESETS[presetKey];
+    if (!preset) return;
+    setUserType(preset.userType);
+    setDashboardPreset(preset.dashboardPreset);
+    setDashboardLayout(getDefaultDashboardLayoutForPreset(preset.dashboardPreset));
+    setHomeStatsEnabled(HOME_STATS.reduce((settings, stat) => ({ ...settings, [stat.key]: preset.stats.includes(stat.key) }), {}));
+  }
+
+  function setDashboardSectionsEnabled(sectionKeys, enabled) {
+    setDashboardLayout((current) => {
+      const normalized = normalizeDashboardLayout(current, dashboardPreset);
+      return {
+        ...normalized,
+        sections: normalized.sections.map((section) => sectionKeys.includes(section.key) ? { ...section, enabled } : section),
+      };
+    });
   }
 
   function updateDashboardPreset(nextPreset) {
@@ -4579,8 +4630,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {renderPageChrome({
               title: "Home",
               subtitle: "Overview, quick actions, activity, goals, and display settings.",
-              primary: { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
-              secondary: { label: "Search", onClick: () => setSearchExpanded(true) },
+              primary: { label: "Customize", onClick: () => setHomeSubTab("settings") },
+              secondary: { label: "View Activity", onClick: () => setHomeSubTab("activity") },
               quickActions: [
                 { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
                 { label: "Add Report", onClick: () => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_submit_report: true })); } },
@@ -4625,22 +4676,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </CollapsibleFeatureSection>
               <CollapsibleFeatureSection
                 title="Quick Actions"
-                summary="Add Forge item, Add Vault item, Submit Scout Report, Check Deal, and Search Catalog"
+                summary="Fast shortcuts live here; the header Add menu handles the same actions from anywhere"
                 open={isFeatureSectionOpen("home_quick_actions")}
                 onToggle={() => toggleFeatureSection("home_quick_actions")}
               >
             {dashboardSectionEnabled("quick_actions") ? (
             <section className="panel dashboard-section" style={dashboardSectionStyle("quick_actions")}>
               <h2>Quick Actions</h2>
-              <div className="quick-actions">
+              <div className="quick-actions home-inline-actions">
                 <button type="button" onClick={() => setActiveTab("addInventory")}>Add Forge Item</button>
-                <button type="button" onClick={() => { setActiveTab("vault"); setFeatureSectionsOpen((current) => ({ ...current, vault_add: true })); }}>Add Vault Item</button>
-                <button type="button" onClick={beginScanProduct}>Scan Product</button>
-                <button type="button" onClick={() => setActiveTab("market")}>Check Deal</button>
                 <button type="button" onClick={() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_submit_report: true, scout_store_tracker: true })); }}>Submit Scout Report</button>
+                <button type="button" onClick={() => setActiveTab("market")}>Check Deal</button>
                 <button type="button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
-                <button type="button" className="secondary-button" onClick={() => openInventoryImportAssistant("Forge")}>Import Inventory</button>
-                <button type="button" onClick={() => setActiveTab("scout")}>Upload Tip Screenshot</button>
               </div>
             </section>
             ) : null}
@@ -4681,6 +4728,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       </div>
                     ))}
                   {!items.length && !sales.length && !expenses.length ? <p>No recent activity yet.</p> : null}
+                  {!items.length && !sales.length && !expenses.length ? <p className="compact-subtitle">Add inventory, submit a Scout report, or import an existing list to start building your dashboard.</p> : null}
                 </div>
               </section>
               </>
@@ -4937,6 +4985,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <h3>Home Page Stats</h3>
                 <p>Choose exactly which dashboard stat cards show on Home. This only changes visibility, not the underlying data.</p>
                 <div className="settings-toolbar">
+                  {Object.entries(HOME_VIEW_PRESETS).map(([key, preset]) => (
+                    <button key={key} type="button" className="secondary-button" onClick={() => applyHomeViewPreset(key)}>
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="settings-toolbar">
                   <Field label="User Type">
                     <select value={userType} onChange={(event) => updateUserType(event.target.value)}>
                       {USER_TYPES.map((type) => (
@@ -4954,6 +5009,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </button>
                   <button type="button" className="secondary-button" onClick={() => resetHomeStatsForUserType(userType)}>
                     Reset Recommended
+                  </button>
+                </div>
+
+                <div className="settings-toolbar">
+                  <button type="button" className="secondary-button" onClick={() => updateDashboardCardStyle(dashboardCardStyle === "compact" ? "comfortable" : "compact")}>
+                    {dashboardCardStyle === "compact" ? "Comfortable Mode" : "Compact Mode"}
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => setDashboardSectionsEnabled(["market_summary", "watchlist", "deal_checker"], false)}>
+                    Hide Market Data
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => setDashboardSectionsEnabled(["store_reports", "nearby_stores", "restock_calendar", "alerts"], false)}>
+                    Hide Scout Data
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => setDashboardSectionsEnabled(["recent_sales", "expenses_summary", "mileage_summary", "action_center", "purchaser_spending"], false)}>
+                    Hide Forge Tools
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => setDashboardSectionsEnabled(["wishlist", "catalog_shortcut", "recent_inventory"], false)}>
+                    Hide Vault Tools
                   </button>
                 </div>
 
@@ -5545,7 +5618,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               )}
               <div className="inventory-list compact-inventory-list">
                 {vaultItems.length === 0 ? (
-                  <p>No Vault items yet.</p>
+                  <div className="empty-state">
+                    <h3>No Vault items yet</h3>
+                    <p>Add your first card or sealed product, then use Vault to track wishlist, held, personal collection, and market watch items.</p>
+                  </div>
                 ) : (
                   vaultItems.map((item) => (
                     <CompactInventoryCard
@@ -5566,14 +5642,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <>
             <CollapsibleFeatureSection title="Held Items" summary="View Held Items, Held Value, and Move to Forge" open={isFeatureSectionOpen("vault_held_items")} onToggle={() => toggleFeatureSection("vault_held_items")}>
               <div className="inventory-list compact-inventory-list">
-                {vaultItems.filter((item) => item.status === "Held").length === 0 ? <p>No held items yet.</p> : vaultItems.filter((item) => item.status === "Held").map((item) => (
+                {vaultItems.filter((item) => item.status === "Held").length === 0 ? <div className="empty-state"><h3>No held items yet</h3><p>Mark Vault items as Held when you want to keep them separate from personal collection or Forge inventory.</p></div> : vaultItems.filter((item) => item.status === "Held").map((item) => (
                   <CompactInventoryCard key={item.id} item={item} onRestock={prepareRestock} onEdit={startEditingVaultItem} onDelete={deleteItem} onStatusChange={updateItemStatus} />
                 ))}
               </div>
             </CollapsibleFeatureSection>
             <CollapsibleFeatureSection title="Personal Collection" summary="Items marked personal collection" open={isFeatureSectionOpen("vault_personal_collection")} onToggle={() => toggleFeatureSection("vault_personal_collection")}>
               <div className="inventory-list compact-inventory-list">
-                {vaultItems.filter((item) => item.status === "Personal Collection").length === 0 ? <p>No personal collection items yet.</p> : vaultItems.filter((item) => item.status === "Personal Collection").map((item) => (
+                {vaultItems.filter((item) => item.status === "Personal Collection").length === 0 ? <div className="empty-state"><h3>No personal collection items yet</h3><p>Add cards or sealed products you plan to keep personally, not sell.</p></div> : vaultItems.filter((item) => item.status === "Personal Collection").map((item) => (
                   <CompactInventoryCard key={item.id} item={item} onRestock={prepareRestock} onEdit={startEditingVaultItem} onDelete={deleteItem} onStatusChange={updateItemStatus} />
                 ))}
               </div>
@@ -6349,10 +6425,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       </div>
                     </button>
                     <div className="catalog-result-actions">
+                      <button className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
                       <button className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
-                      {p.catalogType !== "card" ? <button className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button> : null}
-                      <button className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Wishlist</button>
-                      <button className="secondary-button" onClick={() => openCatalogDetails(p.id)}>More</button>
+                      <button className="secondary-button" onClick={() => openCatalogDetails(p.id)}>View Details</button>
                     </div>
                   </div>
                 ))}
@@ -6519,14 +6594,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <h2>Forge Inventory</h2>
                 <p>Track product count, pack count, cost, market value, status, and listing notes.</p>
               </div>
-                <button type="button" onClick={() => setActiveTab("addInventory")}>
-                Add Inventory
-              </button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>
                 Import from TideTradr
-              </button>
-              <button type="button" className="secondary-button" onClick={() => openInventoryImportAssistant("Forge")}>
-                Import Inventory
               </button>
             </div>
             {importAssistantContext === "Forge" ? renderInventoryImportAssistant() : null}
@@ -6610,7 +6679,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               {sortedFilteredItems.length === 0 ? (
                 <div className="inventory-card compact-card">
                   <h3>No Forge items found</h3>
-                  <p>Add your first item or clear the current filters.</p>
+                  <p>Add inventory, import a receipt/list, or select a TideTradr catalog item to start tracking seller inventory.</p>
                   <button type="button" className="edit-button" onClick={() => setActiveTab("addInventory")}>
                     Add Forge Item
                   </button>

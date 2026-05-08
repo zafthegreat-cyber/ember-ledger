@@ -2082,6 +2082,18 @@ async function handleUpdateStore(e) {
     };
   }, [stores, reports, items]);
 
+  const directoryStats = useMemo(() => {
+    const hamptonRoadsStores = stores.filter((store) => /hampton roads|757|williamsburg|peninsula/i.test(`${store.region || ""} ${store.city || ""}`)).length;
+    const chains = new Set(stores.map((store) => store.chain || store.storeGroup || store.name).filter(Boolean));
+    const militaryStores = stores.filter((store) => /nex|mcx|exchange|commissary|military|base|px|bx/i.test(`${store.chain || ""} ${store.name || ""} ${store.notes || ""}`)).length;
+    return {
+      totalStores: stores.length,
+      hamptonRoadsStores,
+      retailChains: chains.size,
+      militaryStores,
+    };
+  }, [stores]);
+
   const reportStoreMap = useMemo(
     () => Object.fromEntries(stores.map((store) => [store.id, store])),
     [stores]
@@ -2363,10 +2375,6 @@ async function handleUpdateStore(e) {
               <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>Scout Dashboard</h2>
               <p style={{ ...styles.empty, padding: 0 }}>Stores, reports, routes, Tidepool, and alerts in focused views.</p>
             </div>
-            <div style={styles.row}>
-              <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Add Report</button>
-              <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("route")}>Build Route</button>
-            </div>
           </div>
           <div style={styles.row}>
             <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>Add Report</button>
@@ -2400,10 +2408,10 @@ async function handleUpdateStore(e) {
             Scout is ready for statewide Virginia coverage. Hampton Roads has starter store rows now; other regions are import-ready batches that should be filled from official store directories or manual CSVs.
           </p>
           <div style={styles.statsRow}>
-            <Metric label="VA Stores" value={stores.length} />
-            <Metric label="Regions" value={VIRGINIA_REGIONS.length} />
-            <Metric label="Filtered View" value={filteredStores.length} />
-            <Metric label="Seed Batches" value={VIRGINIA_STORE_SEED_STATUS.length} />
+            <Metric label="Total Stores" value={directoryStats.totalStores} />
+            <Metric label="Hampton Roads Stores" value={directoryStats.hamptonRoadsStores} />
+            <Metric label="Retail Chains" value={directoryStats.retailChains} />
+            <Metric label="Military/Exchange Stores" value={directoryStats.militaryStores} />
           </div>
           <div style={styles.row}>
             {VIRGINIA_STORE_SEED_STATUS.map((batch) => (
@@ -2803,7 +2811,7 @@ async function handleUpdateStore(e) {
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Daily Scout Report</h2>
             {dailyLocalReport.length === 0 ? (
-              <p style={styles.empty}>Shared stores are ready for reports once the Virginia directory is seeded. Add Scout Tips to build today's local report.</p>
+              <p style={styles.empty}>No store reports yet. Submit a report to help improve Scout predictions and build today&apos;s local restock picture.</p>
             ) : (
               dailyLocalReport.map(({ store, score, commonDay, commonDayCount, commonHour, reason }) => (
                 <div key={store.id} style={styles.calloutCard}>
@@ -2840,7 +2848,7 @@ async function handleUpdateStore(e) {
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Restock History</h2>
             {restockHistory.length === 0 ? (
-              <p style={styles.empty}>No restock history yet.</p>
+              <p style={styles.empty}>No restock history yet. Add a Scout report after checking a store so future predictions get smarter.</p>
             ) : (
               restockHistory.map((report) => {
                 const store = reportStoreMap[getReportStoreId(report)];
@@ -3536,7 +3544,7 @@ async function handleUpdateStore(e) {
 
                     <h2 style={{ ...styles.sectionTitle, marginTop: "24px" }}>Reports</h2>
                     {reports.length === 0 ? (
-                      <p style={styles.empty}>No reports yet.</p>
+                      <p style={styles.empty}>No store reports yet. Submit a report to help improve Scout predictions.</p>
                     ) : (
                       reports.map((report) => (
                         <div key={report.id} className="scout-report-card" style={styles.listCard}>
@@ -3645,7 +3653,7 @@ async function handleUpdateStore(e) {
                       Tracked Items
                     </h2>
                     {items.length === 0 ? (
-                      <p style={styles.empty}>No tracked items yet.</p>
+                      <p style={styles.empty}>No tracked Scout items yet. Add products you want to watch at this store.</p>
                     ) : (
                       items.map((item) => (
                         <div key={item.id} className="scout-tracked-item-card" style={styles.listCard}>

@@ -2316,6 +2316,142 @@ video {
   filter: brightness(0.98);
 }
 
+/* Mobile beta polish */
+.panel,
+.card,
+.inventory-card,
+.feature-dropdown,
+.catalog-result-card {
+  border-radius: 16px;
+}
+
+.panel,
+.inventory-card,
+.catalog-result-card {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.panel h2,
+.feature-dropdown-toggle strong,
+.section-title {
+  letter-spacing: 0;
+}
+
+.panel > p,
+.feature-dropdown-toggle small,
+.compact-subtitle {
+  line-height: 1.35;
+}
+
+.secondary-button,
+button.secondary-button,
+.quick-action-rail button:not(.primary),
+.subtab-rail button:not(.active) {
+  color: var(--water-dark);
+  background: #fff;
+  border: 1px solid rgba(31, 111, 139, 0.22);
+  box-shadow: 0 6px 14px rgba(13, 24, 40, 0.06);
+}
+
+.quick-actions,
+.home-inline-actions,
+.settings-toolbar {
+  align-items: stretch;
+}
+
+.home-inline-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.empty-state {
+  padding: 16px;
+  border: 1px dashed rgba(31, 111, 139, 0.28);
+  border-radius: 14px;
+  background: rgba(31, 111, 139, 0.06);
+}
+
+.empty-state h3 {
+  margin: 0 0 6px;
+  color: var(--navy);
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+@media (max-width: 720px) {
+  .header {
+    padding: 12px;
+  }
+
+  .header h1 {
+    font-size: 1.45rem;
+  }
+
+  .topbar {
+    gap: 6px;
+    padding: 7px;
+    border-radius: 14px;
+  }
+
+  .menu-button {
+    min-width: 44px;
+    padding-inline: 10px;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .topbar-actions .secondary-button,
+  .topbar-market-link,
+  .app-search-toggle {
+    min-width: 44px;
+    padding-inline: 10px;
+  }
+
+  .quick-add-menu {
+    right: -72px;
+    width: min(260px, calc(100vw - 24px));
+  }
+
+  .page-dashboard-header {
+    padding: 14px;
+  }
+
+  .page-dashboard-header-main {
+    gap: 10px;
+  }
+
+  .quick-action-rail,
+  .subtab-rail {
+    margin-inline: -4px;
+    padding-bottom: 4px;
+  }
+
+  .home-inline-actions,
+  .quick-actions,
+  .catalog-result-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-inline-actions button,
+  .quick-actions button {
+    width: auto;
+  }
+
+  .catalog-result-main {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .catalog-thumb {
+    width: 52px;
+    height: 52px;
+  }
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;
