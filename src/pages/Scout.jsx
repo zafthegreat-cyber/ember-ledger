@@ -2343,7 +2343,7 @@ async function handleUpdateStore(e) {
     <div style={styles.page}>
       <div style={styles.shell}>
         <div style={styles.hero}>
-          <h1 style={styles.heroTitle}>Scout</h1>
+          <h1 style={styles.heroTitle}>Ember Scout</h1>
           <p style={styles.heroSub}>
             Scout stores, track restocks, log sightings, and send purchases to The Forge.
           </p>
@@ -2372,7 +2372,7 @@ async function handleUpdateStore(e) {
         <div style={styles.pageHeader}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
             <div>
-              <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>Scout Dashboard</h2>
+              <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>Ember Scout Dashboard</h2>
               <p style={{ ...styles.empty, padding: 0 }}>Stores, reports, routes, Tidepool, and alerts in focused views.</p>
             </div>
           </div>

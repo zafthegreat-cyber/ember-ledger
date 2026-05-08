@@ -697,9 +697,9 @@ export default function App() {
   const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
     home_dashboard_cards: true,
     home_quick_actions: false,
-    ledger_inventory: true,
-    ledger_catalog: false,
-    ledger_tidetradr: false,
+    forge_inventory: true,
+    forge_catalog: false,
+    forge_tidetradr: false,
     vault_summary: true,
     vault_add: false,
     vault_tidetradr: false,
@@ -933,10 +933,10 @@ export default function App() {
 
   const mainTabs = [
     { key: "home", label: "Home", target: "dashboard" },
-    { key: "forge", label: "Forge", target: "inventory" },
     { key: "scout", label: "Scout", target: "scout" },
-    { key: "vault", label: "Vault", target: "vault" },
+    { key: "vault", label: "The Vault", target: "vault" },
     { key: "tideTradr", label: "TideTradr", target: "market" },
+    { key: "forge", label: "The Forge", target: "inventory" },
   ];
 
   const navSections = [
@@ -952,13 +952,13 @@ export default function App() {
     },
     { title: "Main Tabs", items: [
       { key: "home", label: "Home", target: "dashboard" },
-      { key: "forge", label: "Forge", target: "inventory" },
       { key: "scout-main", label: "Scout", target: "scout" },
-      { key: "vault", label: "Vault" },
+      { key: "vault", label: "The Vault" },
       { key: "tidetradr-main", label: "TideTradr", target: "market" },
+      { key: "forge", label: "The Forge", target: "inventory" },
     ] },
     {
-      title: "Forge Tools",
+      title: "The Forge Tools",
       items: [
         { key: "addInventory", label: "Add Forge Item", feature: "seller_tools" },
         { key: "addSale", label: "Add Sale", feature: "seller_tools" },
@@ -1530,7 +1530,7 @@ export default function App() {
       setActiveTab("vault");
       return;
     }
-    setFeatureSectionsOpen((current) => ({ ...current, ledger_inventory: true }));
+    setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }));
     setActiveTab("inventory");
   }
 
@@ -4527,13 +4527,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => setMenuOpen(false)}>Close</button>
             </div>
             <div className="drawer-menu-stack">
-              {renderMenuPullDown("go_to", "Go To", "Home, Forge, Scout, Vault, and TideTradr", (
+              {renderMenuPullDown("go_to", "Go To", "Home, Scout, The Vault, TideTradr, and The Forge", (
                 <div className="drawer-links">
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Home</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("inventory"))}>Forge</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("scout"))}>Scout</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("vault"))}>Vault</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("vault"))}>The Vault</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("market"))}>TideTradr</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("inventory"))}>The Forge</button>
                 </div>
               ))}
               {renderMenuPullDown("profile", "Profile", "User Profile, My Scout Score, Saved Location, and Account Info", (
@@ -5406,7 +5406,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {activeTab === "vault" && (
           <>
             {renderPageChrome({
-              title: "Vault",
+              title: "The Vault",
               subtitle: "Personal collection, held items, sealed products, cards, wishlist, and stats.",
               primary: { label: "Add Card", onClick: () => { setVaultSubTab("collection"); setFeatureSectionsOpen((current) => ({ ...current, vault_add: true })); } },
               secondary: { label: "Wishlist", onClick: () => setVaultSubTab("wishlist") },
@@ -5429,7 +5429,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             })}
             <section className="feature-dropdown-stack">
             {vaultSubTab === "overview" || vaultSubTab === "stats" ? (
-            <CollapsibleFeatureSection title="Vault Summary" summary="Items, value, personal collection, and held counts" open={isFeatureSectionOpen("vault_summary")} onToggle={() => toggleFeatureSection("vault_summary")}>
+            <CollapsibleFeatureSection title="The Vault Summary" summary="Items, value, personal collection, and held counts" open={isFeatureSectionOpen("vault_summary")} onToggle={() => toggleFeatureSection("vault_summary")}>
             <section className="panel vault-overview-panel">
               <h2>The Vault</h2>
               <p>
@@ -6554,7 +6554,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         {activeTab === "inventory" && (
           <>
           {renderPageChrome({
-            title: "Forge",
+            title: "The Forge",
             subtitle: "Business inventory, sales, expenses, mileage, receipts, and reports.",
             primary: { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
             secondary: { label: "Import", onClick: () => openInventoryImportAssistant("Forge") },
@@ -6585,13 +6585,13 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <CollapsibleFeatureSection
               title="Inventory"
               summary="Add Inventory, View Inventory, Edit Inventory, Delete Inventory, and Import from Catalog"
-              open={isFeatureSectionOpen("ledger_inventory")}
-              onToggle={() => toggleFeatureSection("ledger_inventory")}
+              open={isFeatureSectionOpen("forge_inventory")}
+              onToggle={() => toggleFeatureSection("forge_inventory")}
             >
           <section className="panel">
             <div className="forge-toolbar">
               <div>
-                <h2>Forge Inventory</h2>
+                <h2>The Forge Inventory</h2>
                 <p>Track product count, pack count, cost, market value, status, and listing notes.</p>
               </div>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>
@@ -6697,7 +6697,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             </div>
           </section>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Sales" summary="Add Sale, View Sales, Planned Sales, and Sold Items" open={isFeatureSectionOpen("ledger_sales")} onToggle={() => toggleFeatureSection("ledger_sales")}>
+            <CollapsibleFeatureSection title="Forge Sales" summary="Add Sale, View Sales, Planned Sales, and Sold Items" open={isFeatureSectionOpen("forge_sales")} onToggle={() => toggleFeatureSection("forge_sales")}>
               <div className="quick-actions">
                 <button type="button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
                 <button type="button" onClick={() => setActiveTab("sales")}>View Sales</button>
@@ -6705,16 +6705,16 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("sales")}>Sold Items</button>
               </div>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Expenses" summary="Add Expense, View Expenses, and Receipts" open={isFeatureSectionOpen("ledger_expenses")} onToggle={() => toggleFeatureSection("ledger_expenses")}>
+            <CollapsibleFeatureSection title="Forge Expenses" summary="Add Expense, View Expenses, and Receipts" open={isFeatureSectionOpen("forge_expenses")} onToggle={() => toggleFeatureSection("forge_expenses")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("expenses")}>Add Expense</button><button type="button" onClick={() => setActiveTab("expenses")}>View Expenses</button><button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Receipts</button></div>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Mileage" summary="Add Mileage, Business Miles, and Vehicle Costs" open={isFeatureSectionOpen("ledger_mileage")} onToggle={() => toggleFeatureSection("ledger_mileage")}>
+            <CollapsibleFeatureSection title="Forge Mileage" summary="Add Mileage, Business Miles, and Vehicle Costs" open={isFeatureSectionOpen("forge_mileage")} onToggle={() => toggleFeatureSection("forge_mileage")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("mileage")}>Add Mileage</button><button type="button" onClick={() => setActiveTab("mileage")}>Business Miles</button><button type="button" onClick={() => setActiveTab("vehicles")}>Vehicle Costs</button></div>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Receipts" summary="Receipt and item photo tools" open={isFeatureSectionOpen("ledger_receipts")} onToggle={() => toggleFeatureSection("ledger_receipts")}>
+            <CollapsibleFeatureSection title="Forge Receipts" summary="Receipt and item photo tools" open={isFeatureSectionOpen("forge_receipts")} onToggle={() => toggleFeatureSection("forge_receipts")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("addInventory")}>Import Receipt</button><button type="button" onClick={beginScanProduct}>Scan Product</button></div>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Reports/Exports" summary="Profit/Loss, Monthly Spending, and Export Data" open={isFeatureSectionOpen("ledger_reports")} onToggle={() => toggleFeatureSection("ledger_reports")}>
+            <CollapsibleFeatureSection title="Forge Reports/Exports" summary="Profit/Loss, Monthly Spending, and Export Data" open={isFeatureSectionOpen("forge_reports")} onToggle={() => toggleFeatureSection("forge_reports")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("reports")}>Profit/Loss</button><button type="button" onClick={() => setActiveTab("dashboard")}>Monthly Spending</button><button type="button" onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Data</button></div>
             </CollapsibleFeatureSection>
           </section>

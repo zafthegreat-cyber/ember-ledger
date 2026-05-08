@@ -5,12 +5,41 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { randomUUID } from "crypto";
 import { pool, testDbConnection } from "./db";
+import { bestBuyRouter } from "./routes/bestbuy.routes";
+import { catalogRouter } from "./routes/catalog.routes";
+import { forgeRouter } from "./routes/forge.routes";
+import { inventoryRouter } from "./routes/inventory.routes";
+import { marketRouter } from "./routes/market.routes";
+import { scanRouter } from "./routes/scan.routes";
+import { scoutRouter } from "./routes/scout.routes";
+import { storeReportsRouter, tidepoolRouter } from "./routes/tidepool.routes";
+import { storesRouter } from "./routes/stores.routes";
+import { vaultRouter } from "./routes/vault.routes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.json({
+    status: "ok",
+    message: "Ember & Tide API is running",
+  });
+});
+
+app.use("/api/catalog", catalogRouter);
+app.use("/api/inventory", inventoryRouter);
+app.use("/api/vault", vaultRouter);
+app.use("/api", forgeRouter);
+app.use("/api/stores", storesRouter);
+app.use("/api/store-reports", storeReportsRouter);
+app.use("/api/scout", scoutRouter);
+app.use("/api/tidepool", tidepoolRouter);
+app.use("/api/market", marketRouter);
+app.use("/api/scan", scanRouter);
+app.use("/api/bestbuy", bestBuyRouter);
 
 type Day = "Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 type Confidence = "Low" | "Medium" | "High";

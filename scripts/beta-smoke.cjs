@@ -83,9 +83,9 @@ async function main() {
     await resetBetaData();
     await assertVisibleText("E&T TCG");
     await assertVisibleText("Home");
-    await assertVisibleText("Forge");
+    await assertVisibleText("The Forge");
     await assertVisibleText("Scout");
-    await assertVisibleText("Vault");
+    await assertVisibleText("The Vault");
     await assertVisibleText("TideTradr");
   });
 
@@ -189,7 +189,7 @@ async function main() {
   });
 
   await step("Forge: add/edit/delete inventory item", async () => {
-    await nav("Forge");
+    await nav("The Forge");
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form.form").last();
     await form.locator("select").nth(1).selectOption("__add__");
@@ -223,7 +223,7 @@ async function main() {
   });
 
   await step("Vault: add/edit/delete Vault item", async () => {
-    await nav("Vault");
+    await nav("The Vault");
     await page.getByRole("button", { name: /^Collection$/ }).click();
     await page.getByRole("button", { name: /Add Item to Vault/i }).first().click();
     await page.getByRole("button", { name: "Add Item to Vault", exact: true }).click();
