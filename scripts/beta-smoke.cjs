@@ -74,14 +74,19 @@ async function main() {
     await resetBetaData();
     await assertVisibleText("E&T TCG");
     await assertVisibleText("Home");
-    await assertVisibleText("Vault");
-    await assertVisibleText("Scout");
-    await assertVisibleText("Market");
     await assertVisibleText("Forge");
+    await assertVisibleText("Scout");
+    await assertVisibleText("Vault");
+    await assertVisibleText("Menu");
   });
 
   async function assertVisibleText(text) {
-    await assert.ok(await page.getByText(text, { exact: false }).first().isVisible());
+    const matches = page.getByText(text, { exact: false });
+    const count = await matches.count();
+    for (let index = 0; index < count; index += 1) {
+      if (await matches.nth(index).isVisible()) return;
+    }
+    assert.fail(`Expected visible text: ${text}`);
   }
 
   await step("Scout: shared store directory loads", async () => {
@@ -196,16 +201,20 @@ async function main() {
 
   await step("Vault: add/edit/delete Vault item", async () => {
     await nav("Vault");
+    await page.getByRole("button", { name: "Add Item to Vault", exact: true }).click();
     const vaultForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Add to Vault" }) }).first();
     await fillByLabel(vaultForm, "Item Name", "Smoke Vault Binder");
-    await fillByLabel(vaultForm, "Quantity / Item Count", "1");
-    await fillByLabel(vaultForm, "Pack Count", "0");
+    await fillByLabel(vaultForm, "Quantity", "1");
+    await fillByLabel(vaultForm, "Category / Product Type", "Binder");
+    await fillByLabel(vaultForm, "Set / Collection", "Smoke Set");
+    await vaultForm.getByRole("button", { name: /Pricing/ }).click();
     await fillByLabel(vaultForm, "Cost Paid", "20");
     await fillByLabel(vaultForm, "MSRP", "25");
     await fillByLabel(vaultForm, "Market Value", "30");
-    await fillByLabel(vaultForm, "Set / Collection", "Smoke Set");
-    await fillByLabel(vaultForm, "Product Type", "Binder");
+    await vaultForm.getByRole("button", { name: /Extra Details/ }).click();
+    await fillByLabel(vaultForm, "Pack Count", "0");
     await vaultForm.getByRole("button", { name: "Add to Vault" }).click();
+    await page.getByRole("button", { name: /Collection Items All Vault/ }).click();
     await assertVisibleText("Smoke Vault Binder");
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder" }), "Edit");
@@ -219,7 +228,8 @@ async function main() {
   });
 
   await step("Market: run TideTradr deal check", async () => {
-    await nav("Market");
+    await nav("Home");
+    await page.getByRole("button", { name: "Check Deal" }).click();
     await fillByLabel(page, "Deal Title", "Smoke Deal");
     await fillByLabel(page, "Asking Price", "60");
     await fillByLabel(page, "Market Total", "100");

@@ -137,6 +137,101 @@ a {
   gap: 18px;
 }
 
+.tab-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+}
+
+.tab-summary h2 {
+  margin-bottom: 4px;
+}
+
+.summary-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.summary-pill-row span {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--water-dark);
+  background: rgba(31, 111, 139, 0.08);
+  border: 1px solid rgba(31, 111, 139, 0.14);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.feature-dropdown-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.feature-dropdown {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-soft);
+}
+
+.feature-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+  padding: 12px 14px;
+  color: var(--ink);
+  text-align: left;
+  background: #fff;
+  box-shadow: none;
+}
+
+.feature-dropdown-toggle span {
+  display: grid;
+  gap: 3px;
+}
+
+.feature-dropdown-toggle small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.feature-dropdown-toggle b {
+  color: var(--water-dark);
+  font-size: 0.82rem;
+}
+
+.feature-dropdown-body {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.feature-dropdown-body > .panel,
+.feature-dropdown-body > .cards,
+.feature-dropdown-body > .home-grid {
+  box-shadow: none;
+}
+
+.location-options-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.recommendation-grid .card {
+  grid-column: span 4;
+}
+
 .dashboard-layout .home-grid {
   display: grid;
 }
@@ -284,6 +379,22 @@ a {
 .upgrade-panel {
   border-color: rgba(180, 87, 53, 0.28);
   background: #fffaf3;
+}
+
+.locked-feature-card {
+  display: grid;
+  gap: 10px;
+  border-color: rgba(180, 87, 53, 0.28);
+  background: linear-gradient(135deg, rgba(180, 87, 53, 0.08), rgba(31, 111, 139, 0.08)), #fff;
+}
+
+.locked-feature-card small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.locked-feature-card .secondary-button {
+  justify-self: start;
 }
 
 .settings-group {
@@ -568,6 +679,83 @@ a {
   font-size: clamp(1.45rem, 3vw, 2.25rem);
   letter-spacing: -0.04em;
   line-height: 1;
+}
+
+.vault-overview-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.vault-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vault-summary-grid .card {
+  grid-column: auto;
+  min-height: 88px;
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.vault-summary-grid .card p {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+}
+
+.vault-summary-grid .card h2 {
+  font-size: clamp(1.35rem, 7vw, 2rem);
+}
+
+.vault-add-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.vault-collapsible-form {
+  display: grid;
+  gap: 10px;
+}
+
+.vault-form-section {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  overflow: hidden;
+}
+
+.vault-section-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: none;
+}
+
+.vault-section-toggle span {
+  font-weight: 900;
+}
+
+.vault-section-toggle b {
+  color: var(--water-dark);
+  font-size: 0.82rem;
+}
+
+.vault-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 12px;
+}
+
+.vault-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 /* PANELS */
@@ -924,6 +1112,14 @@ video {
     grid-column: span 4;
   }
 
+  .vault-summary-grid .card {
+    grid-column: auto;
+  }
+
+  .vault-form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .inventory-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1037,6 +1233,22 @@ video {
 
   .home-grid {
     grid-template-columns: 1fr;
+  }
+
+  .location-options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendation-grid .card {
+    grid-column: span 12;
+  }
+
+  .tab-summary {
+    display: grid;
+  }
+
+  .summary-pill-row {
+    justify-content: flex-start;
   }
 
   .home-list-row {

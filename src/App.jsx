@@ -9,11 +9,14 @@ import Scout from "./pages/Scout";
 import { SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
 import {
   FEATURE_LABELS,
+  FEATURE_TIERS,
   PAID_HOME_STATS,
   PLAN_TYPES,
+  TIER_LABELS,
   FEATURE_ACCESS,
   getUpgradePrompt,
   getUserPlan,
+  getUserTier,
   hasPlanAccess,
   isAdminUser,
   isPaidUser,
@@ -272,6 +275,21 @@ function Field({ label, children }) {
   );
 }
 
+function CollapsibleFeatureSection({ title, summary, open, onToggle, children }) {
+  return (
+    <section className="feature-dropdown">
+      <button type="button" className="feature-dropdown-toggle" onClick={onToggle}>
+        <span>
+          <strong>{title}</strong>
+          {summary ? <small>{summary}</small> : null}
+        </span>
+        <b>{open ? "Hide" : "Show"}</b>
+      </button>
+      {open ? <div className="feature-dropdown-body">{children}</div> : null}
+    </section>
+  );
+}
+
 function BarcodeScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
@@ -339,10 +357,43 @@ function UpgradeScreen({ featureKey, onBack }) {
   );
 }
 
+function LockedFeatureCard({ featureKey, onUpgrade }) {
+  return (
+    <div className="card locked-feature-card">
+      <p>{TIER_LABELS[FEATURE_TIERS[featureKey]] || "Premium"}</p>
+      <h2>{FEATURE_LABELS[featureKey] || "Locked Feature"}</h2>
+      <small>{getUpgradePrompt(featureKey)}</small>
+      {onUpgrade ? (
+        <button type="button" className="secondary-button" onClick={onUpgrade}>
+          Upgrade
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTopbarActions, setShowTopbarActions] = useState(true);
+  const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
+    home_dashboard_cards: true,
+    home_quick_actions: true,
+    ledger_inventory: true,
+    ledger_catalog: false,
+    ledger_tidetradr: false,
+    vault_summary: true,
+    vault_add: true,
+    vault_tidetradr: false,
+    scout_stores: true,
+    scout_recommendations: true,
+    scout_store_tracker: true,
+    scout_tidetradr: false,
+    market_summary: true,
+    market_lookup: true,
+    market_deal_finder: true,
+    menu_profile: true,
+  });
   const [reportFocus, setReportFocus] = useState("");
 
   const [treasureClicks, setTreasureClicks] = useState(0);
@@ -367,6 +418,8 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [purchasers, setPurchasers] = useState(createDefaultPurchasers);
   const [catalogProducts, setCatalogProducts] = useState([]);
+  const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
+  const [tideTradrLookupId, setTideTradrLookupId] = useState("");
   const [expenses, setExpenses] = useState([]);
   const [sales, setSales] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -388,23 +441,47 @@ export default function App() {
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
   const [scoutSnapshot, setScoutSnapshot] = useState({ stores: [], reports: [] });
   const [dealForm, setDealForm] = useState({
+    productId: "",
     title: "",
+    quantity: 1,
     askingPrice: "",
     marketTotal: "",
     retailTotal: "",
+    condition: "Sealed",
     notes: "",
   });
   const [vaultForm, setVaultForm] = useState({
     name: "",
     vaultCategory: "Personal collection",
+    status: "Personal Collection",
     quantity: 1,
     unitCost: "",
     msrpPrice: "",
     marketPrice: "",
+    salePrice: "",
     packCount: "",
     setName: "",
     productType: "",
+    store: "",
+    purchaseDate: "",
+    receiptImage: "",
+    itemImage: "",
     notes: "",
+  });
+  const [showVaultAddForm, setShowVaultAddForm] = useState(false);
+  const [vaultFormSections, setVaultFormSections] = useState({
+    basic: true,
+    pricing: false,
+    status: false,
+    extra: false,
+  });
+  const [locationSettings, setLocationSettings] = useState({
+    mode: "manual",
+    manualLocation: "",
+    savedLocations: [],
+    selectedSavedLocation: "",
+    trackingEnabled: false,
+    lastUpdated: "",
   });
 
   const [editingItemId, setEditingItemId] = useState(null);
@@ -479,10 +556,10 @@ export default function App() {
 
   const mainTabs = [
     { key: "home", label: "Home", target: "dashboard" },
-    { key: "vault", label: "Vault", target: "vault" },
-    { key: "scout", label: "Scout", target: "scout" },
-    { key: "market", label: "Market", target: "market" },
     { key: "forge", label: "Forge", target: "inventory" },
+    { key: "scout", label: "Scout", target: "scout" },
+    { key: "vault", label: "Vault", target: "vault" },
+    { key: "menu", label: "Menu", target: "menu" },
   ];
 
   const navSections = [
@@ -499,10 +576,10 @@ export default function App() {
     },
     { title: "Main Tabs", items: [
       { key: "home", label: "Home", target: "dashboard" },
-      { key: "vault", label: "Vault" },
-      { key: "scout-main", label: "Scout", target: "scout" },
-      { key: "market", label: "Market" },
       { key: "forge", label: "Forge", target: "inventory" },
+      { key: "scout-main", label: "Scout", target: "scout" },
+      { key: "vault", label: "Vault" },
+      { key: "menu-main", label: "Menu", target: "menu" },
     ] },
     {
       title: "Forge Tools",
@@ -522,10 +599,10 @@ export default function App() {
   const activeMainTab =
     activeTab === "dashboard"
       ? "home"
-      : activeTab === "vault" || activeTab === "scout" || activeTab === "market"
+      : activeTab === "vault" || activeTab === "scout" || activeTab === "menu"
         ? activeTab
-        : activeTab === "catalog"
-          ? "market"
+      : activeTab === "catalog"
+          ? "menu"
           : "forge";
 
   useEffect(() => {
@@ -746,6 +823,54 @@ export default function App() {
     });
   }
 
+  function toggleFeatureSection(key) {
+    setFeatureSectionsOpen((current) => ({ ...current, [key]: !current[key] }));
+  }
+
+  function isFeatureSectionOpen(key) {
+    return Boolean(featureSectionsOpen[key]);
+  }
+
+  function updateLocationSettings(updates) {
+    setLocationSettings((current) => ({ ...current, ...updates, lastUpdated: new Date().toISOString() }));
+  }
+
+  function saveManualLocation() {
+    const value = String(locationSettings.manualLocation || "").trim();
+    if (!value) return;
+    setLocationSettings((current) => ({
+      ...current,
+      mode: "saved",
+      selectedSavedLocation: value,
+      savedLocations: [...new Set([...(current.savedLocations || []), value])],
+      lastUpdated: new Date().toISOString(),
+    }));
+  }
+
+  function enableLocationTracking() {
+    if (!navigator.geolocation) {
+      alert("Location is not available in this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocationSettings((current) => ({
+          ...current,
+          mode: "device",
+          trackingEnabled: true,
+          manualLocation: `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
+          lastUpdated: new Date().toISOString(),
+        }));
+      },
+      () => alert("Location permission was not granted.")
+    );
+  }
+
+  function disableLocationTracking() {
+    updateLocationSettings({ trackingEnabled: false, mode: "manual" });
+  }
+
   function loadScoutSnapshot() {
     const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
     setScoutSnapshot({
@@ -766,24 +891,39 @@ export default function App() {
       setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
       setSubscriptionProfile({
         subscriptionPlan: saved.subscriptionProfile?.subscriptionPlan || PLAN_TYPES.FREE,
+        featureTier: saved.subscriptionProfile?.featureTier || saved.subscriptionProfile?.subscriptionPlan || PLAN_TYPES.FREE,
         subscriptionStatus: saved.subscriptionProfile?.subscriptionStatus || "active",
         subscriptionStartedAt: saved.subscriptionProfile?.subscriptionStartedAt || "",
         subscriptionExpiresAt: saved.subscriptionProfile?.subscriptionExpiresAt || "",
         lifetimeAccess: Boolean(saved.subscriptionProfile?.lifetimeAccess),
       });
+      setLocationSettings({
+        mode: saved.locationSettings?.mode || "manual",
+        manualLocation: saved.locationSettings?.manualLocation || "",
+        savedLocations: Array.isArray(saved.locationSettings?.savedLocations) ? saved.locationSettings.savedLocations : [],
+        selectedSavedLocation: saved.locationSettings?.selectedSavedLocation || "",
+        trackingEnabled: Boolean(saved.locationSettings?.trackingEnabled),
+        lastUpdated: saved.locationSettings?.lastUpdated || "",
+      });
       setItems(saved.items || []);
       setPurchasers(normalizePurchasers(saved.purchasers));
       setCatalogProducts(saved.catalogProducts?.length ? saved.catalogProducts : createSharedCatalogProducts());
+      setTideTradrWatchlist(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : []);
+      setTideTradrLookupId(saved.tideTradrLookupId || "");
       setExpenses(saved.expenses || []);
       setSales(saved.sales || []);
       setVehicles(saved.vehicles || []);
       setMileageTrips(saved.mileageTrips || []);
-      setDealForm(saved.dealForm || {
+      setDealForm({
+        productId: "",
         title: "",
+        quantity: 1,
         askingPrice: "",
         marketTotal: "",
         retailTotal: "",
+        condition: "Sealed",
         notes: "",
+        ...(saved.dealForm || {}),
       });
       loadScoutSnapshot();
       setUser({ id: "local-beta", email: "local beta mode" });
@@ -817,6 +957,8 @@ export default function App() {
         items,
         purchasers,
         catalogProducts,
+        tideTradrWatchlist,
+        tideTradrLookupId,
         expenses,
         sales,
         vehicles,
@@ -828,9 +970,10 @@ export default function App() {
         dashboardLayout,
         dashboardCardStyle,
         subscriptionProfile,
+        locationSettings,
       })
     );
-  }, [items, purchasers, catalogProducts, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, tideTradrLookupId, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, locationSettings, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || activeTab !== "dashboard") return;
@@ -887,28 +1030,39 @@ export default function App() {
     setScoutSnapshot({ stores: [], reports: [] });
     setItems([]);
     setPurchasers(createDefaultPurchasers());
-    setCatalogProducts([]);
+    setCatalogProducts(createSharedCatalogProducts());
+    setTideTradrWatchlist([]);
+    setTideTradrLookupId("");
     setExpenses([]);
     setSales([]);
     setVehicles([]);
     setMileageTrips([]);
     setDealForm({
+      productId: "",
       title: "",
+      quantity: 1,
       askingPrice: "",
       marketTotal: "",
       retailTotal: "",
+      condition: "Sealed",
       notes: "",
     });
     setVaultForm({
       name: "",
       vaultCategory: "Personal collection",
+      status: "Personal Collection",
       quantity: 1,
       unitCost: "",
       msrpPrice: "",
       marketPrice: "",
+      salePrice: "",
       packCount: "",
       setName: "",
       productType: "",
+      store: "",
+      purchaseDate: "",
+      receiptImage: "",
+      itemImage: "",
       notes: "",
     });
     setEditingItemId(null);
@@ -935,7 +1089,7 @@ export default function App() {
     const now = new Date().toISOString();
     const defaultPurchaser = purchaserOptions[0] || { id: "", name: "Zena" };
     const vaultCategory = vaultForm.vaultCategory || "Personal collection";
-    const status = vaultCategory === "Rip later" ? "Held" : "Personal Collection";
+    const status = vaultForm.status || (vaultCategory === "Rip later" ? "Held" : "Personal Collection");
     const newItem = {
       id: makeId("vault"),
       name: vaultForm.name,
@@ -944,12 +1098,12 @@ export default function App() {
       purchaserId: defaultPurchaser.id,
       purchaserName: defaultPurchaser.name,
       category: "Pokemon",
-      store: "",
+      store: vaultForm.store || "",
       quantity: Number(vaultForm.quantity || 1),
       unitCost: Number(vaultForm.unitCost || 0),
-      salePrice: 0,
-      receiptImage: "",
-      itemImage: "",
+      salePrice: Number(vaultForm.salePrice || 0),
+      receiptImage: vaultForm.receiptImage || "",
+      itemImage: vaultForm.itemImage || "",
       barcode: "",
       catalogProductId: "",
       catalogProductName: "",
@@ -973,22 +1127,35 @@ export default function App() {
       listedPrice: 0,
       actionNotes: vaultCategory,
       lastPriceChecked: vaultForm.marketPrice ? now : "",
-      createdAt: now,
+      purchaseDate: vaultForm.purchaseDate || "",
+      createdAt: vaultForm.purchaseDate ? new Date(vaultForm.purchaseDate).toISOString() : now,
     };
 
     setItems([newItem, ...items]);
     setVaultForm({
       name: "",
       vaultCategory: "Personal collection",
+      status: "Personal Collection",
       quantity: 1,
       unitCost: "",
       msrpPrice: "",
       marketPrice: "",
+      salePrice: "",
       packCount: "",
       setName: "",
       productType: "",
+      store: "",
+      purchaseDate: "",
+      receiptImage: "",
+      itemImage: "",
       notes: "",
     });
+    setShowVaultAddForm(false);
+    setVaultFormSections({ basic: true, pricing: false, status: false, extra: false });
+  }
+
+  function toggleVaultFormSection(section) {
+    setVaultFormSections((current) => ({ ...current, [section]: !current[section] }));
   }
 
   function beginScanProduct() {
@@ -1727,6 +1894,116 @@ function applyCatalogProduct(productId) {
   }));
 }
 
+function getTideTradrMarketInfo(product = {}) {
+  const msrp = Number(product.msrpPrice || product.msrp || 0);
+  const currentMarketValue = Number(product.marketPrice || product.midPrice || product.highPrice || product.lowPrice || msrp || 0);
+  const sourceName =
+    product.marketSource ||
+    (product.marketUrl ? "Manual market source link" : "") ||
+    (product.marketPrice ? "Internal/manual catalog value" : "") ||
+    (msrp ? "MSRP fallback" : "Manual fallback needed");
+  const confidenceLevel = product.marketPrice
+    ? "Medium"
+    : product.midPrice || product.lowPrice || product.highPrice
+      ? "Low"
+      : "Manual needed";
+  const marketOverMsrp = msrp > 0 ? currentMarketValue - msrp : 0;
+  const marketVsMsrpPercent = msrp > 0 ? (currentMarketValue / msrp) * 100 : 0;
+  const savingsVsMsrp = msrp > 0 ? Math.max(msrp - currentMarketValue, 0) : 0;
+
+  return {
+    currentMarketValue,
+    msrp,
+    percentOfMarket: currentMarketValue > 0 ? 100 : 0,
+    marketOverMsrp,
+    marketVsMsrpPercent,
+    savingsVsMsrp,
+    lastUpdated: product.lastUpdated || product.updatedAt || product.createdAt || "Local mock data",
+    sourceName,
+    confidenceLevel,
+  };
+}
+
+function selectTideTradrProduct(productId) {
+  const product = catalogProducts.find((p) => String(p.id) === String(productId));
+  setTideTradrLookupId(productId);
+  if (!product) return;
+  const marketInfo = getTideTradrMarketInfo(product);
+  setDealForm((old) => ({
+    ...old,
+    productId,
+    title: product.name || old.title,
+    quantity: old.quantity || 1,
+    marketTotal: marketInfo.currentMarketValue ? marketInfo.currentMarketValue * Number(old.quantity || 1) : old.marketTotal,
+    retailTotal: marketInfo.msrp ? marketInfo.msrp * Number(old.quantity || 1) : old.retailTotal,
+  }));
+}
+
+function addProductToTideTradrWatchlist(productId) {
+  const product = catalogProducts.find((p) => String(p.id) === String(productId));
+  if (!product) return;
+  setTideTradrWatchlist((current) => {
+    if (current.some((item) => String(item.productId) === String(productId))) return current;
+    const marketInfo = getTideTradrMarketInfo(product);
+    return [
+      {
+        id: makeId("watch"),
+        productId: product.id,
+        name: product.name,
+        setName: product.setName || product.expansion || "",
+        productType: product.productType || "",
+        marketValue: marketInfo.currentMarketValue,
+        msrp: marketInfo.msrp,
+        sourceName: marketInfo.sourceName,
+        lastUpdated: new Date().toISOString(),
+      },
+      ...current,
+    ];
+  });
+}
+
+function removeTideTradrWatchlistItem(id) {
+  setTideTradrWatchlist((current) => current.filter((item) => item.id !== id));
+}
+
+function applyCatalogProductToVault(productId) {
+  const product = catalogProducts.find((p) => String(p.id) === String(productId));
+  if (!product) return;
+
+  setVaultForm((old) => ({
+    ...old,
+    name: product.name || "",
+    productType: product.productType || "",
+    setName: product.expansion || product.setName || "",
+    msrpPrice: product.msrpPrice || "",
+    marketPrice: product.marketPrice || "",
+    salePrice: product.marketPrice || "",
+    packCount: product.packCount || "",
+    itemImage: product.imageUrl || "",
+  }));
+  setShowVaultAddForm(true);
+  setVaultFormSections((current) => ({ ...current, basic: true, pricing: true }));
+  setActiveTab("vault");
+}
+
+function useCatalogProductInDeal(productId) {
+  const product = catalogProducts.find((p) => String(p.id) === String(productId));
+  if (!product) return;
+  const marketInfo = getTideTradrMarketInfo(product);
+
+  setDealForm((old) => ({
+    ...old,
+    productId,
+    title: product.name || old.title,
+    quantity: old.quantity || 1,
+    marketTotal: marketInfo.currentMarketValue ? marketInfo.currentMarketValue * Number(old.quantity || 1) : old.marketTotal,
+    retailTotal: marketInfo.msrp ? marketInfo.msrp * Number(old.quantity || 1) : old.retailTotal,
+    notes: [old.notes, product.marketUrl ? `Market source: ${product.marketUrl}` : ""].filter(Boolean).join(" | "),
+  }));
+  setTideTradrLookupId(productId);
+  setActiveTab("market");
+}
+
 function goToReport(focus) {
   setReportFocus(focus);
   setActiveTab("reports");
@@ -2270,6 +2547,7 @@ async function importBulkCatalogProducts() {
   const dashboardProfile = { dashboardPreset, dashboardLayout };
   const planProfile = subscriptionProfile;
   const currentPlan = getUserPlan(planProfile);
+  const currentTier = getUserTier(planProfile);
   const paidUser = isPaidUser(planProfile);
   const adminUser = isAdminUser(planProfile);
   const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
@@ -2327,6 +2605,23 @@ async function importBulkCatalogProducts() {
   const watchlistPreview = [...missingMarketPriceItems, ...needsMarketCheckItems]
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
     .slice(0, 5);
+  const scoutLastUpdated = scoutSnapshot.reports[0]?.createdAt || scoutSnapshot.reports[0]?.created_at || locationSettings.lastUpdated || "Local beta data";
+  const scoutRecommendationCards = [
+    { title: "Best nearby store to check now", value: scoutSnapshot.stores[0]?.name || "Add or import nearby stores", note: locationSettings.manualLocation || locationSettings.selectedSavedLocation || "Set a ZIP/city for local picks" },
+    { title: "Possible restock today", value: scoutSnapshot.reports.length ? `${scoutSnapshot.reports.length} recent reports` : "No local pattern yet", note: "Uses reports, tips, and usual stock days later" },
+    { title: "High-confidence tip nearby", value: scoutSnapshot.reports.find((report) => report.verified)?.itemName || "No verified nearby tip", note: "Last updated: " + scoutLastUpdated },
+    { title: "Best deal near you", value: dealForm.title || "Run a deal check", note: "Uses local sightings and market data later" },
+    { title: "Online drop alert", value: "Watching disabled", note: "Alert-only structure; no checkout automation" },
+    { title: "Route suggestion", value: scoutSnapshot.stores.slice(0, 3).map((store) => store.name).join(" -> ") || "Save stores to build a route", note: "Manual route builder first" },
+  ];
+  const scoutLiveUpdates = [
+    { label: "Restock reports", value: scoutSnapshot.reports.length ? `${scoutSnapshot.reports.length} local reports` : "No reports yet", updatedAt: scoutLastUpdated },
+    { label: "Scout Tips", value: scoutSnapshot.reports.filter((report) => String(report.reportType || report.report_type || "").includes("tip")).length || "None yet", updatedAt: scoutLastUpdated },
+    { label: "Product sightings", value: scoutSnapshot.reports.find((report) => report.itemName || report.product_name)?.itemName || "No sightings yet", updatedAt: scoutLastUpdated },
+    { label: "Online drops", value: "Local mock status", updatedAt: locationSettings.lastUpdated || "Not configured" },
+    { label: "Price changes", value: recentMarketUpdates[0]?.name || "No catalog changes", updatedAt: recentMarketUpdates[0]?.createdAt || "Local catalog" },
+    { label: "Store limit changes", value: scoutSnapshot.stores.find((store) => store.limitPolicy || store.limit_policy)?.limitPolicy || "No limits logged", updatedAt: scoutLastUpdated },
+  ];
   const scoutReportsByStore = scoutSnapshot.reports.reduce((acc, report) => {
     const storeId = report.storeId || report.store_id || "";
     if (!storeId) return acc;
@@ -2347,10 +2642,19 @@ async function importBulkCatalogProducts() {
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
   const dealAskingPrice = Number(dealForm.askingPrice || 0);
+  const dealQuantity = Math.max(1, Number(dealForm.quantity || 1));
+  const selectedDealProduct = catalogProducts.find((product) => String(product.id) === String(dealForm.productId || tideTradrLookupId));
+  const tideTradrLookupProduct =
+    catalogProducts.find((product) => String(product.id) === String(tideTradrLookupId)) ||
+    selectedDealProduct ||
+    catalogProducts[0];
+  const tideTradrMarketInfo = getTideTradrMarketInfo(tideTradrLookupProduct || {});
   const dealMarketTotal = Number(dealForm.marketTotal || 0);
   const dealRetailTotal = Number(dealForm.retailTotal || 0);
   const dealPercentOfMarket = dealMarketTotal > 0 ? (dealAskingPrice / dealMarketTotal) * 100 : 0;
   const dealPercentOfRetail = dealRetailTotal > 0 ? (dealAskingPrice / dealRetailTotal) * 100 : 0;
+  const dealPotentialProfit = dealMarketTotal - dealAskingPrice;
+  const dealRoi = dealAskingPrice > 0 ? (dealPotentialProfit / dealAskingPrice) * 100 : 0;
   const dealRating =
     !dealAskingPrice || !dealMarketTotal
       ? "Enter a deal"
@@ -2363,6 +2667,22 @@ async function importBulkCatalogProducts() {
             : dealPercentOfMarket <= 110
               ? "Personal collection / neutral"
               : "Too high / avoid";
+  const dealRecommendation =
+    !dealAskingPrice || !dealMarketTotal
+      ? "Enter product and asking price"
+      : dealPercentOfMarket <= 80 && dealRoi >= 20
+        ? "Buy"
+        : dealPercentOfMarket <= 95
+          ? "Maybe"
+          : "Pass";
+  const dealRecommendationReason =
+    dealRecommendation === "Buy"
+      ? "Asking price is comfortably below TideTradr market and leaves useful upside."
+      : dealRecommendation === "Maybe"
+        ? "Price is close enough to market that condition, taxes, fees, and personal goals matter."
+        : dealRecommendation === "Pass"
+          ? "Asking price is too close to or above market for a clean beta recommendation."
+          : "Choose a TideTradr product or enter market totals to calculate a recommendation.";
 
   const quickInventoryFilters = [
     {
@@ -2658,6 +2978,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         ) : null}
         {!activeTabLocked && activeTab === "dashboard" && (
           <div className="dashboard-layout">
+            <section className="tab-summary panel">
+              <div>
+                <h2>Home</h2>
+                <p>Your dashboard, quick actions, monthly numbers, and display settings.</p>
+              </div>
+              <div className="summary-pill-row">
+                <span>{visibleDashboardStats.length} stats on</span>
+                <span>{dashboardPreset} layout</span>
+              </div>
+            </section>
+            <section className="feature-dropdown-stack">
+            <CollapsibleFeatureSection
+                title="Dashboard Cards"
+                summary="Visible Home stats and locked premium previews"
+                open={isFeatureSectionOpen("home_dashboard_cards")}
+                onToggle={() => toggleFeatureSection("home_dashboard_cards")}
+              >
             {dashboardSectionEnabled("home_stats") ? (
             <section className="cards dashboard-section" style={dashboardSectionStyle("home_stats")}>
               {visibleDashboardStats.length === 0 ? (
@@ -2673,8 +3010,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 ))
               )}
+              {!featureAllowed("restock_predictions") ? (
+                <LockedFeatureCard featureKey="restock_predictions" onUpgrade={() => setActiveTab("dashboard")} />
+              ) : null}
+              {!featureAllowed("seller_tools") ? (
+                <LockedFeatureCard featureKey="seller_tools" onUpgrade={() => setActiveTab("dashboard")} />
+              ) : null}
             </section>
             ) : null}
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection
+                title="Quick Actions"
+                summary="Fast add, scan, deal check, and Scout tips"
+                open={isFeatureSectionOpen("home_quick_actions")}
+                onToggle={() => toggleFeatureSection("home_quick_actions")}
+              >
             {dashboardSectionEnabled("quick_actions") ? (
             <section className="panel dashboard-section" style={dashboardSectionStyle("quick_actions")}>
               <h2>Quick Actions</h2>
@@ -2687,6 +3037,47 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             </section>
             ) : null}
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="TideTradr" summary="Product lookup, market info, deal checks, and watchlist" open={isFeatureSectionOpen("home_tidetradr")} onToggle={() => toggleFeatureSection("home_tidetradr")}>
+                <div className="cards mini-cards">
+                  <div className="card"><p>Catalog</p><h2>{catalogProducts.length}</h2></div>
+                  <div className="card"><p>Watchlist</p><h2>{tideTradrWatchlist.length}</h2></div>
+                  <div className="card"><p>Market Value</p><h2>{money(totalMarketValue)}</h2></div>
+                </div>
+                <div className="quick-actions">
+                  <button type="button" onClick={() => setActiveTab("market")}>Open TideTradr</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Check Deal</button>
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection
+                title="Monthly Summary"
+                summary="Purchaser spending and recent activity"
+                open={isFeatureSectionOpen("home_monthly_summary")}
+                onToggle={() => toggleFeatureSection("home_monthly_summary")}
+              >
+                <div className="quick-actions">
+                  <button type="button" onClick={() => setActiveTab("inventory")}>View Forge</button>
+                  <button type="button" onClick={() => setActiveTab("vault")}>View Vault</button>
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection
+                title="Profit/Loss Overview"
+                summary="Paid Forge metrics and seller summaries"
+                open={isFeatureSectionOpen("home_profit_loss")}
+                onToggle={() => toggleFeatureSection("home_profit_loss")}
+              >
+                <div className="cards mini-cards">
+                  <div className="card"><p>Monthly Profit/Loss</p><h2>{money(monthlyProfitLoss)}</h2></div>
+                  <div className="card"><p>Expenses</p><h2>{money(totalExpenses)}</h2></div>
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection
+                title="Display Settings"
+                summary="Dashboard layout, stats, and plan access"
+                open={isFeatureSectionOpen("home_display_settings")}
+                onToggle={() => toggleFeatureSection("home_display_settings")}
+              >
             <section className="panel dashboard-section" style={dashboardSectionStyle("settings")}>
               <h2>Beta Settings</h2>
               <p>
@@ -2794,7 +3185,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <h3>Plan & Access</h3>
                 <p>User type controls the app experience. Subscription plan controls what features are unlocked.</p>
                 <div className="cards mini-cards">
-                  <div className="card"><p>Current Plan</p><h2>{currentPlan}</h2></div>
+                  <div className="card"><p>Current Tier</p><h2>{TIER_LABELS[currentTier] || currentPlan}</h2></div>
                   <div className="card"><p>Status</p><h2>{subscriptionProfile.subscriptionStatus || "active"}</h2></div>
                   <div className="card"><p>Lifetime Access</p><h2>{subscriptionProfile.lifetimeAccess ? "Yes" : "No"}</h2></div>
                 </div>
@@ -3006,6 +3397,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ))}
                 </div>
               </div>
+            </section>
+              </CollapsibleFeatureSection>
             </section>
             <section className="home-grid dashboard-section" style={dashboardSectionStyle("recent_inventory")}>
               {dashboardSectionEnabled("recent_inventory") ? (
@@ -3278,18 +3671,44 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "vault" && (
           <>
-            <section className="panel">
+            <section className="tab-summary panel">
+              <div>
+                <h2>Vault</h2>
+                <p>Collection, held items, personal collection, and Vault settings.</p>
+              </div>
+              <div className="summary-pill-row">
+                <span>{vaultItems.length} items</span>
+                <span>{money(vaultValue)}</span>
+              </div>
+            </section>
+            <section className="feature-dropdown-stack">
+            <CollapsibleFeatureSection title="Catalog" summary="Search shared Pokemon products and add to Vault" open={isFeatureSectionOpen("vault_catalog")} onToggle={() => toggleFeatureSection("vault_catalog")}>
+              <div className="quick-actions">
+                <button type="button" onClick={() => setActiveTab("catalog")}>Open Catalog</button>
+                <button type="button" onClick={() => setShowVaultAddForm(true)}>Add Item to Vault</button>
+              </div>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="TideTradr" summary="Check market value before keeping, trading, or selling" open={isFeatureSectionOpen("vault_tidetradr")} onToggle={() => toggleFeatureSection("vault_tidetradr")}>
+              <div className="quick-actions">
+                <button type="button" onClick={() => setActiveTab("market")}>Open TideTradr</button>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Find Product</button>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Check Trade / Deal</button>
+              </div>
+              <p className="compact-subtitle">Catalog item to Vault keeps product, MSRP, and market value connected for collection totals.</p>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Vault Summary" summary="Items, value, personal collection, and held counts" open={isFeatureSectionOpen("vault_summary")} onToggle={() => toggleFeatureSection("vault_summary")}>
+            <section className="panel vault-overview-panel">
               <h2>The Vault</h2>
               <p>
                 Collector mode for personal collection, keep sealed, rip later, trade, favorites, and wishlist items.
               </p>
-              <div className="cards">
+              <div className="vault-summary-grid">
                 <div className="card">
-                  <p>Vault Items</p>
+                  <p>Items</p>
                   <h2>{vaultItems.length}</h2>
                 </div>
                 <div className="card">
-                  <p>Vault Value</p>
+                  <p>Value</p>
                   <h2>{money(vaultValue)}</h2>
                 </div>
                 <div className="card">
@@ -3302,48 +3721,133 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               </div>
             </section>
+            </CollapsibleFeatureSection>
 
-            <section className="panel">
-              <h2>Add Vault Item</h2>
-              <form onSubmit={addVaultItem} className="form">
-                <Field label="Item Name">
-                  <input value={vaultForm.name} onChange={(e) => updateVaultForm("name", e.target.value)} />
-                </Field>
-                <Field label="Vault Category">
-                  <select value={vaultForm.vaultCategory} onChange={(e) => updateVaultForm("vaultCategory", e.target.value)}>
-                    {VAULT_CATEGORIES.map((category) => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Quantity / Item Count">
-                  <input type="number" min="1" value={vaultForm.quantity} onChange={(e) => updateVaultForm("quantity", e.target.value)} />
-                </Field>
-                <Field label="Pack Count">
-                  <input type="number" min="0" value={vaultForm.packCount} onChange={(e) => updateVaultForm("packCount", e.target.value)} />
-                </Field>
-                <Field label="Cost Paid">
-                  <input type="number" step="0.01" value={vaultForm.unitCost} onChange={(e) => updateVaultForm("unitCost", e.target.value)} />
-                </Field>
-                <Field label="MSRP">
-                  <input type="number" step="0.01" value={vaultForm.msrpPrice} onChange={(e) => updateVaultForm("msrpPrice", e.target.value)} />
-                </Field>
-                <Field label="Market Value">
-                  <input type="number" step="0.01" value={vaultForm.marketPrice} onChange={(e) => updateVaultForm("marketPrice", e.target.value)} />
-                </Field>
-                <Field label="Set / Collection">
-                  <input value={vaultForm.setName} onChange={(e) => updateVaultForm("setName", e.target.value)} />
-                </Field>
-                <Field label="Product Type">
-                  <input value={vaultForm.productType} onChange={(e) => updateVaultForm("productType", e.target.value)} />
-                </Field>
-                <Field label="Personal Notes">
-                  <input value={vaultForm.notes} onChange={(e) => updateVaultForm("notes", e.target.value)} />
-                </Field>
-                <button type="submit">Add to Vault</button>
-              </form>
+            <CollapsibleFeatureSection title="Add Item to Vault" summary="Open the compact add form" open={isFeatureSectionOpen("vault_add")} onToggle={() => toggleFeatureSection("vault_add")}>
+            <section className="panel vault-add-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h2>Add Vault Item</h2>
+                  <p>Start with the basics, then open extra details only when you need them.</p>
+                </div>
+                <button type="button" onClick={() => setShowVaultAddForm((current) => !current)}>
+                  {showVaultAddForm ? "Close Form" : "Add Item to Vault"}
+                </button>
+              </div>
+
+              {showVaultAddForm ? (
+                <form onSubmit={addVaultItem} className="vault-collapsible-form">
+                  <div className="vault-form-section">
+                    <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("basic")}>
+                      <span>Basic Info</span>
+                      <b>{vaultFormSections.basic ? "Hide" : "Show"}</b>
+                    </button>
+                    {vaultFormSections.basic ? (
+                      <div className="form vault-form-grid">
+                        <Field label="Item Name">
+                          <input value={vaultForm.name} onChange={(e) => updateVaultForm("name", e.target.value)} />
+                        </Field>
+                        <Field label="Category / Product Type">
+                          <input value={vaultForm.productType} onChange={(e) => updateVaultForm("productType", e.target.value)} placeholder="Elite Trainer Box, Binder, Tin..." />
+                        </Field>
+                        <Field label="Set / Collection">
+                          <input value={vaultForm.setName} onChange={(e) => updateVaultForm("setName", e.target.value)} />
+                        </Field>
+                        <Field label="Quantity">
+                          <input type="number" min="1" value={vaultForm.quantity} onChange={(e) => updateVaultForm("quantity", e.target.value)} />
+                        </Field>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="vault-form-section">
+                    <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("pricing")}>
+                      <span>Pricing</span>
+                      <b>{vaultFormSections.pricing ? "Hide" : "Show"}</b>
+                    </button>
+                    {vaultFormSections.pricing ? (
+                      <div className="form vault-form-grid">
+                        <Field label="Cost Paid">
+                          <input type="number" step="0.01" value={vaultForm.unitCost} onChange={(e) => updateVaultForm("unitCost", e.target.value)} />
+                        </Field>
+                        <Field label="MSRP">
+                          <input type="number" step="0.01" value={vaultForm.msrpPrice} onChange={(e) => updateVaultForm("msrpPrice", e.target.value)} />
+                        </Field>
+                        <Field label="Market Value">
+                          <input type="number" step="0.01" value={vaultForm.marketPrice} onChange={(e) => updateVaultForm("marketPrice", e.target.value)} />
+                        </Field>
+                        <Field label="Planned Selling Price">
+                          <input type="number" step="0.01" value={vaultForm.salePrice} onChange={(e) => updateVaultForm("salePrice", e.target.value)} />
+                        </Field>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="vault-form-section">
+                    <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("status")}>
+                      <span>Status</span>
+                      <b>{vaultFormSections.status ? "Hide" : "Show"}</b>
+                    </button>
+                    {vaultFormSections.status ? (
+                      <div className="form vault-form-grid">
+                        <Field label="Vault Category">
+                          <select value={vaultForm.vaultCategory} onChange={(e) => updateVaultForm("vaultCategory", e.target.value)}>
+                            {VAULT_CATEGORIES.map((category) => (
+                              <option key={category} value={category}>{category}</option>
+                            ))}
+                          </select>
+                        </Field>
+                        <Field label="Status">
+                          <select value={vaultForm.status} onChange={(e) => updateVaultForm("status", e.target.value)}>
+                            <option value="Personal Collection">Personal Collection</option>
+                            <option value="Held">Held</option>
+                            <option value="Ready to List">For Sale</option>
+                            <option value="Sold">Sold</option>
+                          </select>
+                        </Field>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="vault-form-section">
+                    <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("extra")}>
+                      <span>Extra Details</span>
+                      <b>{vaultFormSections.extra ? "Hide" : "Show"}</b>
+                    </button>
+                    {vaultFormSections.extra ? (
+                      <div className="form vault-form-grid">
+                        <Field label="Store Purchased">
+                          <input value={vaultForm.store} onChange={(e) => updateVaultForm("store", e.target.value)} />
+                        </Field>
+                        <Field label="Purchase Date">
+                          <input type="date" value={vaultForm.purchaseDate} onChange={(e) => updateVaultForm("purchaseDate", e.target.value)} />
+                        </Field>
+                        <Field label="Pack Count">
+                          <input type="number" min="0" value={vaultForm.packCount} onChange={(e) => updateVaultForm("packCount", e.target.value)} />
+                        </Field>
+                        <Field label="Item Photo">
+                          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateVaultForm("itemImage", url), "vault-items")} />
+                        </Field>
+                        <Field label="Receipt Upload">
+                          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateVaultForm("receiptImage", url), "vault-receipts")} />
+                        </Field>
+                        <Field label="Notes">
+                          <input value={vaultForm.notes} onChange={(e) => updateVaultForm("notes", e.target.value)} />
+                        </Field>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="vault-form-actions">
+                    <button type="submit">Add to Vault</button>
+                    <button type="button" className="secondary-button" onClick={() => setShowVaultAddForm(false)}>Cancel</button>
+                  </div>
+                </form>
+              ) : null}
             </section>
+            </CollapsibleFeatureSection>
 
+            <CollapsibleFeatureSection title="Collection Items" summary="All Vault items with edit/delete actions" open={isFeatureSectionOpen("vault_collection_items")} onToggle={() => toggleFeatureSection("vault_collection_items")}>
             <section className="panel">
               <h2>Vault Items</h2>
               <p>Vault items can be edited or deleted here. Quantity is product count; pack count is packs inside each product.</p>
@@ -3383,105 +3887,325 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 )}
               </div>
             </section>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Held Items" summary="Items marked held or rip later" open={isFeatureSectionOpen("vault_held_items")} onToggle={() => toggleFeatureSection("vault_held_items")}>
+              <div className="inventory-list compact-inventory-list">
+                {vaultItems.filter((item) => item.status === "Held").length === 0 ? <p>No held items yet.</p> : vaultItems.filter((item) => item.status === "Held").map((item) => (
+                  <CompactInventoryCard key={item.id} item={item} onRestock={prepareRestock} onEdit={startEditingVaultItem} onDelete={deleteItem} onStatusChange={updateItemStatus} />
+                ))}
+              </div>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Personal Collection" summary="Items marked personal collection" open={isFeatureSectionOpen("vault_personal_collection")} onToggle={() => toggleFeatureSection("vault_personal_collection")}>
+              <div className="inventory-list compact-inventory-list">
+                {vaultItems.filter((item) => item.status === "Personal Collection").length === 0 ? <p>No personal collection items yet.</p> : vaultItems.filter((item) => item.status === "Personal Collection").map((item) => (
+                  <CompactInventoryCard key={item.id} item={item} onRestock={prepareRestock} onEdit={startEditingVaultItem} onDelete={deleteItem} onStatusChange={updateItemStatus} />
+                ))}
+              </div>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Vault Settings" summary="Vault display and collection preferences" open={isFeatureSectionOpen("vault_settings")} onToggle={() => toggleFeatureSection("vault_settings")}>
+              <div className="quick-actions">
+                <button type="button" onClick={() => setActiveTab("catalog")}>Catalog Search</button>
+                <button type="button" onClick={() => setActiveTab("dashboard")}>Display Settings</button>
+              </div>
+            </CollapsibleFeatureSection>
+            </section>
           </>
         )}
 
         {activeTab === "scout" && (
-          <section className="embedded-page">
-            <Scout />
-          </section>
+          <>
+            <section className="tab-summary panel">
+              <div>
+                <h2>Scout</h2>
+                <p>Store tracker, restock reports, predictions, drops, alerts, and community tips.</p>
+              </div>
+              <div className="summary-pill-row">
+                <span>{scoutSnapshot.stores.length} stores</span>
+                <span>{scoutSnapshot.reports.length} reports</span>
+              </div>
+            </section>
+            <section className="feature-dropdown-stack">
+              <CollapsibleFeatureSection title="Stores" summary="Shared store directory, favorites, reports, and restock history" open={isFeatureSectionOpen("scout_stores")} onToggle={() => toggleFeatureSection("scout_stores")}>
+                <div className="quick-actions">
+                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>View Stores</button>
+                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Submit Restock Report</button>
+                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_recommendations: true }))}>Favorite Stores</button>
+                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_predictions: true }))}>Restock History</button>
+                </div>
+                <div className="cards recommendation-grid">
+                  <div className="card">
+                    <p>Shared Stores</p>
+                    <h2>{scoutSnapshot.stores.length}</h2>
+                    <small>Store name, type, address, city/state/ZIP, nickname, phone, website, notes, limits, and last verified data live in Scout.</small>
+                  </div>
+                  <div className="card">
+                    <p>Recent Tips</p>
+                    <h2>{scoutSnapshot.reports.length}</h2>
+                    <small>User reports connect to a shared store and can include product, quantity, status, limits, and notes.</small>
+                  </div>
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Location Options" summary="ZIP/city, saved locations, or opt-in app location" open={isFeatureSectionOpen("scout_location_options")} onToggle={() => toggleFeatureSection("scout_location_options")}>
+                <div className="form location-options-grid">
+                  <Field label="Manual ZIP or City">
+                    <input value={locationSettings.manualLocation} onChange={(event) => updateLocationSettings({ manualLocation: event.target.value, mode: "manual" })} placeholder="Example: Suffolk, VA or 23434" />
+                  </Field>
+                  <Field label="Saved Location">
+                    <select value={locationSettings.selectedSavedLocation} onChange={(event) => updateLocationSettings({ selectedSavedLocation: event.target.value, mode: "saved" })}>
+                      <option value="">Choose saved location</option>
+                      {locationSettings.savedLocations.map((location) => <option key={location} value={location}>{location}</option>)}
+                    </select>
+                  </Field>
+                  <button type="button" onClick={saveManualLocation}>Save Location</button>
+                  <button type="button" className="secondary-button" onClick={locationSettings.trackingEnabled ? disableLocationTracking : enableLocationTracking}>
+                    {locationSettings.trackingEnabled ? "Turn Location Off" : "Allow Location While Using App"}
+                  </button>
+                </div>
+                <p className="compact-subtitle">Location tracking is opt-in only. Last Updated: {locationSettings.lastUpdated || "Not set"}</p>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Recommendations" summary="Nearby stores, deals, tips, drops, and routes" open={isFeatureSectionOpen("scout_recommendations")} onToggle={() => toggleFeatureSection("scout_recommendations")}>
+                <div className="cards recommendation-grid">
+                  {scoutRecommendationCards.map((card) => (
+                    <div className="card" key={card.title}>
+                      <p>{card.title}</p>
+                      <h2>{card.value}</h2>
+                      <small>{card.note}</small>
+                    </div>
+                  ))}
+                </div>
+                <p className="compact-subtitle">Last Updated: {scoutLastUpdated}</p>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Live Updates" summary="Local beta structure for reports, tips, drops, prices, and limits" open={isFeatureSectionOpen("scout_live_updates")} onToggle={() => toggleFeatureSection("scout_live_updates")}>
+                <div className="cards recommendation-grid">
+                  {scoutLiveUpdates.map((update) => (
+                    <div className="card" key={update.label}>
+                      <p>{update.label}</p>
+                      <h2>{update.value}</h2>
+                      <small>Last Updated: {update.updatedAt}</small>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Catalog" summary="Use shared products in Scout reports and Deal Finder" open={isFeatureSectionOpen("scout_catalog")} onToggle={() => toggleFeatureSection("scout_catalog")}>
+                <div className="quick-actions">
+                  <button type="button" onClick={() => setActiveTab("catalog")}>Search Product Catalog</button>
+                  <button type="button" onClick={() => setActiveTab("market")}>Use in Deal Finder</button>
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="TideTradr" summary="Product lookup, market info, and local deal opportunities" open={isFeatureSectionOpen("scout_tidetradr")} onToggle={() => toggleFeatureSection("scout_tidetradr")}>
+                <div className="quick-actions">
+                  <button type="button" onClick={() => setActiveTab("market")}>Open TideTradr</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Match Product Sighting</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Best Local Deal</button>
+                </div>
+                <p className="compact-subtitle">Scout can use TideTradr products with store reports so sightings connect to market value and deal checks.</p>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Store Tracker" summary="View stores, nicknames, and restock history" open={isFeatureSectionOpen("scout_store_tracker")} onToggle={() => toggleFeatureSection("scout_store_tracker")}>
+                <section className="embedded-page">
+                  <Scout />
+                </section>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Restock Predictions" summary="Paid Scout Score and prediction tools" open={isFeatureSectionOpen("scout_predictions")} onToggle={() => toggleFeatureSection("scout_predictions")}>
+                {featureAllowed("restock_predictions") ? <p>Prediction tools use report history, verified tips, and usual stock days.</p> : <LockedFeatureCard featureKey="restock_predictions" />}
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Online Drops" summary="Drop Assistant placeholder" open={isFeatureSectionOpen("scout_online_drops")} onToggle={() => toggleFeatureSection("scout_online_drops")}>
+                <p>Online drop watchlists stay local and alert-only. No checkout automation.</p>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Deal Finder" summary="Open TideTradr deal checks" open={isFeatureSectionOpen("scout_deal_finder")} onToggle={() => toggleFeatureSection("scout_deal_finder")}>
+                <div className="quick-actions"><button type="button" onClick={() => setActiveTab("market")}>Check Deal</button><button type="button" onClick={() => setActiveTab("catalog")}>Search Catalog</button></div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Alerts" summary="Wishlist, local, price, and drop alerts" open={isFeatureSectionOpen("scout_alerts")} onToggle={() => toggleFeatureSection("scout_alerts")}>
+                {featureAllowed("alerts_advanced") ? <p>Alert preferences will live here as notification channels are added.</p> : <LockedFeatureCard featureKey="alerts_advanced" />}
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Community Tips" summary="Scout Tips and Screenshot Tip Import" open={isFeatureSectionOpen("scout_community_tips")} onToggle={() => toggleFeatureSection("scout_community_tips")}>
+                <p>Submit basic reports in Store Tracker. Screenshot Tip Import stays manual-review only for beta.</p>
+              </CollapsibleFeatureSection>
+            </section>
+          </>
+        )}
+
+        {activeTab === "menu" && (
+          <>
+            <section className="tab-summary panel">
+              <div>
+                <h2>Menu</h2>
+                <p>Profile, app settings, dashboard display, plan access, exports, help, and logout.</p>
+              </div>
+              <div className="summary-pill-row">
+                <span>{TIER_LABELS[currentTier] || currentPlan}</span>
+                <span>{user.email}</span>
+              </div>
+            </section>
+            <section className="feature-dropdown-stack">
+              <CollapsibleFeatureSection title="Profile" summary="User type and local beta profile" open={isFeatureSectionOpen("menu_profile")} onToggle={() => toggleFeatureSection("menu_profile")}>
+                <div className="cards mini-cards">
+                  <div className="card"><p>User Type</p><h2>{userType}</h2></div>
+                  <div className="card"><p>Tier</p><h2>{TIER_LABELS[currentTier] || currentPlan}</h2></div>
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="App Settings" summary="Beta storage and app preferences" open={isFeatureSectionOpen("menu_app_settings")} onToggle={() => toggleFeatureSection("menu_app_settings")}>
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={resetBetaLocalData}>Reset Local Beta Data</button>
+                  <button type="button" onClick={() => setActiveTab("dashboard")}>Open Settings</button>
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Dashboard Display Settings" summary="Stats, layout, and card style" open={isFeatureSectionOpen("menu_dashboard_display")} onToggle={() => toggleFeatureSection("menu_dashboard_display")}>
+                <div className="quick-actions"><button type="button" onClick={() => setActiveTab("dashboard")}>Edit Dashboard Display</button></div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Paid Plan / Upgrade" summary="Free, Plus, Pro, Founder access" open={isFeatureSectionOpen("menu_paid_plan")} onToggle={() => toggleFeatureSection("menu_paid_plan")}>
+                <div className="cards mini-cards">
+                  <div className="card"><p>Current Tier</p><h2>{TIER_LABELS[currentTier] || currentPlan}</h2></div>
+                  <LockedFeatureCard featureKey="seller_tools" />
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Data Export" summary="CSV exports and backup" open={isFeatureSectionOpen("menu_data_export")} onToggle={() => toggleFeatureSection("menu_data_export")}>
+                <div className="export-grid">
+                  <button onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Forge</button>
+                  <button onClick={() => downloadCSV("ember-tide-catalog.csv", catalogProducts)}>Export Catalog</button>
+                  <button onClick={downloadBackup}>Full Backup</button>
+                </div>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Help / Feedback" summary="Beta support placeholders" open={isFeatureSectionOpen("menu_help")} onToggle={() => toggleFeatureSection("menu_help")}>
+                <p>Feedback and support links can go here when you are ready.</p>
+              </CollapsibleFeatureSection>
+              <CollapsibleFeatureSection title="Log Out" summary="End this app session" open={isFeatureSectionOpen("menu_logout")} onToggle={() => toggleFeatureSection("menu_logout")}>
+                <button type="button" className="secondary-button" onClick={signOut}>Log Out</button>
+              </CollapsibleFeatureSection>
+            </section>
+          </>
         )}
 
         {activeTab === "market" && (
           <>
-            <section className="panel">
-              <h2>Check Deal</h2>
-              <form className="form">
-                <Field label="Deal Title">
-                  <input value={dealForm.title} onChange={(e) => updateDealForm("title", e.target.value)} placeholder="Example: 2 ETBs and 1 booster bundle" />
-                </Field>
-                <Field label="Asking Price">
-                  <input type="number" step="0.01" value={dealForm.askingPrice} onChange={(e) => updateDealForm("askingPrice", e.target.value)} />
-                </Field>
-                <Field label="Market Total">
-                  <input type="number" step="0.01" value={dealForm.marketTotal} onChange={(e) => updateDealForm("marketTotal", e.target.value)} />
-                </Field>
-                <Field label="Retail / MSRP Total">
-                  <input type="number" step="0.01" value={dealForm.retailTotal} onChange={(e) => updateDealForm("retailTotal", e.target.value)} />
-                </Field>
-                <Field label="Notes">
-                  <input value={dealForm.notes} onChange={(e) => updateDealForm("notes", e.target.value)} placeholder="Condition, store, seller, trade notes..." />
-                </Field>
-              </form>
-              <div className="cards mini-cards">
-                <div className="card">
-                  <p>Deal Rating</p>
-                  <h2>{dealRating}</h2>
-                </div>
-                <div className="card">
-                  <p>Percent of Market</p>
-                  <h2>{dealPercentOfMarket.toFixed(1)}%</h2>
-                </div>
-                <div className="card">
-                  <p>Percent of Retail</p>
-                  <h2>{dealPercentOfRetail.toFixed(1)}%</h2>
-                </div>
+            <section className="tab-summary panel">
+              <div>
+                <h2>TideTradr</h2>
+                <p>Shared product catalog, market lookup, deal checks, watchlist, and app-wide product actions.</p>
+              </div>
+              <div className="summary-pill-row">
+                <span>{catalogProducts.length} products</span>
+                <span>{tideTradrWatchlist.length} watched</span>
               </div>
             </section>
 
-            <section className="panel">
-              <h2>TideTradr Market</h2>
-              <p>
-                Build your own market database using MSRP, recent sold prices, low/mid/high estimates,
-                source links, and manual checks. This replaces outside API dependence.
-              </p>
-
-              <div className="cards">
-                <div className="card">
-                  <p>Catalog Products</p>
-                  <h2>{catalogProducts.length}</h2>
+            <section className="feature-dropdown-stack">
+              <CollapsibleFeatureSection title="TideTradr Summary" summary="Product and market system status" open={isFeatureSectionOpen("market_summary")} onToggle={() => toggleFeatureSection("market_summary")}>
+                <div className="cards">
+                  <div className="card"><p>Catalog Products</p><h2>{catalogProducts.length}</h2></div>
+                  <div className="card"><p>Forge Market Value</p><h2>{money(totalMarketValue)}</h2></div>
+                  <div className="card"><p>Missing Market Prices</p><h2>{missingMarketPriceItems.length}</h2></div>
+                  <div className="card"><p>Needs Market Check</p><h2>{needsMarketCheckItems.length}</h2></div>
                 </div>
-
-                <div className="card">
-                  <p>Forge Market Value</p>
-                  <h2>{money(totalMarketValue)}</h2>
+                <div className="quick-actions">
+                  <button type="button" onClick={() => setActiveTab("catalog")}>Open Product Catalog</button>
+                  <button type="button" onClick={() => setActiveTab("addInventory")}>Add to Forge</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("vault")}>Add to Vault</button>
                 </div>
+              </CollapsibleFeatureSection>
 
-                <div className="card">
-                  <p>Missing Market Prices</p>
-                  <h2>{missingMarketPriceItems.length}</h2>
+              <CollapsibleFeatureSection title="Product Lookup" summary="Search catalog market info with manual/mock fallback" open={isFeatureSectionOpen("market_lookup")} onToggle={() => toggleFeatureSection("market_lookup")}>
+                <div className="form">
+                  <Field label="TideTradr Product">
+                    <select value={tideTradrLookupId} onChange={(event) => selectTideTradrProduct(event.target.value)}>
+                      <option value="">Choose a product</option>
+                      {catalogProducts.map((product) => (
+                        <option key={product.id} value={product.id}>{product.name} - {money(getTideTradrMarketInfo(product).currentMarketValue)}</option>
+                      ))}
+                    </select>
+                  </Field>
                 </div>
-
-                <div className="card">
-                  <p>Needs Market Check</p>
-                  <h2>{needsMarketCheckItems.length}</h2>
+                <div className="cards mini-cards">
+                  <div className="card"><p>Current Market</p><h2>{money(tideTradrMarketInfo.currentMarketValue)}</h2></div>
+                  <div className="card"><p>MSRP</p><h2>{money(tideTradrMarketInfo.msrp)}</h2></div>
+                  <div className="card"><p>Market vs MSRP</p><h2>{tideTradrMarketInfo.marketVsMsrpPercent.toFixed(1)}%</h2></div>
+                  <div className="card"><p>Over MSRP</p><h2>{money(tideTradrMarketInfo.marketOverMsrp)}</h2></div>
                 </div>
-              </div>
-            </section>
+                <p className="compact-subtitle">Source: {tideTradrMarketInfo.sourceName} | Confidence: {tideTradrMarketInfo.confidenceLevel} | Last Updated: {tideTradrMarketInfo.lastUpdated}</p>
+                <div className="quick-actions">
+                  {tideTradrLookupProduct ? <button type="button" onClick={() => { applyCatalogProduct(tideTradrLookupProduct.id); setActiveTab("addInventory"); }}>Add to Forge</button> : null}
+                  {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(tideTradrLookupProduct.id)}>Add to Vault</button> : null}
+                  {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(tideTradrLookupProduct.id)}>Add to Watchlist</button> : null}
+                </div>
+              </CollapsibleFeatureSection>
 
-            <section className="panel">
-              <h2>Market To-Do List</h2>
+              <CollapsibleFeatureSection title="Deal Finder" summary="Calculate market %, MSRP %, profit, ROI, and recommendation" open={isFeatureSectionOpen("market_deal_finder")} onToggle={() => toggleFeatureSection("market_deal_finder")}>
+                <form className="form">
+                  <Field label="Product">
+                    <select value={dealForm.productId} onChange={(event) => selectTideTradrProduct(event.target.value)}>
+                      <option value="">Manual deal / lot</option>
+                      {catalogProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Deal Title">
+                    <input value={dealForm.title} onChange={(e) => updateDealForm("title", e.target.value)} placeholder="Example: 2 ETBs and 1 booster bundle" />
+                  </Field>
+                  <Field label="Quantity">
+                    <input type="number" min="1" value={dealForm.quantity} onChange={(e) => {
+                      const quantity = Math.max(1, Number(e.target.value || 1));
+                      updateDealForm("quantity", quantity);
+                      if (selectedDealProduct) {
+                        const info = getTideTradrMarketInfo(selectedDealProduct);
+                        setDealForm((old) => ({ ...old, quantity, marketTotal: info.currentMarketValue * quantity, retailTotal: info.msrp * quantity }));
+                      }
+                    }} />
+                  </Field>
+                  <Field label="Condition / Status">
+                    <select value={dealForm.condition} onChange={(e) => updateDealForm("condition", e.target.value)}>
+                      <option>Sealed</option>
+                      <option>Damaged box</option>
+                      <option>Opened</option>
+                      <option>Mixed lot</option>
+                      <option>Unknown</option>
+                    </select>
+                  </Field>
+                  <Field label="Asking Price">
+                    <input type="number" step="0.01" value={dealForm.askingPrice} onChange={(e) => updateDealForm("askingPrice", e.target.value)} placeholder="Total lot price if buying multiple items" />
+                  </Field>
+                  <Field label="Market Total">
+                    <input type="number" step="0.01" value={dealForm.marketTotal} onChange={(e) => updateDealForm("marketTotal", e.target.value)} />
+                  </Field>
+                  <Field label="Retail / MSRP Total">
+                    <input type="number" step="0.01" value={dealForm.retailTotal} onChange={(e) => updateDealForm("retailTotal", e.target.value)} />
+                  </Field>
+                  <Field label="Notes">
+                    <input value={dealForm.notes} onChange={(e) => updateDealForm("notes", e.target.value)} placeholder="Condition, store, seller, trade notes..." />
+                  </Field>
+                </form>
+                <div className="cards mini-cards">
+                  <div className="card"><p>Recommendation</p><h2>{dealRecommendation}</h2></div>
+                  <div className="card"><p>Deal Rating</p><h2>{dealRating}</h2></div>
+                  <div className="card"><p>Percent of Market</p><h2>{dealPercentOfMarket.toFixed(1)}%</h2></div>
+                  <div className="card"><p>Percent of MSRP</p><h2>{dealPercentOfRetail.toFixed(1)}%</h2></div>
+                  <div className="card"><p>Potential Profit</p><h2>{money(dealPotentialProfit)}</h2></div>
+                  <div className="card"><p>ROI</p><h2>{dealRoi.toFixed(1)}%</h2></div>
+                </div>
+                <p className="compact-subtitle">{dealRecommendationReason}</p>
+              </CollapsibleFeatureSection>
 
-              <ActionReport
-                title="Needs Market Check"
-                items={needsMarketCheckItems}
-                button="Update Market"
-                action={startEditingItem}
-              />
+              <CollapsibleFeatureSection title="Watchlist" summary="Products to watch for market changes" open={isFeatureSectionOpen("market_watchlist")} onToggle={() => toggleFeatureSection("market_watchlist")}>
+                {tideTradrWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
+                <div className="inventory-list">
+                  {tideTradrWatchlist.map((item) => (
+                    <div className="inventory-card compact-card" key={item.id}>
+                      <h3>{item.name}</h3>
+                      <p>{item.setName || "No set"} | {item.productType || "No type"}</p>
+                      <p>Market: {money(item.marketValue)} | MSRP: {money(item.msrp)}</p>
+                      <p>Source: {item.sourceName}</p>
+                      <p>Last Updated: {item.lastUpdated}</p>
+                      <div className="quick-actions">
+                        <button type="button" onClick={() => useCatalogProductInDeal(item.productId)}>Check Deal</button>
+                        <button type="button" className="secondary-button" onClick={() => removeTideTradrWatchlistItem(item.id)}>Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleFeatureSection>
 
-              <ActionReport
-                title="Missing Market Price"
-                items={missingMarketPriceItems}
-                button="Add Market Price"
-                action={startEditingItem}
-              />
-
-              <ActionReport
-                title="Missing MSRP"
-                items={missingMsrpItems}
-                button="Add MSRP"
-                action={startEditingItem}
-              />
+              <CollapsibleFeatureSection title="Market To-Do List" summary="Items missing market values, MSRP, or checks" open={isFeatureSectionOpen("market_todo")} onToggle={() => toggleFeatureSection("market_todo")}>
+                <ActionReport title="Needs Market Check" items={needsMarketCheckItems} button="Update Market" action={startEditingItem} />
+                <ActionReport title="Missing Market Price" items={missingMarketPriceItems} button="Add Market Price" action={startEditingItem} />
+                <ActionReport title="Missing MSRP" items={missingMsrpItems} button="Add MSRP" action={startEditingItem} />
+              </CollapsibleFeatureSection>
             </section>
           </>
         )}
@@ -3666,6 +4390,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     <p>Set: {p.setName || "Not listed"}</p>
                     <p>Type: {p.productType || "Not listed"}</p>
                     <p>Barcode: {p.barcode || "Not listed"}</p>
+                    <p>SKU: {p.sku || p.externalProductId || "Not listed"}</p>
                    <p>MSRP: {money(p.msrpPrice)}</p>
 <p>Set Code: {p.setCode || "Not listed"}</p>
                     <p>Expansion: {p.expansion || p.setName || "Not listed"}</p>
@@ -3674,9 +4399,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     <p>Pack Count: {p.packCount || "Not listed"}</p>
                     <p>TideTradr Market Price: {money(p.marketPrice)}</p>
                     <p>Low / Mid / High: {money(p.lowPrice)} / {money(p.midPrice)} / {money(p.highPrice)}</p>
+                    <p>Market Source: {p.marketSource || "TideTradr manual/mock"}</p>
+                    <p>Last Updated: {p.lastUpdated || p.updatedAt || p.createdAt || "Local mock data"}</p>
                     {p.marketUrl && <p><a href={p.marketUrl} target="_blank" rel="noreferrer">Open Market Source</a></p>}
                     {p.notes && <p>Notes: {p.notes}</p>}
-                    <button className="edit-button" onClick={() => { applyCatalogProduct(p.id); setActiveTab("addInventory"); }}>Use for Forge</button>
+                    <div className="quick-actions">
+                      <button className="edit-button" onClick={() => { applyCatalogProduct(p.id); setActiveTab("addInventory"); }}>Add to Forge</button>
+                      <button className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
+                      <button className="secondary-button" onClick={() => useCatalogProductInDeal(p.id)}>Use in Deal Finder</button>
+                      <button className="secondary-button" onClick={() => { setTideTradrLookupId(p.id); setActiveTab("market"); }}>View Market Info</button>
+                      <button className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Add to Watchlist</button>
+                    </div>
                     <p className="compact-subtitle">Shared master product</p>
                   </div>
                 ))}
@@ -3755,6 +4488,40 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 )}
 
         {activeTab === "inventory" && (
+          <>
+          <section className="tab-summary panel">
+            <div>
+              <h2>Forge</h2>
+              <p>Inventory, sales, expenses, mileage, receipts, and reports.</p>
+            </div>
+            <div className="summary-pill-row">
+              <span>{items.length} items</span>
+              <span>{money(totalMarketValue)} market</span>
+            </div>
+          </section>
+          <section className="feature-dropdown-stack">
+            <CollapsibleFeatureSection title="Catalog" summary="Search shared Pokemon products and add them to Forge" open={isFeatureSectionOpen("ledger_catalog")} onToggle={() => toggleFeatureSection("ledger_catalog")}>
+              <div className="quick-actions">
+                <button type="button" onClick={() => setActiveTab("catalog")}>Open Master Catalog</button>
+                <button type="button" onClick={() => setActiveTab("addInventory")}>Add Inventory Manually</button>
+                <button type="button" className="secondary-button" onClick={beginScanProduct}>Scan to Add</button>
+              </div>
+              <p className="compact-subtitle">Use the shared product catalog so Forge inventory can link to known products instead of retyping common Pokemon items.</p>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="TideTradr" summary="Use market values for planned price, profit, and deal checks" open={isFeatureSectionOpen("ledger_tidetradr")} onToggle={() => toggleFeatureSection("ledger_tidetradr")}>
+              <div className="quick-actions">
+                <button type="button" onClick={() => setActiveTab("market")}>Open TideTradr</button>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Product Lookup</button>
+                <button type="button" className="secondary-button" onClick={() => goToReport("needsMarket")}>Market To-Do</button>
+              </div>
+              <p className="compact-subtitle">TideTradr market values flow into Forge inventory value, planned selling price, profit, and Home totals.</p>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection
+              title="Inventory"
+              summary="Add, search, filter, and update inventory"
+              open={isFeatureSectionOpen("ledger_inventory")}
+              onToggle={() => toggleFeatureSection("ledger_inventory")}
+            >
           <section className="panel">
             <div className="forge-toolbar">
               <div>
@@ -3862,6 +4629,27 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               ))}
             </div>
           </section>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Sales" summary="Log sales and view sales history" open={isFeatureSectionOpen("ledger_sales")} onToggle={() => toggleFeatureSection("ledger_sales")}>
+              <div className="quick-actions">
+                <button type="button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
+                <button type="button" onClick={() => setActiveTab("sales")}>View Sales</button>
+              </div>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Expenses" summary="Track supplies, fees, and business costs" open={isFeatureSectionOpen("ledger_expenses")} onToggle={() => toggleFeatureSection("ledger_expenses")}>
+              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("expenses")}>Open Expenses</button></div>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Mileage" summary="Trips, vehicles, and total vehicle cost" open={isFeatureSectionOpen("ledger_mileage")} onToggle={() => toggleFeatureSection("ledger_mileage")}>
+              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("mileage")}>Open Mileage</button><button type="button" onClick={() => setActiveTab("vehicles")}>Vehicles</button></div>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Receipts" summary="Receipt and item photo tools" open={isFeatureSectionOpen("ledger_receipts")} onToggle={() => toggleFeatureSection("ledger_receipts")}>
+              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("addInventory")}>Import Receipt</button><button type="button" onClick={beginScanProduct}>Scan Product</button></div>
+            </CollapsibleFeatureSection>
+            <CollapsibleFeatureSection title="Reports/Exports" summary="Action reports, CSV exports, and backup" open={isFeatureSectionOpen("ledger_reports")} onToggle={() => toggleFeatureSection("ledger_reports")}>
+              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("reports")}>View Reports</button><button type="button" onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Inventory</button></div>
+            </CollapsibleFeatureSection>
+          </section>
+          </>
         )}
 
         {activeTab === "addSale" && (
