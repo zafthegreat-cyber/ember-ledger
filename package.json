@@ -5,6 +5,7 @@
     "start": "vite preview",
     "preview": "vite preview",
     "smoke:beta": "node scripts/beta-smoke.cjs",
+    "catalog:import": "node scripts/import-pokemon-catalog.cjs",
     "seed:stores:virginia": "node scripts/import-virginia-stores.cjs",
     "seed:stores:virginia:dry": "node scripts/import-virginia-stores.cjs --dry-run",
     "backend:dev": "npm --prefix backend run dev",

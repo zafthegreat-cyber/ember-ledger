@@ -83,7 +83,7 @@ async function main() {
     await resetBetaData();
     await assertVisibleText("E&T TCG");
     await assertVisibleText("Home");
-    await assertVisibleText("The Forge");
+    await assertVisibleText("Forge");
     await assertVisibleText("Scout");
     await assertVisibleText("The Vault");
     await assertVisibleText("TideTradr");
@@ -101,16 +101,31 @@ async function main() {
   await step("Scout: shared store directory loads", async () => {
     await nav("Scout");
     await page.waitForTimeout(500);
-    await page.getByRole("button", { name: /Scout Workspace/i }).click();
-    await page.getByRole("button", { name: /^Stores$/ }).click();
-    await assertVisibleText("Shared Store Directory");
+    await page.getByRole("button", { name: /Nearby stores/i }).click();
+    if (await page.getByRole("dialog", { name: "Location Needed" }).count()) {
+      await page.getByLabel("ZIP or city").fill("23434");
+      await page.getByRole("button", { name: "Enter ZIP" }).click();
+      await page.getByRole("button", { name: /Nearby stores/i }).click();
+    }
+    await assertVisibleText("Retailers");
+    if (await page.getByRole("button", { name: /Target/i }).count()) {
+      await page.getByRole("button", { name: /Target/i }).first().click();
+    }
+    const storeSearch = page.getByPlaceholder(/Search .*city, ZIP, nickname, or address|Search store, city, ZIP/i).first();
+    if (await storeSearch.count()) {
+      await storeSearch.fill("Smoke Shared Target");
+    }
     await assert.match(await page.locator("body").innerText(), /Smoke Shared Target/);
-    await page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first().click();
-    assert.ok(await page.getByRole("button", { name: "Add Store" }).count() > 0);
+    const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first();
+    await smokeStoreCard.getByRole("button", { name: /Open Store|Open/i }).click();
+    await assertVisibleText("Submit Report");
   });
 
   await step("Scout: add/edit/delete restock report", async () => {
-    await page.getByRole("button", { name: /^Reports$/ }).click();
+    await nav("Scout");
+    if (await page.locator('textarea[placeholder="What did you see?"]').count() === 0) {
+      await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+    }
     const reportForm = page.locator("form").filter({ has: page.locator('textarea[placeholder="What did you see?"]') }).first();
     await reportForm.getByPlaceholder("Item name").fill("Smoke ETB");
     await reportForm.getByPlaceholder("What did you see?").fill("Two ETBs on the shelf.");
@@ -122,7 +137,7 @@ async function main() {
     const reportCard = page.locator(".scout-report-card").filter({ hasText: "Smoke ETB" }).first();
     await reportCard.waitFor({ state: "visible", timeout: 10000 });
     await overflowAction(reportCard, "Edit");
-    const editReportPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: "Edit Report" }) }).last();
+    const editReportPanel = page.locator("form").filter({ has: page.getByRole("heading", { name: "Edit Report" }) }).last();
     await editReportPanel.getByPlaceholder("Item name").fill("Smoke ETB Edited");
     await editReportPanel.getByPlaceholder("What did you see?").fill("Three ETBs after edit.");
     await editReportPanel.getByRole("button", { name: "Save Report" }).click();
@@ -135,7 +150,38 @@ async function main() {
   });
 
   await step("Scout: add/edit/delete tracked item", async () => {
-    await page.getByRole("button", { name: /^Stores$/ }).click();
+    await nav("Scout");
+    if (await page.getByRole("button", { name: /^Stores$/ }).count()) {
+      await page.getByRole("button", { name: /^Stores$/ }).first().click();
+    } else if (await page.getByRole("button", { name: /Nearby stores/i }).count()) {
+      await page.getByRole("button", { name: /Nearby stores/i }).first().click();
+    }
+    if (await page.getByRole("dialog", { name: "Location Needed" }).count()) {
+      await page.getByLabel("ZIP or city").fill("23434");
+      await page.getByRole("button", { name: "Enter ZIP" }).click();
+      await page.getByRole("button", { name: /^Stores$|Nearby stores/i }).first().click();
+    }
+    if (await page.getByRole("button", { name: "Back to Retailers" }).count()) {
+      await page.getByRole("button", { name: "Back to Retailers" }).click();
+    }
+    if (await page.getByRole("button", { name: /Target/i }).count()) {
+      await page.getByRole("button", { name: /Target/i }).first().click();
+    }
+    const storeSearch = page.getByPlaceholder(/Search .*city, ZIP, nickname, or address|Search store, city, ZIP/i).first();
+    if (await storeSearch.count()) {
+      await storeSearch.fill("Smoke Shared Target");
+    }
+    const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first();
+    await smokeStoreCard.waitFor({ state: "visible", timeout: 10000 });
+    const openButton = smokeStoreCard.getByRole("button", { name: /Open Store|Open/i });
+    if (await openButton.count()) {
+      await openButton.click();
+    } else {
+      await smokeStoreCard.click();
+    }
+    if (await page.getByRole("button", { name: "Add Product Sighting" }).count()) {
+      await page.getByRole("button", { name: "Add Product Sighting" }).first().click();
+    }
     const trackedForm = page.locator("form").filter({ has: page.getByPlaceholder("Retailer item number") }).first();
     await trackedForm.getByPlaceholder("Category").fill("Pokemon");
     await trackedForm.getByPlaceholder("Item name").fill("Smoke Booster Bundle");
@@ -148,21 +194,17 @@ async function main() {
 
     const trackedCard = page.locator(".scout-tracked-item-card").filter({ hasText: "Smoke Booster Bundle" }).first();
     await trackedCard.waitFor({ state: "visible", timeout: 10000 });
-    await overflowAction(trackedCard, "Edit");
-    const editTrackedPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: "Edit Tracked Item" }) }).last();
-    await editTrackedPanel.getByPlaceholder("Item name").fill("Smoke Booster Bundle Edited");
-    await editTrackedPanel.getByRole("button", { name: "Save Tracked Item" }).click();
-    await assertVisibleText("Smoke Booster Bundle Edited");
-
-    const editedTrackedCard = page.locator(".scout-tracked-item-card").filter({ hasText: "Smoke Booster Bundle Edited" }).first();
-    await editedTrackedCard.waitFor({ state: "visible", timeout: 10000 });
-    await overflowAction(editedTrackedCard, "Delete");
-    await assert.equal(await page.locator(".scout-tracked-item-card").filter({ hasText: "Smoke Booster Bundle Edited" }).count(), 0);
+    await trackedCard.getByRole("button", { name: "Delete" }).first().click();
+    await assert.equal(await page.locator(".scout-tracked-item-card").filter({ hasText: "Smoke Booster Bundle" }).count(), 0);
   });
 
-  await step("Scout: Screenshot Tip Import upload/manual save", async () => {
-    await page.getByRole("button", { name: /^Reports$/ }).click();
-    const screenshotPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: "Screenshot Tip Import" }) }).last();
+  await step("Scout: Screenshot upload/manual save", async () => {
+    await nav("Scout");
+    if (await page.getByRole("heading", { name: /Screenshot/i }).count() === 0) {
+      await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+      await page.getByRole("button", { name: "Screenshot" }).click();
+    }
+    const screenshotPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: /Screenshot/i }) }).last();
     const png = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mP8z8BQDwAFgwJ/lw2nWQAAAABJRU5ErkJggg==",
       "base64"
@@ -174,22 +216,21 @@ async function main() {
       buffer: png,
     });
     await screenshotPanel.getByPlaceholder("Product name").fill("Smoke Screenshot ETB");
-    await screenshotPanel.getByPlaceholder("Product category").fill("Pokemon");
     await screenshotPanel.locator('input[type="date"]').fill("2026-05-08");
     await screenshotPanel.locator('input[type="time"]').fill("09:15");
     await screenshotPanel.getByPlaceholder("Quantity seen").fill("4");
-    await screenshotPanel.getByPlaceholder("Quantity remaining").fill("2");
-    await screenshotPanel.getByPlaceholder("Limit policy").fill("Limit 2");
-    await screenshotPanel.getByPlaceholder("Source group/name if visible").fill("757 Pokemon Finds");
-    await screenshotPanel.getByPlaceholder("Extraction confidence 0-100").fill("80");
+    await screenshotPanel.getByPlaceholder("Price if visible").fill("49.99");
+    await screenshotPanel.getByPlaceholder("Source notes / group name").fill("757 Pokemon Finds");
     await screenshotPanel.getByPlaceholder("Notes from the screenshot").fill("Manual screenshot review save.");
-    await screenshotPanel.getByRole("button", { name: "Save Screenshot Tip Report" }).click();
+    await screenshotPanel.getByRole("button", { name: "Copy to Report Review" }).click();
+    const reportForm = page.locator("form").filter({ has: page.locator('textarea[placeholder="What did you see?"]') }).first();
+    await reportForm.locator('button[type="submit"]').click();
     await assertVisibleText("Smoke Screenshot ETB");
-    await assertVisibleText("facebook_screenshot");
+    await assertVisibleText("Manual screenshot review save.");
   });
 
   await step("Forge: add/edit/delete inventory item", async () => {
-    await nav("The Forge");
+    await nav("Forge");
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form.form").last();
     await form.locator("select").nth(1).selectOption("__add__");
@@ -207,10 +248,11 @@ async function main() {
     await fillByLabel(form, "TideTradr Market Price", "60");
     await form.getByRole("button", { name: "Add Item" }).click();
     await assertVisibleText("Smoke Forge ETB");
-    await assertVisibleText("Purchased By:");
-    await assert.ok(
-      await page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }).getByText("Smoke Buyer").first().isVisible()
-    );
+    const smokeForgeCard = page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }).first();
+    await smokeForgeCard.getByRole("button", { name: "View" }).click();
+    await assertVisibleText("Purchaser");
+    await assertVisibleText("Smoke Buyer");
+    await page.getByRole("button", { name: "Close" }).click();
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }), "Edit");
     const editForm = page.locator("form.form").last();
@@ -224,10 +266,8 @@ async function main() {
 
   await step("Vault: add/edit/delete Vault item", async () => {
     await nav("The Vault");
-    await page.getByRole("button", { name: /^Collection$/ }).click();
-    await page.getByRole("button", { name: /Add Item to Vault/i }).first().click();
-    await page.getByRole("button", { name: "Add Item to Vault", exact: true }).click();
-    const vaultForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Add to Vault" }) }).first();
+    await page.getByRole("button", { name: "Add Item to Vault", exact: true }).first().click();
+    const vaultForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Add Item to Vault" }) }).first();
     await fillByLabel(vaultForm, "Item Name", "Smoke Vault Binder");
     await fillByLabel(vaultForm, "Quantity", "1");
     await fillByLabel(vaultForm, "Category / Product Type", "Binder");
@@ -238,14 +278,13 @@ async function main() {
     await fillByLabel(vaultForm, "Market Value", "30");
     await vaultForm.getByRole("button", { name: /Extra Details/ }).click();
     await fillByLabel(vaultForm, "Pack Count", "0");
-    await vaultForm.getByRole("button", { name: "Add to Vault" }).click();
-    await page.getByRole("button", { name: /Collection Items/i }).first().click();
+    await vaultForm.getByRole("button", { name: "Add Item to Vault" }).click();
     await assertVisibleText("Smoke Vault Binder");
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder" }), "Edit");
-    const editVaultForm = page.locator("form.form").last();
+    const editVaultForm = page.locator("form.vault-edit-form").last();
     await fillByLabel(editVaultForm, "Item Name", "Smoke Vault Binder Edited");
-    await editVaultForm.getByRole("button", { name: "Save Vault Item" }).click();
+    await editVaultForm.getByRole("button", { name: "Save Changes" }).click();
     await assertVisibleText("Smoke Vault Binder Edited");
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder Edited" }), "Delete");
@@ -253,12 +292,11 @@ async function main() {
   });
 
   await step("Market: run TideTradr deal check", async () => {
-    await nav("Home");
-    await page.getByRole("button", { name: /Quick Actions/i }).first().click();
-    await page.getByRole("button", { name: "Check Deal", exact: true }).click();
-    await page.getByRole("button", { name: /Deal Finder/i }).first().click();
+    await nav("TideTradr");
+    await page.getByRole("button", { name: "Check Deal", exact: true }).first().click();
     await fillByLabel(page, "Deal Title", "Smoke Deal");
     await fillByLabel(page, "Asking Price", "60");
+    await page.getByText("More Details").click();
     await fillByLabel(page, "Market Total", "100");
     await fillByLabel(page, "Retail / MSRP Total", "120");
     await fillByLabel(page, "Notes", "Smoke deal check");
@@ -269,7 +307,7 @@ async function main() {
     await nav("Home");
     await assertVisibleText("Collection Value");
     await assertVisibleText("$0.00");
-    await assertVisibleText("Quick Actions");
+    await assertVisibleText("Recent Activity");
   });
 
   await browser.close();

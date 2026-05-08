@@ -7,7 +7,14 @@ export const PLAN_TYPES = {
   ADMIN: "admin",
 };
 
-export const TIER_ORDER = ["free", "plus", "pro", "founder", "admin"];
+export const USER_ROLES = {
+  ADMIN: "admin",
+  MODERATOR: "moderator",
+  TRUSTED_SCOUT: "trusted_scout",
+  USER: "user",
+};
+
+export const TIER_ORDER = ["free", "plus", "pro", "founder"];
 export const SUBSCRIPTION_STATUSES = ["active", "inactive", "trialing", "canceled", "past_due"];
 
 export const FEATURE_ACCESS = {
@@ -86,17 +93,28 @@ export const PROTECTED_SUBSCRIPTION_FIELDS = [
   "lifetimeAccess",
   "feature_tier",
   "featureTier",
+  "tier",
+  "user_role",
+  "userRole",
+  "isAdmin",
+  "is_admin",
 ];
 
 export function normalizeTier(value) {
   const tier = String(value || PLAN_TYPES.FREE).toLowerCase();
   if (tier === PLAN_TYPES.PAID) return PLAN_TYPES.PRO;
-  return Object.values(PLAN_TYPES).includes(tier) ? tier : PLAN_TYPES.FREE;
+  if (tier === PLAN_TYPES.ADMIN) return PLAN_TYPES.FOUNDER;
+  return TIER_ORDER.includes(tier) ? tier : PLAN_TYPES.FREE;
+}
+
+export function normalizeUserRole(value) {
+  const role = String(value || USER_ROLES.USER).toLowerCase();
+  return Object.values(USER_ROLES).includes(role) ? role : USER_ROLES.USER;
 }
 
 export function getUserTier(profile = {}) {
   if (profile.lifetimeAccess || profile.lifetime_access) return PLAN_TYPES.FOUNDER;
-  return normalizeTier(profile.featureTier || profile.feature_tier || profile.subscriptionPlan || profile.subscription_plan);
+  return normalizeTier(profile.tier || profile.featureTier || profile.feature_tier || profile.subscriptionPlan || profile.subscription_plan);
 }
 
 export function getUserPlan(profile = {}) {
@@ -105,9 +123,10 @@ export function getUserPlan(profile = {}) {
 
 export function hasPlanAccess(profile = {}, featureKey) {
   const plan = getUserTier(profile);
+  if (isAdminUser(profile)) return true;
   const status = profile.subscriptionStatus || profile.subscription_status || "active";
   if ([PLAN_TYPES.ADMIN, PLAN_TYPES.FOUNDER].includes(plan) && featureKey !== "admin_tools") return true;
-  if (plan === PLAN_TYPES.ADMIN) return true;
+  if (featureKey === "admin_tools") return false;
   if (!["active", "trialing"].includes(status) && !(profile.lifetimeAccess || profile.lifetime_access)) return false;
   return (FEATURE_ACCESS[featureKey] || []).includes(plan);
 }
@@ -117,7 +136,7 @@ export function isPaidUser(profile = {}) {
 }
 
 export function isAdminUser(profile = {}) {
-  return getUserPlan(profile) === PLAN_TYPES.ADMIN;
+  return normalizeUserRole(profile.userRole || profile.user_role) === USER_ROLES.ADMIN;
 }
 
 export function getLockedFeatureMessage(featureKey) {

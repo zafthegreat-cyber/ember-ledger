@@ -1,6 +1,6 @@
 # Shared Virginia Store Directory and Pokemon Catalog
 
-These files set up shared, non-user-specific data for Ember Scout / E&T TCG.
+These files set up shared, non-user-specific data for Scout / E&T TCG.
 
 ## Migration
 
@@ -76,8 +76,10 @@ Never expose `SUPABASE_SERVICE_ROLE_KEY` in frontend code or Vercel client env v
 The legacy CSV template is still available for spreadsheet collection:
 
 ```txt
-supabase/seeds/virginia_stores_import_template.csv
+seeds/stores/virginia-store-import-template.csv
 ```
+
+The importer accepts both regional JSON files and CSV files in `seeds/stores/`.
 
 Do not add a store row unless its address is verified from a stable public source, such as an official store locator. The importer upsert key is:
 
@@ -122,3 +124,30 @@ Target chains:
 - Books-A-Million
 - Local card/game shops
 - NEX / MCX / Exchange locations where publicly listed and applicable
+
+## TideTradr Catalog Import
+
+The beta app now has generated catalog slots so large Pokemon card/product datasets can be imported without editing React components:
+
+- `src/data/generated/pokemonTcgSets.json`
+- `src/data/generated/pokemonTcgCards.json`
+- `src/data/generated/sealedProducts.json`
+- `src/data/generated/marketPrices.json`
+- `src/data/generated/searchAliases.json`
+
+Place source exports in `seeds/catalog/`, then run:
+
+```bash
+npm run catalog:import
+```
+
+Supported local files:
+
+- `seeds/catalog/pokemon-tcg/sets.json`
+- `seeds/catalog/pokemon-tcg/cards.json`
+- `seeds/catalog/pokemon-tcg/cards/*.json`
+- `seeds/catalog/sealed-products.csv`
+- `seeds/catalog/market-prices.csv`
+- `seeds/catalog/search-aliases.csv`
+
+This is intentionally local/import-first for beta. Live APIs, paid API keys, and protected provider credentials should be connected through backend/serverless code later, not hardcoded in the frontend.

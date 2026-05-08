@@ -5,14 +5,29 @@ import { supabase } from "./supabaseClient";
 import SmartAddInventory from "./components/SmartAddInventory";
 import SmartAddCatalog from "./components/SmartAddCatalog";
 import OverflowMenu from "./components/OverflowMenu";
+import BackupExportImport from "./components/BackupExportImport";
 import Scout from "./pages/Scout";
-import { SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA, SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
+import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA, SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
 import { POKEMON_PRODUCT_UPCS, POKEMON_PRODUCTS } from "./data/pokemonProductCatalog";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
-import { loadPriceCache, savePriceCache, updateCachedMarketPrice } from "./services/priceCacheService";
+import {
+  REVIEW_SECTION_LABELS,
+  SUGGESTION_STATUSES,
+  SUGGESTION_STORAGE_KEY,
+  SUGGESTION_TYPE_LABELS,
+  SUGGESTION_TYPES,
+  appendAdminReviewLog,
+  getSuggestionReviewSection,
+  loadSuggestions,
+  saveSuggestions,
+  submitSuggestion,
+  suggestionTitle,
+  updateSuggestionRecord,
+} from "./utils/suggestionReviewUtils";
+import { MARKET_PRICE_CACHE_KEY, loadPriceCache, savePriceCache, updateCachedMarketPrice } from "./services/priceCacheService";
 import {
   getBestAvailableMarketPrice,
   refreshCatalogMarketItems,
@@ -33,17 +48,81 @@ import {
   isAdminUser,
   isPaidUser,
 } from "./constants/plans";
+import { getCurrentUserProfile, makeFallbackUserProfile } from "./lib/userProfile";
 
 const IRS_MILEAGE_RATE = 0.725;
 const BETA_LOCAL_MODE = true;
 const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
+const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
 const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
 const STATUSES = ["In Stock", "Needs Photos", "Needs Market Check", "Ready to List", "Listed", "Sold", "Held", "Personal Collection", "Damaged"];
 const PLATFORMS = ["eBay", "Mercari", "Whatnot", "Facebook Marketplace", "In-Store", "Instagram", "TikTok Shop", "Other"];
 const VAULT_CATEGORIES = ["Personal collection", "Keep sealed", "Rip later", "Trade", "Favorite", "Wishlist", "Set goal", "Kid collection"];
+const VAULT_STATUS_OPTIONS = [
+  { value: "personal_collection", label: "Personal Collection", description: "Keeping long term." },
+  { value: "sealed", label: "Sealed / Holding", description: "Unopened or held product." },
+  { value: "wishlist", label: "Wishlist", description: "Wanted but not owned yet." },
+  { value: "ready_for_forge", label: "Ready for Forge", description: "May sell later." },
+  { value: "archived", label: "Archived", description: "No longer active." },
+  { value: "held", label: "Held", description: "Legacy held status." },
+  { value: "ripped_opened", label: "Ripped / Opened" },
+  { value: "moved_to_forge", label: "Moved to Forge" },
+  { value: "traded", label: "Traded" },
+];
+const VAULT_FILTER_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "personal_collection", label: "Personal Collection" },
+  { value: "sealed", label: "Sealed / Holding" },
+  { value: "moved_to_forge", label: "Moved to Forge" },
+  { value: "wishlist", label: "Wishlist" },
+  { value: "sold_archived", label: "Sold / Archived" },
+];
+const ACTIVE_VAULT_STATUSES = new Set(["personal_collection", "held", "sealed", "ripped_opened", "wishlist", "ready_for_forge"]);
+const VAULT_STORAGE_LOCATIONS = ["", "Binder", "ETB", "Shelf", "Box", "Display case", "Closet", "Other"];
+const VAULT_CONDITIONS = ["", "Mint", "Near Mint", "Lightly Played", "Damaged", "Sealed", "Box damage", "Missing wrap", "Unknown"];
+const VAULT_SOURCE_OPTIONS = ["Manual", "TideTradr", "Barcode scan", "Receipt/photo", "Import", "Forge copy"];
+const BLANK_VAULT_FORM = {
+  name: "",
+  vaultCategory: "Personal collection",
+  status: "Personal Collection",
+  vaultStatus: "personal_collection",
+  quantity: 1,
+  unitCost: "",
+  msrpPrice: "",
+  marketPrice: "",
+  salePrice: "",
+  packCount: "",
+  setName: "",
+  productType: "",
+  store: "",
+  storageLocation: "",
+  condition: "",
+  sealedCondition: "",
+  conditionNotes: "",
+  sourceType: "Manual",
+  upc: "",
+  sku: "",
+  catalogProductId: "",
+  tideTradrProductId: "",
+  purchaseDate: "",
+  receiptImage: "",
+  itemImage: "",
+  notes: "",
+};
+const SCAN_DESTINATIONS = [
+  { value: "none", label: "Choose after review" },
+  { value: "vault", label: "The Vault" },
+  { value: "forge", label: "Forge" },
+  { value: "wishlist", label: "Add to Wishlist" },
+  { value: "tidetradr", label: "TideTradr lookup" },
+  { value: "deal_finder", label: "Deal Finder" },
+  { value: "watchlist", label: "Watchlist" },
+  { value: "pinned", label: "Pinned Market Watch" },
+  { value: "scout_report", label: "Scout Report" },
+];
 const USER_TYPES = ["collector", "seller", "scout", "parent", "advanced"];
 const EXPENSE_CATEGORIES = [
   "Inventory/Product Cost",
@@ -60,6 +139,60 @@ const EXPENSE_CATEGORIES = [
 ];
 const MARKETING_PLATFORMS = ["Facebook", "Instagram", "TikTok", "Discord", "Website", "Marketplace", "Other"];
 const MARKETING_GOALS = ["sales", "followers", "event", "donations", "awareness", "giveaway"];
+const TIDEPOOL_POST_TYPES = [
+  "General post",
+  "Restock sighting",
+  "Product sighting",
+  "Question",
+  "Store tip",
+  "Deal sighting",
+  "Event",
+  "Giveaway/donation",
+  "Looking for item",
+  "Help/request",
+  "Announcement/admin post",
+];
+const TIDEPOOL_FEED_FILTERS = [
+  "Latest",
+  "Nearby",
+  "Verified",
+  "Questions",
+  "Events",
+  "Deals",
+  "Store Tips",
+  "My Posts",
+  "Saved",
+  "Needs Review",
+];
+const MARKETPLACE_LISTING_TYPES = ["For Sale", "For Trade", "Looking For", "Free / Donation", "Kid-friendly deal"];
+const MARKETPLACE_STATUSES = ["Draft", "Pending Review", "Active", "Sold", "Traded", "Removed", "Flagged", "Archived"];
+const MARKETPLACE_REPORT_REASONS = ["Wrong item", "Fake/scam", "Price gouging", "Inappropriate", "Duplicate", "Sold already", "Other"];
+const BLANK_MARKETPLACE_FORM = {
+  listingType: "For Sale",
+  title: "",
+  description: "",
+  category: "Pokemon",
+  productType: "",
+  setName: "",
+  condition: "Unknown",
+  quantity: 1,
+  askingPrice: "",
+  tradeValue: "",
+  locationCity: "",
+  locationState: "VA",
+  pickupOnly: true,
+  shippingAvailable: false,
+  photos: [],
+  photoUrl: "",
+  catalogItemId: "",
+  upc: "",
+  sku: "",
+  intendedForKids: false,
+  contactPreference: "Request contact",
+  sellerNotes: "",
+  sourceType: "manual",
+  sourceItemId: "",
+};
 const blankExpense = {
   date: "",
   vendor: "",
@@ -81,6 +214,31 @@ const blankExpense = {
   linkedSales: "",
   resultsNotes: "",
 };
+
+function normalizeVaultStatus(item = {}) {
+  const raw = String(item.vaultStatus || item.status || item.actionNotes || "").toLowerCase();
+  if (raw.includes("moved_to_forge") || raw.includes("moved to forge")) return "moved_to_forge";
+  if (raw.includes("ready_for_forge") || raw.includes("ready for forge")) return "ready_for_forge";
+  if (raw.includes("archived") || raw.includes("archive")) return "archived";
+  if (raw.includes("traded") || raw === "trade") return "traded";
+  if (raw.includes("ripped") || raw.includes("opened") || raw.includes("rip later")) return "ripped_opened";
+  if (raw.includes("wishlist") || raw.includes("wish")) return "wishlist";
+  if (raw.includes("sealed") || raw.includes("keep sealed")) return "sealed";
+  if (raw.includes("held") || raw.includes("hold")) return "held";
+  return "personal_collection";
+}
+
+function vaultStatusLabel(value) {
+  return VAULT_STATUS_OPTIONS.find((status) => status.value === value)?.label || "Personal Collection";
+}
+
+function isActiveVaultItem(item = {}) {
+  return ACTIVE_VAULT_STATUSES.has(normalizeVaultStatus(item));
+}
+
+function hasValue(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "" && String(value).trim().toLowerCase() !== "unknown";
+}
 const HOME_STATS = [
   { key: "collection_value", label: "Collection Value", group: "Collection & Spending" },
   { key: "monthly_spending", label: "Monthly Spending", group: "Collection & Spending" },
@@ -361,6 +519,131 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function makeTidepoolPost(overrides = {}) {
+  const now = new Date().toISOString();
+  return {
+    postId: overrides.postId || makeId("tidepool-post"),
+    userId: overrides.userId || "local-beta",
+    displayName: overrides.displayName || "Local Scout",
+    postType: overrides.postType || "General post",
+    title: overrides.title || "",
+    body: overrides.body || "",
+    storeId: overrides.storeId || "",
+    catalogItemId: overrides.catalogItemId || "",
+    city: overrides.city || "",
+    state: overrides.state || "VA",
+    zip: overrides.zip || "",
+    photoUrl: overrides.photoUrl || "",
+    createdAt: overrides.createdAt || now,
+    updatedAt: overrides.updatedAt || now,
+    status: overrides.status || "active",
+    verificationStatus: overrides.verificationStatus || "unverified",
+    commentCount: Number(overrides.commentCount || 0),
+    reactionCount: Number(overrides.reactionCount || 0),
+    saved: Boolean(overrides.saved),
+    commentsLocked: Boolean(overrides.commentsLocked),
+    flagged: Boolean(overrides.flagged),
+    sourceType: overrides.sourceType || "user",
+  };
+}
+
+function createDefaultTidepoolData() {
+  const now = new Date().toISOString();
+  return {
+    posts: [
+      makeTidepoolPost({
+        postId: "tidepool-demo-question",
+        postType: "Question",
+        title: "Has anyone checked Greenbrier today?",
+        body: "Mock beta post: asking whether cards were stocked near Greenbrier. Replace with live community posts later.",
+        city: "Chesapeake",
+        sourceType: "mock",
+        createdAt: now,
+      }),
+      makeTidepoolPost({
+        postId: "tidepool-demo-restock",
+        postType: "Restock sighting",
+        title: "151 bundles seen at Walmart",
+        body: "Mock beta post: several Scarlet & Violet 151 Booster Bundles reported near the cards section. Needs real confirmation.",
+        city: "Suffolk",
+        verificationStatus: "pending",
+        sourceType: "mock",
+        createdAt: now,
+      }),
+      makeTidepoolPost({
+        postId: "tidepool-demo-event",
+        postType: "Event",
+        title: "Demo kids pack pickup",
+        body: "Mock/demo event post for kid-friendly community activity. Kid-focused events should require review before public sharing.",
+        city: "Virginia Beach",
+        verificationStatus: "pending",
+        sourceType: "mock",
+        createdAt: now,
+      }),
+    ],
+    comments: [
+      {
+        commentId: "tidepool-demo-comment",
+        postId: "tidepool-demo-question",
+        userId: "mock-helper",
+        displayName: "Community Helper",
+        body: "Mock beta reply: I can check later today.",
+        parentCommentId: "",
+        createdAt: now,
+        updatedAt: now,
+        status: "active",
+      },
+    ],
+    reactions: [],
+  };
+}
+
+function getCatalogImage(product = {}) {
+  return product.imageUrl || product.imageLarge || product.imageSmall || product.images?.large || product.images?.small || "";
+}
+
+function getImageSourceLabel(item = {}) {
+  const source = item.imageSource || item.itemImageSource || "";
+  const status = item.imageStatus || item.itemImageStatus || "";
+  const value = status || source || (getCatalogImage(item) || item.itemImage ? "manual" : "placeholder");
+  const labels = {
+    pokemon_tcg_api: "Pokemon TCG API",
+    tcgdex: "TCGdex",
+    best_buy: "Best Buy",
+    ebay: "Marketplace",
+    tcgcsv: "TCGCSV",
+    user: "User photo",
+    manual: "Manual image",
+    mock: "Mock image",
+    placeholder: "Image needed",
+    official: "Official/API",
+    api: "API",
+    retailer: "Retailer",
+    marketplace: "Marketplace",
+    unknown: "Unknown image",
+  };
+  return labels[value] || labels[source] || labels[status] || String(value).replaceAll("_", " ");
+}
+
+function getDefaultImageSource(item = {}) {
+  if (item.catalogType === "card") {
+    if (item.images?.small || item.images?.large || item.imageSmall || item.imageLarge) return "pokemon_tcg_api";
+    if (item.imageUrl) return item.imageSource || "manual";
+    return "placeholder";
+  }
+  if (item.imageUrl) return item.imageSource || "manual";
+  return "placeholder";
+}
+
+function getDefaultImageStatus(item = {}) {
+  if (item.imageStatus) return item.imageStatus;
+  const source = getDefaultImageSource(item);
+  if (source === "pokemon_tcg_api" || source === "tcgdex") return "api";
+  if (["best_buy", "tcgcsv"].includes(source)) return "retailer";
+  if (source === "ebay") return "marketplace";
+  return source;
+}
+
 function shortDate(value) {
   if (!value) return "No date";
   const date = new Date(value);
@@ -497,7 +780,14 @@ function createSharedCatalogProducts() {
     sku: product.sku || "",
     externalProductId: product.externalProductId || product.sku || "",
     marketUrl: "",
-    imageUrl: "",
+    imageUrl: product.imageUrl || product.images?.large || product.images?.small || "",
+    imageSmall: product.imageSmall || product.images?.small || "",
+    imageLarge: product.imageLarge || product.images?.large || product.imageUrl || "",
+    imageSource: product.imageSource || getDefaultImageSource(product),
+    imageSourceUrl: product.imageSourceUrl || product.sourceUrl || "",
+    imageStatus: product.imageStatus || getDefaultImageStatus(product),
+    imageLastUpdated: product.imageLastUpdated || product.lastUpdated || now,
+    imageNeedsReview: Boolean(product.imageNeedsReview || (product.matchConfidence && Number(product.matchConfidence) < 80)),
     marketPrice: toNumber(product.marketValue || product.marketValueNearMint || product.marketValueRaw),
     lowPrice: toNumber(product.marketValueLightPlayed || product.lowPrice),
     midPrice: toNumber(product.marketValueNearMint || product.marketValue || product.midPrice),
@@ -559,8 +849,8 @@ function mergeSharedCatalogProducts(savedProducts = []) {
 function statusClass(status) {
   return `status-badge ${String(status || "In Stock")
     .toLowerCase()
-    .replaceAll(" ", "-")
-    .replaceAll("/", "-")}`;
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")}`;
 }
 
 function Field({ label, children }) {
@@ -600,12 +890,14 @@ function BarcodeScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   const [scannerError, setScannerError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
     async function start() {
       try {
+        setScannerError("");
         const reader = new BrowserMultiFormatReader();
         controlsRef.current = await reader.decodeFromVideoDevice(undefined, videoRef.current, (result) => {
           if (result && mounted) {
@@ -624,27 +916,27 @@ function BarcodeScanner({ onScan, onClose }) {
       mounted = false;
       controlsRef.current?.stop();
     };
-  }, [onScan]);
+  }, [onScan, retryKey]);
 
   return (
-    <div className="panel">
+    <div className="panel scanner-camera-panel">
       <h2>Scan Barcode</h2>
-      <p>Point your camera at the barcode. Use good lighting and hold the barcode flat.</p>
-      {scannerError && <p>{scannerError}</p>}
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        style={{
-          width: "100%",
-          maxWidth: "420px",
-          borderRadius: "16px",
-          border: "1px solid #ddd7d2",
-          background: "#000",
-        }}
-      />
-      <button type="button" className="secondary-button" onClick={onClose}>Close Scanner</button>
+      {scannerError ? (
+        <div className="scanner-camera-empty">
+          <h3>Camera unavailable.</h3>
+          <p>Check browser permissions or enter the UPC/card name manually.</p>
+          <div className="quick-actions">
+            <button type="button" onClick={() => setRetryKey((current) => current + 1)}>Try Camera Again</button>
+            <button type="button" className="secondary-button" onClick={onClose}>Enter Manually</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p>Point your camera at the barcode. Use good lighting and hold the barcode flat.</p>
+          <video ref={videoRef} autoPlay muted playsInline className="scanner-video" />
+          <button type="button" className="secondary-button" onClick={onClose}>Enter Manually</button>
+        </>
+      )}
     </div>
   );
 }
@@ -685,32 +977,73 @@ export default function App() {
   const [showFullTopbar, setShowFullTopbar] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
+  const quickAddRef = useRef(null);
   const [appSearchQuery, setAppSearchQuery] = useState("");
   const [menuSectionsOpen, setMenuSectionsOpen] = useState({});
+  const [feedbackDialog, setFeedbackDialog] = useState(null);
+  const [feedbackForm, setFeedbackForm] = useState({
+    whatHappened: "",
+    page: "",
+    steps: "",
+    screenshotName: "",
+  });
   const [userSearchAliases, setUserSearchAliases] = useState([]);
   const [aliasDraft, setAliasDraft] = useState({ alias: "", canonical: "", type: "personal" });
+  const [tidepoolOpen, setTidepoolOpen] = useState(false);
+  const [tidepoolFilter, setTidepoolFilter] = useState("Latest");
+  const [tidepoolPosts, setTidepoolPosts] = useState([]);
+  const [tidepoolComments, setTidepoolComments] = useState([]);
+  const [tidepoolReactions, setTidepoolReactions] = useState([]);
+  const [tidepoolPostForm, setTidepoolPostForm] = useState({
+    postType: "General post",
+    title: "",
+    body: "",
+    city: "",
+    state: "VA",
+    zip: "",
+    photoUrl: "",
+  });
+  const [tidepoolCommentDrafts, setTidepoolCommentDrafts] = useState({});
+  const [scoutView, setScoutView] = useState("main");
+  const [scoutReportFilter, setScoutReportFilter] = useState("Latest");
+  const [scoutScoreModalOpen, setScoutScoreModalOpen] = useState(false);
+  const scoutReportsRef = useRef(null);
   const [homeSubTab, setHomeSubTab] = useState("overview");
   const [forgeSubTab, setForgeSubTab] = useState("overview");
   const [scoutSubTabTarget, setScoutSubTabTarget] = useState({ tab: "overview", id: 0 });
   const [vaultSubTab, setVaultSubTab] = useState("overview");
+  const [vaultFilter, setVaultFilter] = useState("all");
+  const [vaultSearch, setVaultSearch] = useState("");
+  const [vaultSort, setVaultSort] = useState("newest");
+  const [selectedVaultDetailId, setSelectedVaultDetailId] = useState("");
+  const [selectedForgeDetailId, setSelectedForgeDetailId] = useState("");
+  const [vaultForgeTransfer, setVaultForgeTransfer] = useState(null);
+  const [vaultDuplicateItem, setVaultDuplicateItem] = useState(null);
+  const [vaultPotentialDuplicate, setVaultPotentialDuplicate] = useState(null);
+  const [vaultSaving, setVaultSaving] = useState(false);
+  const [vaultMoving, setVaultMoving] = useState(false);
+  const [vaultToast, setVaultToast] = useState("");
   const [tideTradrSubTab, setTideTradrSubTab] = useState("overview");
   const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
     home_dashboard_cards: true,
     home_quick_actions: false,
-    forge_inventory: true,
+    forge_inventory: false,
     forge_catalog: false,
     forge_tidetradr: false,
     vault_summary: true,
     vault_add: false,
     vault_tidetradr: false,
-    scout_stores: true,
+    scout_stores: false,
     scout_recommendations: false,
     scout_store_tracker: false,
     scout_tidetradr: false,
-    market_summary: true,
+    market_summary: false,
     market_lookup: false,
+    market_watchlist: false,
     market_deal_finder: false,
-    menu_profile: true,
+    market_sources: false,
+    market_filters: false,
+    menu_profile: false,
   });
   const [reportFocus, setReportFocus] = useState("");
 
@@ -725,9 +1058,13 @@ export default function App() {
   const [dashboardCardStyle, setDashboardCardStyle] = useState("comfortable");
   const [subscriptionProfile, setSubscriptionProfile] = useState({
     subscriptionPlan: PLAN_TYPES.FREE,
+    tier: PLAN_TYPES.FREE,
+    userRole: "user",
+    isAdmin: false,
     subscriptionStatus: "active",
     lifetimeAccess: false,
   });
+  const [currentUserProfile, setCurrentUserProfile] = useState(() => makeFallbackUserProfile(null));
   const [authMode, setAuthMode] = useState("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -760,6 +1097,10 @@ export default function App() {
   const [showCatalogScanner, setShowCatalogScanner] = useState(false);
   const [scanMode, setScanMode] = useState("upc");
   const [scanMatches, setScanMatches] = useState([]);
+  const [scanReview, setScanReview] = useState(null);
+  const [scanDestination, setScanDestination] = useState("none");
+  const [scanMessage, setScanMessage] = useState("");
+  const [scanInput, setScanInput] = useState("");
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
@@ -781,7 +1122,14 @@ export default function App() {
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
-  const [scoutSnapshot, setScoutSnapshot] = useState({ stores: [], reports: [], tidepoolReports: [] });
+  const [scoutSnapshot, setScoutSnapshot] = useState({
+    stores: [],
+    reports: [],
+    tidepoolReports: [],
+    bestBuyAlerts: [],
+    scoutProfile: {},
+    alertSettings: {},
+  });
   const [dealForm, setDealForm] = useState({
     productId: "",
     title: "",
@@ -792,24 +1140,7 @@ export default function App() {
     condition: "Sealed",
     notes: "",
   });
-  const [vaultForm, setVaultForm] = useState({
-    name: "",
-    vaultCategory: "Personal collection",
-    status: "Personal Collection",
-    quantity: 1,
-    unitCost: "",
-    msrpPrice: "",
-    marketPrice: "",
-    salePrice: "",
-    packCount: "",
-    setName: "",
-    productType: "",
-    store: "",
-    purchaseDate: "",
-    receiptImage: "",
-    itemImage: "",
-    notes: "",
-  });
+  const [vaultForm, setVaultForm] = useState(BLANK_VAULT_FORM);
   const [showVaultAddForm, setShowVaultAddForm] = useState(false);
   const [vaultFormSections, setVaultFormSections] = useState({
     basic: true,
@@ -817,6 +1148,7 @@ export default function App() {
     status: false,
     extra: false,
   });
+  const [vaultAddMode, setVaultAddMode] = useState("manual");
   const [locationSettings, setLocationSettings] = useState({
     mode: "manual",
     manualLocation: "",
@@ -825,6 +1157,8 @@ export default function App() {
     trackingEnabled: false,
     lastUpdated: "",
   });
+  const [locationPromptOpen, setLocationPromptOpen] = useState(false);
+  const [locationPromptZip, setLocationPromptZip] = useState("");
   const [importAssistantOpen, setImportAssistantOpen] = useState(false);
   const [importAssistantContext, setImportAssistantContext] = useState("Forge");
   const [importSourceType, setImportSourceType] = useState("text");
@@ -832,6 +1166,25 @@ export default function App() {
   const [importLink, setImportLink] = useState("");
   const [importFileName, setImportFileName] = useState("");
   const [importRows, setImportRows] = useState([]);
+  const [backupImportPreview, setBackupImportPreview] = useState(null);
+  const [backupImportMessage, setBackupImportMessage] = useState("");
+  const [suggestions, setSuggestions] = useState(() => loadSuggestions());
+  const [adminReviewFilter, setAdminReviewFilter] = useState("All");
+  const [mySuggestionFilter, setMySuggestionFilter] = useState("All");
+  const [suggestionConflict, setSuggestionConflict] = useState(null);
+  const [marketplaceListings, setMarketplaceListings] = useState([]);
+  const [marketplaceReports, setMarketplaceReports] = useState([]);
+  const [marketplaceSavedIds, setMarketplaceSavedIds] = useState([]);
+  const [marketplaceSearch, setMarketplaceSearch] = useState("");
+  const [marketplaceTypeFilter, setMarketplaceTypeFilter] = useState("All");
+  const [marketplaceStatusFilter, setMarketplaceStatusFilter] = useState("Active");
+  const [marketplaceForm, setMarketplaceForm] = useState(BLANK_MARKETPLACE_FORM);
+  const [marketplaceSourcePicker, setMarketplaceSourcePicker] = useState("manual");
+  const [listingReviewOpen, setListingReviewOpen] = useState(false);
+  const [selectedListingId, setSelectedListingId] = useState("");
+  const [listingReportTarget, setListingReportTarget] = useState(null);
+  const [listingReportReason, setListingReportReason] = useState("Wrong item");
+  const [vaultListingDecision, setVaultListingDecision] = useState(null);
   const [importOptions, setImportOptions] = useState({
     pinHighValue: false,
     addToWatchlist: false,
@@ -859,6 +1212,11 @@ export default function App() {
   salePrice: "",
   receiptImage: "",
   itemImage: "",
+  itemImageSource: "placeholder",
+  itemImageStatus: "placeholder",
+  itemImageSourceUrl: "",
+  itemImageLastUpdated: "",
+  itemImageNeedsReview: false,
   barcode: "",
   catalogProductId: "",
   externalProductId: "",
@@ -878,6 +1236,11 @@ export default function App() {
   listingUrl: "",
   listedPrice: "",
   actionNotes: "",
+  storageLocation: "",
+  condition: "",
+  sealedCondition: "",
+  conditionNotes: "",
+  sourceType: "Manual",
 };
 
   const blankCatalog = {
@@ -894,6 +1257,13 @@ export default function App() {
   externalProductId: "",
   marketUrl: "",
   imageUrl: "",
+  imageSmall: "",
+  imageLarge: "",
+  imageSource: "manual",
+  imageSourceUrl: "",
+  imageStatus: "manual",
+  imageLastUpdated: "",
+  imageNeedsReview: false,
   marketPrice: "",
   marketSource: "Manual",
   marketLastUpdated: "",
@@ -936,18 +1306,14 @@ export default function App() {
     { key: "scout", label: "Scout", target: "scout" },
     { key: "vault", label: "The Vault", target: "vault" },
     { key: "tideTradr", label: "TideTradr", target: "market" },
-    { key: "forge", label: "The Forge", target: "inventory" },
+    { key: "forge", label: "Forge", target: "inventory" },
   ];
 
   const navSections = [
     {
       title: "Menu",
       items: [
-        { key: "menu", label: "Profile / Settings" },
-        { key: "dashboard", label: "Dashboard Display", target: "dashboard" },
-        { key: "scout", label: "Location / Notifications", target: "scout" },
-        { key: "catalog", label: "Data Export / Catalog", target: "catalog" },
-        { key: "market", label: "TideTradr", target: "market" },
+        { key: "menu", label: "Menu" },
       ],
     },
     { title: "Main Tabs", items: [
@@ -955,26 +1321,25 @@ export default function App() {
       { key: "scout-main", label: "Scout", target: "scout" },
       { key: "vault", label: "The Vault" },
       { key: "tidetradr-main", label: "TideTradr", target: "market" },
-      { key: "forge", label: "The Forge", target: "inventory" },
+      { key: "forge", label: "Forge", target: "inventory" },
     ] },
-    {
-      title: "The Forge Tools",
-      items: [
-        { key: "addInventory", label: "Add Forge Item", feature: "seller_tools" },
-        { key: "addSale", label: "Add Sale", feature: "seller_tools" },
-        { key: "expenses", label: "Forge Expenses", feature: "expenses" },
-        { key: "reports", label: "Forge Reports", feature: "seller_tools" },
-        { key: "mileage", label: "Mileage", feature: "mileage" },
-        { key: "vehicles", label: "Vehicles", feature: "mileage" },
-      ],
-    },
   ];
 
   const activeTabLabel =
-    navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Dashboard";
+    activeTab === "tidepool"
+      ? "Tidepool"
+      : activeTab === "adminReview"
+        ? "Admin Review"
+      : activeTab === "mySuggestions"
+        ? "My Suggestions"
+      : navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Dashboard";
   const activeMainTab =
     activeTab === "dashboard"
       ? "home"
+      : activeTab === "tidepool"
+        ? ""
+      : activeTab === "adminReview" || activeTab === "mySuggestions"
+        ? ""
       : activeTab === "vault" || activeTab === "scout"
         ? activeTab
       : activeTab === "market" || activeTab === "catalog"
@@ -1149,12 +1514,30 @@ export default function App() {
         reason,
       };
     });
+    const tidepoolPostResults = tidepoolPosts.map((post) => {
+      const candidate = {
+        fields: [post.title, post.body, post.postType, post.city, post.zip, post.verificationStatus],
+        exactIds: [],
+        aliases: [],
+        names: [post.title],
+      };
+      const { score, reason } = scoreSearchCandidate(queryInfo, candidate);
+      return {
+        id: `tidepool-${post.postId}`,
+        category: "Reports",
+        title: post.title || post.postType,
+        subtitle: `Tidepool - ${post.postType} - ${post.verificationStatus}`,
+        source: post,
+        score: score * 0.66,
+        reason,
+      };
+    });
 
-    return [...catalogResults, ...inventoryResults, ...storeResults, ...reportResults]
+    return [...catalogResults, ...inventoryResults, ...storeResults, ...reportResults, ...tidepoolPostResults]
       .filter((result) => result.score > 25)
       .sort((a, b) => b.score - a.score)
       .slice(0, 24);
-  }, [appSearchQuery, catalogProducts, items, marketPriceCache, scoutSnapshot, userSearchAliases]);
+  }, [appSearchQuery, catalogProducts, items, marketPriceCache, scoutSnapshot, tidepoolPosts, userSearchAliases]);
 
   const appSearchSuggestion = useMemo(() => {
     const queryInfo = expandSearchQuery(appSearchQuery);
@@ -1165,6 +1548,15 @@ export default function App() {
 
   function closeSearchResults() {
     setAppSearchQuery("");
+    setSearchExpanded(false);
+  }
+
+  function openTidepoolCommunity(filter = "Latest") {
+    setTidepoolOpen(true);
+    setTidepoolFilter(filter);
+    setActiveTab("tidepool");
+    setMenuOpen(false);
+    setQuickAddMenuOpen(false);
     setSearchExpanded(false);
   }
 
@@ -1181,8 +1573,13 @@ export default function App() {
       setActiveTab("vault");
       setFeatureSectionsOpen((current) => ({ ...current, vault_collection_items: true }));
     } else if (result.category === "Stores" || result.category === "Reports") {
-      setActiveTab("scout");
-      setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }));
+      if (result.category === "Stores") {
+        setActiveTab("scout");
+        setFeatureSectionsOpen((current) => ({ ...current, scout_stores: true }));
+        setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+      } else {
+        openTidepoolCommunity("Latest");
+      }
     }
     setSearchExpanded(false);
   }
@@ -1222,7 +1619,7 @@ export default function App() {
   }
 
   function toggleMenuSection(key) {
-    setMenuSectionsOpen((current) => ({ ...current, [key]: !current[key] }));
+    setMenuSectionsOpen((current) => (current[key] ? {} : { [key]: true }));
   }
 
   function runMenuAction(action) {
@@ -1230,20 +1627,82 @@ export default function App() {
     setMenuOpen(false);
   }
 
-  function renderMenuPullDown(key, title, summary, children) {
+  function openFeedbackDialog(type) {
+    setFeedbackDialog(type);
+    setFeedbackForm({
+      whatHappened: "",
+      page: activeTabLabel,
+      steps: "",
+      screenshotName: "",
+    });
+  }
+
+  function submitFeedbackDialog(event) {
+    event.preventDefault();
+    setFeedbackDialog(null);
+    setVaultToast(feedbackDialog === "bug" ? "Bug report saved for beta review." : "Feedback saved for beta review.");
+  }
+
+  function renderMenuPullDown(key, title, summary, children, icon = "+") {
     const open = Boolean(menuSectionsOpen[key]);
     return (
-      <div className="drawer-collapsible" key={key}>
+      <div className={open ? "drawer-collapsible open" : "drawer-collapsible"} key={key}>
         <button type="button" className="drawer-collapsible-toggle" onClick={() => toggleMenuSection(key)}>
-          <span>
+          <span className="drawer-section-icon" aria-hidden="true">{icon}</span>
+          <span className="drawer-section-copy">
             <strong>{title}</strong>
             <small>{summary}</small>
           </span>
-          <b>{open ? "Hide" : "Open"}</b>
+          <b>{open ? "Hide ^" : "Open v"}</b>
         </button>
         {open ? <div className="drawer-collapsible-body">{children}</div> : null}
       </div>
     );
+  }
+
+  function getSuggestionUserInfo() {
+    return {
+      userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-user",
+      displayName: currentUserProfile?.displayName || user?.email || "Local Beta User",
+    };
+  }
+
+  function refreshSuggestionsFromStorage() {
+    const next = loadSuggestions();
+    setSuggestions(next);
+    return next;
+  }
+
+  function submitUniversalSuggestion(input, options = {}) {
+    const userInfo = getSuggestionUserInfo();
+    const result = submitSuggestion({ ...input, ...userInfo }, options);
+    if (!result.ok && result.reason === "duplicate") {
+      setSuggestionConflict({
+        input: { ...input, ...userInfo },
+        duplicate: result.duplicate,
+      });
+      setVaultToast("A similar suggestion is already under review.");
+      return null;
+    }
+    setSuggestions(result.suggestions);
+    setVaultToast("Suggestion submitted for admin review.");
+    return result.suggestion;
+  }
+
+  function resolveSuggestionConflict(action) {
+    if (!suggestionConflict) return;
+    if (action === "cancel") {
+      setSuggestionConflict(null);
+      return;
+    }
+
+    const input = action === "confirm"
+      ? { ...suggestionConflict.input, confirmationOf: suggestionConflict.duplicate.id }
+      : suggestionConflict.input;
+    const result = submitSuggestion(input, { allowDuplicate: true });
+    setSuggestions(result.suggestions);
+    setSuggestionConflict(null);
+    setVaultToast(action === "confirm" ? "Confirmation added to the pending suggestion." : "Suggestion submitted for admin review.");
   }
 
   function addUserSearchAlias(event) {
@@ -1257,6 +1716,12 @@ export default function App() {
     ]);
     setAliasDraft({ alias: "", canonical: "", type: "personal" });
   }
+
+  useEffect(() => {
+    if (activeTab === "adminReview" || activeTab === "mySuggestions") {
+      refreshSuggestionsFromStorage();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     let frameId = 0;
@@ -1328,7 +1793,171 @@ export default function App() {
   const updateTripForm = (field, value) => setTripForm((old) => ({ ...old, [field]: value }));
   const updateSaleForm = (field, value) => setSaleForm((old) => ({ ...old, [field]: value }));
   const updateDealForm = (field, value) => setDealForm((old) => ({ ...old, [field]: value }));
-  const updateVaultForm = (field, value) => setVaultForm((old) => ({ ...old, [field]: value }));
+  const updateVaultForm = (field, value) => setVaultForm((old) => {
+    if (field === "vaultStatus") {
+      return { ...old, vaultStatus: value, status: vaultStatusLabel(value) };
+    }
+    return { ...old, [field]: value };
+  });
+
+  function isBlankLike(value) {
+    return value === undefined || value === null || String(value).trim() === "";
+  }
+
+  function isNumericDraft(value) {
+    return isBlankLike(value) || Number.isFinite(Number(value));
+  }
+
+  function isVaultDraftReady(form) {
+    return Boolean(
+      String(form.name || "").trim() &&
+      Number(form.quantity) >= 1 &&
+      String(form.vaultStatus || "").trim() &&
+      isNumericDraft(form.marketPrice) &&
+      isNumericDraft(form.msrpPrice) &&
+      isNumericDraft(form.unitCost) &&
+      isNumericDraft(form.salePrice)
+    );
+  }
+
+  function validateVaultDraft(form) {
+    if (!String(form.name || "").trim()) return "Item name is required.";
+    if (!Number.isFinite(Number(form.quantity)) || Number(form.quantity) < 1) return "Quantity must be at least 1.";
+    if (!String(form.vaultStatus || "").trim()) return "Vault status is required.";
+    if (!isNumericDraft(form.marketPrice)) return "Market value must be a number.";
+    if (!isNumericDraft(form.msrpPrice)) return "MSRP must be a number.";
+    if (!isNumericDraft(form.unitCost)) return "Cost paid must be a number.";
+    if (!isNumericDraft(form.salePrice)) return "Planned sale price must be a number.";
+    return "";
+  }
+
+  function normalizeVaultDuplicateText(value) {
+    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  function isVaultItemRecord(item) {
+    return Boolean(
+      item?.vaultStatus ||
+      ["Personal Collection", "Held", "Wishlist", "Sealed", "Sealed / Holding", "Ripped / Opened", "Moved to Forge", "Traded"].includes(item?.status)
+    );
+  }
+
+  function findVaultDuplicate(candidate, collection = items) {
+    const candidateName = normalizeVaultDuplicateText(candidate.itemName || candidate.name);
+    const candidateUpc = normalizeVaultDuplicateText(candidate.upc || candidate.barcode);
+    const candidateSku = normalizeVaultDuplicateText(candidate.sku);
+    const candidateCatalogId = normalizeVaultDuplicateText(candidate.catalogProductId || candidate.tideTradrProductId || candidate.externalProductId);
+    return collection.find((item) => {
+      if (!isVaultItemRecord(item) || item.id === candidate.id) return false;
+      const itemName = normalizeVaultDuplicateText(item.itemName || item.name);
+      const itemUpc = normalizeVaultDuplicateText(item.upc || item.barcode);
+      const itemSku = normalizeVaultDuplicateText(item.sku);
+      const itemCatalogId = normalizeVaultDuplicateText(item.catalogProductId || item.tideTradrProductId || item.externalProductId);
+      return Boolean(
+        (candidateCatalogId && itemCatalogId && candidateCatalogId === itemCatalogId) ||
+        (candidateUpc && itemUpc && candidateUpc === itemUpc) ||
+        (candidateSku && itemSku && candidateSku === itemSku) ||
+        (candidateName && itemName && candidateName === itemName)
+      );
+    });
+  }
+
+  function filterVaultItems(collection, status = "all") {
+    return collection.filter((item) => {
+      if (status === "all") return isActiveVaultItem(item);
+      if (status === "sold_archived") {
+        const normalizedStatus = normalizeVaultStatus(item);
+        return normalizedStatus === "archived" || String(item.status || "").toLowerCase() === "sold";
+      }
+      return normalizeVaultStatus(item) === status;
+    });
+  }
+
+  function searchVaultItems(collection, query = "") {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return collection;
+    return collection.filter((item) =>
+      [
+        item.itemName,
+        item.name,
+        item.expansion,
+        item.setName,
+        item.setCode,
+        item.barcode,
+        item.upc,
+        item.sku,
+        item.notes,
+        item.productType,
+        item.storageLocation,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedQuery))
+    );
+  }
+
+  function resetVaultForm() {
+    setVaultForm({ ...BLANK_VAULT_FORM });
+    setVaultFormSections({ basic: true, pricing: false, status: false, extra: false });
+    setVaultAddMode("manual");
+    setVaultSaving(false);
+  }
+
+  function vaultFormHasDraft() {
+    const comparableFields = [
+      "name",
+      "unitCost",
+      "msrpPrice",
+      "marketPrice",
+      "salePrice",
+      "packCount",
+      "setName",
+      "productType",
+      "store",
+      "storageLocation",
+      "condition",
+      "sealedCondition",
+      "conditionNotes",
+      "upc",
+      "sku",
+      "purchaseDate",
+      "receiptImage",
+      "itemImage",
+      "notes",
+    ];
+    return comparableFields.some((field) => !isBlankLike(vaultForm[field])) || Number(vaultForm.quantity) !== Number(BLANK_VAULT_FORM.quantity);
+  }
+
+  function closeVaultAddModal(force = false) {
+    if (!force && vaultFormHasDraft()) {
+      const leave = window.confirm("You have unsaved changes. Leave without saving?");
+      if (!leave) return false;
+    }
+    setShowVaultAddForm(false);
+    setVaultPotentialDuplicate(null);
+    resetVaultForm();
+    return true;
+  }
+
+  function isEditingVaultItem() {
+    return Boolean(editingItemId && items.some((item) => item.id === editingItemId && isVaultItemRecord(item)));
+  }
+
+  function cancelVaultEdit(force = false) {
+    if (!force && isEditingVaultItem()) {
+      const leave = window.confirm("You have unsaved changes. Leave without saving?");
+      if (!leave) return false;
+    }
+    setEditingItemId(null);
+    setItemForm(blankItem);
+    return true;
+  }
+
+  function confirmLeaveVaultWork() {
+    if (activeTab !== "vault") return true;
+    if (showVaultAddForm && vaultFormHasDraft()) return closeVaultAddModal();
+    if (isEditingVaultItem()) return cancelVaultEdit();
+    return true;
+  }
 
   const activePurchasers = purchasers.filter((purchaser) => purchaser.active);
   const purchaserOptions = activePurchasers.length ? activePurchasers : createDefaultPurchasers();
@@ -1520,6 +2149,41 @@ export default function App() {
       savedLocations: [...new Set([...(current.savedLocations || []), value])],
       lastUpdated: new Date().toISOString(),
     }));
+  }
+
+  const hasScoutLocation = Boolean(
+    String(locationSettings.manualLocation || "").trim() ||
+    String(locationSettings.selectedSavedLocation || "").trim() ||
+    locationSettings.trackingEnabled
+  );
+
+  function requestScoutLocation() {
+    if (hasScoutLocation) return true;
+    setLocationPromptOpen(true);
+    return false;
+  }
+
+  function savePromptLocation(event) {
+    event?.preventDefault?.();
+    const value = String(locationPromptZip || "").trim();
+    if (!value) return;
+    setLocationSettings((current) => ({
+      ...current,
+      mode: "manual",
+      manualLocation: value,
+      selectedSavedLocation: value,
+      savedLocations: [...new Set([...(current.savedLocations || []), value])],
+      trackingEnabled: false,
+      lastUpdated: new Date().toISOString(),
+    }));
+    setLocationPromptOpen(false);
+    setLocationPromptZip("");
+  }
+
+  function openLocationSettingsFromPrompt() {
+    setLocationPromptOpen(false);
+    setMenuSectionsOpen({ settings: true });
+    setMenuOpen(true);
   }
 
   function openInventoryImportAssistant(context = "Forge") {
@@ -1754,6 +2418,11 @@ export default function App() {
       marketLastUpdated: now,
       marketConfidenceLevel: "Manual",
       sourceType: "manual",
+      imageUrl: "",
+      imageSource: "placeholder",
+      imageStatus: "placeholder",
+      imageLastUpdated: now,
+      imageNeedsReview: true,
       msrpPrice: Number(row.msrp || 0),
       condition: row.condition || "",
       language: row.language || "English",
@@ -1793,6 +2462,12 @@ export default function App() {
       catalogProductName: matched?.name || "",
       externalProductId: matched?.externalProductId || "",
       tideTradrUrl: matched?.marketUrl || "",
+      itemImage: getCatalogImage(matched) || "",
+      itemImageSource: matched?.imageSource || getDefaultImageSource(matched || {}),
+      itemImageStatus: matched?.imageStatus || getDefaultImageStatus(matched || {}),
+      itemImageSourceUrl: matched?.imageSourceUrl || "",
+      itemImageLastUpdated: matched?.imageLastUpdated || "",
+      itemImageNeedsReview: Boolean(matched?.imageNeedsReview),
       marketPrice: Number(row.marketValue || matched?.marketPrice || 0),
       lowPrice: Number(matched?.lowPrice || 0),
       midPrice: Number(matched?.midPrice || row.marketValue || 0),
@@ -1801,6 +2476,7 @@ export default function App() {
       expansion: row.setName || matched?.setName || "",
       productType: row.productType || matched?.productType || "",
       status,
+      vaultStatus: destination === "Vault" ? "personal_collection" : "",
       actionNotes: destination === "Vault" ? "Imported collection item" : "Imported Forge item",
       notes: [row.notes, `Imported from ${row.sourceType}. Original: ${row.originalText}`].filter(Boolean).join(" | "),
       createdAt: new Date().toISOString(),
@@ -2007,8 +2683,94 @@ export default function App() {
       stores: saved.stores || [],
       reports: saved.reports || [],
       tidepoolReports: saved.tidepoolReports || [],
+      bestBuyAlerts: saved.bestBuyAlerts || [],
+      scoutProfile: saved.scoutProfile || {},
+      alertSettings: saved.alertSettings || {},
     });
   }
+
+  function saveTidepoolCommunity(next) {
+    const payload = {
+      posts: next.posts ?? tidepoolPosts,
+      comments: next.comments ?? tidepoolComments,
+      reactions: next.reactions ?? tidepoolReactions,
+    };
+    localStorage.setItem(TIDEPOOL_STORAGE_KEY, JSON.stringify(payload));
+    setTidepoolPosts(payload.posts);
+    setTidepoolComments(payload.comments);
+    setTidepoolReactions(payload.reactions);
+  }
+
+  function submitTidepoolPost(event) {
+    event.preventDefault();
+    if (!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()) return;
+    const post = makeTidepoolPost({
+      ...tidepoolPostForm,
+      displayName: currentUserProfile.displayName || "Local Scout",
+      userId: currentUserProfile.userId || "local-beta",
+      verificationStatus: ["Restock sighting", "Product sighting"].includes(tidepoolPostForm.postType) ? "pending" : "unverified",
+      sourceType: "user",
+    });
+    saveTidepoolCommunity({ posts: [post, ...tidepoolPosts] });
+    setTidepoolPostForm({ postType: "General post", title: "", body: "", city: "", state: "VA", zip: "", photoUrl: "" });
+    setTidepoolFilter("Latest");
+  }
+
+  function updateTidepoolPost(postId, updates) {
+    saveTidepoolCommunity({
+      posts: tidepoolPosts.map((post) =>
+        post.postId === postId ? { ...post, ...updates, updatedAt: new Date().toISOString() } : post
+      ),
+    });
+  }
+
+  function addTidepoolReaction(postId, reactionType) {
+    const reaction = {
+      reactionId: makeId("reaction"),
+      postId,
+      commentId: "",
+      userId: currentUserProfile.userId || "local-beta",
+      reactionType,
+      createdAt: new Date().toISOString(),
+    };
+    saveTidepoolCommunity({
+      reactions: [reaction, ...tidepoolReactions],
+      posts: tidepoolPosts.map((post) =>
+        post.postId === postId ? { ...post, reactionCount: Number(post.reactionCount || 0) + 1 } : post
+      ),
+    });
+  }
+
+  function addTidepoolComment(postId, parentCommentId = "") {
+    const key = parentCommentId || postId;
+    const body = String(tidepoolCommentDrafts[key] || "").trim();
+    if (!body) return;
+    const comment = {
+      commentId: makeId("comment"),
+      postId,
+      userId: currentUserProfile.userId || "local-beta",
+      displayName: currentUserProfile.displayName || "Local Scout",
+      body,
+      parentCommentId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: "active",
+    };
+    saveTidepoolCommunity({
+      comments: [...tidepoolComments, comment],
+      posts: tidepoolPosts.map((post) =>
+        post.postId === postId ? { ...post, commentCount: Number(post.commentCount || 0) + 1 } : post
+      ),
+    });
+    setTidepoolCommentDrafts((current) => ({ ...current, [key]: "" }));
+  }
+
+  useEffect(() => {
+    const savedTidepool = JSON.parse(localStorage.getItem(TIDEPOOL_STORAGE_KEY) || "null") || createDefaultTidepoolData();
+    setTidepoolPosts(savedTidepool.posts || []);
+    setTidepoolComments(savedTidepool.comments || []);
+    setTidepoolReactions(savedTidepool.reactions || []);
+  }, []);
 
   useEffect(() => {
     if (BETA_LOCAL_MODE) {
@@ -2040,6 +2802,9 @@ export default function App() {
       setPurchasers(normalizePurchasers(saved.purchasers));
       setCatalogProducts(saved.catalogProducts?.length ? mergeSharedCatalogProducts(saved.catalogProducts) : createSharedCatalogProducts());
       setTideTradrWatchlist(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : []);
+      setMarketplaceListings(Array.isArray(saved.marketplaceListings) ? saved.marketplaceListings : []);
+      setMarketplaceReports(Array.isArray(saved.marketplaceReports) ? saved.marketplaceReports : []);
+      setMarketplaceSavedIds(Array.isArray(saved.marketplaceSavedIds) ? saved.marketplaceSavedIds : []);
       setTideTradrLookupId(saved.tideTradrLookupId || "");
       setMarketPriceCache(saved.marketPriceCache || loadPriceCache());
       setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
@@ -2091,6 +2856,9 @@ export default function App() {
         purchasers,
         catalogProducts,
         tideTradrWatchlist,
+        marketplaceListings,
+        marketplaceReports,
+        marketplaceSavedIds,
         tideTradrLookupId,
         marketPriceCache,
         userSearchAliases,
@@ -2108,7 +2876,7 @@ export default function App() {
         locationSettings,
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, locationSettings, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, locationSettings, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -2119,6 +2887,94 @@ export default function App() {
     if (!BETA_LOCAL_MODE || activeTab !== "dashboard") return;
     loadScoutSnapshot();
   }, [activeTab]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadProfile() {
+      const profile = await getCurrentUserProfile(user);
+      if (!active) return;
+      setCurrentUserProfile(profile);
+      setSubscriptionProfile((current) => ({
+        ...current,
+        userId: profile.userId,
+        email: profile.email,
+        displayName: profile.displayName,
+        userRole: profile.userRole,
+        tier: profile.tier,
+        featureTier: profile.tier,
+        subscriptionPlan: profile.tier,
+        isAdmin: profile.isAdmin,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+        lastLoginAt: profile.lastLoginAt,
+      }));
+    }
+    loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    function closeQuickAddOnOutsidePointer(event) {
+      if (!quickAddMenuOpen) return;
+      if (quickAddRef.current?.contains(event.target)) return;
+      setQuickAddMenuOpen(false);
+    }
+    document.addEventListener("pointerdown", closeQuickAddOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeQuickAddOnOutsidePointer);
+  }, [quickAddMenuOpen]);
+
+  useEffect(() => {
+    document.body.classList.toggle("menu-open", menuOpen);
+    return () => document.body.classList.remove("menu-open");
+  }, [menuOpen]);
+
+  useEffect(() => {
+    function handleEscape(event) {
+      if (event.key !== "Escape") return;
+      if (quickAddMenuOpen) {
+        setQuickAddMenuOpen(false);
+        return;
+      }
+      if (feedbackDialog) {
+        setFeedbackDialog(null);
+        return;
+      }
+      if (suggestionConflict) {
+        setSuggestionConflict(null);
+        return;
+      }
+      if (menuOpen) {
+        setMenuOpen(false);
+        return;
+      }
+      if (vaultPotentialDuplicate) {
+        setVaultPotentialDuplicate(null);
+        return;
+      }
+      if (vaultDuplicateItem) {
+        setVaultDuplicateItem(null);
+        return;
+      }
+      if (vaultForgeTransfer) {
+        setVaultForgeTransfer(null);
+        return;
+      }
+      if (showVaultAddForm) {
+        closeVaultAddModal();
+        return;
+      }
+      if (showInventoryScanner) {
+        setShowInventoryScanner(false);
+        setScanReview(null);
+        setScanMatches([]);
+        setScanInput("");
+      }
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [quickAddMenuOpen, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showVaultAddForm, showInventoryScanner, vaultForm, scanReview]);
 
   async function checkUser() {
     const { data, error } = await supabase.auth.getUser();
@@ -2160,21 +3016,38 @@ export default function App() {
 
   function resetBetaLocalData() {
     const confirmed = window.confirm(
-      "Reset all local beta data for Ember & Tide TCG? This clears The Forge, Vault, Market, and Scout test data stored in this browser."
+      "Clear demo data? This cannot be undone."
     );
 
-    if (!confirmed) return;
+    if (!confirmed) return false;
 
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     localStorage.removeItem(SCOUT_STORAGE_KEY);
-    setScoutSnapshot({ stores: [], reports: [], tidepoolReports: [] });
+    localStorage.removeItem(TIDEPOOL_STORAGE_KEY);
+    localStorage.removeItem(SUGGESTION_STORAGE_KEY);
+    setScoutSnapshot({
+      stores: [],
+      reports: [],
+      tidepoolReports: [],
+      bestBuyAlerts: [],
+      scoutProfile: {},
+      alertSettings: {},
+    });
     setItems([]);
     setPurchasers(createDefaultPurchasers());
     setCatalogProducts(createSharedCatalogProducts());
     setTideTradrWatchlist([]);
+    setMarketplaceListings([]);
+    setMarketplaceReports([]);
+    setMarketplaceSavedIds([]);
+    setSuggestions([]);
     setTideTradrLookupId("");
     setMarketPriceCache({ prices: [], lastSync: "", failedMatches: [] });
     setUserSearchAliases([]);
+    const defaultTidepool = createDefaultTidepoolData();
+    setTidepoolPosts(defaultTidepool.posts);
+    setTidepoolComments(defaultTidepool.comments);
+    setTidepoolReactions(defaultTidepool.reactions);
     setExpenses([]);
     setSales([]);
     setVehicles([]);
@@ -2189,24 +3062,7 @@ export default function App() {
       condition: "Sealed",
       notes: "",
     });
-    setVaultForm({
-      name: "",
-      vaultCategory: "Personal collection",
-      status: "Personal Collection",
-      quantity: 1,
-      unitCost: "",
-      msrpPrice: "",
-      marketPrice: "",
-      salePrice: "",
-      packCount: "",
-      setName: "",
-      productType: "",
-      store: "",
-      purchaseDate: "",
-      receiptImage: "",
-      itemImage: "",
-      notes: "",
-    });
+    setVaultForm({ ...BLANK_VAULT_FORM });
     setEditingItemId(null);
     setEditingCatalogId(null);
     setEditingExpenseId(null);
@@ -2220,22 +3076,17 @@ export default function App() {
     setActiveTab("dashboard");
   }
 
-  function addVaultItem(event) {
-    event.preventDefault();
-
-    if (!vaultForm.name || !vaultForm.quantity) {
-      alert("Please enter a Vault item name and quantity.");
-      return;
-    }
-
+  function buildVaultItemFromForm() {
     const now = new Date().toISOString();
     const defaultPurchaser = purchaserOptions[0] || { id: "", name: "Zena" };
     const vaultCategory = vaultForm.vaultCategory || "Personal collection";
-    const status = vaultForm.status || (vaultCategory === "Rip later" ? "Held" : "Personal Collection");
-    const newItem = {
+    const vaultStatus = vaultForm.vaultStatus || normalizeVaultStatus({ status: vaultForm.status, actionNotes: vaultCategory });
+    const status = vaultStatusLabel(vaultStatus);
+    return {
       id: makeId("vault"),
+      itemName: vaultForm.name,
       name: vaultForm.name,
-      sku: `VAULT-${Date.now()}`,
+      sku: vaultForm.sku || `VAULT-${Date.now()}`,
       buyer: defaultPurchaser.name,
       purchaserId: defaultPurchaser.id,
       purchaserName: defaultPurchaser.name,
@@ -2244,108 +3095,336 @@ export default function App() {
       quantity: Number(vaultForm.quantity || 1),
       unitCost: Number(vaultForm.unitCost || 0),
       salePrice: Number(vaultForm.salePrice || 0),
+      plannedSalePrice: Number(vaultForm.salePrice || 0),
       receiptImage: vaultForm.receiptImage || "",
       itemImage: vaultForm.itemImage || "",
-      barcode: "",
-      catalogProductId: "",
+      barcode: vaultForm.upc || "",
+      upc: vaultForm.upc || "",
+      catalogProductId: vaultForm.catalogProductId || "",
+      tideTradrProductId: vaultForm.tideTradrProductId || vaultForm.catalogProductId || "",
       catalogProductName: "",
-      externalProductId: "",
+      externalProductId: vaultForm.tideTradrProductId || vaultForm.catalogProductId || "",
       tideTradrUrl: "",
       externalProductSource: "TideTradr",
       marketPrice: Number(vaultForm.marketPrice || 0),
+      marketValue: Number(vaultForm.marketPrice || 0),
       lowPrice: 0,
       midPrice: Number(vaultForm.marketPrice || 0),
       highPrice: 0,
       msrpPrice: Number(vaultForm.msrpPrice || 0),
+      msrp: Number(vaultForm.msrpPrice || 0),
       setCode: "",
       expansion: vaultForm.setName || "",
+      setName: vaultForm.setName || "",
       productLine: "",
       productType: vaultForm.productType || "",
       packCount: Number(vaultForm.packCount || 0),
       notes: vaultForm.notes || "",
+      storageLocation: vaultForm.storageLocation || "",
+      condition: vaultForm.condition || "",
+      sealedCondition: vaultForm.sealedCondition || "",
+      conditionNotes: vaultForm.conditionNotes || "",
+      sourceType: vaultForm.sourceType || "Manual",
+      source: vaultForm.sourceType || "Manual",
       status,
+      vaultStatus,
       listingPlatform: "",
       listingUrl: "",
       listedPrice: 0,
       actionNotes: vaultCategory,
+      vaultHistory: [],
+      tradedDate: "",
+      tradeNotes: "",
+      receivedItemName: "",
+      receivedCatalogItemId: "",
       lastPriceChecked: vaultForm.marketPrice ? now : "",
       purchaseDate: vaultForm.purchaseDate || "",
       createdAt: vaultForm.purchaseDate ? new Date(vaultForm.purchaseDate).toISOString() : now,
+      updatedAt: now,
     };
+  }
 
-    setItems([newItem, ...items]);
-    setVaultForm({
-      name: "",
-      vaultCategory: "Personal collection",
-      status: "Personal Collection",
-      quantity: 1,
-      unitCost: "",
-      msrpPrice: "",
-      marketPrice: "",
-      salePrice: "",
-      packCount: "",
-      setName: "",
-      productType: "",
-      store: "",
-      purchaseDate: "",
-      receiptImage: "",
-      itemImage: "",
-      notes: "",
-    });
-    setShowVaultAddForm(false);
-    setVaultFormSections({ basic: true, pricing: false, status: false, extra: false });
+  function createVaultItemRecord(newItem) {
+    setItems((current) => [newItem, ...current]);
+  }
+
+  function increaseExistingVaultQuantity(existingItem, addedQuantity) {
+    setItems((current) =>
+      current.map((item) =>
+        item.id === existingItem.id
+          ? {
+              ...item,
+              quantity: Number(item.quantity || 0) + Number(addedQuantity || 1),
+              updatedAt: new Date().toISOString(),
+            }
+          : item
+      )
+    );
+  }
+
+  function finishVaultItemCreate(newItem, message = "Item added to Vault.") {
+    createVaultItemRecord(newItem);
+    closeVaultAddModal(true);
+    setVaultToast(message);
+  }
+
+  function resolveVaultPotentialDuplicate(choice) {
+    if (!vaultPotentialDuplicate?.candidate) return;
+    const { candidate, duplicate } = vaultPotentialDuplicate;
+    if (choice === "increase") {
+      increaseExistingVaultQuantity(duplicate, candidate.quantity);
+      closeVaultAddModal(true);
+      setShowInventoryScanner(false);
+      setScanReview(null);
+      setScanMatches([]);
+      setScanInput("");
+      setVaultPotentialDuplicate(null);
+      if (candidate.vaultStatus) setActiveTab("vault");
+      setVaultToast("Item added to Vault.");
+      return;
+    }
+    if (choice === "separate") {
+      finishVaultItemCreate(candidate, "Item added to Vault.");
+      setShowInventoryScanner(false);
+      setScanReview(null);
+      setScanMatches([]);
+      setScanInput("");
+      setVaultPotentialDuplicate(null);
+      if (candidate.vaultStatus) setActiveTab("vault");
+      return;
+    }
+    setVaultPotentialDuplicate(null);
+  }
+
+  function addVaultItem(event) {
+    event.preventDefault();
+    const validationMessage = validateVaultDraft(vaultForm);
+    if (validationMessage) {
+      setVaultToast(validationMessage);
+      return;
+    }
+
+    setVaultSaving(true);
+    const newItem = buildVaultItemFromForm();
+    const duplicate = findVaultDuplicate(newItem);
+    if (duplicate) {
+      setVaultPotentialDuplicate({ candidate: newItem, duplicate });
+      setVaultSaving(false);
+      return;
+    }
+    finishVaultItemCreate(newItem, "Item added to Vault.");
   }
 
   function toggleVaultFormSection(section) {
     setVaultFormSections((current) => ({ ...current, [section]: !current[section] }));
   }
 
-  function beginScanProduct() {
+  function buildScanReview(rawValue, matches, defaultDestination = "none") {
+    const best = matches[0];
+    const product = best?.item || null;
+    const marketInfo = product ? getTideTradrMarketInfo(product) : {};
+    return {
+      scanId: makeId("scan"),
+      rawValue,
+      scanType: scanMode === "upc" ? "upc" : scanMode === "card" ? "card" : scanMode === "manual" ? "manual" : "barcode",
+      matchedCatalogItemId: product?.id || "",
+      itemName: product?.name || product?.productName || product?.cardName || rawValue || "Unknown item",
+      catalogType: product?.catalogType || "unknown",
+      productType: product?.productType || product?.rarity || "",
+      setName: product?.setName || product?.expansion || "",
+      upc: product?.barcode || product?.upc || (/^\d{8,}$/.test(String(rawValue || "")) ? rawValue : ""),
+      sku: product?.sku || "",
+      imageUrl: product ? getCatalogImage(product) : "",
+      msrp: marketInfo.msrp || product?.msrpPrice || "",
+      marketValue: marketInfo.currentMarketValue || product?.marketPrice || "",
+      matchConfidence: best?.confidencePercent || (product ? 70 : 0),
+      sourceType: product?.sourceType || product?.marketStatus || "local/catalog",
+      destination: defaultDestination,
+      reviewedByUser: false,
+      possibleMatches: matches.slice(0, 5),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  function beginScanProduct(defaultDestination = "none") {
     setEditingItemId(null);
-    setItemForm((old) => ({ ...old, barcode: "" }));
     setScanMode("upc");
     setScanMatches([]);
+    setScanReview(null);
+    setScanDestination(defaultDestination);
+    setScanMessage("");
+    setScanInput("");
     setShowInventoryScanner(true);
     setQuickAddMenuOpen(false);
-    setActiveTab("addInventory");
   }
 
   function handleCatalogScanMatch(value) {
+    setScanInput(value);
     const matches = getBestCatalogMatches(value, catalogProducts);
     setScanMatches(matches);
-    const best = matches[0];
-    if (best?.item) {
-      applyCatalogProduct(best.item.id);
-      setItemForm((old) => ({
-        ...old,
-        barcode: value,
-        catalogProductId: best.item.id,
-        catalogProductName: best.item.name || best.item.productName || best.item.cardName || "",
-      }));
-    } else {
-      setItemForm((old) => ({ ...old, barcode: value }));
-    }
-    setShowInventoryScanner(false);
+    setScanReview(buildScanReview(value, matches, scanDestination));
   }
 
   function confirmScanMatch(productId) {
-    applyCatalogProduct(productId);
+    const match = scanMatches.find((candidate) => String(candidate.item.id) === String(productId));
+    if (!match?.item) return;
+    setScanReview(buildScanReview(scanReview?.rawValue || scanInput || match.item.name, [match, ...scanMatches.filter((candidate) => String(candidate.item.id) !== String(productId))], scanDestination));
+  }
+
+  function scannedProductToItem(product, destination) {
+    const marketInfo = getTideTradrMarketInfo(product || {});
+    const defaultPurchaser = purchaserOptions[0] || { id: "", name: "Zena" };
+    const isVaultDestination = destination === "vault" || destination === "wishlist";
+    return {
+      ...blankItem,
+      id: makeId(isVaultDestination ? "scan-vault" : "scan-forge"),
+      itemName: product?.name || product?.productName || product?.cardName || scanReview?.itemName || "Scanned item",
+      name: product?.name || product?.productName || product?.cardName || scanReview?.itemName || "Scanned item",
+      buyer: defaultPurchaser.name,
+      purchaserId: defaultPurchaser.id,
+      purchaserName: defaultPurchaser.name,
+      category: product?.category || "Pokemon",
+      quantity: 1,
+      unitCost: 0,
+      salePrice: marketInfo.currentMarketValue || 0,
+      plannedSalePrice: marketInfo.currentMarketValue || 0,
+      itemImage: product ? getCatalogImage(product) : scanReview?.imageUrl || "",
+      itemImageSource: product?.imageSource || getDefaultImageSource(product || {}),
+      itemImageStatus: product?.imageStatus || getDefaultImageStatus(product || {}),
+      itemImageSourceUrl: product?.imageSourceUrl || product?.marketUrl || "",
+      itemImageLastUpdated: product?.imageLastUpdated || product?.lastUpdated || "",
+      itemImageNeedsReview: Boolean(product?.imageNeedsReview),
+      barcode: scanReview?.upc || product?.barcode || "",
+      upc: scanReview?.upc || product?.barcode || "",
+      sku: scanReview?.sku || product?.sku || "",
+      catalogProductId: product?.id || "",
+      tideTradrProductId: product?.id || "",
+      catalogProductName: product?.name || "",
+      externalProductId: product?.externalProductId || "",
+      tideTradrUrl: product?.marketUrl || "",
+      marketPrice: marketInfo.currentMarketValue || 0,
+      marketValue: marketInfo.currentMarketValue || 0,
+      lowPrice: product?.lowPrice || 0,
+      midPrice: product?.midPrice || marketInfo.currentMarketValue || 0,
+      highPrice: product?.highPrice || 0,
+      msrpPrice: marketInfo.msrp || product?.msrpPrice || 0,
+      msrp: marketInfo.msrp || product?.msrpPrice || 0,
+      setCode: product?.setCode || "",
+      expansion: product?.setName || product?.expansion || "",
+      setName: product?.setName || product?.expansion || "",
+      productLine: product?.productLine || product?.series || "",
+      productType: product?.catalogType === "card" ? "Individual Card" : product?.productType || "",
+      packCount: product?.packCount || 0,
+      status: isVaultDestination ? (destination === "wishlist" ? "Wishlist" : product?.catalogType === "sealed" ? "Sealed / Holding" : "Personal Collection") : "In Stock",
+      vaultStatus: isVaultDestination ? (destination === "wishlist" ? "wishlist" : product?.catalogType === "sealed" ? "sealed" : "personal_collection") : "",
+      source: "scanner",
+      sourceType: "Barcode scan",
+      sourceLocation: "scanner",
+      acquisitionType: "scanned",
+      storageLocation: "",
+      condition: product?.catalogType === "card" ? "Unknown" : "",
+      sealedCondition: product?.catalogType === "sealed" ? "Sealed" : "",
+      conditionNotes: "",
+      scanId: scanReview?.scanId || "",
+      notes: `Added from scanner review. Raw scan: ${scanReview?.rawValue || "manual"}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  function addScannedItemToCollection(destination) {
+    const product = catalogProducts.find((item) => String(item.id) === String(scanReview?.matchedCatalogItemId));
+    if (!product) {
+      setScanMessage("No catalog match found. Search TideTradr manually or submit the item for review.");
+      return;
+    }
+    const nextItem = scannedProductToItem(product, destination);
+    if (destination === "vault" || destination === "wishlist") {
+      const duplicate = findVaultDuplicate(nextItem);
+      if (duplicate) {
+        setVaultPotentialDuplicate({ candidate: nextItem, duplicate, fromScanner: true });
+        setShowInventoryScanner(false);
+        return;
+      }
+      createVaultItemRecord(nextItem);
+      setScanMessage(destination === "wishlist" ? "Scanned item added to Wishlist." : "Scanned item added to The Vault.");
+      setShowInventoryScanner(false);
+      setScanReview(null);
+      setScanMatches([]);
+      setScanInput("");
+      setActiveTab("vault");
+      setVaultToast("Item added to Vault.");
+      return;
+    }
+    const existing = product ? items.find((item) =>
+      String(item.catalogProductId || "") === String(product.id) &&
+      (destination === "vault" ? Boolean(item.vaultStatus) : !item.vaultStatus)
+    ) : null;
+    if (existing && window.confirm("This item already exists. Add quantity to the existing item instead of creating a new entry?")) {
+      setItems((current) => current.map((item) => item.id === existing.id ? { ...item, quantity: Number(item.quantity || 0) + 1, updatedAt: new Date().toISOString() } : item));
+    } else {
+      setItems((current) => [nextItem, ...current]);
+    }
+    setScanMessage(destination === "wishlist" ? "Scanned item added to Wishlist." : destination === "vault" ? "Scanned item added to The Vault." : "Scanned item added to Forge.");
+    setShowInventoryScanner(false);
+    setScanReview(null);
     setScanMatches([]);
+    setScanInput("");
+    setActiveTab(destination === "vault" || destination === "wishlist" ? "vault" : "inventory");
+    if (destination === "vault" || destination === "wishlist") setVaultToast("Vault item saved.");
+  }
+
+  function confirmScannerDestination() {
+    const destination = scanDestination || scanReview?.destination || "none";
+    const productId = scanReview?.matchedCatalogItemId;
+    if (!destination || destination === "none") {
+      setScanMessage("Choose where this scanned item should go.");
+      return;
+    }
+    if ((destination === "vault" || destination === "forge" || destination === "wishlist") && !productId) {
+      setScanMessage("No catalog match yet. Submit the item for review or choose a TideTradr lookup first.");
+      return;
+    }
+    if (destination === "vault" || destination === "forge" || destination === "wishlist") return addScannedItemToCollection(destination);
+    if (destination === "tidetradr") {
+      if (productId) selectTideTradrProduct(productId);
+      setActiveTab("market");
+    }
+    if (destination === "deal_finder") {
+      if (productId) useCatalogProductInDeal(productId);
+      setActiveTab("market");
+      setTideTradrSubTab("deal");
+    }
+    if (destination === "watchlist" || destination === "pinned") {
+      if (productId) addProductToTideTradrWatchlist(productId, destination === "pinned");
+      setActiveTab("market");
+      setTideTradrSubTab("watch");
+    }
+    if (destination === "scout_report") {
+      setActiveTab("scout");
+      setScoutView("submit");
+      setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+    }
+    if (destination === "scout_report" || destination === "tidetradr" || destination === "deal_finder" || destination === "watchlist" || destination === "pinned") {
+      setShowInventoryScanner(false);
+      setScanReview(null);
+      setScanMatches([]);
+    }
   }
 
   function goToTidepool() {
-    setQuickAddMenuOpen(false);
-    setScoutSubTabTarget({ tab: "tidepool", id: Date.now() });
-    setActiveTab("scout");
-    setFeatureSectionsOpen((current) => ({
-      ...current,
-      scout_tidepool: true,
-      scout_store_tracker: true,
-    }));
+    openTidepoolCommunity("Latest");
   }
 
   function goToScoutSection(subTab) {
+    if (subTab === "stores" && !requestScoutLocation()) {
+      setActiveTab("scout");
+      setQuickAddMenuOpen(false);
+      return;
+    }
     setScoutSubTabTarget({ tab: subTab, id: Date.now() });
+    setScoutView(subTab === "reports" ? "submit" : subTab === "alerts" ? "alerts" : subTab === "stores" ? "stores" : "main");
     setActiveTab("scout");
     setQuickAddMenuOpen(false);
   }
@@ -2355,10 +3434,12 @@ export default function App() {
     setVaultForm((current) => ({
       ...current,
       vaultCategory: category,
-      status: category === "Wishlist" ? "Personal Collection" : current.status || "Personal Collection",
+      vaultStatus: category === "Wishlist" ? "wishlist" : normalizeVaultStatus({ status: current.status, actionNotes: category }),
+      status: category === "Wishlist" ? "Wishlist" : current.status || "Personal Collection",
       productType: productType || current.productType,
     }));
     setShowVaultAddForm(true);
+    setVaultAddMode("manual");
     setVaultFormSections((current) => ({ ...current, basic: true }));
     setFeatureSectionsOpen((current) => ({ ...current, vault_add: true }));
     setQuickAddMenuOpen(false);
@@ -2385,42 +3466,61 @@ export default function App() {
   function mapItem(row) {
     return {
       id: row.id,
+      itemName: row.itemName || row.item_name || row.name || "",
       name: row.name || "",
       sku: row.sku || "",
       buyer: row.purchaser_name || row.buyer || "Zena",
-      purchaserId: row.purchaser_id || "",
-      purchaserName: row.purchaser_name || row.buyer || "Zena",
+      purchaserId: row.purchaserId || row.purchaser_id || "",
+      purchaserName: row.purchaserName || row.purchaser_name || row.buyer || "Zena",
       category: row.category || "Pokemon",
       store: row.store || "",
       quantity: Number(row.quantity || 0),
-      unitCost: Number(row.unit_cost || 0),
-      salePrice: Number(row.sale_price || 0),
-      receiptImage: row.receipt_image || "",
-      itemImage: row.item_image || "",
-      barcode: row.barcode || "",
-      catalogProductId: row.catalog_product_id || "",
-      catalogProductName: row.catalog_product_name || "",
-      externalProductId: row.external_product_id || "",
-      tideTradrUrl: row.tcgplayer_url || "",
-      externalProductSource: row.external_product_source || "TideTradr",
-      marketPrice: Number(row.market_price || 0),
-      lowPrice: Number(row.low_price || 0),
-      midPrice: Number(row.mid_price || 0),
-      highPrice: Number(row.high_price || 0),
-      msrpPrice: Number(row.msrp_price || 0),
-      setCode: row.set_code || "",
-      expansion: row.expansion || "",
-      productLine: row.product_line || "",
-      productType: row.product_type || "",
-      packCount: Number(row.pack_count || 0),
+      unitCost: Number(row.unitCost ?? row.unit_cost ?? 0),
+      salePrice: Number(row.salePrice ?? row.sale_price ?? 0),
+      receiptImage: row.receiptImage || row.receipt_image || "",
+      itemImage: row.itemImage || row.item_image || "",
+      barcode: row.barcode || row.upc || "",
+      upc: row.upc || row.barcode || "",
+      catalogProductId: row.catalogProductId || row.catalog_product_id || "",
+      tideTradrProductId: row.tideTradrProductId || row.tide_tradr_product_id || row.catalogProductId || row.catalog_product_id || "",
+      catalogProductName: row.catalogProductName || row.catalog_product_name || "",
+    externalProductId: row.externalProductId || row.external_product_id || "",
+    tideTradrUrl: row.tideTradrUrl || row.tcgplayer_url || "",
+    externalProductSource: row.externalProductSource || row.external_product_source || "TideTradr",
+      itemImageSource: row.itemImageSource || row.item_image_source || (row.itemImage || row.item_image ? "user" : "placeholder"),
+      itemImageStatus: row.itemImageStatus || row.item_image_status || (row.itemImage || row.item_image ? "user" : "placeholder"),
+      itemImageSourceUrl: row.itemImageSourceUrl || row.item_image_source_url || "",
+      itemImageLastUpdated: row.itemImageLastUpdated || row.item_image_last_updated || "",
+      itemImageNeedsReview: Boolean(row.itemImageNeedsReview || row.item_image_needs_review),
+      marketPrice: Number(row.marketPrice ?? row.market_price ?? row.marketValue ?? row.market_value ?? 0),
+      marketValue: Number(row.marketValue ?? row.market_value ?? row.marketPrice ?? row.market_price ?? 0),
+      lowPrice: Number(row.lowPrice ?? row.low_price ?? 0),
+      midPrice: Number(row.midPrice ?? row.mid_price ?? 0),
+      highPrice: Number(row.highPrice ?? row.high_price ?? 0),
+      msrpPrice: Number(row.msrpPrice ?? row.msrp_price ?? row.msrp ?? 0),
+      msrp: Number(row.msrp ?? row.msrpPrice ?? row.msrp_price ?? 0),
+      setCode: row.setCode || row.set_code || "",
+      expansion: row.expansion || row.setName || row.set_name || "",
+      setName: row.setName || row.set_name || row.expansion || "",
+      productLine: row.productLine || row.product_line || "",
+      productType: row.productType || row.product_type || "",
+      packCount: Number(row.packCount ?? row.pack_count ?? 0),
       notes: row.notes || "",
       status: row.status || "In Stock",
-      listingPlatform: row.listing_platform || "",
-      listingUrl: row.listing_url || "",
-      listedPrice: Number(row.listed_price || 0),
-      actionNotes: row.action_notes || "",
-      lastPriceChecked: row.last_price_checked || "",
-      createdAt: row.created_at,
+      listingPlatform: row.listingPlatform || row.listing_platform || "",
+      listingUrl: row.listingUrl || row.listing_url || "",
+      listedPrice: Number(row.listedPrice ?? row.listed_price ?? 0),
+      actionNotes: row.actionNotes || row.action_notes || "",
+      storageLocation: row.storageLocation || row.storage_location || "",
+      condition: row.condition || "",
+      sealedCondition: row.sealedCondition || row.sealed_condition || "",
+      conditionNotes: row.conditionNotes || row.condition_notes || "",
+      sourceType: row.sourceType || row.source_type || row.source || "",
+      source: row.source || row.sourceType || row.source_type || "",
+      lastPriceChecked: row.lastPriceChecked || row.last_price_checked || "",
+      plannedSalePrice: Number(row.plannedSalePrice ?? row.planned_sale_price ?? row.salePrice ?? row.sale_price ?? 0),
+      createdAt: row.createdAt || row.created_at,
+      updatedAt: row.updatedAt || row.updated_at || row.createdAt || row.created_at,
     };
   }
 
@@ -2429,24 +3529,31 @@ function mapCatalog(row) {
     id: row.id,
     name: row.name || "",
     category: row.category || "Pokemon",
-    setName: row.set_name || "",
-    productType: row.product_type || "",
+    setName: row.setName || row.set_name || "",
+    productType: row.productType || row.product_type || "",
     barcode: row.barcode || "",
-    marketSource: row.market_source || "TideTradr",
-    externalProductId: row.external_product_id || "",
-    marketUrl: row.market_url || "",
-    imageUrl: row.image_url || "",
-    marketPrice: Number(row.market_price || 0),
-    lowPrice: Number(row.low_price || 0),
-    midPrice: Number(row.mid_price || 0),
-    highPrice: Number(row.high_price || 0),
-    msrpPrice: Number(row.msrp_price || 0),
-    setCode: row.set_code || "",
+    marketSource: row.marketSource || row.market_source || "TideTradr",
+    externalProductId: row.externalProductId || row.external_product_id || "",
+    marketUrl: row.marketUrl || row.market_url || "",
+    imageUrl: row.imageUrl || row.image_url || row.imageLarge || row.imageSmall || "",
+    imageSmall: row.imageSmall || row.image_small || row.images?.small || "",
+    imageLarge: row.imageLarge || row.image_large || row.images?.large || row.imageUrl || row.image_url || "",
+    imageSource: row.imageSource || row.image_source || getDefaultImageSource(row),
+    imageSourceUrl: row.imageSourceUrl || row.image_source_url || row.marketUrl || row.market_url || "",
+    imageStatus: row.imageStatus || row.image_status || getDefaultImageStatus(row),
+    imageLastUpdated: row.imageLastUpdated || row.image_last_updated || row.lastUpdated || row.updated_at || "",
+    imageNeedsReview: Boolean(row.imageNeedsReview || row.image_needs_review),
+    marketPrice: Number(row.marketPrice ?? row.market_price ?? 0),
+    lowPrice: Number(row.lowPrice ?? row.low_price ?? 0),
+    midPrice: Number(row.midPrice ?? row.mid_price ?? 0),
+    highPrice: Number(row.highPrice ?? row.high_price ?? 0),
+    msrpPrice: Number(row.msrpPrice ?? row.msrp_price ?? 0),
+    setCode: row.setCode || row.set_code || "",
     expansion: row.expansion || "",
-    productLine: row.product_line || "",
-    packCount: Number(row.pack_count || 0),
+    productLine: row.productLine || row.product_line || "",
+    packCount: Number(row.packCount ?? row.pack_count ?? 0),
     notes: row.notes || "",
-    createdAt: row.created_at,
+    createdAt: row.createdAt || row.created_at,
   };
 }
 
@@ -2626,6 +3733,11 @@ function mapCatalog(row) {
         salePrice: Number(itemForm.salePrice || 0),
         receiptImage: itemForm.receiptImage,
         itemImage: itemForm.itemImage,
+        itemImageSource: itemForm.itemImageSource || (itemForm.itemImage ? "user" : "placeholder"),
+        itemImageStatus: itemForm.itemImageStatus || (itemForm.itemImage ? "user" : "placeholder"),
+        itemImageSourceUrl: itemForm.itemImageSourceUrl || "",
+        itemImageLastUpdated: itemForm.itemImageLastUpdated || (itemForm.itemImage ? now : ""),
+        itemImageNeedsReview: Boolean(itemForm.itemImageNeedsReview),
         barcode: itemForm.barcode,
         catalogProductId: selectedCatalog?.id || "",
         catalogProductName: selectedCatalog?.name || "",
@@ -2654,6 +3766,11 @@ function mapCatalog(row) {
 
       setItems([newItem, ...items]);
       setItemForm(blankItem);
+      setFeatureSectionsOpen((current) => ({
+        ...current,
+        forge_inventory: newItem.status !== "Personal Collection" && newItem.status !== "Held" ? true : current.forge_inventory,
+        vault_collection_items: newItem.status === "Personal Collection" || newItem.status === "Held" ? true : current.vault_collection_items,
+      }));
       setActiveTab(newItem.status === "Personal Collection" || newItem.status === "Held" ? "vault" : "inventory");
       return;
     }
@@ -2761,17 +3878,37 @@ function mapCatalog(row) {
 
     setItems([mapItem(data), ...items]);
     setItemForm(blankItem);
+    setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }));
     setActiveTab("inventory");
   }
 
   async function saveEditedItem(event) {
     event.preventDefault();
-    if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) return alert("Please fill out item name, quantity, and unit cost.");
+    const editingVault = isEditingVaultItem();
+    if (editingVault) {
+      const validationMessage = validateVaultDraft({
+        ...BLANK_VAULT_FORM,
+        name: itemForm.name,
+        quantity: itemForm.quantity,
+        vaultStatus: itemForm.vaultStatus || normalizeVaultStatus(itemForm),
+        unitCost: itemForm.unitCost,
+        msrpPrice: itemForm.msrpPrice,
+        marketPrice: itemForm.marketPrice,
+        salePrice: itemForm.salePrice,
+      });
+      if (validationMessage) {
+        setVaultToast(validationMessage);
+        return;
+      }
+    } else if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) {
+      return alert("Please fill out item name, quantity, and unit cost.");
+    }
 
     if (BETA_LOCAL_MODE) {
       const purchaser = resolvePurchaser(itemForm);
       const updatedItem = {
         ...items.find((item) => item.id === editingItemId),
+        itemName: itemForm.name,
         name: itemForm.name,
         buyer: purchaser.purchaserName,
         purchaserId: purchaser.purchaserId,
@@ -2781,32 +3918,58 @@ function mapCatalog(row) {
         quantity: Number(itemForm.quantity),
         unitCost: Number(itemForm.unitCost),
         salePrice: Number(itemForm.salePrice || 0),
+        plannedSalePrice: Number(itemForm.salePrice || 0),
         receiptImage: itemForm.receiptImage,
         itemImage: itemForm.itemImage,
+        itemImageSource: itemForm.itemImageSource || (itemForm.itemImage ? "user" : "placeholder"),
+        itemImageStatus: itemForm.itemImageStatus || (itemForm.itemImage ? "user" : "placeholder"),
+        itemImageSourceUrl: itemForm.itemImageSourceUrl || "",
+        itemImageLastUpdated: itemForm.itemImageLastUpdated || (itemForm.itemImage ? new Date().toISOString() : ""),
+        itemImageNeedsReview: Boolean(itemForm.itemImageNeedsReview),
         barcode: itemForm.barcode,
+        upc: itemForm.barcode,
+        sku: itemForm.sku,
+        catalogProductId: itemForm.catalogProductId,
+        tideTradrProductId: itemForm.catalogProductId,
         externalProductId: itemForm.externalProductId,
         tideTradrUrl: itemForm.tideTradrUrl,
         marketPrice: Number(itemForm.marketPrice || 0),
+        marketValue: Number(itemForm.marketPrice || 0),
         lowPrice: Number(itemForm.lowPrice || 0),
         midPrice: Number(itemForm.midPrice || 0),
         highPrice: Number(itemForm.highPrice || 0),
         msrpPrice: Number(itemForm.msrpPrice || 0),
+        msrp: Number(itemForm.msrpPrice || 0),
         setCode: itemForm.setCode || "",
         expansion: itemForm.expansion || "",
+        setName: itemForm.expansion || "",
         productLine: itemForm.productLine || "",
         productType: itemForm.productType || "",
         packCount: Number(itemForm.packCount || 0),
         lastPriceChecked: itemForm.marketPrice ? new Date().toISOString() : "",
         status: itemForm.status,
+        vaultStatus: itemForm.vaultStatus || items.find((item) => item.id === editingItemId)?.vaultStatus || "",
         listingPlatform: itemForm.listingPlatform,
         listingUrl: itemForm.listingUrl,
         listedPrice: Number(itemForm.listedPrice || 0),
         actionNotes: itemForm.actionNotes,
+        storageLocation: itemForm.storageLocation || "",
+        condition: itemForm.condition || "",
+        sealedCondition: itemForm.sealedCondition || "",
+        conditionNotes: itemForm.conditionNotes || "",
+        sourceType: itemForm.sourceType || itemForm.source || "",
+        source: itemForm.source || itemForm.sourceType || "",
+        tradedDate: itemForm.tradedDate || "",
+        tradeNotes: itemForm.tradeNotes || "",
+        receivedItemName: itemForm.receivedItemName || "",
+        receivedCatalogItemId: itemForm.receivedCatalogItemId || "",
+        updatedAt: new Date().toISOString(),
       };
 
       setItems(items.map((item) => (item.id === editingItemId ? updatedItem : item)));
       setEditingItemId(null);
       setItemForm(blankItem);
+      if (updatedItem.vaultStatus) setVaultToast("Vault item saved.");
       return;
     }
 
@@ -2843,6 +4006,7 @@ function mapCatalog(row) {
       listing_url: itemForm.listingUrl,
       listed_price: Number(itemForm.listedPrice || 0),
       action_notes: itemForm.actionNotes,
+      vault_status: itemForm.vaultStatus || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -2868,7 +4032,13 @@ function mapCatalog(row) {
       salePrice: item.salePrice,
       receiptImage: item.receiptImage,
       itemImage: item.itemImage,
+      itemImageSource: item.itemImageSource || (item.itemImage ? "user" : "placeholder"),
+      itemImageStatus: item.itemImageStatus || (item.itemImage ? "user" : "placeholder"),
+      itemImageSourceUrl: item.itemImageSourceUrl || "",
+      itemImageLastUpdated: item.itemImageLastUpdated || "",
+      itemImageNeedsReview: Boolean(item.itemImageNeedsReview),
       barcode: item.barcode,
+      sku: item.sku || "",
       catalogProductId: item.catalogProductId,
       externalProductId: item.externalProductId,
       tideTradrUrl: item.tideTradrUrl,
@@ -2882,11 +4052,21 @@ function mapCatalog(row) {
       productLine: item.productLine,
       productType: item.productType,
       packCount: item.packCount,
+      vaultStatus: item.vaultStatus || "",
+      storageLocation: item.storageLocation || "",
+      condition: item.condition || "",
+      sealedCondition: item.sealedCondition || "",
+      conditionNotes: item.conditionNotes || "",
+      sourceType: item.sourceType || item.source || "",
       status: item.status,
       listingPlatform: item.listingPlatform,
       listingUrl: item.listingUrl,
       listedPrice: item.listedPrice,
       actionNotes: item.actionNotes,
+      tradedDate: item.tradedDate || "",
+      tradeNotes: item.tradeNotes || "",
+      receivedItemName: item.receivedItemName || "",
+      receivedCatalogItemId: item.receivedCatalogItemId || "",
     });
     setActiveTab("inventory");
   }
@@ -2934,11 +4114,12 @@ function mapCatalog(row) {
 
   async function deleteItem(id) {
     const itemToDelete = items.find((item) => item.id === id);
+    const isVaultDelete = Boolean(itemToDelete?.vaultStatus);
     const confirmed = window.confirm(
-      `Delete ${itemToDelete?.name || "this Forge item"}? This removes it from local beta inventory.`
+      isVaultDelete ? "Delete this Vault item?" : `Delete ${itemToDelete?.name || "this item"}? This cannot be undone in local beta mode.`
     );
 
-    if (!confirmed) return;
+    if (!confirmed) return false;
 
     if (BETA_LOCAL_MODE) {
       setItems(items.filter((item) => item.id !== id));
@@ -2946,7 +4127,8 @@ function mapCatalog(row) {
         setEditingItemId(null);
         setItemForm(blankItem);
       }
-      return;
+      if (isVaultDelete) setVaultToast("Vault item deleted.");
+      return true;
     }
 
     const { error } = await supabase.from("inventory_items").delete().eq("id", id);
@@ -2956,21 +4138,26 @@ function mapCatalog(row) {
       setEditingItemId(null);
       setItemForm(blankItem);
     }
+    return true;
   }
   async function updateItemStatus(item, newStatus) {
+    const vaultOption = VAULT_STATUS_OPTIONS.find((option) => option.value === newStatus || option.label === newStatus);
+    const nextStatus = vaultOption ? vaultStatusLabel(vaultOption.value) : newStatus;
     if (BETA_LOCAL_MODE) {
       setItems((currentItems) =>
         currentItems.map((currentItem) =>
-          currentItem.id === item.id ? { ...currentItem, status: newStatus } : currentItem
+          currentItem.id === item.id ? { ...currentItem, status: nextStatus, ...(vaultOption ? { vaultStatus: vaultOption.value } : {}) } : currentItem
         )
       );
+      if (item.vaultStatus || vaultOption) setVaultToast("Vault item saved.");
       return;
     }
 
     const { data, error } = await supabase
       .from("inventory_items")
       .update({
-        status: newStatus,
+        status: nextStatus,
+        ...(vaultOption ? { vault_status: vaultOption.value } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", item.id)
@@ -2987,6 +4174,171 @@ function mapCatalog(row) {
         currentItem.id === item.id ? mapItem(data) : currentItem
       )
     );
+  }
+
+  function openVaultForgeTransfer(item, mode = "move") {
+    const quantity = Math.max(1, Number(item.quantity || 1));
+    setVaultForgeTransfer({
+      item,
+      mode,
+      quantityToMove: mode === "copy" ? 1 : quantity,
+      costPaid: hasValue(item.unitCost) ? item.unitCost : "",
+      duplicateMode: "create",
+    });
+  }
+
+  function openVaultDuplicateItem(item) {
+    setVaultDuplicateItem({
+      item,
+      sameItem: true,
+      quantity: Number(item.quantity || 1),
+      samePrice: true,
+      sameStatus: true,
+    });
+  }
+
+  function confirmVaultDuplicateItem(event) {
+    event?.preventDefault();
+    if (!vaultDuplicateItem?.item) return;
+    const source = vaultDuplicateItem.item;
+    const now = new Date().toISOString();
+    const duplicate = {
+      ...source,
+      id: makeId("vault-copy"),
+      name: vaultDuplicateItem.sameItem ? source.name : `${source.name} Copy`,
+      quantity: Math.max(1, Number(vaultDuplicateItem.quantity || 1)),
+      unitCost: vaultDuplicateItem.samePrice ? source.unitCost : 0,
+      marketPrice: vaultDuplicateItem.samePrice ? source.marketPrice : 0,
+      msrpPrice: vaultDuplicateItem.samePrice ? source.msrpPrice : 0,
+      salePrice: vaultDuplicateItem.samePrice ? source.salePrice : 0,
+      status: vaultDuplicateItem.sameStatus ? source.status : "Personal Collection",
+      vaultStatus: vaultDuplicateItem.sameStatus ? normalizeVaultStatus(source) : "personal_collection",
+      sourceType: "Manual",
+      source: "Duplicated Vault item",
+      vaultHistory: [
+        ...(source.vaultHistory || []),
+        { type: "duplicated_from", date: now, sourceVaultItemId: source.id },
+      ],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setItems((current) => [duplicate, ...current]);
+    setVaultDuplicateItem(null);
+    setVaultToast("Vault item saved.");
+  }
+
+  function refreshVaultMarket(item) {
+    setVaultToast("Market refresh is not connected yet. Current values are manually entered or mock data.");
+    if (!item?.id) return;
+    setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, marketStatus: candidate.marketStatus || "manual", updatedAt: new Date().toISOString() } : candidate));
+  }
+
+  function confirmVaultForgeTransfer(modeOverride, quantityOverride) {
+    if (!vaultForgeTransfer?.item) return;
+    const sourceItem = vaultForgeTransfer.item;
+    const mode = modeOverride || vaultForgeTransfer.mode || "move";
+    const quantityAvailable = Math.max(0, Number(sourceItem.quantity || 0));
+    const requestedQuantity = Number(quantityOverride || vaultForgeTransfer.quantityToMove || 1);
+    if (quantityAvailable < 1) {
+      setVaultToast("Move to Forge is disabled because quantity is 0.");
+      return;
+    }
+    if (!Number.isFinite(requestedQuantity) || requestedQuantity < 1) {
+      setVaultToast("Quantity must be at least 1.");
+      return;
+    }
+    if (requestedQuantity > quantityAvailable) {
+      setVaultToast("Move quantity cannot be higher than owned quantity.");
+      return;
+    }
+    const quantityToMove = requestedQuantity;
+    const now = new Date().toISOString();
+    const sourceCatalogId = String(sourceItem.catalogProductId || "");
+    const duplicate = sourceCatalogId ? items.find((item) =>
+      item.id !== sourceItem.id &&
+      !item.vaultStatus &&
+      String(item.catalogProductId || "") === sourceCatalogId
+    ) : null;
+
+    const forgeItem = {
+      ...sourceItem,
+      id: duplicate && vaultForgeTransfer.duplicateMode === "existing" ? duplicate.id : makeId("forge-vault"),
+      quantity: quantityToMove,
+      unitCost: Number(vaultForgeTransfer.costPaid || sourceItem.unitCost || 0),
+      status: "In Stock",
+      vaultStatus: "",
+      source: "vault",
+      sourceType: "Forge copy",
+      sourceLocation: "vault",
+      originalVaultItemId: sourceItem.id,
+      movedFromVaultAt: now,
+      dateMovedToForge: now,
+      acquisitionType: "moved_from_vault",
+      actionNotes: `Moved from The Vault${sourceItem.actionNotes ? ` | ${sourceItem.actionNotes}` : ""}`,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setVaultMoving(true);
+    setItems((currentItems) => {
+      let nextItems = [...currentItems];
+      if (duplicate && vaultForgeTransfer.duplicateMode === "existing") {
+        nextItems = nextItems.map((item) =>
+          item.id === duplicate.id
+            ? {
+                ...item,
+                quantity: Number(item.quantity || 0) + quantityToMove,
+                notes: [item.notes, `Added ${quantityToMove} from Vault item ${sourceItem.id}`].filter(Boolean).join(" | "),
+                updatedAt: now,
+              }
+            : item
+        );
+      } else {
+        nextItems = [forgeItem, ...nextItems];
+      }
+
+      if (mode === "move") {
+        nextItems = nextItems.map((item) => {
+          if (item.id !== sourceItem.id) return item;
+          const remainingQuantity = quantityAvailable - quantityToMove;
+          const historyEntry = {
+            type: "moved_to_forge",
+            date: now,
+            quantity: quantityToMove,
+            forgeItemId: duplicate && vaultForgeTransfer.duplicateMode === "existing" ? duplicate.id : forgeItem.id,
+          };
+          return {
+            ...item,
+            quantity: remainingQuantity > 0 ? remainingQuantity : item.quantity,
+            status: remainingQuantity > 0 ? item.status : "Moved to Forge",
+            vaultStatus: remainingQuantity > 0 ? normalizeVaultStatus(item) : "moved_to_forge",
+            dateMovedToForge: now,
+            linkedForgeItemId: historyEntry.forgeItemId,
+            vaultHistory: [...(item.vaultHistory || []), historyEntry],
+            updatedAt: now,
+          };
+        });
+      } else {
+        nextItems = nextItems.map((item) =>
+          item.id === sourceItem.id
+            ? {
+                ...item,
+                linkedForgeItemId: duplicate && vaultForgeTransfer.duplicateMode === "existing" ? duplicate.id : forgeItem.id,
+                vaultHistory: [
+                  ...(item.vaultHistory || []),
+                  { type: "copied_to_forge", date: now, quantity: quantityToMove, forgeItemId: duplicate && vaultForgeTransfer.duplicateMode === "existing" ? duplicate.id : forgeItem.id },
+                ],
+                updatedAt: now,
+              }
+            : item
+        );
+      }
+      return nextItems;
+    });
+    setVaultForgeTransfer(null);
+    setVaultMoving(false);
+    setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }));
+    setVaultToast(mode === "copy" ? "Item copied to Forge." : "Item moved to Forge.");
   }
   async function addCatalogProduct(event) {
     event.preventDefault();
@@ -3013,6 +4365,13 @@ function mapCatalog(row) {
         externalProductId: catalogForm.externalProductId,
         marketUrl: catalogForm.marketUrl,
         imageUrl: catalogForm.imageUrl,
+        imageSmall: catalogForm.imageSmall || catalogForm.imageUrl || "",
+        imageLarge: catalogForm.imageLarge || catalogForm.imageUrl || "",
+        imageSource: catalogForm.imageSource || (catalogForm.imageUrl ? "manual" : "placeholder"),
+        imageSourceUrl: catalogForm.imageSourceUrl || catalogForm.marketUrl || "",
+        imageStatus: catalogForm.imageStatus || (catalogForm.imageUrl ? "manual" : "placeholder"),
+        imageLastUpdated: catalogForm.imageLastUpdated || now,
+        imageNeedsReview: Boolean(catalogForm.imageNeedsReview),
         marketPrice: Number(catalogForm.marketPrice || catalogForm.marketValueNearMint || catalogForm.marketValueRaw || 0),
         lowPrice: Number(catalogForm.lowPrice || 0),
         midPrice: Number(catalogForm.midPrice || 0),
@@ -3047,6 +4406,21 @@ function mapCatalog(row) {
         lastUpdated: now,
       };
 
+      if (!adminUser) {
+        submitUniversalSuggestion({
+          suggestionType: editingCatalogId ? SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT : SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+          targetTable: "catalog_items",
+          targetRecordId: editingCatalogId || null,
+          submittedData: product,
+          currentDataSnapshot: editingCatalogId ? catalogProducts.find((item) => item.id === editingCatalogId) || null : null,
+          notes: catalogForm.notes || "Submitted from TideTradr catalog form.",
+          source: "tidetradr-catalog",
+        });
+        setEditingCatalogId(null);
+        setCatalogForm(blankCatalog);
+        return;
+      }
+
       setCatalogProducts(editingCatalogId ? catalogProducts.map((item) => (item.id === editingCatalogId ? product : item)) : [product, ...catalogProducts]);
       setEditingCatalogId(null);
       setCatalogForm(blankCatalog);
@@ -3066,6 +4440,13 @@ function mapCatalog(row) {
   external_product_id: catalogForm.externalProductId,
   market_url: catalogForm.marketUrl,
   image_url: catalogForm.imageUrl,
+  image_small: catalogForm.imageSmall,
+  image_large: catalogForm.imageLarge,
+  image_source: catalogForm.imageSource,
+  image_source_url: catalogForm.imageSourceUrl,
+  image_status: catalogForm.imageStatus,
+  image_last_updated: catalogForm.imageLastUpdated || new Date().toISOString(),
+  image_needs_review: Boolean(catalogForm.imageNeedsReview),
 
   market_price: Number(catalogForm.marketPrice || 0),
   low_price: Number(catalogForm.lowPrice || 0),
@@ -3111,6 +4492,13 @@ function mapCatalog(row) {
     externalProductId: product.externalProductId,
     marketUrl: product.marketUrl,
     imageUrl: product.imageUrl,
+    imageSmall: product.imageSmall || "",
+    imageLarge: product.imageLarge || "",
+    imageSource: product.imageSource || getDefaultImageSource(product),
+    imageSourceUrl: product.imageSourceUrl || "",
+    imageStatus: product.imageStatus || getDefaultImageStatus(product),
+    imageLastUpdated: product.imageLastUpdated || "",
+    imageNeedsReview: Boolean(product.imageNeedsReview),
 
     marketPrice: product.marketPrice,
     marketSource: product.marketSource || "Manual",
@@ -3146,6 +4534,19 @@ function mapCatalog(row) {
 }
 
   async function deleteCatalogProduct(id) {
+    if (!adminUser) {
+      const product = catalogProducts.find((item) => String(item.id) === String(id));
+      submitUniversalSuggestion({
+        suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
+        targetTable: "catalog_items",
+        targetRecordId: id,
+        submittedData: { requestedAction: "remove_or_hide", name: catalogTitle(product), productId: id },
+        currentDataSnapshot: product || null,
+        notes: "User requested review before removing a shared catalog item.",
+        source: "tidetradr-catalog",
+      });
+      return;
+    }
     if (BETA_LOCAL_MODE) {
       setCatalogProducts(catalogProducts.filter((product) => product.id !== id));
       return;
@@ -3175,7 +4576,12 @@ function applyCatalogProduct(productId) {
     barcode: product.barcode || "",
     externalProductId: product.externalProductId || "",
     tideTradrUrl: product.marketUrl || "",
-    itemImage: product.imageUrl || "",
+    itemImage: getCatalogImage(product) || "",
+    itemImageSource: product.imageSource || getDefaultImageSource(product),
+    itemImageStatus: product.imageStatus || getDefaultImageStatus(product),
+    itemImageSourceUrl: product.imageSourceUrl || product.marketUrl || "",
+    itemImageLastUpdated: product.imageLastUpdated || product.lastUpdated || "",
+    itemImageNeedsReview: Boolean(product.imageNeedsReview),
 
     marketPrice: marketInfo.currentMarketValue || "",
     lowPrice: product.lowPrice || "",
@@ -3256,11 +4662,13 @@ function selectTideTradrProduct(productId) {
   }));
 }
 
-function addProductToTideTradrWatchlist(productId) {
+function addProductToTideTradrWatchlist(productId, pinned = false) {
   const product = catalogProducts.find((p) => String(p.id) === String(productId));
   if (!product) return;
   setTideTradrWatchlist((current) => {
-    if (current.some((item) => String(item.productId) === String(productId))) return current;
+    if (current.some((item) => String(item.productId) === String(productId))) {
+      return current.map((item) => String(item.productId) === String(productId) ? { ...item, pinned: item.pinned || pinned } : item);
+    }
     const marketInfo = getTideTradrMarketInfo(product);
     return [
       {
@@ -3271,7 +4679,12 @@ function addProductToTideTradrWatchlist(productId) {
         productType: product.productType || "",
         marketValue: marketInfo.currentMarketValue,
         msrp: marketInfo.msrp,
+        imageUrl: getCatalogImage(product),
+        imageSource: product.imageSource || getDefaultImageSource(product),
+        imageStatus: product.imageStatus || getDefaultImageStatus(product),
+        imageNeedsReview: Boolean(product.imageNeedsReview),
         sourceName: marketInfo.sourceName,
+        pinned,
         lastUpdated: new Date().toISOString(),
       },
       ...current,
@@ -3350,12 +4763,26 @@ function applyCatalogProductToVault(productId) {
     ...old,
     name: product.name || "",
     productType: product.catalogType === "card" ? "Individual Card" : product.productType || "",
+    vaultStatus: product.catalogType === "sealed" ? "sealed" : "personal_collection",
+    status: product.catalogType === "sealed" ? "Sealed / Holding" : "Personal Collection",
     setName: product.expansion || product.setName || "",
     msrpPrice: marketInfo.msrp || "",
     marketPrice: marketInfo.currentMarketValue || "",
     salePrice: marketInfo.currentMarketValue || "",
     packCount: product.packCount || "",
-    itemImage: product.imageUrl || "",
+    sourceType: "TideTradr",
+    upc: product.barcode || product.upc || "",
+    sku: product.sku || "",
+    catalogProductId: product.id || "",
+    tideTradrProductId: product.id || "",
+    condition: product.catalogType === "card" ? "Unknown" : old.condition,
+    sealedCondition: product.catalogType === "sealed" ? "Sealed" : old.sealedCondition,
+    itemImage: getCatalogImage(product) || "",
+    itemImageSource: product.imageSource || getDefaultImageSource(product),
+    itemImageStatus: product.imageStatus || getDefaultImageStatus(product),
+    itemImageSourceUrl: product.imageSourceUrl || product.marketUrl || "",
+    itemImageLastUpdated: product.imageLastUpdated || product.lastUpdated || "",
+    itemImageNeedsReview: Boolean(product.imageNeedsReview),
   }));
   setShowVaultAddForm(true);
   setVaultFormSections((current) => ({ ...current, basic: true, pricing: true }));
@@ -3476,6 +4903,22 @@ async function importBulkCatalogProducts() {
       notes: item.notes || "",
       createdAt: new Date().toISOString(),
     }));
+
+    if (!adminUser) {
+      imported.forEach((product) => {
+        submitUniversalSuggestion({
+          suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+          targetTable: "catalog_items",
+          submittedData: product,
+          notes: "Submitted from bulk catalog import preview.",
+          source: "tidetradr-bulk-import",
+        });
+      });
+      setBulkImportText("");
+      setBulkImportPreview([]);
+      alert(`Submitted ${imported.length} catalog product suggestion(s) for admin review.`);
+      return;
+    }
 
     setCatalogProducts([...imported, ...catalogProducts]);
     setBulkImportText("");
@@ -3801,15 +5244,288 @@ async function importBulkCatalogProducts() {
   }
 
   function downloadBackup() {
-    const backup = { createdAt: new Date().toISOString(), items, catalogProducts, expenses, sales, vehicles, mileageTrips };
+    const backup = createBetaBackup();
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "ember-tide-backup.json";
+    link.download = `ember-tide-beta-backup-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
+    setBackupImportMessage("Backup exported. Keep this file somewhere safe before clearing browser data or switching phones.");
   }
+
+  function createBetaBackup() {
+    let savedScout = {};
+    try {
+      savedScout = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+    } catch {
+      savedScout = {};
+    }
+
+    return {
+      appName: "E&T TCG",
+      fullBrand: "Ember & Tide TCG",
+      backupType: "local-beta",
+      backupVersion: 2,
+      createdAt: new Date().toISOString(),
+      data: {
+        items,
+        purchasers,
+        catalogProducts,
+        expenses,
+        sales,
+        vehicles,
+        mileageTrips,
+        scout: {
+          stores: savedScout.stores || scoutSnapshot.stores || [],
+          reports: savedScout.reports || scoutSnapshot.reports || [],
+          items: savedScout.items || scoutSnapshot.items || [],
+          routes: savedScout.routes || scoutSnapshot.routes || [],
+          bestBuyStockResults: savedScout.bestBuyStockResults || scoutSnapshot.bestBuyStockResults || [],
+          bestBuyNightlyReports: savedScout.bestBuyNightlyReports || scoutSnapshot.bestBuyNightlyReports || [],
+        },
+        suggestions: loadSuggestions(),
+        tidepoolCommunity: {
+          posts: tidepoolPosts,
+          comments: tidepoolComments,
+          reactions: tidepoolReactions,
+        },
+        tideTradrWatchlist,
+        marketplaceListings,
+        marketplaceReports,
+        marketplaceSavedIds,
+        pinnedMarketItems: tideTradrWatchlist.filter((item) => item.pinned),
+        tideTradrLookupId,
+        marketPriceCache,
+        settings: {
+          userType,
+          homeStatsEnabled,
+          dashboardPreset,
+          dashboardLayout,
+          dashboardCardStyle,
+          subscriptionProfile,
+          locationSettings,
+          userSearchAliases,
+          dealForm,
+        },
+      },
+      localStorageKeys: {
+        app: LOCAL_STORAGE_KEY,
+        scout: SCOUT_STORAGE_KEY,
+        tidepool: TIDEPOOL_STORAGE_KEY,
+        market: MARKET_PRICE_CACHE_KEY,
+        suggestions: SUGGESTION_STORAGE_KEY,
+      },
+    };
+  }
+
+  function countBackupItems(value) {
+    return Array.isArray(value) ? value.length : 0;
+  }
+
+  function normalizeBackupPayload(payload) {
+    const data = payload?.data || payload || {};
+    const settings = data.settings || payload?.settings || {};
+    return {
+      items: Array.isArray(data.items) ? data.items : [],
+      purchasers: Array.isArray(data.purchasers) ? data.purchasers : [],
+      catalogProducts: Array.isArray(data.catalogProducts) ? data.catalogProducts : [],
+      expenses: Array.isArray(data.expenses) ? data.expenses : [],
+      sales: Array.isArray(data.sales) ? data.sales : [],
+      vehicles: Array.isArray(data.vehicles) ? data.vehicles : [],
+      mileageTrips: Array.isArray(data.mileageTrips) ? data.mileageTrips : [],
+      scout: data.scout || {
+        stores: data.scoutStores || [],
+        reports: data.scoutReports || [],
+        items: data.scoutItems || [],
+        routes: data.routes || [],
+      },
+      tidepoolCommunity: data.tidepoolCommunity || {
+        posts: data.tidepoolPosts || data.tidepoolReports || [],
+        comments: data.tidepoolComments || [],
+        reactions: data.tidepoolReactions || [],
+      },
+      suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+      tideTradrWatchlist: Array.isArray(data.tideTradrWatchlist) ? data.tideTradrWatchlist : [],
+      marketplaceListings: Array.isArray(data.marketplaceListings) ? data.marketplaceListings : [],
+      marketplaceReports: Array.isArray(data.marketplaceReports) ? data.marketplaceReports : [],
+      marketplaceSavedIds: Array.isArray(data.marketplaceSavedIds) ? data.marketplaceSavedIds : [],
+      marketPriceCache: data.marketPriceCache || {},
+      settings,
+    };
+  }
+
+  function summarizeBackup(payload) {
+    const data = normalizeBackupPayload(payload);
+    return [
+      { label: "Forge inventory", value: countBackupItems(data.items) },
+      { label: "Sales", value: countBackupItems(data.sales) },
+      { label: "Expenses", value: countBackupItems(data.expenses) },
+      { label: "Catalog items", value: countBackupItems(data.catalogProducts) },
+      { label: "Scout stores", value: countBackupItems(data.scout.stores) },
+      { label: "Scout reports", value: countBackupItems(data.scout.reports) },
+      { label: "Shared data suggestions", value: countBackupItems(data.suggestions) },
+      { label: "Tidepool posts", value: countBackupItems(data.tidepoolCommunity.posts) },
+      { label: "TideTradr watchlist", value: countBackupItems(data.tideTradrWatchlist) },
+      { label: "Marketplace listings", value: countBackupItems(data.marketplaceListings) },
+      { label: "Search aliases", value: countBackupItems(data.settings.userSearchAliases) },
+    ];
+  }
+
+  function handleBackupFileUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const payload = JSON.parse(String(reader.result || "{}"));
+        const data = normalizeBackupPayload(payload);
+        if (!payload || typeof payload !== "object" || (!payload.data && !Array.isArray(data.items))) {
+          throw new Error("This does not look like an E&T TCG beta backup.");
+        }
+        setBackupImportPreview({
+          fileName: file.name,
+          payload,
+          summary: summarizeBackup(payload),
+        });
+        setBackupImportMessage("Backup loaded for review. Choose merge or replace when you are ready.");
+      } catch (error) {
+        setBackupImportPreview(null);
+        setBackupImportMessage(`Backup import failed: ${error instanceof Error ? error.message : "Invalid JSON file."}`);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
+  }
+
+  function mergeById(currentItems, incomingItems) {
+    const map = new Map();
+    [...currentItems, ...incomingItems].forEach((item, index) => {
+      const key = item?.id || item?.postId || item?.commentId || item?.reactionId || item?.reportId || item?.eventId
+        ? String(item.id || item.postId || item.commentId || item.reactionId || item.reportId || item.eventId)
+        : `row-${index}-${JSON.stringify(item)}`;
+      map.set(key, item);
+    });
+    return Array.from(map.values());
+  }
+
+  function applyBetaBackupImport(mode) {
+    if (!backupImportPreview) return;
+    const confirmed = window.confirm(
+      mode === "replace"
+        ? "Replace current local beta data with this backup? This overwrites data on this device."
+        : "Merge this backup into current local beta data?"
+    );
+    if (!confirmed) return;
+
+    const data = normalizeBackupPayload(backupImportPreview.payload);
+    const scoutImport = data.scout || {};
+
+    const nextItems = mode === "replace" ? data.items : mergeById(items, data.items);
+    const nextPurchasers = mode === "replace" ? data.purchasers : mergeById(purchasers, data.purchasers);
+    const nextCatalog = mode === "replace" ? data.catalogProducts : mergeById(catalogProducts, data.catalogProducts);
+    const nextExpenses = mode === "replace" ? data.expenses : mergeById(expenses, data.expenses);
+    const nextSales = mode === "replace" ? data.sales : mergeById(sales, data.sales);
+    const nextVehicles = mode === "replace" ? data.vehicles : mergeById(vehicles, data.vehicles);
+    const nextTrips = mode === "replace" ? data.mileageTrips : mergeById(mileageTrips, data.mileageTrips);
+    const nextWatchlist = mode === "replace"
+      ? data.tideTradrWatchlist
+      : mergeById(tideTradrWatchlist, data.tideTradrWatchlist);
+    const nextMarketplaceListings = mode === "replace"
+      ? data.marketplaceListings || []
+      : mergeById(marketplaceListings, data.marketplaceListings || []);
+    const nextMarketplaceReports = mode === "replace"
+      ? data.marketplaceReports || []
+      : mergeById(marketplaceReports, data.marketplaceReports || []);
+    const nextMarketplaceSavedIds = mode === "replace"
+      ? data.marketplaceSavedIds || []
+      : [...new Set([...marketplaceSavedIds, ...(data.marketplaceSavedIds || [])])];
+    const nextScout = mode === "replace"
+      ? {
+          stores: scoutImport.stores || [],
+          reports: scoutImport.reports || [],
+          items: scoutImport.items || [],
+          routes: scoutImport.routes || [],
+          bestBuyStockResults: scoutImport.bestBuyStockResults || [],
+          bestBuyNightlyReports: scoutImport.bestBuyNightlyReports || [],
+        }
+      : {
+          stores: mergeById(scoutSnapshot.stores || [], scoutImport.stores || []),
+          reports: mergeById(scoutSnapshot.reports || [], scoutImport.reports || []),
+          items: mergeById(scoutSnapshot.items || [], scoutImport.items || []),
+          routes: mergeById(scoutSnapshot.routes || [], scoutImport.routes || []),
+          bestBuyStockResults: mergeById(scoutSnapshot.bestBuyStockResults || [], scoutImport.bestBuyStockResults || []),
+          bestBuyNightlyReports: mergeById(scoutSnapshot.bestBuyNightlyReports || [], scoutImport.bestBuyNightlyReports || []),
+        };
+    const tidepoolImport = data.tidepoolCommunity || {};
+    const nextTidepool = mode === "replace"
+      ? {
+          posts: tidepoolImport.posts || [],
+          comments: tidepoolImport.comments || [],
+          reactions: tidepoolImport.reactions || [],
+        }
+      : {
+          posts: mergeById(tidepoolPosts, tidepoolImport.posts || []),
+          comments: mergeById(tidepoolComments, tidepoolImport.comments || []),
+          reactions: mergeById(tidepoolReactions, tidepoolImport.reactions || []),
+        };
+    const nextSuggestions = mode === "replace"
+      ? data.suggestions || []
+      : mergeById(suggestions, data.suggestions || []);
+
+    setItems(nextItems.map(mapItem));
+    setPurchasers(nextPurchasers.length ? nextPurchasers : createDefaultPurchasers());
+    setCatalogProducts(nextCatalog.length ? mergeSharedCatalogProducts(nextCatalog) : createSharedCatalogProducts());
+    setExpenses(nextExpenses.map(mapExpense));
+    setSales(nextSales);
+    setVehicles(nextVehicles);
+    setMileageTrips(nextTrips);
+    setTideTradrWatchlist(nextWatchlist);
+    setMarketplaceListings(nextMarketplaceListings);
+    setMarketplaceReports(nextMarketplaceReports);
+    setMarketplaceSavedIds(nextMarketplaceSavedIds);
+    setMarketPriceCache({ ...loadPriceCache(), ...(data.marketPriceCache || {}) });
+    setSuggestions(nextSuggestions);
+    saveSuggestions(nextSuggestions);
+    setScoutSnapshot(nextScout);
+    localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(nextScout));
+    saveTidepoolCommunity(nextTidepool);
+
+    if (data.settings) {
+      if (data.settings.userType) setUserType(normalizeUserType(data.settings.userType));
+      if (data.settings.homeStatsEnabled) setHomeStatsEnabled(normalizeHomeStatsEnabled(data.settings.homeStatsEnabled, data.settings.userType || userType));
+      if (data.settings.dashboardPreset) setDashboardPreset(normalizeDashboardPreset(data.settings.dashboardPreset));
+      if (data.settings.dashboardLayout) setDashboardLayout(normalizeDashboardLayout(data.settings.dashboardLayout, data.settings.dashboardPreset || dashboardPreset));
+      if (data.settings.dashboardCardStyle) setDashboardCardStyle(normalizeDashboardCardStyle(data.settings.dashboardCardStyle));
+      if (data.settings.subscriptionProfile) setSubscriptionProfile((current) => ({ ...current, ...data.settings.subscriptionProfile }));
+      if (data.settings.locationSettings) setLocationSettings((current) => ({ ...current, ...data.settings.locationSettings }));
+      if (Array.isArray(data.settings.userSearchAliases)) setUserSearchAliases(data.settings.userSearchAliases);
+      if (data.settings.dealForm) setDealForm((current) => ({ ...current, ...data.settings.dealForm }));
+    }
+
+    setBackupImportMessage(`${mode === "replace" ? "Replaced" : "Merged"} beta backup successfully on this device.`);
+    setBackupImportPreview(null);
+  }
+
+  function storageSizeForKey(key) {
+    return new Blob([localStorage.getItem(key) || ""]).size;
+  }
+
+  const storageStatus = [
+    { label: "Mode", value: BETA_LOCAL_MODE ? "Local beta mode" : "Cloud sync mode" },
+    { label: "Forge inventory", value: items.length },
+    { label: "Vault items", value: items.filter((item) => item.status === "Personal Collection" || item.status === "Held").length },
+    { label: "Scout stores", value: scoutSnapshot.stores?.length || 0 },
+    { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
+    { label: "Shared suggestions", value: suggestions.length },
+    { label: "TideTradr watchlist", value: tideTradrWatchlist.length },
+    { label: "Marketplace listings", value: marketplaceListings.length },
+    { label: "App storage", value: `${Math.ceil(storageSizeForKey(LOCAL_STORAGE_KEY) / 1024)} KB` },
+    { label: "Scout storage", value: `${Math.ceil(storageSizeForKey(SCOUT_STORAGE_KEY) / 1024)} KB` },
+    { label: "Suggestion storage", value: `${Math.ceil(storageSizeForKey(SUGGESTION_STORAGE_KEY) / 1024)} KB` },
+  ];
 
     const totalSpent = items.reduce(
       (s, i) => s + Number(i.quantity || 0) * Number(i.unitCost || 0),
@@ -3938,13 +5654,48 @@ async function importBulkCatalogProducts() {
   const monthlySpending = monthlyItemSpending + monthlyExpenses;
   const monthlyProfitLoss = monthlySalesProfit - monthlyExpenses;
   const vaultItems = items.filter((i) =>
-    ["Personal Collection", "Held"].includes(i.status) ||
+    i.vaultStatus ||
+    ["Personal Collection", "Held", "Wishlist", "Sealed", "Sealed / Holding", "Ripped / Opened", "Moved to Forge", "Traded"].includes(i.status) ||
     String(i.actionNotes || "").toLowerCase().includes("keep") ||
     String(i.actionNotes || "").toLowerCase().includes("rip") ||
     String(i.actionNotes || "").toLowerCase().includes("trade") ||
     String(i.actionNotes || "").toLowerCase().includes("wishlist")
   );
-  const vaultValue = vaultItems.reduce(
+  const activeVaultItems = vaultItems.filter(isActiveVaultItem);
+  const vaultCatalogSearchTerm = String(vaultForm.tideTradrSearch || vaultForm.name || "").trim().toLowerCase();
+  const vaultSuggestedCatalogItems = catalogProducts
+    .filter((product) => {
+      if (!vaultCatalogSearchTerm) return true;
+      return [
+        product.name,
+        product.productName,
+        product.cardName,
+        product.setName,
+        product.expansion,
+        product.productType,
+        product.barcode,
+        product.upc,
+        product.sku,
+      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(vaultCatalogSearchTerm));
+    })
+    .slice(0, 4);
+  const visibleVaultItems = searchVaultItems(filterVaultItems(vaultItems, vaultFilter), vaultSearch)
+    .sort((a, b) => {
+      const aMarket = Number(a.marketPrice || 0) * Number(a.quantity || 0);
+      const bMarket = Number(b.marketPrice || 0) * Number(b.quantity || 0);
+      const aCost = Number(a.unitCost || 0) * Number(a.quantity || 0);
+      const bCost = Number(b.unitCost || 0) * Number(b.quantity || 0);
+      const aRoi = aCost > 0 ? (aMarket - aCost) / aCost : -Infinity;
+      const bRoi = bCost > 0 ? (bMarket - bCost) / bCost : -Infinity;
+      if (vaultSort === "oldest") return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      if (vaultSort === "name") return String(a.name || "").localeCompare(String(b.name || ""));
+      if (vaultSort === "highestMarket") return bMarket - aMarket;
+      if (vaultSort === "lowestMarket") return aMarket - bMarket;
+      if (vaultSort === "highestRoi") return bRoi - aRoi;
+      if (vaultSort === "quantity") return Number(b.quantity || 0) - Number(a.quantity || 0);
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+  const vaultValue = activeVaultItems.reduce(
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || 0),
     0
   );
@@ -3976,6 +5727,7 @@ async function importBulkCatalogProducts() {
   const currentTier = getUserTier(planProfile);
   const paidUser = isPaidUser(planProfile);
   const adminUser = isAdminUser(planProfile);
+  const canReviewSharedData = adminUser || BETA_LOCAL_MODE;
   const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
   const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
@@ -4032,6 +5784,50 @@ async function importBulkCatalogProducts() {
   const watchlistPreview = [...missingMarketPriceItems, ...needsMarketCheckItems]
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
     .slice(0, 5);
+  const activeHomeAlertCount = (scoutSnapshot.bestBuyAlerts || []).length + needsPhotosItems.length + needsMarketCheckItems.length;
+  const pinnedMarketWatchItems = tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).slice(0, 3);
+  const homeRecentActivity = [
+    recentPurchases[0]
+      ? {
+          id: `home-forge-${recentPurchases[0].id}`,
+          label: "Forge",
+          title: recentPurchases[0].name,
+          detail: `${shortDate(recentPurchases[0].createdAt)} | Qty ${recentPurchases[0].quantity || 1}`,
+          action: () => setActiveTab("inventory"),
+        }
+      : null,
+    vaultItems[0]
+      ? {
+          id: `home-vault-${vaultItems[0].id}`,
+          label: "The Vault",
+          title: vaultItems[0].name,
+          detail: `${vaultStatusLabel(normalizeVaultStatus(vaultItems[0]))} | ${money(Number(vaultItems[0].quantity || 0) * Number(vaultItems[0].marketPrice || 0))}`,
+          action: () => setActiveTab("vault"),
+        }
+      : null,
+    scoutSnapshot.reports[0]
+      ? {
+          id: `home-scout-${scoutSnapshot.reports[0].id || scoutSnapshot.reports[0].reportId || "latest"}`,
+          label: "Scout",
+          title: scoutSnapshot.reports[0].itemName || scoutSnapshot.reports[0].productName || "Store report",
+          detail: scoutSnapshot.reports[0].storeName || scoutSnapshot.reports[0].chain || "Latest report",
+          action: () => {
+            setActiveTab("scout");
+            setScoutView("main");
+            setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+          },
+        }
+      : null,
+    recentMarketUpdates[0]
+      ? {
+          id: `home-market-${recentMarketUpdates[0].id}`,
+          label: "TideTradr",
+          title: recentMarketUpdates[0].name || recentMarketUpdates[0].productName || recentMarketUpdates[0].cardName,
+          detail: `${recentMarketUpdates[0].productType || recentMarketUpdates[0].rarity || "Market item"} | ${money(recentMarketUpdates[0].marketPrice || recentMarketUpdates[0].marketValue || 0)}`,
+          action: () => setActiveTab("market"),
+        }
+      : null,
+  ].filter(Boolean);
   const scoutLastUpdated = scoutSnapshot.reports[0]?.createdAt || scoutSnapshot.reports[0]?.created_at || locationSettings.lastUpdated || "Local beta data";
   const scoutRecommendationCards = [
     { title: "Best nearby store to check now", value: scoutSnapshot.stores[0]?.name || "Add or import nearby stores", note: locationSettings.manualLocation || locationSettings.selectedSavedLocation || "Set a ZIP/city for local picks" },
@@ -4068,6 +5864,36 @@ async function importBulkCatalogProducts() {
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
+  const tidepoolPostsWithCounts = tidepoolPosts.map((post) => ({
+    ...post,
+    commentCount: tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed").length,
+    reactionCount: tidepoolReactions.filter((reaction) => reaction.postId === post.postId).length,
+  }));
+  const filteredTidepoolPosts = tidepoolPostsWithCounts
+    .filter((post) => {
+      if (post.status === "removed") return false;
+      if (tidepoolFilter === "Verified") return post.verificationStatus === "verified";
+      if (tidepoolFilter === "Questions") return post.postType === "Question";
+      if (tidepoolFilter === "Events") return post.postType === "Event";
+      if (tidepoolFilter === "Deals") return post.postType === "Deal sighting";
+      if (tidepoolFilter === "Store Tips") return post.postType === "Store tip";
+      if (tidepoolFilter === "My Posts") return post.userId === (currentUserProfile.userId || "local-beta");
+      if (tidepoolFilter === "Saved") return post.saved;
+      if (tidepoolFilter === "Needs Review") return ["pending", "disputed"].includes(post.verificationStatus) || post.flagged;
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const scoutReportRows = [...(scoutSnapshot.reports || [])].sort((a, b) => {
+    const aDate = `${a.reportDate || a.report_date || a.createdAt || ""}T${a.reportTime || a.report_time || "00:00"}`;
+    const bDate = `${b.reportDate || b.report_date || b.createdAt || ""}T${b.reportTime || b.report_time || "00:00"}`;
+    return new Date(bDate) - new Date(aDate);
+  });
+  const filteredScoutReports = scoutReportRows.filter((report) => {
+    if (scoutReportFilter === "Verified") return Boolean(report.verified || report.verificationStatus === "verified");
+    if (scoutReportFilter === "My Reports") return String(report.userId || report.reportedBy || "").includes("local");
+    if (scoutReportFilter === "Needs Review") return !report.verified && report.verificationStatus !== "verified";
+    return true;
+  });
   const dealAskingPrice = Number(dealForm.askingPrice || 0);
   const dealQuantity = Math.max(1, Number(dealForm.quantity || 1));
   const selectedDealProduct = catalogProducts.find((product) => String(product.id) === String(dealForm.productId || tideTradrLookupId));
@@ -4118,21 +5944,6 @@ async function importBulkCatalogProducts() {
       search: "",
     },
     {
-      label: "Pokemon",
-      status: "All",
-      search: "Pokemon",
-    },
-    {
-      label: "Needs Photos",
-      status: "Needs Photos",
-      search: "",
-    },
-    {
-      label: "Needs Market",
-      status: "Needs Market Check",
-      search: "",
-    },
-    {
       label: "Ready to List",
       status: "Ready to List",
       search: "",
@@ -4143,14 +5954,41 @@ async function importBulkCatalogProducts() {
       search: "",
     },
     {
+      label: "Sold",
+      status: "Sold",
+      search: "",
+    },
+    {
+      label: "Needs Market",
+      status: "Needs Market Check",
+      search: "",
+    },
+  ];
+  const advancedInventoryFilters = [
+    {
+      label: "Pokemon",
+      status: "All",
+      search: "Pokemon",
+    },
+    {
+      label: "Needs Photos",
+      status: "Needs Photos",
+      search: "",
+    },
+    {
       label: "Personal",
       status: "Personal Collection",
       search: "",
     },
     {
-      label: "Sold",
-      status: "Sold",
-      search: "",
+      label: "Imported",
+      status: "All",
+      search: "import",
+    },
+    {
+      label: "Moved from Vault",
+      status: "All",
+      search: "vault",
     },
   ];
 
@@ -4285,7 +6123,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function catalogImage(product = {}) {
-    return product.imageUrl || product.imageLarge || product.imageSmall || "";
+    return getCatalogImage(product);
   }
 
   function openCatalogDetails(productId) {
@@ -4296,6 +6134,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function addCatalogItemToForge(productId) {
     applyCatalogProduct(productId);
     setActiveTab("addInventory");
+  }
+
+  function updateCatalogImageMeta(productId, updates) {
+    setCatalogProducts((current) =>
+      current.map((product) =>
+        String(product.id) === String(productId)
+          ? { ...product, ...updates, imageLastUpdated: new Date().toISOString(), lastUpdated: new Date().toISOString() }
+          : product
+      )
+    );
   }
 
   function renderCatalogMeta(product = {}) {
@@ -4313,6 +6161,925 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <p>{product.productType || "Sealed product"} • {product.setName || product.expansion || product.productLine || "No set/series"}</p>
         <p>MSRP: {product.msrpDisplay === "Unknown" ? "Unknown" : money(marketInfo.msrp)} • Market: {money(marketInfo.currentMarketValue)}</p>
       </>
+    );
+  }
+
+  function getSharedScoutData() {
+    try {
+      return JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function saveSharedScoutData(nextScout) {
+    localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(nextScout));
+    setScoutSnapshot((current) => ({ ...current, ...nextScout }));
+  }
+
+  function updateSuggestionStatus(suggestion, status, adminNote = "") {
+    const reviewer = currentUserProfile?.email || currentUserProfile?.displayName || "local-beta-admin";
+    const next = updateSuggestionRecord(suggestion.id, {
+      status,
+      adminNote,
+      reviewedBy: reviewer,
+      reviewedAt: new Date().toISOString(),
+    });
+    appendAdminReviewLog({
+      action: status,
+      suggestionId: suggestion.id,
+      reviewedBy: reviewer,
+      notes: adminNote,
+    });
+    setSuggestions(next);
+  }
+
+  function applyApprovedSuggestion(suggestion, mode = "Approved") {
+    const submitted = suggestion.submittedData || {};
+    const scoutData = getSharedScoutData();
+    const stores = scoutData.stores || scoutSnapshot.stores || [];
+    const now = new Date().toISOString();
+
+    if (suggestion.targetTable === "stores") {
+      let nextStores = stores;
+      if (suggestion.suggestionType === SUGGESTION_TYPES.ADD_MISSING_STORE) {
+        const approvedStore = {
+          ...submitted,
+          id: submitted.id || makeId("store"),
+          isActive: true,
+          userAdded: false,
+          reviewStatus: "approved",
+          sourceType: "approved_user_suggestion",
+          source: submitted.source || "user-approved",
+          lastUpdated: now,
+        };
+        const exists = nextStores.some((store) => String(store.id) === String(approvedStore.id));
+        nextStores = exists
+          ? nextStores.map((store) => (String(store.id) === String(approvedStore.id) ? { ...store, ...approvedStore } : store))
+          : [approvedStore, ...nextStores];
+      } else if (suggestion.targetRecordId) {
+        nextStores = nextStores.map((store) =>
+          String(store.id) === String(suggestion.targetRecordId)
+            ? { ...store, ...submitted, lastUpdated: now }
+            : store
+        );
+      }
+      saveSharedScoutData({ ...scoutData, stores: nextStores });
+    }
+
+    if (suggestion.targetTable === "catalog_items") {
+      if (suggestion.suggestionType === SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT) {
+        const approvedProduct = {
+          ...submitted,
+          id: submitted.id || makeId("catalog"),
+          sourceType: "approved_user_suggestion",
+          lastUpdated: now,
+        };
+        setCatalogProducts((current) =>
+          current.some((product) => String(product.id) === String(approvedProduct.id))
+            ? current.map((product) => (String(product.id) === String(approvedProduct.id) ? { ...product, ...approvedProduct } : product))
+            : [approvedProduct, ...current]
+        );
+      } else if (suggestion.targetRecordId) {
+        setCatalogProducts((current) =>
+          current.map((product) =>
+            String(product.id) === String(suggestion.targetRecordId)
+              ? { ...product, ...submitted, lastUpdated: now }
+              : product
+          )
+        );
+      }
+    }
+
+    if (suggestion.targetTable === "retailer_products") {
+      const nextResults = [
+        {
+          id: submitted.id || makeId("bestbuy-sku"),
+          bestBuySku: submitted.bestBuySku || submitted.sku || "",
+          productName: submitted.productName || submitted.name || "Best Buy product suggestion",
+          sourceType: "approved_user_suggestion",
+          sourceStatus: "manual",
+          lastChecked: now,
+          lastUpdated: now,
+        },
+        ...(scoutData.bestBuyStockResults || scoutSnapshot.bestBuyStockResults || []),
+      ];
+      saveSharedScoutData({ ...scoutData, bestBuyStockResults: nextResults });
+    }
+
+    if (suggestion.targetTable === "store_intelligence" && suggestion.targetRecordId) {
+      const nextStores = stores.map((store) =>
+        String(store.id) === String(suggestion.targetRecordId)
+          ? {
+              ...store,
+              restockDays: submitted.restockDays ?? store.restockDays,
+              restockWindow: submitted.restockWindow ?? store.restockWindow,
+              purchaseLimits: submitted.purchaseLimits ?? store.purchaseLimits,
+              stockNotes: submitted.stockNotes ?? store.stockNotes,
+              userTips: submitted.userTips ?? store.userTips,
+              lastUpdated: now,
+            }
+          : store
+      );
+      saveSharedScoutData({ ...scoutData, stores: nextStores });
+    }
+
+    const nextProfile = {
+      ...(scoutData.scoutProfile || scoutSnapshot.scoutProfile || {}),
+      rewardPoints: Number((scoutData.scoutProfile || scoutSnapshot.scoutProfile || {}).rewardPoints || 0) + 5,
+      approvedSuggestions: Number((scoutData.scoutProfile || scoutSnapshot.scoutProfile || {}).approvedSuggestions || 0) + 1,
+    };
+    saveSharedScoutData({ ...getSharedScoutData(), scoutProfile: nextProfile });
+    updateSuggestionStatus(suggestion, mode, mode === "Merged" ? "Merged into shared data." : "Approved by admin.");
+    setVaultToast(mode === "Merged" ? "Suggestion merged into shared data." : "Suggestion approved and applied.");
+  }
+
+  function reviewSuggestion(suggestion, action) {
+    if (!canReviewSharedData) {
+      setVaultToast("Admin role required to review shared data suggestions.");
+      return;
+    }
+    if (!BETA_LOCAL_MODE && suggestion.userId === getSuggestionUserInfo().userId) {
+      setVaultToast("Users cannot approve their own shared data suggestions.");
+      return;
+    }
+    if (action === "approve") {
+      applyApprovedSuggestion(suggestion, "Approved");
+      return;
+    }
+    if (action === "merge") {
+      applyApprovedSuggestion(suggestion, "Merged");
+      return;
+    }
+    if (action === "reject") {
+      updateSuggestionStatus(suggestion, "Rejected", "Rejected by admin.");
+      setVaultToast("Suggestion rejected.");
+      return;
+    }
+    if (action === "moreInfo") {
+      updateSuggestionStatus(suggestion, "Needs More Info", "More details or proof are needed.");
+      setVaultToast("Suggestion marked as needing more info.");
+      return;
+    }
+    if (action === "duplicate") {
+      updateSuggestionStatus(suggestion, "Merged", "Marked as a duplicate of an existing shared item.");
+      setVaultToast("Suggestion marked duplicate.");
+    }
+  }
+
+  function renderSuggestionPreview(value) {
+    if (!value || typeof value !== "object") return <p className="compact-subtitle">No data attached.</p>;
+    const rows = Object.entries(value)
+      .filter(([, rowValue]) => rowValue !== undefined && rowValue !== null && String(rowValue).trim() !== "")
+      .slice(0, 8);
+    return (
+      <dl className="suggestion-preview-list">
+        {rows.map(([key, rowValue]) => (
+          <div key={key}>
+            <dt>{key.replace(/([A-Z])/g, " $1")}</dt>
+            <dd>{String(rowValue)}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  function renderSuggestionCard(suggestion, adminMode = false) {
+    return (
+      <article className="suggestion-card compact-card" key={suggestion.id}>
+        <div className="compact-card-header">
+          <div>
+            <span className="status-badge">{SUGGESTION_TYPE_LABELS[suggestion.suggestionType] || suggestion.suggestionType}</span>
+            <h3>{suggestionTitle(suggestion)}</h3>
+            <p>{suggestion.displayName || "Local Beta User"} - {new Date(suggestion.createdAt).toLocaleString()}</p>
+          </div>
+          <span className={`status-badge suggestion-status-${String(suggestion.status).toLowerCase().replaceAll(" ", "-")}`}>{suggestion.status}</span>
+        </div>
+        <div className="suggestion-two-column">
+          <div>
+            <h4>Suggested change</h4>
+            {renderSuggestionPreview(suggestion.submittedData)}
+          </div>
+          {adminMode && suggestion.currentDataSnapshot ? (
+            <div>
+              <h4>Current shared record</h4>
+              {renderSuggestionPreview(suggestion.currentDataSnapshot)}
+            </div>
+          ) : null}
+        </div>
+        {suggestion.notes ? <p className="compact-subtitle">Notes: {suggestion.notes}</p> : null}
+        {suggestion.adminNote ? <p className="compact-subtitle">Admin note: {suggestion.adminNote}</p> : null}
+        {adminMode ? (
+          <div className="quick-actions suggestion-actions">
+            <button type="button" onClick={() => reviewSuggestion(suggestion, "approve")}>Approve</button>
+            <button type="button" className="secondary-button" onClick={() => reviewSuggestion(suggestion, "reject")}>Reject</button>
+            <button type="button" className="secondary-button" onClick={() => reviewSuggestion(suggestion, "moreInfo")}>Request More Info</button>
+            <button type="button" className="secondary-button" onClick={() => reviewSuggestion(suggestion, "merge")}>Merge</button>
+            <button type="button" className="secondary-button" onClick={() => reviewSuggestion(suggestion, "duplicate")}>Mark Duplicate</button>
+          </div>
+        ) : null}
+      </article>
+    );
+  }
+
+  function renderMySuggestionsPage() {
+    const userId = getSuggestionUserInfo().userId;
+    const ownSuggestions = suggestions.filter((suggestion) => suggestion.userId === userId || BETA_LOCAL_MODE);
+    const visibleSuggestions = mySuggestionFilter === "All"
+      ? ownSuggestions
+      : ownSuggestions.filter((suggestion) => suggestion.status === mySuggestionFilter);
+    return (
+      <section className="panel approval-page">
+        <div className="compact-card-header">
+          <div>
+            <h2>My Suggestions</h2>
+            <p>Universal store, catalog, SKU, and Scout data suggestions you submitted for admin approval.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
+        </div>
+        <div className="quick-action-rail">
+          {["All", ...SUGGESTION_STATUSES].map((status) => (
+            <button key={status} type="button" className={mySuggestionFilter === status ? "primary" : "secondary-button"} onClick={() => setMySuggestionFilter(status)}>
+              {status}
+            </button>
+          ))}
+        </div>
+        <div className="inventory-list compact-inventory-list">
+          {visibleSuggestions.length ? visibleSuggestions.map((suggestion) => renderSuggestionCard(suggestion, false)) : (
+            <div className="empty-state">
+              <h3>No suggestions here yet</h3>
+              <p>Use Suggest Missing Store, Suggest Correction, or Suggest UPC/SKU from Scout and TideTradr.</p>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderAdminReviewPage() {
+    if (!canReviewSharedData) {
+      return (
+        <section className="panel approval-page">
+          <h2>Admin Review</h2>
+          <p>Admin role is required to approve shared data suggestions. Local beta users can submit suggestions, but cannot publish shared data directly.</p>
+        </section>
+      );
+    }
+    const sections = ["All", ...Object.values(REVIEW_SECTION_LABELS)];
+    const visibleSuggestions = suggestions.filter((suggestion) => {
+      if (adminReviewFilter === "All") return true;
+      return REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)] === adminReviewFilter;
+    });
+    const openCount = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status)).length;
+    const listingReviewItems = marketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
+    const totalOpenCount = openCount + listingReviewItems.length;
+    return (
+      <section className="panel approval-page">
+        <div className="compact-card-header">
+          <div>
+            <h2>Admin Review</h2>
+            <p>Approve, reject, merge, or request more info before universal data becomes public.</p>
+          </div>
+          <span className="status-badge">{totalOpenCount} open</span>
+        </div>
+        <div className="cards mini-cards">
+          {Object.entries(REVIEW_SECTION_LABELS).map(([key, label]) => (
+            <button type="button" className="card suggestion-section-card" key={key} onClick={() => setAdminReviewFilter(label)}>
+              <p>{label}</p>
+              <h2>{suggestions.filter((suggestion) => getSuggestionReviewSection(suggestion) === key).length}</h2>
+            </button>
+          ))}
+          <button type="button" className="card suggestion-section-card" onClick={() => setAdminReviewFilter("Marketplace Listings")}>
+            <p>Marketplace Listings</p>
+            <h2>{listingReviewItems.length}</h2>
+          </button>
+        </div>
+        <div className="quick-action-rail">
+          {[...sections, "Marketplace Listings"].map((section) => (
+            <button key={section} type="button" className={adminReviewFilter === section ? "primary" : "secondary-button"} onClick={() => setAdminReviewFilter(section)}>
+              {section}
+            </button>
+          ))}
+        </div>
+        {adminReviewFilter !== "Marketplace Listings" ? (
+        <div className="inventory-list compact-inventory-list">
+          {visibleSuggestions.length ? visibleSuggestions.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
+            <div className="empty-state">
+              <h3>No review items</h3>
+              <p>Shared data suggestions will appear here before they can update public store, catalog, SKU, or Scout data.</p>
+            </div>
+          )}
+        </div>
+        ) : null}
+        {(adminReviewFilter === "All" || adminReviewFilter === "Marketplace Listings") ? (
+          <section className="settings-subsection marketplace-admin-review">
+            <div className="compact-card-header">
+              <div>
+                <h3>Marketplace Listing Review</h3>
+                <p>Approve public listings, reject unsafe listings, remove flagged listings, or mark strong listings as featured.</p>
+              </div>
+              <span className="status-badge">{listingReviewItems.length} listings</span>
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {listingReviewItems.length ? listingReviewItems.map((listing) => renderMarketplaceListingCard(listing, true)) : (
+                <div className="empty-state">
+                  <h3>No marketplace listings need review</h3>
+                  <p>Submitted or flagged listings will appear here.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+      </section>
+    );
+  }
+
+  function updateMarketplaceForm(field, value) {
+    setMarketplaceForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function listingFromSource(sourceType = "manual", source = {}) {
+    const catalogProduct = sourceType === "catalog" ? source : catalogProducts.find((product) => String(product.id) === String(source.catalogProductId));
+    const marketInfo = catalogProduct ? getTideTradrMarketInfo(catalogProduct) : {};
+    const title =
+      sourceType === "catalog"
+        ? catalogTitle(source)
+        : source.name || source.itemName || source.productName || source.title || "";
+    return {
+      ...BLANK_MARKETPLACE_FORM,
+      title,
+      description: source.notes || source.actionNotes || "",
+      category: source.category || "Pokemon",
+      productType: source.productType || catalogProduct?.productType || "",
+      setName: source.expansion || source.setName || catalogProduct?.setName || catalogProduct?.expansion || "",
+      condition: source.condition || source.sealedCondition || "Unknown",
+      quantity: Number(source.quantity || 1),
+      askingPrice: source.salePrice || source.plannedSalePrice || source.plannedSellingPrice || "",
+      tradeValue: source.marketPrice || marketInfo.currentMarketValue || "",
+      locationCity: locationSettings.manualLocation || "",
+      locationState: "VA",
+      photos: [source.itemImage || source.imageUrl || catalogImage(catalogProduct || source)].filter(Boolean),
+      photoUrl: source.itemImage || source.imageUrl || catalogImage(catalogProduct || source) || "",
+      catalogItemId: sourceType === "catalog" ? source.id : source.catalogProductId || catalogProduct?.id || "",
+      upc: source.barcode || source.upc || catalogProduct?.barcode || catalogProduct?.upc || "",
+      sku: source.sku || catalogProduct?.sku || "",
+      sourceType,
+      sourceItemId: source.id || "",
+      sellerNotes: source.sourceLocation === "vault" ? "Copied from Vault." : "",
+    };
+  }
+
+  function openMarketplaceCreate(sourceType = "manual", source = {}) {
+    setMarketplaceSourcePicker(sourceType);
+    setMarketplaceForm(listingFromSource(sourceType, source));
+    setListingReviewOpen(false);
+    setFeatureSectionsOpen((current) => ({ ...current, market_marketplace: true }));
+    setActiveTab("market");
+    setTideTradrSubTab("overview");
+    setVaultToast("Marketplace listing draft ready. Review before submitting.");
+  }
+
+  function openVaultMarketplaceDecision(item) {
+    setVaultListingDecision(item);
+  }
+
+  function handleVaultMarketplaceDecision(action) {
+    if (!vaultListingDecision) return;
+    const item = vaultListingDecision;
+    setVaultListingDecision(null);
+    if (action === "cancel") return;
+    openMarketplaceCreate("vault", item);
+    if (action === "move") {
+      openVaultForgeTransfer(item, "move");
+      setVaultToast("Listing draft created. Confirm the Forge move separately when you are ready.");
+    }
+  }
+
+  function marketplaceFormReady() {
+    return marketplaceForm.title.trim() && Number(marketplaceForm.quantity || 0) >= 1;
+  }
+
+  function buildMarketplaceListing(status = "Draft") {
+    const now = new Date().toISOString();
+    const photos = marketplaceForm.photoUrl
+      ? [marketplaceForm.photoUrl, ...(marketplaceForm.photos || []).filter((photo) => photo !== marketplaceForm.photoUrl)]
+      : marketplaceForm.photos || [];
+    return {
+      id: marketplaceForm.id || makeId("listing"),
+      sellerUserId: currentUserProfile.userId || user?.id || "local-beta",
+      sellerDisplayName: currentUserProfile.displayName || user?.email || "Local Seller",
+      listingType: marketplaceForm.listingType,
+      title: marketplaceForm.title.trim(),
+      description: marketplaceForm.description,
+      category: marketplaceForm.category,
+      productType: marketplaceForm.productType,
+      setName: marketplaceForm.setName,
+      condition: marketplaceForm.condition,
+      quantity: Number(marketplaceForm.quantity || 1),
+      askingPrice: Number(marketplaceForm.askingPrice || 0),
+      tradeValue: Number(marketplaceForm.tradeValue || 0),
+      locationCity: marketplaceForm.locationCity,
+      locationState: marketplaceForm.locationState || "VA",
+      pickupOnly: Boolean(marketplaceForm.pickupOnly),
+      shippingAvailable: Boolean(marketplaceForm.shippingAvailable),
+      photos,
+      catalogItemId: marketplaceForm.catalogItemId,
+      upc: marketplaceForm.upc,
+      sku: marketplaceForm.sku,
+      intendedForKids: Boolean(marketplaceForm.intendedForKids || marketplaceForm.listingType === "Kid-friendly deal"),
+      contactPreference: marketplaceForm.contactPreference || "Request contact",
+      sellerNotes: marketplaceForm.sellerNotes || "",
+      sourceType: marketplaceForm.sourceType || "manual",
+      sourceItemId: marketplaceForm.sourceItemId || "",
+      status,
+      featured: Boolean(marketplaceForm.featured),
+      reportCount: 0,
+      createdAt: marketplaceForm.createdAt || now,
+      updatedAt: now,
+    };
+  }
+
+  function saveMarketplaceListing(status = "Draft") {
+    if (!marketplaceFormReady()) {
+      setVaultToast(!marketplaceForm.title.trim() ? "Listing title is required." : "Quantity must be at least 1.");
+      return;
+    }
+    const finalStatus = status === "Submit" ? "Pending Review" : status;
+    const listing = buildMarketplaceListing(finalStatus);
+    setMarketplaceListings((current) =>
+      current.some((item) => item.id === listing.id)
+        ? current.map((item) => (item.id === listing.id ? listing : item))
+        : [listing, ...current]
+    );
+    setMarketplaceForm(BLANK_MARKETPLACE_FORM);
+    setListingReviewOpen(false);
+    setMarketplaceSourcePicker("manual");
+    setVaultToast(finalStatus === "Draft" ? "Listing draft saved." : "Listing submitted for review.");
+  }
+
+  function updateMarketplaceListing(listingId, updates = {}) {
+    setMarketplaceListings((current) =>
+      current.map((listing) =>
+        listing.id === listingId ? { ...listing, ...updates, updatedAt: new Date().toISOString() } : listing
+      )
+    );
+  }
+
+  function editMarketplaceListing(listing = {}) {
+    setMarketplaceForm({
+      ...BLANK_MARKETPLACE_FORM,
+      ...listing,
+      photoUrl: listing.photos?.[0] || listing.photoUrl || "",
+      photos: Array.isArray(listing.photos) ? listing.photos : [],
+    });
+    setMarketplaceSourcePicker(listing.sourceType || "manual");
+    setListingReviewOpen(false);
+    setSelectedListingId("");
+    setFeatureSectionsOpen((current) => ({ ...current, market_marketplace: true }));
+    setActiveTab("market");
+    setTideTradrSubTab("overview");
+    setVaultToast("Listing opened for editing.");
+  }
+
+  function approveMarketplaceListing(listingId) {
+    updateMarketplaceListing(listingId, { status: "Active", reviewedBy: currentUserProfile.email || "local-beta-admin", reviewedAt: new Date().toISOString() });
+    setVaultToast("Marketplace listing approved.");
+  }
+
+  function rejectMarketplaceListing(listingId) {
+    updateMarketplaceListing(listingId, { status: "Removed", reviewedBy: currentUserProfile.email || "local-beta-admin", reviewedAt: new Date().toISOString() });
+    setVaultToast("Marketplace listing rejected/removed.");
+  }
+
+  function reportMarketplaceListing(event) {
+    event.preventDefault();
+    if (!listingReportTarget) return;
+    const report = {
+      id: makeId("listing-report"),
+      listingId: listingReportTarget.id,
+      reason: listingReportReason,
+      reportedBy: currentUserProfile.userId || "local-beta",
+      createdAt: new Date().toISOString(),
+      status: "Open",
+    };
+    setMarketplaceReports((current) => [report, ...current]);
+    updateMarketplaceListing(listingReportTarget.id, {
+      status: "Flagged",
+      reportCount: Number(listingReportTarget.reportCount || 0) + 1,
+    });
+    setListingReportTarget(null);
+    setListingReportReason("Wrong item");
+    setVaultToast("Listing reported for admin review.");
+  }
+
+  function toggleSavedListing(listingId) {
+    setMarketplaceSavedIds((current) =>
+      current.includes(listingId) ? current.filter((id) => id !== listingId) : [listingId, ...current]
+    );
+  }
+
+  function getListingMarketReference(listing = {}) {
+    const product = catalogProducts.find((item) => String(item.id) === String(listing.catalogItemId));
+    return product ? getTideTradrMarketInfo(product) : { currentMarketValue: Number(listing.tradeValue || 0), msrp: 0 };
+  }
+
+  function renderMarketplaceListingCard(listing, adminMode = false) {
+    const marketInfo = getListingMarketReference(listing);
+    const percentOfMarket = marketInfo.currentMarketValue > 0 ? (Number(listing.askingPrice || 0) / marketInfo.currentMarketValue) * 100 : 0;
+    return (
+      <article className="marketplace-listing-card compact-card" key={listing.id}>
+        <div className="marketplace-listing-row">
+          {listing.photos?.[0] ? <img className="marketplace-thumb" src={listing.photos[0]} alt="" /> : <div className="marketplace-thumb placeholder">No photo</div>}
+          <div>
+            <div className="marketplace-badges">
+              <span className="status-badge">{listing.listingType}</span>
+              <span className="status-badge">{listing.status}</span>
+              {listing.intendedForKids ? <span className="status-badge">Kid-Friendly</span> : null}
+            </div>
+            <h3>{listing.title}</h3>
+            <p className="compact-subtitle">{listing.condition || "Unknown condition"} | {listing.locationCity || "Local"} {listing.locationState || ""}</p>
+            <p><strong>{listing.listingType === "For Trade" ? "Trade value" : "Asking price"}:</strong> {money(listing.listingType === "For Trade" ? listing.tradeValue : listing.askingPrice)}</p>
+            {marketInfo.currentMarketValue ? <p className="compact-subtitle">Market reference: {money(marketInfo.currentMarketValue)} {percentOfMarket ? `| ${percentOfMarket.toFixed(0)}% of market` : ""}</p> : null}
+          </div>
+        </div>
+        <div className="quick-actions">
+          <button type="button" onClick={() => setSelectedListingId(listing.id)}>View</button>
+          <button type="button" className="secondary-button" onClick={() => toggleSavedListing(listing.id)}>{marketplaceSavedIds.includes(listing.id) ? "Saved" : "Save"}</button>
+          <button type="button" className="secondary-button" onClick={() => setListingReportTarget(listing)}>Report</button>
+          {listing.sellerUserId === (currentUserProfile.userId || user?.id) || adminUser ? (
+            <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { status: "Sold" })}>Mark Sold</button>
+          ) : null}
+          {adminMode ? (
+            <>
+              <button type="button" className="secondary-button" onClick={() => approveMarketplaceListing(listing.id)}>Approve</button>
+              <button type="button" className="secondary-button" onClick={() => rejectMarketplaceListing(listing.id)}>Reject</button>
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { status: "Removed" })}>Remove</button>
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { status: "Flagged" })}>Flag</button>
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { featured: true })}>Feature</button>
+            </>
+          ) : null}
+        </div>
+      </article>
+    );
+  }
+
+  function renderMarketplaceSection() {
+    const normalizedSearch = marketplaceSearch.trim().toLowerCase();
+    const currentSellerId = currentUserProfile.userId || user?.id;
+    const publicListings = marketplaceListings.filter((listing) => listing.status === "Active");
+    const myListings = marketplaceListings.filter((listing) => listing.sellerUserId === currentSellerId);
+    const visibleMarketplaceListings = marketplaceListings.filter((listing) =>
+      listing.status === "Active" || listing.sellerUserId === currentSellerId || canReviewSharedData
+    );
+    const filteredListings = visibleMarketplaceListings.filter((listing) => {
+      const matchesStatus =
+        marketplaceStatusFilter === "All"
+          ? true
+          : marketplaceStatusFilter === "Active"
+            ? listing.status === "Active"
+            : listing.status === marketplaceStatusFilter;
+      const matchesType = marketplaceTypeFilter === "All" || listing.listingType === marketplaceTypeFilter;
+      const matchesSearch = !normalizedSearch || [listing.title, listing.description, listing.productType, listing.setName, listing.upc, listing.sku, listing.locationCity]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+      return matchesStatus && matchesType && matchesSearch;
+    });
+    const selectedListing = marketplaceListings.find((listing) => listing.id === selectedListingId);
+    const reviewListing = buildMarketplaceListing("Pending Review");
+
+    return (
+      <div className="marketplace-section">
+        <div className="marketplace-beta-note">
+          <strong>Marketplace is in beta.</strong>
+          <span>Payments and shipping are not handled by the app yet. Meet safely, verify items, and do not send payment outside trusted methods.</span>
+        </div>
+        <div className="cards mini-cards">
+          <div className="card"><p>Active Listings</p><h2>{publicListings.length}</h2></div>
+          <div className="card"><p>Pending Review</p><h2>{marketplaceListings.filter((listing) => listing.status === "Pending Review").length}</h2></div>
+          <div className="card"><p>My Listings</p><h2>{myListings.length}</h2></div>
+          <div className="card"><p>Saved</p><h2>{marketplaceSavedIds.length}</h2></div>
+        </div>
+
+        <div className="marketplace-create-panel">
+          <div className="compact-card-header">
+            <div>
+              <h3>Create Listing</h3>
+              <p>Draft a listing from Forge, Vault, Catalog, or manual entry. Public listings go to review first.</p>
+            </div>
+          </div>
+          <div className="quick-action-rail">
+            {["forge", "vault", "catalog", "manual"].map((source) => (
+              <button key={source} type="button" className={marketplaceSourcePicker === source ? "primary" : "secondary-button"} onClick={() => {
+                setMarketplaceSourcePicker(source);
+                if (source === "manual") setMarketplaceForm(BLANK_MARKETPLACE_FORM);
+              }}>
+                {source === "forge" ? "List from Forge" : source === "vault" ? "List from Vault" : source === "catalog" ? "List from Catalog" : "Create Manual Listing"}
+              </button>
+            ))}
+          </div>
+          {marketplaceSourcePicker === "forge" ? (
+            <Field label="Forge item">
+              <select onChange={(event) => {
+                const item = items.find((candidate) => candidate.id === event.target.value);
+                if (item) setMarketplaceForm(listingFromSource("forge", item));
+              }}>
+                <option value="">Choose Forge inventory</option>
+                {items.filter((item) => !isVaultItemRecord(item)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </Field>
+          ) : null}
+          {marketplaceSourcePicker === "vault" ? (
+            <Field label="Vault item">
+              <select onChange={(event) => {
+                const item = vaultItems.find((candidate) => candidate.id === event.target.value);
+                if (item) openVaultMarketplaceDecision(item);
+              }}>
+                <option value="">Choose Vault item</option>
+                {vaultItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </Field>
+          ) : null}
+          {marketplaceSourcePicker === "catalog" ? (
+            <Field label="Catalog item">
+              <select onChange={(event) => {
+                const product = catalogProducts.find((candidate) => candidate.id === event.target.value);
+                if (product) setMarketplaceForm(listingFromSource("catalog", product));
+              }}>
+                <option value="">Choose catalog item</option>
+                {catalogProducts.map((product) => <option key={product.id} value={product.id}>{catalogTitle(product)}</option>)}
+              </select>
+            </Field>
+          ) : null}
+          <form className="form marketplace-form" onSubmit={(event) => { event.preventDefault(); setListingReviewOpen(true); }}>
+            <Field label="Listing Type">
+              <select value={marketplaceForm.listingType} onChange={(event) => updateMarketplaceForm("listingType", event.target.value)}>
+                {MARKETPLACE_LISTING_TYPES.map((type) => <option key={type}>{type}</option>)}
+              </select>
+            </Field>
+            <Field label="Title">
+              <input value={marketplaceForm.title} onChange={(event) => updateMarketplaceForm("title", event.target.value)} placeholder="Product or card name" />
+            </Field>
+            <Field label="Quantity">
+              <input type="number" min="1" value={marketplaceForm.quantity} onChange={(event) => updateMarketplaceForm("quantity", event.target.value)} />
+            </Field>
+            <Field label="Asking Price">
+              <input type="number" step="0.01" value={marketplaceForm.askingPrice} onChange={(event) => updateMarketplaceForm("askingPrice", event.target.value)} />
+            </Field>
+            <Field label="Condition">
+              <input value={marketplaceForm.condition} onChange={(event) => updateMarketplaceForm("condition", event.target.value)} placeholder="Near Mint, Sealed, Box damage..." />
+            </Field>
+            <Field label="Photo URL">
+              <input value={marketplaceForm.photoUrl} onChange={(event) => updateMarketplaceForm("photoUrl", event.target.value)} placeholder="Optional beta photo URL" />
+            </Field>
+            <details className="scout-score-guidelines">
+              <summary>More Listing Details</summary>
+              <div className="form">
+                <Field label="Product Type"><input value={marketplaceForm.productType} onChange={(event) => updateMarketplaceForm("productType", event.target.value)} /></Field>
+                <Field label="Set / Collection"><input value={marketplaceForm.setName} onChange={(event) => updateMarketplaceForm("setName", event.target.value)} /></Field>
+                <Field label="Trade Value"><input type="number" step="0.01" value={marketplaceForm.tradeValue} onChange={(event) => updateMarketplaceForm("tradeValue", event.target.value)} /></Field>
+                <Field label="City"><input value={marketplaceForm.locationCity} onChange={(event) => updateMarketplaceForm("locationCity", event.target.value)} /></Field>
+                <Field label="Description"><textarea value={marketplaceForm.description} onChange={(event) => updateMarketplaceForm("description", event.target.value)} /></Field>
+                <label className="toggle-row"><span>Pickup only</span><input type="checkbox" checked={marketplaceForm.pickupOnly} onChange={(event) => updateMarketplaceForm("pickupOnly", event.target.checked)} /></label>
+                <label className="toggle-row"><span>Shipping available</span><input type="checkbox" checked={marketplaceForm.shippingAvailable} onChange={(event) => updateMarketplaceForm("shippingAvailable", event.target.checked)} /></label>
+                <label className="toggle-row"><span>Intended for kids/families</span><input type="checkbox" checked={marketplaceForm.intendedForKids} onChange={(event) => updateMarketplaceForm("intendedForKids", event.target.checked)} /></label>
+              </div>
+            </details>
+            <div className="marketplace-safety-rules">
+              <strong>Community listing rules</strong>
+              <p>No fake/counterfeit items, misleading prices, stolen items, unsafe meetups, harassment, or off-topic items. Admin may remove listings.</p>
+            </div>
+            <div className="quick-actions">
+              <button type="submit" disabled={!marketplaceFormReady()}>Review Listing</button>
+              <button type="button" className="secondary-button" onClick={() => saveMarketplaceListing("Draft")}>Save Draft</button>
+            </div>
+          </form>
+        </div>
+
+        <div className="marketplace-browse-panel">
+          <div className="compact-card-header">
+            <div>
+              <h3>Browse Listings</h3>
+              <p>Approved community listings only. Pending listings stay private to seller/admin.</p>
+            </div>
+          </div>
+          <div className="filter-grid">
+            <Field label="Search">
+              <input value={marketplaceSearch} onChange={(event) => setMarketplaceSearch(event.target.value)} placeholder="Search title, set, UPC, SKU, city..." />
+            </Field>
+            <Field label="Listing Type">
+              <select value={marketplaceTypeFilter} onChange={(event) => setMarketplaceTypeFilter(event.target.value)}>
+                <option>All</option>
+                {MARKETPLACE_LISTING_TYPES.map((type) => <option key={type}>{type}</option>)}
+              </select>
+            </Field>
+            <Field label="Status">
+              <select value={marketplaceStatusFilter} onChange={(event) => setMarketplaceStatusFilter(event.target.value)}>
+                <option>Active</option>
+                <option>All</option>
+                {MARKETPLACE_STATUSES.map((status) => <option key={status}>{status}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div className="inventory-list compact-inventory-list">
+            {filteredListings.length ? filteredListings.map((listing) => renderMarketplaceListingCard(listing)) : (
+              <div className="empty-state">
+                <h3>No marketplace listings yet</h3>
+                <p>Approved listings will appear here after admin review.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {myListings.length ? (
+          <details className="scout-score-guidelines">
+            <summary>My Listings</summary>
+            <div className="inventory-list compact-inventory-list">
+              {myListings.map((listing) => renderMarketplaceListingCard(listing))}
+            </div>
+          </details>
+        ) : null}
+
+        {selectedListing ? (
+          <div className="marketplace-detail-panel compact-card">
+            <div className="compact-card-header">
+              <div>
+                <h3>{selectedListing.title}</h3>
+                <p>{selectedListing.listingType} | {selectedListing.status}</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => setSelectedListingId("")}>Close</button>
+            </div>
+            {selectedListing.photos?.[0] ? <img className="catalog-detail-image" src={selectedListing.photos[0]} alt={selectedListing.title} /> : null}
+            <div className="catalog-detail-grid">
+              <DetailItem label="Price" value={money(selectedListing.askingPrice)} />
+              <DetailItem label="Market Value" value={money(getListingMarketReference(selectedListing).currentMarketValue)} />
+              <DetailItem label="MSRP" value={money(getListingMarketReference(selectedListing).msrp)} />
+              <DetailItem label="Condition" value={selectedListing.condition} />
+              <DetailItem label="Quantity" value={selectedListing.quantity} />
+              <DetailItem label="Location" value={`${selectedListing.locationCity || "Local"} ${selectedListing.locationState || ""}`} />
+              <DetailItem label="Pickup / Shipping" value={`${selectedListing.pickupOnly ? "Pickup" : "Pickup optional"}${selectedListing.shippingAvailable ? " / Shipping available" : ""}`} />
+              <DetailItem label="Seller Contact" value={selectedListing.contactPreference || "Request contact"} />
+            </div>
+            <p>{selectedListing.description || "No description yet."}</p>
+            <p className="compact-subtitle">Meet safely, verify items, and do not send payment outside trusted methods. Message system is coming later.</p>
+            <div className="quick-actions">
+              <button type="button" onClick={() => setVaultToast("Contact seller placeholder saved. Messaging is coming soon.")}>Contact Seller</button>
+              <button type="button" className="secondary-button" onClick={() => toggleSavedListing(selectedListing.id)}>Save Listing</button>
+              <button type="button" className="secondary-button" disabled>Make Offer Later</button>
+              <button type="button" className="secondary-button" onClick={() => setListingReportTarget(selectedListing)}>Report</button>
+              {selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminUser ? (
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(selectedListing.id, { status: "Sold" })}>Mark Sold</button>
+              ) : null}
+              {selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminUser ? (
+                <>
+                  <button type="button" className="secondary-button" onClick={() => editMarketplaceListing(selectedListing)}>Edit Listing</button>
+                  <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(selectedListing.id, { status: "Archived" })}>Archive</button>
+                </>
+              ) : null}
+              {adminUser ? (
+                <>
+                  <button type="button" className="secondary-button" onClick={() => approveMarketplaceListing(selectedListing.id)}>Approve</button>
+                  <button type="button" className="secondary-button" onClick={() => rejectMarketplaceListing(selectedListing.id)}>Remove</button>
+                  <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(selectedListing.id, { status: "Flagged" })}>Flag</button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {listingReviewOpen ? (
+          <div className="location-modal-backdrop" role="presentation" onClick={() => setListingReviewOpen(false)}>
+            <section className="location-modal marketplace-review-modal" role="dialog" aria-modal="true" aria-labelledby="listing-review-title" onClick={(event) => event.stopPropagation()}>
+              <div>
+                <h2 id="listing-review-title">Review Listing</h2>
+                <p>Public listings are submitted for review before they appear in Marketplace.</p>
+              </div>
+              {renderMarketplaceListingCard(reviewListing)}
+              <div className="location-modal-actions">
+                <button type="button" onClick={() => saveMarketplaceListing("Submit")}>Submit Listing</button>
+                <button type="button" className="secondary-button" onClick={() => saveMarketplaceListing("Draft")}>Save Draft</button>
+                <button type="button" className="secondary-button" onClick={() => setListingReviewOpen(false)}>Edit</button>
+                <button type="button" className="ghost-button" onClick={() => setListingReviewOpen(false)}>Cancel</button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderTidepoolCommunity() {
+    return (
+      <section className="panel tidepool-community">
+        <div className="compact-card-header">
+          <div>
+            <h2>Tidepool</h2>
+            <p>Community feed for posts, questions, sightings, events, comments, confirmations, and replies.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Close Tidepool</button>
+        </div>
+
+        <div className="cards mini-cards">
+          <div className="card"><p>Posts</p><h2>{tidepoolPosts.length}</h2></div>
+          <div className="card"><p>Comments</p><h2>{tidepoolComments.length}</h2></div>
+          <div className="card"><p>Reactions</p><h2>{tidepoolReactions.length}</h2></div>
+          <div className="card"><p>Source</p><h2>Local</h2></div>
+        </div>
+
+        <form className="form compact-card" onSubmit={submitTidepoolPost}>
+          <h3>Create Post</h3>
+          <Field label="Post Type">
+            <select value={tidepoolPostForm.postType} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, postType: event.target.value }))}>
+              {TIDEPOOL_POST_TYPES.map((type) => <option key={type}>{type}</option>)}
+            </select>
+          </Field>
+          <Field label="Title">
+            <input value={tidepoolPostForm.title} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, title: event.target.value }))} placeholder="Optional title" />
+          </Field>
+          <Field label="Post">
+            <textarea value={tidepoolPostForm.body} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, body: event.target.value }))} placeholder="Ask a question, share a sighting, post an event, or start a discussion." />
+          </Field>
+          <div className="inline-input-grid">
+            <input value={tidepoolPostForm.city} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, city: event.target.value }))} placeholder="City optional" />
+            <input value={tidepoolPostForm.zip} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, zip: event.target.value }))} placeholder="ZIP optional" />
+            <input value={tidepoolPostForm.photoUrl} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, photoUrl: event.target.value }))} placeholder="Photo URL optional" />
+          </div>
+          <button type="submit">Post to Tidepool</button>
+        </form>
+
+        <div className="quick-action-rail">
+          {TIDEPOOL_FEED_FILTERS.map((filter) => (
+            <button key={filter} type="button" className={tidepoolFilter === filter ? "primary" : ""} onClick={() => setTidepoolFilter(filter)}>
+              {filter}
+            </button>
+          ))}
+        </div>
+
+        <div className="inventory-list compact-inventory-list">
+          {filteredTidepoolPosts.length === 0 ? (
+            <div className="empty-state">
+              <h3>No Tidepool posts yet</h3>
+              <p>Start a question, share a store tip, or post a community update.</p>
+            </div>
+          ) : null}
+          {filteredTidepoolPosts.map((post) => {
+            const postComments = tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed");
+            return (
+              <article className="inventory-card compact-card" key={post.postId}>
+                <div className="compact-card-header">
+                  <div>
+                    <span className="status-badge">{post.postType}</span>
+                    <h3>{post.title || post.postType}</h3>
+                    <p>{post.displayName} {post.city ? `- ${post.city}` : ""} - {new Date(post.createdAt).toLocaleString()}</p>
+                  </div>
+                  <span className="status-badge">{post.verificationStatus}</span>
+                </div>
+                <p>{post.body}</p>
+                <p className="compact-subtitle">Source: {post.sourceType} | Comments: {post.commentCount} | Reactions: {post.reactionCount}</p>
+                <div className="quick-actions">
+                  <button type="button" onClick={() => addTidepoolReaction(post.postId, "helpful")}>Helpful</button>
+                  <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "confirmed")}>Confirm</button>
+                  <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "disputed")}>Dispute</button>
+                  <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { saved: true })}>Save</button>
+                  <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { flagged: true, status: "pending" })}>Flag</button>
+                </div>
+                <div className="settings-subsection">
+                  <h4>Comments</h4>
+                  {postComments.map((comment) => (
+                    <div className="compact-card" key={comment.commentId}>
+                      <p><strong>{comment.displayName}</strong>: {comment.body}</p>
+                      <div className="inline-input-grid">
+                        <input value={tidepoolCommentDrafts[comment.commentId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [comment.commentId]: event.target.value }))} placeholder="Reply..." />
+                        <button type="button" className="secondary-button" onClick={() => addTidepoolComment(post.postId, comment.commentId)}>Reply</button>
+                      </div>
+                      {tidepoolComments.filter((reply) => reply.parentCommentId === comment.commentId && reply.status !== "removed").map((reply) => (
+                        <p className="compact-subtitle" key={reply.commentId}><strong>{reply.displayName}</strong>: {reply.body}</p>
+                      ))}
+                    </div>
+                  ))}
+                  <div className="inline-input-grid">
+                    <input value={tidepoolCommentDrafts[post.postId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [post.postId]: event.target.value }))} placeholder="Add a comment..." />
+                    <button type="button" onClick={() => addTidepoolComment(post.postId)}>Comment</button>
+                  </div>
+                </div>
+                {adminUser ? (
+                  <div className="quick-actions">
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { verificationStatus: "verified", sourceType: "admin" })}>Verify Post</button>
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { verificationStatus: "disputed" })}>Mark Disputed</button>
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { status: "hidden" })}>Hide Post</button>
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { status: "removed" })}>Remove Post</button>
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { commentsLocked: true })}>Lock Comments</button>
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="empty-state">
+          <h3>Community rules</h3>
+          <p>No fake reports, spam, harassment, or unsafe meetup details. Restock claims can be confirmed or disputed, and flagged posts are ready for admin review.</p>
+        </div>
+      </section>
     );
   }
 
@@ -4369,7 +7136,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     E&T TCG
   </h1>
 
-  <p>E&T TCG cloud sync active for: {user.email}</p>
+  <p>{activeTabLabel} | {BETA_LOCAL_MODE ? "Local beta data" : `Cloud sync: ${user.email}`}</p>
 
   {showTreasure && (
     <div className="hidden-treasure">
@@ -4408,12 +7175,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     <button
       type="button"
       className="secondary-button"
-      onClick={beginScanProduct}
+      onClick={() => beginScanProduct("none")}
     >
       Scan
     </button>
 
-    <div className="quick-add-wrapper">
+    <div className="quick-add-wrapper" ref={quickAddRef}>
       <button
         type="button"
         className="secondary-button"
@@ -4425,14 +7192,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       </button>
       {quickAddMenuOpen ? (
         <div className="quick-add-menu" role="menu">
-          <button type="button" role="menuitem" onClick={() => openQuickAddAction("card")}>Add Card</button>
-          <button type="button" role="menuitem" onClick={() => openQuickAddAction("sealed")}>Add Sealed Product</button>
-          <button type="button" role="menuitem" onClick={() => openQuickAddAction("inventory")}>Add Inventory</button>
-          <button type="button" role="menuitem" onClick={() => openQuickAddAction("sale")}>Add Sale</button>
-          <button type="button" role="menuitem" onClick={() => openQuickAddAction("expense")}>Add Expense</button>
-          <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Add Store Report</button>
-          <button type="button" role="menuitem" onClick={() => openQuickAddAction("store")}>Add Store</button>
-          <button type="button" role="menuitem" onClick={() => openQuickAddAction("wishlist")}>Add Wishlist Item</button>
+          <div className="quick-add-group">
+            <span>Forge</span>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("inventory")}>Add Inventory</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("sale")}>Add Sale</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("expense")}>Add Expense</button>
+          </div>
+          <div className="quick-add-group">
+            <span>Vault</span>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("card")}>Add Card</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("sealed")}>Add Sealed Product</button>
+          </div>
+          <div className="quick-add-group">
+            <span>TideTradr</span>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("wishlist")}>Add Wishlist Item</button>
+          </div>
+          <div className="quick-add-group">
+            <span>Scout</span>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Add Store Report</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("store")}>{adminUser ? "Add Store" : "Suggest Missing Store"}</button>
+          </div>
         </div>
       ) : null}
     </div>
@@ -4484,8 +7263,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {appSearchResults.map((result) => (
               <div className="app-search-result" key={result.id}>
                 <button type="button" className="app-search-result-main" onClick={() => viewSearchResult(result)}>
-                  {(result.category === "Products" || result.category === "Cards") && (result.source.imageUrl || result.source.imageSmall) ? (
-                    <img className="app-search-thumb" src={result.source.imageUrl || result.source.imageSmall} alt="" />
+                  {(result.category === "Products" || result.category === "Cards") && getCatalogImage(result.source) ? (
+                    <img className="app-search-thumb" src={getCatalogImage(result.source)} alt="" />
                   ) : null}
                   <span>{result.category}</span>
                   <strong>{result.title}</strong>
@@ -4510,7 +7289,35 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             key={tab.key}
             type="button"
             className={activeMainTab === tab.key ? "main-tab active" : "main-tab"}
-            onClick={() => setActiveTab(tab.target)}
+            onClick={() => {
+              if (!confirmLeaveVaultWork()) return;
+              if (tab.key === "scout") {
+                setScoutView("main");
+                setScoutSubTabTarget({ tab: "overview", id: Date.now() });
+              }
+              if (tab.key === "tideTradr") {
+                setTideTradrSubTab("overview");
+                setFeatureSectionsOpen((current) => ({
+                  ...current,
+                  market_watchlist: false,
+                  market_deal_finder: false,
+                  market_sources: false,
+                  market_filters: false,
+                }));
+              }
+              if (tab.key === "forge") {
+                setForgeSubTab("overview");
+                setFeatureSectionsOpen((current) => ({
+                  ...current,
+                  forge_inventory: false,
+                  forge_sales: false,
+                  forge_expenses: false,
+                  forge_mileage: false,
+                  forge_reports: false,
+                }));
+              }
+              setActiveTab(tab.target);
+            }}
           >
             {tab.label}
           </button>
@@ -4527,111 +7334,957 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => setMenuOpen(false)}>Close</button>
             </div>
             <div className="drawer-menu-stack">
-              {renderMenuPullDown("go_to", "Go To", "Home, Scout, The Vault, TideTradr, and The Forge", (
+              {renderMenuPullDown("profile", "Profile", "Account status and beta profile", (
                 <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Home</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("scout"))}>Scout</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("vault"))}>The Vault</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("market"))}>TideTradr</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("inventory"))}>The Forge</button>
+                  <div className="drawer-info-card account-status-card">
+                    <div>
+                      <h3>Local Beta Mode</h3>
+                      <p className="compact-subtitle">{currentUserProfile.displayName || user.email || "Local beta user"}</p>
+                    </div>
+                    <dl className="drawer-status-list">
+                      <div><dt>Role</dt><dd>{adminUser ? "Admin" : "User"}</dd></div>
+                      <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
+                      <div><dt>Data</dt><dd>Stored on this device</dd></div>
+                    </dl>
+                  </div>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
                 </div>
-              ))}
-              {renderMenuPullDown("profile", "Profile", "User Profile, My Scout Score, Saved Location, and Account Info", (
+              ), "User")}
+              {renderMenuPullDown("settings", "Settings", "Appearance, location, notifications, and dashboard display", (
                 <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>User Profile</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_score_rewards: true })); })}>My Scout Score</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_location_options: true })); })}>Saved Location</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Account Info</button>
-                </div>
-              ))}
-              {renderMenuPullDown("app_settings", "App Settings", "Appearance, dashboard display, default Home view, labels, and compact mode", (
-                <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Appearance/Theme</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setDashboardCardStyle(dashboardCardStyle === "compact" ? "comfortable" : "compact"))}>Appearance</button>
+                  <div className="drawer-info-card">
+                    <strong>Location</strong>
+                    <p className="compact-subtitle">Enter a ZIP code or city to personalize nearby Scout stores. Device location stays off unless you enable it.</p>
+                    <input
+                      className="drawer-field"
+                      value={locationSettings.manualLocation}
+                      onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, trackingEnabled: false })}
+                      placeholder="ZIP or city"
+                    />
+                    <div className="drawer-inline-actions">
+                      <button type="button" className="drawer-link" onClick={saveManualLocation}>Save Location</button>
+                      <button type="button" className="drawer-link" onClick={enableLocationTracking}>Use Device Location</button>
+                      <button type="button" className="drawer-link" onClick={disableLocationTracking}>Turn Off Location</button>
+                    </div>
+                  </div>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_alerts: true })); })}>Notifications</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("dashboard"); setFeatureSectionsOpen((current) => ({ ...current, home_display_settings: true })); })}>Dashboard Display Settings</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Default Home View</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Mock/Coming Soon Labels</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setDashboardCardStyle(dashboardCardStyle === "compact" ? "comfortable" : "compact"))}>Compact Mode</button>
                 </div>
-              ))}
-              {renderMenuPullDown("location_alerts", "Location & Alerts", "Location settings, manual ZIP/city, alert radius, notifications, and quiet hours", (
-                <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_location_options: true })); })}>Location Settings</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_location_options: true })); })}>Manual ZIP/City</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(enableLocationTracking)}>Allow Location While Using App</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_alerts: true })); })}>Alert Radius</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_alerts: true })); })}>Notification Settings</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_alerts: true })); })}>Quiet Hours</button>
-                </div>
-              ))}
-              {renderMenuPullDown("data", "Data", "Import Inventory, Export Data, Import Collection, and Clear Mock Data", (
-                <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openInventoryImportAssistant("Forge"))}>Import Inventory</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(downloadBackup)}>Export Data</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openInventoryImportAssistant("Vault"))}>Import Collection</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(resetBetaLocalData)}>Clear Mock Data</button>
-                </div>
-              ))}
-              {renderMenuPullDown("tidetradr_settings", "TideTradr Settings", "Market sources, manual/cached/mock values, watchlist, and pinned market watch", (
-                <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("market"))}>Market Sources</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("market"); setFeatureSectionsOpen((current) => ({ ...current, market_sources: true })); })}>Manual/Cached/Mock Values</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("market"); setFeatureSectionsOpen((current) => ({ ...current, market_watchlist: true })); })}>Watchlist Settings</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("market"); setFeatureSectionsOpen((current) => ({ ...current, market_watchlist: true })); })}>Pinned Market Watch Settings</button>
-                  <form className="drawer-alias-form" onSubmit={addUserSearchAlias}>
-                    <p className="compact-subtitle">Personal search aliases</p>
-                    <input value={aliasDraft.alias} onChange={(event) => setAliasDraft((current) => ({ ...current, alias: event.target.value }))} placeholder="Your shorthand, e.g. kid binder" />
-                    <input value={aliasDraft.canonical} onChange={(event) => setAliasDraft((current) => ({ ...current, canonical: event.target.value }))} placeholder="Should search for, e.g. Vault binder" />
-                    <select value={aliasDraft.type} onChange={(event) => setAliasDraft((current) => ({ ...current, type: event.target.value }))}>
-                      <option value="personal">Personal shorthand</option>
-                      <option value="store">Store nickname</option>
-                      <option value="product">Product nickname</option>
-                      <option value="set">Set nickname</option>
-                    </select>
-                    <button type="submit">Add Alias</button>
-                  </form>
-                  {userSearchAliases.slice(0, 5).map((entry) => (
-                    <button type="button" className="drawer-link" key={entry.id} onClick={() => setUserSearchAliases((current) => current.filter((item) => item.id !== entry.id))}>
-                      Remove {entry.alias} = {entry.canonical}
+              ), "Gear")}
+              {renderMenuPullDown("data", "Data & Backup", "Export, import, clear demo data, and storage status", (
+                <>
+                  <BackupExportImport
+                    storageStatus={storageStatus}
+                    importPreview={backupImportPreview}
+                    importMessage={backupImportMessage}
+                    onExport={downloadBackup}
+                    onImportFile={handleBackupFileUpload}
+                    onApplyImport={applyBetaBackupImport}
+                    onClearDemoData={resetBetaLocalData}
+                  />
+                  {BETA_LOCAL_MODE ? (
+                    <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>
+                      Admin Review Queue (Local Beta)
                     </button>
-                  ))}
-                </div>
-              ))}
-              {renderMenuPullDown("community", "Community", "Help, Discord placeholder, and report guidelines", (
+                  ) : null}
+                </>
+              ), "Data")}
+              {renderMenuPullDown("feedback", "Feedback / Help", "Send feedback, report bugs, and app help", (
                 <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Help / Feedback</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Join Discord Community</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Discord Coming Soon / Invite Placeholder</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_score_rewards: true, scout_store_tracker: true })); })}>Report Guidelines</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Send Feedback</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("How to Use App guide is coming soon for beta testers."))}>How to Use App</button>
                 </div>
-              ))}
-              {renderMenuPullDown("subscription", "Subscription Placeholder", "Paid plan, free vs paid preview, and trusted Scout earned access", (
+              ), "Help")}
+              {renderMenuPullDown("community", "Community", "Tidepool, guidelines, and community rules", (
                 <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Paid Plan / Upgrade Coming Soon</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Open Tidepool</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Needs Review"))}>Report Guidelines</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Community rules</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Discord community is coming soon."))}>Discord Coming Soon</button>
+                </div>
+              ), "Chat")}
+              {renderMenuPullDown("subscription", "Plans & Features", "Free vs paid features and beta planning", (
+                <div className="drawer-links">
+                  <div className="drawer-info-card">
+                    <strong>Paid plans are not active yet.</strong>
+                    <p className="compact-subtitle">This is a preview for beta planning.</p>
+                  </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Free vs Paid Feature Preview</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_score_rewards: true })); })}>Trusted Scout Earned Access Info</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Upgrade Coming Soon</button>
                 </div>
-              ))}
-              {renderMenuPullDown("account", "Account", "Log Out", (
+              ), "Plan")}
+              {adminUser ? renderMenuPullDown("admin", "Admin Tools", "User, tier, catalog, store, report, and data controls", (
                 <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>User Management</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Tier Management</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("catalog"))}>Catalog Import / Status</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_stores: true })); })}>Store Import / Status</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Admin Review Queue</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Needs Review"))}>Report Moderation</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("market"))}>Mock / Live Data Controls</button>
                 </div>
-              ))}
+              ), "Admin") : null}
+              {renderMenuPullDown("account", "Account", "Log out, reset beta data, and app version", (
+                <div className="drawer-links">
+                  <div className="drawer-info-card app-version-card">
+                    <strong>App Version</strong>
+                    <p className="compact-subtitle">E&T TCG beta web app</p>
+                  </div>
+                  <button type="button" className="drawer-link drawer-danger-link" onClick={resetBetaLocalData}>Reset Local Beta Data</button>
+                  <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
+                </div>
+              ), "Acct")}
             </div>
           </aside>
         </>
+      ) : null}
+
+      {feedbackDialog ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setFeedbackDialog(null)}>
+          <form
+            className="location-modal feedback-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="feedback-dialog-title"
+            onSubmit={submitFeedbackDialog}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div>
+              <h2 id="feedback-dialog-title">{feedbackDialog === "bug" ? "Report a Bug" : "Send Feedback"}</h2>
+              <p>{feedbackDialog === "bug" ? "Tell us what broke so we can clean it up for beta." : "Share what would make the beta easier to use."}</p>
+            </div>
+            <Field label={feedbackDialog === "bug" ? "What happened?" : "Feedback"}>
+              <textarea
+                value={feedbackForm.whatHappened}
+                onChange={(event) => setFeedbackForm((current) => ({ ...current, whatHappened: event.target.value }))}
+                placeholder={feedbackDialog === "bug" ? "Describe the issue" : "What should we improve?"}
+              />
+            </Field>
+            <Field label="Page / screen">
+              <input
+                value={feedbackForm.page}
+                onChange={(event) => setFeedbackForm((current) => ({ ...current, page: event.target.value }))}
+                placeholder="Home, Scout, The Vault..."
+              />
+            </Field>
+            <Field label="Steps to reproduce">
+              <textarea
+                value={feedbackForm.steps}
+                onChange={(event) => setFeedbackForm((current) => ({ ...current, steps: event.target.value }))}
+                placeholder="What did you tap or enter before this happened?"
+              />
+            </Field>
+            <Field label="Optional screenshot">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => setFeedbackForm((current) => ({ ...current, screenshotName: event.target.files?.[0]?.name || "" }))}
+              />
+              {feedbackForm.screenshotName ? <p className="compact-subtitle">Attached: {feedbackForm.screenshotName}</p> : null}
+            </Field>
+            <div className="location-modal-actions">
+              <button type="submit">{feedbackDialog === "bug" ? "Submit Bug Report" : "Submit Feedback"}</button>
+              <button type="button" className="secondary-button" onClick={() => setFeedbackDialog(null)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {suggestionConflict ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => resolveSuggestionConflict("cancel")}>
+          <section className="location-modal suggestion-conflict-modal" role="dialog" aria-modal="true" aria-labelledby="suggestion-conflict-title" onClick={(event) => event.stopPropagation()}>
+            <div>
+              <h2 id="suggestion-conflict-title">Similar suggestion under review</h2>
+              <p>A similar suggestion is already under review. You can add your confirmation, submit a separate suggestion, or cancel.</p>
+            </div>
+            <div className="drawer-info-card">
+              <strong>{suggestionTitle(suggestionConflict.duplicate)}</strong>
+              <p className="compact-subtitle">{SUGGESTION_TYPE_LABELS[suggestionConflict.duplicate.suggestionType] || suggestionConflict.duplicate.suggestionType} - {suggestionConflict.duplicate.status}</p>
+            </div>
+            <div className="location-modal-actions">
+              <button type="button" onClick={() => resolveSuggestionConflict("confirm")}>Add My Confirmation</button>
+              <button type="button" className="secondary-button" onClick={() => resolveSuggestionConflict("new")}>Submit New Suggestion Anyway</button>
+              <button type="button" className="ghost-button" onClick={() => resolveSuggestionConflict("cancel")}>Cancel</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {vaultListingDecision ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => handleVaultMarketplaceDecision("cancel")}>
+          <section className="location-modal" role="dialog" aria-modal="true" aria-labelledby="vault-listing-title" onClick={(event) => event.stopPropagation()}>
+            <div>
+              <h2 id="vault-listing-title">Create listing from Vault?</h2>
+              <p>Do you want to copy this item to a listing or move it out of Vault first?</p>
+            </div>
+            <div className="drawer-info-card">
+              <strong>{vaultListingDecision.name}</strong>
+              <p className="compact-subtitle">Qty {vaultListingDecision.quantity || 1} | {vaultStatusLabel(normalizeVaultStatus(vaultListingDecision))}</p>
+            </div>
+            <div className="location-modal-actions">
+              <button type="button" onClick={() => handleVaultMarketplaceDecision("copy")}>Create Listing Only</button>
+              <button type="button" className="secondary-button" onClick={() => handleVaultMarketplaceDecision("move")}>Move to Forge and List</button>
+              <button type="button" className="ghost-button" onClick={() => handleVaultMarketplaceDecision("cancel")}>Cancel</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {listingReportTarget ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setListingReportTarget(null)}>
+          <form className="location-modal" role="dialog" aria-modal="true" aria-labelledby="listing-report-title" onSubmit={reportMarketplaceListing} onClick={(event) => event.stopPropagation()}>
+            <div>
+              <h2 id="listing-report-title">Report Listing</h2>
+              <p>Reports go to admin/mod review. This does not process payments or disputes.</p>
+            </div>
+            <div className="drawer-info-card">
+              <strong>{listingReportTarget.title}</strong>
+              <p className="compact-subtitle">{listingReportTarget.listingType} | {listingReportTarget.status}</p>
+            </div>
+            <Field label="Reason">
+              <select value={listingReportReason} onChange={(event) => setListingReportReason(event.target.value)}>
+                {MARKETPLACE_REPORT_REASONS.map((reason) => <option key={reason}>{reason}</option>)}
+              </select>
+            </Field>
+            <div className="location-modal-actions">
+              <button type="submit">Submit Report</button>
+              <button type="button" className="secondary-button" onClick={() => setListingReportTarget(null)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {locationPromptOpen ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setLocationPromptOpen(false)}>
+          <form className="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-needed-title" onSubmit={savePromptLocation} onClick={(event) => event.stopPropagation()}>
+            <div>
+              <h2 id="location-needed-title">Location Needed</h2>
+              <p>Set a location to see nearby stores, reports, and alerts.</p>
+            </div>
+            <input
+              value={locationPromptZip}
+              onChange={(event) => setLocationPromptZip(event.target.value)}
+              placeholder="Enter ZIP or city"
+              aria-label="ZIP or city"
+            />
+            <div className="location-modal-actions">
+              <button type="button" className="secondary-button" onClick={openLocationSettingsFromPrompt}>Open Location Settings</button>
+              <button type="submit">Enter ZIP</button>
+              <button type="button" className="ghost-button" onClick={() => setLocationPromptOpen(false)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {scoutScoreModalOpen ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setScoutScoreModalOpen(false)}>
+          <section className="location-modal scout-score-modal" role="dialog" aria-modal="true" aria-labelledby="scout-score-title" onClick={(event) => event.stopPropagation()}>
+            <div className="compact-card-header">
+              <div>
+                <h2 id="scout-score-title">Scout Score</h2>
+                <p>Trust, rewards, badges, streaks, warnings, and cooldown.</p>
+              </div>
+              {scoutSnapshot.scoutProfile?.badgeLevel ? <span className="status-badge">{scoutSnapshot.scoutProfile.badgeLevel}</span> : null}
+            </div>
+            <div className="scout-score-grid">
+              <div className="scout-score-stat"><p>Trust score</p><h3>{scoutSnapshot.scoutProfile?.trustScore || 72}</h3></div>
+              <div className="scout-score-stat"><p>Verified reports</p><h3>{scoutSnapshot.scoutProfile?.verifiedReportCount || 0}</h3></div>
+              <div className="scout-score-stat"><p>Reward points</p><h3>{scoutSnapshot.scoutProfile?.rewardPoints || 0}</h3></div>
+              <div className="scout-score-stat"><p>Report streak</p><h3>{scoutSnapshot.scoutProfile?.reportStreak || 0}</h3></div>
+              <div className="scout-score-stat"><p>Warnings</p><h3>{scoutSnapshot.scoutProfile?.warningCount || 0}</h3></div>
+              <div className="scout-score-stat"><p>Cooldown</p><h3>{scoutSnapshot.scoutProfile?.cooldownUntil ? "Active" : "None"}</h3></div>
+            </div>
+            <details className="forge-purchaser-totals">
+              <summary>Guidelines</summary>
+              <p>Verified reports increase score. Helpful reports and report streaks add reward points. Bad reports, warnings, spam, or disputed posts can reduce score. Cooldown can happen after too many rejected reports. Add photos when possible and do not report old information as current.</p>
+            </details>
+            <div className="location-modal-actions">
+              <button type="button" onClick={() => setScoutScoreModalOpen(false)}>Close</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {vaultToast ? (
+        <div className="vault-toast" role="status">
+          <span>{vaultToast}</span>
+          <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
+        </div>
+      ) : null}
+
+      {showVaultAddForm && activeTab === "vault" ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => closeVaultAddModal()}>
+          <section className="location-modal vault-add-modal" role="dialog" aria-modal="true" aria-labelledby="vault-add-title" onClick={(event) => event.stopPropagation()}>
+            <div className="compact-card-header">
+              <div>
+                <h2 id="vault-add-title">Add Item to Vault</h2>
+                <p>Add from TideTradr, scan, import, or enter a card/product manually.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => closeVaultAddModal()}>Close</button>
+            </div>
+            <div className="quick-action-rail vault-add-tabs">
+              {[
+                ["catalog", "Add from TideTradr"],
+                ["scan", "Scan to Vault"],
+                ["manual", "Manual Add"],
+                ["import", "Import Collection"],
+              ].map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={vaultAddMode === mode ? "primary vault-add-tab active" : "secondary-button vault-add-tab"}
+                  onClick={() => {
+                    setVaultAddMode(mode);
+                    if (mode === "manual") setVaultFormSections((current) => ({ ...current, basic: true, pricing: true }));
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {vaultAddMode === "catalog" ? (
+              <div className="vault-add-tab-panel">
+                <Field label="Search TideTradr catalog">
+                  <input
+                    value={vaultForm.tideTradrSearch || ""}
+                    onChange={(event) => updateVaultForm("tideTradrSearch", event.target.value)}
+                    placeholder="Search products, cards, set, UPC, or SKU"
+                  />
+                </Field>
+                <div className="small-empty-state">
+                  <strong>TideTradr catalog connection is in beta.</strong>
+                  <span>Use Manual Add or Scan for now if the item is not easy to find here.</span>
+                </div>
+                {tideTradrLookupProduct ? (
+                  <button type="button" className="scanner-match-row" onClick={() => applyCatalogProductToVault(tideTradrLookupProduct.id)}>
+                    <strong>Recently viewed: {catalogTitle(tideTradrLookupProduct)}</strong>
+                    <span>{tideTradrLookupProduct.setName || tideTradrLookupProduct.productType || "Catalog item"}</span>
+                  </button>
+                ) : null}
+                <div className="inventory-list compact-inventory-list">
+                  {vaultSuggestedCatalogItems.map((product) => (
+                    <button type="button" className="catalog-result-card scanner-match-row" key={product.id} onClick={() => applyCatalogProductToVault(product.id)}>
+                      <strong>{catalogTitle(product)}</strong>
+                      <span>{product.setName || product.expansion || product.productType || "Catalog item"} | {money(getTideTradrMarketInfo(product).currentMarketValue || 0)}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="vault-form-actions">
+                  <button type="button" disabled={!vaultForm.catalogProductId || !isVaultDraftReady(vaultForm) || vaultSaving} onClick={addVaultItem}>
+                    {vaultSaving ? "Saving..." : "Add selected item to Vault"}
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => setVaultAddMode("manual")}>Review in Manual Form</button>
+                </div>
+              </div>
+            ) : null}
+
+            {vaultAddMode === "scan" ? (
+              <div className="vault-add-tab-panel">
+                <div className="small-empty-state">
+                  <strong>Scan first, review second.</strong>
+                  <span>Scanning opens a review screen before anything is saved to Vault or Forge.</span>
+                </div>
+                <button type="button" onClick={() => { if (closeVaultAddModal()) beginScanProduct("vault"); }}>Open Scan Review</button>
+              </div>
+            ) : null}
+
+            {vaultAddMode === "import" ? (
+              <div className="vault-add-tab-panel">
+                <div className="small-empty-state">
+                  <strong>Collection import is coming soon.</strong>
+                  <span>For now, add items manually or scan them.</span>
+                </div>
+              </div>
+            ) : null}
+
+            {vaultAddMode === "manual" ? (
+            <form
+              onSubmit={addVaultItem}
+              className="vault-collapsible-form"
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") event.preventDefault();
+              }}
+            >
+              <div className="vault-form-section">
+                <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("basic")}>
+                  <span>Basic Info</span>
+                  <b>{vaultFormSections.basic ? "Hide" : "Show"}</b>
+                </button>
+                {vaultFormSections.basic ? (
+                  <div className="form vault-form-grid">
+                    <Field label="Item Type">
+                      <select value={vaultForm.productType || ""} onChange={(e) => updateVaultForm("productType", e.target.value)}>
+                        <option value="">Choose type</option>
+                        <option value="Sealed Product">Sealed Product</option>
+                        <option value="Individual Card">Individual Card</option>
+                      </select>
+                    </Field>
+                    <Field label="Item Name">
+                      <input value={vaultForm.name} onChange={(e) => updateVaultForm("name", e.target.value)} />
+                    </Field>
+                    <Field label="Category / Product Type">
+                      <input value={vaultForm.productType} onChange={(e) => updateVaultForm("productType", e.target.value)} placeholder="Elite Trainer Box, Binder, Tin..." />
+                    </Field>
+                    <Field label="Set / Collection">
+                      <input value={vaultForm.setName} onChange={(e) => updateVaultForm("setName", e.target.value)} />
+                    </Field>
+                    <Field label="Quantity">
+                      <input type="number" min="1" value={vaultForm.quantity} onChange={(e) => updateVaultForm("quantity", e.target.value)} />
+                    </Field>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="vault-form-section">
+                <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("pricing")}>
+                  <span>Pricing</span>
+                  <b>{vaultFormSections.pricing ? "Hide" : "Show"}</b>
+                </button>
+                {vaultFormSections.pricing ? (
+                  <div className="form vault-form-grid">
+                    <Field label="Cost Paid">
+                      <input type="number" step="0.01" value={vaultForm.unitCost} onChange={(e) => updateVaultForm("unitCost", e.target.value)} />
+                    </Field>
+                    <Field label="MSRP">
+                      <input type="number" step="0.01" value={vaultForm.msrpPrice} onChange={(e) => updateVaultForm("msrpPrice", e.target.value)} />
+                    </Field>
+                    <Field label="Market Value">
+                      <input type="number" step="0.01" value={vaultForm.marketPrice} onChange={(e) => updateVaultForm("marketPrice", e.target.value)} />
+                    </Field>
+                    <Field label="Planned Selling Price">
+                      <input type="number" step="0.01" value={vaultForm.salePrice} onChange={(e) => updateVaultForm("salePrice", e.target.value)} />
+                    </Field>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="vault-form-section">
+                <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("status")}>
+                  <span>Status</span>
+                  <b>{vaultFormSections.status ? "Hide" : "Show"}</b>
+                </button>
+                {vaultFormSections.status ? (
+                  <div className="form vault-form-grid">
+                    <Field label="Vault Status">
+                      <select value={vaultForm.vaultStatus || normalizeVaultStatus(vaultForm)} onChange={(e) => updateVaultForm("vaultStatus", e.target.value)}>
+                        {VAULT_STATUS_OPTIONS.map((status) => (
+                          <option key={status.value} value={status.value}>{status.label}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <div className="vault-status-definitions">
+                      {VAULT_STATUS_OPTIONS.filter((status) => status.description).map((status) => (
+                        <p key={status.value}><strong>{status.label}:</strong> {status.description}</p>
+                      ))}
+                    </div>
+                    <Field label="Vault Category">
+                      <select value={vaultForm.vaultCategory} onChange={(e) => updateVaultForm("vaultCategory", e.target.value)}>
+                        {VAULT_CATEGORIES.map((category) => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="vault-form-section">
+                <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("extra")}>
+                  <span>Extra Details</span>
+                  <b>{vaultFormSections.extra ? "Hide" : "Show"}</b>
+                </button>
+                {vaultFormSections.extra ? (
+                  <div className="form vault-form-grid">
+                    <Field label="Store Purchased">
+                      <input value={vaultForm.store} onChange={(e) => updateVaultForm("store", e.target.value)} />
+                    </Field>
+                    <Field label="Purchase Date">
+                      <input type="date" value={vaultForm.purchaseDate} onChange={(e) => updateVaultForm("purchaseDate", e.target.value)} />
+                    </Field>
+                    <Field label="Storage Location">
+                      <select value={vaultForm.storageLocation || ""} onChange={(e) => updateVaultForm("storageLocation", e.target.value)}>
+                        {VAULT_STORAGE_LOCATIONS.map((location) => <option key={location || "blank"} value={location}>{location || "Not set"}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Condition">
+                      <select value={vaultForm.condition || ""} onChange={(e) => updateVaultForm("condition", e.target.value)}>
+                        {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Sealed Condition">
+                      <select value={vaultForm.sealedCondition || ""} onChange={(e) => updateVaultForm("sealedCondition", e.target.value)}>
+                        {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Source">
+                      <select value={vaultForm.sourceType || "Manual"} onChange={(e) => updateVaultForm("sourceType", e.target.value)}>
+                        {VAULT_SOURCE_OPTIONS.map((source) => <option key={source} value={source}>{source}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="UPC">
+                      <input value={vaultForm.upc || ""} onChange={(e) => updateVaultForm("upc", e.target.value)} placeholder="Optional barcode / UPC" />
+                    </Field>
+                    <Field label="SKU">
+                      <input value={vaultForm.sku || ""} onChange={(e) => updateVaultForm("sku", e.target.value)} placeholder="Optional SKU" />
+                    </Field>
+                    <Field label="Pack Count">
+                      <input type="number" min="0" value={vaultForm.packCount} onChange={(e) => updateVaultForm("packCount", e.target.value)} />
+                    </Field>
+                    <Field label="Item Photo">
+                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateVaultForm("itemImage", url), "vault-items")} />
+                    </Field>
+                    <Field label="Receipt Upload">
+                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateVaultForm("receiptImage", url), "vault-receipts")} />
+                    </Field>
+                    <Field label="Notes">
+                      <input value={vaultForm.notes} onChange={(e) => updateVaultForm("notes", e.target.value)} />
+                    </Field>
+                    <Field label="Condition Notes">
+                      <input value={vaultForm.conditionNotes || ""} onChange={(e) => updateVaultForm("conditionNotes", e.target.value)} placeholder="Box damage, missing wrap, card notes..." />
+                    </Field>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="vault-form-actions">
+                <button type="submit" disabled={!isVaultDraftReady(vaultForm) || vaultSaving}>
+                  {vaultSaving ? "Saving..." : "Add Item to Vault"}
+                </button>
+                <button type="button" className="secondary-button" onClick={() => closeVaultAddModal()}>Cancel</button>
+              </div>
+            </form>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
+
+      {vaultPotentialDuplicate?.candidate ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => resolveVaultPotentialDuplicate("cancel")}>
+          <section className="location-modal vault-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="vault-duplicate-warning-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-sticky-header">
+              <h2 id="vault-duplicate-warning-title">This item may already be in your Vault.</h2>
+              <p>{vaultPotentialDuplicate.duplicate?.name || "Matching Vault item"} already matches this name, UPC, SKU, or TideTradr product ID.</p>
+            </div>
+            <div className="vault-transfer-summary">
+              <strong>{vaultPotentialDuplicate.candidate.name}</strong>
+              <span>New quantity: {vaultPotentialDuplicate.candidate.quantity || 1}</span>
+              <span>Existing quantity: {vaultPotentialDuplicate.duplicate?.quantity || 0}</span>
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" onClick={() => resolveVaultPotentialDuplicate("increase")}>Increase Quantity</button>
+              <button type="button" className="secondary-button" onClick={() => resolveVaultPotentialDuplicate("separate")}>Add as Separate Item</button>
+              <button type="button" className="ghost-button" onClick={() => resolveVaultPotentialDuplicate("cancel")}>Cancel</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {vaultForgeTransfer?.item ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setVaultForgeTransfer(null)}>
+          <form className="location-modal vault-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="vault-forge-transfer-title" onSubmit={(event) => { event.preventDefault(); confirmVaultForgeTransfer(vaultForgeTransfer.mode); }} onClick={(event) => event.stopPropagation()}>
+            <div>
+              <h2 id="vault-forge-transfer-title">{vaultForgeTransfer.mode === "copy" ? "Copy this item to Forge?" : "Move item to Forge?"}</h2>
+              <p>{vaultForgeTransfer.mode === "copy" ? "This keeps the Vault item active and creates a Forge inventory copy." : "This will add this Vault item to Forge inventory for business/sales tracking."}</p>
+            </div>
+            <div className="vault-transfer-summary">
+              <strong>{vaultForgeTransfer.item.name}</strong>
+              <span>Owned quantity: {vaultForgeTransfer.item.quantity || 1}</span>
+            </div>
+            <Field label={vaultForgeTransfer.mode === "copy" ? "Copy quantity" : "How many do you want to move to Forge?"}>
+              <input
+                type="number"
+                min="1"
+                max={Math.max(1, Number(vaultForgeTransfer.item.quantity || 1))}
+                value={vaultForgeTransfer.quantityToMove}
+                onChange={(event) => setVaultForgeTransfer((current) => ({ ...current, quantityToMove: event.target.value }))}
+              />
+            </Field>
+            <Field label="Cost Paid">
+              <input
+                type="number"
+                step="0.01"
+                value={vaultForgeTransfer.costPaid}
+                onChange={(event) => setVaultForgeTransfer((current) => ({ ...current, costPaid: event.target.value }))}
+                placeholder="Unknown is okay"
+              />
+            </Field>
+            {String(vaultForgeTransfer.item.catalogProductId || "") && items.some((item) => item.id !== vaultForgeTransfer.item.id && !item.vaultStatus && String(item.catalogProductId || "") === String(vaultForgeTransfer.item.catalogProductId || "")) ? (
+              <Field label="Duplicate Handling">
+                <select value={vaultForgeTransfer.duplicateMode} onChange={(event) => setVaultForgeTransfer((current) => ({ ...current, duplicateMode: event.target.value }))}>
+                  <option value="existing">Add to existing Forge item</option>
+                  <option value="create">Create separate Forge entry</option>
+                </select>
+              </Field>
+            ) : null}
+            <div className="location-modal-actions">
+              <button type="button" disabled={vaultMoving || Number(vaultForgeTransfer.item.quantity || 0) < 1} onClick={() => confirmVaultForgeTransfer("copy", 1)}>
+                {vaultMoving ? "Copying..." : "Copy 1 to Forge"}
+              </button>
+              <button type="button" disabled={vaultMoving || Number(vaultForgeTransfer.item.quantity || 0) < 1} className="secondary-button" onClick={() => confirmVaultForgeTransfer("move", Math.max(1, Number(vaultForgeTransfer.item.quantity || 1)))}>
+                {vaultMoving ? "Moving..." : "Move Entire Quantity to Forge"}
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setVaultForgeTransfer(null)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {vaultDuplicateItem?.item ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setVaultDuplicateItem(null)}>
+          <form className="location-modal vault-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="vault-duplicate-title" onSubmit={confirmVaultDuplicateItem} onClick={(event) => event.stopPropagation()}>
+            <div>
+              <h2 id="vault-duplicate-title">Duplicate Item</h2>
+              <p>Useful when you have multiples and want a separate Vault record.</p>
+            </div>
+            <div className="vault-transfer-summary">
+              <strong>{vaultDuplicateItem.item.name}</strong>
+              <span>Current quantity: {vaultDuplicateItem.item.quantity || 1}</span>
+            </div>
+            <label className="vault-check-row">
+              <input type="checkbox" checked={vaultDuplicateItem.sameItem} onChange={(event) => setVaultDuplicateItem((current) => ({ ...current, sameItem: event.target.checked }))} />
+              Same item
+            </label>
+            <Field label="New quantity">
+              <input type="number" min="1" value={vaultDuplicateItem.quantity} onChange={(event) => setVaultDuplicateItem((current) => ({ ...current, quantity: event.target.value }))} />
+            </Field>
+            <label className="vault-check-row">
+              <input type="checkbox" checked={vaultDuplicateItem.samePrice} onChange={(event) => setVaultDuplicateItem((current) => ({ ...current, samePrice: event.target.checked }))} />
+              Same price
+            </label>
+            <label className="vault-check-row">
+              <input type="checkbox" checked={vaultDuplicateItem.sameStatus} onChange={(event) => setVaultDuplicateItem((current) => ({ ...current, sameStatus: event.target.checked }))} />
+              Same status
+            </label>
+            <div className="location-modal-actions">
+              <button type="submit">Duplicate Item</button>
+              <button type="button" className="ghost-button" onClick={() => setVaultDuplicateItem(null)}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {showInventoryScanner ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => { setShowInventoryScanner(false); setScanReview(null); setScanMatches([]); setScanInput(""); }}>
+          <section className="scanner-review-modal" role="dialog" aria-modal="true" aria-labelledby="scanner-review-title" onClick={(event) => event.stopPropagation()}>
+            <div className="compact-card-header">
+              <div>
+                <h2 id="scanner-review-title">Review Detected Item</h2>
+                <p>Scan or enter an item first, then choose where it should go.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => { setShowInventoryScanner(false); setScanReview(null); setScanMatches([]); setScanInput(""); }}>Cancel</button>
+            </div>
+            <div className="quick-action-rail">
+              {[
+                ["upc", "Barcode / UPC"],
+                ["card", "Card"],
+                ["receipt", "Receipt / Photo"],
+                ["manual", "Manual"],
+              ].map(([key, label]) => (
+                <button key={key} type="button" className={scanMode === key ? "primary" : ""} onClick={() => setScanMode(key)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {scanMode === "receipt" ? (
+              <div className="empty-state">
+                <h3>Receipt / Photo</h3>
+                <p>Photo import is in beta. Upload a receipt or product photo, then review detected item details before saving.</p>
+                <div className="quick-actions">
+                  <label className="secondary-button file-action-label">
+                    Upload Photo
+                    <input type="file" accept="image/*" />
+                  </label>
+                  <button type="button" className="secondary-button" onClick={() => setScanMode("manual")}>Review Manually</button>
+                </div>
+              </div>
+            ) : scanMode === "upc" ? (
+              <BarcodeScanner onScan={handleCatalogScanMatch} onClose={() => setScanMode("manual")} />
+            ) : null}
+            {scanMode === "manual" || scanMode === "card" || scanMode === "upc" ? (
+              <div className="form">
+                <Field label={scanMode === "card" ? "Card name, card number, or set code" : "Product name, UPC, SKU, shorthand, or set code"}>
+                  <input
+                    value={scanReview?.rawValue || scanInput}
+                    onChange={(event) => {
+                      setScanInput(event.target.value);
+                      const matches = getBestCatalogMatches(event.target.value, catalogProducts);
+                      setScanMatches(matches);
+                      setScanReview(buildScanReview(event.target.value, matches, scanDestination));
+                    }}
+                    placeholder={scanMode === "card" ? "Try 199/165, zard sir, sv8 card 159" : "Try pri etb, 151 bundle, UPC/SKU"}
+                  />
+                </Field>
+                <button type="button" onClick={() => handleCatalogScanMatch(scanReview?.rawValue || scanInput)}>Search Item</button>
+              </div>
+            ) : null}
+
+            {scanReview ? (
+              <div className="scanner-review-card">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>{scanReview.itemName}</h3>
+                    <p>{scanReview.setName || "No set"} | {scanReview.productType || scanReview.catalogType}</p>
+                  </div>
+                  <span className="status-badge">{scanReview.matchConfidence}% match</span>
+                </div>
+                {scanReview.imageUrl ? <img className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
+                <div className="catalog-detail-grid">
+                  <DetailItem label="UPC / SKU" value={[scanReview.upc, scanReview.sku].filter(Boolean).join(" / ") || "Unknown"} />
+                  <DetailItem label="Market Value" value={scanReview.marketValue ? money(scanReview.marketValue) : "Unknown" } />
+                  <DetailItem label="MSRP" value={scanReview.msrp ? money(scanReview.msrp) : "Unknown" } />
+                  <DetailItem label="Source" value={scanReview.sourceType || "unknown"} />
+                </div>
+                <Field label="Destination">
+                  <select value={scanDestination} onChange={(event) => setScanDestination(event.target.value)}>
+                    {SCAN_DESTINATIONS.map((destination) => (
+                      <option key={destination.value} value={destination.value}>{destination.label}</option>
+                    ))}
+                  </select>
+                </Field>
+                {scanMessage ? <p className="compact-subtitle">{scanMessage}</p> : null}
+                <div className="quick-actions">
+                  <button type="button" onClick={() => { setScanDestination("vault"); addScannedItemToCollection("vault"); }}>Add to The Vault</button>
+                  <button type="button" className="secondary-button" onClick={() => { setScanDestination("forge"); addScannedItemToCollection("forge"); }}>Send to Forge</button>
+                  <button type="button" className="secondary-button" onClick={confirmScannerDestination}>Confirm Destination</button>
+                  <button type="button" className="secondary-button" onClick={() => { setActiveTab("catalog"); setShowInventoryScanner(false); }}>Search TideTradr</button>
+                  <button type="button" className="ghost-button" onClick={() => { setShowInventoryScanner(false); setScanReview(null); setScanMatches([]); setScanInput(""); }}>Cancel</button>
+                </div>
+              </div>
+            ) : null}
+
+            {scanMatches.length > 1 ? (
+              <div className="inventory-list compact-inventory-list">
+                <h3>Possible matches</h3>
+                {scanMatches.slice(0, 5).map((match) => (
+                  <button type="button" className="catalog-result-card scanner-match-row" key={match.item.id} onClick={() => confirmScanMatch(match.item.id)}>
+                    <strong>{match.item.name || match.item.productName || match.item.cardName}</strong>
+                    <span>{match.item.setName || match.item.expansion || "No set"} | {match.confidencePercent}%</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        </div>
       ) : null}
 
       <main className={`main dashboard-card-style-${dashboardCardStyle}`}>
         {activeTabLocked ? (
           <UpgradeScreen featureKey={activeTabFeature} onBack={() => setActiveTab("dashboard")} />
         ) : null}
+        {!activeTabLocked && activeTab === "tidepool" && renderTidepoolCommunity()}
+        {!activeTabLocked && activeTab === "mySuggestions" && renderMySuggestionsPage()}
+        {!activeTabLocked && activeTab === "adminReview" && renderAdminReviewPage()}
         {!activeTabLocked && activeTab === "dashboard" && (
+          <div className="dashboard-layout home-clean-layout">
+            <section className="panel page-summary-card home-summary-card">
+              <div className="page-summary-copy">
+                <p className="eyebrow">E&T TCG</p>
+                <h1>Home</h1>
+                <p>Today at a glance.</p>
+              </div>
+              <div className="page-summary-actions">
+                <button type="button" onClick={() => {
+                  setShowTopbarActions(true);
+                  setQuickAddMenuOpen(true);
+                }}>Quick Add</button>
+              </div>
+              <div className="cards mini-cards home-summary-stats">
+                <div className="card">
+                  <p>Collection Value</p>
+                  <h2>{money(vaultValue)}</h2>
+                </div>
+                <div className="card">
+                  <p>Monthly Spending</p>
+                  <h2>{money(monthlySpending)}</h2>
+                </div>
+                <button type="button" className="card stat-button-card" onClick={() => setActiveTab("market")}>
+                  <p>Market Updates</p>
+                  <h2>{recentMarketUpdates.length}</h2>
+                </button>
+                <button type="button" className="card stat-button-card" onClick={() => {
+                  setActiveTab("scout");
+                  setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+                  setScoutView("alerts");
+                }}>
+                  <p>Active Alerts</p>
+                  <h2>{activeHomeAlertCount}</h2>
+                </button>
+              </div>
+            </section>
+
+            <section className="panel home-today-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h2>Today / Overview</h2>
+                  <p>The few things worth checking first.</p>
+                </div>
+              </div>
+              <div className="home-today-grid">
+                <button type="button" className="home-today-tile" onClick={() => {
+                  if (activeVaultItems[0]?.id) setSelectedVaultDetailId(activeVaultItems[0].id);
+                  setActiveTab("vault");
+                }}>
+                  <span>Active Item</span>
+                  <strong>{activeVaultItems.length} active item{activeVaultItems.length === 1 ? "" : "s"}</strong>
+                  <small>{money(vaultValue)} collection value</small>
+                </button>
+                <button type="button" className="home-today-tile" onClick={() => setActiveTab("inventory")}>
+                  <span>Inventory Item</span>
+                  <strong>{items.filter((item) => !item.vaultStatus).length} inventory item{items.filter((item) => !item.vaultStatus).length === 1 ? "" : "s"}</strong>
+                  <small>{money(totalMarketValue)} market value</small>
+                </button>
+                <button type="button" className="home-today-tile" onClick={() => {
+                  setActiveTab("scout");
+                  setScoutView("main");
+                }}>
+                  <span>Recent Reports</span>
+                  <strong>{(scoutSnapshot.reports || []).length} recent report{(scoutSnapshot.reports || []).length === 1 ? "" : "s"}</strong>
+                  <small>{scoutSnapshot.stores.length} stores available</small>
+                </button>
+                <button type="button" className="home-today-tile" onClick={() => setActiveTab("market")}>
+                  <span>Wishlist Item</span>
+                  <strong>{tideTradrWatchlist.length} watchlist item{tideTradrWatchlist.length === 1 ? "" : "s"}</strong>
+                  <small>{missingMarketPriceItems.length} missing prices</small>
+                </button>
+              </div>
+            </section>
+
+            <section className="panel">
+              <div className="compact-card-header">
+                <div>
+                  <h2>Recent Activity</h2>
+                  <p>Latest Forge, Vault, Scout, and market updates.</p>
+                </div>
+              </div>
+              <div className="home-list compact-home-list">
+                {homeRecentActivity.length === 0 ? (
+                  <div className="empty-state small-empty-state">
+                    <h3>No recent activity yet.</h3>
+                    <p>Add inventory, submit a report, or pin a market item to start building your daily view.</p>
+                  </div>
+                ) : (
+                  homeRecentActivity.map((activity) => (
+                    <button type="button" className="home-list-row home-timeline-row" key={activity.id} onClick={activity.action}>
+                      <span className="activity-source-badge">{activity.label}</span>
+                      <span>
+                        <strong>{activity.title}</strong>
+                        <small>{activity.detail}</small>
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className="home-grid home-preview-grid">
+              <div className="panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Recent Purchases</h2>
+                    <p>Newest Forge or Vault entries.</p>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("inventory")}>View</button>
+                </div>
+                <div className="home-list compact-home-list">
+                  {recentPurchases.length === 0 ? (
+                    <div className="small-empty-state">
+                      <p>No purchases logged yet.</p>
+                      <button type="button" className="secondary-button" onClick={() => setActiveTab("addInventory")}>Add Purchase</button>
+                    </div>
+                  ) : (
+                    recentPurchases.slice(0, 3).map((item) => (
+                      <button type="button" className="home-list-row" key={item.id} onClick={() => startEditingItem(item)}>
+                        <span>
+                          <strong>{item.name}</strong>
+                          <small>{shortDate(item.createdAt)} | Qty {item.quantity || 1}</small>
+                        </span>
+                        <b>{money(Number(item.quantity || 0) * Number(item.unitCost || 0))}</b>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Market Updates</h2>
+                    <p>Latest TideTradr catalog values.</p>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>View</button>
+                </div>
+                <div className="home-list compact-home-list">
+                  {recentMarketUpdates.length === 0 ? (
+                    <div className="small-empty-state">
+                      <p>No market updates yet.</p>
+                      <button type="button" className="secondary-button" disabled>Refresh Market</button>
+                    </div>
+                  ) : (
+                    recentMarketUpdates.slice(0, 3).map((product) => (
+                      <button type="button" className="home-list-row" key={product.id} onClick={() => setActiveTab("market")}>
+                        <span>
+                          <strong>{product.name || product.productName || product.cardName}</strong>
+                          <small>{product.productType || product.rarity || "Catalog item"} | {product.setName || "No set"}</small>
+                        </span>
+                        <b>{money(product.marketPrice || product.marketValue || 0)}</b>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="feature-dropdown-stack home-optional-sections">
+              <CollapsibleFeatureSection
+                title="Pinned Market Watch"
+                summary="Pinned products from TideTradr"
+                open={isFeatureSectionOpen("home_tidetradr")}
+                onToggle={() => toggleFeatureSection("home_tidetradr")}
+              >
+                {pinnedMarketWatchItems.length === 0 ? (
+                  <p className="compact-subtitle">Pin products from TideTradr to watch market updates here.</p>
+                ) : (
+                  <div className="home-list compact-home-list">
+                    {pinnedMarketWatchItems.map((item) => (
+                      <button type="button" className="home-list-row" key={item.id} onClick={() => setActiveTab("market")}>
+                        <span>
+                          <strong>{item.name || item.productName || item.cardName}</strong>
+                          <small>{item.setName || item.productType || "Pinned market item"}</small>
+                        </span>
+                        <b>{money(item.marketPrice || item.marketValue || 0)}</b>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CollapsibleFeatureSection>
+
+              <CollapsibleFeatureSection
+                title="Dashboard Settings"
+                summary="Moved to Menu > Settings for beta"
+                open={isFeatureSectionOpen("home_display_settings")}
+                onToggle={() => toggleFeatureSection("home_display_settings")}
+              >
+                <div className="home-callout">
+                  <p>Dashboard display options now live in Menu &gt; Settings so Home can stay focused on today.</p>
+                  <button type="button" className="secondary-button" onClick={() => {
+                    setMenuSectionsOpen({ settings: true });
+                    setMenuOpen(true);
+                  }}>Open Settings</button>
+                </div>
+              </CollapsibleFeatureSection>
+            </section>
+          </div>
+        )}
+        {!activeTabLocked && false && activeTab === "dashboard" && (
           <div className="dashboard-layout">
             {renderPageChrome({
               title: "Home",
-              subtitle: "Overview, quick actions, activity, goals, and display settings.",
-              primary: { label: "Customize", onClick: () => setHomeSubTab("settings") },
-              secondary: { label: "View Activity", onClick: () => setHomeSubTab("activity") },
+              subtitle: "Today at a glance: key totals, pinned market watch, and fast actions.",
+              primary: { label: "Search", onClick: () => setSearchExpanded(true) },
+              secondary: null,
               quickActions: [
                 { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
                 { label: "Add Report", onClick: () => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_submit_report: true })); } },
@@ -4651,8 +8304,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {homeSubTab === "overview" ? (
               <>
             <CollapsibleFeatureSection
-                title="Dashboard"
-                summary="Dashboard cards, monthly summary, profit/loss, collection value, and Scout activity"
+                title="Today / Overview"
+                summary="The few Home numbers that matter most right now"
                 open={isFeatureSectionOpen("home_dashboard_cards")}
                 onToggle={() => toggleFeatureSection("home_dashboard_cards")}
               >
@@ -4676,7 +8329,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </CollapsibleFeatureSection>
               <CollapsibleFeatureSection
                 title="Quick Actions"
-                summary="Fast shortcuts live here; the header Add menu handles the same actions from anywhere"
+                summary="Common actions without opening every tool"
                 open={isFeatureSectionOpen("home_quick_actions")}
                 onToggle={() => toggleFeatureSection("home_quick_actions")}
               >
@@ -4686,13 +8339,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="quick-actions home-inline-actions">
                 <button type="button" onClick={() => setActiveTab("addInventory")}>Add Forge Item</button>
                 <button type="button" onClick={() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_submit_report: true, scout_store_tracker: true })); }}>Submit Scout Report</button>
-                <button type="button" onClick={() => setActiveTab("market")}>Check Deal</button>
+                <button type="button" onClick={() => { setActiveTab("market"); setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); }}>Check Deal</button>
                 <button type="button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
               </div>
             </section>
             ) : null}
               </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="TideTradr" summary="Product lookup, market info, deal checks, and watchlist" open={isFeatureSectionOpen("home_tidetradr")} onToggle={() => toggleFeatureSection("home_tidetradr")}>
+              <CollapsibleFeatureSection title="Pinned Market Watch" summary="Pinned products, watchlist count, and market value snapshot" open={isFeatureSectionOpen("home_tidetradr")} onToggle={() => toggleFeatureSection("home_tidetradr")}>
                 <div className="cards mini-cards">
                   <div className="card"><p>Catalog</p><h2>{catalogProducts.length}</h2></div>
                   <div className="card"><p>Watchlist</p><h2>{tideTradrWatchlist.length}</h2></div>
@@ -4700,8 +8353,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
                 <div className="quick-actions">
                   <button type="button" onClick={() => setActiveTab("market")}>Open TideTradr</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Check Deal</button>
+                  <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("watch")}>View Watchlist</button>
                 </div>
               </CollapsibleFeatureSection>
               <section className="panel dashboard-section">
@@ -4892,6 +8544,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <h3>Plan & Access</h3>
                 <p>User type controls the app experience. Subscription plan controls what features are unlocked.</p>
                 <div className="cards mini-cards">
+                  <div className="card"><p>Role</p><h2>{adminUser ? "Admin" : "User"}</h2></div>
                   <div className="card"><p>Current Tier</p><h2>{TIER_LABELS[currentTier] || currentPlan}</h2></div>
                   <div className="card"><p>Status</p><h2>{subscriptionProfile.subscriptionStatus || "active"}</h2></div>
                   <div className="card"><p>Lifetime Access</p><h2>{subscriptionProfile.lifetimeAccess ? "Yes" : "No"}</h2></div>
@@ -4920,6 +8573,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
                 <p className="compact-subtitle">
                   {adminUser ? "Admin tools unlocked." : paidUser ? "Paid features unlocked." : "Free plan: advanced Scout, alerts, seller tools, mileage, expenses, and admin tools stay locked."}
+                </p>
+                <p className="compact-subtitle">
+                  {currentUserProfile.source === "local-beta"
+                    ? "Local beta mode: admin/tier features require sign-in or a localhost dev override."
+                    : `Profile source: ${currentUserProfile.source || "local"}. Email: ${currentUserProfile.email || "Unknown"}.`}
                 </p>
               </div>
 
@@ -5407,386 +9065,293 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <>
             {renderPageChrome({
               title: "The Vault",
-              subtitle: "Personal collection, held items, sealed products, cards, wishlist, and stats.",
-              primary: { label: "Add Card", onClick: () => { setVaultSubTab("collection"); setFeatureSectionsOpen((current) => ({ ...current, vault_add: true })); } },
-              secondary: { label: "Wishlist", onClick: () => setVaultSubTab("wishlist") },
-              quickActions: [
-                { label: "Add Card", onClick: () => { setVaultSubTab("collection"); setFeatureSectionsOpen((current) => ({ ...current, vault_add: true })); } },
-                { label: "Add Product", onClick: () => setActiveTab("catalog") },
-                { label: "Scan", onClick: beginScanProduct },
-                { label: "Wishlist", onClick: () => setVaultSubTab("wishlist") },
-              ],
-              tabs: [
-                { key: "overview", label: "Overview" },
-                { key: "collection", label: "Collection" },
-                { key: "sets", label: "Sets" },
-                { key: "wishlist", label: "Wishlist" },
-                { key: "products", label: "Products" },
-                { key: "stats", label: "Stats" },
-              ],
-              activeSubTab: vaultSubTab,
-              setActiveSubTab: setVaultSubTab,
+              subtitle: "Personal collection and held items.",
+              primary: { label: "Add Item to Vault", onClick: () => { setVaultSubTab("collection"); setVaultAddMode("manual"); setShowVaultAddForm(true); } },
+              secondary: { label: "Scan to Vault", onClick: () => beginScanProduct("vault") },
             })}
-            <section className="feature-dropdown-stack">
-            {vaultSubTab === "overview" || vaultSubTab === "stats" ? (
-            <CollapsibleFeatureSection title="The Vault Summary" summary="Items, value, personal collection, and held counts" open={isFeatureSectionOpen("vault_summary")} onToggle={() => toggleFeatureSection("vault_summary")}>
             <section className="panel vault-overview-panel">
-              <h2>The Vault</h2>
-              <p>
-                Collector mode for personal collection, keep sealed, rip later, trade, favorites, and wishlist items.
-              </p>
               <div className="vault-summary-grid">
                 <div className="card">
-                  <p>Items</p>
-                  <h2>{vaultItems.length}</h2>
+                  <p>Total Items</p>
+                  <h2>{activeVaultItems.length}</h2>
                 </div>
                 <div className="card">
-                  <p>Value</p>
+                  <p>Total Market</p>
                   <h2>{money(vaultValue)}</h2>
                 </div>
                 <div className="card">
                   <p>Personal Collection</p>
-                  <h2>{items.filter((item) => item.status === "Personal Collection").length}</h2>
+                  <h2>{vaultItems.filter((item) => normalizeVaultStatus(item) === "personal_collection").length}</h2>
                 </div>
                 <div className="card">
-                  <p>Held / Rip Later</p>
-                  <h2>{items.filter((item) => item.status === "Held").length}</h2>
+                  <p>Sealed / Holding</p>
+                  <h2>{vaultItems.filter((item) => ["held", "sealed"].includes(normalizeVaultStatus(item))).length}</h2>
                 </div>
               </div>
             </section>
-            </CollapsibleFeatureSection>
-            ) : null}
 
-            {vaultSubTab === "collection" || vaultSubTab === "products" ? (
-            <CollapsibleFeatureSection title="Add Item to Vault" summary="Add Sealed Product, Add Individual Card, Add from Catalog, and Manual Add" open={isFeatureSectionOpen("vault_add")} onToggle={() => toggleFeatureSection("vault_add")}>
-            <section className="panel vault-add-panel">
+            <section className="panel">
               <div className="compact-card-header">
                 <div>
-                  <h2>Add Vault Item</h2>
-                  <p>Start with the basics, then open extra details only when you need them.</p>
+                  <h2>Vault Items</h2>
+                  <p>Filter, search, and sort personal collection records without turning Vault into sales inventory.</p>
                 </div>
-                <button type="button" onClick={() => setShowVaultAddForm((current) => !current)}>
-                  {showVaultAddForm ? "Close Form" : "Add Item to Vault"}
-                </button>
+                <div className="vault-toolbar">
+                  <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search by name, set, UPC, SKU, or notes." />
+                  <select className="vault-filter-select" value={vaultFilter} onChange={(event) => setVaultFilter(event.target.value)}>
+                    {VAULT_FILTER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <select className="vault-filter-select" value={vaultSort} onChange={(event) => setVaultSort(event.target.value)}>
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="name">Name A-Z</option>
+                    <option value="highestMarket">Highest Market Value</option>
+                    <option value="lowestMarket">Lowest Market Value</option>
+                    <option value="highestRoi">Highest ROI</option>
+                    <option value="quantity">Quantity</option>
+                  </select>
+                </div>
               </div>
-              <div className="quick-actions">
-                <button type="button" onClick={() => setActiveTab("catalog")}>Add from TideTradr</button>
-                <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Add Sealed Product</button>
-                <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Add Individual Card</button>
-                <button type="button" className="secondary-button" onClick={() => setShowVaultAddForm(true)}>Manual Add</button>
-                <button type="button" className="secondary-button" onClick={() => openInventoryImportAssistant("Vault")}>Import Collection</button>
-              </div>
-
-              {importAssistantContext === "Vault" ? renderInventoryImportAssistant() : null}
-
-              {showVaultAddForm ? (
-                <form onSubmit={addVaultItem} className="vault-collapsible-form">
-                  <div className="vault-form-section">
-                    <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("basic")}>
-                      <span>Basic Info</span>
-                      <b>{vaultFormSections.basic ? "Hide" : "Show"}</b>
-                    </button>
-                    {vaultFormSections.basic ? (
-                      <div className="form vault-form-grid">
-                        <Field label="Item Name">
-                          <input value={vaultForm.name} onChange={(e) => updateVaultForm("name", e.target.value)} />
-                        </Field>
-                        <Field label="Category / Product Type">
-                          <input value={vaultForm.productType} onChange={(e) => updateVaultForm("productType", e.target.value)} placeholder="Elite Trainer Box, Binder, Tin..." />
-                        </Field>
-                        <Field label="Set / Collection">
-                          <input value={vaultForm.setName} onChange={(e) => updateVaultForm("setName", e.target.value)} />
-                        </Field>
-                        <Field label="Quantity">
-                          <input type="number" min="1" value={vaultForm.quantity} onChange={(e) => updateVaultForm("quantity", e.target.value)} />
-                        </Field>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="vault-form-section">
-                    <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("pricing")}>
-                      <span>Pricing</span>
-                      <b>{vaultFormSections.pricing ? "Hide" : "Show"}</b>
-                    </button>
-                    {vaultFormSections.pricing ? (
-                      <div className="form vault-form-grid">
-                        <Field label="Cost Paid">
-                          <input type="number" step="0.01" value={vaultForm.unitCost} onChange={(e) => updateVaultForm("unitCost", e.target.value)} />
-                        </Field>
-                        <Field label="MSRP">
-                          <input type="number" step="0.01" value={vaultForm.msrpPrice} onChange={(e) => updateVaultForm("msrpPrice", e.target.value)} />
-                        </Field>
-                        <Field label="Market Value">
-                          <input type="number" step="0.01" value={vaultForm.marketPrice} onChange={(e) => updateVaultForm("marketPrice", e.target.value)} />
-                        </Field>
-                        <Field label="Planned Selling Price">
-                          <input type="number" step="0.01" value={vaultForm.salePrice} onChange={(e) => updateVaultForm("salePrice", e.target.value)} />
-                        </Field>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="vault-form-section">
-                    <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("status")}>
-                      <span>Status</span>
-                      <b>{vaultFormSections.status ? "Hide" : "Show"}</b>
-                    </button>
-                    {vaultFormSections.status ? (
-                      <div className="form vault-form-grid">
-                        <Field label="Vault Category">
-                          <select value={vaultForm.vaultCategory} onChange={(e) => updateVaultForm("vaultCategory", e.target.value)}>
-                            {VAULT_CATEGORIES.map((category) => (
-                              <option key={category} value={category}>{category}</option>
-                            ))}
-                          </select>
-                        </Field>
-                        <Field label="Status">
-                          <select value={vaultForm.status} onChange={(e) => updateVaultForm("status", e.target.value)}>
-                            <option value="Personal Collection">Personal Collection</option>
-                            <option value="Held">Held</option>
-                            <option value="Ready to List">For Sale</option>
-                            <option value="Sold">Sold</option>
-                          </select>
-                        </Field>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="vault-form-section">
-                    <button type="button" className="vault-section-toggle" onClick={() => toggleVaultFormSection("extra")}>
-                      <span>Extra Details</span>
-                      <b>{vaultFormSections.extra ? "Hide" : "Show"}</b>
-                    </button>
-                    {vaultFormSections.extra ? (
-                      <div className="form vault-form-grid">
-                        <Field label="Store Purchased">
-                          <input value={vaultForm.store} onChange={(e) => updateVaultForm("store", e.target.value)} />
-                        </Field>
-                        <Field label="Purchase Date">
-                          <input type="date" value={vaultForm.purchaseDate} onChange={(e) => updateVaultForm("purchaseDate", e.target.value)} />
-                        </Field>
-                        <Field label="Pack Count">
-                          <input type="number" min="0" value={vaultForm.packCount} onChange={(e) => updateVaultForm("packCount", e.target.value)} />
-                        </Field>
-                        <Field label="Item Photo">
-                          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateVaultForm("itemImage", url), "vault-items")} />
-                        </Field>
-                        <Field label="Receipt Upload">
-                          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateVaultForm("receiptImage", url), "vault-receipts")} />
-                        </Field>
-                        <Field label="Notes">
-                          <input value={vaultForm.notes} onChange={(e) => updateVaultForm("notes", e.target.value)} />
-                        </Field>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="vault-form-actions">
-                    <button type="submit">Add to Vault</button>
-                    <button type="button" className="secondary-button" onClick={() => setShowVaultAddForm(false)}>Cancel</button>
-                  </div>
-                </form>
-              ) : null}
-            </section>
-            </CollapsibleFeatureSection>
-            ) : null}
-
-            {vaultSubTab === "collection" || vaultSubTab === "wishlist" || vaultSubTab === "products" ? (
-            <CollapsibleFeatureSection title="Collection Items" summary="View Collection, Filter Collection, Edit Item, and Delete Item" open={isFeatureSectionOpen("vault_collection_items")} onToggle={() => toggleFeatureSection("vault_collection_items")}>
-            <section className="panel">
-              <h2>Vault Items</h2>
-              <p>Vault items can be edited or deleted here. Quantity is product count; pack count is packs inside each product.</p>
+              <details className="vault-status-help">
+                <summary>Status definitions</summary>
+                <div>
+                  {VAULT_STATUS_OPTIONS.filter((status) => status.description).map((status) => (
+                    <p key={status.value}><strong>{status.label}:</strong> {status.description}</p>
+                  ))}
+                </div>
+              </details>
+              <details className="vault-status-help">
+                <summary>Bulk edit later</summary>
+                <p>Select multiple items, move selected to Forge, change status, delete selected, and export selected are structured as future beta workflow controls.</p>
+              </details>
               {editingItemId && vaultItems.some((item) => item.id === editingItemId) && (
-                <section className="panel">
-                  <h2>Edit Vault Item</h2>
-                  <InventoryForm
-                    form={itemForm}
-                    setForm={updateItemForm}
-                    catalogProducts={catalogProducts}
-                    purchasers={purchaserOptions}
-                    onCreatePurchaser={addPurchaserName}
-                    applyCatalogProduct={applyCatalogProduct}
-                    handleImageUpload={handleImageUpload}
-                    onSubmit={saveEditedItem}
-                    submitLabel="Save Vault Item"
-                  />
-                  <button type="button" className="secondary-button" onClick={() => { setEditingItemId(null); setItemForm(blankItem); }}>
-                    Cancel Edit
-                  </button>
-                </section>
+                <VaultEditForm
+                  form={itemForm}
+                  setForm={updateItemForm}
+                  item={vaultItems.find((item) => item.id === editingItemId)}
+                  catalogProducts={catalogProducts}
+                  purchasers={purchaserOptions}
+                  onCreatePurchaser={addPurchaserName}
+                  applyCatalogProduct={applyCatalogProduct}
+                  handleImageUpload={handleImageUpload}
+                  onSubmit={saveEditedItem}
+                  onCancel={() => cancelVaultEdit()}
+                  onMoveToForge={(item) => openVaultForgeTransfer(item, "move")}
+                />
               )}
+              {selectedVaultDetailId ? (
+                <VaultItemDetail
+                  item={vaultItems.find((item) => item.id === selectedVaultDetailId)}
+                  onClose={() => setSelectedVaultDetailId("")}
+                  onEdit={startEditingVaultItem}
+                  onDelete={async (item) => { const deleted = await deleteItem(item.id); if (deleted) setSelectedVaultDetailId(""); }}
+                  onMoveToForge={(item) => openVaultForgeTransfer(item, "move")}
+                  onCopyToForge={(item) => openVaultForgeTransfer(item, "copy")}
+                  onCreateListing={openVaultMarketplaceDecision}
+                  onDuplicate={openVaultDuplicateItem}
+                  onRefreshMarket={refreshVaultMarket}
+                />
+              ) : null}
               <div className="inventory-list compact-inventory-list">
                 {vaultItems.length === 0 ? (
-                  <div className="empty-state">
-                    <h3>No Vault items yet</h3>
-                    <p>Add your first card or sealed product, then use Vault to track wishlist, held, personal collection, and market watch items.</p>
+                  <div className="empty-state vault-empty-state">
+                    <h3>Your Vault is empty.</h3>
+                    <p>Add personal collection items, sealed products, or cards you want to hold.</p>
+                    <div className="quick-actions">
+                      <button type="button" onClick={() => setShowVaultAddForm(true)}>Add Item to Vault</button>
+                      <button type="button" className="secondary-button" onClick={() => beginScanProduct("vault")}>Scan to Vault</button>
+                      <button type="button" className="secondary-button" onClick={() => setVaultToast("Collection import is coming soon. For now, add items manually or scan them.")}>Import Collection</button>
+                    </div>
                   </div>
                 ) : (
-                  vaultItems.map((item) => (
+                  visibleVaultItems.map((item) => (
                     <CompactInventoryCard
                       key={item.id}
                       item={item}
+                      variant="vault"
                       onRestock={prepareRestock}
+                      onViewDetails={(vaultItem) => setSelectedVaultDetailId(vaultItem.id)}
                       onEdit={startEditingVaultItem}
                       onDelete={deleteItem}
                       onStatusChange={updateItemStatus}
+                      onMoveToForge={(vaultItem) => openVaultForgeTransfer(vaultItem, "move")}
+                      onCopyToForge={(vaultItem) => openVaultForgeTransfer(vaultItem, "copy")}
+                      onDuplicate={openVaultDuplicateItem}
                     />
                   ))
                 )}
+                {vaultItems.length > 0 && visibleVaultItems.length === 0 ? (
+                  <div className="empty-state">
+                    <h3>No {VAULT_FILTER_OPTIONS.find((option) => option.value === vaultFilter)?.label || "Vault"} items yet</h3>
+                    <p>Switch filters or add an item with this Vault status.</p>
+                  </div>
+                ) : null}
               </div>
-            </section>
-            </CollapsibleFeatureSection>
-            ) : null}
-            {vaultSubTab === "products" || vaultSubTab === "collection" ? (
-            <>
-            <CollapsibleFeatureSection title="Held Items" summary="View Held Items, Held Value, and Move to Forge" open={isFeatureSectionOpen("vault_held_items")} onToggle={() => toggleFeatureSection("vault_held_items")}>
-              <div className="inventory-list compact-inventory-list">
-                {vaultItems.filter((item) => item.status === "Held").length === 0 ? <div className="empty-state"><h3>No held items yet</h3><p>Mark Vault items as Held when you want to keep them separate from personal collection or Forge inventory.</p></div> : vaultItems.filter((item) => item.status === "Held").map((item) => (
-                  <CompactInventoryCard key={item.id} item={item} onRestock={prepareRestock} onEdit={startEditingVaultItem} onDelete={deleteItem} onStatusChange={updateItemStatus} />
-                ))}
-              </div>
-            </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Personal Collection" summary="Items marked personal collection" open={isFeatureSectionOpen("vault_personal_collection")} onToggle={() => toggleFeatureSection("vault_personal_collection")}>
-              <div className="inventory-list compact-inventory-list">
-                {vaultItems.filter((item) => item.status === "Personal Collection").length === 0 ? <div className="empty-state"><h3>No personal collection items yet</h3><p>Add cards or sealed products you plan to keep personally, not sell.</p></div> : vaultItems.filter((item) => item.status === "Personal Collection").map((item) => (
-                  <CompactInventoryCard key={item.id} item={item} onRestock={prepareRestock} onEdit={startEditingVaultItem} onDelete={deleteItem} onStatusChange={updateItemStatus} />
-                ))}
-              </div>
-            </CollapsibleFeatureSection>
-            </>
-            ) : null}
-            {vaultSubTab === "stats" ? (
-            <CollapsibleFeatureSection title="Vault Settings" summary="Display Settings, Collection Categories, and Market Value Settings" open={isFeatureSectionOpen("vault_settings")} onToggle={() => toggleFeatureSection("vault_settings")}>
-              <div className="quick-actions">
-                <button type="button" onClick={() => setActiveTab("catalog")}>Catalog Search</button>
-                <button type="button" onClick={() => setActiveTab("market")}>Market Value Settings</button>
-                <button type="button" onClick={() => setActiveTab("dashboard")}>Display Settings</button>
-              </div>
-            </CollapsibleFeatureSection>
-            ) : null}
             </section>
           </>
         )}
 
         {activeTab === "scout" && (
           <>
+            {scoutView === "submit" ? (
+              <>
+                <section className="tab-summary panel">
+                  <div>
+                    <h2>Scout &gt; Submit Report</h2>
+                    <p>Add a store/restock report. This stays in Scout and helps store intelligence.</p>
+                  </div>
+                  <div className="summary-pill-row">
+                    <button type="button" className="secondary-button" onClick={() => {
+                      setScoutView("main");
+                      setScoutSubTabTarget({ tab: "overview", id: Date.now() });
+                      loadScoutSnapshot();
+                    }}>Back to Scout</button>
+                  </div>
+                </section>
+                <section className="embedded-page">
+                  <Scout targetSubTab={{ tab: "reports", id: scoutSubTabTarget.id }} compact />
+                </section>
+              </>
+            ) : scoutView === "alerts" ? (
+              <>
+                <section className="tab-summary panel">
+                  <div>
+                    <h2>Scout &gt; Alerts</h2>
+                    <p>Active Scout alerts, Best Buy alerts, watchlist alerts, favorite store alerts, and nearby verified report alerts.</p>
+                  </div>
+                  <div className="summary-pill-row">
+                    <button type="button" className="secondary-button" onClick={() => {
+                      setScoutView("main");
+                      setScoutSubTabTarget({ tab: "overview", id: Date.now() });
+                      loadScoutSnapshot();
+                    }}>Back to Scout</button>
+                  </div>
+                  <div className="cards mini-cards">
+                    <div className="card"><p>Active alerts</p><h2>{(scoutSnapshot.bestBuyAlerts || []).length}</h2></div>
+                    <div className="card"><p>Watchlist alerts</p><h2>{(scoutSnapshot.alertSettings?.watchlistAlerts || false) ? "On" : "Off"}</h2></div>
+                    <div className="card"><p>Favorite stores</p><h2>{(scoutSnapshot.alertSettings?.favoriteStoresOnly || false) ? "Only" : "All"}</h2></div>
+                    <div className="card"><p>Verified only</p><h2>{(scoutSnapshot.alertSettings?.verifiedOnly || false) ? "On" : "Off"}</h2></div>
+                  </div>
+                </section>
+                <section className="embedded-page">
+                  <Scout targetSubTab={{ tab: "alerts", id: scoutSubTabTarget.id }} compact onLocationRequired={requestScoutLocation} />
+                </section>
+              </>
+            ) : scoutView === "stores" ? (
+              <>
+                <section className="tab-summary panel">
+                  <div>
+                    <h2>Scout &gt; Stores</h2>
+                    <p>Choose a retailer, search nearby stores, and open exact store detail pages.</p>
+                  </div>
+                  <div className="summary-pill-row">
+                    <button type="button" className="secondary-button" onClick={() => {
+                      setScoutView("main");
+                      setScoutSubTabTarget({ tab: "overview", id: Date.now() });
+                      loadScoutSnapshot();
+                    }}>Back to Scout</button>
+                  </div>
+                  <div className="cards mini-cards">
+                    <div className="card"><p>Nearby stores</p><h2>{scoutSnapshot.stores.length}</h2></div>
+                    <div className="card"><p>Recent reports</p><h2>{(scoutSnapshot.reports || []).length}</h2></div>
+                    <div className="card"><p>Best Buy Status</p><h2>Mock</h2></div>
+                    <div className="card"><p>Favorites</p><h2>{(scoutSnapshot.stores || []).filter((store) => store.favorite).length}</h2></div>
+                  </div>
+                </section>
+                <section className="embedded-page">
+                  <Scout targetSubTab={{ tab: "stores", id: scoutSubTabTarget.id }} compact onLocationRequired={requestScoutLocation} />
+                </section>
+              </>
+            ) : (
+            <>
             <section className="tab-summary panel">
               <div>
                 <h2>Scout</h2>
-                <p>Store tracker, restock reports, predictions, drops, alerts, and community tips.</p>
+                <p>Find stores, check reports, and see alerts near you.</p>
               </div>
-              <div className="summary-pill-row">
-                <span>{scoutSnapshot.stores.length} stores</span>
-                <span>{scoutSnapshot.reports.length} reports</span>
+              <div className="summary-pill-row scout-main-actions">
+                <button type="button" className="secondary-button" onClick={() => {
+                  if (!requestScoutLocation()) return;
+                  setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+                  setScoutView("stores");
+                }}>Stores</button>
+                <button type="button" onClick={() => {
+                  setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+                  setScoutView("submit");
+                }}>Submit Report</button>
+                <button type="button" className="secondary-button" onClick={() => {
+                  setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+                  setScoutView("alerts");
+                }}>Alerts</button>
+                <button type="button" className="secondary-button" onClick={() => {
+                  setScoutReportFilter("My Reports");
+                  scoutReportsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}>My Reports</button>
+                <button type="button" className="secondary-button" onClick={() => setScoutScoreModalOpen(true)}>Scout Score</button>
+              </div>
+              <div className="cards mini-cards">
+                <button type="button" className="card stat-button-card" onClick={() => {
+                  if (!requestScoutLocation()) return;
+                  setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+                  setScoutView("stores");
+                }}><p>Nearby stores</p><h2>{scoutSnapshot.stores.length}</h2></button>
+                <button type="button" className="card stat-button-card" onClick={() => {
+                  scoutReportsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}><p>Recent reports</p><h2>{(scoutSnapshot.reports || []).length}</h2></button>
+                <button type="button" className="card stat-button-card" onClick={() => {
+                  setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+                  setScoutView("alerts");
+                }}><p>Active alerts</p><h2>{(scoutSnapshot.bestBuyAlerts || []).length}</h2></button>
+                <button type="button" className="card stat-button-card" onClick={() => {
+                  setScoutScoreModalOpen(true);
+                }}><p>Scout score</p><h2>{scoutSnapshot.scoutProfile?.trustScore || 72}</h2></button>
               </div>
             </section>
-            <section className="feature-dropdown-stack">
-              <CollapsibleFeatureSection title="Stores" summary="View Stores, Add Store, Edit Store, Favorite Stores, and Store Filters" open={isFeatureSectionOpen("scout_stores")} onToggle={() => toggleFeatureSection("scout_stores")}>
-                <div className="quick-actions">
-                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>View Stores</button>
-                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Add Store</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Edit Store</button>
-                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Submit Restock Report</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_recommendations: true }))}>Favorite Stores</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Store Filters</button>
+
+            <section className="panel" ref={scoutReportsRef} tabIndex={-1}>
+              <div className="compact-card-header">
+                <div>
+                  <h2>Reports</h2>
+                  <p>Recent Scout reports for store/restock intelligence.</p>
                 </div>
-                <div className="cards recommendation-grid">
-                  <div className="card">
-                    <p>Shared Stores</p>
-                    <h2>{scoutSnapshot.stores.length}</h2>
-                    <small>Store name, type, address, city/state/ZIP, nickname, phone, website, notes, limits, and last verified data live in Scout.</small>
-                  </div>
-                  <div className="card">
-                    <p>Recent Tips</p>
-                    <h2>{scoutSnapshot.reports.length}</h2>
-                    <small>User reports connect to a shared store and can include product, quantity, status, limits, and notes.</small>
-                  </div>
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Tidepool" summary="Report Feed, Nearby Reports, Verified Reports, My Reports, and Needs Verification" open={isFeatureSectionOpen("scout_tidepool")} onToggle={() => toggleFeatureSection("scout_tidepool")}>
-                <div className="quick-actions">
-                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Report Feed</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Nearby Reports</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Verified Reports</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>My Reports</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Needs Verification</button>
-                </div>
-                <p className="compact-subtitle">Tidepool stays inside Scout as the community report feed for restocks, product sightings, deals, online drops, and store updates.</p>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Submit Report" summary="Restock Sighting, Product Sighting, Nothing in Stock, Store Limit Update, Deal Sighting, and Online Drop Alert" open={isFeatureSectionOpen("scout_submit_report")} onToggle={() => toggleFeatureSection("scout_submit_report")}>
-                <div className="quick-actions">
-                  {["Restock Sighting", "Product Sighting", "Nothing in Stock", "Store Limit Update", "Deal Sighting", "Online Drop Alert"].map((label) => (
-                    <button key={label} type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>{label}</button>
-                  ))}
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Scout Alerts" summary="Alert Settings, Favorite Store Alerts, Watchlist Alerts, Nearby Verified Reports, and Online Drop Alerts" open={isFeatureSectionOpen("scout_alerts")} onToggle={() => toggleFeatureSection("scout_alerts")}>
-                <div className="quick-actions">
-                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Alert Settings</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Favorite Store Alerts</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Watchlist Alerts</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Nearby Verified Reports</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Online Drop Alerts</button>
-                </div>
-                {featureAllowed("alerts_advanced") ? <p className="compact-subtitle">Advanced notification channels can connect here later.</p> : <LockedFeatureCard featureKey="alerts_advanced" />}
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Scout Score & Rewards" summary="My Scout Score, Reward Points, Badge Level, Report Streak, Warnings/Cooldown, and Report Guidelines" open={isFeatureSectionOpen("scout_score_rewards")} onToggle={() => toggleFeatureSection("scout_score_rewards")}>
-                <div className="quick-actions">
-                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>My Scout Score</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Reward Points</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Badge Level</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Report Streak</button>
-                  <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, scout_store_tracker: true }))}>Report Guidelines</button>
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Location Settings" summary="Manual ZIP/City, Saved Location, Allow Location While Using App, and Alert Radius" open={isFeatureSectionOpen("scout_location_options")} onToggle={() => toggleFeatureSection("scout_location_options")}>
-                <div className="form location-options-grid">
-                  <Field label="Manual ZIP or City">
-                    <input value={locationSettings.manualLocation} onChange={(event) => updateLocationSettings({ manualLocation: event.target.value, mode: "manual" })} placeholder="Example: Suffolk, VA or 23434" />
-                  </Field>
-                  <Field label="Saved Location">
-                    <select value={locationSettings.selectedSavedLocation} onChange={(event) => updateLocationSettings({ selectedSavedLocation: event.target.value, mode: "saved" })}>
-                      <option value="">Choose saved location</option>
-                      {locationSettings.savedLocations.map((location) => <option key={location} value={location}>{location}</option>)}
-                    </select>
-                  </Field>
-                  <button type="button" onClick={saveManualLocation}>Save Location</button>
-                  <button type="button" className="secondary-button" onClick={locationSettings.trackingEnabled ? disableLocationTracking : enableLocationTracking}>
-                    {locationSettings.trackingEnabled ? "Turn Location Off" : "Allow Location While Using App"}
+                <span className="status-badge">{filteredScoutReports.length} shown</span>
+              </div>
+              <div className="quick-action-rail">
+                {["Nearby", "Latest", "Verified", "My Reports", "Needs Review"].map((filter) => (
+                  <button key={filter} type="button" className={scoutReportFilter === filter ? "primary" : ""} onClick={() => {
+                    if (filter === "Nearby" && !requestScoutLocation()) return;
+                    setScoutReportFilter(filter);
+                  }}>
+                    {filter}
                   </button>
-                </div>
-                <p className="compact-subtitle">Location tracking is opt-in only. Last Updated: {locationSettings.lastUpdated || "Not set"}</p>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Scout Recommendations" summary="Nearby stores, deals, tips, drops, and routes" open={isFeatureSectionOpen("scout_recommendations")} onToggle={() => toggleFeatureSection("scout_recommendations")}>
-                <div className="cards recommendation-grid">
-                  {scoutRecommendationCards.map((card) => (
-                    <div className="card" key={card.title}>
-                      <p>{card.title}</p>
-                      <h2>{card.value}</h2>
-                      <small>{card.note}</small>
+                ))}
+              </div>
+              <div className="inventory-list compact-inventory-list">
+                {filteredScoutReports.length === 0 ? (
+                  <div className="empty-state">
+                    <h3>No Scout reports yet</h3>
+                    <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
+                  </div>
+                ) : null}
+                {filteredScoutReports.slice(0, 8).map((report) => (
+                  <div className="inventory-card compact-card" key={report.id || report.reportId}>
+                    <div className="compact-card-header">
+                      <div>
+                        <h3>{report.itemName || report.productName || report.reportType || "Store report"}</h3>
+                        <p>{report.storeName || report.store_name || "Unknown store"} - {report.reportDate || report.report_date || "No date"}</p>
+                      </div>
+                      <span className="status-badge">{report.verified ? "Verified" : "Needs Review"}</span>
                     </div>
-                  ))}
-                </div>
-                <p className="compact-subtitle">Last Updated: {scoutLastUpdated}</p>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Live Updates" summary="Local beta structure for reports, tips, drops, prices, and limits" open={isFeatureSectionOpen("scout_live_updates")} onToggle={() => toggleFeatureSection("scout_live_updates")}>
-                <div className="cards recommendation-grid">
-                  {scoutLiveUpdates.map((update) => (
-                    <div className="card" key={update.label}>
-                      <p>{update.label}</p>
-                      <h2>{update.value}</h2>
-                      <small>Last Updated: {update.updatedAt}</small>
-                    </div>
-                  ))}
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Scout Workspace" summary="Full beta workspace for stores, reports, Tidepool, alerts, rewards, and screenshot tips" open={isFeatureSectionOpen("scout_store_tracker")} onToggle={() => toggleFeatureSection("scout_store_tracker")}>
-                <section className="embedded-page">
-                  <Scout targetSubTab={scoutSubTabTarget} />
-                </section>
-              </CollapsibleFeatureSection>
+                    <p>{report.note || report.notes || report.reportText || "No report details yet."}</p>
+                    <p className="compact-subtitle">{report.reportType || report.stockStatus || "Scout report"} {report.quantitySeen ? `| Qty ${report.quantitySeen}` : ""} {report.price ? `| ${money(report.price)}` : ""}</p>
+                  </div>
+                ))}
+              </div>
             </section>
+            </>
+            )}
           </>
         )}
 
@@ -5795,93 +9360,317 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section className="tab-summary panel">
               <div>
                 <h2>Menu</h2>
-                <p>Profile, app settings, dashboard display, plan access, exports, help, and logout.</p>
+                <p>Menu now lives in the top drawer so the main tabs stay focused.</p>
               </div>
               <div className="summary-pill-row">
                 <span>{TIER_LABELS[currentTier] || currentPlan}</span>
                 <span>{user.email}</span>
               </div>
             </section>
-            <section className="feature-dropdown-stack">
-              <CollapsibleFeatureSection title="Profile" summary="User Profile, Scout Score, and Saved Location" open={isFeatureSectionOpen("menu_profile")} onToggle={() => toggleFeatureSection("menu_profile")}>
-                <div className="cards mini-cards">
-                  <div className="card"><p>User Type</p><h2>{userType}</h2></div>
-                  <div className="card"><p>Tier</p><h2>{TIER_LABELS[currentTier] || currentPlan}</h2></div>
-                  <div className="card"><p>Saved Location</p><h2>{locationSettings.selectedSavedLocation || locationSettings.manualLocation || "Not set"}</h2></div>
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="App Settings" summary="Theme/Appearance, Dashboard Display Settings, Location Settings, and Notification Settings" open={isFeatureSectionOpen("menu_app_settings")} onToggle={() => toggleFeatureSection("menu_app_settings")}>
-                <div className="quick-actions">
-                  <button type="button" onClick={() => setActiveTab("dashboard")}>Dashboard Display Settings</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>Location Settings</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>Notification Settings</button>
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="TideTradr" summary="Catalog, Market Sources, Watchlist, and Deal Finder" open={isFeatureSectionOpen("menu_tidetradr")} onToggle={() => toggleFeatureSection("menu_tidetradr")}>
-                <div className="quick-actions">
-                  <button type="button" onClick={() => setActiveTab("catalog")}>Catalog</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Market Sources</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Watchlist</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Deal Finder</button>
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Subscription Placeholder" summary="Paid Plan / Upgrade Coming Soon and Free vs Paid Feature Preview" open={isFeatureSectionOpen("menu_paid_plan")} onToggle={() => toggleFeatureSection("menu_paid_plan")}>
-                <div className="cards mini-cards">
-                  <div className="card"><p>Current Tier</p><h2>{TIER_LABELS[currentTier] || currentPlan}</h2></div>
-                  <LockedFeatureCard featureKey="seller_tools" />
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Community" summary="Join Discord Community, Discord Coming Soon, and Help / Feedback" open={isFeatureSectionOpen("menu_discord")} onToggle={() => toggleFeatureSection("menu_discord")}>
-                <div className="cards mini-cards">
-                  <div className="card">
-                    <p>Join Discord Community</p>
-                    <h2>Coming Soon</h2>
-                    <small>Tide Pool will support chat, announcements, giveaways, support, and optional community roles.</small>
-                  </div>
-                  <div className="card">
-                    <p>Role Placeholders</p>
-                    <h2>Trusted Scout</h2>
-                    <small>Future roles: Trusted Scout, Verified Scout, Paid Member, and community helper roles.</small>
-                  </div>
-                </div>
-                <div className="quick-actions">
-                  <button type="button" disabled>Join Discord Soon</button>
-                  <button type="button" className="secondary-button" disabled>Help / Feedback Coming Soon</button>
-                </div>
-                <p className="compact-subtitle">The app remains the source of truth for verified reports, Tidepool feed, Scout alerts, stores, recommendations, trust score, and rewards.</p>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Data" summary="Export Data, Import Data Placeholder, and Clear Mock Data if needed" open={isFeatureSectionOpen("menu_data_export")} onToggle={() => toggleFeatureSection("menu_data_export")}>
-                <div className="export-grid">
-                  <button onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Forge</button>
-                  <button onClick={() => downloadCSV("ember-tide-catalog.csv", catalogProducts)}>Export Catalog</button>
-                  <button onClick={downloadBackup}>Full Backup</button>
-                  <button type="button" className="secondary-button" onClick={() => openInventoryImportAssistant("Forge")}>Import Data</button>
-                  <button type="button" className="secondary-button" onClick={resetBetaLocalData}>Clear Mock Data</button>
-                </div>
-              </CollapsibleFeatureSection>
-              <CollapsibleFeatureSection title="Account" summary="Log Out" open={isFeatureSectionOpen("menu_logout")} onToggle={() => toggleFeatureSection("menu_logout")}>
-                <button type="button" className="secondary-button" onClick={signOut}>Log Out</button>
-              </CollapsibleFeatureSection>
+            <section className="panel">
+              <button type="button" onClick={() => setMenuOpen(true)}>Open Menu</button>
             </section>
           </>
         )}
 
         {activeTab === "market" && (
           <>
+            {tideTradrSubTab === "deal" ? (
+              <>
+                <section className="tab-summary panel">
+                  <div>
+                    <h2>TideTradr &gt; Deal Finder</h2>
+                    <p>Check asking price against market and MSRP before you buy, keep, or pass.</p>
+                  </div>
+                  <div className="summary-pill-row">
+                    <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("overview")}>Back to TideTradr</button>
+                  </div>
+                </section>
+                <section className="panel tidetradr-deal-panel">
+                  <div className="compact-card-header">
+                    <div>
+                      <h2>Deal Finder</h2>
+                      <p>Start with product, quantity, and asking price. Optional values stay tucked away.</p>
+                    </div>
+                    <span className="status-badge">{dealRecommendation}</span>
+                  </div>
+                  <form className="form">
+                    <Field label="Product">
+                      <select value={dealForm.productId} onChange={(event) => selectTideTradrProduct(event.target.value)}>
+                        <option value="">Manual deal / lot</option>
+                        {catalogProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Deal Title">
+                      <input value={dealForm.title} onChange={(e) => updateDealForm("title", e.target.value)} placeholder="Example: 2 ETBs and 1 booster bundle" />
+                    </Field>
+                    <Field label="Quantity">
+                      <input type="number" min="1" value={dealForm.quantity} onChange={(e) => {
+                        const quantity = Math.max(1, Number(e.target.value || 1));
+                        updateDealForm("quantity", quantity);
+                        if (selectedDealProduct) {
+                          const info = getTideTradrMarketInfo(selectedDealProduct);
+                          setDealForm((old) => ({ ...old, quantity, marketTotal: info.currentMarketValue * quantity, retailTotal: info.msrp * quantity }));
+                        }
+                      }} />
+                    </Field>
+                    <Field label="Asking Price">
+                      <input type="number" step="0.01" value={dealForm.askingPrice} onChange={(e) => updateDealForm("askingPrice", e.target.value)} placeholder="Total lot price" />
+                    </Field>
+                    <details className="scout-score-guidelines">
+                      <summary>More Details</summary>
+                      <div className="form">
+                        <Field label="Condition / Status">
+                          <select value={dealForm.condition} onChange={(e) => updateDealForm("condition", e.target.value)}>
+                            <option>Sealed</option>
+                            <option>Damaged box</option>
+                            <option>Opened</option>
+                            <option>Mixed lot</option>
+                            <option>Unknown</option>
+                          </select>
+                        </Field>
+                        <Field label="Market Total">
+                          <input type="number" step="0.01" value={dealForm.marketTotal} onChange={(e) => updateDealForm("marketTotal", e.target.value)} />
+                        </Field>
+                        <Field label="Retail / MSRP Total">
+                          <input type="number" step="0.01" value={dealForm.retailTotal} onChange={(e) => updateDealForm("retailTotal", e.target.value)} />
+                        </Field>
+                        <Field label="Notes">
+                          <input value={dealForm.notes} onChange={(e) => updateDealForm("notes", e.target.value)} placeholder="Condition, store, seller, trade notes..." />
+                        </Field>
+                      </div>
+                    </details>
+                  </form>
+                  <div className="cards mini-cards">
+                    <div className="card"><p>Recommendation</p><h2>{dealRecommendation}</h2></div>
+                    <div className="card"><p>Deal Rating</p><h2>{dealRating}</h2></div>
+                    <div className="card"><p>Percent of Market</p><h2>{dealPercentOfMarket.toFixed(1)}%</h2></div>
+                    <div className="card"><p>Percent of MSRP</p><h2>{dealPercentOfRetail.toFixed(1)}%</h2></div>
+                    <div className="card"><p>Potential Profit</p><h2>{money(dealPotentialProfit)}</h2></div>
+                    <div className="card"><p>ROI</p><h2>{dealRoi.toFixed(1)}%</h2></div>
+                  </div>
+                  <p className="compact-subtitle">{dealRecommendationReason}</p>
+                </section>
+              </>
+            ) : (
+              <>
+                <section className="tab-summary panel tidetradr-summary-card">
+                  <div>
+                    <h2>TideTradr</h2>
+                    <p>Search products, cards, market values, and deals.</p>
+                  </div>
+                  <input className="search-input" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search products, cards, set codes, UPC, SKU, rarity..." />
+                  <div className="summary-pill-row">
+                    <button type="button" onClick={() => setTideTradrSubTab("deal")}>Check Deal</button>
+                    <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
+                  </div>
+                  <div className="cards mini-cards">
+                    <div className="card"><p>Catalog Products</p><h2>{catalogProducts.length}</h2></div>
+                    <div className="card"><p>Found Market Values</p><h2>{catalogMarketPriceCount}</h2></div>
+                    <div className="card"><p>Missing Market Prices</p><h2>{missingMarketPriceItems.length}</h2></div>
+                    <div className="card"><p>Needs Market Check</p><h2>{needsMarketCheckItems.length}</h2></div>
+                  </div>
+                </section>
+
+                <section className="panel">
+                  <div className="compact-card-header">
+                    <div>
+                      <h2>Search & Catalog</h2>
+                      <p>{filteredCatalogProducts.length} results from TideTradr Catalog.</p>
+                    </div>
+                    <div className="summary-pill-row">
+                      <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>Filters</button>
+                      <button type="button" className="secondary-button" onClick={() => { setActiveTab("catalog"); setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true })); }}>{adminUser ? "Add Catalog Item" : "Suggest Missing Product"}</button>
+                    </div>
+                  </div>
+                  {isFeatureSectionOpen("market_filters") ? (
+                    <div className="filter-grid">
+                      <Field label="Cards / Sealed">
+                        <select value={catalogKindFilter} onChange={(e) => setCatalogKindFilter(e.target.value)}>
+                          <option value="All">All catalog types</option>
+                          <option value="card">Cards</option>
+                          <option value="sealed">Sealed</option>
+                        </select>
+                      </Field>
+                      <Field label="Set">
+                        <select value={catalogSetFilter} onChange={(e) => setCatalogSetFilter(e.target.value)}>
+                          {catalogSetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </Field>
+                      <Field label="Product Type">
+                        <select value={catalogTypeFilter} onChange={(e) => setCatalogTypeFilter(e.target.value)}>
+                          {catalogTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </Field>
+                      <Field label="Year">
+                        <select value={catalogYearFilter} onChange={(e) => setCatalogYearFilter(e.target.value)}>
+                          {catalogYearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </Field>
+                      <Field label="Rarity">
+                        <select value={catalogRarityFilter} onChange={(e) => setCatalogRarityFilter(e.target.value)}>
+                          {catalogRarityOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      </Field>
+                    </div>
+                  ) : null}
+                  <div className="catalog-results-list">
+                    {filteredCatalogProducts.slice(0, 18).map((p) => (
+                      <div className="catalog-result-card" key={p.id}>
+                        <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p.id)}>
+                          <div className="catalog-thumb">
+                            {catalogImage(p) ? <img src={catalogImage(p)} alt="" /> : (
+                              <div className="image-needed-placeholder">
+                                <strong>{catalogTitle(p)}</strong>
+                                <span>Image needed</span>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <span className="catalog-pill">{p.catalogType === "card" ? "Card" : "Sealed"}</span>
+                            <h3>{catalogTitle(p)}</h3>
+                            <p>{p.setName || p.expansion || "No set"} | {p.catalogType === "card" ? p.rarity || "No rarity" : p.productType || "No product type"}</p>
+                            <p>Market: {money(getTideTradrMarketInfo(p).currentMarketValue)}{p.catalogType !== "card" ? ` | MSRP: ${getTideTradrMarketInfo(p).msrp ? money(getTideTradrMarketInfo(p).msrp) : "Unknown"}` : ""}</p>
+                            <span className="status-badge">{MARKET_STATUS_LABELS[getTideTradrMarketInfo(p).marketStatus] || "Unknown"}</span>
+                          </div>
+                        </button>
+                        <div className="catalog-result-actions">
+                          <button type="button" onClick={() => openCatalogDetails(p.id)}>View</button>
+                          <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(p.id)}>Check Deal</button>
+                          <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
+                          <button type="button" className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
+                          <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Watchlist</button>
+                          <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("catalog", p)}>Create Listing</button>
+                        </div>
+                      </div>
+                    ))}
+                    {filteredCatalogProducts.length === 0 ? (
+                      <div className="empty-state">
+                        <h3>No catalog matches</h3>
+                        <p>Try a broader search, clear filters, or add a missing catalog item.</p>
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className="feature-dropdown-stack">
+                  <CollapsibleFeatureSection title="Market Watch" summary="Watchlist, pinned market items, and recent value checks" open={isFeatureSectionOpen("market_watchlist")} onToggle={() => toggleFeatureSection("market_watchlist")}>
+                    <div className="quick-actions">
+                      <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Market Values</button>
+                      <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
+                    </div>
+                    {tideTradrWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
+                    <div className="inventory-list">
+                      {tideTradrWatchlist.map((item) => (
+                        <div className="inventory-card compact-card" key={item.id}>
+                          <h3>{item.name}</h3>
+                          <p>{item.setName || "No set"} | {item.productType || "No type"}</p>
+                          <p>Market: {money(item.marketValue)} | MSRP: {money(item.msrp)}</p>
+                          <p>Status: {MARKET_STATUS_LABELS[item.marketStatus] || "Unknown"} | {item.sourceName}</p>
+                          <div className="quick-actions">
+                            <button type="button" onClick={() => useCatalogProductInDeal(item.productId)}>Check Deal</button>
+                            <button type="button" className="secondary-button" onClick={() => removeTideTradrWatchlistItem(item.id)}>Remove</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleFeatureSection>
+
+                  <CollapsibleFeatureSection title="Deal Finder" summary="Open the deal checker when you need it" open={isFeatureSectionOpen("market_deal_finder")} onToggle={() => toggleFeatureSection("market_deal_finder")}>
+                    <div className="quick-actions">
+                      <button type="button" onClick={() => setTideTradrSubTab("deal")}>Open Deal Finder</button>
+                    </div>
+                  </CollapsibleFeatureSection>
+
+                  <CollapsibleFeatureSection title="TideTradr Marketplace" summary="Community listings, trade board, saved listings, and listing review" open={isFeatureSectionOpen("market_marketplace")} onToggle={() => toggleFeatureSection("market_marketplace")}>
+                    {renderMarketplaceSection()}
+                  </CollapsibleFeatureSection>
+
+                  <CollapsibleFeatureSection title="Market Sources" summary="Manual, cached, mock, and future live market source tools" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
+                    <div className="cards mini-cards">
+                      <div className="card"><p>Cached Price Records</p><h2>{cachedMarketPriceCount}</h2></div>
+                      <div className="card"><p>Failed Matches</p><h2>{failedMarketMatches.length}</h2></div>
+                      <div className="card"><p>Last Sync</p><h2>{lastMarketSync === "Not synced yet" ? "None" : new Date(lastMarketSync).toLocaleDateString()}</h2></div>
+                      <div className="card"><p>Live API</p><h2>Placeholder</h2></div>
+                    </div>
+                    <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Mock, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
+                    {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
+                    <div className="quick-actions">
+                      <button type="button" onClick={() => refreshMarketCatalog("card")}>Sync Cards</button>
+                      <button type="button" className="secondary-button" onClick={() => refreshMarketCatalog("sealed")}>Sync Sealed Products</button>
+                      <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
+                      <button type="button" className="secondary-button" onClick={refreshPinnedMarketWatch}>Refresh Pinned Market Watch</button>
+                    </div>
+                    <details className="scout-score-guidelines">
+                      <summary>Manual Price Entry</summary>
+                      <form className="form market-price-form" onSubmit={saveManualMarketPrice}>
+                        <Field label="Catalog Item">
+                          <select value={manualMarketForm.catalogItemId} onChange={(event) => setManualMarketForm((current) => ({ ...current, catalogItemId: event.target.value }))}>
+                            <option value="">Choose item</option>
+                            {catalogProducts.map((product) => (
+                              <option key={product.id} value={product.id}>{catalogTitle(product)}</option>
+                            ))}
+                          </select>
+                        </Field>
+                        <Field label="Market Price">
+                          <input type="number" step="0.01" value={manualMarketForm.marketPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, marketPrice: event.target.value }))} placeholder="Manual market value" />
+                        </Field>
+                        <Field label="Low / Mid / High">
+                          <div className="inline-input-grid">
+                            <input type="number" step="0.01" value={manualMarketForm.lowPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, lowPrice: event.target.value }))} placeholder="Low" />
+                            <input type="number" step="0.01" value={manualMarketForm.midPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, midPrice: event.target.value }))} placeholder="Mid" />
+                            <input type="number" step="0.01" value={manualMarketForm.highPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, highPrice: event.target.value }))} placeholder="High" />
+                          </div>
+                        </Field>
+                        <button type="submit">Save Manual Price</button>
+                      </form>
+                    </details>
+                    <details className="scout-score-guidelines">
+                      <summary>Market To-Do</summary>
+                      {needsMarketCheckItems.length || missingMarketPriceItems.length || missingMsrpItems.length ? (
+                        <>
+                          <ActionReport title="Needs Market Check" items={needsMarketCheckItems} button="Update Market" action={startEditingItem} />
+                          <ActionReport title="Missing Market Price" items={missingMarketPriceItems} button="Add Market Price" action={startEditingItem} />
+                          <ActionReport title="Missing MSRP" items={missingMsrpItems} button="Add MSRP" action={startEditingItem} />
+                        </>
+                      ) : (
+                        <div className="empty-state">
+                          <h3>No items need review</h3>
+                          <p>Market to-do items will appear here when catalog prices or MSRP fields need attention.</p>
+                        </div>
+                      )}
+                    </details>
+                    <div className="market-source-list">
+                      {MARKET_SOURCES.map((source) => (
+                        <div className="market-source-row" key={source.key}>
+                          <strong>{source.label}</strong>
+                          <span>{source.status}</span>
+                          <p>{source.notes}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="compact-subtitle">Live API keys and protected provider credentials still need backend environment variables. No service role keys or paid API keys are used in the frontend.</p>
+                  </CollapsibleFeatureSection>
+                </section>
+              </>
+            )}
+          </>
+        )}
+
+        {false && activeTab === "market" && (
+          <>
             {renderPageChrome({
               title: "TideTradr",
-              subtitle: "Shared catalog, market values, deal checks, listings, and market watch.",
-              primary: { label: "Deal Finder", onClick: () => { setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); } },
+              subtitle: "Search catalog, check deals, watch markets, imports, and market sources.",
+              primary: { label: "Check Deal", onClick: () => { setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); } },
               secondary: { label: "Search Catalog", onClick: () => setActiveTab("catalog") },
               quickActions: [
-                { label: "Deal Finder", onClick: () => { setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); } },
+                { label: "Check Deal", onClick: () => { setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); } },
                 { label: "Search Catalog", onClick: () => setActiveTab("catalog") },
-                { label: "Compare Prices", onClick: () => setTideTradrSubTab("watch") },
-                { label: "Create Listing", onClick: () => setActiveTab("addSale") },
               ],
               tabs: [
                 { key: "overview", label: "Overview" },
-                { key: "catalog", label: "Catalog" },
+                { key: "catalog", label: "Search" },
                 { key: "deal", label: "Deal Finder" },
                 { key: "listings", label: "Listings" },
                 { key: "watch", label: "Market Watch" },
@@ -5892,7 +9681,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
             <section className="feature-dropdown-stack">
               {tideTradrSubTab === "overview" || tideTradrSubTab === "catalog" ? (
-              <CollapsibleFeatureSection title="Catalog" summary="Search Catalog, Sealed Products, Individual Cards, Add Catalog Item, and Edit Catalog Item" open={isFeatureSectionOpen("market_summary")} onToggle={() => toggleFeatureSection("market_summary")}>
+              <CollapsibleFeatureSection title="Search & Catalog" summary="Search products/cards with filters for card, sealed, set, type, year, and rarity" open={isFeatureSectionOpen("market_summary")} onToggle={() => toggleFeatureSection("market_summary")}>
                 <div className="cards">
                   <div className="card"><p>Catalog Products</p><h2>{catalogProducts.length}</h2></div>
                   <div className="card"><p>Forge Market Value</p><h2>{money(totalMarketValue)}</h2></div>
@@ -5901,18 +9690,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
                 <div className="quick-actions">
                   <button type="button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Sealed Products</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Individual Cards</button>
                   <button type="button" className="secondary-button" onClick={() => { setActiveTab("catalog"); setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true })); }}>Add Catalog Item</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Edit Catalog Item</button>
-                  <button type="button" onClick={() => setActiveTab("addInventory")}>Add to Forge</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("vault")}>Add to Vault</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Filters</button>
                 </div>
               </CollapsibleFeatureSection>
               ) : null}
 
               {tideTradrSubTab === "overview" || tideTradrSubTab === "watch" ? (
-              <CollapsibleFeatureSection title="Market Watch" summary="Pinned Market Watch, Watchlist, Recently Updated Market Items, and Market Value Updates" open={isFeatureSectionOpen("market_lookup")} onToggle={() => toggleFeatureSection("market_lookup")}>
+              <CollapsibleFeatureSection title="Market Watch" summary="Watchlist, pinned market items, recently updated values, and market updates" open={isFeatureSectionOpen("market_lookup")} onToggle={() => toggleFeatureSection("market_lookup")}>
                 <div className="form">
                   <Field label="TideTradr Product">
                     <select value={tideTradrLookupId} onChange={(event) => selectTideTradrProduct(event.target.value)}>
@@ -6024,7 +9809,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </>
               ) : null}
 
-              {tideTradrSubTab === "catalog" ? (
+              {false && tideTradrSubTab === "catalog" ? (
               <>
               <CollapsibleFeatureSection title="Cards" summary="Search Cards, Card Filters, Graded Cards, Raw Cards, and Chase Cards" open={isFeatureSectionOpen("market_cards")} onToggle={() => toggleFeatureSection("market_cards")}>
                 <div className="quick-actions">
@@ -6155,17 +9940,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="card"><p>Watchlist</p><h2>{tideTradrWatchlist.length}</h2></div>
               </div>
             </section>
+            {adminUser ? (
             <section className="panel">
               <h2>Catalog Admin / Data Tools</h2>
               <p className="compact-subtitle">Beta/dev structure for future imports from Pokemon TCG API/Scrydex, TCGdex, TCGCSV, official Pokemon product data, and manual CSVs. No live keys are required.</p>
               <div className="cards mini-cards">
                 <div className="card"><p>Set Records</p><h2>{POKEMON_SETS.length}</h2></div>
                 <div className="card"><p>Seed Product Rows</p><h2>{POKEMON_PRODUCTS.length}</h2></div>
+                <div className="card"><p>Imported Cards</p><h2>{CATALOG_IMPORT_STATUS.cardsImported || 0}</h2></div>
+                <div className="card"><p>Imported Sealed</p><h2>{CATALOG_IMPORT_STATUS.sealedProductsImported || 0}</h2></div>
                 <div className="card"><p>UPC/SKU Links</p><h2>{catalogUpcCount}</h2></div>
                 <div className="card"><p>Market Price Rows</p><h2>{catalogMarketPriceCount}</h2></div>
                 <div className="card"><p>Duplicate Warnings</p><h2>{catalogDuplicateWarnings.length}</h2></div>
                 <div className="card"><p>Validation Warnings</p><h2>{catalogValidationWarnings.length}</h2></div>
               </div>
+              <p className="compact-subtitle">
+                Last catalog import: {CATALOG_IMPORT_STATUS.lastImportedAt ? new Date(CATALOG_IMPORT_STATUS.lastImportedAt).toLocaleString() : "No generated import yet"}.
+                Source: {CATALOG_IMPORT_STATUS.source || "local seed"}.
+              </p>
               <div className="quick-action-rail">
                 {CATALOG_IMPORT_SOURCES.map((source) => (
                   <button type="button" className="secondary-button" key={source} disabled>{source}</button>
@@ -6173,7 +9965,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
               <p className="compact-subtitle">Import buttons are intentionally placeholders until approved API/CSV sources are connected. CSV/manual catalog import remains available below.</p>
             </section>
-          <CollapsibleFeatureSection title="Manual Catalog Item" summary="Add or edit missing sealed products and individual cards locally" open={isFeatureSectionOpen("catalog_manual")} onToggle={() => toggleFeatureSection("catalog_manual")}>
+            ) : (
+            <section className="panel">
+              <h2>Catalog Status</h2>
+              <p className="compact-subtitle">Catalog import and data-control tools are admin-only. Search and add-to-Vault/Forge stay available based on tier access.</p>
+              <div className="cards mini-cards">
+                <div className="card"><p>Set Records</p><h2>{POKEMON_SETS.length}</h2></div>
+                <div className="card"><p>Catalog Rows</p><h2>{catalogProducts.length}</h2></div>
+              </div>
+            </section>
+            )}
+          <CollapsibleFeatureSection title={adminUser ? "Manual Catalog Item" : "Catalog Suggestions"} summary={adminUser ? "Add or edit missing sealed products and individual cards locally" : "Suggest missing products, UPC/SKU links, and corrections for admin review"} open={isFeatureSectionOpen("catalog_manual")} onToggle={() => toggleFeatureSection("catalog_manual")}>
           <SmartAddCatalog onUseProduct={useSmartCatalogProduct} />
           <section className="panel">
   <h2>Bulk Import Catalog Items</h2>
@@ -6232,7 +10034,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
   )}
 </section>
             <section className="panel">
-              <h2>{editingCatalogId ? "Edit Catalog Product" : "Add Product Catalog Item"}</h2>
+              <h2>{adminUser ? (editingCatalogId ? "Edit Catalog Product" : "Add Product Catalog Item") : (editingCatalogId ? "Suggest Product Correction" : "Suggest Missing Product")}</h2>
               <button type="button" className="secondary-button" onClick={() => setShowCatalogScanner(true)}>Open Catalog Scanner</button>
               {showCatalogScanner && <BarcodeScanner onScan={(code) => { updateCatalogForm("barcode", code); setShowCatalogScanner(false); }} onClose={() => setShowCatalogScanner(false)} />}
               <form onSubmit={addCatalogProduct} className="form">
@@ -6244,8 +10046,61 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <Field label="Product Type"><input list="sealed-product-types" value={catalogForm.productType} onChange={(e) => updateCatalogForm("productType", e.target.value)} /><datalist id="sealed-product-types">{SEALED_PRODUCT_TYPES.map((type) => <option key={type} value={type} />)}</datalist></Field>
                 <Field label="Barcode / UPC"><input value={catalogForm.barcode} onChange={(e) => updateCatalogForm("barcode", e.target.value)} /></Field>
                 <Field label="SKU"><input value={catalogForm.sku} onChange={(e) => updateCatalogForm("sku", e.target.value)} /></Field>
-                <Field label="Product Image"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateCatalogForm("imageUrl", url), "catalog-products")} /></Field>
-                {catalogForm.imageUrl && <div className="receipt-preview"><p>Catalog Photo</p><img src={catalogForm.imageUrl} alt="Catalog" /></div>}
+                <Field label="Upload Photo"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => {
+                  updateCatalogForm("imageUrl", url);
+                  updateCatalogForm("imageSource", "user");
+                  updateCatalogForm("imageStatus", "user");
+                  updateCatalogForm("imageLastUpdated", new Date().toISOString());
+                  updateCatalogForm("imageNeedsReview", false);
+                }, "catalog-products")} /></Field>
+                <Field label="Manual Image URL"><input value={catalogForm.imageUrl} onChange={(e) => {
+                  updateCatalogForm("imageUrl", e.target.value);
+                  updateCatalogForm("imageSource", e.target.value ? "manual" : "placeholder");
+                  updateCatalogForm("imageStatus", e.target.value ? "manual" : "placeholder");
+                  updateCatalogForm("imageLastUpdated", e.target.value ? new Date().toISOString() : "");
+                }} placeholder="Paste image URL" /></Field>
+                <Field label="Image Source"><select value={catalogForm.imageSource} onChange={(e) => updateCatalogForm("imageSource", e.target.value)}>
+                  <option value="pokemon_tcg_api">Pokemon TCG API</option>
+                  <option value="tcgdex">TCGdex</option>
+                  <option value="best_buy">Best Buy</option>
+                  <option value="ebay">Marketplace / eBay</option>
+                  <option value="tcgcsv">TCGCSV</option>
+                  <option value="user">User uploaded</option>
+                  <option value="manual">Manual URL</option>
+                  <option value="mock">Mock</option>
+                  <option value="placeholder">Placeholder</option>
+                  <option value="unknown">Unknown</option>
+                </select></Field>
+                <Field label="Image Status"><select value={catalogForm.imageStatus} onChange={(e) => updateCatalogForm("imageStatus", e.target.value)}>
+                  <option value="official">Official/API</option>
+                  <option value="api">API</option>
+                  <option value="retailer">Retailer</option>
+                  <option value="marketplace">Marketplace</option>
+                  <option value="user">User</option>
+                  <option value="manual">Manual</option>
+                  <option value="mock">Mock</option>
+                  <option value="placeholder">Placeholder</option>
+                  <option value="unknown">Unknown</option>
+                </select></Field>
+                <Field label="Image Source URL"><input value={catalogForm.imageSourceUrl} onChange={(e) => updateCatalogForm("imageSourceUrl", e.target.value)} placeholder="Source or product page URL" /></Field>
+                <label className="toggle-row">
+                  <input type="checkbox" checked={Boolean(catalogForm.imageNeedsReview)} onChange={(e) => updateCatalogForm("imageNeedsReview", e.target.checked)} />
+                  Image needs review
+                </label>
+                {catalogForm.imageUrl ? (
+                  <div className="receipt-preview">
+                    <p>Catalog Photo • {getImageSourceLabel(catalogForm)}</p>
+                    <img src={catalogForm.imageUrl} alt="Catalog" />
+                    <button type="button" className="secondary-button" onClick={() => {
+                      updateCatalogForm("imageUrl", "");
+                      updateCatalogForm("imageSmall", "");
+                      updateCatalogForm("imageLarge", "");
+                      updateCatalogForm("imageSource", "placeholder");
+                      updateCatalogForm("imageStatus", "placeholder");
+                      updateCatalogForm("imageNeedsReview", false);
+                    }}>Remove Image</button>
+                  </div>
+                ) : null}
                 <Field label="TideTradr Product ID"><input value={catalogForm.externalProductId} onChange={(e) => updateCatalogForm("externalProductId", e.target.value)} /></Field>
                 <Field label="Market Source URL"><input value={catalogForm.marketUrl} onChange={(e) => updateCatalogForm("marketUrl", e.target.value)} /></Field>
                 <Field label="Market Data Label"><select value={catalogForm.sourceType} onChange={(e) => updateCatalogForm("sourceType", e.target.value)}><option value="manual">Manual</option><option value="mock">Mock</option><option value="cached">Cached</option><option value="live">Live</option></select></Field>
@@ -6318,7 +10173,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <Field label="Mid Price"><input type="number" step="0.01" value={catalogForm.midPrice} onChange={(e) => updateCatalogForm("midPrice", e.target.value)} /></Field>
                 <Field label="High Price"><input type="number" step="0.01" value={catalogForm.highPrice} onChange={(e) => updateCatalogForm("highPrice", e.target.value)} /></Field>
                 <Field label="Notes"><input value={catalogForm.notes} onChange={(e) => updateCatalogForm("notes", e.target.value)} /></Field>
-                <button type="submit">{editingCatalogId ? "Save Catalog Product" : "Add Catalog Product"}</button>
+                <button type="submit">{adminUser ? (editingCatalogId ? "Save Catalog Product" : "Add Catalog Product") : "Submit for Review"}</button>
                 {editingCatalogId && <button type="button" className="secondary-button" onClick={() => { setEditingCatalogId(null); setCatalogForm(blankCatalog); }}>Cancel Edit</button>}
               </form>
             </section>
@@ -6416,18 +10271,49 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <div className="catalog-result-card" key={p.id}>
                     <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p.id)}>
                       <div className="catalog-thumb">
-                        {catalogImage(p) ? <img src={catalogImage(p)} alt="" /> : <span>{p.catalogType === "card" ? "Card" : "Sealed"}</span>}
+                        {catalogImage(p) ? <img src={catalogImage(p)} alt="" /> : (
+                          <span className="image-needed-placeholder">
+                            <strong>{p.catalogType === "card" ? "Card" : "Sealed"}</strong>
+                            <small>Image needed</small>
+                          </span>
+                        )}
                       </div>
                       <div>
                         <span className="catalog-pill">{p.catalogType === "card" ? "Card" : "Sealed"}</span>
                         <h3>{catalogTitle(p)}</h3>
                         {renderCatalogMeta(p)}
+                        <p className="image-source-line">
+                          Image: {getImageSourceLabel(p)}
+                          {p.imageNeedsReview ? " • Needs review" : ""}
+                        </p>
                       </div>
                     </button>
                     <div className="catalog-result-actions">
                       <button className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
                       <button className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
                       <button className="secondary-button" onClick={() => openCatalogDetails(p.id)}>View Details</button>
+                      {!adminUser ? (
+                        <>
+                          <button className="secondary-button" onClick={() => submitUniversalSuggestion({
+                            suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
+                            targetTable: "catalog_items",
+                            targetRecordId: p.id,
+                            submittedData: { name: catalogTitle(p), needsReview: true },
+                            currentDataSnapshot: p,
+                            notes: "User requested a product correction review.",
+                            source: "tidetradr-search-result",
+                          })}>Suggest Correction</button>
+                          <button className="secondary-button" onClick={() => submitUniversalSuggestion({
+                            suggestionType: SUGGESTION_TYPES.ADD_UPC_SKU,
+                            targetTable: "catalog_items",
+                            targetRecordId: p.id,
+                            submittedData: { name: catalogTitle(p), upc: p.barcode || p.upc || "", sku: p.sku || "" },
+                            currentDataSnapshot: p,
+                            notes: "User suggested reviewing UPC/SKU metadata.",
+                            source: "tidetradr-search-result",
+                          })}>Suggest UPC/SKU</button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -6439,7 +10325,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         {activeTab === "addInventory" && (
   <section className="panel">
     <h2>Add Forge Inventory</h2>
-    <button type="button" className="secondary-button" onClick={beginScanProduct}>
+    <button type="button" className="secondary-button" onClick={() => beginScanProduct("forge")}>
       Scan Product
     </button>
 
@@ -6481,7 +10367,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
   }}
 />
 
-    {showInventoryScanner && (
+    {false && showInventoryScanner && (
       <section className="panel">
         <h3>Scan to Add</h3>
         <p className="compact-subtitle">Choose what you are scanning. Beta uses UPC/card number/manual matching against the local TideTradr catalog.</p>
@@ -6553,38 +10439,32 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 
         {activeTab === "inventory" && (
           <>
-          {renderPageChrome({
-            title: "The Forge",
-            subtitle: "Business inventory, sales, expenses, mileage, receipts, and reports.",
-            primary: { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
-            secondary: { label: "Import", onClick: () => openInventoryImportAssistant("Forge") },
-            quickActions: [
-              { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
-              { label: "Add Sale", onClick: () => setActiveTab("addSale") },
-              { label: "Add Expense", onClick: () => setActiveTab("expenses") },
-              { label: "Import", onClick: () => openInventoryImportAssistant("Forge") },
-            ],
-            tabs: [
-              { key: "overview", label: "Overview" },
-              { key: "inventory", label: "Inventory" },
-              { key: "sales", label: "Sales" },
-              { key: "expenses", label: "Expenses" },
-              { key: "reports", label: "Reports" },
-              { key: "imports", label: "Imports" },
-            ],
-            activeSubTab: forgeSubTab,
-            setActiveSubTab: (key) => {
-              setForgeSubTab(key);
-              if (key === "sales") setActiveTab("sales");
-              if (key === "expenses") setActiveTab("expenses");
-              if (key === "reports") setActiveTab("reports");
-              if (key === "imports") openInventoryImportAssistant("Forge");
-            },
-          })}
+          <section className="tab-summary panel">
+            <div>
+              <h2>Forge</h2>
+              <p>Business inventory, sales, expenses, mileage, and reports.</p>
+            </div>
+          </section>
+
+          <section className="panel forge-action-strip">
+            <div className="summary-pill-row">
+              <button type="button" onClick={() => setActiveTab("addInventory")}>Add Inventory</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
+            </div>
+          </section>
+
+          <section className="panel forge-stats-panel">
+            <div className="cards mini-cards">
+              <div className="card"><p>Inventory Value</p><h2>{money(totalMarketValue)}</h2></div>
+              <div className="card"><p>Sales Revenue</p><h2>{money(totalSalesRevenue)}</h2></div>
+              <div className="card"><p>Expenses</p><h2>{money(totalExpenses)}</h2></div>
+              <div className="card"><p>Profit</p><h2>{money(totalSalesProfit - totalExpenses)}</h2></div>
+            </div>
+          </section>
           <section className="feature-dropdown-stack">
             <CollapsibleFeatureSection
               title="Inventory"
-              summary="Add Inventory, View Inventory, Edit Inventory, Delete Inventory, and Import from Catalog"
+              summary="Add, view, edit, delete, search, and import inventory"
               open={isFeatureSectionOpen("forge_inventory")}
               onToggle={() => toggleFeatureSection("forge_inventory")}
             >
@@ -6592,25 +10472,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="forge-toolbar">
               <div>
                 <h2>The Forge Inventory</h2>
-                <p>Track product count, pack count, cost, market value, status, and listing notes.</p>
+                <p>Search and manage business inventory. Full product details stay inside item detail.</p>
               </div>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>
-                Import from TideTradr
-              </button>
+              <div className="summary-pill-row">
+                <button type="button" onClick={() => setActiveTab("addInventory")}>Add Inventory</button>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from TideTradr</button>
+              </div>
             </div>
             {importAssistantContext === "Forge" ? renderInventoryImportAssistant() : null}
             <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search Forge inventory..." />
-            <Field label="Filter by Purchaser">
-              <select value={inventoryPurchaserFilter} onChange={(event) => setInventoryPurchaserFilter(event.target.value)}>
-                <option value="All">All purchasers</option>
-                <option value="Unassigned">Unassigned</option>
-                {purchasers.map((purchaser) => (
-                  <option key={purchaser.id} value={purchaser.id}>
-                    {purchaser.name}{purchaser.active ? "" : " (archived)"}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <details className="forge-purchaser-totals">
+              <summary>Purchaser Totals</summary>
             <div className="buyer-grid">
               {monthlyPurchaserSpending.slice(0, 4).map((row) => (
                 <div className="buyer-card" key={row.name}>
@@ -6620,6 +10492,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </div>
               ))}
             </div>
+            </details>
             <div className="chip-row">
               {quickInventoryFilters.map((filter) => (
                 <button
@@ -6640,6 +10513,43 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </button>
               ))}
             </div>
+
+            <details className="forge-more-filters">
+              <summary>More Filters</summary>
+              <div className="chip-row compact-chip-row">
+                {advancedInventoryFilters.map((filter) => (
+                  <button
+                    key={filter.label}
+                    type="button"
+                    className={
+                      inventoryStatusFilter === filter.status &&
+                      inventorySearch === filter.search
+                        ? "chip active"
+                        : "chip"
+                    }
+                    onClick={() => {
+                      setInventoryStatusFilter(filter.status);
+                      setInventorySearch(filter.search);
+                    }}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+              <div className="filter-grid forge-filter-grid">
+                <Field label="Purchaser">
+                  <select value={inventoryPurchaserFilter} onChange={(event) => setInventoryPurchaserFilter(event.target.value)}>
+                    <option value="All">All purchasers</option>
+                    <option value="Unassigned">Unassigned</option>
+                    {purchasers.map((purchaser) => (
+                      <option key={purchaser.id} value={purchaser.id}>
+                        {purchaser.name}{purchaser.active ? "" : " (archived)"}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </details>
 
             <div className="filter-summary">
               <p>Current filter: {inventoryStatusFilter}</p>
@@ -6675,6 +10585,24 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 />
               </section>
             )}
+            {selectedForgeDetailId ? (
+              <ForgeItemDetail
+                item={items.find((item) => item.id === selectedForgeDetailId)}
+                onClose={() => setSelectedForgeDetailId("")}
+                onEdit={startEditingItem}
+                onDelete={(item) => { deleteItem(item.id); setSelectedForgeDetailId(""); }}
+                onCreateListing={(item) => openMarketplaceCreate("forge", item)}
+                onSell={(item) => {
+                  setSaleForm((current) => ({
+                    ...current,
+                    itemId: item.id,
+                    quantitySold: 1,
+                    finalSalePrice: item.salePrice || item.marketPrice || "",
+                  }));
+                  setActiveTab("addSale");
+                }}
+              />
+            ) : null}
             <div className="inventory-list compact-inventory-list">
               {sortedFilteredItems.length === 0 ? (
                 <div className="inventory-card compact-card">
@@ -6689,15 +10617,25 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   key={item.id}
                   item={item}
                   onRestock={prepareRestock}
+                  onViewDetails={(forgeItem) => setSelectedForgeDetailId(forgeItem.id)}
                   onEdit={startEditingItem}
                   onDelete={deleteItem}
                   onStatusChange={updateItemStatus}
+                  onSell={(forgeItem) => {
+                    setSaleForm((current) => ({
+                      ...current,
+                      itemId: forgeItem.id,
+                      quantitySold: 1,
+                      finalSalePrice: forgeItem.salePrice || forgeItem.marketPrice || "",
+                    }));
+                    setActiveTab("addSale");
+                  }}
                 />
               ))}
             </div>
           </section>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Forge Sales" summary="Add Sale, View Sales, Planned Sales, and Sold Items" open={isFeatureSectionOpen("forge_sales")} onToggle={() => toggleFeatureSection("forge_sales")}>
+            <CollapsibleFeatureSection title="Sales" summary="Add sales, view sales, planned sales, and sold items" open={isFeatureSectionOpen("forge_sales")} onToggle={() => toggleFeatureSection("forge_sales")}>
               <div className="quick-actions">
                 <button type="button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
                 <button type="button" onClick={() => setActiveTab("sales")}>View Sales</button>
@@ -6705,16 +10643,16 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("sales")}>Sold Items</button>
               </div>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Forge Expenses" summary="Add Expense, View Expenses, and Receipts" open={isFeatureSectionOpen("forge_expenses")} onToggle={() => toggleFeatureSection("forge_expenses")}>
-              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("expenses")}>Add Expense</button><button type="button" onClick={() => setActiveTab("expenses")}>View Expenses</button><button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Receipts</button></div>
+            <CollapsibleFeatureSection title="Expenses" summary="Receipts, marketing, events/giveaways, supplies, fees, shipping, and miscellaneous categories" open={isFeatureSectionOpen("forge_expenses")} onToggle={() => toggleFeatureSection("forge_expenses")}>
+              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("expenses")}>Add / View Expenses</button><button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Receipts</button></div>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Forge Mileage" summary="Add Mileage, Business Miles, and Vehicle Costs" open={isFeatureSectionOpen("forge_mileage")} onToggle={() => toggleFeatureSection("forge_mileage")}>
+            <CollapsibleFeatureSection title="Mileage" summary="Business miles and vehicle costs" open={isFeatureSectionOpen("forge_mileage")} onToggle={() => toggleFeatureSection("forge_mileage")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("mileage")}>Add Mileage</button><button type="button" onClick={() => setActiveTab("mileage")}>Business Miles</button><button type="button" onClick={() => setActiveTab("vehicles")}>Vehicle Costs</button></div>
             </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Forge Receipts" summary="Receipt and item photo tools" open={isFeatureSectionOpen("forge_receipts")} onToggle={() => toggleFeatureSection("forge_receipts")}>
+            {false && <CollapsibleFeatureSection title="Forge Receipts" summary="Receipt and item photo tools" open={isFeatureSectionOpen("forge_receipts")} onToggle={() => toggleFeatureSection("forge_receipts")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("addInventory")}>Import Receipt</button><button type="button" onClick={beginScanProduct}>Scan Product</button></div>
-            </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Forge Reports/Exports" summary="Profit/Loss, Monthly Spending, and Export Data" open={isFeatureSectionOpen("forge_reports")} onToggle={() => toggleFeatureSection("forge_reports")}>
+            </CollapsibleFeatureSection>}
+            <CollapsibleFeatureSection title="Reports" summary="Profit/loss, monthly spending, and exports" open={isFeatureSectionOpen("forge_reports")} onToggle={() => toggleFeatureSection("forge_reports")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("reports")}>Profit/Loss</button><button type="button" onClick={() => setActiveTab("dashboard")}>Monthly Spending</button><button type="button" onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Data</button></div>
             </CollapsibleFeatureSection>
           </section>
@@ -7110,15 +11048,68 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 {catalogImage(selectedCatalogDetailProduct) ? (
                   <img className="catalog-detail-image" src={catalogImage(selectedCatalogDetailProduct)} alt={catalogTitle(selectedCatalogDetailProduct)} />
                 ) : (
-                  <div className="catalog-detail-image placeholder">{selectedCatalogDetailProduct.catalogType === "card" ? "Card image" : "Product image"}</div>
+                  <div className="catalog-detail-image placeholder">
+                    <strong>{catalogTitle(selectedCatalogDetailProduct)}</strong>
+                    <span>{selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion || selectedCatalogDetailProduct.productType || "Catalog item"}</span>
+                    <b>Image needed</b>
+                  </div>
                 )}
+                <div className="image-source-panel">
+                  <span>Image source: {getImageSourceLabel(selectedCatalogDetailProduct)}</span>
+                  {selectedCatalogDetailProduct.imageNeedsReview ? <strong>Image needs review</strong> : null}
+                  <div className="quick-actions">
+                    {adminUser ? (
+                      <>
+                        <button type="button" className="secondary-button" onClick={() => updateCatalogImageMeta(selectedCatalogDetailProduct.id, { imageNeedsReview: false, imageStatus: selectedCatalogDetailProduct.imageStatus || "manual" })}>Mark Correct</button>
+                        <button type="button" className="secondary-button" onClick={() => updateCatalogImageMeta(selectedCatalogDetailProduct.id, { imageNeedsReview: true })}>Mark Incorrect</button>
+                        <button type="button" className="secondary-button" onClick={() => updateCatalogImageMeta(selectedCatalogDetailProduct.id, { imageUrl: "", imageSmall: "", imageLarge: "", imageSource: "placeholder", imageStatus: "placeholder", imageSourceUrl: "", imageNeedsReview: false })}>Remove Image</button>
+                      </>
+                    ) : (
+                      <button type="button" className="secondary-button" onClick={() => submitUniversalSuggestion({
+                        suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
+                        targetTable: "catalog_items",
+                        targetRecordId: selectedCatalogDetailProduct.id,
+                        submittedData: { name: catalogTitle(selectedCatalogDetailProduct), imageNeedsReview: true },
+                        currentDataSnapshot: selectedCatalogDetailProduct,
+                        notes: "User flagged catalog image for admin review.",
+                        source: "tidetradr-image-review",
+                      })}>Suggest Image Review</button>
+                    )}
+                  </div>
+                </div>
                 <div className="quick-actions">
                   <button type="button" onClick={() => applyCatalogProductToVault(selectedCatalogDetailProduct.id)}>Add to Vault</button>
                   <button type="button" className="secondary-button" onClick={() => addCatalogItemToForge(selectedCatalogDetailProduct.id)}>Add to Forge</button>
                   <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(selectedCatalogDetailProduct.id)}>Add to Wishlist</button>
                   <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(selectedCatalogDetailProduct.id)}>Compare Market</button>
                   <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setSelectedCatalogDetailId(""); }}>Add Store Report</button>
-                  <button type="button" className="secondary-button" onClick={() => { applyCatalogProduct(selectedCatalogDetailProduct.id); setActiveTab("addSale"); }}>Create Listing</button>
+                  <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("catalog", selectedCatalogDetailProduct)}>Create Listing</button>
+                  {!adminUser ? (
+                    <>
+                      <button type="button" className="secondary-button" onClick={() => submitUniversalSuggestion({
+                        suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
+                        targetTable: "catalog_items",
+                        targetRecordId: selectedCatalogDetailProduct.id,
+                        submittedData: { name: catalogTitle(selectedCatalogDetailProduct), needsReview: true },
+                        currentDataSnapshot: selectedCatalogDetailProduct,
+                        notes: "User requested a full catalog detail correction review.",
+                        source: "tidetradr-detail",
+                      })}>Suggest Correction</button>
+                      <button type="button" className="secondary-button" onClick={() => submitUniversalSuggestion({
+                        suggestionType: SUGGESTION_TYPES.ADD_UPC_SKU,
+                        targetTable: "catalog_items",
+                        targetRecordId: selectedCatalogDetailProduct.id,
+                        submittedData: {
+                          name: catalogTitle(selectedCatalogDetailProduct),
+                          upc: selectedCatalogDetailProduct.upc || selectedCatalogDetailProduct.barcode || "",
+                          sku: selectedCatalogDetailProduct.sku || "",
+                        },
+                        currentDataSnapshot: selectedCatalogDetailProduct,
+                        notes: "User requested UPC/SKU review for this catalog item.",
+                        source: "tidetradr-detail",
+                      })}>Suggest UPC/SKU</button>
+                    </>
+                  ) : null}
                 </div>
                 <div className="catalog-detail-grid">
                   {selectedCatalogDetailProduct.catalogType === "card" ? (
@@ -7139,6 +11130,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName} />
                       <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailProduct).marketStatus] || "Unknown"} />
                       <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).needsReview ? "Yes" : "No"} />
+                      <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Image Last Updated" value={selectedCatalogDetailProduct.imageLastUpdated || "Unknown"} />
                     </>
                   ) : (
                     <>
@@ -7160,6 +11153,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName} />
                       <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailProduct).marketStatus] || "Unknown"} />
                       <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).needsReview ? "Yes" : "No"} />
+                      <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Image Last Updated" value={selectedCatalogDetailProduct.imageLastUpdated || "Unknown"} />
                     </>
                   )}
                 </div>
@@ -7174,12 +11169,114 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
   );
 }
 
+function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateListing }) {
+  if (!item) return null;
+  const details = [
+    ["Quantity", item.quantity],
+    ["Cost Paid", hasValue(item.unitCost) ? money(item.unitCost) : ""],
+    ["Total Cost", hasValue(item.unitCost) ? money(Number(item.quantity || 0) * Number(item.unitCost || 0)) : ""],
+    ["MSRP", hasValue(item.msrpPrice) ? money(item.msrpPrice) : ""],
+    ["Market Value", hasValue(item.marketPrice) ? money(item.marketPrice) : ""],
+    ["Product Type", item.productType],
+    ["Set / Collection", item.expansion],
+    ["Release Year", item.releaseYear],
+    ["Pack Count", item.packCount],
+    ["UPC / Barcode", item.barcode],
+    ["SKU", item.sku],
+    ["Purchase Date", item.purchaseDate ? String(item.purchaseDate).slice(0, 10) : ""],
+    ["Store", item.store],
+    ["Purchaser", itemPurchaserName(item)],
+    ["Notes", item.notes],
+    ["Planned Selling Price", hasValue(item.salePrice) ? money(item.salePrice) : ""],
+    ["Source", item.sourceLocation || item.externalProductSource],
+    ["Original Vault Item", item.originalVaultItemId],
+    ["Moved From Vault", item.movedFromVaultAt || item.dateMovedToForge],
+    ["Catalog Link", item.catalogProductName],
+  ].filter(([, value]) => hasValue(value));
+
+  return (
+    <div className="vault-detail-card forge-detail-card">
+      <div className="compact-card-header">
+        <div>
+          <h3>{item.name}</h3>
+          <p className="compact-subtitle">Full Forge item details and selling actions.</p>
+        </div>
+        <button type="button" className="secondary-button" onClick={onClose}>Close</button>
+      </div>
+      {item.itemImage ? <img className="vault-detail-image" src={item.itemImage} alt={item.name} /> : null}
+      <div className="catalog-detail-grid">
+        {details.map(([label, value]) => (
+          <DetailItem key={label} label={label} value={value} />
+        ))}
+      </div>
+      <div className="quick-actions">
+        <button type="button" onClick={() => onSell(item)}>Sell</button>
+        <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+        <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
+        <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete</button>
+      </div>
+    </div>
+  );
+}
+
+function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onRefreshMarket }) {
+  if (!item) return null;
+  const details = [
+    ["Quantity", item.quantity],
+    ["Cost Paid", hasValue(item.unitCost) ? money(item.unitCost) : ""],
+    ["MSRP", hasValue(item.msrpPrice) ? money(item.msrpPrice) : ""],
+    ["Market Value", hasValue(item.marketPrice) ? money(item.marketPrice) : ""],
+    ["Set / Collection", item.expansion],
+    ["Product Type", item.productType],
+    ["Planned Selling Price", hasValue(item.salePrice) ? money(item.salePrice) : ""],
+    ["Source", item.sourceType || item.source || item.sourceLocation || item.externalProductSource],
+    ["SKU", item.sku],
+    ["UPC / Barcode", item.barcode],
+    ["Status", vaultStatusLabel(normalizeVaultStatus(item))],
+  ].filter(([, value]) => hasValue(value));
+
+  return (
+    <div className="vault-detail-card">
+      <div className="compact-card-header">
+        <div>
+          <h3>{item.name}</h3>
+          <p className="compact-subtitle">Full Vault details and Forge transfer actions.</p>
+        </div>
+        <button type="button" className="secondary-button" onClick={onClose}>Close</button>
+      </div>
+      {item.itemImage ? <img className="vault-detail-image" src={item.itemImage} alt={item.name} /> : null}
+      <div className="catalog-detail-grid">
+        {details.map(([label, value]) => (
+          <DetailItem key={label} label={label} value={value} />
+        ))}
+      </div>
+      <div className="quick-actions">
+        <button type="button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button>
+        <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button>
+        <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+        <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
+        <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Item</button>
+      </div>
+      <details className="vault-status-help">
+        <summary>Selling / Forge</summary>
+        <p>Vault is for collection tracking. Use Move to Forge or Copy to Forge when this item becomes business inventory.</p>
+      </details>
+    </div>
+  );
+}
+
 function CompactInventoryCard({
   item,
+  variant = "forge",
   onRestock,
+  onViewDetails,
   onEdit,
   onDelete,
   onStatusChange,
+  onMoveToForge,
+  onCopyToForge,
+  onDuplicate,
+  onSell,
 }) {
   const quantity = Number(item.quantity || 0);
   const unitCost = Number(item.unitCost || 0);
@@ -7191,21 +11288,72 @@ function CompactInventoryCard({
 
   const roiPercent =
     unitCost > 0 ? ((marketPrice - unitCost) / unitCost) * 100 : 0;
+  const isVault = variant === "vault";
+  const packCount = Number(item.packCount || 0);
+  if (isVault) {
+    return (
+      <div className="inventory-card compact-card vault-item-card">
+        <div className="compact-card-header">
+          <div className="compact-title-block">
+            <h3>{item.name}</h3>
+            <p className="compact-subtitle">Qty {quantity || 1}</p>
+          </div>
+          <span className={statusClass(vaultStatusLabel(normalizeVaultStatus(item)))}>{vaultStatusLabel(normalizeVaultStatus(item))}</span>
+        </div>
+
+        {item.itemImage ? (
+          <div className="compact-image-wrap vault-image-wrap">
+            <img src={item.itemImage} alt={item.name} />
+          </div>
+        ) : null}
+
+        <div className="vault-card-facts">
+          {packCount > 0 ? <p><strong>Pack Count:</strong> {packCount}</p> : null}
+          <p><strong>Market Value:</strong> {money(quantity * marketPrice)}</p>
+          <p><strong>Source:</strong> {item.sourceType || item.source || item.sourceLocation || "Manual"}</p>
+        </div>
+
+        <div className="compact-actions vault-card-actions">
+          <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View Details</button>
+          <button type="button" className="secondary-button" disabled={quantity < 1} onClick={() => onMoveToForge?.(item)}>Move to Forge</button>
+          <OverflowMenu
+            buttonLabel="More"
+            actions={[
+              { label: "Edit", onClick: () => onEdit?.(item) },
+              { label: "Copy to Forge", onClick: () => onCopyToForge?.(item) },
+              { label: "Duplicate Item", onClick: () => onDuplicate?.(item) },
+              { label: "Mark Traded", onClick: () => onStatusChange?.(item, "traded") },
+              { label: "Change Status", onClick: () => onEdit(item) },
+            ]}
+            onDelete={() => onDelete(item.id)}
+          />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="inventory-card compact-card">
       <div className="compact-card-header">
         <div className="compact-title-block">
           <h3>{item.name}</h3>
-          <p className="compact-subtitle">
+          <p className="compact-subtitle forge-card-quantity">Qty {item.quantity || 0}</p>
+          <p className="compact-subtitle forge-card-meta-legacy">
             {item.category} • {item.buyer} • Qty {item.quantity}
           </p>
         </div>
         <span className={statusClass(item.status)}>{item.status || "In Stock"}</span>
       </div>
 
-      {item.itemImage && (
+      {item.itemImage ? (
         <div className="compact-image-wrap">
           <img src={item.itemImage} alt={item.name} />
+          <span>{getImageSourceLabel(item)}{item.itemImageNeedsReview ? " • Needs review" : ""}</span>
+        </div>
+      ) : (
+        <div className="compact-image-wrap placeholder">
+          <strong>{item.name}</strong>
+          <small>{item.expansion || item.productType || "Item photo"}</small>
+          <b>Image needed</b>
         </div>
       )}
 
@@ -7254,6 +11402,9 @@ function CompactInventoryCard({
       </div>
 
       <div className="compact-actions">
+        <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
+        <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
+        <button type="button" className="secondary-button" onClick={() => onSell?.(item)}>Sell</button>
         <select
           value={item.status || "In Stock"}
           onChange={(event) => onStatusChange(item, event.target.value)}
@@ -7278,6 +11429,323 @@ function CompactInventoryCard({
   );
 }
 
+function VaultEditForm({
+  form,
+  setForm,
+  item,
+  purchasers = createDefaultPurchasers(),
+  onCreatePurchaser,
+  handleImageUpload,
+  onSubmit,
+  onCancel,
+  onMoveToForge,
+}) {
+  const [sections, setSections] = useState({
+    basic: true,
+    pricing: true,
+    market: false,
+    photos: false,
+    forge: false,
+    notes: false,
+    advanced: false,
+  });
+  const [showNewPurchaser, setShowNewPurchaser] = useState(false);
+  const [newPurchaserName, setNewPurchaserName] = useState("");
+
+  const quantity = Number(form.quantity || 0);
+  const unitCost = Number(form.unitCost || 0);
+  const msrpPrice = Number(form.msrpPrice || 0);
+  const marketPrice = Number(form.marketPrice || 0);
+  const salePrice = Number(form.salePrice || 0);
+  const totalPaid = quantity * unitCost;
+  const totalMarket = quantity * marketPrice;
+  const totalPlannedSale = quantity * salePrice;
+  const estimatedMarketProfit = totalMarket - totalPaid;
+  const estimatedPlannedProfit = totalPlannedSale - totalPaid;
+
+  const currentPurchaserId =
+    form.purchaserId ||
+    purchasers.find((purchaser) => purchaser.name === form.purchaserName || purchaser.name === form.buyer)?.id ||
+    "";
+
+  function toggle(section) {
+    setSections((current) => ({ ...current, [section]: !current[section] }));
+  }
+
+  function selectPurchaser(purchaserId) {
+    if (purchaserId === "__add__") {
+      setShowNewPurchaser(true);
+      return;
+    }
+    const purchaser = purchasers.find((candidate) => candidate.id === purchaserId);
+    setForm("purchaserId", purchaser?.id || "");
+    setForm("purchaserName", purchaser?.name || "Unassigned");
+    setForm("buyer", purchaser?.name || "Unassigned");
+  }
+
+  function createInlinePurchaser() {
+    const created = onCreatePurchaser?.(newPurchaserName);
+    if (!created) return;
+    setForm("purchaserId", created.id);
+    setForm("purchaserName", created.name);
+    setForm("buyer", created.name);
+    setNewPurchaserName("");
+    setShowNewPurchaser(false);
+  }
+
+  function setVaultStatus(value) {
+    setForm("vaultStatus", value);
+    setForm("status", vaultStatusLabel(value));
+  }
+
+  function setCollection(value) {
+    setForm("expansion", value);
+    setForm("setName", value);
+  }
+
+  function renderSection(key, title, children) {
+    return (
+      <div className="vault-form-section" key={key}>
+        <button type="button" className="vault-section-toggle" onClick={() => toggle(key)}>
+          <span>{title}</span>
+          <b>{sections[key] ? "Hide" : "Show"}</b>
+        </button>
+        {sections[key] ? children : null}
+      </div>
+    );
+  }
+
+  return (
+    <section className="panel vault-edit-panel">
+      <div className="compact-card-header">
+        <div>
+          <h2>Edit Vault Item</h2>
+          <p>Vault is for personal collection and held items. Move to Forge when it becomes selling inventory.</p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={onSubmit}
+        className="vault-collapsible-form vault-edit-form"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") event.preventDefault();
+        }}
+      >
+        {renderSection("basic", "Basic Info", (
+          <div className="form vault-form-grid">
+            <Field label="Vault Status">
+              <select value={form.vaultStatus || normalizeVaultStatus(form)} onChange={(event) => setVaultStatus(event.target.value)}>
+                {VAULT_STATUS_OPTIONS.map((status) => (
+                  <option key={status.value} value={status.value}>{status.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Item Name">
+              <input value={form.name || ""} onChange={(event) => setForm("name", event.target.value)} />
+            </Field>
+            <Field label="Category">
+              <select value={form.category || "Pokemon"} onChange={(event) => setForm("category", event.target.value)}>
+                {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </Field>
+            <Field label="Product Type">
+              <input value={form.productType || ""} onChange={(event) => setForm("productType", event.target.value)} />
+            </Field>
+            <Field label="Set / Collection">
+              <input value={form.expansion || form.setName || ""} onChange={(event) => setCollection(event.target.value)} />
+            </Field>
+            <Field label="Quantity">
+              <input type="number" min="1" value={form.quantity || 1} onChange={(event) => setForm("quantity", event.target.value)} />
+            </Field>
+            <Field label="Barcode / UPC">
+              <input value={form.barcode || form.upc || ""} onChange={(event) => { setForm("barcode", event.target.value); setForm("upc", event.target.value); }} />
+            </Field>
+            <Field label="Store / Source">
+              <input value={form.store || ""} onChange={(event) => setForm("store", event.target.value)} />
+            </Field>
+            <Field label="Purchased By">
+              <select value={currentPurchaserId} onChange={(event) => selectPurchaser(event.target.value)}>
+                <option value="">Unassigned</option>
+                {purchasers.map((purchaser) => (
+                  <option key={purchaser.id} value={purchaser.id}>{purchaser.name}</option>
+                ))}
+                <option value="__add__">Add New Purchaser</option>
+              </select>
+            </Field>
+            {showNewPurchaser ? (
+              <div className="inline-form">
+                <input value={newPurchaserName} onChange={(event) => setNewPurchaserName(event.target.value)} placeholder="New purchaser name" />
+                <button type="button" onClick={createInlinePurchaser}>Save Purchaser</button>
+                <button type="button" className="secondary-button" onClick={() => setShowNewPurchaser(false)}>Cancel</button>
+              </div>
+            ) : null}
+          </div>
+        ))}
+
+        {renderSection("pricing", "Pricing", (
+          <div className="form vault-form-grid">
+            <Field label="Unit Cost">
+              <input type="number" step="0.01" value={form.unitCost || ""} onChange={(event) => setForm("unitCost", event.target.value)} />
+            </Field>
+            <Field label="MSRP">
+              <input type="number" step="0.01" value={form.msrpPrice || ""} onChange={(event) => setForm("msrpPrice", event.target.value)} />
+            </Field>
+            <Field label="Market Price">
+              <input type="number" step="0.01" value={form.marketPrice || ""} onChange={(event) => setForm("marketPrice", event.target.value)} />
+            </Field>
+            <Field label="Planned Sale Price">
+              <input type="number" step="0.01" value={form.salePrice || ""} onChange={(event) => setForm("salePrice", event.target.value)} />
+            </Field>
+            <div className="profit-preview vault-profit-preview">
+              <h3>Profit Preview</h3>
+              <div className="preview-grid">
+                <div><span>Total Paid</span><strong>{money(totalPaid)}</strong></div>
+                <div><span>Total Market</span><strong>{money(totalMarket)}</strong></div>
+                <div><span>Market Profit</span><strong>{money(estimatedMarketProfit)}</strong></div>
+                <div><span>Planned Profit</span><strong>{money(estimatedPlannedProfit)}</strong></div>
+                <div><span>Planned Sale Total</span><strong>{money(totalPlannedSale)}</strong></div>
+                <div><span>MSRP Each</span><strong>{money(msrpPrice)}</strong></div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {renderSection("market", "Market Data", (
+          <div className="form vault-form-grid">
+            <Field label="Market Source">
+              <input value={form.marketSource || form.sourceType || "Manual"} onChange={(event) => setForm("marketSource", event.target.value)} />
+            </Field>
+            <Field label="Market Last Updated">
+              <input value={form.marketLastUpdated || form.lastPriceChecked || "Unknown"} readOnly />
+            </Field>
+            <div className="small-empty-state">
+              Market refresh is not connected yet. Current values are manually entered or mock data.
+            </div>
+          </div>
+        ))}
+
+        {renderSection("photos", "Photos", (
+          <div className="form vault-form-grid">
+            <Field label="Product Photo">
+              <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => {
+                setForm("itemImage", url);
+                setForm("itemImageSource", "user");
+                setForm("itemImageStatus", "user");
+                setForm("itemImageLastUpdated", new Date().toISOString());
+              }, "vault-items")} />
+            </Field>
+            <Field label="Manual Image URL">
+              <input value={form.itemImage || ""} onChange={(event) => {
+                setForm("itemImage", event.target.value);
+                setForm("itemImageSource", event.target.value ? "manual" : "placeholder");
+                setForm("itemImageStatus", event.target.value ? "manual" : "placeholder");
+              }} />
+            </Field>
+            {form.itemImage ? (
+              <div className="receipt-preview">
+                <p>Product Photo</p>
+                <img src={form.itemImage} alt="Product" />
+                <button type="button" className="secondary-button" onClick={() => setForm("itemImage", "")}>Remove Product Photo</button>
+              </div>
+            ) : null}
+            <Field label="Receipt / Screenshot">
+              <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => setForm("receiptImage", url), "vault-receipts")} />
+            </Field>
+            {form.receiptImage ? (
+              <div className="receipt-preview">
+                <p>Receipt / Screenshot</p>
+                <img src={form.receiptImage} alt="Receipt" />
+                <button type="button" className="secondary-button" onClick={() => setForm("receiptImage", "")}>Remove Receipt</button>
+              </div>
+            ) : null}
+          </div>
+        ))}
+
+        {renderSection("forge", "Selling / Forge", (
+          <div className="form vault-form-grid">
+            <Field label="Planned Sale Price">
+              <input type="number" step="0.01" value={form.salePrice || ""} onChange={(event) => setForm("salePrice", event.target.value)} />
+            </Field>
+            <Field label="Listing Platform">
+              <input value={form.listingPlatform || ""} onChange={(event) => setForm("listingPlatform", event.target.value)} />
+            </Field>
+            <Field label="Listing URL">
+              <input value={form.listingUrl || ""} onChange={(event) => setForm("listingUrl", event.target.value)} />
+            </Field>
+            <Field label="Listed Price">
+              <input type="number" step="0.01" value={form.listedPrice || ""} onChange={(event) => setForm("listedPrice", event.target.value)} />
+            </Field>
+            <Field label="Action Notes">
+              <input value={form.actionNotes || ""} onChange={(event) => setForm("actionNotes", event.target.value)} />
+            </Field>
+            <button type="button" className="secondary-button" disabled={!item} onClick={() => item && onMoveToForge(item)}>Move to Forge</button>
+          </div>
+        ))}
+
+        {renderSection("notes", "Notes", (
+          <div className="form vault-form-grid">
+            <Field label="Personal Notes">
+              <textarea value={form.notes || ""} onChange={(event) => setForm("notes", event.target.value)} />
+            </Field>
+            <Field label="Condition Notes">
+              <textarea value={form.conditionNotes || ""} onChange={(event) => setForm("conditionNotes", event.target.value)} />
+            </Field>
+            <Field label="Storage Location">
+              <select value={form.storageLocation || ""} onChange={(event) => setForm("storageLocation", event.target.value)}>
+                {VAULT_STORAGE_LOCATIONS.map((location) => <option key={location || "blank"} value={location}>{location || "Not set"}</option>)}
+              </select>
+            </Field>
+            <Field label="Condition">
+              <select value={form.condition || ""} onChange={(event) => setForm("condition", event.target.value)}>
+                {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
+              </select>
+            </Field>
+            <Field label="Sealed Condition">
+              <select value={form.sealedCondition || ""} onChange={(event) => setForm("sealedCondition", event.target.value)}>
+                {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
+              </select>
+            </Field>
+          </div>
+        ))}
+
+        {renderSection("advanced", "Advanced", (
+          <div className="form vault-form-grid">
+            <Field label="TideTradr Product ID">
+              <input value={form.externalProductId || form.tideTradrProductId || ""} onChange={(event) => { setForm("externalProductId", event.target.value); setForm("tideTradrProductId", event.target.value); }} />
+            </Field>
+            <Field label="Market Source URL">
+              <input value={form.tideTradrUrl || ""} onChange={(event) => setForm("tideTradrUrl", event.target.value)} />
+            </Field>
+            <Field label="Product Line">
+              <input value={form.productLine || ""} onChange={(event) => setForm("productLine", event.target.value)} />
+            </Field>
+            <Field label="Expansion">
+              <input value={form.expansion || ""} onChange={(event) => setForm("expansion", event.target.value)} />
+            </Field>
+            <Field label="Pack Count">
+              <input type="number" min="0" value={form.packCount || ""} onChange={(event) => setForm("packCount", event.target.value)} />
+            </Field>
+            <Field label="Low Price">
+              <input type="number" step="0.01" value={form.lowPrice || ""} onChange={(event) => setForm("lowPrice", event.target.value)} />
+            </Field>
+            <Field label="Mid Price">
+              <input type="number" step="0.01" value={form.midPrice || ""} onChange={(event) => setForm("midPrice", event.target.value)} />
+            </Field>
+            <Field label="High Price">
+              <input type="number" step="0.01" value={form.highPrice || ""} onChange={(event) => setForm("highPrice", event.target.value)} />
+            </Field>
+          </div>
+        ))}
+
+        <div className="vault-form-actions">
+          <button type="submit">Save Changes</button>
+          <button type="button" className="secondary-button" onClick={onCancel}>Cancel</button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 function InventoryForm({
   form,
   setForm,
@@ -7288,6 +11756,7 @@ function InventoryForm({
   handleImageUpload,
   onSubmit,
   submitLabel,
+  statusOptions = STATUSES,
 }) {
   const [showNewPurchaser, setShowNewPurchaser] = useState(false);
   const [newPurchaserName, setNewPurchaserName] = useState("");
@@ -7348,8 +11817,31 @@ function InventoryForm({
         </select>
       </Field>
       <Field label="Item Name"><input value={form.name} onChange={(e) => setForm("name", e.target.value)} /></Field>
-      <Field label="Product Photo"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => setForm("itemImage", url), "item-photos")} /></Field>
-      {form.itemImage && <div className="receipt-preview"><p>Product Photo</p><img src={form.itemImage} alt="Product" /></div>}
+      <Field label="Product Photo"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => {
+        setForm("itemImage", url);
+        setForm("itemImageSource", "user");
+        setForm("itemImageStatus", "user");
+        setForm("itemImageLastUpdated", new Date().toISOString());
+        setForm("itemImageNeedsReview", false);
+      }, "item-photos")} /></Field>
+      <Field label="Manual Image URL"><input value={form.itemImage || ""} onChange={(e) => {
+        setForm("itemImage", e.target.value);
+        setForm("itemImageSource", e.target.value ? "manual" : "placeholder");
+        setForm("itemImageStatus", e.target.value ? "manual" : "placeholder");
+        setForm("itemImageLastUpdated", e.target.value ? new Date().toISOString() : "");
+      }} placeholder="Paste image URL" /></Field>
+      {form.itemImage && (
+        <div className="receipt-preview">
+          <p>Product Photo • {getImageSourceLabel(form)}</p>
+          <img src={form.itemImage} alt="Product" />
+          <button type="button" className="secondary-button" onClick={() => {
+            setForm("itemImage", "");
+            setForm("itemImageSource", "placeholder");
+            setForm("itemImageStatus", "placeholder");
+            setForm("itemImageNeedsReview", false);
+          }}>Remove Image</button>
+        </div>
+      )}
       <Field label="Purchased By">
         <select value={currentPurchaserId} onChange={(e) => selectPurchaser(e.target.value)}>
           <option value="">Unassigned</option>
@@ -7471,7 +11963,7 @@ function InventoryForm({
       <Field label="Low Price"><input type="number" step="0.01" value={form.lowPrice} onChange={(e) => setForm("lowPrice", e.target.value)} /></Field>
       <Field label="Mid Price"><input type="number" step="0.01" value={form.midPrice} onChange={(e) => setForm("midPrice", e.target.value)} /></Field>
       <Field label="High Price"><input type="number" step="0.01" value={form.highPrice} onChange={(e) => setForm("highPrice", e.target.value)} /></Field>
-      <Field label="Status"><select value={form.status} onChange={(e) => setForm("status", e.target.value)}>{STATUSES.map((x) => <option key={x}>{x}</option>)}</select></Field>
+      <Field label="Status"><select value={form.status} onChange={(e) => setForm("status", e.target.value)}>{statusOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
       <Field label="Listing Platform"><input value={form.listingPlatform} onChange={(e) => setForm("listingPlatform", e.target.value)} /></Field>
       <Field label="Listing URL"><input value={form.listingUrl} onChange={(e) => setForm("listingUrl", e.target.value)} /></Field>
       <Field label="Listed Price"><input type="number" step="0.01" value={form.listedPrice} onChange={(e) => setForm("listedPrice", e.target.value)} /></Field>

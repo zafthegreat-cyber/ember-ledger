@@ -15,6 +15,72 @@ npm run smoke:beta
 
 `npm run smoke:beta` runs the browser click-through test for the current beta flows.
 
+## Local Run Commands
+
+Frontend:
+
+```bash
+npm run dev
+```
+
+Backend API:
+
+```bash
+npm run backend:dev
+```
+
+Backend health check:
+
+```text
+http://localhost:4000/api/health
+```
+
+The backend is optional for the current beta. The app can run fully localStorage-first for tester flows when Supabase, Best Buy, live market APIs, OCR, Discord, and push notifications are not configured.
+
+## Environment Variables
+
+Frontend/Vercel:
+
+```text
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+VITE_ADMIN_EMAILS
+VITE_DEV_ADMIN_EMAIL
+VITE_LOCAL_DEV_ADMIN
+```
+
+`VITE_ADMIN_EMAILS` is a comma-separated beta allowlist. Matching users are treated as `admin` with `founder` tier in the frontend profile layer and should also be updated in Supabase with the SQL below. `VITE_DEV_ADMIN_EMAIL` and `VITE_LOCAL_DEV_ADMIN=true` only apply on localhost.
+
+Backend/API placeholders:
+
+```text
+DATABASE_URL
+BESTBUY_API_KEY
+BESTBUY_API_BASE_URL
+```
+
+Do not put service-role keys or private API keys in frontend code.
+
+## Admin / Founder Setup
+
+Run the profiles migration in Supabase:
+
+```sql
+supabase/migrations/010_profiles_roles_tiers.sql
+```
+
+Then assign your own account after sign-in:
+
+```sql
+update public.profiles
+set user_role = 'admin',
+    tier = 'founder',
+    updated_at = now()
+where email = 'YOUR_EMAIL_HERE';
+```
+
+Everyone else defaults to `user` and `free`. The current beta still works without Supabase; local mode shows a fallback profile unless a localhost dev override is enabled.
+
 ---
 
 # React + Vite

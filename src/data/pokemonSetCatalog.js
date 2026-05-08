@@ -1,4 +1,5 @@
 import { SET_SEARCH_METADATA } from "./sharedPokemonCatalog";
+import importedPokemonSets from "./generated/pokemonTcgSets.json";
 
 const SET_SERIES = {
   "Prismatic Evolutions": "Scarlet & Violet",
@@ -35,7 +36,7 @@ const SET_SERIES = {
   "Pokemon GO": "Sword & Shield",
 };
 
-export const POKEMON_SETS = Object.entries(SET_SEARCH_METADATA).map(([name, metadata]) => ({
+const localPokemonSets = Object.entries(SET_SEARCH_METADATA).map(([name, metadata]) => ({
   setId: metadata.setCode || name.toLowerCase().replace(/\W+/g, "-"),
   name,
   series: SET_SERIES[name] || "",
@@ -46,8 +47,39 @@ export const POKEMON_SETS = Object.entries(SET_SEARCH_METADATA).map(([name, meta
   total: "",
   logoUrl: "",
   symbolUrl: "",
+  imageSource: "placeholder",
+  imageStatus: "placeholder",
+  imageLastUpdated: "",
+  imageNeedsReview: true,
   source: "local-beta-structure",
 }));
+
+const normalizedImportedSets = importedPokemonSets.map((set) => ({
+  setId: set.setId || set.id || set.setCode || set.name,
+  name: set.setName || set.name || "",
+  series: set.series || "",
+  code: set.setCode || set.code || set.ptcgoCode || "",
+  setAliases: set.aliases || set.setAliases || [set.setCode, set.ptcgoCode, set.id].filter(Boolean),
+  releaseDate: set.releaseDate || "",
+  printedTotal: set.printedTotal || "",
+  total: set.total || "",
+  logoUrl: set.logoUrl || "",
+  symbolUrl: set.symbolUrl || "",
+  imageSource: set.imageSource || (set.logoUrl || set.symbolUrl ? "pokemon_tcg_api" : "placeholder"),
+  imageStatus: set.imageStatus || (set.logoUrl || set.symbolUrl ? "api" : "placeholder"),
+  imageLastUpdated: set.imageLastUpdated || set.lastUpdated || "",
+  imageNeedsReview: Boolean(set.imageNeedsReview),
+  source: set.sourceType || set.source || "pokemon_tcg_api_json",
+}));
+
+const setByCode = new Map();
+[...localPokemonSets, ...normalizedImportedSets].forEach((set) => {
+  const key = String(set.code || set.name || set.setId).toLowerCase();
+  if (!setByCode.has(key)) setByCode.set(key, set);
+  else setByCode.set(key, { ...setByCode.get(key), ...set });
+});
+
+export const POKEMON_SETS = [...setByCode.values()];
 
 export function getSetByCodeOrAlias(value) {
   const normalized = String(value || "").trim().toLowerCase();

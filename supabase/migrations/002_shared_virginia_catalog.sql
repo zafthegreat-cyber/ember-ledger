@@ -1,4 +1,4 @@
--- Shared Ember Scout / E&T TCG tables.
+-- Shared Scout / E&T TCG tables.
 -- Safe to run more than once. This file does not drop existing data.
 -- RLS is enabled with logged-in read access for shared master data.
 

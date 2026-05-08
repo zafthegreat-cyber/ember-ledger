@@ -1,5 +1,6 @@
 import { PRODUCT_TYPE_ALIASES, POKEMON_NAME_ALIASES, RARITY_VARIANT_ALIASES } from "../data/productAliases";
 import { getSetByCodeOrAlias } from "../data/pokemonSetCatalog";
+import generatedSearchAliases from "../data/generated/searchAliases.json";
 
 export function normalizeCatalogName(name) {
   return String(name || "")
@@ -33,6 +34,14 @@ export function getAliasExpansions(value) {
         catalogTokens(canonical).forEach((token) => expansions.add(token));
       }
     });
+  });
+
+  generatedSearchAliases.forEach((aliasRow) => {
+    const alias = normalizeCatalogName(aliasRow.alias);
+    if (alias && (query.includes(alias) || catalogTokens(query).includes(alias))) {
+      expansions.add(normalizeCatalogName(aliasRow.targetName));
+      if (aliasRow.targetId) expansions.add(normalizeCatalogName(aliasRow.targetId));
+    }
   });
 
   return [...expansions].filter(Boolean);

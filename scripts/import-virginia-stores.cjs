@@ -14,8 +14,8 @@ function env(name) {
 
 function normalizeStore(store, defaults, fileName) {
   const normalized = {
-    chain: store.chain || "",
-    name: store.name || "",
+    chain: store.chain || store.retailer || "",
+    name: store.name || store.storeName || "",
     nickname: store.nickname || null,
     address: store.address || "",
     city: store.city || "",
@@ -25,8 +25,8 @@ function normalizeStore(store, defaults, fileName) {
     county: store.county || null,
     phone: store.phone || null,
     website: store.website || null,
-    sells_pokemon: store.sells_pokemon !== false,
-    store_type: store.store_type || store.storeType || null,
+    sells_pokemon: store.sells_pokemon !== false && store.carriesPokemon !== "false" && store.carriesPokemonLikely !== "false",
+    store_type: store.store_type || store.storeType || store.storeGroup || null,
     notes: store.notes || null,
     latitude: store.latitude ?? null,
     longitude: store.longitude ?? null,
@@ -40,16 +40,52 @@ function normalizeStore(store, defaults, fileName) {
   return normalized;
 }
 
+function parseCsv(text = "") {
+  const rows = [];
+  let cell = "";
+  let row = [];
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+    if (char === '"' && quoted && next === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      row.push(cell);
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(cell);
+      if (row.some((value) => String(value).trim())) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  row.push(cell);
+  if (row.some((value) => String(value).trim())) rows.push(row);
+  if (!rows.length) return [];
+  const headers = rows[0].map((header) => header.trim());
+  return rows.slice(1).map((cells) =>
+    Object.fromEntries(headers.map((header, index) => [header, String(cells[index] || "").trim()]))
+  );
+}
+
 async function readSeedFiles() {
   const fileNames = (await fs.readdir(seedDir))
-    .filter((fileName) => fileName.endsWith(".json"))
+    .filter((fileName) => fileName.endsWith(".json") || fileName.endsWith(".csv"))
     .sort();
 
   const rows = [];
 
   for (const fileName of fileNames) {
     const fullPath = path.join(seedDir, fileName);
-    const parsed = JSON.parse(await fs.readFile(fullPath, "utf8"));
+    const raw = await fs.readFile(fullPath, "utf8");
+    const parsed = fileName.endsWith(".json") ? JSON.parse(raw) : parseCsv(raw);
     const stores = Array.isArray(parsed) ? parsed : parsed.stores || [];
     const defaults = Array.isArray(parsed) ? {} : parsed;
 

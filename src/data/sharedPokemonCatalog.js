@@ -2,6 +2,10 @@
 // Unknown UPC/SKU/MSRP values are intentionally kept as "Unknown".
 // Market values are not live unless sourceType is "live".
 
+import importedCards from "./generated/pokemonTcgCards.json";
+import importedSealedProducts from "./generated/sealedProducts.json";
+import catalogImportStatus from "./generated/catalogImportStatus.json";
+
 export const SEALED_PRODUCT_TYPES = [
   "Booster Pack",
   "Elite Trainer Box",
@@ -78,6 +82,64 @@ export const SET_SEARCH_METADATA = {
 
 function setMetadata(setName) {
   return SET_SEARCH_METADATA[setName] || { setCode: "", setAliases: [] };
+}
+
+function normalizeGeneratedCard(item = {}) {
+  const metadata = setMetadata(item.setName);
+  return {
+    ...item,
+    catalogType: "card",
+    cardName: item.cardName || item.name || "",
+    name: item.cardName || item.name || "",
+    pokemonName: item.pokemonName || item.cardName || item.name || "",
+    setCode: item.setCode || metadata.setCode || item.setId || "",
+    setAliases: item.setAliases || metadata.setAliases || [],
+    series: item.series || item.era || "",
+    era: item.era || item.series || "",
+    imageSource: item.imageSource || (item.imageSmall || item.imageLarge ? "pokemon_tcg_api" : "placeholder"),
+    imageStatus: item.imageStatus || (item.imageSmall || item.imageLarge ? "api" : "placeholder"),
+    marketSource: item.marketSource || "Unknown",
+    marketStatus: item.marketStatus || (item.marketValueNearMint ? "cached" : "unknown"),
+    marketConfidenceLevel: item.marketConfidenceLevel || (item.marketValueNearMint ? "Cached" : "Unknown"),
+  };
+}
+
+function normalizeGeneratedSealedProduct(item = {}) {
+  const metadata = setMetadata(item.setName);
+  return {
+    ...item,
+    catalogType: "sealed",
+    productName: item.productName || item.name || "",
+    name: item.productName || item.name || "",
+    setCode: item.setCode || metadata.setCode || "",
+    setAliases: item.setAliases || metadata.setAliases || [],
+    era: item.era || item.series || "",
+    releaseYear: item.releaseYear || "Unknown",
+    msrp: item.msrp || item.MSRP || "Unknown",
+    upc: item.upc || item.UPC || "Unknown",
+    sku: item.sku || item.SKU || "Unknown",
+    imageSource: item.imageSource || (item.imageUrl ? "manual" : "placeholder"),
+    imageStatus: item.imageStatus || (item.imageUrl ? "manual" : "placeholder"),
+    marketSource: item.marketSource || "Unknown",
+    marketStatus: item.marketStatus || (item.marketValue ? "manual" : "unknown"),
+    marketConfidenceLevel: item.marketConfidenceLevel || (item.marketValue ? "Manual" : "Unknown"),
+  };
+}
+
+function catalogKey(item = {}) {
+  const type = item.catalogType || "sealed";
+  const name = item.cardName || item.productName || item.name || "";
+  return String(`${type}|${item.id || item.externalCardId || item.externalProductId || ""}|${name}|${item.setName || ""}|${item.cardNumber || item.productType || ""}`)
+    .toLowerCase();
+}
+
+function mergeCatalogRows(rows = []) {
+  const byKey = new Map();
+  rows.forEach((item) => {
+    const key = catalogKey(item);
+    if (!byKey.has(key)) byKey.set(key, item);
+  });
+  return [...byKey.values()];
 }
 
 const STANDARD_RELEASES = [
@@ -185,6 +247,13 @@ function sealedProduct({ setName, series, releaseYear, type, productName }) {
     sku: "Unknown",
     packCount: packCountFor(type),
     imageUrl: "",
+    imageSmall: "",
+    imageLarge: "",
+    imageSource: "placeholder",
+    imageSourceUrl: "",
+    imageStatus: "placeholder",
+    imageLastUpdated: "Unknown",
+    imageNeedsReview: true,
     marketValue: 0,
     marketSource: "Manual",
     marketLastUpdated: "Unknown",
@@ -257,7 +326,21 @@ const individualCards = [
   { catalogType: "card", cardName: "Ditto - Peelable", pokemonName: "Ditto", setName: "Pokemon GO", series: "Sword & Shield", cardNumber: "053/078", rarity: "Rare", variant: "Peelable", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 3, marketValueLightPlayed: 2, marketValueGraded: 25, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
 ];
 
-export const SHARED_POKEMON_PRODUCTS = [...sealedProducts, ...individualCards].map((item) => {
+const generatedCatalogRows = [
+  ...importedSealedProducts.map(normalizeGeneratedSealedProduct),
+  ...importedCards.map(normalizeGeneratedCard),
+];
+
+export const CATALOG_IMPORT_STATUS = {
+  ...catalogImportStatus,
+  localSeedSets: Object.keys(SET_SEARCH_METADATA).length,
+  localSeedCards: individualCards.length,
+  localSeedSealedProducts: sealedProducts.length,
+  totalCards: individualCards.length + importedCards.length,
+  totalSealedProducts: sealedProducts.length + importedSealedProducts.length,
+};
+
+export const SHARED_POKEMON_PRODUCTS = mergeCatalogRows([...sealedProducts, ...individualCards, ...generatedCatalogRows]).map((item) => {
   const metadata = setMetadata(item.setName);
   return {
     ...item,
@@ -265,5 +348,13 @@ export const SHARED_POKEMON_PRODUCTS = [...sealedProducts, ...individualCards].m
     setAliases: item.setAliases || metadata.setAliases,
     era: item.era || item.series || "",
     releaseYear: item.releaseYear || "Unknown",
+    imageUrl: item.imageUrl || item.images?.large || item.images?.small || "",
+    imageSmall: item.imageSmall || item.images?.small || "",
+    imageLarge: item.imageLarge || item.images?.large || item.imageUrl || "",
+    imageSource: item.imageSource || (item.catalogType === "card" && (item.imageSmall || item.imageLarge || item.images?.small || item.images?.large) ? "pokemon_tcg_api" : item.imageUrl ? "manual" : "placeholder"),
+    imageSourceUrl: item.imageSourceUrl || "",
+    imageStatus: item.imageStatus || (item.catalogType === "card" && (item.imageSmall || item.imageLarge || item.images?.small || item.images?.large) ? "api" : item.imageUrl ? "manual" : "placeholder"),
+    imageLastUpdated: item.imageLastUpdated || item.lastUpdated || "Unknown",
+    imageNeedsReview: item.imageNeedsReview ?? !(item.imageUrl || item.imageSmall || item.imageLarge || item.images?.small || item.images?.large),
   };
 });

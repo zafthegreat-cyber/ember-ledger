@@ -18,6 +18,7 @@ import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/
 import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedStore, parseStoreCsv } from "../utils/storeImportUtils";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
 import { buildSuggestedRoute, confidenceLabel, explainRouteChoice, numericDistance } from "../utils/routeUtils";
+import { SUGGESTION_TYPES, submitSuggestion } from "../utils/suggestionReviewUtils";
 import { VIRGINIA_REGIONS } from "../data/storeGroups";
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_MOCK_PRODUCTS, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
@@ -350,16 +351,17 @@ const styles = {
     minHeight: "100vh",
     background:
       "linear-gradient(180deg, #fff7ed 0%, #fef3c7 45%, #f0fdfa 100%)",
-    padding: "12px",
+    padding: "10px",
     fontFamily:
       'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     color: "#0f172a",
   },
   shell: {
-    maxWidth: "1180px",
+    width: "min(100%, 920px)",
+    maxWidth: "920px",
     margin: "0 auto",
     display: "grid",
-    gap: "20px",
+    gap: "14px",
   },
   hero: {
     background: "linear-gradient(135deg, #2a2522 0%, #7c2d12 50%, #0f766e 100%)",
@@ -387,19 +389,21 @@ const styles = {
     marginTop: "20px",
   },
   statCard: {
-    background: "rgba(255,255,255,0.10)",
-    border: "1px solid rgba(255,255,255,0.16)",
-    borderRadius: "18px",
-    padding: "14px",
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "16px",
+    padding: "12px",
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
   },
   statLabel: {
     fontSize: "12px",
-    color: "rgba(255,255,255,0.72)",
+    color: "#64748b",
     marginBottom: "6px",
   },
   statValue: {
-    fontSize: "22px",
+    fontSize: "18px",
     fontWeight: 800,
+    color: "#0f172a",
   },
   mainGrid: {
     display: "grid",
@@ -413,8 +417,8 @@ const styles = {
   },
   card: {
     background: "#ffffff",
-    borderRadius: "18px",
-    padding: "16px",
+    borderRadius: "16px",
+    padding: "14px",
     boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
     border: "1px solid #e5e7eb",
   },
@@ -518,8 +522,8 @@ const styles = {
   },
   reportGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
-    gap: "14px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
+    gap: "12px",
   },
   calloutCard: {
     border: "1px solid #bae6fd",
@@ -528,13 +532,88 @@ const styles = {
     marginBottom: "12px",
     background: "linear-gradient(135deg, #f0f9ff 0%, #fff7ed 100%)",
   },
+  alertCard: {
+    border: "1px solid #e2e8f0",
+    borderRadius: "14px",
+    padding: "10px",
+    background: "#ffffff",
+    display: "grid",
+    gap: "6px",
+  },
+  toggleRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "14px",
+    padding: "12px 0",
+    borderBottom: "1px solid #f1f5f9",
+  },
+  switchButton: {
+    width: "48px",
+    minWidth: "48px",
+    height: "28px",
+    borderRadius: "999px",
+    border: "1px solid #cbd5e1",
+    padding: "3px",
+    background: "#e2e8f0",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+  },
+  switchButtonOn: {
+    background: "#0f766e",
+    borderColor: "#0f766e",
+    justifyContent: "flex-end",
+  },
+  switchKnob: {
+    width: "20px",
+    height: "20px",
+    borderRadius: "999px",
+    background: "#ffffff",
+    boxShadow: "0 1px 4px rgba(15, 23, 42, 0.22)",
+  },
   storeChoiceCard: {
     border: "1px solid #e5e7eb",
-    borderRadius: "18px",
-    padding: "14px",
+    borderRadius: "16px",
+    padding: "12px",
     background: "#fff",
-    marginBottom: "10px",
     cursor: "pointer",
+  },
+  storeRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: "10px",
+    alignItems: "center",
+  },
+  storeRowActions: {
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+  },
+  iconButton: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "999px",
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#0f172a",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  intelligenceRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    padding: "9px 0",
+    borderBottom: "1px solid #f1f5f9",
+  },
+  inlineFormRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr) minmax(110px, 0.7fr) auto",
+    gap: "10px",
+    alignItems: "center",
   },
   storeGroup: {
     border: "1px solid #e5e7eb",
@@ -589,10 +668,31 @@ const styles = {
   },
   pageHeader: {
     background: "#fff",
-    borderRadius: "18px",
-    padding: "14px",
+    borderRadius: "16px",
+    padding: "12px",
     border: "1px solid #e5e7eb",
     boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
+    display: "grid",
+    gap: "10px",
+  },
+  modalBackdrop: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 90,
+    display: "grid",
+    placeItems: "center",
+    padding: "16px",
+    background: "rgba(15, 23, 42, 0.46)",
+  },
+  modalCard: {
+    width: "min(100%, 460px)",
+    maxHeight: "88vh",
+    overflow: "auto",
+    background: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "18px",
+    padding: "16px",
+    boxShadow: "0 24px 60px rgba(15, 23, 42, 0.22)",
     display: "grid",
     gap: "12px",
   },
@@ -621,7 +721,48 @@ function Metric({ label, value }) {
   );
 }
 
-export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
+function isUsefulValue(value) {
+  if (value === null || value === undefined) return false;
+  const text = String(value).trim();
+  return Boolean(text) && !["unknown", "not listed", "n/a", "none"].includes(text.toLowerCase());
+}
+
+function formatStoreDate(value) {
+  if (!isUsefulValue(value)) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function isRecentlyUpdated(value) {
+  if (!isUsefulValue(value)) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const days = (Date.now() - date.getTime()) / 86400000;
+  return days >= 0 && days <= 14;
+}
+
+function getStoreStatusBadges(store, reportCount) {
+  const badges = [];
+  const confidence = store.pokemonConfidenceLevel || store.pokemonConfidence || "";
+  const updatedAt = store.lastUpdated || store.lastVerified || store.lastReportDate;
+  if (reportCount === 0) badges.push("No Reports");
+  if (isRecentlyUpdated(updatedAt)) badges.push("Recently Updated");
+  if (/high/i.test(String(confidence))) badges.push("High Confidence");
+  if (store.favorite) badges.push("Favorite");
+  if (!isUsefulValue(store.address) || !isUsefulValue(confidence)) badges.push("Needs Info");
+  return badges.slice(0, 4);
+}
+
+function getBestBuyDisplayStatus(item) {
+  const text = `${item.stockStatus || ""} ${item.onlineAvailability || ""} ${item.shippingAvailability || ""} ${item.pickupAvailability || ""}`.toLowerCase();
+  if (/out of stock|sold out|unavailable/.test(text)) return "Out of Stock";
+  if (/ship|shipping/.test(text)) return "Shipping Available";
+  if (/available|in stock|pickup|limited/.test(text)) return "Available";
+  return item.stockStatus || "Unknown";
+}
+
+export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compact = false, onLocationRequired = () => true }) {
   const [stores, setStores] = useState([]);
   const [scoutSubTab, setScoutSubTab] = useState("overview");
   const [selectedStoreId, setSelectedStoreId] = useState("");
@@ -634,6 +775,8 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
   const [storeQuickFilter, setStoreQuickFilter] = useState("default");
   const [storeSort, setStoreSort] = useState("nickname");
   const [storeSearch, setStoreSearch] = useState("");
+  const [storeDirectoryView, setStoreDirectoryView] = useState("landing");
+  const [storeMoreFiltersOpen, setStoreMoreFiltersOpen] = useState(false);
   const [storeImportText, setStoreImportText] = useState("");
   const [storeImportPreview, setStoreImportPreview] = useState([]);
   const [openStoreGroups, setOpenStoreGroups] = useState(() =>
@@ -729,6 +872,7 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
     reportTime: "",
     stockStatus: "in_stock",
     quantitySeen: "",
+    price: "",
     quantityRemaining: "",
     limitInfo: "",
     sourceName: "",
@@ -746,11 +890,17 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
     address: "",
     phone: "",
   });
+  const targetSubTabKey = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.tab;
+  const targetSubTabId = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.id;
 
   useEffect(() => {
-    const nextTab = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.tab;
-    if (nextTab) setScoutSubTab(nextTab);
-  }, [targetSubTab]);
+    if (targetSubTabKey) {
+      setScoutSubTab(targetSubTabKey);
+      if (targetSubTabKey === "stores") {
+        setStoreDirectoryView("landing");
+      }
+    }
+  }, [targetSubTabKey, targetSubTabId]);
 
   const [editStoreForm, setEditStoreForm] = useState({
     name: "",
@@ -762,7 +912,10 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
   });
 
   const [reportForm, setReportForm] = useState({
+    reportType: "Restock sighting",
     itemName: "",
+    quantitySeen: "",
+    price: "",
     note: "",
     reportDate: "",
     reportTime: "",
@@ -772,6 +925,18 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
     lng: null,
     imageUrl: "",
   });
+  const [reportInputMethod, setReportInputMethod] = useState("Manual");
+  const [missingStoreModalOpen, setMissingStoreModalOpen] = useState(false);
+  const [trackedProductsModalOpen, setTrackedProductsModalOpen] = useState(false);
+  const [missingStoreForm, setMissingStoreForm] = useState({
+    name: "",
+    retailer: "",
+    address: "",
+    city: "",
+    zip: "",
+    notes: "",
+  });
+  const [dismissedAlertIds, setDismissedAlertIds] = useState([]);
 
   const [itemForm, setItemForm] = useState({
     category: "Pokémon",
@@ -810,6 +975,7 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
       sourceType: item.sourceType || item.source_type || "manual",
       status: item.status || "Unknown",
     });
+    setTrackedProductsModalOpen(true);
   }
 
   function resetTipImport() {
@@ -822,6 +988,7 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
       reportTime: "",
       stockStatus: "in_stock",
       quantitySeen: "",
+      price: "",
       quantityRemaining: "",
       limitInfo: "",
       sourceName: "",
@@ -846,6 +1013,10 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
         ...current,
         screenshotName: file.name,
         screenshotPreview: String(reader.result || ""),
+      }));
+      setReportForm((current) => ({
+        ...current,
+        imageUrl: String(reader.result || ""),
       }));
     };
     reader.readAsDataURL(file);
@@ -992,7 +1163,10 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
     setEditingReportId(null);
     setReportPhoto(null);
     setReportForm({
+      reportType: "Restock sighting",
       itemName: "",
+      quantitySeen: "",
+      price: "",
       note: "",
       reportDate: "",
       reportTime: "",
@@ -1008,7 +1182,10 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
     setEditingReportId(report.id);
     setReportPhoto(null);
     setReportForm({
+      reportType: report.reportType || report.report_type || "Restock sighting",
       itemName: report.itemName || report.item_name || "",
+      quantitySeen: report.quantitySeen || report.quantity_seen || "",
+      price: report.price || "",
       note: report.note || "",
       reportDate: getReportDate(report),
       reportTime: getReportTime(report),
@@ -1025,6 +1202,21 @@ function saveLocalScout(next) {
   localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, ...next }));
 }
 
+function submitSharedDataSuggestion(input, setMessage) {
+  const result = submitSuggestion({
+    userId: LOCAL_SCOUT_USER_ID,
+    displayName: "Local Scout",
+    source: "scout",
+    ...input,
+  });
+  if (!result.ok && result.reason === "duplicate") {
+    setMessage?.("A similar suggestion is already under review.");
+    return null;
+  }
+  setMessage?.("Suggestion submitted for admin review.");
+  return result.suggestion;
+}
+
 function previewStatewideStoreImport() {
   const rows = parseStoreCsv(storeImportText).map((row) => normalizeImportedStore(row, { state: "VA", source: "manual-csv" }));
   setStoreImportPreview(rows);
@@ -1038,6 +1230,48 @@ function confirmStatewideStoreImport() {
   setStores(nextStores);
   setStoreImportPreview([]);
   setStoreImportText("");
+}
+
+function submitMissingStoreForReview(event) {
+  event.preventDefault();
+  const name = missingStoreForm.name.trim();
+  if (!name) {
+    setError("Add a store name before submitting it for review.");
+    return;
+  }
+  const now = new Date().toISOString();
+  const reviewStore = normalizeImportedStore({
+    id: makeScoutId("store-review"),
+    name,
+    nickname: name,
+    chain: missingStoreForm.retailer || "Needs Review",
+    retailer: missingStoreForm.retailer || "Needs Review",
+    storeGroup: missingStoreForm.retailer || "Other",
+    address: missingStoreForm.address,
+    city: missingStoreForm.city,
+    state: "VA",
+    zip: missingStoreForm.zip,
+    notes: missingStoreForm.notes,
+    source: "user-review",
+    sourceType: "manual",
+    lastUpdated: now,
+    lastVerified: "Needs review",
+    pokemonConfidence: "Unknown",
+    carriesPokemonLikely: false,
+    isActive: false,
+    userAdded: true,
+    reviewStatus: "pending",
+  });
+  const suggestion = submitSharedDataSuggestion({
+    suggestionType: SUGGESTION_TYPES.ADD_MISSING_STORE,
+    targetTable: "stores",
+    submittedData: reviewStore,
+    notes: missingStoreForm.notes || "Submitted from Scout missing store flow.",
+  }, setError);
+  if (!suggestion) return;
+  setMissingStoreForm({ name: "", retailer: "", address: "", city: "", zip: "", notes: "" });
+  setMissingStoreModalOpen(false);
+  setError("Missing store submitted for admin review. It will not appear publicly until approved.");
 }
 
 function saveTidepoolReports(nextReports) {
@@ -1413,6 +1647,7 @@ function toggleRouteGroup(group) {
 }
 
 function generateSuggestedRoute() {
+  if (!onLocationRequired("route-planner")) return;
   if (suggestedRouteStops.length === 0) {
     setError("No stores match those route filters.");
     return;
@@ -1575,9 +1810,8 @@ function openInForge(item) {
   async function handleCreateStore(e) {
   e.preventDefault();
   if (BETA_LOCAL_SCOUT) {
-    const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
     const newStore = normalizeStoreGroup({
-      id: makeScoutId("store"),
+      id: makeScoutId("store-review"),
       name: storeForm.name,
       chain: storeForm.chain,
       storeGroup: storeForm.storeGroup,
@@ -1590,12 +1824,18 @@ function openInForge(item) {
       truckDays: [],
       priority: false,
       createdAt: new Date().toISOString(),
+      reviewStatus: "pending",
+      isActive: false,
     });
-    const nextStores = [newStore, ...(saved.stores || [])];
-    saveLocalScout({ stores: nextStores });
-    setStores(nextStores);
-    setSelectedStoreId(newStore.id);
+    const suggestion = submitSharedDataSuggestion({
+      suggestionType: SUGGESTION_TYPES.ADD_MISSING_STORE,
+      targetTable: "stores",
+      submittedData: newStore,
+      notes: "Submitted from Scout store form.",
+    }, setError);
+    if (!suggestion) return;
     setStoreForm({ name: "", chain: "", storeGroup: "", city: "", address: "", phone: "" });
+    setError("Store submitted for admin review. It will not appear publicly until approved.");
     return;
   }
 
@@ -1675,17 +1915,24 @@ async function handleUpdateStore(e) {
     e.preventDefault();
     const activeStoreId = selectedStoreId || stores[0]?.id;
     if (!activeStoreId) return;
+    const submitMode = e.currentTarget?.dataset?.submitMode || e.nativeEvent?.submitter?.value || "public";
+    if (e.currentTarget?.dataset) e.currentTarget.dataset.submitMode = "";
+    const submitForReview = submitMode === "review";
 
     if (BETA_LOCAL_SCOUT) {
       const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
       const reportPayload = {
         storeId: activeStoreId,
+        reportType: reportForm.reportType,
         itemName: reportForm.itemName,
+        quantitySeen: reportForm.quantitySeen,
+        price: reportForm.price,
         note: reportForm.note,
         reportDate: reportForm.reportDate,
         reportTime: reportForm.reportTime,
         reportedBy: reportForm.reportedBy,
-        verified: reportForm.verified,
+        verified: submitForReview ? false : reportForm.verified,
+        verificationStatus: submitForReview ? "pending" : reportForm.verified ? "verified" : "unverified",
         lat: reportForm.lat,
         lng: reportForm.lng,
         imageUrl: reportForm.imageUrl,
@@ -1702,7 +1949,7 @@ async function handleUpdateStore(e) {
         setSelectedStoreId(activeStoreId);
         setReports(nextReports.filter((report) => getReportStoreId(report) === activeStoreId));
         resetReportForm();
-        setError("");
+        setError(submitForReview ? "Report sent for review." : "Report submitted.");
         return;
       }
 
@@ -1723,7 +1970,7 @@ async function handleUpdateStore(e) {
       setSelectedStoreId(activeStoreId);
       setReports(nextReports.filter((report) => getReportStoreId(report) === activeStoreId));
       resetReportForm();
-      setError("");
+      setError(submitForReview ? "Report sent for review." : "Report submitted.");
       return;
     }
 
@@ -1773,17 +2020,17 @@ async function handleUpdateStore(e) {
     const activeStoreId = selectedStoreId || stores[0]?.id;
 
     if (!activeStoreId) {
-      setError("Select or create a store before saving a screenshot tip.");
+      setError("Select or create a store before saving a screenshot.");
       return;
     }
 
     if (!tipImport.screenshotPreview) {
-      setError("Upload a screenshot before saving a screenshot tip.");
+      setError("Upload a screenshot before saving.");
       return;
     }
 
     if (!tipImport.productName && !tipImport.notes) {
-      setError("Add a product name or notes before saving a screenshot tip.");
+      setError("Add a product name or notes before saving a screenshot.");
       return;
     }
 
@@ -1793,7 +2040,7 @@ async function handleUpdateStore(e) {
     const newReport = {
       id: makeScoutId("report"),
       storeId: activeStoreId,
-      itemName: tipImport.productName || "Screenshot tip",
+      itemName: tipImport.productName || "Screenshot",
       productName: tipImport.productName || "",
       productCategory: tipImport.productCategory || "Pokemon",
       note: [
@@ -1807,7 +2054,7 @@ async function handleUpdateStore(e) {
       reportDate,
       reportTime: tipImport.reportTime,
       dayOfWeek: dayName(reportDate),
-      reportedBy: "Screenshot Tip Import",
+      reportedBy: "Screenshot",
       verified: tipImport.verified,
       reportType: "facebook_screenshot",
       report_type: "facebook_screenshot",
@@ -1863,6 +2110,33 @@ async function handleUpdateStore(e) {
     setError("");
   }
 
+  function applyScreenshotTipToReportForm() {
+    const noteParts = [
+      tipImport.notes,
+      tipImport.quantitySeen ? `Quantity seen: ${tipImport.quantitySeen}` : "",
+      tipImport.quantityRemaining ? `Quantity remaining: ${tipImport.quantityRemaining}` : "",
+      tipImport.limitInfo ? `Limit: ${tipImport.limitInfo}` : "",
+      tipImport.sourceName ? `Source: ${tipImport.sourceName}` : "",
+      tipImport.stockStatus ? `Status: ${tipImport.stockStatus}` : "",
+      tipImport.extractionConfidence ? `Confidence: ${tipImport.extractionConfidence}%` : "",
+    ].filter(Boolean);
+
+    setReportForm((current) => ({
+      ...current,
+      reportType: current.reportType || "Restock Sighting",
+      itemName: tipImport.productName || current.itemName,
+      quantitySeen: tipImport.quantitySeen || current.quantitySeen,
+      price: tipImport.price || current.price,
+      note: noteParts.join(" | ") || current.note,
+      reportDate: tipImport.reportDate || current.reportDate,
+      reportTime: tipImport.reportTime || current.reportTime,
+      reportedBy: tipImport.sourceName || current.reportedBy || "Screenshot",
+      verified: tipImport.verified,
+      imageUrl: tipImport.keepScreenshot ? tipImport.screenshotPreview || current.imageUrl : current.imageUrl,
+    }));
+    setError("Screenshot fields were copied into the report review form. Review/edit, then submit.");
+  }
+
   async function handleCreateItem(e) {
     e.preventDefault();
     const activeStoreId = selectedStoreId || stores[0]?.id;
@@ -1885,7 +2159,8 @@ async function handleUpdateStore(e) {
         setSelectedStoreId(activeStoreId);
         setItems(nextItems.filter((item) => item.storeId === activeStoreId));
         resetTrackedItemForm();
-        setError("");
+        setTrackedProductsModalOpen(false);
+        setError("Tracked product saved.");
         return;
       }
 
@@ -1899,7 +2174,8 @@ async function handleUpdateStore(e) {
       setSelectedStoreId(activeStoreId);
       setItems(nextItems.filter((item) => item.storeId === activeStoreId));
       resetTrackedItemForm();
-      setError("");
+      setTrackedProductsModalOpen(false);
+      setError("Product sighting added.");
       return;
     }
 
@@ -1910,6 +2186,7 @@ async function handleUpdateStore(e) {
         await createTrackedItem(activeStoreId, itemForm);
       }
       resetTrackedItemForm();
+      setTrackedProductsModalOpen(false);
       setSelectedStoreId(activeStoreId);
       await loadStoreDetails(activeStoreId);
     } catch (err) {
@@ -2006,6 +2283,41 @@ async function handleUpdateStore(e) {
     return ["All", ...chains.sort()];
   }, [stores]);
 
+  const retailerCards = useMemo(() => {
+    const preferredRetailers = [
+      "Walmart",
+      "Target",
+      "Best Buy",
+      "GameStop",
+      "Barnes & Noble",
+      "Five Below",
+      "Sam's Club",
+      "Costco",
+      "BJ's",
+      "Dollar General",
+      "Walgreens",
+      "CVS",
+      "Local Card Shops",
+    ];
+    const counts = stores.reduce((acc, store) => {
+      const chain = store.chain || store.retailer || getStoreGroup(store) || "Other";
+      const normalizedChain = /local card|comic|hobby|game shop/i.test(`${chain} ${store.storeGroup || ""}`) ? "Local Card Shops" : chain;
+      acc[normalizedChain] = (acc[normalizedChain] || 0) + 1;
+      return acc;
+    }, {});
+    const preferred = preferredRetailers
+      .map((retailer) => ({ retailer, count: counts[retailer] || 0 }))
+      .filter((entry) => entry.count > 0);
+    const moreCount = Object.entries(counts)
+      .filter(([retailer]) => !preferredRetailers.includes(retailer))
+      .reduce((sum, [, count]) => sum + count, 0);
+    return moreCount > 0 ? [...preferred, { retailer: "More", count: moreCount }] : preferred;
+  }, [stores]);
+
+  const nearbyFavoriteStores = useMemo(() => {
+    return sortStores(stores.filter((store) => store.favorite || store.distanceFromUser || store.distance || store.lastReportDate), "distance").slice(0, 3);
+  }, [stores]);
+
   const regionOptions = useMemo(() => {
     const regions = Array.from(new Set(stores.map((s) => s.region).filter(Boolean)));
     return ["All", ...regions.sort()];
@@ -2070,6 +2382,50 @@ async function handleUpdateStore(e) {
 
   function toggleStoreGroup(group) {
     setOpenStoreGroups((current) => ({ ...current, [group]: current[group] === false }));
+  }
+
+  function openRetailerPage(retailer) {
+    setSelectedChain(retailer === "More" ? "All" : retailer);
+    setSelectedStoreId("");
+    setStoreSearch("");
+    setSelectedCity("All");
+    setSelectedRegion("All");
+    setSelectedStoreType("All");
+    setSelectedCounty("All");
+    setSelectedConfidence("All");
+    setStoreQuickFilter(retailer === "More" ? "all" : "all");
+    setStoreDirectoryView("retailer");
+  }
+
+  function openStoreDetail(storeId) {
+    setSelectedStoreId(storeId);
+    setStoreDirectoryView("detail");
+  }
+
+  function backToStoresLanding() {
+    setSelectedStoreId("");
+    setSelectedChain("All");
+    setStoreSearch("");
+    setStoreDirectoryView("landing");
+  }
+
+  function toggleSelectedStoreFavorite() {
+    if (!selectedStoreId) return;
+    toggleStoreFavorite(selectedStoreId);
+  }
+
+  function toggleStoreFavorite(storeId) {
+    if (!storeId) return;
+    const nextStores = stores.map((store) =>
+      store.id === storeId
+        ? { ...store, favorite: !store.favorite, lastUpdated: new Date().toISOString() }
+        : store
+    );
+    if (BETA_LOCAL_SCOUT) {
+      saveLocalScout({ stores: nextStores });
+    }
+    setStores(nextStores);
+    setError("Favorite saved.");
   }
 
   const totals = useMemo(() => {
@@ -2314,6 +2670,13 @@ async function handleUpdateStore(e) {
     const deadStock = bestBuyStoreStock.filter((item) => Number(item.deadStockScore || 0) >= 40);
     return { inStock, pickup, needsReview, deadStock };
   }, [bestBuyStockResults, bestBuyStoreStock]);
+  const isBestBuyRetailerSelected = /best buy/i.test(selectedChain);
+  const bestBuyRetailerStores = useMemo(
+    () => sortStores(stores.filter((store) => /best buy/i.test(`${store.chain || ""} ${store.name || ""} ${store.retailer || ""}`)), storeSort),
+    [stores, storeSort]
+  );
+  const bestBuyLastChecked = bestBuyStockResults[0]?.lastChecked || bestBuyStockHistory[0]?.checkedAt || "Not checked in beta yet";
+  const bestBuySourceStatus = bestBuyStockResults[0]?.sourceStatus || bestBuyStockResults[0]?.sourceType || "mock/manual";
 
   const bestBuySourceReports = useMemo(
     () => enrichedTidepoolReports.filter((report) => /best_buy|Best Buy Source|Best Buy/i.test(`${report.sourceType} ${report.displayName} ${report.storeName}`)),
@@ -2326,8 +2689,27 @@ async function handleUpdateStore(e) {
       reportType: alert.type,
       storeName: "Best Buy",
       productName: alert.title || alert.message,
+      sourceType: alert.sourceStatus || alert.sourceType || "Best Buy",
+      createdAt: alert.createdAt || alert.lastChecked || "",
     }));
-    return [...bestBuyMapped, ...tidepoolAlerts].slice(0, 8);
+    const mappedTidepool = tidepoolAlerts.map((alert) => ({
+      ...alert,
+      sourceType: alert.sourceType || "Scout report",
+      createdAt: alert.createdAt || alert.reportTime || alert.lastUpdated || "",
+    }));
+    const grouped = new Map();
+    [...bestBuyMapped, ...mappedTidepool].forEach((alert) => {
+      const key = `${alert.reportType || "alert"}-${alert.storeName || ""}-${alert.productName || ""}`.toLowerCase();
+      if (!grouped.has(key)) {
+        grouped.set(key, { ...alert, duplicateCount: 1 });
+        return;
+      }
+      grouped.set(key, {
+        ...grouped.get(key),
+        duplicateCount: grouped.get(key).duplicateCount + 1,
+      });
+    });
+    return Array.from(grouped.values()).slice(0, 12);
   }, [bestBuyAlerts, tidepoolAlerts]);
 
   const scoutBadge =
@@ -2338,14 +2720,27 @@ async function handleUpdateStore(e) {
         : scoutProfile.verifiedReportCount >= 5
           ? "Community Helper"
           : scoutProfile.badgeLevel || "New Scout";
+  const visibleScoutAlerts = combinedScoutAlerts.filter((alert) => {
+    const id = alert.reportId || alert.alertId || `${alert.reportType}-${alert.productName}-${alert.createdAt}`;
+    return !dismissedAlertIds.includes(id);
+  });
+  const topActiveAlerts = visibleScoutAlerts.slice(0, 5);
+  const alertPreferenceRows = [
+    { key: "enabled", label: "Scout alerts", description: "Turn Scout alerting on or off." },
+    { key: "favoriteStoresOnly", label: "Favorite store alerts", description: "Prioritize reports from stores you care about." },
+    { key: "watchlistAlerts", label: "Watchlist product alerts", description: "Notify when watched products appear in reports." },
+    { key: "onlineDropAlerts", label: "Online drop alerts", description: "Include online drop and Best Buy source updates." },
+    { key: "verifiedOnly", label: "Verified-only alerts", description: "Only surface higher-confidence reports." },
+    { key: "quietHours", label: "Quiet hours", description: "Pause non-urgent alerts during quiet time later." },
+  ];
 
   return (
     <div style={styles.page}>
       <div style={styles.shell}>
-        <div style={styles.hero}>
-          <h1 style={styles.heroTitle}>Ember Scout</h1>
+        {!compact ? <div style={styles.hero}>
+          <h1 style={styles.heroTitle}>Scout</h1>
           <p style={styles.heroSub}>
-            Scout stores, track restocks, log sightings, and send purchases to The Forge.
+            Find stores, log sightings, and track restock intelligence.
           </p>
 
           <div style={styles.statsRow}>
@@ -2354,7 +2749,7 @@ async function handleUpdateStore(e) {
             <Metric label="Reports" value={totals.reports} />
             <Metric label="Tracked Items" value={totals.items} />
           </div>
-        </div>
+        </div> : null}
 
         {error ? (
           <div
@@ -2369,20 +2764,76 @@ async function handleUpdateStore(e) {
           </div>
         ) : null}
 
-        <div style={styles.pageHeader}>
+        {missingStoreModalOpen ? (
+          <div style={styles.modalBackdrop} role="dialog" aria-modal="true" aria-label="Submit Missing Store">
+            <form style={styles.modalCard} onSubmit={submitMissingStoreForReview}>
+              <div>
+                <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>Submit Missing Store</h2>
+                <p style={{ ...styles.empty, padding: 0 }}>Send a store to review. It will not become an official directory store until approved.</p>
+              </div>
+              <input style={styles.input} value={missingStoreForm.name} onChange={(event) => setMissingStoreForm((current) => ({ ...current, name: event.target.value }))} placeholder="Store name" />
+              <input style={styles.input} value={missingStoreForm.retailer} onChange={(event) => setMissingStoreForm((current) => ({ ...current, retailer: event.target.value }))} placeholder="Retailer" />
+              <input style={styles.input} value={missingStoreForm.address} onChange={(event) => setMissingStoreForm((current) => ({ ...current, address: event.target.value }))} placeholder="Address" />
+              <div style={styles.reportGrid}>
+                <input style={styles.input} value={missingStoreForm.city} onChange={(event) => setMissingStoreForm((current) => ({ ...current, city: event.target.value }))} placeholder="City" />
+                <input style={styles.input} value={missingStoreForm.zip} onChange={(event) => setMissingStoreForm((current) => ({ ...current, zip: event.target.value }))} placeholder="ZIP" />
+              </div>
+              <textarea style={styles.textarea} value={missingStoreForm.notes} onChange={(event) => setMissingStoreForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" />
+              <div style={styles.row}>
+                <button type="submit" style={styles.buttonPrimary}>Submit for Review</button>
+                <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(false)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        ) : null}
+
+        {trackedProductsModalOpen ? (
+          <div style={styles.modalBackdrop} role="dialog" aria-modal="true" aria-label="Add Product Sighting">
+            <form style={styles.modalCard} onSubmit={handleCreateItem}>
+              <div>
+                <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>{editingTrackedItemId ? "Edit Product Sighting" : "Add Product Sighting"}</h2>
+                <p style={{ ...styles.empty, padding: 0 }}>Track products seen at this store or add UPC/SKU details.</p>
+              </div>
+              <input style={styles.input} value={itemForm.category} onChange={(e) => setItemForm({ ...itemForm, category: e.target.value })} placeholder="Category" />
+              <input style={styles.input} value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} placeholder="Item name" />
+              <input style={styles.input} value={itemForm.retailerItemNumber} onChange={(e) => setItemForm({ ...itemForm, retailerItemNumber: e.target.value })} placeholder="Retailer item number" />
+              <div style={styles.reportGrid}>
+                <input style={styles.input} value={itemForm.sku} onChange={(e) => setItemForm({ ...itemForm, sku: e.target.value })} placeholder="SKU" />
+                <input style={styles.input} value={itemForm.upc} onChange={(e) => setItemForm({ ...itemForm, upc: e.target.value })} placeholder="UPC" />
+              </div>
+              <input style={styles.input} value={itemForm.productUrl} onChange={(e) => setItemForm({ ...itemForm, productUrl: e.target.value })} placeholder="Product URL" />
+              <select style={styles.input} value={itemForm.status} onChange={(e) => setItemForm({ ...itemForm, status: e.target.value })}>
+                <option value="Unknown">Unknown</option>
+                <option value="In Stock">In Stock</option>
+                <option value="Out of Stock">Out of Stock</option>
+              </select>
+              <div style={styles.row}>
+                <button type="submit" style={styles.buttonPrimary}>{editingTrackedItemId ? "Save Sighting" : "Add Product Sighting"}</button>
+                <button type="button" style={styles.buttonSoft} onClick={() => { resetTrackedItemForm(); setTrackedProductsModalOpen(false); }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        ) : null}
+
+        {!compact ? <div style={styles.pageHeader}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
             <div>
-              <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>Ember Scout Dashboard</h2>
-              <p style={{ ...styles.empty, padding: 0 }}>Stores, reports, routes, Tidepool, and alerts in focused views.</p>
+              <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>Scout Dashboard</h2>
+              <p style={{ ...styles.empty, padding: 0 }}>Stores, restock reports, Best Buy stock, routes, location, score, and alerts in focused views.</p>
             </div>
           </div>
           <div style={styles.row}>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>Add Report</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("stores")}>Stores</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>Submit Report</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("alerts")}>Alerts</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>My Reports</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("overview")}>Scout Score</button>
+          </div>
+          {false ? <div style={styles.row}>
             <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("route")}>Build Route</button>
             <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("stores")}>Add Store</button>
             <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("online")}>Online Drops</button>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("tidepool")}>View Tidepool</button>
-          </div>
+          </div> : null}
           <div style={styles.subTabs}>
             {[
               ["overview", "Overview"],
@@ -2390,7 +2841,6 @@ async function handleUpdateStore(e) {
               ["reports", "Reports"],
               ["route", "Route Planner"],
               ["online", "Online Drops"],
-              ["tidepool", "Tidepool"],
               ["alerts", "Alerts"],
             ].map(([key, label]) => (
               <button key={key} type="button" style={scoutSubTab === key ? styles.buttonPrimary : styles.buttonSoft} onClick={() => setScoutSubTab(key)}>
@@ -2398,7 +2848,7 @@ async function handleUpdateStore(e) {
               </button>
             ))}
           </div>
-        </div>
+        </div> : null}
 
         {scoutSubTab === "overview" ? (
           <>
@@ -2552,7 +3002,7 @@ async function handleUpdateStore(e) {
                 <div key={item.storeStockId} style={styles.listCard}>
                   <strong>{item.productName}</strong>
                   <p style={{ margin: "6px 0", color: "#475569" }}>Dead stock score: {item.deadStockScore} | Times seen: {item.timesSeen} | Times unavailable: {item.timesUnavailable}</p>
-                  <p style={styles.tiny}>Label means possible “Still Sitting,” not bad inventory. Confirm in store before acting.</p>
+                  <p style={styles.tiny}>Label means possible “Still Sitting,” not bad stock. Confirm in store before acting.</p>
                 </div>
               ))}
             </div>
@@ -2592,13 +3042,13 @@ async function handleUpdateStore(e) {
         {scoutSubTab === "tidepool" ? (
           <>
         <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>Tidepool</h2>
-          <p style={styles.empty}>Community-powered Scout reports, events, restocks, products, limits, deals, online drops, and store updates.</p>
+          <h2 style={styles.sectionTitle}>{compact ? "Tidepool Reports" : "Tidepool"}</h2>
+          <p style={styles.empty}>{compact ? "Community Scout report feed. Use the chips to filter the same feed." : "Community-powered Scout reports, events, restocks, products, limits, deals, online drops, and store updates."}</p>
           <div style={styles.statsRow}>
             <Metric label="Reports" value={tidepoolReports.length} />
-            <Metric label="Events" value={tidepoolEvents.length} />
-            <Metric label="Kid Events" value={tidepoolEvents.filter((event) => event.kidFriendly).length} />
-            <Metric label="Giveaways" value={tidepoolEvents.filter((event) => /giveaway|pack/i.test(`${event.eventType} ${event.eventTitle}`)).length} />
+            {!compact ? <Metric label="Events" value={tidepoolEvents.length} /> : null}
+            {!compact ? <Metric label="Kid Events" value={tidepoolEvents.filter((event) => event.kidFriendly).length} /> : null}
+            {!compact ? <Metric label="Giveaways" value={tidepoolEvents.filter((event) => /giveaway|pack/i.test(`${event.eventType} ${event.eventTitle}`)).length} /> : null}
           </div>
           <div style={styles.row}>
             {TIDEPOOL_FILTERS.map((filter) => (
@@ -2613,6 +3063,7 @@ async function handleUpdateStore(e) {
             ))}
           </div>
           <div style={{ marginTop: "16px", display: "grid", gap: "12px" }}>
+            {filteredTidepoolReports.length === 0 ? <p style={styles.empty}>No Tidepool reports match this filter yet.</p> : null}
             {filteredTidepoolReports.slice(0, tidepoolFilter === "Latest" ? 8 : 20).map((report) => (
               <div key={report.reportId} style={styles.listCard}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
@@ -2638,7 +3089,7 @@ async function handleUpdateStore(e) {
           </>
         ) : null}
 
-        {scoutSubTab === "tidepool" ? (
+        {scoutSubTab === "tidepool" && !compact ? (
           <div style={styles.reportGrid}>
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Events</h2>
@@ -2726,57 +3177,324 @@ async function handleUpdateStore(e) {
           </div>
         ) : null}
 
-        {scoutSubTab === "reports" || scoutSubTab === "alerts" ? (
+        {scoutSubTab === "reports" ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Submit Report</h2>
-            <form onSubmit={submitTidepoolReport} style={styles.formGrid}>
-              <input style={styles.input} value={tidepoolForm.displayName} onChange={(e) => updateTidepoolForm("displayName", e.target.value)} placeholder="Display name" />
-              <select style={styles.input} value={tidepoolForm.reportType} onChange={(e) => updateTidepoolForm("reportType", e.target.value)}>
-                {TIDEPOOL_REPORT_TYPES.map((type) => <option key={type}>{type}</option>)}
-              </select>
-              <input style={styles.input} value={tidepoolForm.productName} onChange={(e) => updateTidepoolForm("productName", e.target.value)} placeholder="Product/card name" />
-              <input style={styles.input} value={tidepoolForm.quantitySeen} onChange={(e) => updateTidepoolForm("quantitySeen", e.target.value)} placeholder="Quantity seen" />
-              <input style={styles.input} value={tidepoolForm.price} onChange={(e) => updateTidepoolForm("price", e.target.value)} placeholder="Price/deal seen" />
-              <input style={styles.input} value={tidepoolForm.purchaseLimit} onChange={(e) => updateTidepoolForm("purchaseLimit", e.target.value)} placeholder="Purchase limit" />
-              <input style={styles.input} value={tidepoolForm.photoUrl} onChange={(e) => updateTidepoolForm("photoUrl", e.target.value)} placeholder="Photo URL / local placeholder" />
-              <textarea style={styles.textarea} value={tidepoolForm.reportText} onChange={(e) => updateTidepoolForm("reportText", e.target.value)} placeholder="What did you see? Include store, time, quantity, and limits." />
-              <label style={{ ...styles.tiny, display: "flex", gap: "8px", alignItems: "center" }}>
-                <input type="checkbox" checked={tidepoolForm.anonymous} onChange={(e) => updateTidepoolForm("anonymous", e.target.checked)} />
-                Submit anonymously
-              </label>
-              <button type="submit" style={styles.buttonPrimary}>Submit to Tidepool</button>
-            </form>
-          </div>
-
-          <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Scout Alerts</h2>
-            <div style={styles.formGrid}>
-              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.enabled} onChange={(e) => updateAlertSetting("enabled", e.target.checked)} /> Alerts on</label>
-              <input style={styles.input} type="number" value={alertSettings.radiusMiles} onChange={(e) => updateAlertSetting("radiusMiles", e.target.value)} placeholder="Radius miles" />
-              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.favoriteStoresOnly} onChange={(e) => updateAlertSetting("favoriteStoresOnly", e.target.checked)} /> Favorite stores only</label>
-              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.watchlistAlerts} onChange={(e) => updateAlertSetting("watchlistAlerts", e.target.checked)} /> Watchlist product alerts</label>
-              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.onlineDropAlerts} onChange={(e) => updateAlertSetting("onlineDropAlerts", e.target.checked)} /> Online drop alerts</label>
-              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.verifiedOnly} onChange={(e) => updateAlertSetting("verifiedOnly", e.target.checked)} /> Verified-only alerts</label>
-              <label style={styles.tiny}><input type="checkbox" checked={alertSettings.quietHours} onChange={(e) => updateAlertSetting("quietHours", e.target.checked)} /> Quiet hours placeholder</label>
-            </div>
-            <h3 style={{ marginTop: "16px" }}>In-app Alerts</h3>
-            {combinedScoutAlerts.length === 0 ? <p style={styles.empty}>No matching alerts yet.</p> : combinedScoutAlerts.map((alert) => (
-              <div key={alert.reportId} style={styles.listCard}>
-                <strong>{alert.reportType}</strong>
-                <p style={{ margin: "6px 0", color: "#475569" }}>{alert.storeName} - {alert.productName || "No product"}</p>
-              </div>
-            ))}
-            <h3 style={{ marginTop: "16px" }}>Best Buy Alert Types</h3>
+            <h2 style={styles.sectionTitle}>Submit Store Report</h2>
+            <p style={styles.empty}>Share what you saw. Use review if you are unsure or missing details.</p>
             <div style={styles.row}>
-              {BEST_BUY_ALERT_TYPES.map((type) => <span key={type} style={styles.badge}>{type}</span>)}
+              {["Manual", "Screenshot", "Photo", "Link/Text"].map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  style={reportInputMethod === method ? styles.buttonPrimary : styles.buttonSoft}
+                  onClick={() => setReportInputMethod(method)}
+                >
+                  {method}
+                </button>
+              ))}
+            </div>
+            {reportInputMethod === "Screenshot" ? (
+              <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
+                <h3 style={{ marginTop: 0 }}>Step 4: Screenshot</h3>
+                <p style={styles.tiny}>
+                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting.
+                </p>
+                <div style={styles.formGrid}>
+                  <input type="file" accept="image/*" onChange={handleTipScreenshotUpload} />
+                  {tipImport.screenshotPreview ? (
+                    <div>
+                      <img src={tipImport.screenshotPreview} alt="Uploaded tip screenshot preview" style={styles.previewImage} />
+                      <p style={styles.tiny}>Preview: {tipImport.screenshotName}</p>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    style={styles.buttonSoft}
+                    onClick={() => setError("OCR/image extraction is coming later. For beta, review the screenshot and enter the fields manually.")}
+                  >
+                    Extract with AI Later
+                  </button>
+                  <input style={styles.input} value={tipImport.productName} onChange={(e) => updateTipImport("productName", e.target.value)} placeholder="Product name" />
+                  <input style={styles.input} value={tipImport.quantitySeen} onChange={(e) => updateTipImport("quantitySeen", e.target.value)} placeholder="Quantity seen" />
+                  <input style={styles.input} value={tipImport.price} onChange={(e) => updateTipImport("price", e.target.value)} placeholder="Price if visible" />
+                  <input style={styles.input} type="date" value={tipImport.reportDate} onChange={(e) => updateTipImport("reportDate", e.target.value)} />
+                  <input style={styles.input} type="time" value={tipImport.reportTime} onChange={(e) => updateTipImport("reportTime", e.target.value)} />
+                  <input style={styles.input} value={tipImport.sourceName} onChange={(e) => updateTipImport("sourceName", e.target.value)} placeholder="Source notes / group name" />
+                  <textarea style={styles.textarea} value={tipImport.notes} onChange={(e) => updateTipImport("notes", e.target.value)} placeholder="Notes from the screenshot" />
+                  <button type="button" style={styles.buttonPrimary} onClick={applyScreenshotTipToReportForm}>Copy to Report Review</button>
+                  <button type="button" style={styles.buttonSoft} onClick={resetTipImport}>Clear Screenshot</button>
+                </div>
+              </div>
+            ) : null}
+            {reportInputMethod === "Photo" ? (
+              <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
+                <h3 style={{ marginTop: 0 }}>Step 4: Photo</h3>
+                <p style={styles.tiny}>Photo upload is a beta placeholder. Add a photo URL in Proof / More Details for now.</p>
+              </div>
+            ) : null}
+            {reportInputMethod === "Link/Text" ? (
+              <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
+                <h3 style={{ marginTop: 0 }}>Step 4: Link/Text</h3>
+                <p style={styles.tiny}>Paste notes or a source link in the same report form. Automatic link reading comes later.</p>
+              </div>
+            ) : null}
+            <form onSubmit={handleCreateReport} style={styles.formGrid}>
+              <h3 style={{ margin: "8px 0 0" }}>Step 1: What type of report?</h3>
+              <select
+                style={styles.input}
+                value={reportForm.reportType}
+                onChange={(e) => setReportForm((current) => ({ ...current, reportType: e.target.value }))}
+              >
+                <option>Restock sighting</option>
+                <option>Empty shelf</option>
+                <option>Price/limit info</option>
+                <option>Online drop</option>
+                <option>Event/community tip</option>
+                <option>Other</option>
+              </select>
+              <h3 style={{ margin: "8px 0 0" }}>Step 2: Where?</h3>
+              <select
+                style={styles.input}
+                value={selectedStoreId}
+                onChange={(e) => setSelectedStoreId(e.target.value)}
+              >
+                <option value="">Select store or submit for review</option>
+                {stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.nickname || store.name} - {store.city || "No city"}
+                  </option>
+                ))}
+              </select>
+              <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Suggest missing store</button>
+              <h3 style={{ margin: "8px 0 0" }}>Step 3: What did you see?</h3>
+              <input
+                style={styles.input}
+                value={reportForm.itemName}
+                onChange={(e) => setReportForm((current) => ({ ...current, itemName: e.target.value }))}
+                placeholder="Item name"
+              />
+              <input
+                style={styles.input}
+                value={reportForm.quantitySeen}
+                onChange={(e) => setReportForm((current) => ({ ...current, quantitySeen: e.target.value }))}
+                placeholder="Quantity"
+              />
+              <input
+                style={styles.input}
+                value={reportForm.price}
+                onChange={(e) => setReportForm((current) => ({ ...current, price: e.target.value }))}
+                placeholder="Price"
+              />
+              <textarea
+                style={styles.textarea}
+                value={reportForm.note}
+                onChange={(e) => setReportForm((current) => ({ ...current, note: e.target.value }))}
+                placeholder="What did you see?"
+              />
+              <h3 style={{ margin: "8px 0 0" }}>Date / time</h3>
+              <input
+                style={styles.input}
+                type="date"
+                value={reportForm.reportDate}
+                onChange={(e) => setReportForm((current) => ({ ...current, reportDate: e.target.value }))}
+              />
+              <input
+                style={styles.input}
+                type="time"
+                value={reportForm.reportTime}
+                onChange={(e) => setReportForm((current) => ({ ...current, reportTime: e.target.value }))}
+              />
+              <details>
+                <summary>Step 4: Proof / More Details</summary>
+                <div style={{ ...styles.formGrid, marginTop: "12px" }}>
+                  <input
+                    style={styles.input}
+                    value={reportForm.reportedBy}
+                    onChange={(e) => setReportForm((current) => ({ ...current, reportedBy: e.target.value }))}
+                    placeholder="Reported by"
+                  />
+                  <input
+                    style={styles.input}
+                    value={reportForm.imageUrl}
+                    onChange={(e) => setReportForm((current) => ({ ...current, imageUrl: e.target.value }))}
+                    placeholder="Photo, screenshot, or link/text proof"
+                  />
+                  <label style={styles.tiny}>
+                    <input
+                      type="checkbox"
+                      checked={reportForm.verified}
+                      onChange={(e) => setReportForm((current) => ({ ...current, verified: e.target.checked }))}
+                    />{" "}
+                    Mark as verified by me
+                  </label>
+                </div>
+              </details>
+              <div style={styles.row}>
+                <button type="submit" value="public" style={styles.buttonPrimary}>{editingReportId ? "Save Report" : "Submit Public Report"}</button>
+                <button type="button" style={styles.buttonSoft} onClick={(event) => {
+                  if (event.currentTarget.form) {
+                    event.currentTarget.form.dataset.submitMode = "review";
+                    event.currentTarget.form.requestSubmit();
+                  }
+                }}>Submit for Review</button>
+                <button type="button" style={styles.buttonSoft} onClick={resetReportForm}>Cancel / Clear</button>
+              </div>
+              <p style={styles.tiny}>Use review if you are unsure or missing details.</p>
+            </form>
+            <h2 style={{ ...styles.sectionTitle, marginTop: "24px" }}>Recent Store Reports</h2>
+            {editingReportId ? (
+              <form onSubmit={handleCreateReport} style={{ ...styles.formGrid, marginTop: "14px" }}>
+                <h2 style={styles.sectionTitle}>Edit Report</h2>
+                <input
+                  style={styles.input}
+                  value={reportForm.itemName}
+                  onChange={(e) => setReportForm({ ...reportForm, itemName: e.target.value })}
+                  placeholder="Item name"
+                />
+                <textarea
+                  style={styles.textarea}
+                  value={reportForm.note}
+                  onChange={(e) => setReportForm({ ...reportForm, note: e.target.value })}
+                  placeholder="What did you see?"
+                />
+                <input
+                  style={styles.input}
+                  type="date"
+                  value={reportForm.reportDate}
+                  onChange={(e) => setReportForm({ ...reportForm, reportDate: e.target.value })}
+                />
+                <input
+                  style={styles.input}
+                  type="time"
+                  value={reportForm.reportTime}
+                  onChange={(e) => setReportForm({ ...reportForm, reportTime: e.target.value })}
+                />
+                <button type="submit" style={styles.buttonPrimary}>Save Report</button>
+                <button type="button" style={styles.buttonSoft} onClick={resetReportForm}>Cancel Edit</button>
+              </form>
+            ) : null}
+            {reports.length === 0 ? (
+              <div style={styles.calloutCard}>
+                <strong>No reports yet for this store.</strong>
+                <p style={{ margin: "6px 0 0", color: "#475569" }}>Be the first to add a sighting, empty shelf update, price, or limit.</p>
+              </div>
+            ) : (
+              reports.map((report) => (
+                <div key={report.id} className="scout-report-card" style={styles.listCard}>
+                  <strong>{report.item_name || report.itemName}</strong>
+                  <p style={{ margin: "8px 0", color: "#334155" }}>{report.note}</p>
+                  <p style={styles.tiny}>
+                    {report.report_date || report.reportDate}{" "}
+                    {report.report_time || report.reportTime}
+                  </p>
+                  <p style={styles.tiny}>
+                    {report.verified ? "Verified Scout Tip" : "Unverified Scout Tip"}
+                    {(report.reportType || report.report_type) ? ` | ${report.reportType || report.report_type}` : ""}
+                  </p>
+                  <OverflowMenu
+                    onEdit={() => startEditingReport(report)}
+                    onDelete={() => handleDeleteReport(report.id)}
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        ) : null}
+
+        {scoutSubTab === "alerts" ? (
+        <div style={styles.reportGrid}>
+          <div style={styles.card}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "start" }}>
+              <div>
+                <h2 style={styles.sectionTitle}>Alerts</h2>
+                <p style={{ ...styles.empty, padding: 0 }}>Important Scout, store, watchlist, and Best Buy updates.</p>
+              </div>
+              <span style={styles.badge}>{visibleScoutAlerts.length} active</span>
+            </div>
+
+            <div style={{ ...styles.card, boxShadow: "none", marginTop: "14px", padding: "14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+                <h3 style={{ margin: 0 }}>Active Alerts</h3>
+                {visibleScoutAlerts.length > topActiveAlerts.length ? <button type="button" style={styles.buttonSoft} onClick={() => setError("Full alert history view is coming later. Showing the top active alerts for beta.")}>View all alerts</button> : null}
+              </div>
+              <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
+                {topActiveAlerts.length === 0 ? <p style={styles.empty}>No active alerts yet. Favorite stores, add watchlist items, or submit reports to make Scout smarter.</p> : null}
+                {topActiveAlerts.map((alert) => {
+                  const alertId = alert.reportId || alert.alertId || `${alert.reportType}-${alert.productName}-${alert.createdAt}`;
+                  const sourceBadge = /mock/i.test(`${alert.sourceType}`) ? "Mock" : /best buy/i.test(`${alert.sourceType} ${alert.storeName}`) ? "Online" : "Scout Report";
+                  const verifyBadge = alert.verified || alert.verificationStatus === "verified" ? "Verified" : alert.verificationStatus === "pending" ? "Needs Review" : "Unverified";
+                  return (
+                  <div key={alertId} style={styles.alertCard}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                      <strong>{alert.reportType || "Scout alert"}</strong>
+                      <div style={styles.row}>
+                        <span style={styles.badge}>{sourceBadge}</span>
+                        <span style={styles.badge}>{verifyBadge}</span>
+                      </div>
+                    </div>
+                    <p style={{ margin: 0, color: "#475569" }}>
+                      {alert.storeName || "Scout"} {alert.productName ? `- ${alert.productName}` : ""}
+                      {alert.duplicateCount > 1 ? ` (${alert.duplicateCount} similar)` : ""}
+                    </p>
+                    <p style={styles.tiny}>Last updated: {alert.createdAt || "Local beta"}</p>
+                    <div style={styles.row}>
+                      <button type="button" style={styles.buttonSoft} onClick={() => setError("Alert detail view is coming later. Use Scout reports or Stores for details now.")}>View</button>
+                      <button type="button" style={styles.buttonSoft} onClick={() => {
+                        setDismissedAlertIds((current) => [...new Set([...current, alertId])]);
+                        setError("Alert dismissed.");
+                      }}>Dismiss</button>
+                    </div>
+                  </div>
+                );})}
+              </div>
+            </div>
+
+            <details style={{ ...styles.card, boxShadow: "none", marginTop: "14px", padding: "14px" }}>
+              <summary style={{ cursor: "pointer", fontWeight: 800 }}>Alert Preferences</summary>
+              <div style={{ marginTop: "10px" }}>
+                {alertPreferenceRows.map((row) => {
+                  const active = Boolean(alertSettings[row.key]);
+                  return (
+                    <div key={row.key} style={styles.toggleRow}>
+                      <span>
+                        <strong>{row.label}</strong>
+                        <p style={{ ...styles.tiny, margin: "4px 0 0 0" }}>{row.description}</p>
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={active}
+                        aria-label={row.label}
+                        style={{ ...styles.switchButton, ...(active ? styles.switchButtonOn : {}) }}
+                        onClick={() => updateAlertSetting(row.key, !active)}
+                      >
+                        <span style={styles.switchKnob} />
+                      </button>
+                    </div>
+                  );
+                })}
+                <details style={{ marginTop: "12px" }}>
+                  <summary style={{ cursor: "pointer", fontWeight: 800 }}>Best Buy Alert Types</summary>
+                  <div style={styles.row}>
+                    {BEST_BUY_ALERT_TYPES.map((type) => <span key={type} style={styles.badge}>{type}</span>)}
+                  </div>
+                </details>
+              </div>
+            </details>
+
+            <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
+              <strong>Advanced Alerts</strong>
+              <p style={{ margin: "6px 0 0 0", color: "#475569" }}>Advanced Alerts are part of Plus. Upgrade to unlock advanced scouting, alerts, seller tools, mileage, expenses, and deeper deal analysis.</p>
             </div>
           </div>
         </div>
 
         ) : null}
 
-        {scoutSubTab === "tidepool" ? (
+        {scoutSubTab === "tidepool" && !compact ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Report Guidelines</h2>
@@ -2806,7 +3524,7 @@ async function handleUpdateStore(e) {
 
         ) : null}
 
-        {scoutSubTab === "overview" || scoutSubTab === "reports" ? (
+        {scoutSubTab === "overview" || (!compact && scoutSubTab === "reports") ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Daily Scout Report</h2>
@@ -3033,7 +3751,396 @@ async function handleUpdateStore(e) {
 
         ) : null}
 
-        {scoutSubTab === "stores" || scoutSubTab === "reports" ? (
+        {scoutSubTab === "stores" ? (
+          <div style={styles.col}>
+            {storeDirectoryView === "landing" ? (
+              <>
+                <div style={styles.card}>
+                  <h2 style={styles.sectionTitle}>Stores</h2>
+                  <p style={styles.empty}>Search nearby stores, pick a retailer, then open the exact location you want.</p>
+                  <input
+                    style={styles.input}
+                    value={storeSearch}
+                    onChange={(e) => setStoreSearch(e.target.value)}
+                    placeholder="Search store, city, ZIP, nickname, or address"
+                  />
+                  <div style={styles.row}>
+                    <button type="button" style={storeQuickFilter === "default" ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {
+                      if (!onLocationRequired("nearby-stores")) return;
+                      setStoreQuickFilter("default");
+                      setSelectedChain("All");
+                      setStoreDirectoryView("retailer");
+                    }}>Nearby</button>
+                    <button type="button" style={storeQuickFilter === "favorites" ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {
+                      setStoreQuickFilter("favorites");
+                      setSelectedChain("All");
+                      setStoreDirectoryView("retailer");
+                    }}>Favorites</button>
+                    <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Submit Missing Store</button>
+                  </div>
+                </div>
+
+                {nearbyFavoriteStores.length ? (
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Nearby / Favorite Stores</h2>
+                    <div style={{ display: "grid", gap: "10px" }}>
+                      {nearbyFavoriteStores.map((store) => {
+                        const storeReports = reportsByStore[store.id] || [];
+                        const statusBadges = getStoreStatusBadges(store, storeReports.length);
+                        return (
+                          <div key={store.id} className="scout-store-card" style={styles.storeChoiceCard} onClick={() => openStoreDetail(store.id)}>
+                            <div className="scout-store-row" style={styles.storeRow}>
+                              <div>
+                                <strong>{store.nickname || store.name}</strong>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.city || "Unknown area"} | {store.address || "No address"}</p>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{storeReports.length} report{storeReports.length === 1 ? "" : "s"} | Last updated: {formatStoreDate(store.lastUpdated || store.lastVerified || store.lastReportDate)}</p>
+                                <div style={{ ...styles.row, marginTop: "8px" }}>
+                                  {statusBadges.map((badge) => <span key={badge} style={styles.badge}>{badge}</span>)}
+                                </div>
+                              </div>
+                              <div style={styles.storeRowActions}>
+                                <button type="button" style={styles.iconButton} aria-label={store.favorite ? "Unfavorite store" : "Favorite store"} onClick={(event) => { event.stopPropagation(); toggleStoreFavorite(store.id); }}>
+                                  {store.favorite ? "Fav" : "+"}
+                                </button>
+                                <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreDetail(store.id); }}>Open Store</button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div style={styles.card}>
+                  <h2 style={styles.sectionTitle}>Retailers</h2>
+                  <div className="scout-retailer-grid">
+                    {retailerCards.map(({ retailer, count }) => (
+                      <button key={retailer} type="button" className="scout-retailer-card" onClick={() => openRetailerPage(retailer)}>
+                        <strong>{retailer}</strong>
+                        <span>{count} store{count === 1 ? "" : "s"}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {storeDirectoryView === "retailer" ? (
+              <>
+                <div style={styles.card}>
+                  <p style={styles.tiny}>Scout &gt; Stores{selectedChain !== "All" ? ` > ${selectedChain}` : ""}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "start" }}>
+                    <div>
+                      <h2 style={styles.sectionTitle}>{selectedChain === "All" ? "Store Locations" : `${selectedChain} Locations`}</h2>
+                      <p style={styles.empty}>Use quick filters, then open one exact store for reports, sightings, and history.</p>
+                    </div>
+                    <button type="button" style={styles.buttonSoft} onClick={backToStoresLanding}>Back to Retailers</button>
+                  </div>
+                  <div style={styles.formGrid}>
+                    <input
+                      style={styles.input}
+                      value={storeSearch}
+                      onChange={(e) => setStoreSearch(e.target.value)}
+                      placeholder={`Search ${selectedChain === "All" ? "stores" : selectedChain} by city, ZIP, nickname, or address`}
+                    />
+                    <div style={styles.row}>
+                      {[
+                        ["all", "All"],
+                        ["favorites", "Favorites"],
+                        ["default", "Nearby"],
+                        ["recent", "Recently Updated"],
+                        ["highConfidence", "High Confidence"],
+                      ].map(([key, label]) => (
+                        <button key={key} type="button" style={storeQuickFilter === key ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {
+                          if (key === "default" && !onLocationRequired("nearby-stores")) return;
+                          setStoreQuickFilter(key);
+                        }}>{label}</button>
+                      ))}
+                      <button type="button" style={styles.buttonSoft} onClick={() => setStoreMoreFiltersOpen((current) => !current)}>More Filters</button>
+                    </div>
+                    {storeMoreFiltersOpen ? (
+                      <div style={styles.formGrid}>
+                        <select style={styles.input} value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
+                          {cityOptions.map((city) => <option key={city} value={city}>{city === "All" ? "All cities" : city}</option>)}
+                        </select>
+                        <select style={styles.input} value={selectedRegion} onChange={(e) => setSelectedRegion(e.target.value)}>
+                          {regionOptions.map((region) => <option key={region} value={region}>{region === "All" ? "All regions" : region}</option>)}
+                        </select>
+                        <select style={styles.input} value={storeSort} onChange={(e) => {
+                          if (e.target.value === "distance" && !onLocationRequired("store-distance-sort")) return;
+                          setStoreSort(e.target.value);
+                        }}>
+                          <option value="nickname">Sort by nickname</option>
+                          <option value="city">Sort by city</option>
+                          <option value="distance">Sort by distance</option>
+                          <option value="lastReport">Sort by last report</option>
+                          <option value="restockConfidence">Sort by restock confidence</option>
+                          <option value="tidepoolScore">Sort by Tidepool score</option>
+                        </select>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                {isBestBuyRetailerSelected ? (
+                  <div style={styles.card}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "start" }}>
+                      <div>
+                        <h2 style={styles.sectionTitle}>Best Buy Stock</h2>
+                        <p style={{ ...styles.empty, paddingTop: 0 }}>Check retailer-level stock before selecting a specific Best Buy store.</p>
+                      </div>
+                      <span style={styles.badge}>{/mock/i.test(String(bestBuySourceStatus)) ? "Mock Data" : `Source: ${bestBuySourceStatus}`}</span>
+                    </div>
+                    <p style={styles.tiny}>Last checked: {bestBuyLastChecked}</p>
+                    <div style={styles.statsRow}>
+                      <Metric label="Tracked SKUs" value={bestBuyStockResults.length || BEST_BUY_MOCK_PRODUCTS.length} />
+                      <Metric label="Available items" value={bestBuySummary.inStock.length || bestBuySummary.pickup.length} />
+                      <Metric label="Watchlist matches" value={bestBuyStockResults.length} />
+                      <Metric label="Active alerts" value={bestBuyAlerts.length} />
+                    </div>
+                    <div className="best-buy-stock-form" style={styles.inlineFormRow}>
+                      <input style={styles.input} value={bestBuyForm.query} onChange={(e) => setBestBuyForm((current) => ({ ...current, query: e.target.value }))} placeholder="Search term or product name" />
+                      <input style={styles.input} value={bestBuyForm.sku} onChange={(e) => setBestBuyForm((current) => ({ ...current, sku: e.target.value }))} placeholder="Best Buy SKU" />
+                      <input style={styles.input} value={bestBuyForm.zip} onChange={(e) => setBestBuyForm((current) => ({ ...current, zip: e.target.value }))} placeholder="ZIP code" />
+                      <button type="button" style={styles.buttonPrimary} onClick={() => syncBestBuyStock("search")}>Check Stock</button>
+                    </div>
+                    <div style={styles.row}>
+                      <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                        suggestionType: SUGGESTION_TYPES.ADD_BEST_BUY_SKU,
+                        targetTable: "retailer_products",
+                        submittedData: { retailer: "Best Buy", bestBuySku: bestBuyForm.sku, productName: bestBuyForm.query, zipChecked: bestBuyForm.zip },
+                        notes: "Best Buy SKU/watchlist suggestion from retailer stock layer.",
+                      }, setError)}>Suggest Best Buy SKU</button>
+                      <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alert saved as a beta placeholder. Real alerts need backend/push later.")}>Create Alert</button>
+                    </div>
+                    {bestBuyMessage ? <p style={styles.tiny}>{bestBuyMessage}</p> : null}
+                    {/mock/i.test(String(bestBuySourceStatus)) ? (
+                      <p style={styles.tiny}>Live Best Buy lookup is not connected yet. These results are mock examples for testing the Scout flow.</p>
+                    ) : null}
+                    <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
+                      {bestBuyStockResults.slice(0, 3).map((item) => {
+                        const displayStatus = getBestBuyDisplayStatus(item);
+                        return (
+                          <div key={`${item.bestBuySku}-${item.storeId || item.zipChecked || item.productName}`} style={styles.listCard}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "start" }}>
+                              <div>
+                                <strong>{item.productName}</strong>
+                                <p style={styles.tiny}>Best Buy SKU: {item.bestBuySku || "Unknown"}</p>
+                              </div>
+                              <div style={styles.row}>
+                                <span style={styles.badge}>{displayStatus}</span>
+                                <span style={styles.badge}>{/mock/i.test(String(item.sourceStatus || item.sourceType || bestBuySourceStatus)) ? "Mock Data" : item.sourceStatus || item.sourceType || "Unknown"}</span>
+                              </div>
+                            </div>
+                            <div style={styles.row}>
+                              <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alert saved as a beta placeholder. Real alerts need backend/push later.")}>Create Alert</button>
+                              <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                                suggestionType: SUGGESTION_TYPES.ADD_BEST_BUY_SKU,
+                                targetTable: "retailer_products",
+                                submittedData: item,
+                                notes: "Best Buy SKU submitted for shared tracker review.",
+                              }, setError)}>Suggest SKU</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Refresh/check stock to create mock/cached beta rows.</p> : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div style={styles.card}>
+                  <h2 style={styles.sectionTitle}>Store List</h2>
+                  {loading ? (
+                    <p style={styles.empty}>Loading stores...</p>
+                  ) : filteredStores.length === 0 ? (
+                    <p style={styles.empty}>No stores match those filters.</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: "10px" }}>
+                      {filteredStores.map((store) => {
+                        const storeReports = reportsByStore[store.id] || [];
+                        const statusBadges = getStoreStatusBadges(store, storeReports.length);
+                        return (
+                          <div key={store.id} className="scout-store-card compact-store-card" style={styles.storeChoiceCard} onClick={() => openStoreDetail(store.id)}>
+                            <div className="scout-store-row" style={styles.storeRow}>
+                              <div>
+                                <strong>{store.nickname || store.name}</strong>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.city || "Unknown area"} | {store.address || "No address"}</p>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{storeReports.length} report{storeReports.length === 1 ? "" : "s"} | Last updated: {formatStoreDate(store.lastUpdated || store.lastVerified || store.lastReportDate)}</p>
+                                <div style={{ ...styles.row, marginTop: "8px" }}>
+                                  {statusBadges.map((badge) => <span key={badge} style={styles.badge}>{badge}</span>)}
+                                </div>
+                              </div>
+                              <div style={styles.storeRowActions}>
+                                <button type="button" style={styles.iconButton} aria-label={store.favorite ? "Unfavorite store" : "Favorite store"} onClick={(event) => { event.stopPropagation(); toggleStoreFavorite(store.id); }}>
+                                  {store.favorite ? "Fav" : "+"}
+                                </button>
+                                <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreDetail(store.id); }}>Open Store</button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : null}
+
+            {storeDirectoryView === "detail" && selectedStore ? (
+              <>
+                <div style={styles.card}>
+                  <p style={styles.tiny}>Scout &gt; Stores &gt; {selectedStore.chain || getStoreGroup(selectedStore)} &gt; {selectedStore.nickname || selectedStore.name}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "12px", flexWrap: "wrap" }}>
+                    <div>
+                      <h2 style={{ ...styles.sectionTitle, marginBottom: "6px" }}>{selectedStore.nickname || selectedStore.name}</h2>
+                      {selectedStore.nickname ? <p style={{ margin: "0 0 6px 0", color: "#475569" }}>{selectedStore.name}</p> : null}
+                      <p style={{ margin: "0 0 6px 0", color: "#334155", fontWeight: 800 }}>{selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)} | {selectedStore.city || "Unknown area"}</p>
+                      <p style={{ margin: 0, color: "#475569" }}>{selectedStore.address || "No address"}</p>
+                      <p style={{ margin: "4px 0 0 0", color: "#475569" }}>{selectedStore.city || "No city"} {selectedStore.phone ? `| ${selectedStore.phone}` : ""}</p>
+                    </div>
+                    <span style={styles.badge}>{selectedStore.favorite ? "Favorite" : "Shared directory store"}</span>
+                  </div>
+                  <div style={styles.statsRow}>
+                    <Metric label="Restock likelihood" value={selectedStore.restockConfidence || (selectedStore.carriesPokemon || selectedStore.carriesPokemonLikely || selectedStore.carriesTCG ? "Likely" : "Unknown")} />
+                    <Metric label="Confidence" value={selectedStore.pokemonConfidenceLevel || selectedStore.pokemonConfidence || "Unknown"} />
+                    <Metric label="Last restock" value={selectedStore.lastRestock || selectedStore.lastReportedStockDate || selectedStore.lastReportDate || reports[0]?.reportDate || "Unknown"} />
+                    <Metric label="Purchase limits" value={selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"} />
+                  </div>
+                  <div style={styles.row}>
+                    <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Submit Report</button>
+                    <button type="button" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite ? "Unfavorite" : "Favorite"}</button>
+                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
+                      targetTable: "stores",
+                      targetRecordId: selectedStore.id,
+                      submittedData: { ...selectedStore, needsReview: true },
+                      currentDataSnapshot: selectedStore,
+                      notes: "Correction requested from Store Detail.",
+                    }, setError)}>Suggest Correction</button>
+                    {selectedStore.address ? (
+                      <a style={styles.buttonSoft} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedStore.name} ${selectedStore.address} ${selectedStore.city || ""} ${selectedStore.state || ""}`)}`} target="_blank" rel="noreferrer">Open Directions</a>
+                    ) : null}
+                    {selectedStore.phone ? <a style={styles.buttonSoft} href={`tel:${selectedStore.phone}`}>Call Store</a> : null}
+                    <button type="button" style={styles.buttonSoft} onClick={() => {
+                      setSelectedStoreId("");
+                      setStoreDirectoryView("retailer");
+                    }}>Back to {selectedChain === "All" ? "Stores" : selectedChain}</button>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "16px" }}>
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Recent Reports</h2>
+                    {reports.length === 0 ? (
+                      <div style={styles.calloutCard}>
+                        <p style={{ ...styles.empty, padding: 0 }}>No store reports yet. Submit a report to help improve Scout predictions.</p>
+                        <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Submit First Report</button>
+                      </div>
+                    ) : (
+                      reports.slice(0, 6).map((report) => (
+                        <div key={report.id} className="scout-report-card" style={styles.listCard}>
+                          <strong>{report.item_name || report.itemName}</strong>
+                          <p style={{ margin: "8px 0", color: "#334155" }}>{report.note}</p>
+                          <p style={styles.tiny}>{report.report_date || report.reportDate} {report.report_time || report.reportTime} | {report.verified ? "Verified" : "Needs Review"}</p>
+                          <OverflowMenu onEdit={() => startEditingReport(report)} onDelete={() => handleDeleteReport(report.id)} />
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Tracked Products / Sightings</h2>
+                    <p style={{ ...styles.empty, paddingTop: 0 }}>Track products seen at this store or add UPC/SKU details.</p>
+                    <div style={styles.row}>
+                      <button type="button" style={styles.buttonPrimary} onClick={() => { resetTrackedItemForm(); setTrackedProductsModalOpen(true); }}>Add Product Sighting</button>
+                      <button type="button" style={styles.buttonSoft} onClick={() => setError("Tracked items are shown below in this beta view.")}>View Tracked Items</button>
+                    </div>
+                    {items.length === 0 ? <p style={styles.empty}>No tracked Scout items yet.</p> : null}
+                    {items.slice(0, 5).map((item) => (
+                      <div key={item.id} className="scout-tracked-item-card" style={styles.listCard}>
+                        <strong>{item.name}</strong>
+                        <p style={styles.tiny}>Item #: {item.retailerItemNumber || "Unknown"} | SKU: {item.sku || "Unknown"} | UPC: {item.upc || "Unknown"}</p>
+                        <div style={styles.row}>
+                          <span style={styles.badge}>{item.status}</span>
+                          <button type="button" onClick={() => handleMarkItemInStock(item.id)} style={styles.buttonSoft}>Mark In Stock</button>
+                          <button type="button" onClick={() => startEditingTrackedItem(item)} style={styles.buttonSoft}>Edit</button>
+                          <button type="button" onClick={() => handleDeleteTrackedItem(item.id)} style={styles.buttonDanger}>Delete</button>
+                          <OverflowMenu onEdit={() => startEditingTrackedItem(item)} onDelete={() => handleDeleteTrackedItem(item.id)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "16px" }}>
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Store Intelligence</h2>
+                    <div style={styles.intelligenceRow}><span>Reported restock days</span><strong>{selectedStore.restockDays || selectedStore.stockDays || "Unknown"}</strong></div>
+                    <div style={styles.intelligenceRow}><span>Common report days</span><strong>{getMostCommon(reports.map((report) => dayName(report.reportDate || report.report_date)))[0] || "Unknown"}</strong></div>
+                    <div style={styles.intelligenceRow}><span>Truck days</span><strong>{selectedStore.truckDays || selectedStore.truckDay || "Unknown"}</strong></div>
+                    <div style={styles.intelligenceRow}><span>Purchase limits</span><strong>{selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"}</strong></div>
+                    <div style={{ ...styles.intelligenceRow, borderBottom: "none" }}><span>Last verified</span><strong>{selectedStore.lastVerifiedDate || selectedStore.lastVerified || "Unknown"}</strong></div>
+                    {selectedStore.stockNotes || selectedStore.userTips || selectedStore.notes ? <p style={styles.tiny}>Notes: {selectedStore.stockNotes || selectedStore.userTips || selectedStore.notes}</p> : null}
+                    <div style={styles.row}>
+                      <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                        suggestionType: SUGGESTION_TYPES.SUGGEST_RESTOCK_PATTERN,
+                        targetTable: "store_intelligence",
+                        targetRecordId: selectedStore.id,
+                        submittedData: { storeName: selectedStore.name, restockDays: selectedStore.restockDays || "", restockWindow: selectedStore.restockWindow || "" },
+                        currentDataSnapshot: selectedStore,
+                        notes: "User suggested restock pattern review.",
+                      }, setError)}>Suggest Restock Pattern</button>
+                      <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                        suggestionType: SUGGESTION_TYPES.SUGGEST_PURCHASE_LIMIT,
+                        targetTable: "store_intelligence",
+                        targetRecordId: selectedStore.id,
+                        submittedData: { storeName: selectedStore.name, purchaseLimits: selectedStore.purchaseLimits || selectedStore.limitPolicy || "" },
+                        currentDataSnapshot: selectedStore,
+                        notes: "User suggested purchase limit review.",
+                      }, setError)}>Suggest Purchase Limit</button>
+                    </div>
+                  </div>
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Corrections</h2>
+                    <p style={{ ...styles.empty, paddingTop: 0 }}>Missing info? Suggest edits, flag duplicates, or update store details.</p>
+                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
+                      targetTable: "stores",
+                      targetRecordId: selectedStore.id,
+                      submittedData: { ...selectedStore, needsReview: true },
+                      currentDataSnapshot: selectedStore,
+                      notes: "User suggested a store correction.",
+                    }, setError)}>Suggest Correction</button>
+                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      suggestionType: SUGGESTION_TYPES.FLAG_DUPLICATE_STORE,
+                      targetTable: "stores",
+                      targetRecordId: selectedStore.id,
+                      submittedData: { storeName: selectedStore.name, address: selectedStore.address, city: selectedStore.city },
+                      currentDataSnapshot: selectedStore,
+                      notes: "User flagged possible duplicate store.",
+                    }, setError)}>Flag Duplicate</button>
+                  </div>
+                </div>
+
+                <div style={styles.card}>
+                  <h2 style={styles.sectionTitle}>Store History</h2>
+                  {reports.length === 0 ? <p style={styles.empty}>No history yet. Reports, corrections, and restock confirmations will appear here.</p> : null}
+                  {reports.slice(0, 8).map((report) => (
+                    <div key={`history-${report.id}`} style={styles.listCard}>
+                      <strong>{report.reportType || report.report_type || "Store report"}</strong>
+                      <p style={styles.tiny}>{report.reportDate || report.report_date || "No date"} {report.reportTime || report.report_time || ""} | {report.verified ? "Verified" : "Needs Review"}</p>
+                      <p style={{ margin: "6px 0", color: "#475569" }}>{report.itemName || report.item_name || "No item"} - {report.note || "No notes"}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        {false && scoutSubTab === "stores" ? (
         <div style={styles.mainGrid}>
           <div style={styles.col}>
             <div style={styles.card}>
@@ -3042,24 +4149,108 @@ async function handleUpdateStore(e) {
                 Stores are shared Virginia-wide master data. Regular users add Scout Tips, restock reports, tracked items, and routes instead of duplicating store records.
               </p>
               <p style={styles.tiny}>
-                Add or update master stores through the regional seed importer so every E&T TCG user sees the same directory.
+                Suggest missing or corrected stores here. Admin approval is required before shared directory data changes.
               </p>
+              <details style={{ marginTop: "12px" }}>
+                <summary style={{ ...styles.buttonSoft, cursor: "pointer", display: "inline-block" }}>Suggest Missing Store</summary>
+                <form onSubmit={handleCreateStore} style={{ ...styles.formGrid, marginTop: "12px" }}>
+                  <input style={styles.input} value={storeForm.name} onChange={(e) => setStoreForm((current) => ({ ...current, name: e.target.value }))} placeholder="Store name" />
+                  <input style={styles.input} value={storeForm.chain} onChange={(e) => setStoreForm((current) => ({ ...current, chain: e.target.value }))} placeholder="Retailer / chain" />
+                  <input style={styles.input} value={storeForm.storeGroup} onChange={(e) => setStoreForm((current) => ({ ...current, storeGroup: e.target.value }))} placeholder="Store group" />
+                  <input style={styles.input} value={storeForm.city} onChange={(e) => setStoreForm((current) => ({ ...current, city: e.target.value }))} placeholder="City" />
+                  <input style={styles.input} value={storeForm.address} onChange={(e) => setStoreForm((current) => ({ ...current, address: e.target.value }))} placeholder="Address" />
+                  <input style={styles.input} value={storeForm.phone} onChange={(e) => setStoreForm((current) => ({ ...current, phone: e.target.value }))} placeholder="Phone optional" />
+                  <button type="submit" style={styles.buttonPrimary}>Save Store</button>
+                </form>
+              </details>
             </div>
 
-            <div style={styles.card}>
-              <h2 style={styles.sectionTitle}>Best Buy Stock Layer</h2>
-              <p style={styles.empty}>Best Buy store/API availability is tracked separately from user Scout Tips, then linked back to Scout stores and Tidepool source reports.</p>
-              <div style={styles.statsRow}>
-                <Metric label="Best Buy Rows" value={bestBuyStockResults.length} />
-                <Metric label="Store Stock" value={bestBuyStoreStock.length} />
-                <Metric label="Alerts" value={bestBuyAlerts.length} />
-                <Metric label="Nightly Reports" value={bestBuyNightlyReports.length} />
+            {isBestBuyRetailerSelected ? (
+              <div style={styles.card}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "start" }}>
+                  <div>
+                    <h2 style={styles.sectionTitle}>Best Buy</h2>
+                    <p style={styles.empty}>Check Best Buy Pokemon/TCG availability, alerts, and nearby stores before choosing a specific location.</p>
+                  </div>
+                  <span style={styles.badge}>Source: {bestBuySourceStatus}</span>
+                </div>
+                <p style={styles.tiny}>Last checked: {bestBuyLastChecked}</p>
+                <div style={styles.statsRow}>
+                  <Metric label="In Stock / Ship" value={bestBuySummary.inStock.length} />
+                  <Metric label="Pickup / Limited" value={bestBuySummary.pickup.length} />
+                  <Metric label="Watchlist Matches" value={bestBuyStockResults.length} />
+                  <Metric label="Nearby Stores" value={bestBuyRetailerStores.length} />
+                </div>
+
+                <h3 style={{ marginTop: "16px" }}>Best Buy Stock</h3>
+                <div style={styles.formGrid}>
+                  <input style={styles.input} value={bestBuyForm.query} onChange={(e) => setBestBuyForm((current) => ({ ...current, query: e.target.value }))} placeholder="Search Best Buy products by SKU/product name" />
+                  <input style={styles.input} value={bestBuyForm.sku} onChange={(e) => setBestBuyForm((current) => ({ ...current, sku: e.target.value }))} placeholder="Best Buy SKU" />
+                  <input style={styles.input} value={bestBuyForm.zip} onChange={(e) => setBestBuyForm((current) => ({ ...current, zip: e.target.value }))} placeholder="ZIP / nearby area" />
+                  <select style={styles.input} value={bestBuyForm.stockStatus} onChange={(e) => setBestBuyForm((current) => ({ ...current, stockStatus: e.target.value }))}>
+                    {BEST_BUY_STOCK_STATUSES.map((status) => <option key={status}>{status}</option>)}
+                  </select>
+                </div>
+                <div style={styles.row}>
+                  <button type="button" style={styles.buttonPrimary} onClick={() => syncBestBuyStock("search")}>Refresh / Check Stock</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => syncBestBuyStock("sku")}>Check SKU</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                    suggestionType: SUGGESTION_TYPES.ADD_BEST_BUY_SKU,
+                    targetTable: "retailer_products",
+                    submittedData: { retailer: "Best Buy", bestBuySku: bestBuyForm.sku, productName: bestBuyForm.query, zipChecked: bestBuyForm.zip },
+                    notes: "Best Buy SKU/watchlist suggestion from stock checker.",
+                  }, setError)}>Suggest Best Buy SKU</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alert saved as a beta placeholder. Real alerts need backend/push later.")}>Create Alert</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                    suggestionType: SUGGESTION_TYPES.ADD_BEST_BUY_SKU,
+                    targetTable: "retailer_products",
+                    submittedData: { retailer: "Best Buy", bestBuySku: bestBuyForm.sku, productName: bestBuyForm.query, requestedCatalogMatch: true },
+                    notes: "User suggested linking Best Buy SKU to TideTradr catalog.",
+                  }, setError)}>Suggest Product Link</button>
+                </div>
+                {bestBuyMessage ? <p style={styles.tiny}>{bestBuyMessage}</p> : null}
+
+                <h3 style={{ marginTop: "18px" }}>Watchlist & Online Availability</h3>
+                <div style={{ display: "grid", gap: "10px" }}>
+                  {bestBuyStockResults.slice(0, 6).map((item) => (
+                    <div key={`${item.bestBuySku}-${item.storeId || item.zipChecked || item.productName}`} style={styles.listCard}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                        <strong>{item.productName}</strong>
+                        <span style={styles.badge}>{item.stockStatus || "Unknown"}</span>
+                      </div>
+                      <p style={styles.tiny}>SKU: {item.bestBuySku || "Unknown"} | Price: {item.salePrice || item.price || "Unknown"} | Source: {item.sourceStatus || item.sourceType || "mock"}</p>
+                      <p style={styles.tiny}>Online: {item.onlineAvailability || "Unknown"} | Pickup: {item.pickupAvailability || "Unknown"} | Shipping: {item.shippingAvailability || "Unknown"}</p>
+                      {item.productUrl ? <a style={styles.buttonSoft} href={item.productUrl} target="_blank" rel="noreferrer">Product URL</a> : null}
+                    </div>
+                  ))}
+                  {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Refresh/check stock to create mock/cached beta rows.</p> : null}
+                </div>
+
+                <h3 style={{ marginTop: "18px" }}>Nearby Best Buy Availability</h3>
+                <div style={{ display: "grid", gap: "10px" }}>
+                  {bestBuyStoreStock.slice(0, 5).map((item) => (
+                    <div key={item.storeStockId || `${item.bestBuySku}-${item.storeId}`} style={styles.listCard}>
+                      <strong>{item.storeName || item.productName}</strong>
+                      <p style={styles.tiny}>{item.productName} | {item.stockStatus || "Unknown"} | Last checked: {item.lastChecked || item.lastUpdated || "Unknown"}</p>
+                      <p style={styles.tiny}>Source: {item.sourceType || "mock"} | Possible dead stock score: {item.deadStockScore || 0}</p>
+                    </div>
+                  ))}
+                  {bestBuyStoreStock.length === 0 ? <p style={styles.empty}>Nearby availability will show here when a SKU/check returns store-level data.</p> : null}
+                </div>
+
+                <h3 style={{ marginTop: "18px" }}>Best Buy Reports</h3>
+                <div style={styles.row}>
+                  {["Latest", "Nearby", "Verified", "Needs Review"].map((filter) => <span key={filter} style={styles.badge}>{filter}</span>)}
+                </div>
+                {bestBuySourceReports.slice(0, 4).map((report) => (
+                  <div key={report.reportId} style={styles.listCard}>
+                    <strong>{report.productName || report.reportType}</strong>
+                    <p style={styles.tiny}>{report.storeName || "Best Buy"} | {report.verificationStatus || "pending"} | {report.sourceType || "mock"}</p>
+                  </div>
+                ))}
+                {bestBuySourceReports.length === 0 ? <p style={styles.empty}>No Best Buy source reports yet.</p> : null}
               </div>
-              <div style={styles.row}>
-                <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("online")}>Open Best Buy Stock Checker</button>
-                <button type="button" style={styles.buttonSoft} onClick={() => syncBestBuyStock("search")}>Refresh</button>
-              </div>
-            </div>
+            ) : null}
 
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Find Store Fast</h2>
@@ -3087,6 +4278,27 @@ async function handleUpdateStore(e) {
               </div>
 
               <div style={styles.formGrid}>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <p style={styles.tiny}>Retailers</p>
+                  <div style={styles.row}>
+                    {chainOptions.map((chain) => {
+                      const count = chain === "All" ? stores.length : stores.filter((store) => store.chain === chain).length;
+                      return (
+                        <button
+                          key={chain}
+                          type="button"
+                          style={selectedChain === chain ? styles.buttonPrimary : styles.buttonSoft}
+                          onClick={() => {
+                            setSelectedChain(chain);
+                            setSelectedStoreId("");
+                          }}
+                        >
+                          {chain} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <input
                   style={styles.input}
                   value={storeSearch}
@@ -3180,7 +4392,10 @@ async function handleUpdateStore(e) {
                 <select
                   style={styles.input}
                   value={storeSort}
-                  onChange={(e) => setStoreSort(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value === "distance" && !onLocationRequired("store-distance-sort")) return;
+                    setStoreSort(e.target.value);
+                  }}
                 >
                   <option value="nickname">Sort by nickname</option>
                   <option value="distance">Sort by distance</option>
@@ -3270,7 +4485,7 @@ async function handleUpdateStore(e) {
             </div>
           </div>
 
-          <div style={styles.card}>
+          {false ? <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Statewide Store CSV Import</h2>
             <p style={styles.tiny}>
               Paste official-directory or manually verified Virginia store rows. Import dedupes by chain + address + ZIP and does not invent restock data.
@@ -3299,12 +4514,13 @@ async function handleUpdateStore(e) {
                 ))}
               </div>
             ) : null}
-          </div>
+          </div> : null}
 
           <div style={styles.col}>
             {selectedStore ? (
               <>
                 <div style={styles.card}>
+                  <p style={styles.tiny}>Scout &gt; Stores &gt; {selectedStore.chain || getStoreGroup(selectedStore)} &gt; {selectedStore.nickname || selectedStore.name}</p>
                   <div
                     style={{
                       display: "flex",
@@ -3316,233 +4532,93 @@ async function handleUpdateStore(e) {
                   >
                     <div>
                       <h2 style={{ ...styles.sectionTitle, marginBottom: "6px" }}>
-                        {selectedStore.name}
+                        {selectedStore.nickname || selectedStore.name}
                       </h2>
+                      {selectedStore.nickname ? <p style={{ margin: "0 0 6px 0", color: "#475569" }}>{selectedStore.name}</p> : null}
+                      <p style={{ margin: "0 0 6px 0", color: "#334155", fontWeight: 800 }}>
+                        {selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)}
+                      </p>
                       <p style={{ margin: 0, color: "#475569" }}>
                         {selectedStore.address || "No address"}
                       </p>
                       <p style={{ margin: "4px 0 0 0", color: "#475569" }}>
                         {selectedStore.city || "No city"} {selectedStore.phone ? `• ${selectedStore.phone}` : ""}
                       </p>
-                      <p style={{ margin: "10px 0 0 0", color: "#334155" }}>
-                        {selectedStore.nextRestockReason || "No prediction reason yet."}
-                      </p>
                     </div>
-                    <span style={styles.badge}>Shared directory store</span>
+                    <span style={styles.badge}>{selectedStore.favorite ? "Favorite" : "Shared directory store"}</span>
                   </div>
-                </div>
-
-                <div style={styles.card}>
-                  <h2 style={styles.sectionTitle}>Screenshot Tip Import</h2>
-                  <p style={styles.tiny}>
-                    Upload a screenshot you are allowed to view, review the fields, then save it as a Scout Tip. This does not scrape Facebook or pull from groups automatically.
-                  </p>
-                  <form onSubmit={handleSaveScreenshotTip} style={styles.formGrid}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleTipScreenshotUpload}
-                    />
-
-                    {tipImport.screenshotPreview ? (
-                      <div>
-                        <img
-                          src={tipImport.screenshotPreview}
-                          alt="Uploaded tip screenshot preview"
-                          style={styles.previewImage}
-                        />
-                        <p style={styles.tiny}>Preview: {tipImport.screenshotName}</p>
-                      </div>
+                  <div style={styles.statsRow}>
+                    <Metric label="Carries Pokemon/TCG" value={selectedStore.carriesPokemon || selectedStore.carriesPokemonLikely || selectedStore.carriesTCG ? "Likely" : "Unknown"} />
+                    <Metric label="Confidence" value={selectedStore.pokemonConfidenceLevel || selectedStore.pokemonConfidence || "Unknown"} />
+                    <Metric label="Last Updated" value={selectedStore.lastUpdated || selectedStore.lastVerified || "Unknown"} />
+                    <Metric label="Last Stock Report" value={selectedStore.lastReportedStockDate || selectedStore.lastReportDate || reports[0]?.reportDate || "Unknown"} />
+                  </div>
+                  <div style={styles.row}>
+                    <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Submit Report for this store</button>
+                    <button type="button" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite ? "Unfavorite" : "Favorite"}</button>
+                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
+                      targetTable: "stores",
+                      targetRecordId: selectedStore.id,
+                      submittedData: { userTips: selectedStore.userTips || selectedStore.notes || "", storeName: selectedStore.name },
+                      currentDataSnapshot: selectedStore,
+                      notes: "Store note/tip submitted for admin review.",
+                    }, setError)}>Suggest Store Note</button>
+                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
+                      targetTable: "stores",
+                      targetRecordId: selectedStore.id,
+                      submittedData: { ...selectedStore, needsReview: true },
+                      currentDataSnapshot: selectedStore,
+                      notes: "Correction requested from Store Detail.",
+                    }, setError)}>Suggest Correction</button>
+                    {selectedStore.address ? (
+                      <a style={styles.buttonSoft} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedStore.name} ${selectedStore.address} ${selectedStore.city || ""} ${selectedStore.state || ""}`)}`} target="_blank" rel="noreferrer">Open Directions</a>
                     ) : null}
-
-                    <button
-                      type="button"
-                      style={styles.buttonSoft}
-                      onClick={() => setError("AI extraction is a future backend feature. For beta, review the screenshot and fill the fields manually.")}
-                    >
-                      Extract with AI Later
-                    </button>
-
-                    <input
-                      style={styles.input}
-                      value={tipImport.productName}
-                      onChange={(e) => updateTipImport("productName", e.target.value)}
-                      placeholder="Product name"
-                    />
-                    <input
-                      style={styles.input}
-                      value={tipImport.productCategory}
-                      onChange={(e) => updateTipImport("productCategory", e.target.value)}
-                      placeholder="Product category"
-                    />
-                    <input
-                      style={styles.input}
-                      type="date"
-                      value={tipImport.reportDate}
-                      onChange={(e) => updateTipImport("reportDate", e.target.value)}
-                    />
-                    <input
-                      style={styles.input}
-                      type="time"
-                      value={tipImport.reportTime}
-                      onChange={(e) => updateTipImport("reportTime", e.target.value)}
-                    />
-                    <select
-                      style={styles.input}
-                      value={tipImport.stockStatus}
-                      onChange={(e) => updateTipImport("stockStatus", e.target.value)}
-                    >
-                      <option value="in_stock">In stock</option>
-                      <option value="low_stock">Low stock</option>
-                      <option value="sold_out">Sold out</option>
-                      <option value="partial_restock">Partial restock</option>
-                      <option value="no_cards">No cards</option>
-                      <option value="unknown">Unknown</option>
-                    </select>
-                    <input
-                      style={styles.input}
-                      value={tipImport.quantitySeen}
-                      onChange={(e) => updateTipImport("quantitySeen", e.target.value)}
-                      placeholder="Quantity seen"
-                    />
-                    <input
-                      style={styles.input}
-                      value={tipImport.quantityRemaining}
-                      onChange={(e) => updateTipImport("quantityRemaining", e.target.value)}
-                      placeholder="Quantity remaining"
-                    />
-                    <input
-                      style={styles.input}
-                      value={tipImport.limitInfo}
-                      onChange={(e) => updateTipImport("limitInfo", e.target.value)}
-                      placeholder="Limit policy"
-                    />
-                    <input
-                      style={styles.input}
-                      value={tipImport.sourceName}
-                      onChange={(e) => updateTipImport("sourceName", e.target.value)}
-                      placeholder="Source group/name if visible"
-                    />
-                    <input
-                      style={styles.input}
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={tipImport.extractionConfidence}
-                      onChange={(e) => updateTipImport("extractionConfidence", e.target.value)}
-                      placeholder="Extraction confidence 0-100"
-                    />
-                    <textarea
-                      style={styles.textarea}
-                      value={tipImport.notes}
-                      onChange={(e) => updateTipImport("notes", e.target.value)}
-                      placeholder="Notes from the screenshot"
-                    />
-                    <label style={{ ...styles.tiny, display: "flex", alignItems: "center", gap: "8px" }}>
-                      <input
-                        type="checkbox"
-                        checked={tipImport.verified}
-                        onChange={(e) => updateTipImport("verified", e.target.checked)}
-                      />
-                      Mark reviewed/verified
-                    </label>
-                    <label style={{ ...styles.tiny, display: "flex", alignItems: "center", gap: "8px" }}>
-                      <input
-                        type="checkbox"
-                        checked={tipImport.keepScreenshot}
-                        onChange={(e) => updateTipImport("keepScreenshot", e.target.checked)}
-                      />
-                      Keep screenshot locally with this report
-                    </label>
-                    <button type="submit" style={styles.buttonPrimary}>
-                      Save Screenshot Tip Report
-                    </button>
-                    <button type="button" style={styles.buttonSoft} onClick={resetTipImport}>
-                      Reject / Cancel
-                    </button>
-                  </form>
+                    {selectedStore.phone ? <a style={styles.buttonSoft} href={`tel:${selectedStore.phone}`}>Call Store</a> : null}
+                    <button type="button" style={styles.buttonSoft} onClick={() => setSelectedStoreId("")}>Back to Stores</button>
+                  </div>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "20px" }}>
                   <div style={styles.card}>
-                    <h2 style={styles.sectionTitle}>{editingReportId ? "Edit Report" : "Add Report"}</h2>
-                    <form onSubmit={handleCreateReport} style={styles.formGrid}>
-                      <input
-                        style={styles.input}
-                        value={reportForm.itemName}
-                        onChange={(e) =>
-                          setReportForm({ ...reportForm, itemName: e.target.value })
-                        }
-                        placeholder="Item name"
-                      />
-                      <textarea
-                        style={styles.textarea}
-                        value={reportForm.note}
-                        onChange={(e) =>
-                          setReportForm({ ...reportForm, note: e.target.value })
-                        }
-                        placeholder="What did you see?"
-                      />
-                      <input
-                        style={styles.input}
-                        type="date"
-                        value={reportForm.reportDate}
-                        onChange={(e) =>
-                          setReportForm({ ...reportForm, reportDate: e.target.value })
-                        }
-                      />
-                      <input
-                        style={styles.input}
-                        type="time"
-                        value={reportForm.reportTime}
-                        onChange={(e) =>
-                          setReportForm({ ...reportForm, reportTime: e.target.value })
-                        }
-                      />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setReportPhoto(e.target.files?.[0] || null)}
-                      />
-                      <label style={{ ...styles.tiny, display: "flex", alignItems: "center", gap: "8px" }}>
+                    <h2 style={styles.sectionTitle}>Recent Reports</h2>
+                    <div style={styles.row}>
+                      {["Latest", "Verified", "My Reports", "Needs Review", "Expired"].map((filter) => (
+                        <span key={filter} style={styles.badge}>{filter}</span>
+                      ))}
+                    </div>
+                    {editingReportId ? (
+                      <form onSubmit={handleCreateReport} style={{ ...styles.formGrid, marginTop: "14px" }}>
+                        <h2 style={styles.sectionTitle}>Edit Report</h2>
                         <input
-                          type="checkbox"
-                          checked={reportForm.verified}
-                          onChange={(e) =>
-                            setReportForm({ ...reportForm, verified: e.target.checked })
-                          }
+                          style={styles.input}
+                          value={reportForm.itemName}
+                          onChange={(e) => setReportForm({ ...reportForm, itemName: e.target.value })}
+                          placeholder="Item name"
                         />
-                        Verified Scout Tip
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleGetLocation}
-                        style={styles.buttonSoft}
-                      >
-                        Use My Location
-                      </button>
-
-                      {reportForm.lat && reportForm.lng ? (
-                        <p style={styles.tiny}>
-                          Location saved: {reportForm.lat}, {reportForm.lng}
-                        </p>
-                      ) : null}
-
-                      {reportPhoto ? (
-                        <p style={styles.tiny}>Photo selected: {reportPhoto.name}</p>
-                      ) : null}
-
-                      <button type="submit" style={styles.buttonPrimary}>
-                        {editingReportId ? "Save Report" : "Add Report"}
-                      </button>
-                      {editingReportId ? (
-                        <button type="button" style={styles.buttonSoft} onClick={resetReportForm}>
-                          Cancel Edit
-                        </button>
-                      ) : null}
-                    </form>
-
-                    <h2 style={{ ...styles.sectionTitle, marginTop: "24px" }}>Reports</h2>
+                        <textarea
+                          style={styles.textarea}
+                          value={reportForm.note}
+                          onChange={(e) => setReportForm({ ...reportForm, note: e.target.value })}
+                          placeholder="What did you see?"
+                        />
+                        <input
+                          style={styles.input}
+                          type="date"
+                          value={reportForm.reportDate}
+                          onChange={(e) => setReportForm({ ...reportForm, reportDate: e.target.value })}
+                        />
+                        <input
+                          style={styles.input}
+                          type="time"
+                          value={reportForm.reportTime}
+                          onChange={(e) => setReportForm({ ...reportForm, reportTime: e.target.value })}
+                        />
+                        <button type="submit" style={styles.buttonPrimary}>Save Report</button>
+                        <button type="button" style={styles.buttonSoft} onClick={resetReportForm}>Cancel Edit</button>
+                      </form>
+                    ) : null}
                     {reports.length === 0 ? (
                       <p style={styles.empty}>No store reports yet. Submit a report to help improve Scout predictions.</p>
                     ) : (
@@ -3561,7 +4637,7 @@ async function handleUpdateStore(e) {
                           {report.imageUrl || report.image_url ? (
                             <img
                               src={report.imageUrl || report.image_url}
-                              alt="Screenshot tip"
+                              alt="Screenshot"
                               style={{ ...styles.previewImage, maxHeight: "160px" }}
                             />
                           ) : null}
@@ -3575,7 +4651,9 @@ async function handleUpdateStore(e) {
                   </div>
 
                   <div style={styles.card}>
-                    <h2 style={styles.sectionTitle}>{editingTrackedItemId ? "Edit Tracked Item" : "Add Tracked Item"}</h2>
+                    <h2 style={styles.sectionTitle}>Stock / Product Sightings</h2>
+                    <p style={styles.empty}>Products recently seen or tracked at this store. Source can be user report, photo, Best Buy API/cache, manual, or mock.</p>
+                    <h3 style={{ marginTop: "14px" }}>{editingTrackedItemId ? "Edit Tracked Item" : "Add Product Sighting"}</h3>
                     <form onSubmit={handleCreateItem} style={styles.formGrid}>
                       <input
                         style={styles.input}
@@ -3704,6 +4782,58 @@ async function handleUpdateStore(e) {
                       ))
                     )}
                   </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: "20px", marginTop: "20px" }}>
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Restock Pattern</h2>
+                    <p style={styles.empty}>Reported restock days: {selectedStore.restockDays || selectedStore.stockDays || "Unknown"}</p>
+                    <p style={styles.empty}>Restock window: {selectedStore.restockWindow || "Unknown"}</p>
+                    <p style={styles.empty}>Truck day: {selectedStore.truckDays || selectedStore.truckDay || "Unknown"}</p>
+                    <p style={styles.tiny}>Confidence: {selectedStore.restockConfidence || selectedStore.pokemonConfidence || "Unknown"}. Exact days are not invented.</p>
+                  </div>
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Purchase Limits</h2>
+                    <p style={styles.empty}>{selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"}</p>
+                    <p style={styles.tiny}>Last verified: {selectedStore.lastVerifiedDate || selectedStore.lastVerified || "Unknown"}</p>
+                  </div>
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Store Notes / Tips</h2>
+                    <p style={styles.empty}>{selectedStore.stockNotes || selectedStore.userTips || selectedStore.notes || "No store tips yet."}</p>
+                    <p style={styles.tiny}>{selectedStore.adminNotes ? `Admin notes: ${selectedStore.adminNotes}` : "Admin notes: none"}</p>
+                  </div>
+                  <div style={styles.card}>
+                    <h2 style={styles.sectionTitle}>Corrections</h2>
+                    <p style={styles.empty}>Submit missing info, suggest edits, or flag a duplicate. Admin approval is required before shared store data changes.</p>
+                    <div style={styles.row}>
+                      <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                        suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
+                        targetTable: "stores",
+                        targetRecordId: selectedStore.id,
+                        submittedData: { storeName: selectedStore.name, needsReview: true },
+                        currentDataSnapshot: selectedStore,
+                        notes: "User submitted missing store info for review.",
+                      }, setError)}>Submit Missing Info</button>
+                      <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                        suggestionType: SUGGESTION_TYPES.FLAG_DUPLICATE_STORE,
+                        targetTable: "stores",
+                        targetRecordId: selectedStore.id,
+                        submittedData: { storeName: selectedStore.name, address: selectedStore.address, city: selectedStore.city },
+                        currentDataSnapshot: selectedStore,
+                        notes: "User marked possible duplicate store.",
+                      }, setError)}>Flag Duplicate</button>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ ...styles.card, marginTop: "20px" }}>
+                  <h2 style={styles.sectionTitle}>Store History</h2>
+                  {[...reports].slice(0, 8).map((report) => (
+                    <div key={`history-${report.id}`} style={styles.listCard}>
+                      <strong>{report.reportType || report.report_type || "Store report"}</strong>
+                      <p style={styles.tiny}>{report.reportDate || report.report_date || "No date"} {report.reportTime || report.report_time || ""} | {report.verified ? "Verified" : "Needs Review"}</p>
+                      <p style={{ margin: "6px 0", color: "#475569" }}>{report.itemName || report.item_name || "No item"} - {report.note || "No notes"}</p>
+                    </div>
+                  ))}
+                  {reports.length === 0 ? <p style={styles.empty}>No history yet. Submit the first report for this store.</p> : null}
                 </div>
               </>
             ) : (

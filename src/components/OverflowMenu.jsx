@@ -3,8 +3,10 @@ import { useEffect, useId, useRef, useState } from "react";
 export default function OverflowMenu({
   onEdit,
   onDelete,
+  actions = [],
   editLabel = "Edit",
   deleteLabel = "Delete",
+  buttonLabel = "More",
 }) {
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -55,7 +57,7 @@ export default function OverflowMenu({
         aria-label="More actions"
         onClick={toggleMenu}
       >
-        ⋯
+        {buttonLabel}
       </button>
 
       {open ? (
@@ -65,6 +67,17 @@ export default function OverflowMenu({
               {editLabel}
             </button>
           ) : null}
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              role="menuitem"
+              className={action.danger ? "overflow-menu-delete" : ""}
+              onClick={() => runAction(action.onClick)}
+            >
+              {action.label}
+            </button>
+          ))}
           {onDelete ? (
             <button
               type="button"
