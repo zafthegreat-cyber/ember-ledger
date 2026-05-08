@@ -9,8 +9,16 @@ import Scout from "./pages/Scout";
 import { SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA, SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
 import { POKEMON_PRODUCT_UPCS, POKEMON_PRODUCTS } from "./data/pokemonProductCatalog";
+import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
+import { loadPriceCache, savePriceCache, updateCachedMarketPrice } from "./services/priceCacheService";
+import {
+  getBestAvailableMarketPrice,
+  refreshCatalogMarketItems,
+  refreshPinnedMarketItems,
+  refreshWatchlistMarketItems,
+} from "./services/marketDataService";
 import {
   FEATURE_LABELS,
   FEATURE_TIERS,
@@ -532,6 +540,15 @@ function Field({ label, children }) {
   );
 }
 
+function DetailItem({ label, value }) {
+  return (
+    <div className="detail-item">
+      <span>{label}</span>
+      <strong>{value || "Not listed"}</strong>
+    </div>
+  );
+}
+
 function CollapsibleFeatureSection({ title, summary, open, onToggle, children }) {
   return (
     <section className="feature-dropdown">
@@ -689,6 +706,19 @@ export default function App() {
   const [catalogProducts, setCatalogProducts] = useState([]);
   const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
   const [tideTradrLookupId, setTideTradrLookupId] = useState("");
+  const [selectedCatalogDetailId, setSelectedCatalogDetailId] = useState("");
+  const [marketPriceCache, setMarketPriceCache] = useState(() => loadPriceCache());
+  const [marketSyncMessage, setMarketSyncMessage] = useState("");
+  const [manualMarketForm, setManualMarketForm] = useState({
+    catalogItemId: "",
+    marketPrice: "",
+    lowPrice: "",
+    midPrice: "",
+    highPrice: "",
+    externalSource: "Manual",
+    externalId: "",
+    sourceUrl: "",
+  });
   const [expenses, setExpenses] = useState([]);
   const [sales, setSales] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -1012,13 +1042,14 @@ export default function App() {
         rarityAliases: rarityAliasesFor(product.rarity, product.variant),
       };
       const { score, reason } = scoreSearchCandidate(queryInfo, candidate);
+      const marketInfo = getTideTradrMarketInfo(product);
       return {
         id: `${isCard ? "card" : "product"}-${product.id}`,
         category: isCard ? "Cards" : "Products",
         title: product.name || product.productName || product.cardName,
         subtitle: isCard
-          ? `${product.setCode || product.setName || "Card"}${product.cardNumber ? ` • ${product.cardNumber}` : ""}${product.rarity ? ` • ${product.rarity}` : ""}`
-          : `${product.setCode || product.setName || "Set"} • ${product.productType || "Sealed product"}`,
+          ? `${product.setCode || product.setName || "Card"}${product.cardNumber ? ` • ${product.cardNumber}` : ""}${product.rarity ? ` • ${product.rarity}` : ""} • ${MARKET_STATUS_LABELS[marketInfo.marketStatus] || "Market"}`
+          : `${product.setCode || product.setName || "Set"} • ${product.productType || "Sealed product"} • ${MARKET_STATUS_LABELS[marketInfo.marketStatus] || "Market"}`,
         source: product,
         score,
         reason,
@@ -1091,7 +1122,7 @@ export default function App() {
       .filter((result) => result.score > 25)
       .sort((a, b) => b.score - a.score)
       .slice(0, 24);
-  }, [appSearchQuery, catalogProducts, items, scoutSnapshot, userSearchAliases]);
+  }, [appSearchQuery, catalogProducts, items, marketPriceCache, scoutSnapshot, userSearchAliases]);
 
   const appSearchSuggestion = useMemo(() => {
     const queryInfo = expandSearchQuery(appSearchQuery);
@@ -1108,7 +1139,9 @@ export default function App() {
   function viewSearchResult(result) {
     if (result.category === "Products" || result.category === "Cards") {
       setTideTradrLookupId(result.source.id);
+      setSelectedCatalogDetailId(result.source.id);
       setActiveTab("market");
+      setTideTradrSubTab("catalog");
     } else if (result.category === "Inventory") {
       setInventorySearch(result.source.name || "");
       setActiveTab("inventory");
@@ -1135,11 +1168,10 @@ export default function App() {
     if (result.category === "Products" || result.category === "Cards") {
       return (
         <>
-          <button type="button" onClick={() => viewSearchResult(result)}>View item</button>
-          <button type="button" className="secondary-button" onClick={() => { applyCatalogProduct(result.source.id); setActiveTab("addInventory"); setSearchExpanded(false); }}>Add to Forge</button>
+          <button type="button" onClick={() => viewSearchResult(result)}>View details</button>
           <button type="button" className="secondary-button" onClick={() => { applyCatalogProductToVault(result.source.id); setActiveTab("vault"); setSearchExpanded(false); }}>Add to Vault</button>
-          <button type="button" className="secondary-button" onClick={() => { useCatalogProductInDeal(result.source.id); setSearchExpanded(false); }}>Check Deal</button>
-          <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(result.source.id)}>Pin to Home</button>
+          <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(result.source.id)}>Wishlist</button>
+          <button type="button" className="secondary-button" onClick={() => viewSearchResult(result)}>More</button>
         </>
       );
     }
@@ -1958,6 +1990,7 @@ export default function App() {
       setCatalogProducts(saved.catalogProducts?.length ? mergeSharedCatalogProducts(saved.catalogProducts) : createSharedCatalogProducts());
       setTideTradrWatchlist(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : []);
       setTideTradrLookupId(saved.tideTradrLookupId || "");
+      setMarketPriceCache(saved.marketPriceCache || loadPriceCache());
       setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
       setExpenses((saved.expenses || []).map(mapExpense));
       setSales(saved.sales || []);
@@ -2008,6 +2041,7 @@ export default function App() {
         catalogProducts,
         tideTradrWatchlist,
         tideTradrLookupId,
+        marketPriceCache,
         userSearchAliases,
         expenses,
         sales,
@@ -2023,7 +2057,12 @@ export default function App() {
         locationSettings,
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, tideTradrLookupId, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, locationSettings, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, locationSettings, localDataLoaded]);
+
+  useEffect(() => {
+    if (!BETA_LOCAL_MODE || !localDataLoaded) return;
+    savePriceCache(marketPriceCache);
+  }, [marketPriceCache, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || activeTab !== "dashboard") return;
@@ -2083,6 +2122,7 @@ export default function App() {
     setCatalogProducts(createSharedCatalogProducts());
     setTideTradrWatchlist([]);
     setTideTradrLookupId("");
+    setMarketPriceCache({ prices: [], lastSync: "", failedMatches: [] });
     setUserSearchAliases([]);
     setExpenses([]);
     setSales([]);
@@ -3104,9 +3144,12 @@ function applyCatalogProduct(productId) {
 }
 
 function getTideTradrMarketInfo(product = {}) {
+  const bestPrice = getBestAvailableMarketPrice(product, marketPriceCache);
   const msrp = toNumber(product.msrpPrice || product.msrp);
   const currentMarketValue = toNumber(
-    product.marketPrice ||
+    bestPrice.marketPrice ||
+      bestPrice.price ||
+      product.marketPrice ||
       product.marketValue ||
       product.marketValueNearMint ||
       product.midPrice ||
@@ -3115,13 +3158,14 @@ function getTideTradrMarketInfo(product = {}) {
       product.lowPrice ||
       msrp
   );
-  const sourceType = product.sourceType || (product.marketSource ? String(product.marketSource).toLowerCase() : "mock");
+  const sourceType = bestPrice.marketStatus || product.marketStatus || product.sourceType || (product.marketSource ? String(product.marketSource).toLowerCase() : "mock");
   const sourceName =
+    bestPrice.externalSource ||
     product.marketSource ||
     (product.marketUrl ? "Manual market source link" : "") ||
     (product.marketPrice ? "Internal/manual catalog value" : "") ||
     (msrp ? "MSRP fallback" : "Manual fallback needed");
-  const confidenceLevel = product.marketConfidenceLevel || (product.marketPrice || product.marketValueNearMint
+  const confidenceLevel = bestPrice.confidence?.label || product.marketConfidenceLevel || (product.marketPrice || product.marketValueNearMint
     ? "Medium"
     : product.midPrice || product.lowPrice || product.highPrice
       ? "Low"
@@ -3137,8 +3181,11 @@ function getTideTradrMarketInfo(product = {}) {
     marketOverMsrp,
     marketVsMsrpPercent,
     savingsVsMsrp,
-    lastUpdated: product.marketLastUpdated || product.lastUpdated || product.updatedAt || product.createdAt || "Local mock data",
-    sourceName: sourceType === "live" ? `Live - ${sourceName}` : sourceType === "cached" ? `Cached - ${sourceName}` : sourceType === "manual" ? `Manual - ${sourceName}` : `Mock - ${sourceName}`,
+    lastUpdated: bestPrice.timestamp || product.marketLastUpdated || product.lastUpdated || product.updatedAt || product.createdAt || "Local mock data",
+    sourceName: sourceType === "live" ? `Live - ${sourceName}` : sourceType === "cached" ? `Cached - ${sourceName}` : sourceType === "manual" ? `Manual - ${sourceName}` : sourceType === "unknown" ? `Unknown - ${sourceName}` : `Mock - ${sourceName}`,
+    marketStatus: sourceType,
+    sourceUrl: bestPrice.sourceUrl || product.externalSourceUrl || product.marketUrl || "",
+    needsReview: bestPrice.confidence?.needsReview || sourceType === "unknown",
     confidenceLevel,
   };
 }
@@ -3183,6 +3230,64 @@ function addProductToTideTradrWatchlist(productId) {
 
 function removeTideTradrWatchlistItem(id) {
   setTideTradrWatchlist((current) => current.filter((item) => item.id !== id));
+}
+
+function refreshMarketCatalog(type = "all") {
+  const result = refreshCatalogMarketItems(catalogProducts, marketPriceCache, type);
+  setCatalogProducts(result.catalog);
+  setMarketPriceCache(result.cache);
+  setTideTradrWatchlist((current) => refreshWatchlistMarketItems(current, result.catalog, result.cache));
+  setMarketSyncMessage(
+    `${type === "card" ? "Card" : type === "sealed" ? "Sealed product" : "Catalog"} market sync used cached/manual/mock beta sources. ${result.cache.failedMatches?.length || 0} items need review.`
+  );
+}
+
+function refreshMarketWatchlist() {
+  setTideTradrWatchlist((current) => refreshWatchlistMarketItems(current, catalogProducts, marketPriceCache));
+  setMarketSyncMessage("Watchlist market values refreshed from the best available cached/manual/mock source.");
+}
+
+function refreshPinnedMarketWatch() {
+  setTideTradrWatchlist((current) => refreshPinnedMarketItems(current, catalogProducts, marketPriceCache));
+  setMarketSyncMessage("Pinned Market Watch refreshed from the best available cached/manual/mock source.");
+}
+
+function saveManualMarketPrice(event) {
+  event.preventDefault();
+  const product = catalogProducts.find((item) => String(item.id) === String(manualMarketForm.catalogItemId));
+  if (!product) {
+    setMarketSyncMessage("Choose a catalog item before saving a manual market price.");
+    return;
+  }
+  let nextCache = updateCachedMarketPrice(marketPriceCache, {
+    catalogItemId: product.id,
+    catalogType: product.catalogType || "sealed",
+    externalSource: manualMarketForm.externalSource || "Manual",
+    externalId: manualMarketForm.externalId,
+    sourceUrl: manualMarketForm.sourceUrl,
+    marketPrice: Number(manualMarketForm.marketPrice || 0),
+    lowPrice: Number(manualMarketForm.lowPrice || 0),
+    midPrice: Number(manualMarketForm.midPrice || manualMarketForm.marketPrice || 0),
+    highPrice: Number(manualMarketForm.highPrice || 0),
+    marketStatus: MARKET_STATUS.MANUAL,
+    confidenceScore: 66,
+  });
+  const result = refreshCatalogMarketItems(catalogProducts, nextCache, product.catalogType === "card" ? "card" : "sealed");
+  nextCache = { ...result.cache, failedMatches: nextCache.failedMatches || [] };
+  setCatalogProducts(result.catalog);
+  setMarketPriceCache(nextCache);
+  setTideTradrWatchlist((current) => refreshWatchlistMarketItems(current, result.catalog, nextCache));
+  setManualMarketForm({
+    catalogItemId: "",
+    marketPrice: "",
+    lowPrice: "",
+    midPrice: "",
+    highPrice: "",
+    externalSource: "Manual",
+    externalId: "",
+    sourceUrl: "",
+  });
+  setMarketSyncMessage(`Manual market price saved for ${product.name || product.productName || product.cardName}.`);
 }
 
 function applyCatalogProductToVault(productId) {
@@ -4117,6 +4222,48 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const catalogValidationWarnings = validateCatalogImport(catalogProducts);
   const catalogUpcCount = catalogProducts.filter((product) => product.upc || product.barcode).length + POKEMON_PRODUCT_UPCS.length;
   const catalogMarketPriceCount = catalogProducts.filter((product) => Number(product.marketPrice || product.marketValue || product.marketValueNearMint || 0) > 0).length;
+  const cachedMarketPriceCount = marketPriceCache.prices?.length || 0;
+  const failedMarketMatches = marketPriceCache.failedMatches || [];
+  const lastMarketSync = marketPriceCache.lastSync || "Not synced yet";
+  const selectedCatalogDetailProduct = catalogProducts.find((product) => String(product.id) === String(selectedCatalogDetailId));
+
+  function catalogTitle(product = {}) {
+    return product.catalogType === "card"
+      ? product.cardName || product.name || "Unknown card"
+      : product.productName || product.name || "Unknown product";
+  }
+
+  function catalogImage(product = {}) {
+    return product.imageUrl || product.imageLarge || product.imageSmall || "";
+  }
+
+  function openCatalogDetails(productId) {
+    setSelectedCatalogDetailId(productId);
+    setTideTradrLookupId(productId);
+  }
+
+  function addCatalogItemToForge(productId) {
+    applyCatalogProduct(productId);
+    setActiveTab("addInventory");
+  }
+
+  function renderCatalogMeta(product = {}) {
+    const marketInfo = getTideTradrMarketInfo(product);
+    if (product.catalogType === "card") {
+      return (
+        <>
+          <p>{product.setName || product.expansion || "No set"} • #{product.cardNumber || "No number"} • {product.rarity || "No rarity"}</p>
+          <p>Market: {money(marketInfo.currentMarketValue)}</p>
+        </>
+      );
+    }
+    return (
+      <>
+        <p>{product.productType || "Sealed product"} • {product.setName || product.expansion || product.productLine || "No set/series"}</p>
+        <p>MSRP: {product.msrpDisplay === "Unknown" ? "Unknown" : money(marketInfo.msrp)} • Market: {money(marketInfo.currentMarketValue)}</p>
+      </>
+    );
+  }
 
   if (!user) {
     return (
@@ -4286,6 +4433,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {appSearchResults.map((result) => (
               <div className="app-search-result" key={result.id}>
                 <button type="button" className="app-search-result-main" onClick={() => viewSearchResult(result)}>
+                  {(result.category === "Products" || result.category === "Cards") && (result.source.imageUrl || result.source.imageSmall) ? (
+                    <img className="app-search-thumb" src={result.source.imageUrl || result.source.imageSmall} alt="" />
+                  ) : null}
                   <span>{result.category}</span>
                   <strong>{result.title}</strong>
                   <small>{result.subtitle}{result.reason ? ` • ${result.reason}` : ""}</small>
@@ -5703,7 +5853,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="card"><p>Market vs MSRP</p><h2>{tideTradrMarketInfo.marketVsMsrpPercent.toFixed(1)}%</h2></div>
                   <div className="card"><p>Over MSRP</p><h2>{money(tideTradrMarketInfo.marketOverMsrp)}</h2></div>
                 </div>
-                <p className="compact-subtitle">Source: {tideTradrMarketInfo.sourceName} | Confidence: {tideTradrMarketInfo.confidenceLevel} | Last Updated: {tideTradrMarketInfo.lastUpdated}</p>
+                <p className="compact-subtitle">
+                  Source: {tideTradrMarketInfo.sourceName} | Status: {MARKET_STATUS_LABELS[tideTradrMarketInfo.marketStatus] || "Unknown"} | Confidence: {tideTradrMarketInfo.confidenceLevel} | Last Updated: {tideTradrMarketInfo.lastUpdated}
+                  {tideTradrMarketInfo.needsReview ? " | Needs Review" : ""}
+                </p>
                 <div className="quick-actions">
                   {tideTradrLookupProduct ? <button type="button" onClick={() => { applyCatalogProduct(tideTradrLookupProduct.id); setActiveTab("addInventory"); }}>Add to Forge</button> : null}
                   {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(tideTradrLookupProduct.id)}>Add to Vault</button> : null}
@@ -5769,6 +5922,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </CollapsibleFeatureSection>
 
               <CollapsibleFeatureSection title="Pinned Market Watch" summary="Saved watchlist products and pinned market items" open={isFeatureSectionOpen("market_watchlist")} onToggle={() => toggleFeatureSection("market_watchlist")}>
+                <div className="quick-actions">
+                  <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Pinned Market Watch</button>
+                  <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
+                </div>
                 {tideTradrWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
                 <div className="inventory-list">
                   {tideTradrWatchlist.map((item) => (
@@ -5776,7 +5933,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <h3>{item.name}</h3>
                       <p>{item.setName || "No set"} | {item.productType || "No type"}</p>
                       <p>Market: {money(item.marketValue)} | MSRP: {money(item.msrp)}</p>
+                      {Number(item.previousMarketValue || 0) > 0 ? <p>Change: {money(Number(item.marketValue || 0) - Number(item.previousMarketValue || 0))}</p> : null}
                       <p>Source: {item.sourceName}</p>
+                      <p>Status: {MARKET_STATUS_LABELS[item.marketStatus] || "Unknown"} | Confidence: {item.confidenceLabel || "Beta"}{item.needsReview ? " | Needs Review" : ""}</p>
                       <p>Last Updated: {item.lastUpdated}</p>
                       <div className="quick-actions">
                         <button type="button" onClick={() => useCatalogProductInDeal(item.productId)}>Check Deal</button>
@@ -5822,11 +5981,74 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {tideTradrSubTab === "overview" || tideTradrSubTab === "watch" ? (
               <CollapsibleFeatureSection title="Market Sources" summary="Manual Values, Cached Values, Mock Values, and Live API Placeholder" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
                 <div className="cards mini-cards">
-                  <div className="card"><p>Manual Values</p><h2>Enabled</h2></div>
-                  <div className="card"><p>Cached Values</p><h2>Ready</h2></div>
-                  <div className="card"><p>Mock Values</p><h2>Beta</h2></div>
+                  <div className="card"><p>Cached Price Records</p><h2>{cachedMarketPriceCount}</h2></div>
+                  <div className="card"><p>Failed Matches</p><h2>{failedMarketMatches.length}</h2></div>
+                  <div className="card"><p>Last Sync</p><h2>{lastMarketSync === "Not synced yet" ? "None" : new Date(lastMarketSync).toLocaleDateString()}</h2></div>
                   <div className="card"><p>Live API</p><h2>Placeholder</h2></div>
                 </div>
+                <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Mock, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
+                {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
+                <div className="quick-actions">
+                  <button type="button" onClick={() => refreshMarketCatalog("card")}>Sync Cards</button>
+                  <button type="button" className="secondary-button" onClick={() => refreshMarketCatalog("sealed")}>Sync Sealed Products</button>
+                  <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
+                  <button type="button" className="secondary-button" onClick={refreshPinnedMarketWatch}>Refresh Pinned Market Watch</button>
+                </div>
+                <form className="form market-price-form" onSubmit={saveManualMarketPrice}>
+                  <h3>Manual Price Entry</h3>
+                  <Field label="Catalog Item">
+                    <select value={manualMarketForm.catalogItemId} onChange={(event) => setManualMarketForm((current) => ({ ...current, catalogItemId: event.target.value }))}>
+                      <option value="">Choose item</option>
+                      {catalogProducts.map((product) => (
+                        <option key={product.id} value={product.id}>{catalogTitle(product)}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Market Price">
+                    <input type="number" step="0.01" value={manualMarketForm.marketPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, marketPrice: event.target.value }))} placeholder="Manual market value" />
+                  </Field>
+                  <Field label="Low / Mid / High">
+                    <div className="inline-input-grid">
+                      <input type="number" step="0.01" value={manualMarketForm.lowPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, lowPrice: event.target.value }))} placeholder="Low" />
+                      <input type="number" step="0.01" value={manualMarketForm.midPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, midPrice: event.target.value }))} placeholder="Mid" />
+                      <input type="number" step="0.01" value={manualMarketForm.highPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, highPrice: event.target.value }))} placeholder="High" />
+                    </div>
+                  </Field>
+                  <Field label="External Source / ID">
+                    <div className="inline-input-grid">
+                      <select value={manualMarketForm.externalSource} onChange={(event) => setManualMarketForm((current) => ({ ...current, externalSource: event.target.value }))}>
+                        {MARKET_SOURCES.map((source) => <option key={source.key} value={source.label}>{source.label}</option>)}
+                      </select>
+                      <input value={manualMarketForm.externalId} onChange={(event) => setManualMarketForm((current) => ({ ...current, externalId: event.target.value }))} placeholder="External ID optional" />
+                    </div>
+                  </Field>
+                  <Field label="Source URL">
+                    <input value={manualMarketForm.sourceUrl} onChange={(event) => setManualMarketForm((current) => ({ ...current, sourceUrl: event.target.value }))} placeholder="Optional source link" />
+                  </Field>
+                  <button type="submit">Save Manual Price</button>
+                </form>
+                <div className="market-source-list">
+                  {MARKET_SOURCES.map((source) => (
+                    <div className="market-source-row" key={source.key}>
+                      <strong>{source.label}</strong>
+                      <span>{source.status}</span>
+                      <p>{source.notes}</p>
+                    </div>
+                  ))}
+                </div>
+                {failedMarketMatches.length > 0 ? (
+                  <div className="market-source-list">
+                    <h3>Needs Market Match</h3>
+                    {failedMarketMatches.slice(0, 8).map((match) => (
+                      <div className="market-source-row" key={`${match.catalogItemId}-${match.reason}`}>
+                        <strong>{match.name || match.catalogItemId}</strong>
+                        <span>Needs Review</span>
+                        <p>{match.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <p className="compact-subtitle">Live API keys and protected provider credentials still need backend environment variables. No service role keys or paid API keys are used in the frontend.</p>
               </CollapsibleFeatureSection>
               ) : null}
 
@@ -6113,54 +6335,25 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <option value="az">A–Z</option>
                 </select>
               </Field>
-              <div className="inventory-list">
+              <div className="catalog-results-list">
                 {filteredCatalogProducts.map((p) => (
-                  <div className="inventory-card" key={p.id}>
-                    {p.imageUrl && <div className="receipt-preview"><p>Product Photo</p><img src={p.imageUrl} alt={p.name} /></div>}
-                    <h3>{p.name}</h3>
-                    <p>Catalog Type: {p.catalogType === "card" ? "Individual Card" : "Sealed Product"}</p>
-                    <p>Category: {p.category}</p>
-                    <p>Set: {p.setName || "Not listed"}</p>
-                    {p.catalogType === "card" ? (
-                      <>
-                        <p>Pokemon: {p.pokemonName || "Not listed"}</p>
-                        <p>Card Number: {p.cardNumber || p.setCode || "Not listed"}</p>
-                        <p>Rarity: {p.rarity || "Not listed"}</p>
-                        <p>Variant: {p.variant || "Not listed"}</p>
-                        <p>Condition: {p.condition || "Not listed"}</p>
-                        <p>Language: {p.language || "Not listed"}</p>
-                        <p>Graded: {p.graded ? `${p.gradingCompany || "Graded"} ${p.grade || ""}` : "Ungraded"}</p>
-                        <p>Raw / NM / LP / Graded: {money(p.marketValueRaw)} / {money(p.marketValueNearMint)} / {money(p.marketValueLightPlayed)} / {money(p.marketValueGraded)}</p>
-                      </>
-                    ) : (
-                      <>
-                        <p>Type: {p.productType || "Not listed"}</p>
-                        <p>Barcode: {p.barcode || "Not listed"}</p>
-                        <p>SKU: {p.sku || p.externalProductId || "Not listed"}</p>
-                        <p>MSRP: {p.msrpDisplay && p.msrpDisplay === "Unknown" ? "Unknown" : money(p.msrpPrice)}</p>
-                        <p>Pack Count: {p.packCount || "Not listed"}</p>
-                      </>
-                    )}
-                    <p>Set Code: {p.setCode || "Not listed"}</p>
-                    <p>Expansion: {p.expansion || p.setName || "Not listed"}</p>
-                    <p>Era: {p.productLine || "Not listed"}</p>
-                    <p>Release Year: {p.releaseYear || "Not listed"}</p>
-                    <p>TideTradr Market Price: {money(getTideTradrMarketInfo(p).currentMarketValue)}</p>
-                    <p>Low / Mid / High: {money(p.lowPrice)} / {money(p.midPrice)} / {money(p.highPrice)}</p>
-                    <p>Market Source: {getTideTradrMarketInfo(p).sourceName}</p>
-                    <p>Confidence: {getTideTradrMarketInfo(p).confidenceLevel}</p>
-                    <p>Last Updated: {getTideTradrMarketInfo(p).lastUpdated}</p>
-                    {p.marketUrl && <p><a href={p.marketUrl} target="_blank" rel="noreferrer">Open Market Source</a></p>}
-                    {p.notes && <p>Notes: {p.notes}</p>}
-                    <div className="quick-actions">
-                      <button className="edit-button" onClick={() => { applyCatalogProduct(p.id); setActiveTab("addInventory"); }}>Add to Forge</button>
+                  <div className="catalog-result-card" key={p.id}>
+                    <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p.id)}>
+                      <div className="catalog-thumb">
+                        {catalogImage(p) ? <img src={catalogImage(p)} alt="" /> : <span>{p.catalogType === "card" ? "Card" : "Sealed"}</span>}
+                      </div>
+                      <div>
+                        <span className="catalog-pill">{p.catalogType === "card" ? "Card" : "Sealed"}</span>
+                        <h3>{catalogTitle(p)}</h3>
+                        {renderCatalogMeta(p)}
+                      </div>
+                    </button>
+                    <div className="catalog-result-actions">
                       <button className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
-                      <button className="secondary-button" onClick={() => useCatalogProductInDeal(p.id)}>Use in Deal Finder</button>
-                      <button className="secondary-button" onClick={() => { setTideTradrLookupId(p.id); setActiveTab("market"); }}>View Market Info</button>
-                      <button className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Add to Watchlist</button>
-                      <OverflowMenu onEdit={() => startEditingCatalogProduct(p)} onDelete={() => deleteCatalogProduct(p.id)} editLabel="Edit Catalog Item" deleteLabel="Delete Local Item" />
+                      {p.catalogType !== "card" ? <button className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button> : null}
+                      <button className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Wishlist</button>
+                      <button className="secondary-button" onClick={() => openCatalogDetails(p.id)}>More</button>
                     </div>
-                    <p className="compact-subtitle">Shared master product</p>
                   </div>
                 ))}
               </div>
@@ -6832,6 +7025,80 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             )}
           </>
         )}
+
+        {selectedCatalogDetailProduct ? (
+          <>
+            <div className="drawer-backdrop" onClick={() => setSelectedCatalogDetailId("")} />
+            <aside className="catalog-detail-drawer" aria-label="Catalog item details">
+              <div className="drawer-header catalog-detail-header">
+                <div>
+                  <p>{selectedCatalogDetailProduct.catalogType === "card" ? "Individual Card" : "Sealed Product"}</p>
+                  <h3>{catalogTitle(selectedCatalogDetailProduct)}</h3>
+                </div>
+                <button type="button" className="secondary-button" onClick={() => setSelectedCatalogDetailId("")}>Close</button>
+              </div>
+              <div className="catalog-detail-body">
+                {catalogImage(selectedCatalogDetailProduct) ? (
+                  <img className="catalog-detail-image" src={catalogImage(selectedCatalogDetailProduct)} alt={catalogTitle(selectedCatalogDetailProduct)} />
+                ) : (
+                  <div className="catalog-detail-image placeholder">{selectedCatalogDetailProduct.catalogType === "card" ? "Card image" : "Product image"}</div>
+                )}
+                <div className="quick-actions">
+                  <button type="button" onClick={() => applyCatalogProductToVault(selectedCatalogDetailProduct.id)}>Add to Vault</button>
+                  <button type="button" className="secondary-button" onClick={() => addCatalogItemToForge(selectedCatalogDetailProduct.id)}>Add to Forge</button>
+                  <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(selectedCatalogDetailProduct.id)}>Add to Wishlist</button>
+                  <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(selectedCatalogDetailProduct.id)}>Compare Market</button>
+                  <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setSelectedCatalogDetailId(""); }}>Add Store Report</button>
+                  <button type="button" className="secondary-button" onClick={() => { applyCatalogProduct(selectedCatalogDetailProduct.id); setActiveTab("addSale"); }}>Create Listing</button>
+                </div>
+                <div className="catalog-detail-grid">
+                  {selectedCatalogDetailProduct.catalogType === "card" ? (
+                    <>
+                      <DetailItem label="Card Name" value={catalogTitle(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Set" value={selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion} />
+                      <DetailItem label="Series" value={selectedCatalogDetailProduct.series || selectedCatalogDetailProduct.productLine} />
+                      <DetailItem label="Card Number" value={selectedCatalogDetailProduct.cardNumber} />
+                      <DetailItem label="Printed Total" value={selectedCatalogDetailProduct.printedTotal} />
+                      <DetailItem label="Rarity" value={selectedCatalogDetailProduct.rarity} />
+                      <DetailItem label="Type" value={selectedCatalogDetailProduct.type} />
+                      <DetailItem label="HP" value={selectedCatalogDetailProduct.hp} />
+                      <DetailItem label="Artist" value={selectedCatalogDetailProduct.artist} />
+                      <DetailItem label="Variants" value={selectedCatalogDetailProduct.variant} />
+                      <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue)} />
+                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
+                      <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).lastUpdated} />
+                      <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName} />
+                      <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailProduct).marketStatus] || "Unknown"} />
+                      <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).needsReview ? "Yes" : "No"} />
+                    </>
+                  ) : (
+                    <>
+                      <DetailItem label="Product Name" value={catalogTitle(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Product Type" value={selectedCatalogDetailProduct.productType} />
+                      <DetailItem label="Product Category" value={selectedCatalogDetailProduct.productCategory || selectedCatalogDetailProduct.category} />
+                      <DetailItem label="Set / Series" value={selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion || selectedCatalogDetailProduct.series || selectedCatalogDetailProduct.productLine} />
+                      <DetailItem label="Release Date" value={selectedCatalogDetailProduct.releaseDate} />
+                      <DetailItem label="MSRP" value={selectedCatalogDetailProduct.msrpDisplay === "Unknown" ? "Unknown" : money(getTideTradrMarketInfo(selectedCatalogDetailProduct).msrp)} />
+                      <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue)} />
+                      <DetailItem label="Low / High Price" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
+                      <DetailItem label="Pack Count" value={selectedCatalogDetailProduct.packCount} />
+                      <DetailItem label="Contents" value={Array.isArray(selectedCatalogDetailProduct.contents) ? selectedCatalogDetailProduct.contents.join(", ") : selectedCatalogDetailProduct.contents} />
+                      <DetailItem label="UPC" value={selectedCatalogDetailProduct.upc || selectedCatalogDetailProduct.barcode} />
+                      <DetailItem label="SKU" value={selectedCatalogDetailProduct.sku || selectedCatalogDetailProduct.externalProductId} />
+                      <DetailItem label="Retailer Exclusivity" value={selectedCatalogDetailProduct.retailerExclusive ? "Retailer exclusive" : "Not listed"} />
+                      <DetailItem label="Retailer Name" value={selectedCatalogDetailProduct.retailerName} />
+                      <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).lastUpdated} />
+                      <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName} />
+                      <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailProduct).marketStatus] || "Unknown"} />
+                      <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).needsReview ? "Yes" : "No"} />
+                    </>
+                  )}
+                </div>
+                {selectedCatalogDetailProduct.notes ? <p className="compact-subtitle">{selectedCatalogDetailProduct.notes}</p> : null}
+              </div>
+            </aside>
+          </>
+        ) : null}
 
       </main>
     </div>
