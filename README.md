@@ -1,3 +1,22 @@
+# E&T TCG
+
+Local beta for Ember & Tide TCG.
+
+## Beta Checklist
+
+Run these from the project root:
+
+```bash
+npm run dev
+npm run build
+npm run backend:build
+npm run smoke:beta
+```
+
+`npm run smoke:beta` runs the browser click-through test for the current beta flows.
+
+---
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

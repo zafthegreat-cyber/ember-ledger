@@ -1,7 +1,7 @@
 {
-  "name": "Ember Ledger",
-  "short_name": "Ember",
-  "description": "Inventory, catalog, sales, expenses, and mileage tracker for Ember & Tide.",
+  "name": "E&T TCG",
+  "short_name": "E&T TCG",
+  "description": "Local beta for Ember & Tide TCG collection, Scout, Market, and Forge tracking.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
