@@ -14,7 +14,12 @@ import {
   deleteTrackedItem,
 } from "../api";
 import OverflowMenu from "../components/OverflowMenu";
-import hamptonRoadsStoreSeed from "../../seeds/stores/virginia-hampton-roads.json";
+import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
+import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedStore, parseStoreCsv } from "../utils/storeImportUtils";
+import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
+import { buildSuggestedRoute, confidenceLabel, explainRouteChoice, numericDistance } from "../utils/routeUtils";
+import { VIRGINIA_REGIONS } from "../data/storeGroups";
+import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
 
 const BETA_LOCAL_SCOUT = true;
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
@@ -44,47 +49,20 @@ const TIDEPOOL_FILTERS = [
   "My Reports",
 ];
 
+const ROUTE_GOALS = [
+  "Fastest route",
+  "Highest restock chance",
+  "Best value route",
+  "Most reports today",
+  "Closest stores first",
+  "Custom filters",
+];
+
 function makeScoutId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function makeSeedStoreId(store) {
-  return `seed-${String(`${store.chain}-${store.address}-${store.city}`)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")}`;
-}
-
-function normalizeSeedStore(store, defaults = {}) {
-  return {
-    id: makeSeedStoreId(store),
-    name: store.name,
-    chain: store.chain,
-    nickname: store.nickname || "",
-    address: store.address,
-    city: store.city,
-    state: store.state || defaults.state || "VA",
-    zip: store.zip || "",
-    region: store.region || defaults.region || "Hampton Roads / 757",
-    phone: store.phone || "",
-    website: store.website || "",
-    type: store.store_type || store.storeType || "Retail",
-    storeType: store.store_type || store.storeType || "Retail",
-    status: "Unknown",
-    stockDays: [],
-    truckDays: [],
-    limitPolicy: "Unknown",
-    priority: false,
-    sellsPokemon: store.sells_pokemon !== false,
-    notes: store.notes || "Restock days: Unknown. Truck days: Unknown. Purchase limits: Unknown.",
-    createdAt: "seed",
-    updatedAt: "seed",
-  };
-}
-
-const HAMPTON_ROADS_SEED_STORES = (hamptonRoadsStoreSeed.stores || []).map((store) =>
-  normalizeSeedStore(store, hamptonRoadsStoreSeed)
-);
+const STATEWIDE_SEED_STORES = VIRGINIA_STORES_SEED;
 
 function createDefaultScoutProfile() {
   return {
@@ -418,6 +396,32 @@ const styles = {
     marginBottom: "10px",
     cursor: "pointer",
   },
+  storeGroup: {
+    border: "1px solid #e5e7eb",
+    borderRadius: "18px",
+    overflow: "hidden",
+    marginBottom: "12px",
+    background: "#fff",
+  },
+  storeGroupHeader: {
+    width: "100%",
+    minHeight: "48px",
+    border: "none",
+    background: "#f8fafc",
+    padding: "12px 14px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "10px",
+    fontWeight: 800,
+    cursor: "pointer",
+    color: "#0f172a",
+  },
+  storeGroupBody: {
+    padding: "12px",
+    display: "grid",
+    gap: "10px",
+  },
   tiny: {
     fontSize: "12px",
     color: "#64748b",
@@ -436,6 +440,21 @@ const styles = {
     borderRadius: "16px",
     border: "1px solid #e5e7eb",
     background: "#f8fafc",
+  },
+  subTabs: {
+    display: "flex",
+    gap: "8px",
+    overflowX: "auto",
+    paddingBottom: "4px",
+  },
+  pageHeader: {
+    background: "#fff",
+    borderRadius: "18px",
+    padding: "14px",
+    border: "1px solid #e5e7eb",
+    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
+    display: "grid",
+    gap: "12px",
   },
 };
 
@@ -462,14 +481,24 @@ function Metric({ label, value }) {
   );
 }
 
-export default function Scout() {
+export default function Scout({ targetSubTab = { tab: "overview", id: 0 } }) {
   const [stores, setStores] = useState([]);
+  const [scoutSubTab, setScoutSubTab] = useState("overview");
   const [selectedStoreId, setSelectedStoreId] = useState("");
   const [selectedChain, setSelectedChain] = useState("All");
   const [selectedRegion, setSelectedRegion] = useState("All");
   const [selectedCity, setSelectedCity] = useState("All");
   const [selectedStoreType, setSelectedStoreType] = useState("All");
+  const [selectedCounty, setSelectedCounty] = useState("All");
+  const [selectedConfidence, setSelectedConfidence] = useState("All");
+  const [storeQuickFilter, setStoreQuickFilter] = useState("default");
+  const [storeSort, setStoreSort] = useState("nickname");
   const [storeSearch, setStoreSearch] = useState("");
+  const [storeImportText, setStoreImportText] = useState("");
+  const [storeImportPreview, setStoreImportPreview] = useState([]);
+  const [openStoreGroups, setOpenStoreGroups] = useState(() =>
+    Object.fromEntries(STORE_GROUP_ORDER.map((group) => [group, true]))
+  );
   const [reports, setReports] = useState([]);
   const [allReports, setAllReports] = useState([]);
   const [tidepoolReports, setTidepoolReports] = useState([]);
@@ -490,8 +519,17 @@ export default function Scout() {
   const [items, setItems] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [routeForm, setRouteForm] = useState({
-    routeName: "",
+    routeName: "Suggested Route",
+    startingZip: "",
+    routeGoal: "Highest restock chance",
+    region: "All",
+    includedGroups: STORE_GROUP_ORDER,
+    maxStops: 5,
+    maxDistance: "",
+    maxTripTime: "",
     selectedStoreIds: [],
+    lockedStoreIds: [],
+    completed: false,
     notes: "",
   });
   const [loading, setLoading] = useState(true);
@@ -522,14 +560,21 @@ export default function Scout() {
   const [storeForm, setStoreForm] = useState({
     name: "",
     chain: "",
+    storeGroup: "",
     city: "",
     address: "",
     phone: "",
   });
 
+  useEffect(() => {
+    const nextTab = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.tab;
+    if (nextTab) setScoutSubTab(nextTab);
+  }, [targetSubTab]);
+
   const [editStoreForm, setEditStoreForm] = useState({
     name: "",
     chain: "",
+    storeGroup: "",
     city: "",
     address: "",
     phone: "",
@@ -648,7 +693,8 @@ export default function Scout() {
   async function loadStores() {
     if (BETA_LOCAL_SCOUT) {
       const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
-      const savedStores = saved.stores?.length ? saved.stores : HAMPTON_ROADS_SEED_STORES;
+      const savedStores = dedupeStoresByChainAddress(saved.stores?.length ? [...STATEWIDE_SEED_STORES, ...saved.stores] : STATEWIDE_SEED_STORES)
+        .map((store) => normalizeImportedStore(store));
       const savedReports = saved.reports || [];
       const savedTidepoolReports = saved.tidepoolReports?.length
         ? saved.tidepoolReports
@@ -771,6 +817,21 @@ export default function Scout() {
 function saveLocalScout(next) {
   const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
   localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, ...next }));
+}
+
+function previewStatewideStoreImport() {
+  const rows = parseStoreCsv(storeImportText).map((row) => normalizeImportedStore(row, { state: "VA", source: "manual-csv" }));
+  setStoreImportPreview(rows);
+}
+
+function confirmStatewideStoreImport() {
+  if (!storeImportPreview.length) return;
+  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const nextStores = dedupeStoresByChainAddress([...(saved.stores || stores), ...storeImportPreview]);
+  saveLocalScout({ stores: nextStores });
+  setStores(nextStores);
+  setStoreImportPreview([]);
+  setStoreImportText("");
 }
 
 function saveTidepoolReports(nextReports) {
@@ -923,6 +984,67 @@ function toggleRouteStore(storeId) {
   });
 }
 
+function updateRouteForm(field, value) {
+  setRouteForm((current) => ({ ...current, [field]: value }));
+}
+
+function toggleRouteGroup(group) {
+  setRouteForm((current) => {
+    const included = current.includedGroups || STORE_GROUP_ORDER;
+    const next = included.includes(group)
+      ? included.filter((item) => item !== group)
+      : [...included, group];
+    return { ...current, includedGroups: next };
+  });
+}
+
+function generateSuggestedRoute() {
+  if (suggestedRouteStops.length === 0) {
+    setError("No stores match those route filters.");
+    return;
+  }
+  setRouteForm((current) => ({
+    ...current,
+    routeName: current.routeName || `Suggested Route: ${current.routeGoal}`,
+    selectedStoreIds: suggestedRouteStops.map((stop) => stop.store.id),
+    notes: `Generated for ${current.routeGoal}. Starting ZIP: ${current.startingZip || "not set"}.`,
+  }));
+  setError("");
+}
+
+function removeRouteStop(storeId) {
+  setRouteForm((current) => ({
+    ...current,
+    selectedStoreIds: current.selectedStoreIds.filter((id) => id !== storeId),
+    lockedStoreIds: (current.lockedStoreIds || []).filter((id) => id !== storeId),
+  }));
+}
+
+function toggleLockedRouteStop(storeId) {
+  setRouteForm((current) => {
+    const locked = current.lockedStoreIds || [];
+    return {
+      ...current,
+      lockedStoreIds: locked.includes(storeId) ? locked.filter((id) => id !== storeId) : [...locked, storeId],
+    };
+  });
+}
+
+function moveRouteStop(storeId, direction) {
+  setRouteForm((current) => {
+    const selected = [...current.selectedStoreIds];
+    const index = selected.indexOf(storeId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= selected.length) return current;
+    [selected[index], selected[nextIndex]] = [selected[nextIndex], selected[index]];
+    return { ...current, selectedStoreIds: selected };
+  });
+}
+
+function routeStopDetails(storeId) {
+  return scoredRouteCandidates.find((candidate) => String(candidate.store.id) === String(storeId));
+}
+
 function saveRoute(event) {
   event.preventDefault();
 
@@ -935,7 +1057,16 @@ function saveRoute(event) {
   const newRoute = {
     id: makeScoutId("route"),
     routeName: routeForm.routeName,
+    startingZip: routeForm.startingZip,
+    routeGoal: routeForm.routeGoal,
+    region: routeForm.region,
+    includedGroups: routeForm.includedGroups,
+    maxStops: routeForm.maxStops,
+    maxDistance: routeForm.maxDistance,
+    maxTripTime: routeForm.maxTripTime,
     selectedStoreIds: routeForm.selectedStoreIds,
+    lockedStoreIds: routeForm.lockedStoreIds || [],
+    completed: !!routeForm.completed,
     notes: routeForm.notes,
     routeDate: new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
@@ -943,8 +1074,41 @@ function saveRoute(event) {
   const nextRoutes = [newRoute, ...(saved.routes || [])];
   saveLocalScout({ routes: nextRoutes });
   setRoutes(nextRoutes);
-  setRouteForm({ routeName: "", selectedStoreIds: [], notes: "" });
+  setRouteForm({
+    routeName: "Suggested Route",
+    startingZip: routeForm.startingZip,
+    routeGoal: routeForm.routeGoal,
+    region: routeForm.region,
+    includedGroups: routeForm.includedGroups,
+    maxStops: routeForm.maxStops,
+    maxDistance: routeForm.maxDistance,
+    maxTripTime: routeForm.maxTripTime,
+    selectedStoreIds: [],
+    lockedStoreIds: [],
+    completed: false,
+    notes: "",
+  });
   setError("");
+}
+
+function markRouteCompleted(routeId) {
+  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const nextRoutes = (saved.routes || routes).map((route) =>
+    route.id === routeId ? { ...route, completed: true, completedAt: new Date().toISOString() } : route
+  );
+  saveLocalScout({ routes: nextRoutes });
+  setRoutes(nextRoutes);
+}
+
+function updateRouteStopNote(routeId, storeId, note) {
+  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const nextRoutes = (saved.routes || routes).map((route) =>
+    route.id === routeId
+      ? { ...route, stopNotes: { ...(route.stopNotes || {}), [storeId]: note } }
+      : route
+  );
+  saveLocalScout({ routes: nextRoutes });
+  setRoutes(nextRoutes);
 }
 
 function deleteRoute(routeId) {
@@ -986,6 +1150,7 @@ function openInForge(item) {
       setEditStoreForm({
         name: selectedStore.name || "",
         chain: selectedStore.chain || "",
+        storeGroup: selectedStore.storeGroup || getStoreGroup(selectedStore),
         city: selectedStore.city || "",
         address: selectedStore.address || "",
         phone: selectedStore.phone || "",
@@ -997,10 +1162,11 @@ function openInForge(item) {
   e.preventDefault();
   if (BETA_LOCAL_SCOUT) {
     const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
-    const newStore = {
+    const newStore = normalizeStoreGroup({
       id: makeScoutId("store"),
       name: storeForm.name,
       chain: storeForm.chain,
+      storeGroup: storeForm.storeGroup,
       city: storeForm.city,
       address: storeForm.address,
       phone: storeForm.phone,
@@ -1010,12 +1176,12 @@ function openInForge(item) {
       truckDays: [],
       priority: false,
       createdAt: new Date().toISOString(),
-    };
+    });
     const nextStores = [newStore, ...(saved.stores || [])];
     saveLocalScout({ stores: nextStores });
     setStores(nextStores);
     setSelectedStoreId(newStore.id);
-    setStoreForm({ name: "", chain: "", city: "", address: "", phone: "" });
+    setStoreForm({ name: "", chain: "", storeGroup: "", city: "", address: "", phone: "" });
     return;
   }
 
@@ -1023,6 +1189,7 @@ function openInForge(item) {
     await createStore({
       name: storeForm.name,
       chain: storeForm.chain,
+      storeGroup: storeForm.storeGroup || getStoreGroup(storeForm),
       city: storeForm.city,
       address: storeForm.address,
       phone: storeForm.phone,
@@ -1035,6 +1202,7 @@ function openInForge(item) {
     setStoreForm({
       name: "",
       chain: "",
+      storeGroup: "",
       city: "",
       address: "",
       phone: "",
@@ -1054,14 +1222,15 @@ async function handleUpdateStore(e) {
     const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
     const nextStores = (saved.stores || []).map((store) =>
       store.id === selectedStoreId
-        ? {
+        ? normalizeStoreGroup({
             ...store,
             name: editStoreForm.name,
             chain: editStoreForm.chain,
+            storeGroup: editStoreForm.storeGroup,
             city: editStoreForm.city,
             address: editStoreForm.address,
             phone: editStoreForm.phone,
-          }
+          })
         : store
     );
     saveLocalScout({ stores: nextStores });
@@ -1074,6 +1243,7 @@ async function handleUpdateStore(e) {
     await updateStore(selectedStoreId, {
       name: editStoreForm.name,
       chain: editStoreForm.chain,
+      storeGroup: editStoreForm.storeGroup || getStoreGroup(editStoreForm),
       city: editStoreForm.city,
       address: editStoreForm.address,
       phone: editStoreForm.phone,
@@ -1089,12 +1259,13 @@ async function handleUpdateStore(e) {
 
   async function handleCreateReport(e) {
     e.preventDefault();
-    if (!selectedStoreId) return;
+    const activeStoreId = selectedStoreId || stores[0]?.id;
+    if (!activeStoreId) return;
 
     if (BETA_LOCAL_SCOUT) {
       const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
       const reportPayload = {
-        storeId: selectedStoreId,
+        storeId: activeStoreId,
         itemName: reportForm.itemName,
         note: reportForm.note,
         reportDate: reportForm.reportDate,
@@ -1114,7 +1285,8 @@ async function handleUpdateStore(e) {
         );
         saveLocalScout({ reports: nextReports });
         setAllReports(nextReports);
-        setReports(nextReports.filter((report) => getReportStoreId(report) === selectedStoreId));
+        setSelectedStoreId(activeStoreId);
+        setReports(nextReports.filter((report) => getReportStoreId(report) === activeStoreId));
         resetReportForm();
         setError("");
         return;
@@ -1127,14 +1299,15 @@ async function handleUpdateStore(e) {
       };
       const nextReports = [newReport, ...(saved.reports || [])];
       const nextStores = (saved.stores || stores).map((store) =>
-        store.id === selectedStoreId
+        store.id === activeStoreId
           ? { ...store, status: "Found", lastRestock: reportForm.reportDate || new Date().toISOString().slice(0, 10) }
           : store
       );
       saveLocalScout({ stores: nextStores, reports: nextReports });
       setStores(nextStores);
       setAllReports(nextReports);
-      setReports(nextReports.filter((report) => getReportStoreId(report) === selectedStoreId));
+      setSelectedStoreId(activeStoreId);
+      setReports(nextReports.filter((report) => getReportStoreId(report) === activeStoreId));
       resetReportForm();
       setError("");
       return;
@@ -1142,14 +1315,15 @@ async function handleUpdateStore(e) {
 
     try {
       if (editingReportId) {
-        await updateReport(selectedStoreId, editingReportId, reportForm);
+        await updateReport(activeStoreId, editingReportId, reportForm);
       } else {
-        await createReport(selectedStoreId, reportForm);
+        await createReport(activeStoreId, reportForm);
       }
 
       resetReportForm();
 
-      await loadStoreDetails(selectedStoreId);
+      setSelectedStoreId(activeStoreId);
+      await loadStoreDetails(activeStoreId);
       await loadStores();
     } catch (err) {
       setError(err.message || "Failed to save report");
@@ -1182,8 +1356,9 @@ async function handleUpdateStore(e) {
 
   function handleSaveScreenshotTip(event) {
     event.preventDefault();
+    const activeStoreId = selectedStoreId || stores[0]?.id;
 
-    if (!selectedStoreId) {
+    if (!activeStoreId) {
       setError("Select or create a store before saving a screenshot tip.");
       return;
     }
@@ -1203,7 +1378,7 @@ async function handleUpdateStore(e) {
     const screenshotLocalId = tipImport.keepScreenshot ? makeScoutId("screenshot") : "";
     const newReport = {
       id: makeScoutId("report"),
-      storeId: selectedStoreId,
+      storeId: activeStoreId,
       itemName: tipImport.productName || "Screenshot tip",
       productName: tipImport.productName || "",
       productCategory: tipImport.productCategory || "Pokemon",
@@ -1260,7 +1435,7 @@ async function handleUpdateStore(e) {
 
     const nextReports = [newReport, ...(saved.reports || [])];
     const nextStores = (saved.stores || stores).map((store) =>
-      store.id === selectedStoreId
+      store.id === activeStoreId
         ? { ...store, status: tipImport.stockStatus === "sold_out" ? "Sold Out" : "Found", lastRestock: reportDate }
         : store
     );
@@ -1268,20 +1443,22 @@ async function handleUpdateStore(e) {
     saveLocalScout({ stores: nextStores, reports: nextReports });
     setStores(nextStores);
     setAllReports(nextReports);
-    setReports(nextReports.filter((report) => getReportStoreId(report) === selectedStoreId));
+    setSelectedStoreId(activeStoreId);
+    setReports(nextReports.filter((report) => getReportStoreId(report) === activeStoreId));
     resetTipImport();
     setError("");
   }
 
   async function handleCreateItem(e) {
     e.preventDefault();
-    if (!selectedStoreId) return;
+    const activeStoreId = selectedStoreId || stores[0]?.id;
+    if (!activeStoreId) return;
 
     if (BETA_LOCAL_SCOUT) {
       const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
       const itemPayload = {
         ...itemForm,
-        storeId: selectedStoreId,
+        storeId: activeStoreId,
       };
 
       if (editingTrackedItemId) {
@@ -1291,7 +1468,8 @@ async function handleUpdateStore(e) {
             : item
         );
         saveLocalScout({ items: nextItems });
-        setItems(nextItems.filter((item) => item.storeId === selectedStoreId));
+        setSelectedStoreId(activeStoreId);
+        setItems(nextItems.filter((item) => item.storeId === activeStoreId));
         resetTrackedItemForm();
         setError("");
         return;
@@ -1304,7 +1482,8 @@ async function handleUpdateStore(e) {
       };
       const nextItems = [newItem, ...(saved.items || [])];
       saveLocalScout({ items: nextItems });
-      setItems(nextItems.filter((item) => item.storeId === selectedStoreId));
+      setSelectedStoreId(activeStoreId);
+      setItems(nextItems.filter((item) => item.storeId === activeStoreId));
       resetTrackedItemForm();
       setError("");
       return;
@@ -1312,12 +1491,13 @@ async function handleUpdateStore(e) {
 
     try {
       if (editingTrackedItemId) {
-        await updateTrackedItem(selectedStoreId, editingTrackedItemId, itemForm);
+        await updateTrackedItem(activeStoreId, editingTrackedItemId, itemForm);
       } else {
-        await createTrackedItem(selectedStoreId, itemForm);
+        await createTrackedItem(activeStoreId, itemForm);
       }
       resetTrackedItemForm();
-      await loadStoreDetails(selectedStoreId);
+      setSelectedStoreId(activeStoreId);
+      await loadStoreDetails(activeStoreId);
     } catch (err) {
       setError(err.message || "Failed to save tracked item");
     }
@@ -1422,29 +1602,61 @@ async function handleUpdateStore(e) {
     return ["All", ...cities.sort()];
   }, [stores]);
 
+  const countyOptions = useMemo(() => {
+    const counties = Array.from(new Set(stores.map((s) => s.county).filter(Boolean)));
+    return ["All", ...counties.sort()];
+  }, [stores]);
+
+  const confidenceOptions = useMemo(() => {
+    const confidence = Array.from(new Set(stores.map((s) => s.pokemonConfidence).filter(Boolean)));
+    return ["All", ...confidence.sort()];
+  }, [stores]);
+
   const storeTypeOptions = useMemo(() => {
     const types = Array.from(new Set(stores.map((s) => s.storeType || s.store_type || s.type).filter(Boolean)));
     return ["All", ...types.sort()];
   }, [stores]);
 
   const filteredStores = useMemo(() => {
-    const search = storeSearch.trim().toLowerCase();
-    return stores.filter((store) => {
+    const today = new Date().toISOString().slice(0, 10);
+    return sortStores(stores.filter((store) => {
       const storeType = store.storeType || store.store_type || store.type || "";
-      const matchesSearch =
-        !search ||
-        String(store.name || "").toLowerCase().includes(search) ||
-        String(store.nickname || "").toLowerCase().includes(search) ||
-        String(store.address || "").toLowerCase().includes(search) ||
-        String(store.city || "").toLowerCase().includes(search) ||
-        String(store.notes || "").toLowerCase().includes(search);
+      const matchesSearch = storeMatchesSearch(store, storeSearch);
       const matchesChain = selectedChain === "All" || store.chain === selectedChain;
       const matchesRegion = selectedRegion === "All" || store.region === selectedRegion;
       const matchesCity = selectedCity === "All" || store.city === selectedCity;
       const matchesType = selectedStoreType === "All" || storeType === selectedStoreType;
-      return matchesSearch && matchesChain && matchesRegion && matchesCity && matchesType;
-    });
-  }, [stores, selectedChain, selectedRegion, selectedCity, selectedStoreType, storeSearch]);
+      const matchesCounty = selectedCounty === "All" || store.county === selectedCounty;
+      const matchesConfidence = selectedConfidence === "All" || store.pokemonConfidence === selectedConfidence;
+      const quickMatch =
+        storeQuickFilter === "all" ||
+        (storeQuickFilter === "default" && (store.favorite || store.carriesPokemonLikely || store.tidepoolScore || store.restockConfidence || store.lastReportDate)) ||
+        (storeQuickFilter === "favorites" && store.favorite) ||
+        (storeQuickFilter === "recent" && String(store.lastReportDate || "").slice(0, 10) === today) ||
+        (storeQuickFilter === "highConfidence" && ["high", "medium/high"].includes(String(store.pokemonConfidence || "").toLowerCase())) ||
+        (storeQuickFilter === "strictLimits" && store.strictLimits);
+      return matchesSearch && matchesChain && matchesRegion && matchesCity && matchesType && matchesCounty && matchesConfidence && quickMatch;
+    }), storeSort);
+  }, [stores, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
+
+  const groupedFilteredStores = useMemo(() => {
+    const groups = filteredStores.reduce((acc, store) => {
+      const group = getStoreGroup(store);
+      acc[group] = [...(acc[group] || []), store];
+      return acc;
+    }, {});
+
+    return STORE_GROUP_ORDER
+      .map((group) => ({
+        group,
+        stores: sortStores(groups[group] || [], storeSort),
+      }))
+      .filter((entry) => entry.stores.length > 0);
+  }, [filteredStores, storeSort]);
+
+  function toggleStoreGroup(group) {
+    setOpenStoreGroups((current) => ({ ...current, [group]: current[group] === false }));
+  }
 
   const totals = useMemo(() => {
     const found = stores.filter((s) => s.status === "Found").length;
@@ -1528,6 +1740,61 @@ async function handleUpdateStore(e) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
   }, [stores, reportsByStore]);
+
+  const routeCandidates = useMemo(() => {
+    return stores.map((store) => {
+      if (routeForm.region !== "All" && store.region !== routeForm.region) return null;
+      const group = getStoreGroup(store);
+      const storeReports = reportsByStore[store.id] || [];
+      const tidepoolMatches = tidepoolReports.filter((report) => String(report.storeId) === String(store.id));
+      const latestReport = [...storeReports].sort((a, b) => {
+        const aDate = `${getReportDate(a)}T${getReportTime(a) || "00:00"}`;
+        const bDate = `${getReportDate(b)}T${getReportTime(b) || "00:00"}`;
+        return new Date(bDate) - new Date(aDate);
+      })[0];
+      const dailyScore = dailyLocalReport.find((entry) => entry.store.id === store.id)?.score || 20;
+      const tidepoolScore = Math.max(...tidepoolMatches.map((report) => Number(report.confidenceScore || 0)), 0);
+      const recentConfirmed = tidepoolMatches.some((report) => report.verificationStatus === "verified" || report.verifiedByCount > 0);
+      const strictLimit = /limit|one per|1 per|strict/i.test(`${store.limitPolicy || ""} ${store.notes || ""}`);
+      const distance = numericDistance(store);
+      const reportCountToday = storeReports.filter((report) => getReportDate(report) === new Date().toISOString().slice(0, 10)).length;
+      const lastReportTime = latestReport ? `${getReportDate(latestReport)} ${getReportTime(latestReport)}`.trim() : "";
+      const valueScore = (recentConfirmed ? 25 : 0) + tidepoolScore + (store.priority || store.favorite ? 12 : 0) - (strictLimit ? 5 : 0);
+      return {
+        store,
+        group,
+        distance,
+        reportCountToday,
+        dailyScore,
+        tidepoolScore,
+        valueScore,
+        recentConfirmed,
+        strictLimit,
+        lastReportTime,
+        latestReport,
+      };
+    }).filter(Boolean);
+  }, [stores, reportsByStore, tidepoolReports, dailyLocalReport, routeForm.region]);
+
+  const suggestedRouteStops = useMemo(() => {
+    return buildSuggestedRoute(routeCandidates, {
+      includedGroups: routeForm.includedGroups,
+      lockedStoreIds: routeForm.lockedStoreIds,
+      maxDistance: routeForm.maxDistance,
+      maxStops: routeForm.maxStops,
+      routeGoal: routeForm.routeGoal,
+    });
+  }, [routeCandidates, routeForm.includedGroups, routeForm.lockedStoreIds, routeForm.maxDistance, routeForm.maxStops, routeForm.routeGoal]);
+
+  const scoredRouteCandidates = useMemo(() => {
+    return buildSuggestedRoute(routeCandidates, {
+      includedGroups: routeForm.includedGroups,
+      lockedStoreIds: routeForm.lockedStoreIds,
+      maxDistance: routeForm.maxDistance,
+      maxStops: Math.max(routeCandidates.length, 1),
+      routeGoal: routeForm.routeGoal,
+    });
+  }, [routeCandidates, routeForm.includedGroups, routeForm.lockedStoreIds, routeForm.maxDistance, routeForm.routeGoal]);
 
   const restockHistory = useMemo(() => {
     return [...allReports]
@@ -1621,6 +1888,58 @@ async function handleUpdateStore(e) {
           </div>
         ) : null}
 
+        <div style={styles.pageHeader}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>Scout Dashboard</h2>
+              <p style={{ ...styles.empty, padding: 0 }}>Stores, reports, routes, Tidepool, and alerts in focused views.</p>
+            </div>
+            <div style={styles.row}>
+              <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Add Report</button>
+              <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("route")}>Build Route</button>
+            </div>
+          </div>
+          <div style={styles.row}>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>Add Report</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("route")}>Build Route</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("stores")}>Add Store</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("tidepool")}>View Tidepool</button>
+          </div>
+          <div style={styles.subTabs}>
+            {[
+              ["overview", "Overview"],
+              ["stores", "Stores"],
+              ["reports", "Reports"],
+              ["route", "Route Planner"],
+              ["tidepool", "Tidepool"],
+              ["alerts", "Alerts"],
+            ].map(([key, label]) => (
+              <button key={key} type="button" style={scoutSubTab === key ? styles.buttonPrimary : styles.buttonSoft} onClick={() => setScoutSubTab(key)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {scoutSubTab === "overview" ? (
+          <>
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>Virginia Scout Directory</h2>
+          <p style={styles.empty}>
+            Scout is ready for statewide Virginia coverage. Hampton Roads has starter store rows now; other regions are import-ready batches that should be filled from official store directories or manual CSVs.
+          </p>
+          <div style={styles.statsRow}>
+            <Metric label="VA Stores" value={stores.length} />
+            <Metric label="Regions" value={VIRGINIA_REGIONS.length} />
+            <Metric label="Filtered View" value={filteredStores.length} />
+            <Metric label="Seed Batches" value={VIRGINIA_STORE_SEED_STATUS.length} />
+          </div>
+          <div style={styles.row}>
+            {VIRGINIA_STORE_SEED_STATUS.map((batch) => (
+              <span key={batch.source} style={styles.badge}>{batch.region}: {batch.count}</span>
+            ))}
+          </div>
+        </div>
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>My Scout Score</h2>
@@ -1648,6 +1967,11 @@ async function handleUpdateStore(e) {
           </div>
         </div>
 
+          </>
+        ) : null}
+
+        {scoutSubTab === "tidepool" ? (
+          <>
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Tidepool</h2>
           <p style={styles.empty}>Community-powered Scout reports for restocks, products, limits, deals, online drops, and store updates.</p>
@@ -1686,6 +2010,10 @@ async function handleUpdateStore(e) {
           </div>
         </div>
 
+          </>
+        ) : null}
+
+        {scoutSubTab === "reports" || scoutSubTab === "alerts" ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Submit Report</h2>
@@ -1729,6 +2057,9 @@ async function handleUpdateStore(e) {
           </div>
         </div>
 
+        ) : null}
+
+        {scoutSubTab === "tidepool" ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Report Guidelines</h2>
@@ -1747,6 +2078,9 @@ async function handleUpdateStore(e) {
           </div>
         </div>
 
+        ) : null}
+
+        {scoutSubTab === "overview" || scoutSubTab === "reports" ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Daily Scout Report</h2>
@@ -1807,40 +2141,121 @@ async function handleUpdateStore(e) {
           </div>
         </div>
 
+        ) : null}
+
+        {scoutSubTab === "route" ? (
         <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>Scout Route</h2>
+          <h2 style={styles.sectionTitle}>Scout Route Planner</h2>
+          <p style={styles.empty}>Choose a goal and filters. Scout will suggest the best route automatically, then you can adjust stops before saving.</p>
           <form onSubmit={saveRoute} style={styles.formGrid}>
             <input
               style={styles.input}
               value={routeForm.routeName}
-              onChange={(e) => setRouteForm({ ...routeForm, routeName: e.target.value })}
+              onChange={(e) => updateRouteForm("routeName", e.target.value)}
               placeholder="Route name"
             />
+            <input
+              style={styles.input}
+              value={routeForm.startingZip}
+              onChange={(e) => updateRouteForm("startingZip", e.target.value)}
+              placeholder="Starting ZIP or city"
+            />
+            <select
+              style={styles.input}
+              value={routeForm.routeGoal}
+              onChange={(e) => updateRouteForm("routeGoal", e.target.value)}
+            >
+              {ROUTE_GOALS.map((goal) => <option key={goal}>{goal}</option>)}
+            </select>
+            <select
+              style={styles.input}
+              value={routeForm.region}
+              onChange={(e) => updateRouteForm("region", e.target.value)}
+            >
+              {regionOptions.map((region) => (
+                <option key={region} value={region}>{region === "All" ? "All regions" : region}</option>
+              ))}
+            </select>
+            <div style={styles.reportGrid}>
+              <input
+                style={styles.input}
+                type="number"
+                min="1"
+                max="20"
+                value={routeForm.maxStops}
+                onChange={(e) => updateRouteForm("maxStops", e.target.value)}
+                placeholder="Max stops"
+              />
+              <input
+                style={styles.input}
+                type="number"
+                min="0"
+                value={routeForm.maxDistance}
+                onChange={(e) => updateRouteForm("maxDistance", e.target.value)}
+                placeholder="Max driving distance"
+              />
+              <input
+                style={styles.input}
+                type="number"
+                min="0"
+                value={routeForm.maxTripTime}
+                onChange={(e) => updateRouteForm("maxTripTime", e.target.value)}
+                placeholder="Max trip time minutes"
+              />
+            </div>
+            <div>
+              <p style={styles.tiny}>Store groups to include</p>
+              <div style={styles.row}>
+                {STORE_GROUP_ORDER.map((group) => (
+                  <button
+                    key={group}
+                    type="button"
+                    style={(routeForm.includedGroups || []).includes(group) ? styles.buttonPrimary : styles.buttonSoft}
+                    onClick={() => toggleRouteGroup(group)}
+                  >
+                    {group}
+                  </button>
+                ))}
+              </div>
+            </div>
             <textarea
               style={styles.textarea}
               value={routeForm.notes}
-              onChange={(e) => setRouteForm({ ...routeForm, notes: e.target.value })}
+              onChange={(e) => updateRouteForm("notes", e.target.value)}
               placeholder="Route notes"
             />
-            <div style={styles.reportGrid}>
-              {stores.length === 0 ? (
-                <p style={styles.empty}>Import shared Virginia stores before building a route.</p>
-              ) : (
-                stores.map((store) => (
-                  <button
-                    type="button"
-                    key={store.id}
-                    onClick={() => toggleRouteStore(store.id)}
-                    style={{
-                      ...(routeForm.selectedStoreIds.includes(store.id) ? styles.buttonPrimary : styles.buttonSoft),
-                      textAlign: "left",
-                    }}
-                  >
-                    {routeForm.selectedStoreIds.includes(store.id) ? "Selected: " : "Add: "}
-                    {store.name}
-                  </button>
-                ))
-              )}
+            <div style={styles.row}>
+              <button type="button" style={styles.buttonPrimary} onClick={generateSuggestedRoute}>Generate Suggested Route</button>
+              <button type="button" style={styles.buttonSoft} onClick={generateSuggestedRoute}>Regenerate Route</button>
+            </div>
+            <div style={{ display: "grid", gap: "12px" }}>
+              {(routeForm.selectedStoreIds.length ? routeForm.selectedStoreIds.map(routeStopDetails).filter(Boolean) : suggestedRouteStops).map((stop, index) => {
+                const store = stop.store;
+                const isLocked = (routeForm.lockedStoreIds || []).includes(store.id);
+                const confidence = Math.max(stop.dailyScore, stop.tidepoolScore, stop.routeScore / 2);
+                return (
+                  <div key={store.id} style={styles.calloutCard}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                      <strong>{index + 1}. {store.nickname || store.name}</strong>
+                      <span style={styles.badge}>{confidenceLabel(confidence)} confidence</span>
+                    </div>
+                    {store.nickname ? <p style={{ margin: "6px 0", color: "#64748b" }}>{store.name}</p> : null}
+                    <p style={{ margin: "6px 0", color: "#475569" }}>{stop.group} | {store.address || "No address"} | {store.city || ""}</p>
+                    <p style={{ margin: "6px 0", color: "#334155" }}>
+                      Reason: {explainRouteChoice(stop, routeForm.routeGoal)}
+                    </p>
+                    <p style={styles.tiny}>
+                      Last reported Pokemon stock: {stop.lastReportTime || "No report yet"} | Estimated distance/time: {stop.distance < 999 ? `${stop.distance} mi` : "Unknown"} / Unknown | Priority: {Math.round(stop.routeScore)}
+                    </p>
+                    <div style={styles.row}>
+                      <button type="button" style={styles.buttonSoft} onClick={() => moveRouteStop(store.id, -1)}>Move Up</button>
+                      <button type="button" style={styles.buttonSoft} onClick={() => moveRouteStop(store.id, 1)}>Move Down</button>
+                      <button type="button" style={isLocked ? styles.buttonPrimary : styles.buttonSoft} onClick={() => toggleLockedRouteStop(store.id)}>{isLocked ? "Locked" : "Lock Stop"}</button>
+                      <button type="button" style={styles.buttonDanger} onClick={() => removeRouteStop(store.id)}>Remove</button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <button type="submit" style={styles.buttonPrimary}>Save Route</button>
           </form>
@@ -1851,6 +2266,7 @@ async function handleUpdateStore(e) {
               {routes.map((route) => (
                 <div key={route.id} style={styles.listCard}>
                   <strong>{route.routeName}</strong>
+                  <p style={styles.tiny}>{route.routeGoal || "Custom route"} | {route.completed ? "Completed" : "Planned"} | Start: {route.startingZip || "Not set"}</p>
                   <p style={{ margin: "6px 0", color: "#475569" }}>
                     {route.selectedStoreIds
                       .map((storeId) => stores.find((store) => store.id === storeId)?.name)
@@ -1858,10 +2274,29 @@ async function handleUpdateStore(e) {
                       .join(" -> ") || "No stores"}
                   </p>
                   {route.notes ? <p style={{ margin: "6px 0", color: "#475569" }}>{route.notes}</p> : null}
+                  <div style={{ display: "grid", gap: "8px", marginTop: "10px" }}>
+                    {(route.selectedStoreIds || []).map((storeId, index) => {
+                      const store = stores.find((item) => item.id === storeId);
+                      if (!store) return null;
+                      return (
+                        <div key={storeId} style={styles.listCard}>
+                          <strong>{index + 1}. {store.nickname || store.name}</strong>
+                          <p style={styles.tiny}>{getStoreGroup(store)} | {store.address || "No address"}</p>
+                          <textarea
+                            style={styles.textarea}
+                            value={route.stopNotes?.[storeId] || ""}
+                            onChange={(event) => updateRouteStopNote(route.id, storeId, event.target.value)}
+                            placeholder="Add restock notes after visiting this stop"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                   <div style={styles.row}>
                     <a style={styles.buttonSoft} href={routeMapUrl(route)} target="_blank" rel="noreferrer">
                       Open in Google Maps
                     </a>
+                    {!route.completed ? <button type="button" style={styles.buttonPrimary} onClick={() => markRouteCompleted(route.id)}>Mark Completed</button> : null}
                     <OverflowMenu onDelete={() => deleteRoute(route.id)} />
                   </div>
                 </div>
@@ -1870,6 +2305,9 @@ async function handleUpdateStore(e) {
           ) : null}
         </div>
 
+        ) : null}
+
+        {scoutSubTab === "stores" || scoutSubTab === "reports" ? (
         <div style={styles.mainGrid}>
           <div style={styles.col}>
             <div style={styles.card}>
@@ -1884,6 +2322,28 @@ async function handleUpdateStore(e) {
 
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Find Store Fast</h2>
+              <p style={styles.tiny}>
+                Statewide Virginia directory: default view keeps practical stores first. Use Browse All Virginia Stores to see every seeded/imported row.
+              </p>
+              <div style={styles.row}>
+                {[
+                  ["default", "Nearby / Useful"],
+                  ["favorites", "Favorites"],
+                  ["recent", "Recently Reported"],
+                  ["highConfidence", "High Confidence"],
+                  ["strictLimits", "Strict Limits"],
+                  ["all", "Browse All Virginia Stores"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    style={storeQuickFilter === key ? styles.buttonPrimary : styles.buttonSoft}
+                    onClick={() => setStoreQuickFilter(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
 
               <div style={styles.formGrid}>
                 <input
@@ -1948,6 +2408,46 @@ async function handleUpdateStore(e) {
                     </option>
                   ))}
                 </select>
+                <select
+                  style={styles.input}
+                  value={selectedCounty}
+                  onChange={(e) => {
+                    setSelectedCounty(e.target.value);
+                    setSelectedStoreId("");
+                  }}
+                >
+                  {countyOptions.map((county) => (
+                    <option key={county} value={county}>
+                      {county === "All" ? "All counties" : county}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  style={styles.input}
+                  value={selectedConfidence}
+                  onChange={(e) => {
+                    setSelectedConfidence(e.target.value);
+                    setSelectedStoreId("");
+                  }}
+                >
+                  {confidenceOptions.map((confidence) => (
+                    <option key={confidence} value={confidence}>
+                      {confidence === "All" ? "All Pokemon confidence" : confidence}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  style={styles.input}
+                  value={storeSort}
+                  onChange={(e) => setStoreSort(e.target.value)}
+                >
+                  <option value="nickname">Sort by nickname</option>
+                  <option value="distance">Sort by distance</option>
+                  <option value="city">Sort by city</option>
+                  <option value="last report">Sort by last report</option>
+                  <option value="restock confidence">Sort by restock confidence</option>
+                  <option value="tidepool score">Sort by Tidepool score</option>
+                </select>
 
                 <select
                   style={styles.input}
@@ -1969,28 +2469,95 @@ async function handleUpdateStore(e) {
                 ) : filteredStores.length === 0 ? (
                   <p style={styles.empty}>No shared stores match those filters.</p>
                 ) : (
-                  filteredStores.slice(0, 8).map((store) => (
-                    <div
-                      key={store.id}
-                      onClick={() => setSelectedStoreId(store.id)}
-                      style={styles.storeChoiceCard}
-                    >
-                      <h3 style={{ margin: "0 0 6px 0", fontSize: "16px", fontWeight: 800 }}>
-                        {store.nickname || store.name}
-                      </h3>
-                      {store.nickname ? <p style={{ margin: 0, color: "#64748b" }}>{store.name}</p> : null}
-                      <p style={{ margin: 0, color: "#475569" }}>
-                        {store.address || "No address"}
-                      </p>
-                      <p style={{ margin: "4px 0 0 0", color: "#475569" }}>
-                        {store.city || "No city"} {store.region ? ` - ${store.region}` : ""} {store.phone ? ` - ${store.phone}` : ""}
-                      </p>
-                      {store.notes ? <p style={{ margin: "6px 0 0 0", color: "#64748b" }}>{store.notes}</p> : null}
-                    </div>
-                  ))
+                  groupedFilteredStores.map(({ group, stores: groupStores }) => {
+                    const isOpen = openStoreGroups[group] !== false;
+                    return (
+                      <div key={group} style={styles.storeGroup}>
+                        <button
+                          type="button"
+                          style={styles.storeGroupHeader}
+                          onClick={() => toggleStoreGroup(group)}
+                          aria-expanded={isOpen}
+                        >
+                          <span>{group} ({groupStores.length})</span>
+                          <span>{isOpen ? "Hide" : "Show"}</span>
+                        </button>
+                        {isOpen ? (
+                          <div style={styles.storeGroupBody}>
+                            {groupStores.map((store) => {
+                              const storeReports = reportsByStore[store.id] || [];
+                              const stockDays = Array.isArray(store.stockDays) ? store.stockDays.join(", ") : store.stockDays || "Unknown";
+                              const truckDays = Array.isArray(store.truckDays) ? store.truckDays.join(", ") : store.truckDays || "Unknown";
+                              const scoutScore = dailyLocalReport.find((entry) => entry.store.id === store.id)?.score;
+                              return (
+                                <div
+                                  key={store.id}
+                                  className="scout-store-card"
+                                  onClick={() => setSelectedStoreId(store.id)}
+                                  style={styles.storeChoiceCard}
+                                >
+                                  <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                                    <h3 style={{ margin: "0 0 6px 0", fontSize: "16px", fontWeight: 800 }}>
+                                      {store.nickname || store.name}
+                                    </h3>
+                                    <span style={styles.badge}>{storeReports.length} reports</span>
+                                  </div>
+                                  {store.nickname ? <p style={{ margin: 0, color: "#64748b" }}>{store.name}</p> : null}
+                                  <p style={{ margin: 0, color: "#475569" }}>
+                                    {store.address || "No address"}
+                                  </p>
+                                  <p style={{ margin: "4px 0 0 0", color: "#475569" }}>
+                                    {store.city || "No city"} {store.region ? ` - ${store.region}` : ""} {store.phone ? ` - ${store.phone}` : ""}
+                                  </p>
+                                  <p style={styles.tiny}>
+                                    Restock day: {stockDays || "Unknown"} | Truck day: {truckDays || "Unknown"} | Score: {scoutScore ? `${scoutScore}%` : "Needs reports"} | Distance: {store.distanceMiles ? `${store.distanceMiles} mi` : "Unknown"}
+                                  </p>
+                                  <p style={styles.tiny}>
+                                    Pokemon confidence: {store.pokemonConfidence || "Unknown"} | Source: {store.source || "local/manual"} | Last verified: {store.lastVerified || "Needs verification"}
+                                  </p>
+                                  {store.notes ? <p style={{ margin: "6px 0 0 0", color: "#64748b" }}>{store.notes}</p> : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
+          </div>
+
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Statewide Store CSV Import</h2>
+            <p style={styles.tiny}>
+              Paste official-directory or manually verified Virginia store rows. Import dedupes by chain + address + ZIP and does not invent restock data.
+            </p>
+            <textarea
+              style={styles.textarea}
+              value={storeImportText}
+              onChange={(event) => setStoreImportText(event.target.value)}
+              placeholder="name,nickname,chain,storeGroup,address,city,state,zip,phone,latitude,longitude,region,county,source,sourceUrl,carriesPokemonLikely,pokemonConfidence,notes"
+            />
+            <div style={styles.row}>
+              <button type="button" style={styles.buttonSoft} onClick={previewStatewideStoreImport}>Preview Store Import</button>
+              <button type="button" style={styles.buttonPrimary} disabled={!storeImportPreview.length} onClick={confirmStatewideStoreImport}>
+                Import {storeImportPreview.length || ""} Stores
+              </button>
+            </div>
+            {storeImportPreview.length ? (
+              <div style={{ marginTop: "12px", display: "grid", gap: "8px" }}>
+                <p style={styles.tiny}>Warnings: {flagStoreImportIssues(storeImportPreview).length}</p>
+                {storeImportPreview.slice(0, 5).map((store) => (
+                  <div key={store.id} style={styles.listCard}>
+                    <strong>{store.nickname || store.name}</strong>
+                    <p style={styles.tiny}>{store.chain} | {store.storeGroup} | {store.city}, {store.state} {store.zip}</p>
+                    <p style={styles.tiny}>Pokemon confidence: {store.pokemonConfidence || "Unknown"} | Source: {store.source}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div style={styles.col}>
@@ -2239,7 +2806,7 @@ async function handleUpdateStore(e) {
                       <p style={styles.empty}>No reports yet.</p>
                     ) : (
                       reports.map((report) => (
-                        <div key={report.id} style={styles.listCard}>
+                        <div key={report.id} className="scout-report-card" style={styles.listCard}>
                           <strong>{report.item_name || report.itemName}</strong>
                           <p style={{ margin: "8px 0", color: "#334155" }}>{report.note}</p>
                           <p style={styles.tiny}>
@@ -2348,7 +2915,7 @@ async function handleUpdateStore(e) {
                       <p style={styles.empty}>No tracked items yet.</p>
                     ) : (
                       items.map((item) => (
-                        <div key={item.id} style={styles.listCard}>
+                        <div key={item.id} className="scout-tracked-item-card" style={styles.listCard}>
                           <strong>{item.name}</strong>
                           <p style={{ margin: "8px 0", color: "#334155" }}>
                             Category: {item.category || "—"}
@@ -2408,6 +2975,7 @@ async function handleUpdateStore(e) {
             )}
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   );

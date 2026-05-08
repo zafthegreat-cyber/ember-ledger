@@ -66,8 +66,17 @@ async function main() {
   }
 
   async function overflowAction(scope, actionLabel) {
-    await scope.locator(".overflow-menu-button").click();
-    await scope.getByRole("menuitem", { name: actionLabel }).click();
+    const candidates = scope.locator(".overflow-menu-button");
+    const count = await candidates.count();
+    for (let index = count - 1; index >= 0; index -= 1) {
+      const button = candidates.nth(index);
+      if (await button.isVisible().catch(() => false)) {
+        await button.click({ force: true });
+        await scope.getByRole("menuitem", { name: actionLabel }).click();
+        return;
+      }
+    }
+    throw new Error(`No visible overflow menu found for ${actionLabel}`);
   }
 
   await step("app opens and beta data resets", async () => {
@@ -77,7 +86,7 @@ async function main() {
     await assertVisibleText("Forge");
     await assertVisibleText("Scout");
     await assertVisibleText("Vault");
-    await assertVisibleText("Menu");
+    await assertVisibleText("TideTradr");
   });
 
   async function assertVisibleText(text) {
@@ -93,53 +102,66 @@ async function main() {
     await nav("Scout");
     await page.waitForTimeout(500);
     await page.getByRole("button", { name: /Scout Workspace/i }).click();
+    await page.getByRole("button", { name: /^Stores$/ }).click();
     await assertVisibleText("Shared Store Directory");
     await assert.match(await page.locator("body").innerText(), /Smoke Shared Target/);
+    await page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first().click();
     assert.ok(await page.getByRole("button", { name: "Add Store" }).count() > 0);
   });
 
   await step("Scout: add/edit/delete restock report", async () => {
-    const reportPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: "Add Report" }) }).last();
-    await reportPanel.getByPlaceholder("Item name").fill("Smoke ETB");
-    await reportPanel.getByPlaceholder("What did you see?").fill("Two ETBs on the shelf.");
-    await reportPanel.locator('input[type="date"]').fill("2026-05-08");
-    await reportPanel.locator('input[type="time"]').fill("10:30");
-    await reportPanel.getByRole("button", { name: "Add Report" }).click();
+    await page.getByRole("button", { name: /^Reports$/ }).click();
+    const reportForm = page.locator("form").filter({ has: page.locator('textarea[placeholder="What did you see?"]') }).first();
+    await reportForm.getByPlaceholder("Item name").fill("Smoke ETB");
+    await reportForm.getByPlaceholder("What did you see?").fill("Two ETBs on the shelf.");
+    await reportForm.locator('input[type="date"]').fill("2026-05-08");
+    await reportForm.locator('input[type="time"]').fill("10:30");
+    await reportForm.locator('button[type="submit"]').click();
     await assertVisibleText("Smoke ETB");
 
-    await overflowAction(page.locator("div").filter({ hasText: "Smoke ETB" }).last(), "Edit");
+    const reportCard = page.locator(".scout-report-card").filter({ hasText: "Smoke ETB" }).first();
+    await reportCard.waitFor({ state: "visible", timeout: 10000 });
+    await overflowAction(reportCard, "Edit");
     const editReportPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: "Edit Report" }) }).last();
     await editReportPanel.getByPlaceholder("Item name").fill("Smoke ETB Edited");
     await editReportPanel.getByPlaceholder("What did you see?").fill("Three ETBs after edit.");
     await editReportPanel.getByRole("button", { name: "Save Report" }).click();
     await assertVisibleText("Smoke ETB Edited");
 
-    await overflowAction(page.locator("div").filter({ hasText: "Smoke ETB Edited" }).last(), "Delete");
-    await assert.equal(await page.getByText("Smoke ETB Edited", { exact: false }).count(), 0);
+    const editedReportCard = page.locator(".scout-report-card").filter({ hasText: "Smoke ETB Edited" }).first();
+    await editedReportCard.waitFor({ state: "visible", timeout: 10000 });
+    await overflowAction(editedReportCard, "Delete");
+    await assert.equal(await page.locator(".scout-report-card").filter({ hasText: "Smoke ETB Edited" }).count(), 0);
   });
 
   await step("Scout: add/edit/delete tracked item", async () => {
-    const trackedPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: "Add Tracked Item" }) }).last();
-    await trackedPanel.getByPlaceholder("Category").fill("Pokemon");
-    await trackedPanel.getByPlaceholder("Item name").fill("Smoke Booster Bundle");
-    await trackedPanel.getByPlaceholder("Retailer item number").fill("BB-001");
-    await trackedPanel.getByPlaceholder("SKU").fill("SKU-SMOKE");
-    await trackedPanel.getByPlaceholder("UPC").fill("012345678905");
-    await trackedPanel.getByPlaceholder("Product URL").fill("https://example.com/smoke");
-    await trackedPanel.getByRole("button", { name: "Add Tracked Item" }).click();
+    await page.getByRole("button", { name: /^Stores$/ }).click();
+    const trackedForm = page.locator("form").filter({ has: page.getByPlaceholder("Retailer item number") }).first();
+    await trackedForm.getByPlaceholder("Category").fill("Pokemon");
+    await trackedForm.getByPlaceholder("Item name").fill("Smoke Booster Bundle");
+    await trackedForm.getByPlaceholder("Retailer item number").fill("BB-001");
+    await trackedForm.getByPlaceholder("SKU").fill("SKU-SMOKE");
+    await trackedForm.getByPlaceholder("UPC").fill("012345678905");
+    await trackedForm.getByPlaceholder("Product URL").fill("https://example.com/smoke");
+    await trackedForm.locator('button[type="submit"]').click();
     await assertVisibleText("Smoke Booster Bundle");
 
-    await overflowAction(page.locator("div").filter({ hasText: "Smoke Booster Bundle" }).last(), "Edit");
+    const trackedCard = page.locator(".scout-tracked-item-card").filter({ hasText: "Smoke Booster Bundle" }).first();
+    await trackedCard.waitFor({ state: "visible", timeout: 10000 });
+    await overflowAction(trackedCard, "Edit");
     const editTrackedPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: "Edit Tracked Item" }) }).last();
     await editTrackedPanel.getByPlaceholder("Item name").fill("Smoke Booster Bundle Edited");
     await editTrackedPanel.getByRole("button", { name: "Save Tracked Item" }).click();
     await assertVisibleText("Smoke Booster Bundle Edited");
 
-    await overflowAction(page.locator("div").filter({ hasText: "Smoke Booster Bundle Edited" }).last(), "Delete");
-    await assert.equal(await page.getByText("Smoke Booster Bundle Edited", { exact: false }).count(), 0);
+    const editedTrackedCard = page.locator(".scout-tracked-item-card").filter({ hasText: "Smoke Booster Bundle Edited" }).first();
+    await editedTrackedCard.waitFor({ state: "visible", timeout: 10000 });
+    await overflowAction(editedTrackedCard, "Delete");
+    await assert.equal(await page.locator(".scout-tracked-item-card").filter({ hasText: "Smoke Booster Bundle Edited" }).count(), 0);
   });
 
   await step("Scout: Screenshot Tip Import upload/manual save", async () => {
+    await page.getByRole("button", { name: /^Reports$/ }).click();
     const screenshotPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: "Screenshot Tip Import" }) }).last();
     const png = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mP8z8BQDwAFgwJ/lw2nWQAAAABJRU5ErkJggg==",
@@ -168,7 +190,7 @@ async function main() {
 
   await step("Forge: add/edit/delete inventory item", async () => {
     await nav("Forge");
-    await page.getByRole("button", { name: "Add Inventory", exact: true }).click();
+    await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form.form").last();
     await form.locator("select").nth(1).selectOption("__add__");
     await form.getByPlaceholder("New purchaser name").fill("Smoke Buyer");
@@ -202,6 +224,7 @@ async function main() {
 
   await step("Vault: add/edit/delete Vault item", async () => {
     await nav("Vault");
+    await page.getByRole("button", { name: /^Collection$/ }).click();
     await page.getByRole("button", { name: /Add Item to Vault/i }).first().click();
     await page.getByRole("button", { name: "Add Item to Vault", exact: true }).click();
     const vaultForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Add to Vault" }) }).first();

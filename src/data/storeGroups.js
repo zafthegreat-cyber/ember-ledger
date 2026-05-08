@@ -1,0 +1,63 @@
+export const STORE_GROUP_ORDER = [
+  "Target",
+  "Walmart",
+  "Walmart Neighborhood Market",
+  "Warehouse Clubs",
+  "Best Buy",
+  "Bookstores / Hobby",
+  "Dollar / Discount Stores",
+  "Grocery / Pharmacy",
+  "Local Card Shops",
+  "Other",
+];
+
+export const VIRGINIA_REGIONS = [
+  "Hampton Roads",
+  "Richmond / Central Virginia",
+  "Northern Virginia",
+  "Charlottesville / Central West",
+  "Roanoke / Southwest Virginia",
+  "Shenandoah Valley",
+  "Southside Virginia",
+  "Eastern Shore",
+];
+
+export const CHAIN_CONFIDENCE_DEFAULTS = {
+  Target: { carriesPokemonLikely: true, pokemonConfidence: "high" },
+  Walmart: { carriesPokemonLikely: true, pokemonConfidence: "high" },
+  "Walmart Neighborhood Market": { carriesPokemonLikely: true, pokemonConfidence: "medium" },
+  "Best Buy": { carriesPokemonLikely: true, pokemonConfidence: "medium/high" },
+  "Barnes & Noble": { carriesPokemonLikely: true, pokemonConfidence: "medium/high" },
+  GameStop: { carriesPokemonLikely: true, pokemonConfidence: "medium/high" },
+  Costco: { carriesPokemonLikely: true, pokemonConfidence: "medium" },
+  "Sam's Club": { carriesPokemonLikely: true, pokemonConfidence: "medium" },
+  "BJ's Wholesale Club": { carriesPokemonLikely: true, pokemonConfidence: "medium" },
+  "Five Below": { carriesPokemonLikely: true, pokemonConfidence: "medium" },
+  "Dollar General": { carriesPokemonLikely: true, pokemonConfidence: "low/medium" },
+  "Family Dollar": { carriesPokemonLikely: true, pokemonConfidence: "low" },
+  "Dollar Tree": { carriesPokemonLikely: true, pokemonConfidence: "low" },
+  Walgreens: { carriesPokemonLikely: true, pokemonConfidence: "low" },
+  CVS: { carriesPokemonLikely: true, pokemonConfidence: "low" },
+  "Local Card Shop": { carriesPokemonLikely: true, pokemonConfidence: "high" },
+};
+
+export const VIRGINIA_STORE_IMPORT_FIELDS = [
+  "name",
+  "nickname",
+  "chain",
+  "storeGroup",
+  "address",
+  "city",
+  "state",
+  "zip",
+  "phone",
+  "latitude",
+  "longitude",
+  "region",
+  "county",
+  "source",
+  "sourceUrl",
+  "carriesPokemonLikely",
+  "pokemonConfidence",
+  "notes",
+];

@@ -3,13 +3,18 @@
 // Market values are not live unless sourceType is "live".
 
 export const SEALED_PRODUCT_TYPES = [
+  "Booster Pack",
   "Elite Trainer Box",
+  "Pokemon Center Elite Trainer Box",
   "Booster Bundle",
   "Booster Box",
   "Sleeved Booster",
+  "Blister Pack",
   "3-Pack Blister",
   "Checklane Blister",
   "Mini Tin",
+  "Poke Ball Tin",
+  "Lunchbox / Collector Chest",
   "Collection Box",
   "Ex Box",
   "Premium Collection",
@@ -23,9 +28,57 @@ export const SEALED_PRODUCT_TYPES = [
   "Binder Collection",
   "Battle Deck",
   "League Battle Deck",
+  "Starter Deck",
+  "Theme Deck",
   "Trainer's Toolkit",
+  "Figure Collection",
+  "Holiday Calendar",
+  "Retailer Exclusive Bundle",
+  "Warehouse Club Bundle",
+  "Third-Party Product",
+  "Accessories",
+  "Miscellaneous",
   "Mystery/Bundle item",
 ];
+
+export const SET_SEARCH_METADATA = {
+  "Prismatic Evolutions": { setCode: "PRE", setAliases: ["PRE", "PREN", "pri", "prism", "prismatic", "PE"] },
+  "Mega Evolution": { setCode: "MEG", setAliases: ["MEG", "mega"] },
+  "Destined Rivals": { setCode: "DRI", setAliases: ["SV10", "DRI", "destined", "dr", "rivals"] },
+  "Journey Together": { setCode: "JTG", setAliases: ["SV9", "JTG", "journey", "jt"] },
+  "Surging Sparks": { setCode: "SSP", setAliases: ["SV8", "SSP", "surging", "ss"] },
+  "Stellar Crown": { setCode: "SCR", setAliases: ["SV7", "SCR", "stellar"] },
+  "Shrouded Fable": { setCode: "SFA", setAliases: ["SV6.5", "SFA", "shrouded", "sf"] },
+  "Twilight Masquerade": { setCode: "TWM", setAliases: ["SV6", "TWM", "twilight", "tm"] },
+  "Temporal Forces": { setCode: "TEF", setAliases: ["SV5", "TEF", "temporal", "tf"] },
+  "Paldean Fates": { setCode: "PAF", setAliases: ["SV4.5", "PAF", "paldean fates", "pf"] },
+  "Paradox Rift": { setCode: "PAR", setAliases: ["SV4", "PAR", "paradox"] },
+  "Scarlet & Violet 151": { setCode: "MEW", setAliases: ["SV3.5", "MEW", "151", "sv151", "pokemon 151"] },
+  "Obsidian Flames": { setCode: "OBF", setAliases: ["SV3", "OBF", "obsidian", "of"] },
+  "Paldea Evolved": { setCode: "PAL", setAliases: ["SV2", "PAL", "paldea evolved", "pevolved", "paldea"] },
+  "Scarlet & Violet Base": { setCode: "SVI", setAliases: ["SV1", "SVI", "sv base", "scarlet violet base"] },
+  "Crown Zenith": { setCode: "CRZ", setAliases: ["CRZ", "crown", "cz"] },
+  "Silver Tempest": { setCode: "SIT", setAliases: ["SIT", "silver", "st"] },
+  "Lost Origin": { setCode: "LOR", setAliases: ["LOR", "lost", "lo"] },
+  "Astral Radiance": { setCode: "ASR", setAliases: ["ASR", "astral", "ar"] },
+  "Brilliant Stars": { setCode: "BRS", setAliases: ["BRS", "brilliant", "bs"] },
+  "Fusion Strike": { setCode: "FST", setAliases: ["FST", "fusion", "fs"] },
+  "Evolving Skies": { setCode: "EVS", setAliases: ["EVS", "evo skies", "evolving", "es"] },
+  "Chilling Reign": { setCode: "CRE", setAliases: ["CRE", "chilling", "cr"] },
+  "Battle Styles": { setCode: "BST", setAliases: ["BST", "battle styles"] },
+  "Shining Fates": { setCode: "SHF", setAliases: ["SHF", "shining fates"] },
+  "Vivid Voltage": { setCode: "VIV", setAliases: ["VIV", "vivid voltage"] },
+  "Champion's Path": { setCode: "CPA", setAliases: ["CPA", "champions path", "champion's path"] },
+  "Darkness Ablaze": { setCode: "DAA", setAliases: ["DAA", "darkness ablaze"] },
+  "Rebel Clash": { setCode: "RCL", setAliases: ["RCL", "rebel clash"] },
+  "Sword & Shield Base": { setCode: "SSH", setAliases: ["SSH", "sword shield base", "swsh base"] },
+  "Celebrations": { setCode: "CEL", setAliases: ["CEL", "celeb", "celebrations"] },
+  "Pokemon GO": { setCode: "PGO", setAliases: ["PGO", "pokemon go", "pogo"] },
+};
+
+function setMetadata(setName) {
+  return SET_SEARCH_METADATA[setName] || { setCode: "", setAliases: [] };
+}
 
 const STANDARD_RELEASES = [
   { setName: "Destined Rivals", series: "Scarlet & Violet", releaseYear: 2025, types: ["Elite Trainer Box", "Booster Bundle", "Booster Box", "Sleeved Booster", "3-Pack Blister", "Checklane Blister"] },
@@ -115,12 +168,16 @@ function packCountFor(type) {
 }
 
 function sealedProduct({ setName, series, releaseYear, type, productName }) {
+  const metadata = setMetadata(setName);
   return {
     catalogType: "sealed",
     productName: productName || `${setName} ${type}`,
     productType: type,
     setName,
+    setCode: metadata.setCode,
+    setAliases: metadata.setAliases,
     series,
+    era: series,
     releaseYear,
     releaseDate: "Unknown",
     msrp: msrpFor(type),
@@ -200,4 +257,13 @@ const individualCards = [
   { catalogType: "card", cardName: "Ditto - Peelable", pokemonName: "Ditto", setName: "Pokemon GO", series: "Sword & Shield", cardNumber: "053/078", rarity: "Rare", variant: "Peelable", condition: "Near Mint", language: "English", graded: false, marketValueNearMint: 3, marketValueLightPlayed: 2, marketValueGraded: 25, marketSource: "Mock", marketConfidenceLevel: "Mock", sourceType: "mock" },
 ];
 
-export const SHARED_POKEMON_PRODUCTS = [...sealedProducts, ...individualCards];
+export const SHARED_POKEMON_PRODUCTS = [...sealedProducts, ...individualCards].map((item) => {
+  const metadata = setMetadata(item.setName);
+  return {
+    ...item,
+    setCode: item.setCode || metadata.setCode,
+    setAliases: item.setAliases || metadata.setAliases,
+    era: item.era || item.series || "",
+    releaseYear: item.releaseYear || "Unknown",
+  };
+});

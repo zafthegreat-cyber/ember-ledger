@@ -6,7 +6,11 @@ import SmartAddInventory from "./components/SmartAddInventory";
 import SmartAddCatalog from "./components/SmartAddCatalog";
 import OverflowMenu from "./components/OverflowMenu";
 import Scout from "./pages/Scout";
-import { SEALED_PRODUCT_TYPES, SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
+import { SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA, SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
+import { POKEMON_SETS } from "./data/pokemonSetCatalog";
+import { POKEMON_PRODUCT_UPCS, POKEMON_PRODUCTS } from "./data/pokemonProductCatalog";
+import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
+import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
 import {
   FEATURE_LABELS,
   FEATURE_TIERS,
@@ -33,6 +37,42 @@ const STATUSES = ["In Stock", "Needs Photos", "Needs Market Check", "Ready to Li
 const PLATFORMS = ["eBay", "Mercari", "Whatnot", "Facebook Marketplace", "In-Store", "Instagram", "TikTok Shop", "Other"];
 const VAULT_CATEGORIES = ["Personal collection", "Keep sealed", "Rip later", "Trade", "Favorite", "Wishlist", "Set goal", "Kid collection"];
 const USER_TYPES = ["collector", "seller", "scout", "parent", "advanced"];
+const EXPENSE_CATEGORIES = [
+  "Inventory/Product Cost",
+  "Shipping",
+  "Packaging Supplies",
+  "Platform Fees",
+  "Payment Processing Fees",
+  "Mileage/Vehicle",
+  "Marketing",
+  "Events/Giveaways",
+  "Supplies",
+  "Software/Subscriptions",
+  "Miscellaneous",
+];
+const MARKETING_PLATFORMS = ["Facebook", "Instagram", "TikTok", "Discord", "Website", "Marketplace", "Other"];
+const MARKETING_GOALS = ["sales", "followers", "event", "donations", "awareness", "giveaway"];
+const blankExpense = {
+  date: "",
+  vendor: "",
+  category: "Supplies",
+  subcategory: "",
+  buyer: "Zena",
+  amount: "",
+  paymentMethod: "",
+  linkedItemId: "",
+  linkedSaleId: "",
+  notes: "",
+  receiptImage: "",
+  taxDeductible: false,
+  campaignName: "",
+  platform: "",
+  goal: "",
+  startDate: "",
+  endDate: "",
+  linkedSales: "",
+  resultsNotes: "",
+};
 const HOME_STATS = [
   { key: "collection_value", label: "Collection Value", group: "Collection & Spending" },
   { key: "monthly_spending", label: "Monthly Spending", group: "Collection & Spending" },
@@ -56,26 +96,17 @@ const HOME_STATS = [
 ];
 const HOME_STAT_GROUPS = [...new Set(HOME_STATS.map((stat) => stat.group))];
 const HOME_STAT_KEYS = HOME_STATS.map((stat) => stat.key);
+const CORE_HOME_STAT_KEYS = [
+  "collection_value",
+  "forge_inventory_value",
+  "monthly_spending",
+  "profit_after_expenses",
+];
 const HOME_STAT_DEFAULTS = {
-  collector: ["collection_value", "monthly_spending", "market_value", "savings_vs_msrp"],
-  seller: [
-    "forge_inventory_value",
-    "market_value",
-    "monthly_profit_loss",
-    "market_roi",
-    "planned_roi",
-    "forge_planned_sales",
-    "planned_profit",
-    "forge_sales_revenue",
-    "forge_profit",
-    "expenses",
-    "profit_after_expenses",
-    "items_sold",
-    "business_miles",
-    "total_vehicle_cost",
-  ],
-  scout: ["monthly_spending", "market_value", "market_vs_msrp_percent", "market_over_msrp", "savings_vs_msrp"],
-  parent: ["monthly_spending", "market_value", "market_vs_msrp_percent", "market_over_msrp", "savings_vs_msrp"],
+  collector: CORE_HOME_STAT_KEYS,
+  seller: CORE_HOME_STAT_KEYS,
+  scout: CORE_HOME_STAT_KEYS,
+  parent: CORE_HOME_STAT_KEYS,
   advanced: HOME_STAT_KEYS,
 };
 const DASHBOARD_CARD_STYLES = ["compact", "comfortable", "detailed"];
@@ -114,6 +145,175 @@ const DASHBOARD_PRESET_SECTIONS = {
 
 function money(value) {
   return `$${toNumber(value).toFixed(2)}`;
+}
+
+const PRODUCT_TYPE_ALIASES = {
+  "Elite Trainer Box": ["etb", "trainer box"],
+  "Pokemon Center Elite Trainer Box": ["pc etb", "pokemon center etb"],
+  "Booster Bundle": ["bundle", "booster bundle", "bbundle", "bb"],
+  "Booster Box": ["booster box", "bb", "box"],
+  "Sleeved Booster": ["sleeve", "sleeved", "single pack", "blister"],
+  "3-Pack Blister": ["3pk", "3 pack", "three pack", "triple blister", "blister"],
+  "Checklane Blister": ["checklane", "check lane", "blister"],
+  "Mini Tin": ["mini tin", "tin"],
+  "Collection Box": ["collection", "box"],
+  "Ex Box": ["ex box"],
+  "Premium Collection": ["premium"],
+  "Ultra Premium Collection": ["upc", "ultra premium"],
+  "First Partner Pack": ["first partner", "fpp"],
+  "Build & Battle Box": ["b&b", "build battle"],
+  "Build & Battle Stadium": ["stadium"],
+  "Trainer's Toolkit": ["toolkit", "trainer toolkit"],
+};
+
+const POKEMON_ALIASES = {
+  Charizard: ["char", "zard", "charizard"],
+  Pikachu: ["pika", "chu", "pikachu"],
+  Mimikyu: ["mimi", "mimikyu"],
+  Gengar: ["gengar"],
+  Umbreon: ["umbreon", "moonbreon"],
+  Sylveon: ["sylveon"],
+  Rayquaza: ["ray", "rayquaza"],
+  Giratina: ["tina", "giratina"],
+  Snorlax: ["lax", "snorlax"],
+  Ditto: ["ditto"],
+  Mewtwo: ["mewtwo"],
+  Mew: ["mew"],
+  Eevee: ["eevee"],
+  Phantump: ["phantump"],
+  Greninja: ["greninja"],
+  Arceus: ["arceus"],
+  Lugia: ["lugia"],
+  Magikarp: ["magikarp", "karp"],
+};
+
+const RARITY_VARIANT_ALIASES = {
+  "Special Illustration Rare": ["sir", "special illustration"],
+  "Illustration Rare": ["ir", "illustration rare"],
+  "Secret Rare": ["secret"],
+  "Hyper Rare": ["hyper"],
+  "Ultra Rare": ["ur"],
+  "Full Art": ["fa", "full art"],
+  "Alternate Art": ["alt", "alt art", "alternate"],
+  "Reverse Holo": ["reverse", "rh"],
+  "Holo Rare": ["holo"],
+  Promo: ["promo"],
+  "Black Star Promo": ["bsp", "black star"],
+  VMAX: ["vmax"],
+  VSTAR: ["vstar"],
+};
+
+const STORE_ALIASES = {
+  Walmart: ["wm", "wally", "walmart"],
+  Target: ["tgt", "target"],
+  "Barnes & Noble": ["b&n", "bn", "barnes"],
+  GameStop: ["gs", "gamestop"],
+  "Five Below": ["5 below", "five below", "5b"],
+  "Best Buy": ["bbuy", "best buy"],
+  Greenbrier: ["greenbrier"],
+};
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/pok[eé]mon/g, "pokemon")
+    .replace(/&/g, " and ")
+    .replace(/[’']/g, "")
+    .replace(/[^a-z0-9/.\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function searchTokens(value) {
+  return normalizeSearchText(value).split(/\s+/).filter(Boolean);
+}
+
+function aliasEntriesFromMap(map, type) {
+  return Object.entries(map).flatMap(([canonical, aliases]) => [
+    { canonical, alias: canonical, type },
+    ...aliases.map((alias) => ({ canonical, alias, type })),
+  ]);
+}
+
+const SEARCH_ALIAS_ENTRIES = [
+  ...Object.entries(SET_SEARCH_METADATA).flatMap(([setName, metadata]) => [
+    { canonical: setName, alias: setName, type: "set" },
+    { canonical: setName, alias: metadata.setCode, type: "setCode" },
+    ...(metadata.setAliases || []).map((alias) => ({ canonical: setName, alias, type: "set" })),
+  ]),
+  ...aliasEntriesFromMap(PRODUCT_TYPE_ALIASES, "productType"),
+  ...aliasEntriesFromMap(POKEMON_ALIASES, "pokemon"),
+  ...aliasEntriesFromMap(RARITY_VARIANT_ALIASES, "rarity"),
+  ...aliasEntriesFromMap(STORE_ALIASES, "store"),
+].filter((entry) => entry.alias);
+
+function expandSearchQuery(query) {
+  const normalized = normalizeSearchText(query);
+  const tokens = searchTokens(query);
+  const phrases = new Set([normalized, ...tokens]);
+  SEARCH_ALIAS_ENTRIES.forEach((entry) => {
+    const alias = normalizeSearchText(entry.alias);
+    if (!alias) return;
+    const aliasTokens = searchTokens(alias);
+    const exactPhrase = normalized === alias || normalized.includes(alias);
+    const exactToken = aliasTokens.length === 1 && tokens.includes(alias);
+    if (exactPhrase || exactToken) {
+      phrases.add(normalizeSearchText(entry.canonical));
+      searchTokens(entry.canonical).forEach((token) => phrases.add(token));
+      if (entry.type === "setCode") phrases.add(alias);
+    }
+  });
+  return { normalized, tokens, phrases: [...phrases].filter(Boolean) };
+}
+
+function searchableText(parts) {
+  return normalizeSearchText(parts.flatMap((part) => Array.isArray(part) ? part : [part]).filter(Boolean).join(" "));
+}
+
+function scoreSearchCandidate(queryInfo, candidate) {
+  const text = searchableText(candidate.fields);
+  const exactIds = (candidate.exactIds || []).map(normalizeSearchText).filter(Boolean);
+  const cardNumbers = (candidate.cardNumbers || []).map(normalizeSearchText).filter(Boolean);
+  const setCodes = (candidate.setCodes || []).map(normalizeSearchText).filter(Boolean);
+  const aliases = (candidate.aliases || []).map(normalizeSearchText).filter(Boolean);
+  const names = (candidate.names || []).map(normalizeSearchText).filter(Boolean);
+  const { normalized, tokens, phrases } = queryInfo;
+  let score = 0;
+  let reason = "";
+
+  if (exactIds.some((id) => id && id === normalized)) return { score: 1000, reason: "Exact UPC/SKU/barcode match" };
+  if (cardNumbers.some((number) => number && number === normalized)) return { score: 940, reason: "Exact card number match" };
+  if (setCodes.some((code) => code && code === normalized)) {
+    score += 880;
+    reason = "Exact set code match";
+  }
+  if (names.some((name) => name === normalized)) {
+    score += 820;
+    reason = "Exact name match";
+  }
+  if (aliases.some((alias) => alias === normalized || tokens.includes(alias))) {
+    score += 760;
+    reason = "Exact alias match";
+  }
+
+  const phraseHits = phrases.filter((phrase) => phrase.length > 1 && text.includes(phrase)).length;
+  const tokenHits = tokens.filter((token) => text.includes(token) || aliases.some((alias) => alias.includes(token))).length;
+  score += phraseHits * 80 + tokenHits * 38;
+
+  const setHit = setCodes.some((code) => tokens.includes(code)) || aliases.some((alias) => tokens.includes(alias));
+  const typeHit = (candidate.productTypeAliases || []).map(normalizeSearchText).some((alias) => normalized.includes(alias) || tokens.includes(alias));
+  const pokemonHit = (candidate.pokemonAliases || []).map(normalizeSearchText).some((alias) => normalized.includes(alias) || tokens.includes(alias));
+  const rarityHit = (candidate.rarityAliases || []).map(normalizeSearchText).some((alias) => normalized.includes(alias) || tokens.includes(alias));
+  if (setHit && typeHit) {
+    score += 240;
+    reason = reason || "Set + product type match";
+  }
+  if (pokemonHit && rarityHit) {
+    score += 220;
+    reason = reason || "Pokemon + rarity/variant match";
+  }
+  if (tokenHits > 0 && !reason) reason = "Partial/fuzzy match";
+  return { score, reason };
 }
 
 function toNumber(value, fallback = 0) {
@@ -435,8 +635,16 @@ export default function App() {
   const [showTopbarActions, setShowTopbarActions] = useState(true);
   const [showFullTopbar, setShowFullTopbar] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
   const [appSearchQuery, setAppSearchQuery] = useState("");
   const [menuSectionsOpen, setMenuSectionsOpen] = useState({});
+  const [userSearchAliases, setUserSearchAliases] = useState([]);
+  const [aliasDraft, setAliasDraft] = useState({ alias: "", canonical: "", type: "personal" });
+  const [homeSubTab, setHomeSubTab] = useState("overview");
+  const [forgeSubTab, setForgeSubTab] = useState("overview");
+  const [scoutSubTabTarget, setScoutSubTabTarget] = useState({ tab: "overview", id: 0 });
+  const [vaultSubTab, setVaultSubTab] = useState("overview");
+  const [tideTradrSubTab, setTideTradrSubTab] = useState("overview");
   const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
     home_dashboard_cards: true,
     home_quick_actions: false,
@@ -488,6 +696,8 @@ export default function App() {
 
   const [showInventoryScanner, setShowInventoryScanner] = useState(false);
   const [showCatalogScanner, setShowCatalogScanner] = useState(false);
+  const [scanMode, setScanMode] = useState("upc");
+  const [scanMatches, setScanMatches] = useState([]);
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
@@ -654,7 +864,7 @@ export default function App() {
 
   const [itemForm, setItemForm] = useState(blankItem);
   const [catalogForm, setCatalogForm] = useState(blankCatalog);
-  const [expenseForm, setExpenseForm] = useState({ vendor: "", category: "Supplies", buyer: "Zena", amount: "", notes: "", receiptImage: "" });
+  const [expenseForm, setExpenseForm] = useState(blankExpense);
   const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "Zena", averageMpg: "", wearCostPerMile: "", notes: "" });
   const [tripForm, setTripForm] = useState({ purpose: "", driver: "Zena", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" });
   const [saleForm, setSaleForm] = useState({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCost: "", platformFees: "", notes: "" });
@@ -709,51 +919,186 @@ export default function App() {
           ? "tideTradr"
           : "forge";
 
-  const appSearchResults = useMemo(() => {
-    const query = appSearchQuery.trim().toLowerCase();
-    if (query.length < 2) return [];
+  function renderPageChrome({ title, subtitle, primary, secondary, quickActions = [], tabs = [], activeSubTab, setActiveSubTab }) {
+    return (
+      <section className="page-dashboard-header panel">
+        <div className="page-dashboard-header-main">
+          <div>
+            <h2>{title}</h2>
+            <p>{subtitle}</p>
+          </div>
+          <div className="summary-pill-row">
+            {primary ? <button type="button" onClick={primary.onClick}>{primary.label}</button> : null}
+            {secondary ? <button type="button" className="secondary-button" onClick={secondary.onClick}>{secondary.label}</button> : null}
+          </div>
+        </div>
+        {quickActions.length ? (
+          <div className="quick-action-rail">
+            {quickActions.map((action, index) => (
+              <button key={action.label} type="button" className={index === 0 ? "primary" : ""} onClick={action.onClick}>
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {tabs.length ? (
+          <div className="subtab-rail">
+            {tabs.map((tab) => (
+              <button key={tab.key} type="button" className={activeSubTab === tab.key ? "active" : ""} onClick={() => setActiveSubTab(tab.key)}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
 
-    function includes(value) {
-      return String(value || "").toLowerCase().includes(query);
+  const appSearchResults = useMemo(() => {
+    const queryInfo = expandSearchQuery(appSearchQuery);
+    userSearchAliases.forEach((entry) => {
+      const alias = normalizeSearchText(entry.alias);
+      const canonical = normalizeSearchText(entry.canonical);
+      if (alias && canonical && (queryInfo.normalized.includes(alias) || queryInfo.tokens.includes(alias))) {
+        queryInfo.phrases.push(canonical, ...searchTokens(canonical));
+      }
+    });
+    if (queryInfo.normalized.length < 2) return [];
+
+    function setAliasesFor(setName) {
+      return SET_SEARCH_METADATA[setName]?.setAliases || [];
     }
 
-    const productResults = catalogProducts
-      .filter((product) => product.catalogType !== "card")
-      .filter((product) => [product.name, product.productName, product.setName, product.productType, product.barcode, product.sku].some(includes))
-      .slice(0, 8)
-      .map((product) => ({ id: `product-${product.id}`, category: "Products", title: product.name || product.productName, subtitle: `${product.productType || "Sealed product"}${product.setName ? ` • ${product.setName}` : ""}`, source: product }));
+    function productTypeAliasesFor(type) {
+      return PRODUCT_TYPE_ALIASES[type] || [];
+    }
 
-    const cardResults = catalogProducts
-      .filter((product) => product.catalogType === "card")
-      .filter((product) => [product.name, product.cardName, product.pokemonName, product.setName, product.rarity, product.variant].some(includes))
-      .slice(0, 8)
-      .map((product) => ({ id: `card-${product.id}`, category: "Cards", title: product.name || product.cardName, subtitle: `${product.setName || "Card"}${product.rarity ? ` • ${product.rarity}` : ""}`, source: product }));
+    function pokemonAliasesFor(name) {
+      return POKEMON_ALIASES[name] || [];
+    }
 
-    const inventoryResults = items
-      .filter((item) => item.status !== "Personal Collection" && item.status !== "Held")
-      .filter((item) => [item.name, item.expansion, item.productType, item.store, item.barcode].some(includes))
-      .slice(0, 8)
-      .map((item) => ({ id: `inventory-${item.id}`, category: "Inventory", title: item.name, subtitle: `Qty ${item.quantity} • ${money(item.marketPrice || item.unitCost)}`, source: item }));
+    function rarityAliasesFor(rarity, variant) {
+      return [...(RARITY_VARIANT_ALIASES[rarity] || []), ...(RARITY_VARIANT_ALIASES[variant] || [])];
+    }
 
-    const vaultResults = items
-      .filter((item) => item.status === "Personal Collection" || item.status === "Held")
-      .filter((item) => [item.name, item.expansion, item.productType, item.actionNotes, item.barcode].some(includes))
-      .slice(0, 8)
-      .map((item) => ({ id: `vault-${item.id}`, category: "Vault", title: item.name, subtitle: `${item.status} • ${money(item.marketPrice || item.unitCost)}`, source: item }));
+    const catalogResults = catalogProducts.map((product) => {
+      const isCard = product.catalogType === "card";
+      const setAliases = [...setAliasesFor(product.setName), ...(product.setAliases || [])];
+      const candidate = {
+        fields: [
+          product.name,
+          product.productName,
+          product.cardName,
+          product.pokemonName,
+          product.setName,
+          product.setCode,
+          setAliases,
+          product.productType,
+          product.rarity,
+          product.variant,
+          product.cardNumber,
+          product.barcode,
+          product.upc,
+          product.sku,
+          product.releaseYear,
+        ],
+        exactIds: [product.barcode, product.upc, product.sku],
+        cardNumbers: [product.cardNumber],
+        setCodes: [product.setCode],
+        aliases: [...setAliases, ...productTypeAliasesFor(product.productType), ...pokemonAliasesFor(product.pokemonName), ...rarityAliasesFor(product.rarity, product.variant)],
+        names: [product.name, product.productName, product.cardName],
+        productTypeAliases: productTypeAliasesFor(product.productType),
+        pokemonAliases: pokemonAliasesFor(product.pokemonName),
+        rarityAliases: rarityAliasesFor(product.rarity, product.variant),
+      };
+      const { score, reason } = scoreSearchCandidate(queryInfo, candidate);
+      return {
+        id: `${isCard ? "card" : "product"}-${product.id}`,
+        category: isCard ? "Cards" : "Products",
+        title: product.name || product.productName || product.cardName,
+        subtitle: isCard
+          ? `${product.setCode || product.setName || "Card"}${product.cardNumber ? ` • ${product.cardNumber}` : ""}${product.rarity ? ` • ${product.rarity}` : ""}`
+          : `${product.setCode || product.setName || "Set"} • ${product.productType || "Sealed product"}`,
+        source: product,
+        score,
+        reason,
+      };
+    });
 
-    const storeResults = scoutSnapshot.stores
-      .filter((store) => [store.name, store.nickname, store.chain, store.city, store.address, store.region].some(includes))
-      .slice(0, 8)
-      .map((store) => ({ id: `store-${store.id}`, category: "Stores", title: store.nickname || store.name, subtitle: `${store.chain || "Store"} • ${store.city || ""}`, source: store }));
+    const inventoryResults = items.map((item) => {
+      const setAliases = setAliasesFor(item.expansion);
+      const candidate = {
+        fields: [item.name, item.expansion, item.setCode, setAliases, item.productType, item.store, item.barcode, item.sku, item.catalogProductName],
+        exactIds: [item.barcode, item.sku],
+        setCodes: [item.setCode],
+        aliases: [...setAliases, ...productTypeAliasesFor(item.productType)],
+        names: [item.name, item.catalogProductName],
+        productTypeAliases: productTypeAliasesFor(item.productType),
+      };
+      const { score, reason } = scoreSearchCandidate(queryInfo, candidate);
+      const isVault = item.status === "Personal Collection" || item.status === "Held";
+      return {
+        id: `${isVault ? "vault" : "inventory"}-${item.id}`,
+        category: isVault ? "Vault" : "Inventory",
+        title: item.name,
+        subtitle: `${isVault ? item.status : `Qty ${item.quantity}`} • ${money(item.marketPrice || item.unitCost)}`,
+        source: item,
+        score: score * 0.82,
+        reason,
+      };
+    });
+
+    const storeResults = scoutSnapshot.stores.map((store) => {
+      const candidate = {
+        fields: [store.name, store.nickname, store.chain, store.city, store.address, store.region, store.zip, store.sku, STORE_ALIASES[store.chain]],
+        exactIds: [store.sku, store.placeId],
+        aliases: [...(STORE_ALIASES[store.chain] || []), store.nickname],
+        names: [store.name, store.nickname],
+      };
+      const { score, reason } = scoreSearchCandidate(queryInfo, candidate);
+      return {
+        id: `store-${store.id}`,
+        category: "Stores",
+        title: store.nickname || store.name,
+        subtitle: `${store.chain || "Store"} • ${store.city || ""}`,
+        source: store,
+        score: score * 0.72,
+        reason,
+      };
+    });
 
     const allReports = [...(scoutSnapshot.reports || []), ...(scoutSnapshot.tidepoolReports || [])];
-    const reportResults = allReports
-      .filter((report) => [report.itemName, report.productName, report.reportText, report.notes, report.storeName, report.reportType].some(includes))
-      .slice(0, 8)
-      .map((report) => ({ id: `report-${report.id || report.reportId}`, category: "Reports", title: report.itemName || report.productName || report.reportType || "Scout report", subtitle: `${report.storeName || "Scout"} • ${report.reportType || report.stockStatus || "Report"}`, source: report }));
+    const reportResults = allReports.map((report) => {
+      const candidate = {
+        fields: [report.itemName, report.productName, report.reportText, report.notes, report.storeName, report.reportType, report.upc, report.sku],
+        exactIds: [report.upc, report.sku],
+        aliases: [],
+        names: [report.itemName, report.productName],
+      };
+      const { score, reason } = scoreSearchCandidate(queryInfo, candidate);
+      return {
+        id: `report-${report.id || report.reportId}`,
+        category: "Reports",
+        title: report.itemName || report.productName || report.reportType || "Scout report",
+        subtitle: `${report.storeName || "Scout"} • ${report.reportType || report.stockStatus || "Report"}`,
+        source: report,
+        score: score * 0.66,
+        reason,
+      };
+    });
 
-    return [...productResults, ...cardResults, ...inventoryResults, ...vaultResults, ...storeResults, ...reportResults].slice(0, 24);
-  }, [appSearchQuery, catalogProducts, items, scoutSnapshot]);
+    return [...catalogResults, ...inventoryResults, ...storeResults, ...reportResults]
+      .filter((result) => result.score > 25)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 24);
+  }, [appSearchQuery, catalogProducts, items, scoutSnapshot, userSearchAliases]);
+
+  const appSearchSuggestion = useMemo(() => {
+    const queryInfo = expandSearchQuery(appSearchQuery);
+    if (queryInfo.normalized.length < 2 || appSearchResults.length > 0) return "";
+    const alias = SEARCH_ALIAS_ENTRIES.find((entry) => normalizeSearchText(entry.alias).startsWith(queryInfo.tokens[0] || ""));
+    return alias?.canonical || "";
+  }, [appSearchQuery, appSearchResults.length]);
 
   function closeSearchResults() {
     setAppSearchQuery("");
@@ -835,6 +1180,18 @@ export default function App() {
         {open ? <div className="drawer-collapsible-body">{children}</div> : null}
       </div>
     );
+  }
+
+  function addUserSearchAlias(event) {
+    event.preventDefault();
+    const alias = aliasDraft.alias.trim();
+    const canonical = aliasDraft.canonical.trim();
+    if (!alias || !canonical) return;
+    setUserSearchAliases((current) => [
+      { id: makeId("alias"), alias, canonical, type: aliasDraft.type, createdAt: new Date().toISOString() },
+      ...current.filter((entry) => normalizeSearchText(entry.alias) !== normalizeSearchText(alias)),
+    ]);
+    setAliasDraft({ alias: "", canonical: "", type: "personal" });
   }
 
   useEffect(() => {
@@ -1601,7 +1958,8 @@ export default function App() {
       setCatalogProducts(saved.catalogProducts?.length ? mergeSharedCatalogProducts(saved.catalogProducts) : createSharedCatalogProducts());
       setTideTradrWatchlist(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : []);
       setTideTradrLookupId(saved.tideTradrLookupId || "");
-      setExpenses(saved.expenses || []);
+      setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
+      setExpenses((saved.expenses || []).map(mapExpense));
       setSales(saved.sales || []);
       setVehicles(saved.vehicles || []);
       setMileageTrips(saved.mileageTrips || []);
@@ -1650,6 +2008,7 @@ export default function App() {
         catalogProducts,
         tideTradrWatchlist,
         tideTradrLookupId,
+        userSearchAliases,
         expenses,
         sales,
         vehicles,
@@ -1664,7 +2023,7 @@ export default function App() {
         locationSettings,
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, tideTradrLookupId, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, locationSettings, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, tideTradrLookupId, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, locationSettings, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || activeTab !== "dashboard") return;
@@ -1724,6 +2083,7 @@ export default function App() {
     setCatalogProducts(createSharedCatalogProducts());
     setTideTradrWatchlist([]);
     setTideTradrLookupId("");
+    setUserSearchAliases([]);
     setExpenses([]);
     setSales([]);
     setVehicles([]);
@@ -1852,8 +2212,79 @@ export default function App() {
   function beginScanProduct() {
     setEditingItemId(null);
     setItemForm((old) => ({ ...old, barcode: "" }));
+    setScanMode("upc");
+    setScanMatches([]);
     setShowInventoryScanner(true);
+    setQuickAddMenuOpen(false);
     setActiveTab("addInventory");
+  }
+
+  function handleCatalogScanMatch(value) {
+    const matches = getBestCatalogMatches(value, catalogProducts);
+    setScanMatches(matches);
+    const best = matches[0];
+    if (best?.item) {
+      applyCatalogProduct(best.item.id);
+      setItemForm((old) => ({
+        ...old,
+        barcode: value,
+        catalogProductId: best.item.id,
+        catalogProductName: best.item.name || best.item.productName || best.item.cardName || "",
+      }));
+    } else {
+      setItemForm((old) => ({ ...old, barcode: value }));
+    }
+    setShowInventoryScanner(false);
+  }
+
+  function confirmScanMatch(productId) {
+    applyCatalogProduct(productId);
+    setScanMatches([]);
+  }
+
+  function goToTidepool() {
+    setQuickAddMenuOpen(false);
+    setScoutSubTabTarget({ tab: "tidepool", id: Date.now() });
+    setActiveTab("scout");
+    setFeatureSectionsOpen((current) => ({
+      ...current,
+      scout_tidepool: true,
+      scout_store_tracker: true,
+    }));
+  }
+
+  function goToScoutSection(subTab) {
+    setScoutSubTabTarget({ tab: subTab, id: Date.now() });
+    setActiveTab("scout");
+    setQuickAddMenuOpen(false);
+  }
+
+  function openVaultQuickAdd({ category = "Personal collection", productType = "", subTab = "collection" } = {}) {
+    setVaultSubTab(subTab);
+    setVaultForm((current) => ({
+      ...current,
+      vaultCategory: category,
+      status: category === "Wishlist" ? "Personal Collection" : current.status || "Personal Collection",
+      productType: productType || current.productType,
+    }));
+    setShowVaultAddForm(true);
+    setVaultFormSections((current) => ({ ...current, basic: true }));
+    setFeatureSectionsOpen((current) => ({ ...current, vault_add: true }));
+    setQuickAddMenuOpen(false);
+    setActiveTab("vault");
+  }
+
+  function openQuickAddAction(action) {
+    setQuickAddMenuOpen(false);
+    if (action === "card") return openVaultQuickAdd({ productType: "Individual Card", subTab: "collection" });
+    if (action === "sealed") return openVaultQuickAdd({ productType: "Sealed Product", subTab: "products" });
+    if (action === "inventory") return setActiveTab("addInventory");
+    if (action === "sale") return setActiveTab("addSale");
+    if (action === "expense") return setActiveTab("expenses");
+    if (action === "storeReport") return goToScoutSection("reports");
+    if (action === "store") return goToScoutSection("stores");
+    if (action === "wishlist") return openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist" });
+    return null;
   }
 
   async function loadAllData() {
@@ -1929,7 +2360,42 @@ function mapCatalog(row) {
 }
 
   function mapExpense(row) {
-    return { id: row.id, vendor: row.vendor || "", category: row.category || "Supplies", buyer: row.buyer || "Zena", amount: Number(row.amount || 0), notes: row.notes || "", receiptImage: row.receipt_image || "", createdAt: row.created_at };
+    const normalizedCategory =
+      row.category === "Gas"
+        ? "Mileage/Vehicle"
+        : row.category === "Software"
+          ? "Software/Subscriptions"
+          : row.category === "Other"
+            ? "Miscellaneous"
+            : ["Storage", "Equipment"].includes(row.category)
+              ? "Supplies"
+              : row.category || "Supplies";
+    return {
+      id: row.id,
+      expenseId: row.id,
+      date: row.date || row.expense_date || "",
+      vendor: row.vendor || "",
+      category: normalizedCategory,
+      subcategory: row.subcategory || "",
+      buyer: row.buyer || "Zena",
+      amount: Number(row.amount || 0),
+      paymentMethod: row.paymentMethod || row.payment_method || "",
+      linkedItemId: row.linkedItemId || row.linked_item_id || "",
+      linkedSaleId: row.linkedSaleId || row.linked_sale_id || "",
+      notes: row.notes || "",
+      receiptImage: row.receiptImage || row.receipt_image || row.receipt_photo || "",
+      receiptPhoto: row.receiptPhoto || row.receipt_photo || row.receipt_image || "",
+      taxDeductible: !!(row.taxDeductible || row.tax_deductible),
+      campaignName: row.campaignName || row.campaign_name || "",
+      platform: row.platform || "",
+      goal: row.goal || "",
+      startDate: row.startDate || row.start_date || "",
+      endDate: row.endDate || row.end_date || "",
+      linkedSales: row.linkedSales || row.linked_sales || "",
+      resultsNotes: row.resultsNotes || row.results_notes || "",
+      createdAt: row.createdAt || row.created_at,
+      updatedAt: row.updatedAt || row.updated_at,
+    };
   }
 
   function mapVehicle(row) {
@@ -2913,14 +3379,46 @@ async function importBulkCatalogProducts() {
     if (!user) return alert("Please log in first.");
     if (!expenseForm.vendor || !expenseForm.amount) return alert("Please enter vendor and amount.");
 
+    if (BETA_LOCAL_MODE || user.id === "local-beta") {
+      const localId = editingExpenseId || makeId("expense");
+      const localExpense = {
+        ...blankExpense,
+        ...expenseForm,
+        id: localId,
+        expenseId: localId,
+        amount: Number(expenseForm.amount),
+        receiptPhoto: expenseForm.receiptImage,
+        createdAt: expenses.find((expense) => expense.id === editingExpenseId)?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setExpenses(editingExpenseId ? expenses.map((expense) => (expense.id === editingExpenseId ? localExpense : expense)) : [localExpense, ...expenses]);
+      setEditingExpenseId(null);
+      setExpenseForm(blankExpense);
+      return;
+    }
+
     const row = {
       user_id: user.id,
+      date: expenseForm.date || null,
       vendor: expenseForm.vendor,
       category: expenseForm.category,
+      subcategory: expenseForm.subcategory,
       buyer: expenseForm.buyer,
       amount: Number(expenseForm.amount),
+      payment_method: expenseForm.paymentMethod,
+      linked_item_id: expenseForm.linkedItemId || null,
+      linked_sale_id: expenseForm.linkedSaleId || null,
       notes: expenseForm.notes,
       receipt_image: expenseForm.receiptImage,
+      receipt_photo: expenseForm.receiptImage,
+      tax_deductible: !!expenseForm.taxDeductible,
+      campaign_name: expenseForm.campaignName,
+      platform: expenseForm.platform,
+      goal: expenseForm.goal,
+      start_date: expenseForm.startDate || null,
+      end_date: expenseForm.endDate || null,
+      linked_sales: expenseForm.linkedSales,
+      results_notes: expenseForm.resultsNotes,
     };
 
     const { data, error } = editingExpenseId
@@ -2932,15 +3430,23 @@ async function importBulkCatalogProducts() {
     const mapped = mapExpense(data);
     setExpenses(editingExpenseId ? expenses.map((e) => (e.id === editingExpenseId ? mapped : e)) : [mapped, ...expenses]);
     setEditingExpenseId(null);
-    setExpenseForm({ vendor: "", category: "Supplies", buyer: "Zena", amount: "", notes: "", receiptImage: "" });
+    setExpenseForm(blankExpense);
   }
 
   function startEditingExpense(expense) {
     setEditingExpenseId(expense.id);
-    setExpenseForm(expense);
+    setExpenseForm({ ...blankExpense, ...expense });
   }
 
   async function deleteExpense(id) {
+    if (BETA_LOCAL_MODE || user?.id === "local-beta") {
+      setExpenses(expenses.filter((expense) => expense.id !== id));
+      if (editingExpenseId === id) {
+        setEditingExpenseId(null);
+        setExpenseForm(blankExpense);
+      }
+      return;
+    }
     const { error } = await supabase.from("business_expenses").delete().eq("id", id);
     if (error) return alert("Could not delete expense: " + error.message);
     setExpenses(expenses.filter((expense) => expense.id !== id));
@@ -3182,6 +3688,13 @@ async function importBulkCatalogProducts() {
   const msrpRoiPercent =
     totalMsrpValue > 0 ? (profitOverMsrp / totalMsrpValue) * 100 : 0;
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+  const totalMarketingSpend = expenses
+    .filter((expense) => expense.category === "Marketing")
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const totalEventsGiveawaysSpend = expenses
+    .filter((expense) => expense.category === "Events/Giveaways")
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const estimatedProfitAfterMarketing = estimatedProfit - totalMarketingSpend;
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
   const totalSalesRevenue = sales.reduce((s, sale) => s + sale.grossSale, 0);
   const totalSalesProfit = sales.reduce((s, sale) => s + sale.netProfit, 0);
@@ -3258,7 +3771,10 @@ async function importBulkCatalogProducts() {
     .filter((row) => row.amount > 0 || row.total > 0 || row.active)
     .sort((a, b) => b.amount - a.amount || b.total - a.total || a.name.localeCompare(b.name));
   const monthlyExpenses = expenses
-    .filter((expense) => isThisMonth(expense.createdAt))
+    .filter((expense) => isThisMonth(expense.date || expense.createdAt))
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const monthlyMarketingSpend = expenses
+    .filter((expense) => expense.category === "Marketing" && isThisMonth(expense.date || expense.createdAt))
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const monthlySalesProfit = sales
     .filter((sale) => isThisMonth(sale.createdAt))
@@ -3307,6 +3823,7 @@ async function importBulkCatalogProducts() {
   const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
   const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
+  const visibleCoreHomeStats = visibleDashboardStats.filter((stat) => CORE_HOME_STAT_KEYS.includes(stat.key));
   const normalizedDashboardLayout = normalizeDashboardLayout(dashboardLayout, dashboardPreset);
   const dashboardSectionState = (key) =>
     normalizedDashboardLayout.sections.find((section) => section.key === key) || { key, enabled: false, order: 100, collapsed: false };
@@ -3596,6 +4113,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const catalogConditionOptions = ["All", ...new Set(catalogProducts.map((product) => product.condition).filter(Boolean))].sort();
   const sealedCatalogCount = catalogProducts.filter((product) => product.catalogType !== "card").length;
   const cardCatalogCount = catalogProducts.filter((product) => product.catalogType === "card").length;
+  const catalogDuplicateWarnings = flagCatalogDuplicates(catalogProducts);
+  const catalogValidationWarnings = validateCatalogImport(catalogProducts);
+  const catalogUpcCount = catalogProducts.filter((product) => product.upc || product.barcode).length + POKEMON_PRODUCT_UPCS.length;
+  const catalogMarketPriceCount = catalogProducts.filter((product) => Number(product.marketPrice || product.marketValue || product.marketValueNearMint || 0) > 0).length;
 
   if (!user) {
     return (
@@ -3664,7 +4185,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   <button
     type="button"
     className="menu-button"
-    onClick={() => setMenuOpen(true)}
+    onClick={() => {
+      setQuickAddMenuOpen(false);
+      setMenuOpen(true);
+    }}
   >
     ☰ Menu
   </button>
@@ -3674,27 +4198,46 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     <h2>{activeTabLabel}</h2>
   </div>
 
-  <button type="button" className="topbar-market-link" onClick={() => setActiveTab("market")}>
-    TideTradr
+  <button
+    type="button"
+    className="topbar-market-link"
+    onClick={goToTidepool}
+  >
+    Tidepool
   </button>
 
   <div className="topbar-actions">
     <button
       type="button"
       className="secondary-button"
-      onClick={() => setActiveTab("addInventory")}
+      onClick={beginScanProduct}
     >
-      + Inventory
+      Scan
     </button>
 
-    <button
-      type="button"
-      className="secondary-button"
-      onClick={() => setActiveTab("addSale")}
-    >
-      + Sale
-    </button>
-
+    <div className="quick-add-wrapper">
+      <button
+        type="button"
+        className="secondary-button"
+        onClick={() => setQuickAddMenuOpen((current) => !current)}
+        aria-expanded={quickAddMenuOpen}
+        aria-haspopup="menu"
+      >
+        + Add
+      </button>
+      {quickAddMenuOpen ? (
+        <div className="quick-add-menu" role="menu">
+          <button type="button" role="menuitem" onClick={() => openQuickAddAction("card")}>Add Card</button>
+          <button type="button" role="menuitem" onClick={() => openQuickAddAction("sealed")}>Add Sealed Product</button>
+          <button type="button" role="menuitem" onClick={() => openQuickAddAction("inventory")}>Add Inventory</button>
+          <button type="button" role="menuitem" onClick={() => openQuickAddAction("sale")}>Add Sale</button>
+          <button type="button" role="menuitem" onClick={() => openQuickAddAction("expense")}>Add Expense</button>
+          <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Add Store Report</button>
+          <button type="button" role="menuitem" onClick={() => openQuickAddAction("store")}>Add Store</button>
+          <button type="button" role="menuitem" onClick={() => openQuickAddAction("wishlist")}>Add Wishlist Item</button>
+        </div>
+      ) : null}
+    </div>
   </div>
 
   <div className={searchExpanded ? "app-search expanded" : "app-search"}>
@@ -3702,7 +4245,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       type="button"
       className="app-search-toggle"
       aria-label="Search E&T TCG"
-      onClick={() => setSearchExpanded((current) => !current)}
+      onClick={() => {
+        setQuickAddMenuOpen(false);
+        setSearchExpanded((current) => !current);
+      }}
     >
       Search
     </button>
@@ -3710,10 +4256,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       value={appSearchQuery}
       onFocus={() => setSearchExpanded(true)}
       onChange={(event) => {
+        setQuickAddMenuOpen(false);
         setAppSearchQuery(event.target.value);
         setSearchExpanded(true);
       }}
-      placeholder="Search products, cards, stores..."
+      placeholder="Try: sv8 etb, 151 zard, evs booster..."
       aria-label="Search across E&T TCG"
     />
     {searchExpanded && appSearchQuery.trim().length >= 2 ? (
@@ -3726,7 +4273,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <button type="button" className="secondary-button" onClick={closeSearchResults}>Close</button>
         </div>
         {appSearchResults.length === 0 ? (
-          <p className="compact-subtitle">No matches yet. Try a product, card, store, report, or UPC.</p>
+          <div>
+            <p className="compact-subtitle">No matches yet. Try: sv8 etb, 151 zard, evs booster, crz tin, pri etb, 199/165, target greenbrier.</p>
+            {appSearchSuggestion ? (
+              <button type="button" className="secondary-button" onClick={() => setAppSearchQuery(appSearchSuggestion)}>
+                Did you mean {appSearchSuggestion}?
+              </button>
+            ) : null}
+          </div>
         ) : (
           <div className="app-search-list">
             {appSearchResults.map((result) => (
@@ -3734,7 +4288,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <button type="button" className="app-search-result-main" onClick={() => viewSearchResult(result)}>
                   <span>{result.category}</span>
                   <strong>{result.title}</strong>
-                  <small>{result.subtitle}</small>
+                  <small>{result.subtitle}{result.reason ? ` • ${result.reason}` : ""}</small>
                 </button>
                 <div className="app-search-actions">
                   {renderSearchActions(result)}
@@ -3743,6 +4297,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ))}
           </div>
         )}
+        <p className="compact-subtitle">Try: pri etb, 151 bundle, zard 199, gengar sir, walmart greenbrier, mini tin.</p>
       </div>
     ) : null}
   </div>
@@ -3821,6 +4376,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("market"); setFeatureSectionsOpen((current) => ({ ...current, market_sources: true })); })}>Manual/Cached/Mock Values</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("market"); setFeatureSectionsOpen((current) => ({ ...current, market_watchlist: true })); })}>Watchlist Settings</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("market"); setFeatureSectionsOpen((current) => ({ ...current, market_watchlist: true })); })}>Pinned Market Watch Settings</button>
+                  <form className="drawer-alias-form" onSubmit={addUserSearchAlias}>
+                    <p className="compact-subtitle">Personal search aliases</p>
+                    <input value={aliasDraft.alias} onChange={(event) => setAliasDraft((current) => ({ ...current, alias: event.target.value }))} placeholder="Your shorthand, e.g. kid binder" />
+                    <input value={aliasDraft.canonical} onChange={(event) => setAliasDraft((current) => ({ ...current, canonical: event.target.value }))} placeholder="Should search for, e.g. Vault binder" />
+                    <select value={aliasDraft.type} onChange={(event) => setAliasDraft((current) => ({ ...current, type: event.target.value }))}>
+                      <option value="personal">Personal shorthand</option>
+                      <option value="store">Store nickname</option>
+                      <option value="product">Product nickname</option>
+                      <option value="set">Set nickname</option>
+                    </select>
+                    <button type="submit">Add Alias</button>
+                  </form>
+                  {userSearchAliases.slice(0, 5).map((entry) => (
+                    <button type="button" className="drawer-link" key={entry.id} onClick={() => setUserSearchAliases((current) => current.filter((item) => item.id !== entry.id))}>
+                      Remove {entry.alias} = {entry.canonical}
+                    </button>
+                  ))}
                 </div>
               ))}
               {renderMenuPullDown("community", "Community", "Help, Discord placeholder, and report guidelines", (
@@ -3854,17 +4426,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         ) : null}
         {!activeTabLocked && activeTab === "dashboard" && (
           <div className="dashboard-layout">
-            <section className="tab-summary panel">
-              <div>
-                <h2>Home</h2>
-                <p>Your dashboard, quick actions, monthly numbers, and display settings.</p>
-              </div>
-              <div className="summary-pill-row">
-                <span>{visibleDashboardStats.length} stats on</span>
-                <span>{dashboardPreset} layout</span>
-              </div>
-            </section>
+            {renderPageChrome({
+              title: "Home",
+              subtitle: "Overview, quick actions, activity, goals, and display settings.",
+              primary: { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
+              secondary: { label: "Search", onClick: () => setSearchExpanded(true) },
+              quickActions: [
+                { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
+                { label: "Add Report", onClick: () => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_submit_report: true })); } },
+                { label: "Add Expense", onClick: () => setActiveTab("expenses") },
+                { label: "Search", onClick: () => setSearchExpanded(true) },
+              ],
+              tabs: [
+                { key: "overview", label: "Overview" },
+                { key: "activity", label: "Activity" },
+                { key: "goals", label: "Goals" },
+                { key: "settings", label: "Settings" },
+              ],
+              activeSubTab: homeSubTab,
+              setActiveSubTab: setHomeSubTab,
+            })}
             <section className="feature-dropdown-stack">
+            {homeSubTab === "overview" ? (
+              <>
             <CollapsibleFeatureSection
                 title="Dashboard"
                 summary="Dashboard cards, monthly summary, profit/loss, collection value, and Scout activity"
@@ -3873,25 +4457,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               >
             {dashboardSectionEnabled("home_stats") ? (
             <section className="cards dashboard-section" style={dashboardSectionStyle("home_stats")}>
-              {visibleDashboardStats.length === 0 ? (
+              {visibleCoreHomeStats.length === 0 ? (
                 <div className="card">
                   <p>Home Page Stats</p>
                   <h2>Hidden</h2>
                 </div>
               ) : (
-                visibleDashboardStats.map((stat) => (
+                visibleCoreHomeStats.map((stat) => (
                   <div className="card" key={stat.key}>
                     <p>{stat.label}</p>
                     <h2>{stat.value}</h2>
                   </div>
                 ))
               )}
-              {!featureAllowed("restock_predictions") ? (
-                <LockedFeatureCard featureKey="restock_predictions" onUpgrade={() => setActiveTab("dashboard")} />
-              ) : null}
-              {!featureAllowed("seller_tools") ? (
-                <LockedFeatureCard featureKey="seller_tools" onUpgrade={() => setActiveTab("dashboard")} />
-              ) : null}
             </section>
             ) : null}
               </CollapsibleFeatureSection>
@@ -3929,6 +4507,36 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Check Deal</button>
                 </div>
               </CollapsibleFeatureSection>
+              <section className="panel dashboard-section">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Recent Activity</h2>
+                    <p>Latest Forge, Vault, sales, and expense updates.</p>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>View All</button>
+                </div>
+                <div className="inventory-list compact-inventory-list">
+                  {[...items.map((item) => ({ id: `item-${item.id}`, title: item.name, detail: `Forge/Vault item | ${money(Number(item.quantity || 0) * Number(item.unitCost || 0))}`, createdAt: item.createdAt })),
+                    ...sales.map((sale) => ({ id: `sale-${sale.id}`, title: sale.itemName || "Sale", detail: `Sale | ${money(sale.grossSale)}`, createdAt: sale.createdAt })),
+                    ...expenses.map((expense) => ({ id: `expense-${expense.id}`, title: expense.vendor || "Expense", detail: `${expense.category} | ${money(expense.amount)}`, createdAt: expense.createdAt })),
+                  ]
+                    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+                    .slice(0, 5)
+                    .map((activity) => (
+                      <div className="compact-list-row" key={activity.id}>
+                        <div>
+                          <strong>{activity.title}</strong>
+                          <p className="compact-subtitle">{activity.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  {!items.length && !sales.length && !expenses.length ? <p>No recent activity yet.</p> : null}
+                </div>
+              </section>
+              </>
+            ) : null}
+            {homeSubTab === "activity" ? (
+              <>
               <CollapsibleFeatureSection
                 title="Monthly Summary"
                 summary="Purchaser spending and recent activity"
@@ -3940,6 +4548,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" onClick={() => setActiveTab("vault")}>View Vault</button>
                 </div>
               </CollapsibleFeatureSection>
+              <section className="panel dashboard-section">
+                <h2>All Home Metrics</h2>
+                <p>These stay out of the default Home overview. Use Customize Dashboard to choose which ones appear on Home.</p>
+                <div className="cards mini-cards">
+                  {visibleDashboardStats.map((stat) => (
+                    <div className="card" key={stat.key}>
+                      <p>{stat.label}</p>
+                      <h2>{stat.value}</h2>
+                    </div>
+                  ))}
+                </div>
+              </section>
+              </>
+            ) : null}
+            {homeSubTab === "goals" ? (
+              <>
               <CollapsibleFeatureSection
                 title="Profit/Loss Overview"
                 summary="Paid Forge metrics and seller summaries"
@@ -3949,11 +4573,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="cards mini-cards">
                   <div className="card"><p>Monthly Profit/Loss</p><h2>{money(monthlyProfitLoss)}</h2></div>
                   <div className="card"><p>Expenses</p><h2>{money(totalExpenses)}</h2></div>
+                  <div className="card"><p>Marketing Spend</p><h2>{money(totalMarketingSpend)}</h2></div>
+                  <div className="card"><p>After Marketing</p><h2>{money(estimatedProfitAfterMarketing)}</h2></div>
                 </div>
               </CollapsibleFeatureSection>
+              </>
+            ) : null}
+            {homeSubTab === "settings" ? (
+              <>
               <CollapsibleFeatureSection
-                title="Display Settings"
-                summary="Toggle dashboard cards, choose the default Home view, and show or hide beta cards"
+                title="Settings / Customize Dashboard"
+                summary="Choose which Home metrics are visible and reset the dashboard layout"
                 open={isFeatureSectionOpen("home_display_settings")}
                 onToggle={() => toggleFeatureSection("home_display_settings")}
               >
@@ -4278,6 +4908,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             </section>
               </CollapsibleFeatureSection>
+              </>
+            ) : null}
             </section>
             <section className="home-grid dashboard-section" style={dashboardSectionStyle("recent_inventory")}>
               {dashboardSectionEnabled("recent_inventory") ? (
@@ -4550,17 +5182,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "vault" && (
           <>
-            <section className="tab-summary panel">
-              <div>
-                <h2>Vault</h2>
-                <p>Collection, held items, personal collection, and Vault settings.</p>
-              </div>
-              <div className="summary-pill-row">
-                <span>{vaultItems.length} items</span>
-                <span>{money(vaultValue)}</span>
-              </div>
-            </section>
+            {renderPageChrome({
+              title: "Vault",
+              subtitle: "Personal collection, held items, sealed products, cards, wishlist, and stats.",
+              primary: { label: "Add Card", onClick: () => { setVaultSubTab("collection"); setFeatureSectionsOpen((current) => ({ ...current, vault_add: true })); } },
+              secondary: { label: "Wishlist", onClick: () => setVaultSubTab("wishlist") },
+              quickActions: [
+                { label: "Add Card", onClick: () => { setVaultSubTab("collection"); setFeatureSectionsOpen((current) => ({ ...current, vault_add: true })); } },
+                { label: "Add Product", onClick: () => setActiveTab("catalog") },
+                { label: "Scan", onClick: beginScanProduct },
+                { label: "Wishlist", onClick: () => setVaultSubTab("wishlist") },
+              ],
+              tabs: [
+                { key: "overview", label: "Overview" },
+                { key: "collection", label: "Collection" },
+                { key: "sets", label: "Sets" },
+                { key: "wishlist", label: "Wishlist" },
+                { key: "products", label: "Products" },
+                { key: "stats", label: "Stats" },
+              ],
+              activeSubTab: vaultSubTab,
+              setActiveSubTab: setVaultSubTab,
+            })}
             <section className="feature-dropdown-stack">
+            {vaultSubTab === "overview" || vaultSubTab === "stats" ? (
             <CollapsibleFeatureSection title="Vault Summary" summary="Items, value, personal collection, and held counts" open={isFeatureSectionOpen("vault_summary")} onToggle={() => toggleFeatureSection("vault_summary")}>
             <section className="panel vault-overview-panel">
               <h2>The Vault</h2>
@@ -4587,7 +5232,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             </section>
             </CollapsibleFeatureSection>
+            ) : null}
 
+            {vaultSubTab === "collection" || vaultSubTab === "products" ? (
             <CollapsibleFeatureSection title="Add Item to Vault" summary="Add Sealed Product, Add Individual Card, Add from Catalog, and Manual Add" open={isFeatureSectionOpen("vault_add")} onToggle={() => toggleFeatureSection("vault_add")}>
             <section className="panel vault-add-panel">
               <div className="compact-card-header">
@@ -4720,7 +5367,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ) : null}
             </section>
             </CollapsibleFeatureSection>
+            ) : null}
 
+            {vaultSubTab === "collection" || vaultSubTab === "wishlist" || vaultSubTab === "products" ? (
             <CollapsibleFeatureSection title="Collection Items" summary="View Collection, Filter Collection, Edit Item, and Delete Item" open={isFeatureSectionOpen("vault_collection_items")} onToggle={() => toggleFeatureSection("vault_collection_items")}>
             <section className="panel">
               <h2>Vault Items</h2>
@@ -4762,6 +5411,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             </section>
             </CollapsibleFeatureSection>
+            ) : null}
+            {vaultSubTab === "products" || vaultSubTab === "collection" ? (
+            <>
             <CollapsibleFeatureSection title="Held Items" summary="View Held Items, Held Value, and Move to Forge" open={isFeatureSectionOpen("vault_held_items")} onToggle={() => toggleFeatureSection("vault_held_items")}>
               <div className="inventory-list compact-inventory-list">
                 {vaultItems.filter((item) => item.status === "Held").length === 0 ? <p>No held items yet.</p> : vaultItems.filter((item) => item.status === "Held").map((item) => (
@@ -4776,6 +5428,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 ))}
               </div>
             </CollapsibleFeatureSection>
+            </>
+            ) : null}
+            {vaultSubTab === "stats" ? (
             <CollapsibleFeatureSection title="Vault Settings" summary="Display Settings, Collection Categories, and Market Value Settings" open={isFeatureSectionOpen("vault_settings")} onToggle={() => toggleFeatureSection("vault_settings")}>
               <div className="quick-actions">
                 <button type="button" onClick={() => setActiveTab("catalog")}>Catalog Search</button>
@@ -4783,6 +5438,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <button type="button" onClick={() => setActiveTab("dashboard")}>Display Settings</button>
               </div>
             </CollapsibleFeatureSection>
+            ) : null}
             </section>
           </>
         )}
@@ -4901,7 +5557,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </CollapsibleFeatureSection>
               <CollapsibleFeatureSection title="Scout Workspace" summary="Full beta workspace for stores, reports, Tidepool, alerts, rewards, and screenshot tips" open={isFeatureSectionOpen("scout_store_tracker")} onToggle={() => toggleFeatureSection("scout_store_tracker")}>
                 <section className="embedded-page">
-                  <Scout />
+                  <Scout targetSubTab={scoutSubTabTarget} />
                 </section>
               </CollapsibleFeatureSection>
             </section>
@@ -4986,18 +5642,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "market" && (
           <>
-            <section className="tab-summary panel">
-              <div>
-                <h2>TideTradr</h2>
-                <p>Shared product catalog, market lookup, deal checks, watchlist, and app-wide product actions.</p>
-              </div>
-              <div className="summary-pill-row">
-                <span>{catalogProducts.length} products</span>
-                <span>{tideTradrWatchlist.length} watched</span>
-              </div>
-            </section>
+            {renderPageChrome({
+              title: "TideTradr",
+              subtitle: "Shared catalog, market values, deal checks, listings, and market watch.",
+              primary: { label: "Deal Finder", onClick: () => { setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); } },
+              secondary: { label: "Search Catalog", onClick: () => setActiveTab("catalog") },
+              quickActions: [
+                { label: "Deal Finder", onClick: () => { setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); } },
+                { label: "Search Catalog", onClick: () => setActiveTab("catalog") },
+                { label: "Compare Prices", onClick: () => setTideTradrSubTab("watch") },
+                { label: "Create Listing", onClick: () => setActiveTab("addSale") },
+              ],
+              tabs: [
+                { key: "overview", label: "Overview" },
+                { key: "catalog", label: "Catalog" },
+                { key: "deal", label: "Deal Finder" },
+                { key: "listings", label: "Listings" },
+                { key: "watch", label: "Market Watch" },
+              ],
+              activeSubTab: tideTradrSubTab,
+              setActiveSubTab: setTideTradrSubTab,
+            })}
 
             <section className="feature-dropdown-stack">
+              {tideTradrSubTab === "overview" || tideTradrSubTab === "catalog" ? (
               <CollapsibleFeatureSection title="Catalog" summary="Search Catalog, Sealed Products, Individual Cards, Add Catalog Item, and Edit Catalog Item" open={isFeatureSectionOpen("market_summary")} onToggle={() => toggleFeatureSection("market_summary")}>
                 <div className="cards">
                   <div className="card"><p>Catalog Products</p><h2>{catalogProducts.length}</h2></div>
@@ -5015,7 +5683,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("vault")}>Add to Vault</button>
                 </div>
               </CollapsibleFeatureSection>
+              ) : null}
 
+              {tideTradrSubTab === "overview" || tideTradrSubTab === "watch" ? (
               <CollapsibleFeatureSection title="Market Watch" summary="Pinned Market Watch, Watchlist, Recently Updated Market Items, and Market Value Updates" open={isFeatureSectionOpen("market_lookup")} onToggle={() => toggleFeatureSection("market_lookup")}>
                 <div className="form">
                   <Field label="TideTradr Product">
@@ -5040,7 +5710,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(tideTradrLookupProduct.id)}>Add to Watchlist</button> : null}
                 </div>
               </CollapsibleFeatureSection>
+              ) : null}
 
+              {tideTradrSubTab === "overview" || tideTradrSubTab === "deal" ? (
+              <>
               <CollapsibleFeatureSection title="Deal Finder" summary="Check Deal, Lot Calculator, MSRP vs Market, and Buy/Maybe/Pass Recommendation" open={isFeatureSectionOpen("market_deal_finder")} onToggle={() => toggleFeatureSection("market_deal_finder")}>
                 <form className="form">
                   <Field label="Product">
@@ -5113,7 +5786,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ))}
                 </div>
               </CollapsibleFeatureSection>
+              </>
+              ) : null}
 
+              {tideTradrSubTab === "catalog" ? (
+              <>
               <CollapsibleFeatureSection title="Cards" summary="Search Cards, Card Filters, Graded Cards, Raw Cards, and Chase Cards" open={isFeatureSectionOpen("market_cards")} onToggle={() => toggleFeatureSection("market_cards")}>
                 <div className="quick-actions">
                   <button type="button" onClick={() => setActiveTab("catalog")}>Search Cards</button>
@@ -5139,7 +5816,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Review Imported Items</button>
                 </div>
               </CollapsibleFeatureSection>
+              </>
+              ) : null}
 
+              {tideTradrSubTab === "overview" || tideTradrSubTab === "watch" ? (
               <CollapsibleFeatureSection title="Market Sources" summary="Manual Values, Cached Values, Mock Values, and Live API Placeholder" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
                 <div className="cards mini-cards">
                   <div className="card"><p>Manual Values</p><h2>Enabled</h2></div>
@@ -5148,12 +5828,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="card"><p>Live API</p><h2>Placeholder</h2></div>
                 </div>
               </CollapsibleFeatureSection>
+              ) : null}
 
+              {tideTradrSubTab === "overview" || tideTradrSubTab === "listings" ? (
               <CollapsibleFeatureSection title="Market To-Do List" summary="Items missing market values, MSRP, or checks" open={isFeatureSectionOpen("market_todo")} onToggle={() => toggleFeatureSection("market_todo")}>
                 <ActionReport title="Needs Market Check" items={needsMarketCheckItems} button="Update Market" action={startEditingItem} />
                 <ActionReport title="Missing Market Price" items={missingMarketPriceItems} button="Add Market Price" action={startEditingItem} />
                 <ActionReport title="Missing MSRP" items={missingMsrpItems} button="Add MSRP" action={startEditingItem} />
               </CollapsibleFeatureSection>
+              ) : null}
             </section>
           </>
         )}
@@ -5173,6 +5856,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="card"><p>Individual Cards</p><h2>{cardCatalogCount}</h2></div>
                 <div className="card"><p>Watchlist</p><h2>{tideTradrWatchlist.length}</h2></div>
               </div>
+            </section>
+            <section className="panel">
+              <h2>Catalog Admin / Data Tools</h2>
+              <p className="compact-subtitle">Beta/dev structure for future imports from Pokemon TCG API/Scrydex, TCGdex, TCGCSV, official Pokemon product data, and manual CSVs. No live keys are required.</p>
+              <div className="cards mini-cards">
+                <div className="card"><p>Set Records</p><h2>{POKEMON_SETS.length}</h2></div>
+                <div className="card"><p>Seed Product Rows</p><h2>{POKEMON_PRODUCTS.length}</h2></div>
+                <div className="card"><p>UPC/SKU Links</p><h2>{catalogUpcCount}</h2></div>
+                <div className="card"><p>Market Price Rows</p><h2>{catalogMarketPriceCount}</h2></div>
+                <div className="card"><p>Duplicate Warnings</p><h2>{catalogDuplicateWarnings.length}</h2></div>
+                <div className="card"><p>Validation Warnings</p><h2>{catalogValidationWarnings.length}</h2></div>
+              </div>
+              <div className="quick-action-rail">
+                {CATALOG_IMPORT_SOURCES.map((source) => (
+                  <button type="button" className="secondary-button" key={source} disabled>{source}</button>
+                ))}
+              </div>
+              <p className="compact-subtitle">Import buttons are intentionally placeholders until approved API/CSV sources are connected. CSV/manual catalog import remains available below.</p>
             </section>
           <CollapsibleFeatureSection title="Manual Catalog Item" summary="Add or edit missing sealed products and individual cards locally" open={isFeatureSectionOpen("catalog_manual")} onToggle={() => toggleFeatureSection("catalog_manual")}>
           <SmartAddCatalog onUseProduct={useSmartCatalogProduct} />
@@ -5513,13 +6214,59 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 />
 
     {showInventoryScanner && (
-      <BarcodeScanner
-        onScan={(code) => {
-          updateItemForm("barcode", code);
-          setShowInventoryScanner(false);
-        }}
-        onClose={() => setShowInventoryScanner(false)}
-      />
+      <section className="panel">
+        <h3>Scan to Add</h3>
+        <p className="compact-subtitle">Choose what you are scanning. Beta uses UPC/card number/manual matching against the local TideTradr catalog.</p>
+        <div className="quick-action-rail">
+          {[
+            ["upc", "Scan UPC / barcode"],
+            ["card", "Scan card"],
+            ["receipt", "Receipt/screenshot"],
+            ["manual", "Manual lookup"],
+          ].map(([key, label]) => (
+            <button key={key} type="button" className={scanMode === key ? "primary" : ""} onClick={() => setScanMode(key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {scanMode === "receipt" ? (
+          <p className="compact-subtitle">Receipt and screenshot OCR is coming soon. For beta, paste the item list or use manual lookup/import.</p>
+        ) : scanMode === "manual" || scanMode === "card" ? (
+          <div className="form">
+            <Field label={scanMode === "card" ? "Card name, card number, or set code" : "Product name, UPC, SKU, shorthand, or set code"}>
+              <input
+                value={itemForm.barcode}
+                onChange={(event) => {
+                  updateItemForm("barcode", event.target.value);
+                  setScanMatches(getBestCatalogMatches(event.target.value, catalogProducts));
+                }}
+                placeholder={scanMode === "card" ? "Try 199/165, zard sir, sv8 card 159" : "Try pri etb, 151 bundle, UPC/SKU"}
+              />
+            </Field>
+          </div>
+        ) : (
+          <BarcodeScanner
+            onScan={handleCatalogScanMatch}
+            onClose={() => setShowInventoryScanner(false)}
+          />
+        )}
+        {scanMatches.length > 0 ? (
+          <div className="inventory-list">
+            {scanMatches.slice(0, 5).map((match) => (
+              <div className="inventory-card compact-card" key={match.item.id}>
+                <h3>{match.item.name || match.item.productName || match.item.cardName}</h3>
+                <p>{match.item.setName || match.item.expansion || "No set"} | {match.item.productType || match.item.rarity || "Catalog item"}</p>
+                <p>{match.explanation || explainCatalogMatch(match)} | Confidence: {match.confidencePercent}%</p>
+                <div className="quick-actions">
+                  <button type="button" onClick={() => confirmScanMatch(match.item.id)}>Confirm Match</button>
+                  <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(match.item.id)}>Add to Vault</button>
+                  <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(match.item.id)}>Check Deal</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
     )}
 
     <InventoryForm
@@ -5538,16 +6285,34 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 
         {activeTab === "inventory" && (
           <>
-          <section className="tab-summary panel">
-            <div>
-              <h2>Forge</h2>
-              <p>Inventory, sales, expenses, mileage, receipts, and reports.</p>
-            </div>
-            <div className="summary-pill-row">
-              <span>{items.length} items</span>
-              <span>{money(totalMarketValue)} market</span>
-            </div>
-          </section>
+          {renderPageChrome({
+            title: "Forge",
+            subtitle: "Business inventory, sales, expenses, mileage, receipts, and reports.",
+            primary: { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
+            secondary: { label: "Import", onClick: () => openInventoryImportAssistant("Forge") },
+            quickActions: [
+              { label: "Add Inventory", onClick: () => setActiveTab("addInventory") },
+              { label: "Add Sale", onClick: () => setActiveTab("addSale") },
+              { label: "Add Expense", onClick: () => setActiveTab("expenses") },
+              { label: "Import", onClick: () => openInventoryImportAssistant("Forge") },
+            ],
+            tabs: [
+              { key: "overview", label: "Overview" },
+              { key: "inventory", label: "Inventory" },
+              { key: "sales", label: "Sales" },
+              { key: "expenses", label: "Expenses" },
+              { key: "reports", label: "Reports" },
+              { key: "imports", label: "Imports" },
+            ],
+            activeSubTab: forgeSubTab,
+            setActiveSubTab: (key) => {
+              setForgeSubTab(key);
+              if (key === "sales") setActiveTab("sales");
+              if (key === "expenses") setActiveTab("expenses");
+              if (key === "reports") setActiveTab("reports");
+              if (key === "imports") openInventoryImportAssistant("Forge");
+            },
+          })}
           <section className="feature-dropdown-stack">
             <CollapsibleFeatureSection
               title="Inventory"
@@ -5745,24 +6510,57 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <section className="panel">
               <h2>{editingExpenseId ? "Edit Expense" : "Add Business Expense"}</h2>
               <form onSubmit={addExpense} className="form">
+                <Field label="Date"><input type="date" value={expenseForm.date} onChange={(e) => updateExpenseForm("date", e.target.value)} /></Field>
                 <Field label="Vendor / Store"><input value={expenseForm.vendor} onChange={(e) => updateExpenseForm("vendor", e.target.value)} /></Field>
-                <Field label="Expense Category"><select value={expenseForm.category} onChange={(e) => updateExpenseForm("category", e.target.value)}><option>Supplies</option><option>Shipping</option><option>Gas</option><option>Software</option><option>Storage</option><option>Equipment</option><option>Other</option></select></Field>
+                <Field label="Expense Category"><select value={expenseForm.category} onChange={(e) => updateExpenseForm("category", e.target.value)}>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
+                <Field label="Subcategory"><input value={expenseForm.subcategory} placeholder="Facebook ads, flyers, labels, domain..." onChange={(e) => updateExpenseForm("subcategory", e.target.value)} /></Field>
                 <Field label="Who Paid?"><select value={expenseForm.buyer} onChange={(e) => updateExpenseForm("buyer", e.target.value)}>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
                 <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
+                <Field label="Payment Method"><input value={expenseForm.paymentMethod} placeholder="Card, cash, PayPal, business account..." onChange={(e) => updateExpenseForm("paymentMethod", e.target.value)} /></Field>
+                <Field label="Linked Forge Item"><select value={expenseForm.linkedItemId} onChange={(e) => updateExpenseForm("linkedItemId", e.target.value)}><option value="">None</option>{items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                <Field label="Linked Sale"><select value={expenseForm.linkedSaleId} onChange={(e) => updateExpenseForm("linkedSaleId", e.target.value)}><option value="">None</option>{sales.map((sale) => <option key={sale.id} value={sale.id}>{sale.itemName} - {sale.platform}</option>)}</select></Field>
+                {expenseForm.category === "Marketing" && (
+                  <>
+                    <Field label="Campaign Name"><input value={expenseForm.campaignName} placeholder="Spring restock ads, giveaway push..." onChange={(e) => updateExpenseForm("campaignName", e.target.value)} /></Field>
+                    <Field label="Marketing Platform"><select value={expenseForm.platform} onChange={(e) => updateExpenseForm("platform", e.target.value)}><option value="">Select platform</option>{MARKETING_PLATFORMS.map((platform) => <option key={platform}>{platform}</option>)}</select></Field>
+                    <Field label="Goal"><select value={expenseForm.goal} onChange={(e) => updateExpenseForm("goal", e.target.value)}><option value="">Select goal</option>{MARKETING_GOALS.map((goal) => <option key={goal} value={goal}>{goal}</option>)}</select></Field>
+                    <Field label="Campaign Start"><input type="date" value={expenseForm.startDate} onChange={(e) => updateExpenseForm("startDate", e.target.value)} /></Field>
+                    <Field label="Campaign End"><input type="date" value={expenseForm.endDate} onChange={(e) => updateExpenseForm("endDate", e.target.value)} /></Field>
+                    <Field label="Linked Sales / Results"><input value={expenseForm.linkedSales} placeholder="Sale IDs, totals, or notes for later ROI tracking" onChange={(e) => updateExpenseForm("linkedSales", e.target.value)} /></Field>
+                    <Field label="Results Notes"><input value={expenseForm.resultsNotes} placeholder="Clicks, messages, followers, sales lift..." onChange={(e) => updateExpenseForm("resultsNotes", e.target.value)} /></Field>
+                  </>
+                )}
                 <Field label="Notes"><input value={expenseForm.notes} onChange={(e) => updateExpenseForm("notes", e.target.value)} /></Field>
+                <label className="toggle-row">
+                  <span>Tax deductible</span>
+                  <input type="checkbox" checked={!!expenseForm.taxDeductible} onChange={(e) => updateExpenseForm("taxDeductible", e.target.checked)} />
+                </label>
                 <Field label="Receipt / Screenshot"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateExpenseForm("receiptImage", url), "expenses")} /></Field>
                 {expenseForm.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={expenseForm.receiptImage} alt="Receipt" /></div>}
                 <button type="submit">{editingExpenseId ? "Save Expense" : "Add Expense"}</button>
-                {editingExpenseId && <button type="button" className="secondary-button" onClick={() => { setEditingExpenseId(null); setExpenseForm({ vendor: "", category: "Supplies", buyer: "Zena", amount: "", notes: "", receiptImage: "" }); }}>Cancel Edit</button>}
+                {editingExpenseId && <button type="button" className="secondary-button" onClick={() => { setEditingExpenseId(null); setExpenseForm(blankExpense); }}>Cancel Edit</button>}
               </form>
             </section>
             <ListPanel title="Business Expenses" emptyText="No expenses added yet.">
               {expenses.map((expense) => (
                 <div className="inventory-card" key={expense.id}>
                   <h3>{expense.vendor}</h3>
+                  {expense.date && <p>Date: {expense.date}</p>}
                   <p>Category: {expense.category}</p>
+                  {expense.subcategory && <p>Subcategory: {expense.subcategory}</p>}
                   <p>Paid By: {expense.buyer}</p>
                   <p>Amount: {money(expense.amount)}</p>
+                  {expense.paymentMethod && <p>Payment: {expense.paymentMethod}</p>}
+                  {expense.taxDeductible && <p>Tax Deductible: Yes</p>}
+                  {expense.category === "Marketing" && (
+                    <>
+                      {expense.campaignName && <p>Campaign: {expense.campaignName}</p>}
+                      {expense.platform && <p>Platform: {expense.platform}</p>}
+                      {expense.goal && <p>Goal: {expense.goal}</p>}
+                      {(expense.startDate || expense.endDate) && <p>Campaign Dates: {expense.startDate || "?"} to {expense.endDate || "?"}</p>}
+                      {expense.resultsNotes && <p>Results: {expense.resultsNotes}</p>}
+                    </>
+                  )}
                   {expense.notes && <p>Notes: {expense.notes}</p>}
                   {expense.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={expense.receiptImage} alt="Receipt" /></div>}
                   <OverflowMenu
@@ -5881,6 +6679,36 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </div>
 
                 <div className="card">
+                  <p>Total Expenses</p>
+                  <h2>{money(totalExpenses)}</h2>
+                </div>
+
+                <div className="card">
+                  <p>Marketing Spend</p>
+                  <h2>{money(totalMarketingSpend)}</h2>
+                </div>
+
+                <div className="card">
+                  <p>After Marketing</p>
+                  <h2>{money(estimatedProfitAfterMarketing)}</h2>
+                </div>
+
+                <div className="card">
+                  <p>After All Expenses</p>
+                  <h2>{money(estimatedProfitAfterExpenses)}</h2>
+                </div>
+
+                <div className="card">
+                  <p>Monthly Marketing</p>
+                  <h2>{money(monthlyMarketingSpend)}</h2>
+                </div>
+
+                <div className="card">
+                  <p>Marketing ROI</p>
+                  <h2>Placeholder</h2>
+                </div>
+
+                <div className="card">
                   <p>IRS Mileage Value</p>
                   <h2>{money(totalMileageValue)}</h2>
                 </div>
@@ -5901,6 +6729,13 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <>
                 <ReportList title="Forge Sales by Platform" data={salesByPlatform} moneyValues />
                 <ReportList title="Expenses by Category" data={expensesByCategory} moneyValues />
+                <section className="panel">
+                  <h2>Marketing Summary</h2>
+                  <p>All-time Marketing Spend: {money(totalMarketingSpend)}</p>
+                  <p>Monthly Marketing Spend: {money(monthlyMarketingSpend)}</p>
+                  <p>Profit After Marketing: {money(estimatedProfitAfterMarketing)}</p>
+                  <p>Marketing ROI: Placeholder until linked sales are connected.</p>
+                </section>
                 <ReportList title="Forge Inventory by Category" data={inventoryByCategory} />
                 <ReportList title="Inventory by Status" data={inventoryByStatus} />
               </>
