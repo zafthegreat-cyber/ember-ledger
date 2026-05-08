@@ -27,6 +27,7 @@
 
 html {
   min-height: 100%;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at top left, rgba(180, 87, 53, 0.22), transparent 32rem),
     radial-gradient(circle at top right, rgba(31, 111, 139, 0.24), transparent 34rem),
@@ -37,6 +38,7 @@ body {
   margin: 0;
   min-height: 100vh;
   background: transparent;
+  overflow-x: hidden;
 }
 
 button,
@@ -297,7 +299,7 @@ a {
 }
 
 .embedded-page {
-  overflow: hidden;
+  overflow: visible;
   border-radius: var(--radius-lg);
 }
 
@@ -465,7 +467,7 @@ a {
 
 .panel {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   padding: 22px;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.9);
@@ -518,11 +520,13 @@ select,
 textarea,
 .search-input {
   width: 100%;
+  min-height: 46px;
   color: var(--ink);
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 15px;
   padding: 13px 14px;
+  font-size: 1rem;
   outline: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   transition: border-color 140ms ease, box-shadow 140ms ease;
@@ -552,6 +556,7 @@ button,
 .form button,
 .export-grid button {
   cursor: pointer;
+  min-height: 44px;
   color: #fff;
   background: linear-gradient(135deg, var(--ember), var(--ember-dark));
   border-radius: 15px;
@@ -709,7 +714,7 @@ button.overflow-menu-delete:hover {
 
 .inventory-card {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   padding: 18px;
   border-radius: var(--radius-lg);
   background: #fff;
@@ -824,38 +829,75 @@ video {
 
 @media (max-width: 720px) {
   .app {
-    padding: 12px;
+    padding: 10px 10px calc(92px + env(safe-area-inset-bottom));
   }
 
   .header {
-    padding: 24px 20px;
-    border-radius: 24px;
+    padding: 16px;
+    border-radius: 20px;
+    gap: 8px;
+  }
+
+  .header h1 {
+    font-size: 2rem;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+
+  .header p {
+    font-size: 0.92rem;
+    line-height: 1.35;
   }
 
   .topbar {
-    flex-direction: column;
-    align-items: stretch;
+    position: static;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 18px;
+  }
+
+  .topbar-title p {
+    font-size: 0.68rem;
+  }
+
+  .topbar-title h2 {
+    font-size: 1rem;
+    letter-spacing: 0;
   }
 
   .topbar-actions {
-    flex-direction: column;
+    display: none;
   }
 
-  .menu-button,
-  .topbar-actions button {
-    width: 100%;
+  .menu-button {
+    min-width: 84px;
+    width: auto;
+    padding-inline: 12px;
   }
 
   .main-tabs {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 80;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px;
+    gap: 5px;
+    margin: 0;
+    padding: 6px;
+    border: 1px solid rgba(22, 32, 51, 0.12);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 16px 40px rgba(13, 24, 40, 0.18);
+    backdrop-filter: blur(18px);
   }
 
   .main-tab {
-    min-height: 44px;
-    padding: 10px 6px;
+    min-height: 48px;
+    padding: 8px 4px;
     border-radius: 12px;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+    box-shadow: none;
   }
 
   .quick-actions {
@@ -872,7 +914,7 @@ video {
   }
 
   .cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 
@@ -880,26 +922,42 @@ video {
   .panel .card {
     grid-column: span 1;
     min-height: 96px;
-    padding: 15px;
+    padding: 16px;
     border-radius: 18px;
   }
 
   .card p {
-    font-size: 0.7rem;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
   }
 
   .card h2,
   .card h3 {
-    font-size: 1.28rem;
+    font-size: 1.5rem;
+    letter-spacing: 0;
   }
 
   .panel {
-    padding: 18px;
-    border-radius: 22px;
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .panel h2 {
+    font-size: 1.28rem;
+    letter-spacing: 0;
+  }
+
+  .panel p {
+    font-size: 0.96rem;
   }
 
   .form {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .form label {
+    font-size: 0.92rem;
   }
 
   .inventory-list,
@@ -917,6 +975,7 @@ video {
   .export-grid button,
   .secondary-button {
     width: 100%;
+    min-height: 48px;
   }
 
   .edit-button,
@@ -925,11 +984,47 @@ video {
   button.delete-button {
     margin-right: 0;
   }
+
+  .inline-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .overflow-menu {
+    justify-self: end;
+    margin-left: auto;
+  }
+
+  .overflow-menu-button,
+  button.overflow-menu-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .overflow-menu-list {
+    min-width: 148px;
+    z-index: 120;
+  }
 }
 
-@media (max-width: 420px) {
-  .cards {
-    grid-template-columns: 1fr;
+@media (max-width: 480px) {
+  .app {
+    padding-inline: 8px;
+  }
+
+  .main {
+    gap: 12px;
+  }
+
+  .compact-metrics,
+  .preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-list-row {
+    min-height: 58px;
   }
 }
 
@@ -1157,7 +1252,24 @@ video {
   }
 
   .compact-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .compact-actions select,
+  .compact-actions .edit-button {
+    grid-column: 1 / -1;
+  }
+
+  .compact-actions .overflow-menu {
+    grid-column: 2;
+  }
+
+  .compact-actions .overflow-menu-button,
+  .compact-actions button.overflow-menu-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 
   .forge-toolbar {
