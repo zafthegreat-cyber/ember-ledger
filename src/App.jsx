@@ -1350,7 +1350,7 @@ export default function App() {
   const [expenseForm, setExpenseForm] = useState(blankExpense);
   const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "Zena", averageMpg: "", wearCostPerMile: "", notes: "" });
   const [tripForm, setTripForm] = useState({ purpose: "", driver: "Zena", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" });
-  const [saleForm, setSaleForm] = useState({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCost: "", platformFees: "", notes: "" });
+  const [saleForm, setSaleForm] = useState({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCharged: "", shippingCost: "", platformFees: "", notes: "" });
 
   const mainTabs = [
     { key: "home", label: "Home", target: "dashboard" },
@@ -5832,10 +5832,11 @@ async function importBulkCatalogProducts() {
     if (qty > item.quantity) return alert("You cannot sell more than you have.");
 
     const price = Number(saleForm.finalSalePrice);
+    const shippingCharged = Number(saleForm.shippingCharged || 0);
     const shipping = Number(saleForm.shippingCost || 0);
     const fees = Number(saleForm.platformFees || 0);
     const itemCost = item.unitCost * qty;
-    const grossSale = price * qty;
+    const grossSale = price * qty + shippingCharged;
     const netProfit = grossSale - itemCost - shipping - fees;
     const remaining = item.quantity - qty;
 
@@ -5855,7 +5856,7 @@ async function importBulkCatalogProducts() {
       shipping_cost: shipping,
       platform_fees: fees,
       net_profit: netProfit,
-      notes: saleForm.notes,
+      notes: [saleForm.notes, shippingCharged ? `Shipping charged: ${money(shippingCharged)}` : ""].filter(Boolean).join(" | "),
     };
 
     const { data: saleData, error: saleError } = editingSaleId
@@ -5884,13 +5885,13 @@ async function importBulkCatalogProducts() {
     const mapped = mapSale(saleData);
     setSales(editingSaleId ? sales.map((s) => (s.id === editingSaleId ? mapped : s)) : [mapped, ...sales]);
     setEditingSaleId(null);
-    setSaleForm({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCost: "", platformFees: "", notes: "" });
+    setSaleForm({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCharged: "", shippingCost: "", platformFees: "", notes: "" });
     setActiveTab("sales");
   }
 
   function startEditingSale(sale) {
     setEditingSaleId(sale.id);
-    setSaleForm({ itemId: sale.itemId, platform: sale.platform, quantitySold: sale.quantitySold, finalSalePrice: sale.finalSalePrice, shippingCost: sale.shippingCost, platformFees: sale.platformFees, notes: sale.notes });
+    setSaleForm({ itemId: sale.itemId, platform: sale.platform, quantitySold: sale.quantitySold, finalSalePrice: sale.finalSalePrice, shippingCharged: "", shippingCost: sale.shippingCost, platformFees: sale.platformFees, notes: sale.notes });
   }
 
   async function deleteSale(id) {
@@ -6239,6 +6240,16 @@ async function importBulkCatalogProducts() {
   const totalSalesRevenue = sales.reduce((s, sale) => s + sale.grossSale, 0);
   const totalSalesProfit = sales.reduce((s, sale) => s + sale.netProfit, 0);
   const totalItemsSold = sales.reduce((s, sale) => s + sale.quantitySold, 0);
+  const activeForgeItems = items.filter((item) => !item.vaultStatus);
+  const selectedSaleItem = items.find((item) => String(item.id) === String(saleForm.itemId));
+  const saleQuantity = Number(saleForm.quantitySold || 0);
+  const salePriceEach = Number(saleForm.finalSalePrice || 0);
+  const saleShippingCharged = Number(saleForm.shippingCharged || 0);
+  const saleShippingCost = Number(saleForm.shippingCost || 0);
+  const saleFees = Number(saleForm.platformFees || 0);
+  const saleCostBasis = selectedSaleItem ? Number(selectedSaleItem.unitCost || 0) * saleQuantity : 0;
+  const saleGrossPreview = salePriceEach * saleQuantity + saleShippingCharged;
+  const saleProfitPreview = saleGrossPreview - saleCostBasis - saleShippingCost - saleFees;
   const totalBusinessMiles = mileageTrips.reduce((s, t) => s + t.businessMiles, 0);
   const totalFuelCost = mileageTrips.reduce((s, t) => s + t.fuelCost, 0);
   const totalWearCost = mileageTrips.reduce((s, t) => s + t.wearCost, 0);
@@ -10769,7 +10780,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </section>
                 <section className="embedded-page">
-                  <Scout targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }} compact adminMode={adminUser} />
+              <Scout
+                targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }}
+                compact
+                adminMode={adminUser}
+                supabase={supabase}
+                isSupabaseConfigured={isSupabaseConfigured}
+                mapCatalogRow={mapCatalog}
+                money={money}
+              />
                 </section>
               </>
             ) : scoutView === "alerts" ? (
@@ -10794,7 +10813,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </section>
                 <section className="embedded-page">
-                  <Scout targetSubTab={{ tab: "alerts", id: scoutSubTabTarget.id }} compact onLocationRequired={requestScoutLocation} adminMode={adminUser} />
+              <Scout
+                targetSubTab={{ tab: "alerts", id: scoutSubTabTarget.id }}
+                compact
+                onLocationRequired={requestScoutLocation}
+                adminMode={adminUser}
+                supabase={supabase}
+                isSupabaseConfigured={isSupabaseConfigured}
+                mapCatalogRow={mapCatalog}
+                money={money}
+              />
                 </section>
               </>
             ) : scoutView === "stores" ? (
@@ -10819,7 +10847,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </section>
                 <section className="embedded-page">
-                  <Scout targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }} compact onLocationRequired={requestScoutLocation} adminMode={adminUser} />
+              <Scout
+                targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }}
+                compact
+                onLocationRequired={requestScoutLocation}
+                adminMode={adminUser}
+                supabase={supabase}
+                isSupabaseConfigured={isSupabaseConfigured}
+                mapCatalogRow={mapCatalog}
+                money={money}
+              />
                 </section>
               </>
             ) : (
@@ -12141,6 +12178,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
       Scan Product
     </button>
 
+    <details className="forge-form-step forge-optional-details">
+      <summary>Quick TideTradr seed picker</summary>
     <SmartAddInventory
   onAddInventory={(newItem) => {
     const product = newItem.product;
@@ -12178,6 +12217,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
     }));
   }}
 />
+    </details>
 
     {false && showInventoryScanner && (
       <section className="panel">
@@ -12268,7 +12308,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             </>
           ) : (
           <>
-          <section className="tab-summary panel">
+          <section className="tab-summary panel forge-hero-panel">
             <div>
               <h2>Forge</h2>
               <p>Business inventory, sales, expenses, mileage, reports, and marketplace.</p>
@@ -12276,22 +12316,94 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </section>
 
           <section className="panel forge-action-strip">
-            <div className="summary-pill-row">
-              <button type="button" onClick={() => setActiveTab("addInventory")}>Add Inventory</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
-              <button type="button" className="secondary-button" onClick={() => {
-                setMarketplaceView("landing");
-                setForgeSubTab("marketplace");
-              }}>Marketplace</button>
+            <div className="forge-quick-action-grid">
+              <button type="button" aria-label="Add Inventory" onClick={() => setActiveTab("addInventory")}>
+                <span>Add Inventory</span>
+                <small>Track a sellable item</small>
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("addSale")}>
+                <span>Add Sale</span>
+                <small>Record revenue and profit</small>
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>
+                <span>Add Expense</span>
+                <small>Receipts, fees, supplies</small>
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("mileage")}>
+                <span>Add Mileage</span>
+                <small>Business trip tracking</small>
+              </button>
+              <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("manual", {})}>
+                <span>Create Listing</span>
+                <small>Marketplace draft</small>
+              </button>
             </div>
           </section>
 
           <section className="panel forge-stats-panel">
-            <div className="cards mini-cards">
+            <div className="cards mini-cards forge-summary-grid">
               <div className="card"><p>Inventory Value</p><h2>{money(totalMarketValue)}</h2></div>
               <div className="card"><p>Sales Revenue</p><h2>{money(totalSalesRevenue)}</h2></div>
               <div className="card"><p>Expenses</p><h2>{money(totalExpenses)}</h2></div>
               <div className="card"><p>Profit</p><h2>{money(totalSalesProfit - totalExpenses)}</h2></div>
+              <div className="card"><p>Planned Profit</p><h2>{money(estimatedProfit)}</h2></div>
+              <div className="card"><p>Items Sold</p><h2>{totalItemsSold}</h2></div>
+            </div>
+          </section>
+
+          <section className="panel forge-preview-panel">
+            <div className="compact-card-header">
+              <div>
+                <h2>Business Overview</h2>
+                <p>Open each area when you need the full tools. The main page stays summary-first.</p>
+              </div>
+            </div>
+            <div className="forge-preview-grid">
+              <article className="forge-preview-card">
+                <span className="status-badge">Inventory</span>
+                <h3>{activeForgeItems.length ? `${activeForgeItems.length} item${activeForgeItems.length === 1 ? "" : "s"}` : "No Forge items found"}</h3>
+                <p>{activeForgeItems[0]?.name || "Add inventory, import from TideTradr, or scan an item."}</p>
+                <div className="summary-pill-row">
+                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }))}>Open Inventory</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("addInventory")}>Add</button>
+                </div>
+              </article>
+              <article className="forge-preview-card">
+                <span className="status-badge">Sales</span>
+                <h3>{money(totalSalesRevenue)}</h3>
+                <p>{sales.length ? `${sales.length} recorded sale${sales.length === 1 ? "" : "s"}` : "Record sales without opening a long table first."}</p>
+                <div className="summary-pill-row">
+                  <button type="button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("sales")}>View</button>
+                </div>
+              </article>
+              <article className="forge-preview-card">
+                <span className="status-badge">Expenses</span>
+                <h3>{money(totalExpenses)}</h3>
+                <p>Receipts, shipping, packaging, fees, marketing, events, and supplies.</p>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Add / View Expenses</button>
+              </article>
+              <article className="forge-preview-card">
+                <span className="status-badge">Mileage</span>
+                <h3>{totalBusinessMiles.toFixed(1)} mi</h3>
+                <p>Business miles and vehicle costs stay separate from inventory.</p>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("mileage")}>Open Mileage</button>
+              </article>
+              <article className="forge-preview-card">
+                <span className="status-badge">Marketplace</span>
+                <h3>{marketplaceListings.length} listing{marketplaceListings.length === 1 ? "" : "s"}</h3>
+                <p>Public listings stay pending until admin review. Payments and shipping are not handled in-app.</p>
+                <button type="button" className="secondary-button" onClick={() => {
+                  setMarketplaceView("landing");
+                  setForgeSubTab("marketplace");
+                }}>Open Marketplace</button>
+              </article>
+              <article className="forge-preview-card">
+                <span className="status-badge">Reports</span>
+                <h3>{money(estimatedProfitAfterExpenses)}</h3>
+                <p>Profit/loss, monthly spending, exports, and seller summaries.</p>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("reports")}>Open Reports</button>
+              </article>
             </div>
           </section>
           <section className="feature-dropdown-stack">
@@ -12454,6 +12566,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   onEdit={startEditingItem}
                   onDelete={deleteItem}
                   onStatusChange={updateItemStatus}
+                  onCreateListing={(forgeItem) => openMarketplaceCreate("forge", forgeItem)}
                   onSell={(forgeItem) => {
                     setSaleForm((current) => ({
                       ...current,
@@ -12520,22 +12633,49 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 
         {activeTab === "addSale" && (
           <section className="panel">
-            <h2>{editingSaleId ? "Edit Sale" : "Add Sale"}</h2>
-            <form onSubmit={addSale} className="form">
+            <div className="compact-card-header">
+              <div>
+                <h2>{editingSaleId ? "Edit Sale" : "Add Sale"}</h2>
+                <p>Choose inventory, record sale details, and preview profit before saving.</p>
+              </div>
+            </div>
+            <form onSubmit={addSale} className="form forge-sale-form">
               <Field label="Item Sold">
                 <select value={saleForm.itemId} onChange={(e) => updateSaleForm("itemId", e.target.value)}>
                   <option value="">Choose item</option>
                   {items.filter((i) => i.quantity > 0).map((i) => <option key={i.id} value={i.id}>{i.name} — Qty {i.quantity} — {i.sku}</option>)}
                 </select>
               </Field>
+              {selectedSaleItem ? (
+                <div className="forge-sale-product-summary">
+                  {selectedSaleItem.itemImage ? <img src={selectedSaleItem.itemImage} alt="" /> : <span>Item</span>}
+                  <div>
+                    <strong>{selectedSaleItem.name}</strong>
+                    <small>Qty owned: {selectedSaleItem.quantity} | Cost basis: {money(saleCostBasis)}</small>
+                    <small>Market: {money(selectedSaleItem.marketPrice)} | Planned: {money(selectedSaleItem.salePrice)}</small>
+                  </div>
+                </div>
+              ) : null}
               <Field label="Platform"><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Quantity Sold"><input type="number" min="1" value={saleForm.quantitySold} onChange={(e) => updateSaleForm("quantitySold", e.target.value)} /></Field>
-              <Field label="Final Sale Price Per Item"><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
+              <Field label="Sale Price Each"><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
+              <Field label="Shipping Charged"><input type="number" step="0.01" value={saleForm.shippingCharged} onChange={(e) => updateSaleForm("shippingCharged", e.target.value)} /></Field>
               <Field label="Shipping Cost"><input type="number" step="0.01" value={saleForm.shippingCost} onChange={(e) => updateSaleForm("shippingCost", e.target.value)} /></Field>
-              <Field label="Platform Fees"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
+              <Field label="Fees"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
               <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
-              <button type="submit">{editingSaleId ? "Save Sale" : "Add Sale"}</button>
-              {editingSaleId && <button type="button" className="secondary-button" onClick={() => { setEditingSaleId(null); setSaleForm({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCost: "", platformFees: "", notes: "" }); }}>Cancel Edit</button>}
+              <div className="profit-preview forge-profit-preview">
+                <h3>Estimated Profit</h3>
+                <div className="preview-grid">
+                  <div><span>Gross Sale</span><strong>{money(saleGrossPreview)}</strong></div>
+                  <div><span>Cost Basis</span><strong>{money(saleCostBasis)}</strong></div>
+                  <div><span>Shipping + Fees</span><strong>{money(saleShippingCost + saleFees)}</strong></div>
+                  <div><span>Net Profit</span><strong>{money(saleProfitPreview)}</strong></div>
+                </div>
+              </div>
+              <div className="forge-form-footer">
+                <button type="submit">{editingSaleId ? "Save Sale" : "Add Sale"}</button>
+                {editingSaleId && <button type="button" className="secondary-button" onClick={() => { setEditingSaleId(null); setSaleForm({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCharged: "", shippingCost: "", platformFees: "", notes: "" }); }}>Cancel Edit</button>}
+              </div>
             </form>
           </section>
         )}
@@ -13227,6 +13367,7 @@ function CompactInventoryCard({
   onCopyToForge,
   onDuplicate,
   onSell,
+  onCreateListing,
 }) {
   const quantity = Number(item.quantity || 0);
   const unitCost = Number(item.unitCost || 0);
@@ -13313,16 +13454,16 @@ function CompactInventoryCard({
       <strong>{money(item.unitCost)}</strong>
     </div>
     <div>
-      <span>MSRP</span>
-      <strong>{money(item.msrpPrice)}</strong>
-    </div>
-    <div>
       <span>Market</span>
       <strong>{money(item.marketPrice)}</strong>
     </div>
     <div>
-      <span>Profit</span>
-      <strong>{money(marketProfit)}</strong>
+      <span>Planned Sale</span>
+      <strong>{money(item.salePrice)}</strong>
+    </div>
+    <div>
+      <span>Profit Est.</span>
+      <strong>{money(plannedProfit || marketProfit)}</strong>
     </div>
   </div>
 
@@ -13355,6 +13496,7 @@ function CompactInventoryCard({
         <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
         <button type="button" className="secondary-button" onClick={() => onSell?.(item)}>Sell</button>
+        <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>List</button>
         <select
           value={item.status || "In Stock"}
           onChange={(event) => onStatusChange(item, event.target.value)}
@@ -13759,7 +13901,15 @@ function InventoryForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="form">
+    <form onSubmit={onSubmit} className="form forge-inventory-form">
+      <section className="forge-form-step">
+        <div className="forge-step-heading">
+          <span>Step 1</span>
+          <div>
+            <h3>Product</h3>
+            <p>Start from TideTradr when possible, or enter the item manually.</p>
+          </div>
+        </div>
       <Field label="Choose Saved Catalog Product">
         <select value={form.catalogProductId} onChange={(e) => applyCatalogProduct(e.target.value)}>
           <option value="">No catalog product selected</option>
@@ -13767,6 +13917,8 @@ function InventoryForm({
         </select>
       </Field>
       <Field label="Item Name"><input value={form.name} onChange={(e) => setForm("name", e.target.value)} /></Field>
+      <Field label="Product Type"><input value={form.productType} onChange={(e) => setForm("productType", e.target.value)} /></Field>
+      <Field label="Pack Count"><input type="number" value={form.packCount} onChange={(e) => setForm("packCount", e.target.value)} /></Field>
       <Field label="Product Photo"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => {
         setForm("itemImage", url);
         setForm("itemImageSource", "user");
@@ -13792,6 +13944,15 @@ function InventoryForm({
           }}>Remove Image</button>
         </div>
       )}
+      </section>
+      <section className="forge-form-step">
+        <div className="forge-step-heading">
+          <span>Step 2</span>
+          <div>
+            <h3>Quantity & Cost</h3>
+            <p>Track quantity, cost, source, and purchaser.</p>
+          </div>
+        </div>
       <Field label="Purchased By">
         <select value={currentPurchaserId} onChange={(e) => selectPurchaser(e.target.value)}>
           <option value="">Unassigned</option>
@@ -13817,7 +13978,27 @@ function InventoryForm({
       <Field label="Barcode / UPC"><input value={form.barcode} onChange={(e) => setForm("barcode", e.target.value)} /></Field>
       <Field label="Quantity Purchased"><input type="number" min="0" value={form.quantity} onChange={(e) => setForm("quantity", e.target.value)} /></Field>
       <Field label="Unit Cost"><input type="number" step="0.01" value={form.unitCost} onChange={(e) => setForm("unitCost", e.target.value)} /></Field>
+      </section>
+      <section className="forge-form-step forge-selling-step">
+        <div className="forge-step-heading">
+          <span>Step 3</span>
+          <div>
+            <h3>Selling Plan</h3>
+            <p>Set a status, planned sale price, and profit expectation.</p>
+          </div>
+        </div>
       <Field label="Planned Sale Price"><input type="number" step="0.01" value={form.salePrice} onChange={(e) => setForm("salePrice", e.target.value)} /></Field>
+      <Field label="Status"><select value={form.status} onChange={(e) => setForm("status", e.target.value)}>{statusOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
+      <Field label="Listing Platform"><input value={form.listingPlatform} onChange={(e) => setForm("listingPlatform", e.target.value)} placeholder="eBay, Whatnot, Marketplace..." /></Field>
+      <Field label="TideTradr Market Price"><input type="number" step="0.01" value={form.marketPrice} onChange={(e) => setForm("marketPrice", e.target.value)} /></Field>
+      <Field label="MSRP Price">
+  <input
+    type="number"
+    step="0.01"
+    value={form.msrpPrice}
+    onChange={(e) => setForm("msrpPrice", e.target.value)}
+  />
+</Field>
       <div className="profit-preview">
         <h3>Profit Preview</h3>
 
@@ -13863,9 +14044,12 @@ function InventoryForm({
           </div>
         </div>
       </div>
+      </section>
+      <details className="forge-form-step forge-optional-details">
+        <summary>Step 4: Optional Details</summary>
       <Field label="TideTradr Product ID"><input value={form.externalProductId} onChange={(e) => setForm("externalProductId", e.target.value)} /></Field>
       <Field label="Market Source URL"><input value={form.tideTradrUrl} onChange={(e) => setForm("tideTradrUrl", e.target.value)} /></Field>
-      <Field label="MSRP Price">
+      <Field label="MSRP Reference">
   <input
     type="number"
     step="0.01"
@@ -13874,7 +14058,7 @@ function InventoryForm({
   />
 </Field>
 
-<Field label="Product Type">
+<Field label="Product Type Detail">
   <input
     value={form.productType}
     onChange={(e) => setForm("productType", e.target.value)}
@@ -13902,25 +14086,26 @@ function InventoryForm({
   />
 </Field>
 
-<Field label="Pack Count">
+<Field label="Pack Count Detail">
   <input
     type="number"
     value={form.packCount}
     onChange={(e) => setForm("packCount", e.target.value)}
   />
 </Field>
-      <Field label="TideTradr Market Price"><input type="number" step="0.01" value={form.marketPrice} onChange={(e) => setForm("marketPrice", e.target.value)} /></Field>
+      <Field label="Market Price Detail"><input type="number" step="0.01" value={form.marketPrice} onChange={(e) => setForm("marketPrice", e.target.value)} /></Field>
       <Field label="Low Price"><input type="number" step="0.01" value={form.lowPrice} onChange={(e) => setForm("lowPrice", e.target.value)} /></Field>
       <Field label="Mid Price"><input type="number" step="0.01" value={form.midPrice} onChange={(e) => setForm("midPrice", e.target.value)} /></Field>
       <Field label="High Price"><input type="number" step="0.01" value={form.highPrice} onChange={(e) => setForm("highPrice", e.target.value)} /></Field>
-      <Field label="Status"><select value={form.status} onChange={(e) => setForm("status", e.target.value)}>{statusOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
-      <Field label="Listing Platform"><input value={form.listingPlatform} onChange={(e) => setForm("listingPlatform", e.target.value)} /></Field>
       <Field label="Listing URL"><input value={form.listingUrl} onChange={(e) => setForm("listingUrl", e.target.value)} /></Field>
       <Field label="Listed Price"><input type="number" step="0.01" value={form.listedPrice} onChange={(e) => setForm("listedPrice", e.target.value)} /></Field>
       <Field label="Action Notes"><input value={form.actionNotes} onChange={(e) => setForm("actionNotes", e.target.value)} /></Field>
       <Field label="Receipt / Screenshot"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => setForm("receiptImage", url), "inventory")} /></Field>
       {form.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={form.receiptImage} alt="Receipt" /></div>}
-      <button type="submit">{submitLabel}</button>
+      </details>
+      <div className="forge-form-footer">
+        <button type="submit">{submitLabel}</button>
+      </div>
     </form>
   );
 }

@@ -2551,6 +2551,22 @@ button.smart-catalog-suggestion.active {
     grid-auto-flow: column;
     align-items: center;
   }
+
+  .scout-report-product-search .smart-catalog-suggestions {
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
+  }
+
+  .scout-selected-product-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .scout-selected-product-card .status-badge,
+  .scout-selected-product-actions {
+    grid-column: 1 / -1;
+  }
 }
 
 /* BUTTONS */
@@ -3720,6 +3736,179 @@ video {
 
 .forge-toolbar button {
   flex: 0 0 auto;
+}
+
+.forge-hero-panel {
+  padding-block: 18px;
+}
+
+.forge-quick-action-grid,
+.forge-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 10px;
+}
+
+.forge-quick-action-grid button,
+.forge-preview-card {
+  min-width: 0;
+}
+
+.forge-quick-action-grid button {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  justify-items: start;
+  min-height: 72px;
+  text-align: left;
+  white-space: normal;
+}
+
+.forge-quick-action-grid button span {
+  font-weight: 900;
+}
+
+.forge-quick-action-grid button small,
+.forge-preview-card p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.forge-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)) !important;
+}
+
+.forge-preview-card,
+.forge-form-step,
+.forge-sale-product-summary {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 24px rgba(19, 35, 47, 0.06);
+}
+
+.forge-preview-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.forge-preview-card h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1rem;
+}
+
+.forge-preview-card .summary-pill-row {
+  grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+}
+
+.forge-inventory-form,
+.forge-sale-form {
+  gap: 12px;
+}
+
+.forge-form-step {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.forge-step-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.forge-step-heading > span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 46px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(180, 87, 53, 0.12);
+  color: var(--rust);
+  font-weight: 900;
+  font-size: 0.76rem;
+}
+
+.forge-step-heading h3,
+.forge-step-heading p {
+  margin: 0;
+}
+
+.forge-step-heading p {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.forge-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  gap: 10px;
+}
+
+.forge-optional-details summary {
+  cursor: pointer;
+  color: var(--water-dark);
+  font-weight: 900;
+}
+
+.forge-profit-preview {
+  margin: 0;
+  position: relative;
+}
+
+.forge-form-footer {
+  position: sticky;
+  bottom: calc(var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom));
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(19, 35, 47, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+}
+
+.forge-sale-product-summary {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.forge-sale-product-summary img,
+.forge-sale-product-summary > span {
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  background: rgba(31, 111, 139, 0.08);
+  object-fit: cover;
+}
+
+.forge-sale-product-summary > span {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.forge-sale-product-summary div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.forge-sale-product-summary small {
+  color: var(--muted);
 }
 
 .forge-edit-panel {
@@ -5312,7 +5501,7 @@ textarea {
 
 .forge-inventory-card .compact-metrics > div:nth-child(2),
 .forge-inventory-card .compact-metrics > div:nth-child(4) {
-  display: none;
+  display: grid !important;
 }
 
 .forge-inventory-card .compact-image-wrap {
@@ -5703,6 +5892,76 @@ textarea {
 
 .smart-catalog-suggestions {
   max-height: min(260px, 42dvh);
+}
+
+.scout-report-product-search {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scout-report-product-search label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.scout-report-product-search .smart-catalog-suggestions {
+  position: static;
+  margin-top: 6px;
+  max-height: min(260px, 46dvh);
+  overflow: auto;
+}
+
+.scout-selected-product-card {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.scout-selected-product-card img,
+.scout-selected-product-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: rgba(31, 111, 139, 0.08);
+}
+
+.scout-selected-product-thumb {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.scout-selected-product-copy,
+.scout-selected-product-actions {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.scout-selected-product-copy small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.scout-selected-product-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.scout-selected-product-actions button {
+  min-height: 38px;
+  padding-inline: 10px;
 }
 
 .tidetradr-summary-card .smart-catalog-suggestions,

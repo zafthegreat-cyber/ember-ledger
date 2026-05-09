@@ -13,6 +13,7 @@ import {
   updateTrackedItem,
   deleteTrackedItem,
 } from "../api";
+import SmartCatalogSearchBox from "../components/SmartCatalogSearchBox";
 import OverflowMenu from "../components/OverflowMenu";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
 import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedStore, parseStoreCsv } from "../utils/storeImportUtils";
@@ -762,7 +763,39 @@ function getBestBuyDisplayStatus(item) {
   return item.stockStatus || "Unknown";
 }
 
-export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compact = false, onLocationRequired = () => true, adminMode = false }) {
+function formatScoutMoney(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return "Unknown";
+  return `$${amount.toFixed(2)}`;
+}
+
+function scoutCatalogTitle(product = {}) {
+  return product.name || product.productName || product.cardName || product.title || "Catalog product";
+}
+
+function scoutCatalogMarketValue(product = {}) {
+  return Number(product.marketPrice ?? product.marketValue ?? product.midPrice ?? product.currentMarketValue ?? 0);
+}
+
+function scoutCatalogSourceLabel(product = {}) {
+  const raw = String(product.marketStatus || product.sourceType || product.sourceName || product.marketSource || "").toLowerCase();
+  if (raw.includes("live")) return "Live";
+  if (raw.includes("cache")) return "Cached";
+  if (raw.includes("manual")) return "Manual";
+  if (raw.includes("mock")) return "Mock";
+  return "Unknown";
+}
+
+export default function Scout({
+  targetSubTab = { tab: "overview", id: 0 },
+  compact = false,
+  onLocationRequired = () => true,
+  adminMode = false,
+  supabase = null,
+  isSupabaseConfigured = false,
+  mapCatalogRow = (row) => row,
+  money = formatScoutMoney,
+}) {
   const [stores, setStores] = useState([]);
   const [scoutSubTab, setScoutSubTab] = useState("overview");
   const [selectedStoreId, setSelectedStoreId] = useState("");
@@ -910,7 +943,11 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compa
           ...current,
           reportType: "Product Sighting / What Did I See",
           itemName: targetSubTabProductName || current.itemName,
+          catalogProductId: "",
+          catalogProductSnapshot: null,
+          manualItemEntry: true,
         }));
+        if (targetSubTabProductName) setReportProductSearch(targetSubTabProductName);
       }
       if (targetSubTabKey === "reports" && targetSubTabAction === "storeCorrection") {
         setReportForm((current) => ({ ...current, reportType: "Store Correction" }));
@@ -940,7 +977,12 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compa
     lat: null,
     lng: null,
     imageUrl: "",
+    catalogProductId: "",
+    catalogProductSnapshot: null,
+    manualItemEntry: false,
   });
+  const [reportProductSearch, setReportProductSearch] = useState("");
+  const [reportProductSearchCloseSignal, setReportProductSearchCloseSignal] = useState(0);
   const [reportInputMethod, setReportInputMethod] = useState("Manual");
   const [missingStoreModalOpen, setMissingStoreModalOpen] = useState(false);
   const [trackedProductsModalOpen, setTrackedProductsModalOpen] = useState(false);
@@ -1191,15 +1233,22 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compa
       lat: null,
       lng: null,
       imageUrl: "",
+      catalogProductId: "",
+      catalogProductSnapshot: null,
+      manualItemEntry: false,
     });
+    setReportProductSearch("");
+    setReportProductSearchCloseSignal((value) => value + 1);
   }
 
   function startEditingReport(report) {
     setEditingReportId(report.id);
     setReportPhoto(null);
+    const productSnapshot = report.catalogProductSnapshot || report.catalog_product_snapshot || null;
+    const itemName = report.itemName || report.item_name || report.manualItemName || "";
     setReportForm({
       reportType: report.reportType || report.report_type || "Restock sighting",
-      itemName: report.itemName || report.item_name || "",
+      itemName,
       quantitySeen: report.quantitySeen || report.quantity_seen || "",
       price: report.price || "",
       note: report.note || "",
@@ -1210,7 +1259,72 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compa
       lat: report.lat || null,
       lng: report.lng || null,
       imageUrl: report.imageUrl || report.image_url || "",
+      catalogProductId: report.catalogProductId || report.catalog_product_id || productSnapshot?.id || "",
+      catalogProductSnapshot: productSnapshot,
+      manualItemEntry: !(report.catalogProductId || report.catalog_product_id || productSnapshot?.id),
     });
+    setReportProductSearch(itemName);
+  }
+
+  function selectReportCatalogProduct(suggestion) {
+    const product = suggestion?.product || null;
+    const nextLabel = suggestion?.searchValue || suggestion?.label || "";
+    if (!product?.id) {
+      setReportForm((current) => ({
+        ...current,
+        itemName: nextLabel || current.itemName,
+        catalogProductId: "",
+        catalogProductSnapshot: null,
+        manualItemEntry: true,
+      }));
+      setReportProductSearch(nextLabel);
+      return;
+    }
+
+    const title = scoutCatalogTitle(product);
+    setReportForm((current) => ({
+      ...current,
+      itemName: title,
+      catalogProductId: product.id,
+      catalogProductSnapshot: product,
+      manualItemEntry: false,
+    }));
+    setReportProductSearch(title);
+    setReportProductSearchCloseSignal((value) => value + 1);
+  }
+
+  function updateReportProductSearch(value) {
+    setReportProductSearch(value);
+    setReportForm((current) => ({
+      ...current,
+      itemName: value,
+      catalogProductId: current.catalogProductSnapshot ? "" : current.catalogProductId,
+      catalogProductSnapshot: current.catalogProductSnapshot ? null : current.catalogProductSnapshot,
+      manualItemEntry: true,
+    }));
+  }
+
+  function clearReportCatalogProduct() {
+    setReportForm((current) => ({
+      ...current,
+      itemName: "",
+      catalogProductId: "",
+      catalogProductSnapshot: null,
+      manualItemEntry: false,
+    }));
+    setReportProductSearch("");
+    setReportProductSearchCloseSignal((value) => value + 1);
+  }
+
+  function enableManualReportItem() {
+    setReportForm((current) => ({
+      ...current,
+      catalogProductId: "",
+      catalogProductSnapshot: null,
+      manualItemEntry: true,
+      itemName: reportProductSearch || current.itemName,
+    }));
+    setReportProductSearchCloseSignal((value) => value + 1);
   }
 
 function saveLocalScout(next) {
@@ -1952,6 +2066,9 @@ async function handleUpdateStore(e) {
         lat: reportForm.lat,
         lng: reportForm.lng,
         imageUrl: reportForm.imageUrl,
+        catalogProductId: reportForm.catalogProductId || "",
+        catalogProductSnapshot: reportForm.catalogProductSnapshot || null,
+        manualItemName: reportForm.catalogProductId ? "" : reportForm.itemName,
       };
 
       if (editingReportId) {
@@ -3296,12 +3413,77 @@ async function handleUpdateStore(e) {
               <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Suggest missing store</button>
               <h3 style={{ margin: "8px 0 0" }}>Step 3: What did you see?</h3>
               <p style={styles.tiny}>Leave quantity or price blank if you are not sure.</p>
-              <input
-                style={styles.input}
-                value={reportForm.itemName}
-                onChange={(e) => setReportForm((current) => ({ ...current, itemName: e.target.value }))}
-                placeholder={reportForm.reportType === "Store Correction" ? "Store detail to correct" : "Product or item name"}
-              />
+              {reportForm.reportType === "Store Correction" ? (
+                <input
+                  style={styles.input}
+                  value={reportForm.itemName}
+                  onChange={(e) => setReportForm((current) => ({ ...current, itemName: e.target.value, manualItemEntry: true }))}
+                  placeholder="Store detail to correct"
+                />
+              ) : reportForm.catalogProductSnapshot ? (
+                (() => {
+                  const product = reportForm.catalogProductSnapshot;
+                  const productIdLine = [product.upc || product.barcode, product.sku || product.externalProductId || product.tcgplayerProductId].filter(Boolean).join(" / ");
+                  return (
+                    <div className="scout-selected-product-card">
+                      {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">Item</span>}
+                      <div className="scout-selected-product-copy">
+                        <strong>{scoutCatalogTitle(product)}</strong>
+                        <small>
+                          {product.productType || product.catalogType || "Catalog product"}
+                          {(product.setName || product.expansion) ? ` | ${product.setName || product.expansion}` : ""}
+                        </small>
+                        {productIdLine ? <small>UPC/SKU: {productIdLine}</small> : null}
+                        <small>Market: {money(scoutCatalogMarketValue(product))}</small>
+                      </div>
+                      <span className="status-badge">{scoutCatalogSourceLabel(product)}</span>
+                      <div className="scout-selected-product-actions">
+                        <button type="button" className="secondary-button" onClick={() => {
+                          setReportForm((current) => ({ ...current, catalogProductId: "", catalogProductSnapshot: null, manualItemEntry: false }));
+                          setReportProductSearch(reportForm.itemName);
+                        }}>Change</button>
+                        <button type="button" className="secondary-button" onClick={clearReportCatalogProduct}>Clear</button>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="scout-report-product-search">
+                  <label>
+                    Product / item seen
+                    <SmartCatalogSearchBox
+                      value={reportProductSearch}
+                      onChange={updateReportProductSearch}
+                      onSelectSuggestion={selectReportCatalogProduct}
+                      supabase={supabase}
+                      isSupabaseConfigured={isSupabaseConfigured}
+                      mapRow={mapCatalogRow}
+                      placeholder="Search product, set, UPC, SKU, or shorthand..."
+                      closeSignal={reportProductSearchCloseSignal}
+                      maxSuggestions={5}
+                      money={money}
+                    />
+                  </label>
+                  <button type="button" style={styles.buttonSoft} onClick={enableManualReportItem}>Can't find item? Enter manually</button>
+                </div>
+              )}
+              {reportForm.reportType !== "Store Correction" && !reportForm.catalogProductSnapshot ? (
+                <input
+                  style={styles.input}
+                  value={reportForm.itemName}
+                  onChange={(e) => {
+                    setReportProductSearch(e.target.value);
+                    setReportForm((current) => ({
+                      ...current,
+                      itemName: e.target.value,
+                      catalogProductId: "",
+                      catalogProductSnapshot: null,
+                      manualItemEntry: true,
+                    }));
+                  }}
+                  placeholder="Item name"
+                />
+              ) : null}
               <input
                 style={styles.input}
                 value={reportForm.quantitySeen}
