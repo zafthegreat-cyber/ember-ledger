@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { parsePokemonCardNumber } from './card_number_utils.mjs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -86,6 +87,7 @@ async function main() {
 
     const rows = cards.map((card) => {
       const price = pickPrimaryPrice(card);
+      const cardNumberMeta = parsePokemonCardNumber(card.number, card.set?.printedTotal ?? card.set?.total);
       return {
         user_id: DEFAULT_USER_ID,
         name: card.name,
@@ -106,7 +108,7 @@ async function main() {
         product_line: 'Pokemon',
         price_subtype: price?.subtype || null,
         is_sealed: false,
-        card_number: card.number || null,
+        ...cardNumberMeta,
         rarity: card.rarity || null,
         raw_source: card,
         updated_at: checkedAt,

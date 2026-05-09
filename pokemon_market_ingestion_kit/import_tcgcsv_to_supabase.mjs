@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { parsePokemonCardNumber } from './card_number_utils.mjs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -8,7 +9,10 @@ const CATEGORY_ID = Number(process.env.TCGCSV_CATEGORY_ID || 3); // 3 = Pokemon
 const GROUP_LIMIT = Number(process.env.GROUP_LIMIT || 0); // 0 = all groups
 const PRODUCT_BATCH_SIZE = Number(process.env.PRODUCT_BATCH_SIZE || 250);
 const PRICE_BATCH_SIZE = Number(process.env.PRICE_BATCH_SIZE || 500);
-const WRITE_PRICE_HISTORY = String(process.env.WRITE_PRICE_HISTORY || 'false').toLowerCase() === 'true';
+const PRICE_HISTORY_MODE = String(process.env.PRICE_HISTORY_MODE || 'append').toLowerCase();
+const WRITE_PRICE_HISTORY =
+  PRICE_HISTORY_MODE === 'append' ||
+  String(process.env.WRITE_PRICE_HISTORY || '').toLowerCase() === 'true';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !DEFAULT_USER_ID) {
   throw new Error('Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or DEFAULT_USER_ID in .env');
@@ -128,12 +132,87 @@ async function upsertPriceRows(rows) {
   }
 
   if (WRITE_PRICE_HISTORY) {
-    const historyRows = rows.map(({ id, updated_at, ...row }) => row);
+    const historyRows = await filterDuplicateHistoryRows(rows.map(historyRowFromPriceRow));
     for (const batch of chunk(historyRows, PRICE_BATCH_SIZE)) {
       const { error } = await supabase.from('product_market_price_history').insert(batch);
       if (error) throw error;
     }
   }
+}
+
+function dayBounds(isoDate) {
+  const date = new Date(isoDate);
+  const start = new Date(date);
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function priceFingerprint(row) {
+  return [
+    row.source,
+    row.source_product_id,
+    row.price_subtype || '',
+    row.condition || '',
+    String(row.market_price ?? ''),
+    String(row.most_recent_sale ?? ''),
+    String(row.listed_median ?? ''),
+    String(row.low_sale_price ?? ''),
+    String(row.high_sale_price ?? ''),
+    String(row.low_price ?? ''),
+    String(row.mid_price ?? ''),
+    String(row.high_price ?? ''),
+  ].join('|');
+}
+
+function historyRowFromPriceRow(row) {
+  const { id, updated_at, ...priceRow } = row;
+  const checkedAt = priceRow.checked_at || new Date().toISOString();
+  const condition = priceRow.price_subtype || 'Unopened';
+  return {
+    ...priceRow,
+    external_product_id: priceRow.source_product_id,
+    tcgplayer_product_id: priceRow.source_product_id,
+    condition,
+    most_recent_sale: null,
+    listed_median: priceRow.mid_price,
+    low_sale_price: priceRow.low_price,
+    high_sale_price: priceRow.high_price,
+    snapshot_window: 'import',
+    checked_at: checkedAt,
+    price_checked_at: checkedAt,
+  };
+}
+
+async function filterDuplicateHistoryRows(rows) {
+  const byDay = new Map();
+  for (const row of rows) {
+    const { start, end } = dayBounds(row.price_checked_at || row.checked_at);
+    const key = `${row.source}|${start}|${end}`;
+    if (!byDay.has(key)) byDay.set(key, { start, end, source: row.source, rows: [] });
+    byDay.get(key).rows.push(row);
+  }
+
+  const filtered = [];
+  for (const bucket of byDay.values()) {
+    const productIds = [...new Set(bucket.rows.map((row) => row.source_product_id).filter(Boolean))];
+    const existingFingerprints = new Set();
+    for (const idBatch of chunk(productIds, 100)) {
+      const { data, error } = await supabase
+        .from('product_market_price_history')
+        .select('source,source_product_id,price_subtype,condition,market_price,most_recent_sale,listed_median,low_sale_price,high_sale_price,low_price,mid_price,high_price')
+        .eq('source', bucket.source)
+        .in('source_product_id', idBatch)
+        .gte('price_checked_at', bucket.start)
+        .lt('price_checked_at', bucket.end);
+      if (error) throw error;
+      for (const row of data || []) existingFingerprints.add(priceFingerprint(row));
+    }
+    filtered.push(...bucket.rows.filter((row) => !existingFingerprints.has(priceFingerprint(row))));
+  }
+
+  return filtered;
 }
 
 async function main() {
@@ -169,6 +248,9 @@ async function main() {
       const ext = extendedDataObject(product);
       const isSealed = inferSealed(product, ext);
       const primaryPrice = pickPrimaryPrice(pricesByProduct.get(String(product.productId)), isSealed);
+      const cardNumberMeta = isSealed
+        ? parsePokemonCardNumber(null, null)
+        : parsePokemonCardNumber(ext.number || ext.card_number || ext.card_no || null, ext.printed_total || ext.total || ext.set_total);
       return {
         user_id: DEFAULT_USER_ID,
         name: product.name || product.cleanName || `TCGplayer Product ${product.productId}`,
@@ -194,7 +276,7 @@ async function main() {
         source_group_name: group.name || null,
         price_subtype: primaryPrice?.subTypeName || null,
         is_sealed: isSealed,
-        card_number: ext.number || ext.card_number || ext.card_no || null,
+        ...cardNumberMeta,
         rarity: ext.rarity || null,
         raw_source: { group, product, extendedData: ext },
         updated_at: checkedAt,

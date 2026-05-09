@@ -6,12 +6,16 @@ import SmartAddInventory from "./components/SmartAddInventory";
 import SmartAddCatalog from "./components/SmartAddCatalog";
 import OverflowMenu from "./components/OverflowMenu";
 import BackupExportImport from "./components/BackupExportImport";
+import WhatDidISee from "./components/WhatDidISee";
+import MarketPriceHistoryPanel from "./components/MarketPriceHistoryPanel";
+import SmartCatalogSearchBox from "./components/SmartCatalogSearchBox";
 import Scout from "./pages/Scout";
 import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA, SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
 import { POKEMON_PRODUCT_UPCS, POKEMON_PRODUCTS } from "./data/pokemonProductCatalog";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
+import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
 import {
   REVIEW_SECTION_LABELS,
@@ -28,6 +32,7 @@ import {
   updateSuggestionRecord,
 } from "./utils/suggestionReviewUtils";
 import { MARKET_PRICE_CACHE_KEY, loadPriceCache, savePriceCache, updateCachedMarketPrice } from "./services/priceCacheService";
+import { CATALOG_PAGE_SIZE, hasCatalogSearchCriteria, searchPokemonCatalog } from "./services/pokemonCatalogSearch";
 import {
   getBestAvailableMarketPrice,
   refreshCatalogMarketItems,
@@ -40,6 +45,7 @@ import {
   PAID_HOME_STATS,
   PLAN_TYPES,
   TIER_LABELS,
+  USER_ROLES,
   FEATURE_ACCESS,
   getUpgradePrompt,
   getUserPlan,
@@ -55,7 +61,7 @@ const BETA_LOCAL_MODE = true;
 const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
-const SUPABASE_CATALOG_PAGE_SIZE = 60;
+const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
 const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
@@ -522,6 +528,7 @@ function toNumber(value, fallback = 0) {
 
 function makeTidepoolPost(overrides = {}) {
   const now = new Date().toISOString();
+
   return {
     postId: overrides.postId || makeId("tidepool-post"),
     userId: overrides.userId || "local-beta",
@@ -1006,6 +1013,7 @@ export default function App() {
   });
   const [tidepoolCommentDrafts, setTidepoolCommentDrafts] = useState({});
   const [scoutView, setScoutView] = useState("main");
+  const [whatDidISeeSeedProduct, setWhatDidISeeSeedProduct] = useState(null);
   const [scoutReportFilter, setScoutReportFilter] = useState("Latest");
   const [scoutScoreModalOpen, setScoutScoreModalOpen] = useState(false);
   const scoutReportsRef = useRef(null);
@@ -1108,6 +1116,8 @@ export default function App() {
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
   const [inventorySort, setInventorySort] = useState("newest");
   const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogBarcodeSearch, setCatalogBarcodeSearch] = useState("");
+  const [catalogDataFilter, setCatalogDataFilter] = useState("All");
   const [catalogKindFilter, setCatalogKindFilter] = useState("All");
   const [catalogSetFilter, setCatalogSetFilter] = useState("All");
   const [catalogTypeFilter, setCatalogTypeFilter] = useState("All");
@@ -1119,6 +1129,8 @@ export default function App() {
   const [catalogGradedFilter, setCatalogGradedFilter] = useState("All");
   const [catalogOwnedFilter, setCatalogOwnedFilter] = useState("All");
   const [catalogWatchlistFilter, setCatalogWatchlistFilter] = useState("All");
+  const [catalogHistoryFilter, setCatalogHistoryFilter] = useState("All");
+  const [catalogSort, setCatalogSort] = useState("bestMatch");
   const [catalogMinValue, setCatalogMinValue] = useState("");
   const [catalogMaxValue, setCatalogMaxValue] = useState("");
   const supabaseCatalogRequestId = useRef(0);
@@ -1194,12 +1206,17 @@ export default function App() {
     sealedProducts: null,
     cards: null,
     marketPriceRows: null,
+    priceHistoryRows: null,
+    productsWithHistory: null,
+    latestHistorySnapshot: "",
+    currentPriceWithoutHistory: null,
     vaStores: null,
     lastPriceChecked: "",
     productsMissingImages: null,
     productsMissingMarketPrices: null,
     errors: [],
   });
+  const [catalogSearchHasRun, setCatalogSearchHasRun] = useState(false);
   const [supabaseCatalogStatus, setSupabaseCatalogStatus] = useState({
     loading: false,
     loadedCount: 0,
@@ -1209,6 +1226,9 @@ export default function App() {
     hasMore: false,
     message: "",
     error: "",
+    exactMatchCount: 0,
+    exactBarcodeMiss: false,
+    usedFallback: false,
   });
   const [importOptions, setImportOptions] = useState({
     pinHighValue: false,
@@ -1768,6 +1788,10 @@ export default function App() {
       sealedProducts: null,
       cards: null,
       marketPriceRows: null,
+      priceHistoryRows: null,
+      productsWithHistory: null,
+      latestHistorySnapshot: "",
+      currentPriceWithoutHistory: null,
       vaStores: null,
       lastPriceChecked: "",
       productsMissingImages: null,
@@ -1800,6 +1824,10 @@ export default function App() {
     nextStatus.marketPriceRows = await countQuery(
       "Current market prices",
       supabase.from("product_market_price_current").select("id", { count: "exact", head: true })
+    );
+    nextStatus.priceHistoryRows = await countQuery(
+      "Market price history rows",
+      supabase.from("product_market_price_history").select("id", { count: "exact", head: true })
     );
     nextStatus.vaStores = await countQuery(
       "Virginia stores",
@@ -1838,6 +1866,20 @@ export default function App() {
       nextStatus.lastPriceChecked = latestRows?.[0]?.last_price_checked || "";
     }
 
+    const { data: historyStatusRows, error: historyStatusError } = await supabase
+      .from("pokemon_market_history_import_status")
+      .select("*")
+      .limit(1);
+    if (historyStatusError) {
+      nextStatus.errors.push(`Market history status: ${historyStatusError.message}`);
+    } else {
+      const row = historyStatusRows?.[0] || {};
+      nextStatus.priceHistoryRows = Number(row.total_price_history_rows ?? nextStatus.priceHistoryRows ?? 0);
+      nextStatus.productsWithHistory = Number(row.products_with_history ?? 0);
+      nextStatus.latestHistorySnapshot = row.latest_history_snapshot || "";
+      nextStatus.currentPriceWithoutHistory = Number(row.products_with_current_price_no_history ?? 0);
+    }
+
     setSupabaseImportStatus({ ...nextStatus, loading: false });
   }
 
@@ -1860,8 +1902,43 @@ export default function App() {
     supabaseCatalogRequestId.current = requestId;
     const pageSize = Number(options.pageSize || SUPABASE_CATALOG_PAGE_SIZE);
     const page = Math.max(1, Number(options.page || supabaseCatalogStatus.page || 1));
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
+    const mode = options.mode || "general";
+    const force = Boolean(options.forceSearch);
+    const barcode = options.barcode ?? catalogBarcodeSearch;
+    const productGroup =
+      catalogKindFilter === "card" ? "Cards" :
+      catalogKindFilter === "sealed" ? "Sealed" :
+      catalogKindFilter === "other" ? "Other" :
+      "All";
+    const hasCriteria = hasCatalogSearchCriteria({
+      query: searchTerm,
+      barcode,
+      productGroup,
+      productType: catalogTypeFilter,
+      setName: catalogSetFilter,
+      dataFilter: catalogDataFilter,
+      rarity: catalogRarityFilter,
+    });
+
+    if (!force && !hasCriteria) {
+      setCatalogSearchHasRun(false);
+      setCatalogProducts((current) => current.filter((product) => product.sourceType !== "supabase"));
+      setSupabaseCatalogStatus({
+        loading: false,
+        loadedCount: 0,
+        page: 1,
+        pageSize,
+        totalCount: null,
+        hasMore: false,
+        message: "",
+        error: "",
+        exactMatchCount: 0,
+        exactBarcodeMiss: false,
+        usedFallback: false,
+      });
+      return;
+    }
+
     const cleanedSearch = String(searchTerm || "").trim().replace(/[,%()'"]/g, " ").slice(0, 140);
     setSupabaseCatalogStatus({
       loading: true,
@@ -1870,46 +1947,32 @@ export default function App() {
       pageSize,
       totalCount: supabaseCatalogStatus.totalCount,
       hasMore: false,
-      message: cleanedSearch ? `Searching Supabase catalog for "${cleanedSearch}"...` : "Loading Supabase Pokemon catalog...",
+      message: cleanedSearch || barcode ? `Searching Supabase catalog for "${cleanedSearch || barcode}"...` : "Searching Supabase Pokemon catalog with selected filters...",
       error: "",
+      exactMatchCount: 0,
+      exactBarcodeMiss: false,
+      usedFallback: false,
     });
 
-    let query = supabase
-      .from("product_catalog")
-      .select("*", { count: "exact" })
-      .eq("category", "Pokemon")
-      .order("updated_at", { ascending: false })
-      .range(from, to);
-
-    if (catalogKindFilter === "card") {
-      query = query.eq("product_type", "Card");
-    } else if (catalogKindFilter === "sealed") {
-      query = query.eq("is_sealed", true);
-    }
-    if (catalogSetFilter !== "All") query = query.eq("set_name", catalogSetFilter);
-    if (catalogTypeFilter !== "All") query = query.eq("product_type", catalogTypeFilter);
-    if (catalogRarityFilter !== "All") query = query.eq("rarity", catalogRarityFilter);
-
-    if (cleanedSearch.length >= 2) {
-      const like = `%${cleanedSearch}%`;
-      query = query.or([
-        `name.ilike.${like}`,
-        `set_name.ilike.${like}`,
-        `product_type.ilike.${like}`,
-        `set_code.ilike.${like}`,
-        `expansion.ilike.${like}`,
-        `product_line.ilike.${like}`,
-        `external_product_id.ilike.${like}`,
-        `tcgplayer_product_id.ilike.${like}`,
-        `barcode.ilike.${like}`,
-        `card_number.ilike.${like}`,
-        `rarity.ilike.${like}`,
-      ].join(","));
-    }
-
-    const { data, error, count } = await query;
-    if (requestId !== supabaseCatalogRequestId.current) return;
-    if (error) {
+    let result;
+    try {
+      result = await searchPokemonCatalog({
+        supabase,
+        query: searchTerm,
+        barcode,
+        mode,
+        productGroup,
+        productType: catalogTypeFilter,
+        setName: catalogSetFilter,
+        dataFilter: catalogDataFilter,
+        rarity: catalogRarityFilter,
+        sort: catalogSort,
+        page,
+        pageSize,
+        force,
+      });
+    } catch (error) {
+      if (requestId !== supabaseCatalogRequestId.current) return;
       setSupabaseCatalogStatus({
         loading: false,
         loadedCount: 0,
@@ -1919,11 +1982,15 @@ export default function App() {
         hasMore: false,
         message: "",
         error: `Could not load imported catalog rows: ${error.message}`,
+        exactMatchCount: 0,
+        exactBarcodeMiss: false,
+        usedFallback: false,
       });
       return;
     }
+    if (requestId !== supabaseCatalogRequestId.current) return;
 
-    const importedProducts = (data || []).map(mapCatalog);
+    const importedProducts = (result.rows || []).map(mapCatalog);
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
       const seen = new Set();
@@ -1939,19 +2006,26 @@ export default function App() {
         return true;
       });
     });
-    const totalCount = count ?? null;
-    const loadedEnd = totalCount === null ? from + importedProducts.length : Math.min(to + 1, totalCount);
+    setCatalogSearchHasRun(true);
+    const totalCount = result.count ?? null;
+    const from = (page - 1) * pageSize;
+    const loadedEnd = totalCount === null ? from + importedProducts.length : Math.min(from + importedProducts.length, totalCount);
+    const missText = result.exactMiss ? " No exact barcode match found." : "";
+    const fallbackText = result.usedFallback ? " Search view fallback is active until the latest migration is applied." : "";
     setSupabaseCatalogStatus({
       loading: false,
       loadedCount: importedProducts.length,
       page,
       pageSize,
       totalCount,
-      hasMore: totalCount === null ? importedProducts.length === pageSize : loadedEnd < totalCount,
+      hasMore: Boolean(result.hasMore),
       message: importedProducts.length
-        ? `Showing ${from + 1}-${loadedEnd} of ${totalCount ?? "many"} Supabase Pokemon catalog rows.`
-        : "No Supabase Pokemon catalog rows matched that search or filter.",
+        ? `Showing ${from + 1}-${loadedEnd} of ${totalCount ?? "many"} catalog matches.${result.exactCount ? ` ${result.exactCount} exact match${result.exactCount === 1 ? "" : "es"} prioritized.` : ""}${missText}${fallbackText}`
+        : `No matching products found. Try a different name, set, barcode, or product type.${missText}${fallbackText}`,
       error: "",
+      exactMatchCount: result.exactCount || 0,
+      exactBarcodeMiss: Boolean(result.exactMiss),
+      usedFallback: Boolean(result.usedFallback),
     });
   }
 
@@ -2011,12 +2085,29 @@ export default function App() {
   useEffect(() => {
     if (activeTab !== "market" || tideTradrSubTab !== "overview") return;
     if (!isSupabaseConfigured || !supabase) return;
+    if (catalogSearch.trim().length < 2) {
+      setCatalogSearchHasRun(false);
+      setCatalogProducts((current) => current.filter((product) => product.sourceType !== "supabase"));
+      setSupabaseCatalogStatus((current) => ({
+        ...current,
+        loading: false,
+        loadedCount: 0,
+        page: 1,
+        totalCount: null,
+        hasMore: false,
+        message: "",
+        error: "",
+        exactMatchCount: 0,
+        exactBarcodeMiss: false,
+      }));
+      return;
+    }
     const delay = catalogSearch.trim() ? 350 : 80;
     const timer = window.setTimeout(() => {
-      loadImportedPokemonCatalog(catalogSearch, { page: 1 });
+      loadImportedPokemonCatalog(catalogSearch, { page: 1, mode: "general" });
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [activeTab, tideTradrSubTab, catalogSearch, catalogKindFilter, catalogSetFilter, catalogTypeFilter, catalogRarityFilter]);
+  }, [activeTab, tideTradrSubTab, catalogSearch, catalogKindFilter, catalogSetFilter, catalogTypeFilter, catalogRarityFilter, catalogDataFilter, catalogSort]);
 
   useEffect(() => {
     let frameId = 0;
@@ -3079,12 +3170,15 @@ export default function App() {
       setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
       setCloudSyncPreference(saved.cloudSyncPreference || "local");
       setSubscriptionProfile({
-        subscriptionPlan: saved.subscriptionProfile?.subscriptionPlan || PLAN_TYPES.FREE,
-        featureTier: saved.subscriptionProfile?.featureTier || saved.subscriptionProfile?.subscriptionPlan || PLAN_TYPES.FREE,
-        subscriptionStatus: saved.subscriptionProfile?.subscriptionStatus || "active",
-        subscriptionStartedAt: saved.subscriptionProfile?.subscriptionStartedAt || "",
-        subscriptionExpiresAt: saved.subscriptionProfile?.subscriptionExpiresAt || "",
-        lifetimeAccess: Boolean(saved.subscriptionProfile?.lifetimeAccess),
+        subscriptionPlan: PLAN_TYPES.FREE,
+        featureTier: PLAN_TYPES.FREE,
+        tier: PLAN_TYPES.FREE,
+        userRole: USER_ROLES.USER,
+        isAdmin: false,
+        subscriptionStatus: "active",
+        subscriptionStartedAt: "",
+        subscriptionExpiresAt: "",
+        lifetimeAccess: false,
       });
       setLocationSettings({
         mode: saved.locationSettings?.mode || "manual",
@@ -3123,9 +3217,17 @@ export default function App() {
         ...(saved.dealForm || {}),
       });
       loadScoutSnapshot();
-      setUser({ id: "local-beta", email: "local beta mode" });
+      const localBetaUser = { id: "local-beta", email: "local beta mode" };
+      setUser(localBetaUser);
       setLocalDataLoaded(true);
-      return;
+      if (!isSupabaseConfigured || !supabase) return;
+      supabase.auth.getUser().then(({ data, error }) => {
+        if (!error && data?.user) setUser(data.user);
+      });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user || localBetaUser);
+      });
+      return () => subscription.unsubscribe();
     }
 
     checkUser();
@@ -3172,11 +3274,10 @@ export default function App() {
         dashboardLayout,
         dashboardCardStyle,
         cloudSyncPreference,
-        subscriptionProfile,
         locationSettings,
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, subscriptionProfile, locationSettings, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -3277,12 +3378,17 @@ export default function App() {
   }, [quickAddMenuOpen, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showVaultAddForm, showInventoryScanner, vaultForm, scanReview]);
 
   async function checkUser() {
+    if (!isSupabaseConfigured || !supabase) return;
     const { data, error } = await supabase.auth.getUser();
     if (!error) setUser(data.user);
   }
 
   async function handleAuth(event) {
     event.preventDefault();
+    if (!isSupabaseConfigured || !supabase) {
+      setVaultToast("Supabase login is not configured yet. Local beta mode is still available.");
+      return;
+    }
     setAuthLoading(true);
     try {
       if (authMode === "signup") {
@@ -3293,24 +3399,33 @@ export default function App() {
           setAuthMode("login");
           return;
         }
-        setUser(data.user);
+        const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
+        setUser(currentUserError ? data.user : currentUserData.user);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
         if (error) return alert(error.message);
-        setUser(data.user);
+        const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
+        setUser(currentUserError ? data.user : currentUserData.user);
       }
+      setAuthPassword("");
+      setVaultToast("Signed in. Beta data remains saved on this device.");
     } finally {
       setAuthLoading(false);
     }
   }
 
   async function signOut() {
+    if (isSupabaseConfigured && supabase && user?.id !== "local-beta") {
+      await supabase.auth.signOut();
+    }
     if (BETA_LOCAL_MODE) {
       setUser({ id: "local-beta", email: "local beta mode" });
+      setAuthPassword("");
+      setVaultToast("Signed out. Local beta data is still available on this device.");
       return;
     }
 
-    await supabase.auth.signOut();
+    if (isSupabaseConfigured && supabase) await supabase.auth.signOut();
     setUser(null);
   }
 
@@ -3729,6 +3844,44 @@ export default function App() {
     setQuickAddMenuOpen(false);
   }
 
+  function openWhatDidISee(product = null) {
+    setWhatDidISeeSeedProduct(product?.id ? product : null);
+    setScoutView("whatDidISee");
+    setScoutSubTabTarget({ tab: "whatDidISee", id: Date.now() });
+    setActiveTab("scout");
+    setQuickAddMenuOpen(false);
+  }
+
+  function saveWhatDidISeeScoutReport(report) {
+    const firstItem = report.items?.[0] || {};
+    const totalQuantity = (report.items || []).reduce((total, item) => total + Number(item.quantitySeen || 0), 0);
+    const scoutReport = {
+      id: report.id || makeId("what-did-i-see-report"),
+      reportId: report.id || makeId("what-did-i-see-report"),
+      reportType: "Product sighting",
+      sourceType: "what_did_i_see",
+      sourceStatus: "local_beta",
+      storeName: report.storeName || firstItem.storeName || "Store not listed",
+      itemName: firstItem.name || `${report.items?.length || 0} catalog items seen`,
+      productName: firstItem.name || "",
+      quantitySeen: totalQuantity || "",
+      price: firstItem.shelfPrice || "",
+      reportText: report.notes || `${report.items?.length || 0} item${report.items?.length === 1 ? "" : "s"} checked in What Did I See.`,
+      notes: report.notes || "",
+      reportDate: report.visitDate,
+      reportTime: report.visitTime,
+      verified: false,
+      verificationStatus: "Needs Review",
+      createdAt: report.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: report.items || [],
+    };
+    const scoutData = getSharedScoutData();
+    const nextReports = [scoutReport, ...(scoutData.reports || scoutSnapshot.reports || []).filter((item) => item.id !== scoutReport.id && item.reportId !== scoutReport.reportId)];
+    saveSharedScoutData({ ...scoutData, reports: nextReports });
+    setScoutReportFilter("Latest");
+  }
+
   function openVaultQuickAdd({ category = "Personal collection", productType = "", subTab = "collection" } = {}) {
     setVaultSubTab(subTab);
     setVaultForm((current) => ({
@@ -3872,6 +4025,10 @@ function mapCatalog(row) {
         ? "tcgcsv"
         : getDefaultImageSource(imageProbe);
   const marketStatus = row.marketStatus || row.market_status || (marketPrice || lowPrice || midPrice || highPrice ? "cached" : "unknown");
+  const cardNumber = row.cardNumber || row.card_number || "";
+  const cardSortMeta = getCardSortMeta({ ...row, cardNumber });
+  const mappedCardNumberSort = Number(row.cardNumberSort ?? row.card_number_sort ?? cardSortMeta.sort);
+  const mappedPrintedTotal = Number(row.printedTotal ?? row.printed_total ?? cardSortMeta.printedTotal);
 
   return {
     id: row.id,
@@ -3913,7 +4070,18 @@ function mapCatalog(row) {
     sourceGroupId: row.sourceGroupId || row.source_group_id || "",
     sourceGroupName: row.sourceGroupName || row.source_group_name || "",
     priceSubtype: row.priceSubtype || row.price_subtype || "",
-    cardNumber: row.cardNumber || row.card_number || "",
+    cardNumber,
+    cardNumberPrefix: row.cardNumberPrefix || row.card_number_prefix || cardSortMeta.prefix,
+    cardNumberSuffix: row.cardNumberSuffix || row.card_number_suffix || cardSortMeta.suffix,
+    cardNumberSort: Number.isFinite(mappedCardNumberSort) ? mappedCardNumberSort : null,
+    printedTotal: Number.isFinite(mappedPrintedTotal) ? mappedPrintedTotal : null,
+    catalogGroup: row.catalogGroup || row.catalog_group || "",
+    catalogGroupSort: Number(row.catalogGroupSort ?? row.catalog_group_sort ?? 0),
+    setSortName: row.setSortName || row.set_sort_name || "",
+    historySnapshotCount: Number(row.historySnapshotCount ?? row.history_snapshot_count ?? 0),
+    latestHistorySnapshot: row.latestHistorySnapshot || row.latest_history_snapshot || "",
+    historyVolatility: row.historyVolatility || row.history_volatility || "",
+    historyChange3m: Number(row.historyChange3m ?? row.history_3m_change_percent ?? 0),
     rarity: row.rarity || "",
     marketStatus,
     marketLastUpdated: row.marketLastUpdated || row.market_last_updated || row.lastPriceChecked || row.last_price_checked || row.updated_at || "",
@@ -4718,6 +4886,7 @@ function mapCatalog(row) {
       const catalogName = catalogForm.catalogType === "card"
         ? catalogForm.cardName || catalogForm.name
         : catalogForm.productName || catalogForm.name;
+      const cardSortMeta = getCardSortMeta({ cardNumber: catalogForm.cardNumber });
       const product = {
         id: editingCatalogId || makeId("catalog"),
         catalogType: catalogForm.catalogType || "sealed",
@@ -4754,6 +4923,10 @@ function mapCatalog(row) {
         releaseYear: catalogForm.releaseYear || "",
         packCount: Number(catalogForm.packCount || 0),
         cardNumber: catalogForm.cardNumber || "",
+        cardNumberPrefix: cardSortMeta.prefix,
+        cardNumberSuffix: cardSortMeta.suffix,
+        cardNumberSort: cardSortMeta.sort,
+        printedTotal: cardSortMeta.printedTotal,
         rarity: catalogForm.rarity || "",
         variant: catalogForm.variant || "",
         condition: catalogForm.condition || "Near Mint",
@@ -4798,6 +4971,7 @@ function mapCatalog(row) {
 
     if (!user) return alert("Please log in first.");
 
+    const cardSortMeta = getCardSortMeta({ cardNumber: catalogForm.cardNumber });
     const row = {
   user_id: user.id,
   name: catalogForm.name,
@@ -4827,6 +5001,12 @@ function mapCatalog(row) {
   expansion: catalogForm.expansion || "",
   product_line: catalogForm.productLine || "",
   pack_count: Number(catalogForm.packCount || 0),
+  card_number: catalogForm.cardNumber || null,
+  card_number_prefix: cardSortMeta.prefix || null,
+  card_number_suffix: cardSortMeta.suffix || null,
+  card_number_sort: cardSortMeta.sort,
+  printed_total: cardSortMeta.printedTotal,
+  rarity: catalogForm.rarity || null,
 
   notes: catalogForm.notes,
   last_price_checked: catalogForm.marketPrice ? new Date().toISOString() : null,
@@ -4927,18 +5107,18 @@ function mapCatalog(row) {
   }
 
 function applyCatalogProduct(productId) {
-  updateItemForm("catalogProductId", productId);
-
-  const product = catalogProducts.find(
-    (p) => String(p.id) === String(productId)
-  );
+  const product = typeof productId === "object"
+    ? productId
+    : catalogProducts.find((p) => String(p.id) === String(productId));
 
   if (!product) return;
+  const resolvedProductId = product.id || productId;
+  updateItemForm("catalogProductId", resolvedProductId);
   const marketInfo = getTideTradrMarketInfo(product);
 
   setItemForm((old) => ({
     ...old,
-    catalogProductId: productId,
+    catalogProductId: resolvedProductId,
 
     name: product.name || "",
     category: product.category || "Pokemon",
@@ -5124,7 +5304,9 @@ function saveManualMarketPrice(event) {
 }
 
 function applyCatalogProductToVault(productId) {
-  const product = catalogProducts.find((p) => String(p.id) === String(productId));
+  const product = typeof productId === "object"
+    ? productId
+    : catalogProducts.find((p) => String(p.id) === String(productId));
   if (!product) return;
   const marketInfo = getTideTradrMarketInfo(product);
 
@@ -5301,29 +5483,37 @@ async function importBulkCatalogProducts() {
     return;
   }
 
-  const rows = bulkImportPreview.map((item) => ({
-    user_id: user.id,
-    name: item.name,
-    category: item.category || "Pokemon",
-    set_name: item.setName || "",
-    product_type: item.productType || "",
-    barcode: item.barcode || "",
-    market_source: "TideTradr",
-    external_product_id: "",
-    market_url: "",
-    image_url: "",
-    market_price: Number(item.marketPrice || 0),
-    low_price: Number(item.lowPrice || 0),
-    mid_price: Number(item.midPrice || 0),
-    high_price: Number(item.highPrice || 0),
-    msrp_price: Number(item.msrpPrice || 0),
-    set_code: item.setCode || "",
-    expansion: item.expansion || "",
-    product_line: item.productLine || "",
-    pack_count: Number(item.packCount || 0),
-    notes: item.notes || "",
-    last_price_checked: item.marketPrice ? new Date().toISOString() : null,
-  }));
+  const rows = bulkImportPreview.map((item) => {
+    const cardSortMeta = getCardSortMeta({ cardNumber: item.cardNumber || item.card_number });
+    return {
+      user_id: user.id,
+      name: item.name,
+      category: item.category || "Pokemon",
+      set_name: item.setName || "",
+      product_type: item.productType || "",
+      barcode: item.barcode || "",
+      market_source: "TideTradr",
+      external_product_id: "",
+      market_url: "",
+      image_url: "",
+      market_price: Number(item.marketPrice || 0),
+      low_price: Number(item.lowPrice || 0),
+      mid_price: Number(item.midPrice || 0),
+      high_price: Number(item.highPrice || 0),
+      msrp_price: Number(item.msrpPrice || 0),
+      set_code: item.setCode || "",
+      expansion: item.expansion || "",
+      product_line: item.productLine || "",
+      pack_count: Number(item.packCount || 0),
+      card_number: item.cardNumber || item.card_number || null,
+      card_number_prefix: cardSortMeta.prefix || null,
+      card_number_suffix: cardSortMeta.suffix || null,
+      card_number_sort: cardSortMeta.sort,
+      printed_total: cardSortMeta.printedTotal,
+      notes: item.notes || "",
+      last_price_checked: item.marketPrice ? new Date().toISOString() : null,
+    };
+  });
 
   const { data, error } = await supabase
     .from("product_catalog")
@@ -5673,7 +5863,6 @@ async function importBulkCatalogProducts() {
           dashboardPreset,
           dashboardLayout,
           dashboardCardStyle,
-          subscriptionProfile,
           locationSettings,
           userSearchAliases,
           dealForm,
@@ -5868,7 +6057,6 @@ async function importBulkCatalogProducts() {
       if (data.settings.dashboardPreset) setDashboardPreset(normalizeDashboardPreset(data.settings.dashboardPreset));
       if (data.settings.dashboardLayout) setDashboardLayout(normalizeDashboardLayout(data.settings.dashboardLayout, data.settings.dashboardPreset || dashboardPreset));
       if (data.settings.dashboardCardStyle) setDashboardCardStyle(normalizeDashboardCardStyle(data.settings.dashboardCardStyle));
-      if (data.settings.subscriptionProfile) setSubscriptionProfile((current) => ({ ...current, ...data.settings.subscriptionProfile }));
       if (data.settings.locationSettings) setLocationSettings((current) => ({ ...current, ...data.settings.locationSettings }));
       if (Array.isArray(data.settings.userSearchAliases)) setUserSearchAliases(data.settings.userSearchAliases);
       if (data.settings.dealForm) setDealForm((current) => ({ ...current, ...data.settings.dealForm }));
@@ -6097,8 +6285,17 @@ async function importBulkCatalogProducts() {
   const currentTier = getUserTier(planProfile);
   const paidUser = isPaidUser(planProfile);
   const adminUser = isAdminUser(planProfile);
+  const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
+  const accountStatusTitle = signedInWithSupabase ? "Signed In" : "Local Beta Mode";
+  const accountStatusDescription = signedInWithSupabase
+    ? currentUserProfile.email || user?.email || "Supabase account"
+    : "Beta data is saved on this device unless you export or connect cloud sync.";
   const canReviewSharedData = adminUser || BETA_LOCAL_MODE;
-  const adminToolsVisible = adminUser || BETA_LOCAL_MODE;
+  const adminToolsVisible = adminUser;
+  const adminReviewIdentityLabel = adminUser ? "Signed in as Admin / Founder" : "Local beta Admin Review";
+  const adminReviewIdentityDetail = adminUser
+    ? "Supabase auth metadata or profile grants admin access. Service-role keys stay server-only, and shared-data writes remain protected by Supabase rules."
+    : "Available only for local beta testing. Normal users submit suggestions for review instead of directly changing shared data.";
   const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
   const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
@@ -6449,7 +6646,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       String(product.releaseYear || "").toLowerCase().includes(search) ||
       String(product.barcode || "").toLowerCase().includes(search);
 
-    const matchesKind = catalogKindFilter === "All" || product.catalogType === catalogKindFilter;
+    const productGroup = String(product.catalogGroup || "").toLowerCase();
+    const productTypeText = String(product.productType || "").toLowerCase();
+    const productIsSealed =
+      product.catalogType === "sealed" ||
+      productGroup === "sealed" ||
+      Boolean(product.isSealed) ||
+      /(sealed|booster|elite trainer|box|tin|collection|bundle|pack)/i.test(productTypeText);
+    const productIsCard =
+      product.catalogType === "card" ||
+      productGroup === "cards" ||
+      productTypeText.includes("card") ||
+      Boolean(product.cardNumber || product.rarity);
+    const matchesKind =
+      catalogKindFilter === "All" ||
+      (catalogKindFilter === "card" && productIsCard) ||
+      (catalogKindFilter === "sealed" && productIsSealed) ||
+      (catalogKindFilter === "other" && !productIsCard && !productIsSealed);
     const matchesSet = catalogSetFilter === "All" || product.setName === catalogSetFilter || product.expansion === catalogSetFilter;
     const matchesType = catalogTypeFilter === "All" || product.productType === catalogTypeFilter;
     const matchesEra = catalogEraFilter === "All" || product.productLine === catalogEraFilter;
@@ -6469,12 +6682,27 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       catalogWatchlistFilter === "All" ||
       (catalogWatchlistFilter === "Watchlist" && watched) ||
       (catalogWatchlistFilter === "Not watched" && !watched);
+    const historyDate = product.latestHistorySnapshot ? new Date(product.latestHistorySnapshot) : null;
+    const recentHistoryCutoff = new Date();
+    recentHistoryCutoff.setDate(recentHistoryCutoff.getDate() - 30);
+    const matchesHistory =
+      catalogHistoryFilter === "All" ||
+      (catalogHistoryFilter === "Has price history" && Number(product.historySnapshotCount || 0) > 0) ||
+      (catalogHistoryFilter === "Missing price history" && Number(product.historySnapshotCount || 0) <= 0) ||
+      (catalogHistoryFilter === "Price changed recently" && historyDate && historyDate >= recentHistoryCutoff) ||
+      (catalogHistoryFilter === "High volatility" && product.historyVolatility === "High Volatility") ||
+      (catalogHistoryFilter === "Low volatility" && product.historyVolatility === "Low Volatility");
+    const matchesDataFilter =
+      catalogDataFilter === "All" ||
+      (catalogDataFilter === "Has market price" && marketInfo.currentMarketValue > 0) ||
+      (catalogDataFilter === "Missing price" && marketInfo.currentMarketValue <= 0) ||
+      (catalogDataFilter === "Has image" && Boolean(catalogImage(product)));
     const minValue = catalogMinValue === "" ? 0 : Number(catalogMinValue || 0);
     const maxValue = catalogMaxValue === "" ? Infinity : Number(catalogMaxValue || 0);
     const matchesValue = marketInfo.currentMarketValue >= minValue && marketInfo.currentMarketValue <= maxValue;
 
-    return matchesSearch && matchesKind && matchesSet && matchesType && matchesEra && matchesYear && matchesRarity && matchesVariant && matchesCondition && matchesGraded && matchesOwned && matchesWatchlist && matchesValue;
-  });
+    return matchesSearch && matchesKind && matchesSet && matchesType && matchesEra && matchesYear && matchesRarity && matchesVariant && matchesCondition && matchesGraded && matchesOwned && matchesWatchlist && matchesHistory && matchesDataFilter && matchesValue;
+  }).sort((a, b) => compareCatalogProducts(a, b, catalogSort));
   const catalogSetOptions = ["All", ...new Set(catalogProducts.map((product) => product.setName || product.expansion).filter(Boolean))].sort();
   const catalogTypeOptions = ["All", ...new Set([...SEALED_PRODUCT_TYPES, ...catalogProducts.map((product) => product.productType).filter(Boolean)])].sort();
   const catalogEraOptions = ["All", ...new Set(catalogProducts.map((product) => product.productLine).filter(Boolean))].sort();
@@ -6492,6 +6720,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const failedMarketMatches = marketPriceCache.failedMatches || [];
   const lastMarketSync = marketPriceCache.lastSync || "Not synced yet";
   const selectedCatalogDetailProduct = catalogProducts.find((product) => String(product.id) === String(selectedCatalogDetailId));
+  const tideTradrCatalogResults = catalogSearchHasRun ? filteredCatalogProducts : [];
+  const tideTradrCatalogPageCount = supabaseCatalogStatus.totalCount
+    ? Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))
+    : null;
 
   function catalogTitle(product = {}) {
     return product.catalogType === "card"
@@ -6515,6 +6747,113 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function addCatalogItemToForge(productId) {
     applyCatalogProduct(productId);
     setActiveTab("addInventory");
+  }
+
+  function currentCatalogProductGroup() {
+    if (catalogKindFilter === "card") return "Cards";
+    if (catalogKindFilter === "sealed") return "Sealed";
+    if (catalogKindFilter === "other") return "Other";
+    return "All";
+  }
+
+  function canRunCatalogSearch(query = catalogSearch, barcode = catalogBarcodeSearch) {
+    return hasCatalogSearchCriteria({
+      query,
+      barcode,
+      productGroup: currentCatalogProductGroup(),
+      productType: catalogTypeFilter,
+      setName: catalogSetFilter,
+      dataFilter: catalogDataFilter,
+      rarity: catalogRarityFilter,
+    });
+  }
+
+  function clearCatalogSearch() {
+    supabaseCatalogRequestId.current += 1;
+    setCatalogSearch("");
+    setCatalogBarcodeSearch("");
+    setCatalogKindFilter("All");
+    setCatalogDataFilter("All");
+    setCatalogSetFilter("All");
+    setCatalogTypeFilter("All");
+    setCatalogRarityFilter("All");
+    setCatalogSearchHasRun(false);
+    setCatalogProducts((current) => current.filter((product) => product.sourceType !== "supabase"));
+    setSupabaseCatalogStatus({
+      loading: false,
+      loadedCount: 0,
+      page: 1,
+      pageSize: SUPABASE_CATALOG_PAGE_SIZE,
+      totalCount: null,
+      hasMore: false,
+      message: "",
+      error: "",
+      exactMatchCount: 0,
+      exactBarcodeMiss: false,
+      usedFallback: false,
+    });
+  }
+
+  function submitCatalogSearch(event) {
+    event?.preventDefault?.();
+    if (!canRunCatalogSearch(catalogSearch, catalogBarcodeSearch)) {
+      setCatalogSearchHasRun(false);
+      setSupabaseCatalogStatus((current) => ({
+        ...current,
+        loading: false,
+        message: "Search by at least 2 characters, enter a barcode, or choose a filter before searching.",
+        error: "",
+      }));
+      return;
+    }
+    loadImportedPokemonCatalog(catalogSearch, { page: 1, mode: "general" });
+  }
+
+  function submitCatalogBarcodeSearch(event) {
+    event?.preventDefault?.();
+    const value = catalogBarcodeSearch || catalogSearch;
+    if (!String(value || "").trim()) {
+      setSupabaseCatalogStatus((current) => ({
+        ...current,
+        loading: false,
+        message: "Enter or scan a barcode, SKU, TCGplayer product ID, external ID, or card number first.",
+        error: "",
+      }));
+      return;
+    }
+    loadImportedPokemonCatalog(value, { page: 1, mode: "barcode", barcode: value });
+  }
+
+  function selectCatalogRecommendation(recommendation) {
+    const value = recommendation.searchValue || recommendation.label || catalogSearch;
+    setCatalogSearch(value);
+    if (recommendation.mode === "barcode" || recommendation.mode === "id" || recommendation.mode === "cardNumber") {
+      setCatalogBarcodeSearch(value);
+    }
+    if (recommendation.product?.id) {
+      setCatalogProducts((current) => [
+        recommendation.product,
+        ...current.filter((product) => String(product.id) !== String(recommendation.product.id)),
+      ]);
+    }
+    const mode = recommendation.mode === "barcode" || recommendation.mode === "id" || recommendation.mode === "cardNumber" ? "barcode" : "general";
+    loadImportedPokemonCatalog(value, {
+      page: 1,
+      mode,
+      barcode: mode === "barcode" ? value : "",
+    });
+  }
+
+  function selectVaultCatalogRecommendation(recommendation) {
+    const value = recommendation.searchValue || recommendation.label || "";
+    updateVaultForm("tideTradrSearch", value);
+    if (recommendation.product?.id) {
+      setCatalogProducts((current) => [
+        recommendation.product,
+        ...current.filter((product) => String(product.id) !== String(recommendation.product.id)),
+      ]);
+      applyCatalogProductToVault(recommendation.product);
+    }
   }
 
   function updateCatalogImageMeta(productId, updates) {
@@ -6823,6 +7162,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <span className="status-badge">{totalOpenCount} open</span>
         </div>
+        <div className="drawer-info-card">
+          <strong>{adminReviewIdentityLabel}</strong>
+          <p className="compact-subtitle">{adminReviewIdentityDetail}</p>
+          {currentUserProfile?.source ? <span className="status-badge">{currentUserProfile.source}</span> : null}
+        </div>
         <section className="settings-subsection marketplace-admin-review">
           <div className="compact-card-header">
             <div>
@@ -6839,10 +7183,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="card"><p>Card Products</p><h2>{supabaseImportStatus.cards ?? "N/A"}</h2></div>
             <div className="card"><p>VA Stores</p><h2>{supabaseImportStatus.vaStores ?? "N/A"}</h2></div>
             <div className="card"><p>Market Price Rows</p><h2>{supabaseImportStatus.marketPriceRows ?? "N/A"}</h2></div>
+            <div className="card"><p>Price History Rows</p><h2>{supabaseImportStatus.priceHistoryRows ?? "N/A"}</h2></div>
+            <div className="card"><p>Products With History</p><h2>{supabaseImportStatus.productsWithHistory ?? "N/A"}</h2></div>
+            <div className="card"><p>Latest History Snapshot</p><h2>{supabaseImportStatus.latestHistorySnapshot ? new Date(supabaseImportStatus.latestHistorySnapshot).toLocaleString() : "N/A"}</h2></div>
+            <div className="card"><p>Current Price No History</p><h2>{supabaseImportStatus.currentPriceWithoutHistory ?? "N/A"}</h2></div>
             <div className="card"><p>Latest Last Price Checked</p><h2>{supabaseImportStatus.lastPriceChecked ? new Date(supabaseImportStatus.lastPriceChecked).toLocaleString() : "N/A"}</h2></div>
             <div className="card"><p>Products Missing Images</p><h2>{supabaseImportStatus.productsMissingImages ?? "N/A"}</h2></div>
             <div className="card"><p>Products Missing Market Price</p><h2>{supabaseImportStatus.productsMissingMarketPrices ?? "N/A"}</h2></div>
           </div>
+          <p className="compact-subtitle">Refresh prices manually with <code>npm run refresh:pokemon-prices</code>. Import scripts use the service role on the server only and append history snapshots.</p>
           {supabaseImportStatus.errors.length ? (
             <div className="empty-state">
               <h3>Import status notes</h3>
@@ -7726,14 +8075,57 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">
                     <div>
-                      <h3>Local Beta Mode</h3>
-                      <p className="compact-subtitle">{currentUserProfile.displayName || user.email || "Local beta user"}</p>
+                      <h3>{accountStatusTitle}</h3>
+                      <p className="compact-subtitle">{accountStatusDescription}</p>
                     </div>
                     <dl className="drawer-status-list">
-                      <div><dt>Role</dt><dd>{adminUser ? "Admin" : BETA_LOCAL_MODE ? "User + local admin tools" : "User"}</dd></div>
+                      <div><dt>Account</dt><dd>{signedInWithSupabase ? "Supabase" : "Local beta"}</dd></div>
+                      <div><dt>Role</dt><dd>{adminUser ? "Admin" : BETA_LOCAL_MODE ? "User + local beta review" : "User"}</dd></div>
                       <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
                       <div><dt>Data</dt><dd>{cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
                     </dl>
+                    {adminUser ? <span className="status-badge">Admin / Founder</span> : null}
+                  </div>
+                  {!signedInWithSupabase ? (
+                    <form className="drawer-info-card" onSubmit={handleAuth}>
+                      <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
+                      <p className="compact-subtitle">Sign in for admin/founder tools and future cloud sync. User-owned beta data stays local for now.</p>
+                      {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
+                      <input
+                        className="drawer-field"
+                        type="email"
+                        value={authEmail}
+                        onChange={(event) => setAuthEmail(event.target.value)}
+                        placeholder="Email"
+                        autoComplete="email"
+                      />
+                      <input
+                        className="drawer-field"
+                        type="password"
+                        value={authPassword}
+                        onChange={(event) => setAuthPassword(event.target.value)}
+                        placeholder="Password"
+                        autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                      />
+                      <div className="drawer-inline-actions">
+                        <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>
+                          {authLoading ? "Working..." : authMode === "login" ? "Sign In" : "Create Account"}
+                        </button>
+                        <button type="button" className="drawer-link" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}>
+                          {authMode === "login" ? "Create Account" : "Use Login"}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="drawer-info-card">
+                      <strong>{adminUser ? "Signed in as Admin / Founder" : "Signed in"}</strong>
+                      <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase local beta data.</p>
+                      <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
+                    </div>
+                  )}
+                  <div className="drawer-info-card">
+                    <strong>Local Beta Admin Review</strong>
+                    <p className="compact-subtitle">Review tools remain available for local beta testing. Public/shared data changes still require admin approval and protected Supabase rules.</p>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
                 </div>
@@ -7783,6 +8175,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     onApplyImport={applyBetaBackupImport}
                     onClearDemoData={resetBetaLocalData}
                   />
+                  {BETA_LOCAL_MODE ? (
+                    <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>
+                      Admin Review Queue (Local Beta)
+                    </button>
+                  ) : null}
                 </>
               ), "Data")}
               {renderMenuPullDown("feedback", "Feedback / Help", "Send feedback, report bugs, and app help", (
@@ -7814,7 +8211,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="drawer-links">
                   <div className="drawer-info-card">
                     <strong>{adminUser ? "Admin / Founder" : "Local Beta Admin Tools"}</strong>
-                    <p className="compact-subtitle">{adminUser ? "Supabase profile grants admin tools. Backend/RLS still protects shared-data writes." : "Review/import tools are visible for local beta testing. Shared-data edits still go through suggestions unless your signed-in profile is admin."}</p>
+                    <p className="compact-subtitle">{adminUser ? "Supabase auth metadata or profile grants admin tools. Backend/RLS still protects shared-data writes." : "Review/import tools are visible for local beta testing. Shared-data edits still go through suggestions unless your signed-in profile is admin."}</p>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Open Admin Dashboard</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("All"); setActiveTab("adminReview"); })}>Import Status & Review Queue</button>
@@ -7829,7 +8226,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <p className="compact-subtitle">E&T TCG beta web app</p>
                   </div>
                   <button type="button" className="drawer-link drawer-danger-link" onClick={resetBetaLocalData}>Reset Local Beta Data</button>
-                  <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
+                  {signedInWithSupabase ? (
+                    <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
+                  ) : (
+                    <button type="button" className="drawer-link" onClick={() => { setAuthMode("login"); setMenuSectionsOpen({ profile: true }); }}>Sign In from Profile</button>
+                  )}
                 </div>
               ), "Acct")}
             </div>
@@ -8044,10 +8445,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {vaultAddMode === "catalog" ? (
               <div className="vault-add-tab-panel">
                 <Field label="Search TideTradr catalog">
-                  <input
+                  <SmartCatalogSearchBox
                     value={vaultForm.tideTradrSearch || ""}
-                    onChange={(event) => updateVaultForm("tideTradrSearch", event.target.value)}
+                    onChange={(value) => updateVaultForm("tideTradrSearch", value)}
+                    onSelectSuggestion={selectVaultCatalogRecommendation}
+                    supabase={supabase}
+                    isSupabaseConfigured={isSupabaseConfigured}
+                    mapRow={mapCatalog}
+                    productGroup="All"
+                    dataFilter="All"
                     placeholder="Search products, cards, set, UPC, or SKU"
+                    money={money}
                   />
                 </Field>
                 <div className="small-empty-state">
@@ -9608,7 +10016,40 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "scout" && (
           <>
-            {scoutView === "submit" ? (
+            {scoutView === "whatDidISee" ? (
+              <>
+                <section className="tab-summary panel">
+                  <div>
+                    <h2>Scout &gt; What Did I See?</h2>
+                    <p>Search the imported Pokemon catalog, check what you saw, and save a local beta sighting list.</p>
+                  </div>
+                  <div className="summary-pill-row">
+                    <button type="button" className="secondary-button" onClick={() => {
+                      setScoutView("main");
+                      setScoutSubTabTarget({ tab: "overview", id: Date.now() });
+                      loadScoutSnapshot();
+                    }}>Back to Scout</button>
+                  </div>
+                </section>
+                <WhatDidISee
+                  supabase={supabase}
+                  isSupabaseConfigured={isSupabaseConfigured}
+                  mapCatalogRow={mapCatalog}
+                  initialProduct={whatDidISeeSeedProduct}
+                  stores={scoutSnapshot.stores || []}
+                  money={money}
+                  onAddToVault={applyCatalogProductToVault}
+                  onAddToForge={addCatalogItemToForge}
+                  onSaveScoutReport={saveWhatDidISeeScoutReport}
+                  onMessage={setVaultToast}
+                  onBack={() => {
+                    setScoutView("main");
+                    setScoutSubTabTarget({ tab: "overview", id: Date.now() });
+                    loadScoutSnapshot();
+                  }}
+                />
+              </>
+            ) : scoutView === "submit" ? (
               <>
                 <section className="tab-summary panel">
                   <div>
@@ -9694,6 +10135,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   setScoutSubTabTarget({ tab: "reports", id: Date.now() });
                   setScoutView("submit");
                 }}>Submit Report</button>
+                <button type="button" className="secondary-button" onClick={openWhatDidISee}>What Did I See?</button>
                 <button type="button" className="secondary-button" onClick={() => {
                   setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
                   setScoutView("alerts");
@@ -9872,10 +10314,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <h2>TideTradr</h2>
                     <p>Search products, cards, market values, and deals.</p>
                   </div>
-                  <input className="search-input" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search products, cards, set codes, UPC, SKU, rarity..." />
+                  <form className="catalog-search-form" onSubmit={submitCatalogSearch}>
+                    <SmartCatalogSearchBox
+                      value={catalogSearch}
+                      onChange={setCatalogSearch}
+                      onSelectSuggestion={selectCatalogRecommendation}
+                      supabase={supabase}
+                      isSupabaseConfigured={isSupabaseConfigured}
+                      mapRow={mapCatalog}
+                      productGroup={currentCatalogProductGroup()}
+                      dataFilter={catalogDataFilter}
+                      inputClassName="search-input"
+                      placeholder="Search by name, set, product type, card number, or scanned barcode..."
+                      money={money}
+                    />
+                    <button type="submit">Search</button>
+                  </form>
                   <div className="summary-pill-row">
                     <button type="button" onClick={() => setTideTradrSubTab("deal")}>Check Deal</button>
-                    <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
+                    <button type="button" className="secondary-button" onClick={submitCatalogSearch}>Search Catalog</button>
                   </div>
                   <div className="cards mini-cards">
                     <div className="card"><p>Catalog Products</p><h2>{supabaseCatalogStatus.totalCount ?? catalogProducts.length}</h2></div>
@@ -9889,29 +10346,92 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="compact-card-header">
                     <div>
                       <h2>Search & Catalog</h2>
-                      <p>{filteredCatalogProducts.length} results from TideTradr Catalog.</p>
+                      <p>
+                        {catalogSearchHasRun
+                          ? `${tideTradrCatalogResults.length} shown from the current paged search.`
+                          : "Search the imported Pokemon catalog before loading results."}
+                      </p>
                     </div>
-                    <div className="summary-pill-row">
-                      <button type="button" className="secondary-button" onClick={() => loadImportedPokemonCatalog(catalogSearch, { page: supabaseCatalogStatus.page || 1 })}>
-                        {supabaseCatalogStatus.loading ? "Refreshing..." : "Refresh Results"}
-                      </button>
-                      <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>Filters</button>
-                      <button type="button" className="secondary-button" onClick={() => { setActiveTab("catalog"); setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true })); }}>{adminUser ? "Add Catalog Item" : "Suggest Missing Product"}</button>
-                    </div>
+                    <span className="status-badge">{supabaseCatalogStatus.loading ? "Searching..." : catalogSearchHasRun ? "Paged results" : "Search first"}</span>
                   </div>
-                  <p className="compact-subtitle">TideTradr now searches the Supabase Pokemon catalog natively. Vault, Forge, reports, and settings stay local beta data unless cloud sync is enabled later.</p>
-                  {supabaseCatalogStatus.message ? <p className="compact-subtitle">{supabaseCatalogStatus.message}</p> : null}
-                  {supabaseCatalogStatus.error ? <p className="compact-subtitle danger-text">{supabaseCatalogStatus.error}</p> : null}
+
+                  <form className="form catalog-search-tools" onSubmit={submitCatalogSearch}>
+                    <Field label="Catalog search">
+                      <SmartCatalogSearchBox
+                        value={catalogSearch}
+                        onChange={setCatalogSearch}
+                        onSelectSuggestion={selectCatalogRecommendation}
+                        supabase={supabase}
+                        isSupabaseConfigured={isSupabaseConfigured}
+                        mapRow={mapCatalog}
+                        productGroup={currentCatalogProductGroup()}
+                        dataFilter={catalogDataFilter}
+                        inputClassName="search-input"
+                        placeholder="Prismatic Evolutions, Charizard, Elite Trainer Box, SVP001..."
+                        money={money}
+                      />
+                    </Field>
+                    <Field label="Sort">
+                      <select value={catalogSort} onChange={(e) => setCatalogSort(e.target.value)}>
+                        {CATALOG_SORT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <div className="quick-actions">
+                      <button type="submit">{supabaseCatalogStatus.loading ? "Searching..." : "Search Catalog"}</button>
+                      <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear</button>
+                    </div>
+                  </form>
+
+                  <form className="form catalog-search-tools" onSubmit={submitCatalogBarcodeSearch}>
+                    <Field label="Barcode / SKU / product ID">
+                      <input
+                        value={catalogBarcodeSearch}
+                        onChange={(e) => setCatalogBarcodeSearch(e.target.value)}
+                        placeholder="Scan or type barcode, SKU, TCGplayer ID, external ID, or card number"
+                        inputMode="search"
+                      />
+                    </Field>
+                    <div className="quick-actions">
+                      <button type="submit" className="secondary-button">Search Exact ID</button>
+                    </div>
+                  </form>
+
+                  <div className="quick-action-rail">
+                    {[
+                      ["All", "All"],
+                      ["card", "Cards"],
+                      ["sealed", "Sealed"],
+                      ["other", "Other"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={catalogKindFilter === value ? "primary" : ""}
+                        onClick={() => setCatalogKindFilter(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    {["Has market price", "Has image", "Missing price"].map((filter) => (
+                      <button
+                        key={filter}
+                        type="button"
+                        className={catalogDataFilter === filter ? "primary" : ""}
+                        onClick={() => setCatalogDataFilter(catalogDataFilter === filter ? "All" : filter)}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                    <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>More Filters</button>
+                    <button type="button" className="secondary-button" onClick={openWhatDidISee}>Start What Did I See List</button>
+                    <button type="button" className="secondary-button" onClick={() => { setActiveTab("catalog"); setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true })); }}>{adminUser ? "Add Catalog Item" : "Suggest Missing Product"}</button>
+                  </div>
+
                   {isFeatureSectionOpen("market_filters") ? (
                     <div className="filter-grid">
-                      <Field label="Cards / Sealed">
-                        <select value={catalogKindFilter} onChange={(e) => setCatalogKindFilter(e.target.value)}>
-                          <option value="All">All catalog types</option>
-                          <option value="card">Cards</option>
-                          <option value="sealed">Sealed</option>
-                        </select>
-                      </Field>
-                      <Field label="Set">
+                      <Field label="Set / Expansion">
                         <select value={catalogSetFilter} onChange={(e) => setCatalogSetFilter(e.target.value)}>
                           {catalogSetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                         </select>
@@ -9921,76 +10441,135 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           {catalogTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                         </select>
                       </Field>
-                      <Field label="Year">
-                        <select value={catalogYearFilter} onChange={(e) => setCatalogYearFilter(e.target.value)}>
-                          {catalogYearOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                        </select>
-                      </Field>
                       <Field label="Rarity">
                         <select value={catalogRarityFilter} onChange={(e) => setCatalogRarityFilter(e.target.value)}>
                           {catalogRarityOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                         </select>
                       </Field>
+                      <Field label="Image / Price">
+                        <select value={catalogDataFilter} onChange={(e) => setCatalogDataFilter(e.target.value)}>
+                          <option>All</option>
+                          <option>Has market price</option>
+                          <option>Has image</option>
+                          <option>Missing price</option>
+                        </select>
+                      </Field>
                     </div>
                   ) : null}
-                  <div className="catalog-results-list">
-                    {filteredCatalogProducts.slice(0, 18).map((p) => (
-                      <div className="catalog-result-card" key={p.id}>
-                        <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p.id)}>
-                          <div className="catalog-thumb">
-                            {catalogImage(p) ? <img src={catalogImage(p)} alt="" /> : (
-                              <div className="image-needed-placeholder">
-                                <strong>{catalogTitle(p)}</strong>
-                                <span>Image needed</span>
+
+                  <p className="compact-subtitle">Search runs against Supabase with pagination. It does not load the full 52,000+ product catalog into the browser.</p>
+                  {supabaseCatalogStatus.message ? <p className="compact-subtitle">{supabaseCatalogStatus.message}</p> : null}
+                  {supabaseCatalogStatus.error ? <p className="compact-subtitle danger-text">{supabaseCatalogStatus.error}</p> : null}
+                  {supabaseCatalogStatus.exactBarcodeMiss ? <p className="compact-subtitle">No exact barcode match found. Partial catalog matches may still appear below.</p> : null}
+
+                  {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
+                    <div className="empty-state">
+                      <h3>Search the Pokemon catalog</h3>
+                      <p>Search by name, set, product type, card number, or scanned barcode.</p>
+                    </div>
+                  ) : null}
+
+                  {supabaseCatalogStatus.loading ? (
+                    <div className="empty-state">
+                      <h3>Searching catalog...</h3>
+                      <p>Checking imported Pokemon products with the current search and filters.</p>
+                    </div>
+                  ) : null}
+
+                  {catalogSearchHasRun && !supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 ? (
+                    <div className="empty-state">
+                      <h3>No matching products found</h3>
+                      <p>Try a different name, set, barcode, product type, or card number.</p>
+                    </div>
+                  ) : null}
+
+                  {catalogSearchHasRun && tideTradrCatalogResults.length > 0 ? (
+                    <div className="catalog-results-list">
+                      {tideTradrCatalogResults.map((p) => {
+                        const marketInfo = getTideTradrMarketInfo(p);
+                        const lowPrice = Number(p.lowPrice || 0);
+                        const midPrice = Number(p.midPrice || p.marketPrice || 0);
+                        const highPrice = Number(p.highPrice || 0);
+                        const resultGroup = p.catalogType === "card" ? "Card" : p.catalogType === "sealed" ? "Sealed" : p.catalogGroup || "Other";
+                        return (
+                          <div className="catalog-result-card" key={p.id}>
+                            <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p.id)}>
+                              <div className="catalog-thumb">
+                                {catalogImage(p) ? <img src={catalogImage(p)} alt="" /> : (
+                                  <div className="image-needed-placeholder">
+                                    <strong>{catalogTitle(p)}</strong>
+                                    <span>Image needed</span>
+                                  </div>
+                                )}
                               </div>
-                            )}
+                              <div>
+                                <span className="catalog-pill">{resultGroup}</span>
+                                <h3>{catalogTitle(p)}</h3>
+                                <p>
+                                  {p.productType || resultGroup} | {p.setName || p.expansion || "No set"}
+                                  {p.cardNumber ? ` | #${p.cardNumber}` : ""}
+                                </p>
+                                {(p.barcode || p.sku || p.externalProductId || p.tcgplayerProductId) ? (
+                                  <p className="compact-subtitle">Barcode/SKU: {p.barcode || p.upc || p.sku || p.externalProductId || p.tcgplayerProductId}</p>
+                                ) : null}
+                                <p>
+                                  Market: {money(marketInfo.currentMarketValue)}
+                                  {lowPrice ? ` | Low ${money(lowPrice)}` : ""}
+                                  {midPrice ? ` | Mid ${money(midPrice)}` : ""}
+                                  {highPrice ? ` | High ${money(highPrice)}` : ""}
+                                  {p.catalogType !== "card" ? ` | MSRP: ${marketInfo.msrp ? money(marketInfo.msrp) : "Unknown"}` : ""}
+                                </p>
+                                <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
+                                {p.historySnapshotCount > 0 ? (
+                                  <p className="compact-subtitle">History available: {p.historySnapshotCount} snapshot{p.historySnapshotCount === 1 ? "" : "s"}</p>
+                                ) : null}
+                                <span className="status-badge">{MARKET_STATUS_LABELS[marketInfo.marketStatus] || "Unknown"}</span>
+                              </div>
+                            </button>
+                            <div className="catalog-result-actions">
+                              <button type="button" onClick={() => openCatalogDetails(p.id)}>View Details</button>
+                              <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(p.id)}>Check Deal</button>
+                              <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
+                              <button type="button" className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
+                              <button type="button" className="secondary-button" onClick={() => openWhatDidISee(p)}>Add to What Did I See</button>
+                              <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Watchlist</button>
+                              {catalogSourceUrl(p) ? <a className="secondary-button" href={catalogSourceUrl(p)} target="_blank" rel="noreferrer">Source</a> : null}
+                            </div>
                           </div>
-                          <div>
-                            <span className="catalog-pill">{p.catalogType === "card" ? "Card" : "Sealed"}</span>
-                            <h3>{catalogTitle(p)}</h3>
-                            <p>{p.setName || p.expansion || "No set"} | {p.catalogType === "card" ? p.rarity || "No rarity" : p.productType || "No product type"}</p>
-                            <p>Market: {money(getTideTradrMarketInfo(p).currentMarketValue)}{p.catalogType !== "card" ? ` | MSRP: ${getTideTradrMarketInfo(p).msrp ? money(getTideTradrMarketInfo(p).msrp) : "Unknown"}` : ""}</p>
-                            <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
-                            <span className="status-badge">{MARKET_STATUS_LABELS[getTideTradrMarketInfo(p).marketStatus] || "Unknown"}</span>
-                          </div>
-                        </button>
-                        <div className="catalog-result-actions">
-                          <button type="button" onClick={() => openCatalogDetails(p.id)}>View</button>
-                          <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(p.id)}>Check Deal</button>
-                          <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
-                          <button type="button" className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
-                          <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Watchlist</button>
-                          <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("catalog", p)}>Create Listing</button>
-                          {catalogSourceUrl(p) ? <a className="secondary-button" href={catalogSourceUrl(p)} target="_blank" rel="noreferrer">Source</a> : null}
-                        </div>
-                      </div>
-                    ))}
-                    {filteredCatalogProducts.length === 0 ? (
-                      <div className="empty-state">
-                        <h3>No catalog matches</h3>
-                        <p>Try a broader search, clear filters, or add a missing catalog item.</p>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="summary-pill-row catalog-pagination-row">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      disabled={supabaseCatalogStatus.loading || (supabaseCatalogStatus.page || 1) <= 1}
-                      onClick={() => loadImportedPokemonCatalog(catalogSearch, { page: Math.max(1, (supabaseCatalogStatus.page || 1) - 1) })}
-                    >
-                      Previous Page
-                    </button>
-                    <span className="status-badge">Page {supabaseCatalogStatus.page || 1}{supabaseCatalogStatus.totalCount ? ` of ${Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))}` : ""}</span>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      disabled={supabaseCatalogStatus.loading || !supabaseCatalogStatus.hasMore}
-                      onClick={() => loadImportedPokemonCatalog(catalogSearch, { page: (supabaseCatalogStatus.page || 1) + 1 })}
-                    >
-                      Next Page
-                    </button>
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  {catalogSearchHasRun ? (
+                    <div className="summary-pill-row catalog-pagination-row">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={supabaseCatalogStatus.loading || (supabaseCatalogStatus.page || 1) <= 1}
+                        onClick={() => loadImportedPokemonCatalog(catalogSearch, {
+                          page: Math.max(1, (supabaseCatalogStatus.page || 1) - 1),
+                          mode: catalogBarcodeSearch ? "barcode" : "general",
+                          barcode: catalogBarcodeSearch,
+                        })}
+                      >
+                        Previous Page
+                      </button>
+                      <span className="status-badge">Page {supabaseCatalogStatus.page || 1}{tideTradrCatalogPageCount ? ` of ${tideTradrCatalogPageCount}` : ""}</span>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={supabaseCatalogStatus.loading || !supabaseCatalogStatus.hasMore}
+                        onClick={() => loadImportedPokemonCatalog(catalogSearch, {
+                          page: (supabaseCatalogStatus.page || 1) + 1,
+                          mode: catalogBarcodeSearch ? "barcode" : "general",
+                          barcode: catalogBarcodeSearch,
+                        })}
+                      >
+                        Load More
+                      </button>
+                    </div>
+                  ) : null}
                 </section>
 
                 <section className="feature-dropdown-stack">
@@ -10685,6 +11264,16 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     <option>Not watched</option>
                   </select>
                 </Field>
+                <Field label="Price History">
+                  <select value={catalogHistoryFilter} onChange={(e) => setCatalogHistoryFilter(e.target.value)}>
+                    <option>All</option>
+                    <option>Has price history</option>
+                    <option>Missing price history</option>
+                    <option>Price changed recently</option>
+                    <option>High volatility</option>
+                    <option>Low volatility</option>
+                  </select>
+                </Field>
                 <Field label="Min Market Value">
                   <input type="number" step="0.01" value={catalogMinValue} onChange={(e) => setCatalogMinValue(e.target.value)} />
                 </Field>
@@ -10692,22 +11281,23 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <input type="number" step="0.01" value={catalogMaxValue} onChange={(e) => setCatalogMaxValue(e.target.value)} />
                 </Field>
               </div>
-              <p>Showing {filteredCatalogProducts.length} of {catalogProducts.length} shared Pokemon catalog products.</p>
+              <p>
+                {catalogSearchHasRun
+                  ? `Showing ${filteredCatalogProducts.length} paged search results.`
+                  : "Search from TideTradr first before browsing imported catalog rows."}
+              </p>
               <Field label="Sort Catalog">
                 <select
-                  value={inventorySort}
-                  onChange={(e) => setInventorySort(e.target.value)}
+                  value={catalogSort}
+                  onChange={(e) => setCatalogSort(e.target.value)}
                 >
-                  <option value="newest">Newest Added</option>
-                  <option value="highestProfit">Highest Profit</option>
-                  <option value="highestMarket">Highest Market Value</option>
-                  <option value="highestRoi">Highest ROI</option>
-                  <option value="lowestStock">Lowest Stock</option>
-                  <option value="az">A–Z</option>
+                  {CATALOG_SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </Field>
               <div className="catalog-results-list">
-                {filteredCatalogProducts.map((p) => (
+                {(catalogSearchHasRun ? filteredCatalogProducts : []).map((p) => (
                   <div className="catalog-result-card" key={p.id}>
                     <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p.id)}>
                       <div className="catalog-thumb">
@@ -10727,6 +11317,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                           {p.imageNeedsReview ? " • Needs review" : ""}
                         </p>
                         <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
+                        {p.historySnapshotCount > 0 ? (
+                          <p className="compact-subtitle">History available: {p.historySnapshotCount} snapshot{p.historySnapshotCount === 1 ? "" : "s"}</p>
+                        ) : null}
                       </div>
                     </button>
                     <div className="catalog-result-actions">
@@ -10759,6 +11352,12 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     </div>
                   </div>
                 ))}
+                {!catalogSearchHasRun ? (
+                  <div className="empty-state">
+                    <h3>Search first</h3>
+                    <p>Imported catalog rows are not listed by default. Use TideTradr Search & Catalog to search by name, set, card number, product ID, or barcode.</p>
+                  </div>
+                ) : null}
               </div>
             </section>
           </>
@@ -11605,6 +12204,18 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     </>
                   )}
                 </div>
+                <MarketPriceHistoryPanel
+                  catalogProductId={selectedCatalogDetailProduct.id}
+                  tcgplayerProductId={selectedCatalogDetailProduct.tcgplayerProductId}
+                  externalProductId={selectedCatalogDetailProduct.externalProductId}
+                  productName={catalogTitle(selectedCatalogDetailProduct)}
+                  currentMarketPrice={getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue}
+                  currentLowPrice={selectedCatalogDetailProduct.lowPrice}
+                  currentMidPrice={selectedCatalogDetailProduct.midPrice}
+                  currentHighPrice={selectedCatalogDetailProduct.highPrice}
+                  lastPriceChecked={selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.marketLastUpdated}
+                  money={money}
+                />
                 {selectedCatalogDetailProduct.notes ? <p className="compact-subtitle">{selectedCatalogDetailProduct.notes}</p> : null}
               </div>
             </aside>
@@ -11672,6 +12283,19 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
           <DetailItem key={label} label={label} value={value} />
         ))}
       </div>
+      <MarketPriceHistoryPanel
+        compact
+        catalogProductId={item.catalogProductId || item.catalogItemId}
+        tcgplayerProductId={item.tcgplayerProductId || item.sku}
+        externalProductId={item.externalProductId || item.sku}
+        productName={item.name}
+        currentMarketPrice={item.marketPrice}
+        currentLowPrice={item.lowPrice}
+        currentMidPrice={item.midPrice}
+        currentHighPrice={item.highPrice}
+        lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
+        money={money}
+      />
       <div className="quick-actions">
         <button type="button" onClick={() => onSell(item)}>Sell</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
@@ -11713,6 +12337,19 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
           <DetailItem key={label} label={label} value={value} />
         ))}
       </div>
+      <MarketPriceHistoryPanel
+        compact
+        catalogProductId={item.catalogProductId || item.catalogItemId}
+        tcgplayerProductId={item.tcgplayerProductId || item.sku}
+        externalProductId={item.externalProductId || item.sku}
+        productName={item.name}
+        currentMarketPrice={item.marketPrice}
+        currentLowPrice={item.lowPrice}
+        currentMidPrice={item.midPrice}
+        currentHighPrice={item.highPrice}
+        lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
+        money={money}
+      />
       <div className="quick-actions">
         <button type="button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button>
         <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button>

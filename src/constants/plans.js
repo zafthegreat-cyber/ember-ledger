@@ -136,7 +136,29 @@ export function isPaidUser(profile = {}) {
 }
 
 export function isAdminUser(profile = {}) {
-  return normalizeUserRole(profile.userRole || profile.user_role) === USER_ROLES.ADMIN;
+  const appMetadata = profile.app_metadata || profile.raw_app_meta_data || profile.rawAppMetaData || {};
+  const role = normalizeUserRole(
+    profile.userRole ||
+      profile.user_role ||
+      appMetadata.role ||
+      appMetadata.user_role
+  );
+  const tier = getUserTier({
+    ...profile,
+    tier: profile.tier || appMetadata.tier,
+    featureTier: profile.featureTier || appMetadata.feature_tier,
+    subscriptionPlan: profile.subscriptionPlan || appMetadata.subscription_plan,
+  });
+  const metadataAdmin =
+    profile.isAdmin === true ||
+    profile.is_admin === true ||
+    String(profile.isAdmin || "").toLowerCase() === "true" ||
+    String(profile.is_admin || "").toLowerCase() === "true" ||
+    appMetadata.is_admin === true ||
+    appMetadata.isAdmin === true ||
+    String(appMetadata.is_admin || "").toLowerCase() === "true" ||
+    String(appMetadata.isAdmin || "").toLowerCase() === "true";
+  return role === USER_ROLES.ADMIN || metadataAdmin || tier === PLAN_TYPES.FOUNDER;
 }
 
 export function getLockedFeatureMessage(featureKey) {
