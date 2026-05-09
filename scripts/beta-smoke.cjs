@@ -276,7 +276,8 @@ async function main() {
 
   await step("Vault: add/edit/delete Vault item", async () => {
     await nav("The Vault");
-    await page.getByRole("button", { name: "Add Item to Vault", exact: true }).first().click();
+    await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Add Item to Vault/ }).click();
     const vaultForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Add Item to Vault" }) }).first();
     await fillByLabel(vaultForm, "Item Name", "Smoke Vault Binder");
     await fillByLabel(vaultForm, "Quantity", "1");

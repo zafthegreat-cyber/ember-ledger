@@ -56,6 +56,125 @@ import {
 } from "./constants/plans";
 import { getCurrentUserProfile, makeFallbackUserProfile } from "./lib/userProfile";
 
+function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  const downDistance = useRef(0);
+  const upDistance = useRef(0);
+  const lastScrollTime = useRef(0);
+  const lastHideTime = useRef(0);
+
+  useEffect(() => {
+    setIsHeaderHidden(false);
+    lastScrollY.current = typeof window === "undefined" ? 0 : window.scrollY || 0;
+    downDistance.current = 0;
+    upDistance.current = 0;
+    lastScrollTime.current = 0;
+    lastHideTime.current = 0;
+  }, [disabled, resetKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || disabled) {
+      setIsHeaderHidden(false);
+      return undefined;
+    }
+
+    const hideThreshold = 64;
+    const revealThreshold = 56;
+    const quickRevealDelta = 28;
+    const revealSuppressionMs = 320;
+    const topRevealY = 12;
+    const minHideY = 80;
+    let ticking = false;
+
+    const headerHasFocus = () => {
+      const activeElement = document.activeElement;
+      return Boolean(activeElement?.closest?.(".app-header-card"));
+    };
+
+    const resetDistances = () => {
+      downDistance.current = 0;
+      upDistance.current = 0;
+    };
+
+    const reveal = () => {
+      resetDistances();
+      lastHideTime.current = 0;
+      setIsHeaderHidden(false);
+    };
+
+    const update = () => {
+      ticking = false;
+      const currentY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+      const delta = currentY - lastScrollY.current;
+      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+      if (currentY <= topRevealY || headerHasFocus()) {
+        reveal();
+        lastScrollY.current = currentY;
+        lastScrollTime.current = now;
+        return;
+      }
+
+      if (Math.abs(delta) < 4) {
+        return;
+      }
+
+      if (delta > 0) {
+        downDistance.current += delta;
+        upDistance.current = 0;
+        if (currentY > minHideY && downDistance.current >= hideThreshold) {
+          lastHideTime.current = now;
+          setIsHeaderHidden(true);
+        }
+      } else {
+        const upwardDelta = Math.abs(delta);
+        const quickUp = upwardDelta >= quickRevealDelta && now - lastScrollTime.current <= 180;
+        upDistance.current += upwardDelta;
+        downDistance.current = 0;
+        if ((quickUp || upDistance.current >= revealThreshold) && now - lastHideTime.current > revealSuppressionMs) {
+          setIsHeaderHidden(false);
+          upDistance.current = 0;
+        }
+      }
+
+      lastScrollY.current = currentY;
+      lastScrollTime.current = now;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(update);
+      }
+    };
+
+    const onFocusIn = (event) => {
+      if (event.target?.closest?.(".app-header-card")) {
+        reveal();
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("focusin", onFocusIn);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("focusin", onFocusIn);
+    };
+  }, [disabled, resetKey]);
+
+  const revealHeader = () => {
+    downDistance.current = 0;
+    upDistance.current = 0;
+    lastScrollY.current = typeof window === "undefined" ? 0 : window.scrollY || 0;
+    lastHideTime.current = 0;
+    setIsHeaderHidden(false);
+  };
+
+  return { isHeaderHidden, revealHeader };
+}
+
 const IRS_MILEAGE_RATE = 0.725;
 const BETA_LOCAL_MODE = true;
 const SUBSCRIPTIONS_LIVE = false;
@@ -86,7 +205,7 @@ const VAULT_FILTER_OPTIONS = [
   { value: "personal_collection", label: "Personal Collection" },
   { value: "sealed", label: "Sealed / Holding" },
   { value: "moved_to_forge", label: "Moved to Forge" },
-  { value: "wishlist", label: "Wishlist" },
+  { value: "wishlist", label: "Wishlist / Held" },
   { value: "sold_archived", label: "Sold / Archived" },
 ];
 const ACTIVE_VAULT_STATUSES = new Set(["personal_collection", "held", "sealed", "ripped_opened", "wishlist", "ready_for_forge"]);
@@ -202,6 +321,14 @@ const BLANK_MARKETPLACE_FORM = {
   tags: "",
   sourceType: "manual",
   sourceItemId: "",
+};
+const FORGE_IMPORT_BLANK = {
+  fileName: "",
+  importType: "Inventory",
+  sourceApp: "",
+  detectedColumns: [],
+  previewRows: [],
+  mappingNotes: "",
 };
 const blankExpense = {
   date: "",
@@ -1217,6 +1344,7 @@ export default function App() {
   const [importLink, setImportLink] = useState("");
   const [importFileName, setImportFileName] = useState("");
   const [importRows, setImportRows] = useState([]);
+  const [forgeImportForm, setForgeImportForm] = useState(FORGE_IMPORT_BLANK);
   const [backupImportPreview, setBackupImportPreview] = useState(null);
   const [backupImportMessage, setBackupImportMessage] = useState("");
   const [suggestions, setSuggestions] = useState(() => loadSuggestions());
@@ -1443,6 +1571,85 @@ export default function App() {
     { key: "tideTradr", label: "TideTradr", target: "market" },
     { key: "forge", label: "Forge", target: "inventory" },
   ];
+  const forgeTabActive = ["addInventory", "inventory", "addSale", "sales", "expenses", "mileage", "reports"].includes(activeTab);
+  const autoHideBlocked = Boolean(
+    activeFlowModal ||
+    showInventoryScanner ||
+    showCatalogScanner ||
+    listingReviewOpen ||
+    dealFinderOpen ||
+    showVaultAddForm ||
+    scoutScoreModalOpen ||
+    feedbackDialog ||
+    suggestionConflict ||
+    vaultPotentialDuplicate ||
+    vaultDuplicateItem ||
+    vaultForgeTransfer ||
+    selectedCatalogDetailId ||
+    quickAddMenuOpen ||
+    menuOpen ||
+    searchExpanded ||
+    locationPromptOpen ||
+    importAssistantOpen ||
+    listingReportTarget ||
+    vaultListingDecision
+  );
+  const autoHideResetKey = [
+    activeTab,
+    activeMainTab || "standalone",
+    homeSubTab,
+    scoutView,
+    vaultSubTab,
+    tideTradrSubTab,
+    forgeSubTab,
+    marketplaceView,
+  ].join("|");
+  const { isHeaderHidden, revealHeader } = useAutoHideHeader({
+    disabled: autoHideBlocked,
+    resetKey: autoHideResetKey,
+  });
+  const getHeaderCardClass = (className = "") =>
+    `app-header-card${isHeaderHidden ? " app-header-card--hidden" : ""}${className ? ` ${className}` : ""}`;
+  const scoutContextLabels = {
+    main: "Scout",
+    reports: "Scout - Reports",
+    submit: "Scout - Submit Report",
+    alerts: "Scout - Alerts",
+    stores: "Scout - Stores",
+  };
+  const tideTradrContextLabels = {
+    overview: "TideTradr",
+    watch: "TideTradr - Market Watch",
+    recent: "TideTradr - Recent Checks",
+    deal: "TideTradr - Deal Finder",
+  };
+  const forgeContextLabels = {
+    addInventory: "Forge - Add Inventory",
+    addSale: "Forge - Add Sale",
+    sales: "Forge - Sales",
+    expenses: "Forge - Expenses",
+    mileage: "Forge - Mileage",
+    reports: "Forge - Reports",
+    marketplace: "Forge - Marketplace",
+  };
+  const autoHideContextLabel =
+    activeTab === "dashboard"
+      ? "Home"
+      : activeTab === "scout"
+        ? scoutContextLabels[scoutView] || "Scout"
+      : activeTab === "vault"
+        ? "The Vault"
+      : activeTab === "market" || activeTab === "catalog"
+        ? tideTradrContextLabels[tideTradrSubTab] || "TideTradr"
+      : forgeTabActive
+        ? (activeTab === "inventory" && forgeSubTab === "marketplace" ? "Forge - Marketplace" : forgeContextLabels[activeTab] || "Forge")
+      : activeTab === "tidepool"
+        ? "Tidepool"
+      : activeTab === "adminReview"
+        ? "Admin Tools"
+      : activeTab === "mySuggestions"
+        ? "My Suggestions"
+      : activeTabLabel;
 
   function navigateMainTab(tab) {
     if (!confirmLeaveVaultWork()) return;
@@ -1479,7 +1686,7 @@ export default function App() {
 
   function renderPageChrome({ title, subtitle, primary, secondary, quickActions = [], tabs = [], activeSubTab, setActiveSubTab }) {
     return (
-      <section className="page-dashboard-header panel">
+      <section className={getHeaderCardClass("page-dashboard-header panel")}>
         <div className="page-dashboard-header-main">
           <div>
             <h2>{title}</h2>
@@ -2318,6 +2525,8 @@ export default function App() {
   function filterVaultItems(collection, status = "all") {
     return collection.filter((item) => {
       if (status === "all") return isActiveVaultItem(item);
+      if (status === "sealed") return ["sealed", "held"].includes(normalizeVaultStatus(item));
+      if (status === "wishlist") return ["wishlist", "held"].includes(normalizeVaultStatus(item));
       if (status === "sold_archived") {
         const normalizedStatus = normalizeVaultStatus(item);
         return normalizedStatus === "archived" || String(item.status || "").toLowerCase() === "sold";
@@ -2835,6 +3044,106 @@ export default function App() {
       setImportRows(parseImportText(content, extension === "csv" ? "csv" : "text"));
     };
     reader.readAsText(file);
+  }
+
+  function handleForgeImportFileUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const extension = file.name.split(".").pop()?.toLowerCase() || "";
+    setForgeImportForm((current) => ({
+      ...current,
+      fileName: file.name,
+      detectedColumns: [],
+      previewRows: [],
+      mappingNotes: "",
+    }));
+
+    if (["xlsx", "xls"].includes(extension)) {
+      setForgeImportForm((current) => ({
+        ...current,
+        fileName: file.name,
+        detectedColumns: ["Spreadsheet file selected"],
+        mappingNotes: "XLSX uploads are accepted for beta planning. Export to CSV for automatic column preview in this build.",
+      }));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = String(reader.result || "");
+      try {
+        if (extension === "json") {
+          const parsed = JSON.parse(content);
+          const rows = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? parsed.items : [parsed];
+          const detectedColumns = [...new Set(rows.flatMap((row) => Object.keys(row || {})))].slice(0, 16);
+          const csvLike = [
+            detectedColumns.join(","),
+            ...rows.map((row) => detectedColumns.map((column) => String(row?.[column] ?? "").replaceAll(",", " ")).join(",")),
+          ].join("\n");
+          setForgeImportForm((current) => ({
+            ...current,
+            fileName: file.name,
+            detectedColumns,
+            previewRows: parseImportText(csvLike, "json"),
+            mappingNotes: rows.length ? "" : "No rows were found in this JSON file.",
+          }));
+          return;
+        }
+
+        const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+        const detectedColumns = lines.length ? parseCsvLine(lines[0]).filter(Boolean).slice(0, 16) : [];
+        const sourceType = extension === "csv" ? "csv" : "text";
+        setForgeImportForm((current) => ({
+          ...current,
+          fileName: file.name,
+          detectedColumns,
+          previewRows: parseImportText(content, sourceType),
+          mappingNotes: lines.length ? "" : "No rows were found in this file.",
+        }));
+      } catch (error) {
+        setForgeImportForm((current) => ({
+          ...current,
+          fileName: file.name,
+          detectedColumns: [],
+          previewRows: [],
+          mappingNotes: `Could not preview this file yet: ${error.message || "unknown parsing error"}`,
+        }));
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function confirmForgeImportFile(event) {
+    event?.preventDefault?.();
+    const previewRows = forgeImportForm.previewRows || [];
+    if (!forgeImportForm.fileName) {
+      alert("Choose a file to import first.");
+      return;
+    }
+    if (!previewRows.length) {
+      setVaultToast(`${forgeImportForm.fileName} saved for beta import mapping.`);
+      closeFlowModal({ force: true, reset: false });
+      setForgeImportForm(FORGE_IMPORT_BLANK);
+      return;
+    }
+
+    const importType = forgeImportForm.importType;
+    if (importType === "Inventory" || importType === "Mixed/auto-detect") {
+      const nextItems = previewRows.map((row) => importedRowToItem({ ...row, destination: "Forge" }, "Forge"));
+      setItems((current) => [...nextItems, ...current]);
+      setActiveTab("inventory");
+      setForgeSubTab("overview");
+      setVaultToast(`Imported ${nextItems.length} Forge item${nextItems.length === 1 ? "" : "s"} from ${forgeImportForm.fileName}.`);
+      closeFlowModal({ force: true, reset: false });
+      setForgeImportForm(FORGE_IMPORT_BLANK);
+      return;
+    }
+
+    setImportAssistantContext("Forge");
+    setImportRows(previewRows);
+    setVaultToast(`${importType} import preview saved for beta mapping.`);
+    closeFlowModal({ force: true, reset: false });
+    setForgeImportForm(FORGE_IMPORT_BLANK);
   }
 
   function updateImportRow(rowId, updates) {
@@ -3999,6 +4308,7 @@ export default function App() {
     if (type === "addExpense") return Boolean(editingExpenseId) || formsDiffer(expenseForm, blankExpense);
     if (type === "addMileage") return Boolean(editingTripId) || formsDiffer(tripForm, blankTrip);
     if (type === "createListing") return formsDiffer(marketplaceForm, BLANK_MARKETPLACE_FORM);
+    if (type === "forgeImport") return formsDiffer(forgeImportForm, FORGE_IMPORT_BLANK);
     return false;
   }
 
@@ -4023,6 +4333,9 @@ export default function App() {
       setMarketplaceForm(BLANK_MARKETPLACE_FORM);
       setMarketplaceSourcePicker("manual");
       setListingReviewOpen(false);
+    }
+    if (type === "forgeImport") {
+      setForgeImportForm(FORGE_IMPORT_BLANK);
     }
   }
 
@@ -4076,6 +4389,25 @@ export default function App() {
       setTripForm(blankTrip);
     }
     openFlowModal("addMileage", { size: "medium", source: options.source });
+  }
+
+  function openForgeQuickAddFlow() {
+    openFlowModal("forgeQuickAdd", { size: "small", source: "forge" });
+  }
+
+  function openForgeImportFlow() {
+    setForgeImportForm(FORGE_IMPORT_BLANK);
+    openFlowModal("forgeImport", { size: "large", source: "forge" });
+  }
+
+  function openVaultQuickAddFlow() {
+    setActiveTab("vault");
+    openFlowModal("vaultQuickAdd", { size: "small", source: "vault" });
+  }
+
+  function openVaultMoveToForgeFlow() {
+    setActiveTab("vault");
+    openFlowModal("vaultMoveToForge", { size: "medium", source: "vault" });
   }
 
   function openScoutSubmitFlow(options = {}) {
@@ -5748,219 +6080,6 @@ async function importBulkCatalogProducts() {
     return;
   }
 
-  function renderDealFinderContent() {
-    return (
-      <section className="panel tidetradr-deal-panel">
-        <div className="compact-card-header">
-          <div>
-            <h2>Deal Finder</h2>
-            <p>Start with product, quantity, and asking price. Optional values stay tucked away.</p>
-          </div>
-          <span className="status-badge">{dealRecommendation}</span>
-        </div>
-        <form className="form">
-          <Field label="Product">
-            <select value={dealForm.productId} onChange={(event) => selectTideTradrProduct(event.target.value)}>
-              <option value="">Manual deal / lot</option>
-              {catalogProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Deal Title">
-            <input value={dealForm.title} onChange={(e) => updateDealForm("title", e.target.value)} placeholder="Example: 2 ETBs and 1 booster bundle" />
-          </Field>
-          <Field label="Quantity">
-            <input type="number" min="1" value={dealForm.quantity} onChange={(e) => {
-              const quantity = Math.max(1, Number(e.target.value || 1));
-              updateDealForm("quantity", quantity);
-              if (selectedDealProduct) {
-                const info = getTideTradrMarketInfo(selectedDealProduct);
-                setDealForm((old) => ({ ...old, quantity, marketTotal: info.currentMarketValue * quantity, retailTotal: info.msrp * quantity }));
-              }
-            }} />
-          </Field>
-          <Field label="Asking Price">
-            <input type="number" step="0.01" value={dealForm.askingPrice} onChange={(e) => updateDealForm("askingPrice", e.target.value)} placeholder="Total lot price" />
-          </Field>
-          <details className="scout-score-guidelines">
-            <summary>More Details</summary>
-            <div className="form">
-              <Field label="Condition / Status">
-                <select value={dealForm.condition} onChange={(e) => updateDealForm("condition", e.target.value)}>
-                  <option>Sealed</option>
-                  <option>Damaged box</option>
-                  <option>Opened</option>
-                  <option>Mixed lot</option>
-                  <option>Unknown</option>
-                </select>
-              </Field>
-              <Field label="Market Total">
-                <input type="number" step="0.01" value={dealForm.marketTotal} onChange={(e) => updateDealForm("marketTotal", e.target.value)} />
-              </Field>
-              <Field label="Retail / MSRP Total">
-                <input type="number" step="0.01" value={dealForm.retailTotal} onChange={(e) => updateDealForm("retailTotal", e.target.value)} />
-              </Field>
-              <Field label="Notes">
-                <input value={dealForm.notes} onChange={(e) => updateDealForm("notes", e.target.value)} placeholder="Condition, store, seller, trade notes..." />
-              </Field>
-            </div>
-          </details>
-          <button type="button" onClick={() => setVaultToast("Deal recommendation updated.")}>Calculate Deal</button>
-        </form>
-        <div className="cards mini-cards">
-          <div className="card"><p>Recommendation</p><h2>{dealRecommendation}</h2></div>
-          <div className="card"><p>Deal Rating</p><h2>{dealRating}</h2></div>
-          <div className="card"><p>Percent of Market</p><h2>{dealPercentOfMarket.toFixed(1)}%</h2></div>
-          <div className="card"><p>Percent of MSRP</p><h2>{dealPercentOfRetail.toFixed(1)}%</h2></div>
-          <div className="card"><p>Potential Profit</p><h2>{money(dealPotentialProfit)}</h2></div>
-          <div className="card"><p>ROI</p><h2>{dealRoi.toFixed(1)}%</h2></div>
-        </div>
-        <p className="compact-subtitle">{dealRecommendationReason}</p>
-      </section>
-    );
-  }
-
-  function renderTideTradrHeader() {
-    return (
-      <section className="tab-summary panel tidetradr-summary-card">
-        <div>
-          <h2>TideTradr</h2>
-          <p>Search products, check market values, watch items, and compare deals.</p>
-        </div>
-        <form className="catalog-search-form" onSubmit={submitCatalogSearch}>
-          <SmartCatalogSearchBox
-            value={catalogSearch}
-            onChange={updateCatalogSearchInput}
-            onSearch={() => submitCatalogSearch()}
-            onSelectSuggestion={selectCatalogRecommendation}
-            supabase={supabase}
-            isSupabaseConfigured={isSupabaseConfigured}
-            mapRow={mapCatalog}
-            productGroup={currentCatalogProductGroup()}
-            dataFilter={catalogDataFilter}
-            inputClassName="search-input"
-            placeholder="Search by name, set, product type, card number, or scanned barcode..."
-            closeSignal={catalogSuggestionCloseSignal}
-            maxSuggestions={5}
-            money={money}
-          />
-          <button type="submit">Search</button>
-        </form>
-        <QuickActionGrid
-          className="tidetradr-shortcut-grid"
-          ariaLabel="TideTradr quick actions"
-          actions={[
-            {
-              key: "tidetradr-watch",
-              title: "Market Watch",
-              subtitle: `${tideTradrWatchlist.length} watched`,
-              onClick: () => setTideTradrSubTab("watch"),
-            },
-            {
-              key: "tidetradr-deal",
-              title: "Deal Finder",
-              subtitle: "Check Deal",
-              ariaLabel: "Check Deal",
-              onClick: () => openDealFinderModal(),
-            },
-            {
-              key: "tidetradr-watchlist",
-              title: "Watchlist",
-              subtitle: `${tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned`,
-              onClick: () => setTideTradrSubTab("watch"),
-            },
-            {
-              key: "tidetradr-recent",
-              title: "Recent Checks",
-              subtitle: tideTradrLookupProduct ? catalogTitle(tideTradrLookupProduct) : "No recent check yet",
-              onClick: () => setTideTradrSubTab("recent"),
-            },
-          ]}
-        />
-      </section>
-    );
-  }
-
-  function renderScoutHeader() {
-    return (
-      <section className="tab-summary panel">
-        <div>
-          <h2>Scout</h2>
-          <p>Find stores, submit reports, and check alerts near you.</p>
-        </div>
-        <QuickActionGrid
-          className="scout-main-actions"
-          ariaLabel="Scout quick actions"
-          actions={[
-            {
-              key: "scout-submit",
-              title: "Submit Report",
-              subtitle: "Restock or sighting",
-              onClick: () => {
-                openScoutSubmitFlow();
-              },
-            },
-            {
-              key: "scout-stores",
-              title: "Stores",
-              subtitle: `${scoutSnapshot.stores.length} nearby entries`,
-              onClick: () => {
-                if (!requestScoutLocation()) return;
-                setScoutSubTabTarget({ tab: "stores", id: Date.now() });
-                setScoutView("stores");
-              },
-            },
-            {
-              key: "scout-reports",
-              title: "Reports",
-              subtitle: `${(scoutSnapshot.reports || []).length} recent`,
-              onClick: () => {
-                setScoutReportFilter("Latest");
-                setScoutView("reports");
-              },
-            },
-            {
-              key: "scout-alerts",
-              title: "Alerts",
-              subtitle: `${(scoutSnapshot.bestBuyAlerts || []).length} active`,
-              onClick: () => {
-                setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-                setScoutView("alerts");
-              },
-            },
-            {
-              key: "scout-score",
-              title: "Scout Score",
-              subtitle: `${scoutSnapshot.scoutProfile?.trustScore || 72} trust score`,
-              onClick: () => setScoutScoreModalOpen(true),
-            },
-          ]}
-        />
-      </section>
-    );
-  }
-
-  function renderForgeHeader() {
-    return (
-      <section className="tab-summary panel forge-hero-panel">
-        <div>
-          <h2>Forge</h2>
-          <p>Business inventory, sales, expenses, mileage, reports, and marketplace.</p>
-        </div>
-        <QuickActionGrid
-          className="forge-quick-action-grid"
-          ariaLabel="Forge quick actions"
-          actions={[
-            { key: "forge-add-inventory", title: "Add Inventory", subtitle: "Track a sellable item", ariaLabel: "Add Inventory", onClick: () => openAddInventoryFlow() },
-            { key: "forge-add-sale", title: "Add Sale", subtitle: "Record revenue and profit", onClick: () => openAddSaleFlow() },
-            { key: "forge-add-expense", title: "Add Expense", subtitle: "Receipts, fees, supplies", onClick: () => openAddExpenseFlow() },
-            { key: "forge-add-mileage", title: "Add Mileage", subtitle: "Business trip tracking", onClick: () => openAddMileageFlow() },
-            { key: "forge-create-listing", title: "Create Listing", subtitle: "Marketplace draft", onClick: () => openMarketplaceCreate("manual", {}) },
-          ]}
-        />
-      </section>
-    );
-  }
-
   if (!user) {
     alert("Please log in first.");
     return;
@@ -6096,7 +6215,7 @@ function renderDealFinderContent() {
 
 function renderTideTradrHeader() {
   return (
-    <section className="tab-summary panel tidetradr-summary-card">
+    <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>
       <div>
         <h2>TideTradr</h2>
         <p>Search products, check market values, watch items, and compare deals.</p>
@@ -6161,7 +6280,7 @@ function renderScoutHeader() {
   const scoutActiveAlertCount = (scoutSnapshot.bestBuyAlerts || []).length;
   const scoutTrustScore = scoutSnapshot.scoutProfile?.trustScore || 72;
   return (
-    <section className="tab-summary panel scout-summary-card">
+    <section className={getHeaderCardClass("tab-summary panel scout-summary-card")}>
       <div className="scout-summary-top">
         <div>
           <h2>Scout</h2>
@@ -6217,24 +6336,203 @@ function renderScoutHeader() {
   );
 }
 
-function renderForgeHeader() {
+function renderVaultHeader() {
+  const personalCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "personal_collection").length;
+  const sealedHoldingCount = vaultItems.filter((item) => ["sealed", "held"].includes(normalizeVaultStatus(item))).length;
+  const wishlistHeldCount = vaultItems.filter((item) => ["wishlist", "held"].includes(normalizeVaultStatus(item))).length;
+  const movedToForgeCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "moved_to_forge").length;
+
+  const openVaultItems = (filter = "all") => {
+    setVaultFilter(filter);
+    setActiveTab("vault");
+    setTimeout(() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
+
+  const vaultOverviewCards = [
+    {
+      key: "total-items",
+      title: "Total Items",
+      value: activeVaultItems.length,
+      helper: "Cards, sealed, and held items.",
+      active: vaultFilter === "all",
+      onClick: () => openVaultItems("all"),
+    },
+    {
+      key: "total-market",
+      title: "Total Market",
+      value: money(vaultValue),
+      helper: "Current tracked collection value.",
+      active: false,
+      onClick: () => openVaultItems("all"),
+    },
+    {
+      key: "personal",
+      title: "Personal Collection",
+      value: personalCount,
+      helper: "Items you plan to keep.",
+      active: vaultFilter === "personal_collection",
+      onClick: () => openVaultItems("personal_collection"),
+    },
+    {
+      key: "sealed",
+      title: "Sealed / Holding",
+      value: sealedHoldingCount,
+      helper: "Sealed items or long-term holds.",
+      active: vaultFilter === "sealed",
+      onClick: () => openVaultItems("sealed"),
+    },
+    {
+      key: "wishlist",
+      title: "Wishlist / Held",
+      value: wishlistHeldCount,
+      helper: "Saved wants and future buys.",
+      active: vaultFilter === "wishlist",
+      onClick: () => openVaultItems("wishlist"),
+    },
+  ];
+
+  if (movedToForgeCount > 0) {
+    vaultOverviewCards.push({
+      key: "moved",
+      title: "Moved to Forge",
+      value: movedToForgeCount,
+      helper: "Items moved into business inventory.",
+      active: vaultFilter === "moved_to_forge",
+      onClick: () => openVaultItems("moved_to_forge"),
+    });
+  }
+
   return (
-    <section className="tab-summary panel forge-hero-panel">
-      <div>
-        <h2>Forge</h2>
-        <p>Business inventory, sales, expenses, mileage, reports, and marketplace.</p>
+    <section className={getHeaderCardClass("tab-summary panel vault-command-center")}>
+      <div className="vault-command-top">
+        <div>
+          <h2>The Vault</h2>
+          <p>Personal collection and held items.</p>
+        </div>
+        <button type="button" className="vault-command-quick-add" onClick={openVaultQuickAddFlow}>
+          Quick Add
+        </button>
       </div>
-      <QuickActionGrid
-        className="forge-quick-action-grid"
-        ariaLabel="Forge quick actions"
-        actions={[
-          { key: "forge-add-inventory", title: "Add Inventory", subtitle: "Track a sellable item", ariaLabel: "Add Inventory", onClick: () => openAddInventoryFlow() },
-          { key: "forge-add-sale", title: "Add Sale", subtitle: "Record revenue and profit", onClick: () => openAddSaleFlow() },
-          { key: "forge-add-expense", title: "Add Expense", subtitle: "Receipts, fees, supplies", onClick: () => openAddExpenseFlow() },
-          { key: "forge-add-mileage", title: "Add Mileage", subtitle: "Business trip tracking", onClick: () => openAddMileageFlow() },
-          { key: "forge-create-listing", title: "Create Listing", subtitle: "Marketplace draft", onClick: () => openMarketplaceCreate("manual", {}) },
-        ]}
-      />
+      <div className="vault-command-section-label">Collection Overview</div>
+      <div className="vault-command-overview" aria-label="Vault Collection Overview">
+        {vaultOverviewCards.map((card) => (
+          <button
+            key={card.key}
+            type="button"
+            className={`vault-overview-card${card.active ? " is-active" : ""}`}
+            onClick={card.onClick}
+          >
+            <span className="vault-overview-title">{card.title}</span>
+            <strong>{card.value}</strong>
+            <span>{card.helper}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function renderForgeHeader() {
+  const activeMarketplaceCount = marketplaceListings.filter((listing) => listing.status === "Active").length;
+  const forgeOverviewCards = [
+    {
+      key: "inventory",
+      title: "Inventory",
+      value: money(totalMarketValue),
+      helper: "Inventory, imports, and sellable items.",
+      active: activeTab === "inventory" && forgeSubTab !== "marketplace",
+      onClick: () => {
+        setForgeSubTab("overview");
+        setActiveTab("inventory");
+        setTimeout(() => document.getElementById("forge-inventory-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+      },
+    },
+    {
+      key: "sales",
+      title: "Sales",
+      value: money(totalSalesRevenue),
+      secondary: `${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`,
+      helper: "Revenue, sold items, and sale records.",
+      active: activeTab === "sales",
+      onClick: () => {
+        setForgeSubTab("overview");
+        setActiveTab("sales");
+      },
+    },
+    {
+      key: "expenses",
+      title: "Expenses",
+      value: money(totalExpenses),
+      helper: "Receipts, fees, supplies, shipping, and events.",
+      active: activeTab === "expenses",
+      onClick: () => {
+        setForgeSubTab("overview");
+        setActiveTab("expenses");
+      },
+    },
+    {
+      key: "mileage",
+      title: "Mileage",
+      value: `${totalBusinessMiles.toFixed(1)} mi`,
+      helper: "Business trips and vehicle costs.",
+      active: activeTab === "mileage",
+      onClick: () => {
+        setForgeSubTab("overview");
+        setActiveTab("mileage");
+      },
+    },
+    {
+      key: "marketplace",
+      title: "Marketplace",
+      value: `${activeMarketplaceCount} listing${activeMarketplaceCount === 1 ? "" : "s"}`,
+      helper: "Listings, drafts, saved items, and review.",
+      active: activeTab === "inventory" && forgeSubTab === "marketplace",
+      onClick: () => {
+        setMarketplaceView("browse");
+        setForgeSubTab("marketplace");
+        setActiveTab("inventory");
+      },
+    },
+    {
+      key: "reports",
+      title: "Reports",
+      value: money(estimatedProfitAfterExpenses),
+      secondary: `Planned profit: ${money(estimatedProfit)}`,
+      helper: "Profit/loss, monthly spending, and exports.",
+      active: activeTab === "reports",
+      onClick: () => {
+        setForgeSubTab("overview");
+        setActiveTab("reports");
+      },
+    },
+  ];
+  return (
+    <section className={getHeaderCardClass("tab-summary panel forge-hero-panel forge-command-center")}>
+      <div className="forge-command-top">
+        <div>
+          <h2>Forge</h2>
+          <p>Business inventory, sales, expenses, mileage, reports, and marketplace.</p>
+        </div>
+        <button type="button" className="forge-command-quick-add" onClick={openForgeQuickAddFlow}>
+          Quick Add
+        </button>
+      </div>
+      <div className="forge-command-section-label">Business Overview</div>
+      <div className="forge-command-overview" aria-label="Forge Business Overview">
+        {forgeOverviewCards.map((card) => (
+          <button
+            key={card.key}
+            type="button"
+            className={`forge-overview-card${card.active ? " is-active" : ""}`}
+            onClick={card.onClick}
+          >
+            <span className="forge-overview-title">{card.title}</span>
+            <strong>{card.value}</strong>
+            {card.secondary ? <small>{card.secondary}</small> : null}
+            <span>{card.helper}</span>
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -6939,17 +7237,17 @@ function renderForgeHeader() {
     .reduce((sum, sale) => sum + Number(sale.netProfit || 0), 0);
   const monthlySpending = monthlyItemSpending + monthlyExpenses;
   const monthlyProfitLoss = monthlySalesProfit - monthlyExpenses;
-  const vaultItems = items.filter((i) =>
+  const vaultItems = useMemo(() => items.filter((i) =>
     i.vaultStatus ||
     ["Personal Collection", "Held", "Wishlist", "Sealed", "Sealed / Holding", "Ripped / Opened", "Moved to Forge", "Traded"].includes(i.status) ||
     String(i.actionNotes || "").toLowerCase().includes("keep") ||
     String(i.actionNotes || "").toLowerCase().includes("rip") ||
     String(i.actionNotes || "").toLowerCase().includes("trade") ||
     String(i.actionNotes || "").toLowerCase().includes("wishlist")
-  );
-  const activeVaultItems = vaultItems.filter(isActiveVaultItem);
+  ), [items]);
+  const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const vaultCatalogSearchTerm = String(vaultForm.tideTradrSearch || vaultForm.name || "").trim().toLowerCase();
-  const vaultSuggestedCatalogItems = catalogProducts
+  const vaultSuggestedCatalogItems = useMemo(() => catalogProducts
     .filter((product) => {
       if (!vaultCatalogSearchTerm) return true;
       return [
@@ -6964,8 +7262,8 @@ function renderForgeHeader() {
         product.sku,
       ].filter(Boolean).some((value) => String(value).toLowerCase().includes(vaultCatalogSearchTerm));
     })
-    .slice(0, 4);
-  const visibleVaultItems = searchVaultItems(filterVaultItems(vaultItems, vaultFilter), vaultSearch)
+    .slice(0, 4), [catalogProducts, vaultCatalogSearchTerm]);
+  const visibleVaultItems = useMemo(() => searchVaultItems(filterVaultItems(vaultItems, vaultFilter), vaultSearch)
     .sort((a, b) => {
       const aMarket = Number(a.marketPrice || 0) * Number(a.quantity || 0);
       const bMarket = Number(b.marketPrice || 0) * Number(b.quantity || 0);
@@ -6980,11 +7278,11 @@ function renderForgeHeader() {
       if (vaultSort === "highestRoi") return bRoi - aRoi;
       if (vaultSort === "quantity") return Number(b.quantity || 0) - Number(a.quantity || 0);
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    });
-  const vaultValue = activeVaultItems.reduce(
+    }), [vaultItems, vaultFilter, vaultSearch, vaultSort]);
+  const vaultValue = useMemo(() => activeVaultItems.reduce(
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || 0),
     0
-  );
+  ), [activeVaultItems]);
   const homeStatsProfile = { userType, homeStatsEnabled };
   const dashboardStats = [
     { key: "collection_value", label: "Collection Value", value: money(vaultValue) },
@@ -8095,7 +8393,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       : ownSuggestions.filter((suggestion) => suggestion.status === mySuggestionFilter);
     return (
       <section className="panel approval-page">
-        <div className="compact-card-header">
+        <div className={getHeaderCardClass("compact-card-header")}>
           <div>
             <h2>My Suggestions</h2>
             <p>Universal store, catalog, SKU, and Scout data suggestions you submitted for admin approval.</p>
@@ -8226,7 +8524,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const totalOpenCount = openCount + listingReviewItems.length;
     return (
       <section className="panel approval-page">
-        <div className="compact-card-header">
+        <div className={getHeaderCardClass("compact-card-header")}>
           <div>
             <h2>Admin Tools</h2>
             <p>Import status, shared-data review, Marketplace moderation, and beta data controls in one place.</p>
@@ -8885,7 +9183,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderTidepoolCommunity() {
     return (
       <section className="panel tidepool-community">
-        <div className="compact-card-header">
+        <div className={getHeaderCardClass("compact-card-header")}>
           <div>
             <h2>Tidepool</h2>
             <p>Community feed for posts, questions, sightings, events, comments, confirmations, and replies.</p>
@@ -8999,6 +9297,34 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function flowModalMeta() {
+    if (activeFlowModal?.type === "forgeQuickAdd") {
+      return {
+        title: "Quick Add",
+        description: "Create or import Forge records without leaving the current page.",
+        size: "small",
+      };
+    }
+    if (activeFlowModal?.type === "forgeImport") {
+      return {
+        title: "Import File",
+        description: "Upload a sales, inventory, expense, or marketplace file and preview the mapping before saving.",
+        size: "large",
+      };
+    }
+    if (activeFlowModal?.type === "vaultQuickAdd") {
+      return {
+        title: "Vault Quick Add",
+        description: "Add, scan, import, or move Vault items without leaving the collection.",
+        size: "small",
+      };
+    }
+    if (activeFlowModal?.type === "vaultMoveToForge") {
+      return {
+        title: "Move Item to Forge",
+        description: "Choose a Vault item to move into business inventory.",
+        size: "medium",
+      };
+    }
     if (activeFlowModal?.type === "addInventory") {
       return {
         title: editingItemId ? "Edit Forge Inventory" : "Add Forge Inventory",
@@ -9290,7 +9616,219 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderForgeQuickAddFlowContent() {
+    const options = [
+      { key: "inventory", title: "Add Inventory", helper: "Track a sellable item.", onClick: () => openAddInventoryFlow() },
+      { key: "sale", title: "Add Sale", helper: "Record revenue and profit.", onClick: () => openAddSaleFlow() },
+      { key: "expense", title: "Add Expense", helper: "Receipts, fees, supplies.", onClick: () => openAddExpenseFlow() },
+      { key: "mileage", title: "Add Mileage", helper: "Business trip tracking.", onClick: () => openAddMileageFlow() },
+      { key: "listing", title: "Create Listing", helper: "Draft a Marketplace listing.", onClick: () => openMarketplaceCreate("manual", {}) },
+      { key: "import", title: "Import File", helper: "Import sales, inventory, or expense files.", onClick: () => openForgeImportFlow() },
+    ];
+
+    return (
+      <div className="forge-quick-add-panel">
+        <div className="forge-quick-add-grid">
+          {options.map((option) => (
+            <button key={option.key} type="button" className="forge-quick-add-option" onClick={option.onClick}>
+              <strong>{option.title}</strong>
+              <span>{option.helper}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function renderVaultQuickAddFlowContent() {
+    const runVaultQuickAction = (action) => {
+      if (!closeFlowModal({ force: true })) return;
+      action();
+    };
+    const options = [
+      {
+        key: "add",
+        title: "Add Item to Vault",
+        helper: "Manual add with Vault details.",
+        onClick: () => runVaultQuickAction(() => openVaultQuickAdd({ category: "Personal collection", subTab: "collection" })),
+      },
+      {
+        key: "scan",
+        title: "Scan to Vault",
+        helper: "Scan first, review second.",
+        onClick: () => runVaultQuickAction(() => beginScanProduct("vault")),
+      },
+      {
+        key: "catalog",
+        title: "Import from TideTradr",
+        helper: "Search catalog and prefill item data.",
+        onClick: () => runVaultQuickAction(() => {
+          setActiveTab("vault");
+          setVaultAddMode("catalog");
+          setShowVaultAddForm(true);
+        }),
+      },
+      {
+        key: "collection-import",
+        title: "Import Collection",
+        helper: "Upload or map a collection later.",
+        onClick: () => runVaultQuickAction(() => {
+          setActiveTab("vault");
+          setVaultAddMode("import");
+          setShowVaultAddForm(true);
+        }),
+      },
+      {
+        key: "move",
+        title: "Move Item to Forge",
+        helper: "Choose a Vault item for business inventory.",
+        onClick: () => runVaultQuickAction(openVaultMoveToForgeFlow),
+      },
+      {
+        key: "wishlist",
+        title: "Add Wishlist / Held Item",
+        helper: "Save wants and future buys.",
+        onClick: () => runVaultQuickAction(() => openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist" })),
+      },
+    ];
+
+    return (
+      <div className="vault-quick-add-panel">
+        <div className="vault-quick-add-grid">
+          {options.map((option) => (
+            <button key={option.key} type="button" className="vault-quick-add-option" onClick={option.onClick}>
+              <strong>{option.title}</strong>
+              <span>{option.helper}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function renderVaultMoveToForgeFlowContent() {
+    const movableVaultItems = activeVaultItems.filter((item) => normalizeVaultStatus(item) !== "wishlist");
+
+    if (!movableVaultItems.length) {
+      return (
+        <div className="empty-state small-empty-state vault-move-empty">
+          <h3>No movable Vault items yet.</h3>
+          <p>Add a personal collection or sealed item first, then move it into Forge when it becomes business inventory.</p>
+          <button type="button" onClick={() => {
+            if (!closeFlowModal({ force: true })) return;
+            openVaultQuickAdd({ category: "Personal collection", subTab: "collection" });
+          }}>
+            Add Item to Vault
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="vault-move-panel">
+        <p className="compact-subtitle">Pick the item you want to transfer. You will review quantity and cost before confirming.</p>
+        <div className="vault-move-list">
+          {movableVaultItems.slice(0, 10).map((item) => (
+            <button key={item.id} type="button" className="vault-move-option" onClick={() => {
+              if (!closeFlowModal({ force: true })) return;
+              setSelectedVaultDetailId(item.id);
+              openVaultForgeTransfer(item, "move");
+            }}>
+              <span>
+                <strong>{item.name}</strong>
+                <small>{vaultStatusLabel(normalizeVaultStatus(item))} | Qty {item.quantity || 1}</small>
+              </span>
+              <em>{money(Number(item.marketPrice || 0) * Number(item.quantity || 1))}</em>
+            </button>
+          ))}
+        </div>
+        {movableVaultItems.length > 10 ? (
+          <p className="compact-subtitle">Showing 10 of {movableVaultItems.length}. Use Vault Items filters to open a specific item.</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderForgeImportFlowContent() {
+    const previewRows = forgeImportForm.previewRows || [];
+    return (
+      <form className="form forge-import-flow" onSubmit={confirmForgeImportFile}>
+        <div className="flow-form-grid">
+          <Field label="Upload File">
+            <input type="file" accept=".csv,.xlsx,.xls,.json,.txt,.tsv" onChange={handleForgeImportFileUpload} />
+          </Field>
+          <Field label="Import Type">
+            <select value={forgeImportForm.importType} onChange={(event) => setForgeImportForm((current) => ({ ...current, importType: event.target.value }))}>
+              <option>Inventory</option>
+              <option>Sales</option>
+              <option>Expenses</option>
+              <option>Marketplace listings</option>
+              <option>Mixed/auto-detect</option>
+            </select>
+          </Field>
+          <Field label="Source / App Name">
+            <input
+              value={forgeImportForm.sourceApp}
+              onChange={(event) => setForgeImportForm((current) => ({ ...current, sourceApp: event.target.value }))}
+              placeholder="eBay, Whatnot, Google Sheets, Collectr..."
+            />
+          </Field>
+          <Field label="Selected File">
+            <input value={forgeImportForm.fileName || "No file selected"} readOnly />
+          </Field>
+        </div>
+
+        <details className="forge-import-mapping" open={Boolean(forgeImportForm.detectedColumns.length || previewRows.length)}>
+          <summary>Preview detected columns and mapping</summary>
+          {forgeImportForm.detectedColumns.length ? (
+            <div className="forge-import-columns">
+              {forgeImportForm.detectedColumns.map((column) => <span key={column}>{column}</span>)}
+            </div>
+          ) : (
+            <p className="compact-subtitle">Choose a CSV or JSON file to preview columns. XLSX is accepted, but CSV gives the cleanest beta preview.</p>
+          )}
+          <Field label="Mapping Notes">
+            <textarea
+              value={forgeImportForm.mappingNotes}
+              onChange={(event) => setForgeImportForm((current) => ({ ...current, mappingNotes: event.target.value }))}
+              placeholder="Example: title maps to item name, paid maps to cost, sold_at maps to sale date..."
+            />
+          </Field>
+        </details>
+
+        {previewRows.length ? (
+          <div className="forge-import-preview-list">
+            {previewRows.slice(0, 5).map((row) => (
+              <div className="inventory-card compact-card" key={row.importedItemId}>
+                <div>
+                  <h3>{row.itemName}</h3>
+                  <p>{row.productType || row.setName || "Imported row"}</p>
+                  <small>{row.possibleMatchName ? `Catalog match: ${row.possibleMatchName}` : "No catalog match yet"} | Qty {row.quantity || 1}</small>
+                </div>
+                <span className="status-badge">{row.sourceType}</span>
+              </div>
+            ))}
+            {previewRows.length > 5 ? <p className="compact-subtitle">Showing 5 of {previewRows.length} rows.</p> : null}
+          </div>
+        ) : (
+          <div className="empty-state small-empty-state">
+            <h3>Choose a file to preview before saving.</h3>
+            <p>CSV and JSON can preview columns now. XLSX is accepted for beta planning and works best after exporting to CSV.</p>
+          </div>
+        )}
+
+        <div className="flow-form-footer">
+          <button type="submit" disabled={!forgeImportForm.fileName}>Import / Save</button>
+        </div>
+      </form>
+    );
+  }
+
   function renderFlowModalContent() {
+    if (activeFlowModal?.type === "forgeQuickAdd") return renderForgeQuickAddFlowContent();
+    if (activeFlowModal?.type === "forgeImport") return renderForgeImportFlowContent();
+    if (activeFlowModal?.type === "vaultQuickAdd") return renderVaultQuickAddFlowContent();
+    if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();
     if (activeFlowModal?.type === "addInventory") return renderAddInventoryFlowContent();
     if (activeFlowModal?.type === "addSale") return renderAddSaleFlowContent();
     if (activeFlowModal?.type === "addExpense") return renderAddExpenseFlowContent();
@@ -9374,11 +9912,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, listingReviewOpen, dealFinderOpen, showVaultAddForm, scoutScoreModalOpen, feedbackDialog, itemForm, saleForm, expenseForm, tripForm, marketplaceForm]);
+  }, [activeFlowModal, showInventoryScanner, listingReviewOpen, dealFinderOpen, showVaultAddForm, scoutScoreModalOpen, feedbackDialog, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm]);
 
   if (!user) {
     return (
-      <div className="app">
+      <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
         <header className="header">
           <h1
   onClick={() => {
@@ -9413,7 +9951,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   return (
-    <div className="app">
+    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
     <header className="header">
   <h1
     onClick={() => {
@@ -9599,6 +10137,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </button>
         ))}
       </nav>
+
+      {isHeaderHidden ? (
+        <div className="app-compact-context-bar" aria-label="Current section">
+          <strong>{autoHideContextLabel}</strong>
+          <button type="button" className="secondary-button" onClick={revealHeader}>Show header</button>
+        </div>
+      ) : null}
 
       {menuOpen ? (
         <>
@@ -10691,7 +11236,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {!activeTabLocked && activeTab === "adminReview" && renderAdminReviewPage()}
         {!activeTabLocked && activeTab === "dashboard" && (
           <div className="dashboard-layout home-clean-layout">
-            <section className="panel page-summary-card home-summary-card">
+            <section className={getHeaderCardClass("panel page-summary-card home-summary-card")}>
               <div className="home-summary-header">
                 <div className="page-summary-copy">
                   <h1>Home</h1>
@@ -11710,54 +12255,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "vault" && (
           <>
-            {renderPageChrome({
-              title: "The Vault",
-              subtitle: "Personal collection and held items.",
-              quickActions: [
-                { key: "vault-add", title: "Add Item", subtitle: "Manual or catalog item", onClick: () => { setVaultSubTab("collection"); setVaultAddMode("manual"); setVaultFormSections({ basic: true, pricing: false, status: false, extra: false }); setShowVaultAddForm(true); } },
-                { key: "vault-scan", title: "Scan to Vault", subtitle: "Review before saving", onClick: () => beginScanProduct("vault") },
-                {
-                  key: "vault-move-forge",
-                  title: "Move to Forge",
-                  subtitle: "Choose an item first",
-                  onClick: () => {
-                    const item = vaultItems.find((vaultItem) => vaultItem.id === selectedVaultDetailId);
-                    if (item) openVaultForgeTransfer(item, "move");
-                    else setVaultToast("Open a Vault item first, then choose Move to Forge.");
-                  },
-                },
-                { key: "vault-import", title: "Import from TideTradr", subtitle: "Search catalog to prefill", onClick: () => { setVaultAddMode("catalog"); setShowVaultAddForm(true); } },
-                { key: "vault-wishlist-held", title: "Wishlist / Held", subtitle: "View saved wants", onClick: () => setVaultFilter(vaultFilter === "wishlist" ? "sealed" : "wishlist") },
-              ],
-            })}
-            <section className="panel vault-overview-panel">
-              <div className="compact-card-header">
-                <div>
-                  <h2>Vault Summary</h2>
-                  <p>Collection counts and market value at a glance.</p>
-                </div>
-              </div>
-              <dl className="vault-summary-list">
-                <div>
-                  <dt>Total Items</dt>
-                  <dd>{activeVaultItems.length}</dd>
-                </div>
-                <div>
-                  <dt>Total Market</dt>
-                  <dd>{money(vaultValue)}</dd>
-                </div>
-                <div>
-                  <dt>Personal Collection</dt>
-                  <dd>{vaultItems.filter((item) => normalizeVaultStatus(item) === "personal_collection").length}</dd>
-                </div>
-                <div>
-                  <dt>Sealed / Holding</dt>
-                  <dd>{vaultItems.filter((item) => ["held", "sealed"].includes(normalizeVaultStatus(item))).length}</dd>
-                </div>
-              </dl>
-            </section>
+            {renderVaultHeader()}
 
-            <section className="panel">
+            <section id="vault-items-section" className="panel">
               <div className="compact-card-header">
                 <div>
                   <h2>Vault Items</h2>
@@ -11827,9 +12327,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <h3>Your Vault is empty.</h3>
                     <p>Add personal collection items, sealed products, or cards you want to hold.</p>
                     <div className="quick-actions">
-                      <button type="button" onClick={() => setShowVaultAddForm(true)}>Add Item to Vault</button>
-                      <button type="button" className="secondary-button" onClick={() => beginScanProduct("vault")}>Scan to Vault</button>
-                      <button type="button" className="secondary-button" onClick={() => setVaultToast("Collection import is coming soon. For now, add items manually or scan them.")}>Import Collection</button>
+                      <button type="button" onClick={openVaultQuickAddFlow}>Quick Add</button>
                     </div>
                   </div>
                 ) : (
@@ -11964,7 +12462,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ) : (
             <>
             {false ? (
-            <section className="tab-summary panel">
+            <section className={getHeaderCardClass("tab-summary panel")}>
               <div>
                 <h2>Scout</h2>
                 <p>Find stores, submit reports, and check alerts near you.</p>
@@ -12085,7 +12583,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "menu" && (
           <>
-            <section className="tab-summary panel">
+            <section className={getHeaderCardClass("tab-summary panel")}>
               <div>
                 <h2>Menu</h2>
                 <p>Menu now lives in the top drawer so the main tabs stay focused.</p>
@@ -12115,7 +12613,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ) : tideTradrSubTab === "watch" ? (
               <>
                 {false ? (
-                <section className="tab-summary panel">
+                <section className={getHeaderCardClass("tab-summary panel")}>
                   <div>
                     <h2>TideTradr &gt; Market Watch</h2>
                     <p>Watched products, pinned items, recent value checks, and deal shortcuts.</p>
@@ -12126,7 +12624,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </section>
                 ) : null}
                 {false ? (
-                <section className="tab-summary panel">
+                <section className={getHeaderCardClass("tab-summary panel")}>
                   <div>
                     <h2>Market Watch</h2>
                     <p>Watched products, pinned items, recent value checks, and deal shortcuts.</p>
@@ -12231,7 +12729,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ) : (
               <>
                 {false ? (
-                <section className="tab-summary panel tidetradr-summary-card">
+                <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>
                   <div>
                     <h2>TideTradr</h2>
                     <p>Search products, check market values, watch items, and compare deals.</p>
@@ -13488,7 +13986,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         {activeTab === "inventory" && (
           forgeSubTab === "marketplace" ? (
             <>
-              <section className="panel marketplace-page-heading">
+              <section className={getHeaderCardClass("panel marketplace-page-heading")}>
                 <div>
                   <h2>Forge &gt; Marketplace</h2>
                   <p>Create listings from Forge inventory, Vault items, TideTradr catalog products, or manual entry.</p>
@@ -13504,110 +14002,6 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             </>
           ) : (
           <>
-          {false ? (
-          <section className="tab-summary panel forge-hero-panel">
-            <div>
-              <h2>Forge</h2>
-              <p>Business inventory, sales, expenses, mileage, reports, and marketplace.</p>
-            </div>
-            <QuickActionGrid
-              className="forge-quick-action-grid"
-              ariaLabel="Forge quick actions"
-              actions={[
-                { key: "forge-add-inventory", title: "Add Inventory", subtitle: "Track a sellable item", ariaLabel: "Add Inventory", onClick: () => openAddInventoryFlow() },
-                { key: "forge-add-sale", title: "Add Sale", subtitle: "Record revenue and profit", onClick: () => openAddSaleFlow() },
-                { key: "forge-add-expense", title: "Add Expense", subtitle: "Receipts, fees, supplies", onClick: () => openAddExpenseFlow() },
-                { key: "forge-add-mileage", title: "Add Mileage", subtitle: "Business trip tracking", onClick: () => openAddMileageFlow() },
-                { key: "forge-create-listing", title: "Create Listing", subtitle: "Marketplace draft", onClick: () => openMarketplaceCreate("manual", {}) },
-              ]}
-            />
-          </section>
-          ) : null}
-
-          <section className="panel forge-preview-panel">
-            <div className="compact-card-header">
-              <div>
-                <h2>Business Overview</h2>
-                <p>Open each area when you need the full tools. The main page stays summary-first.</p>
-              </div>
-            </div>
-            <div className="forge-preview-grid">
-              <article
-                className="forge-preview-card clickable-card"
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  setForgeSubTab("overview");
-                  setActiveTab("inventory");
-                  setTimeout(() => document.getElementById("forge-inventory-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    setTimeout(() => document.getElementById("forge-inventory-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-                  }
-                }}
-              >
-                <span className="status-badge">Inventory</span>
-                <h3>{money(totalMarketValue)}</h3>
-                <p>Add inventory, import from TideTradr, or scan an item.</p>
-                <div className="summary-pill-row" onClick={(event) => event.stopPropagation()}>
-                  <button type="button" onClick={() => setTimeout(() => document.getElementById("forge-inventory-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0)}>Open Inventory</button>
-                  <button type="button" className="secondary-button" onClick={() => openAddInventoryFlow()}>Add</button>
-                </div>
-              </article>
-              <article
-                className="forge-preview-card clickable-card"
-                role="button"
-                tabIndex={0}
-                onClick={() => setActiveTab("sales")}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    setActiveTab("sales");
-                  }
-                }}
-              >
-                <span className="status-badge">Sales</span>
-                <h3>{money(totalSalesRevenue)}</h3>
-                <p>Record sales without opening a long table first.</p>
-                <small>{totalItemsSold} item{totalItemsSold === 1 ? "" : "s"} sold</small>
-                <div className="summary-pill-row" onClick={(event) => event.stopPropagation()}>
-                  <button type="button" onClick={() => setActiveTab("sales")}>View Sales</button>
-                  <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
-                </div>
-              </article>
-              <article className="forge-preview-card clickable-card" role="button" tabIndex={0} onClick={() => setActiveTab("expenses")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActiveTab("expenses"); } }}>
-                <span className="status-badge">Expenses</span>
-                <h3>{money(totalExpenses)}</h3>
-                <p>Receipts, shipping, packaging, fees, marketing, events, and supplies.</p>
-                <button type="button" onClick={(event) => { event.stopPropagation(); openAddExpenseFlow(); }}>Add Expense</button>
-              </article>
-              <article className="forge-preview-card clickable-card" role="button" tabIndex={0} onClick={() => setActiveTab("mileage")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActiveTab("mileage"); } }}>
-                <span className="status-badge">Mileage</span>
-                <h3>{totalBusinessMiles.toFixed(1)} mi</h3>
-                <p>Business miles and vehicle costs stay separate from inventory.</p>
-                <button type="button" onClick={(event) => { event.stopPropagation(); setActiveTab("mileage"); }}>Open Mileage</button>
-              </article>
-              <article className="forge-preview-card clickable-card" role="button" tabIndex={0} onClick={() => { setMarketplaceView("browse"); setForgeSubTab("marketplace"); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setMarketplaceView("browse"); setForgeSubTab("marketplace"); } }}>
-                <span className="status-badge">Marketplace</span>
-                <h3>{marketplaceListings.length} listing{marketplaceListings.length === 1 ? "" : "s"}</h3>
-                <p>Public listings stay pending until admin review. Payments and shipping are not handled in-app.</p>
-                <button type="button" onClick={(event) => {
-                  event.stopPropagation();
-                  setMarketplaceView("browse");
-                  setForgeSubTab("marketplace");
-                }}>Open Marketplace</button>
-              </article>
-              <article className="forge-preview-card clickable-card" role="button" tabIndex={0} onClick={() => setActiveTab("reports")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActiveTab("reports"); } }}>
-                <span className="status-badge">Reports</span>
-                <h3>{money(estimatedProfitAfterExpenses)}</h3>
-                <p>Profit/loss, monthly spending, exports, and seller summaries.</p>
-                <small>Planned profit: {money(estimatedProfit)}</small>
-                <button type="button" onClick={(event) => { event.stopPropagation(); setActiveTab("reports"); }}>Open Reports</button>
-              </article>
-            </div>
-          </section>
           <section id="forge-inventory-section" className="panel forge-home-inventory-section">
             <div className="forge-toolbar">
               <div>
