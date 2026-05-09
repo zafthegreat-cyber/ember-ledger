@@ -5,6 +5,8 @@
     "start": "vite preview",
     "preview": "vite preview",
     "smoke:beta": "node scripts/beta-smoke.cjs",
+    "test:catalog-search": "node scripts/test-catalog-shorthand.mjs",
+    "beta:clear-demo-data": "node scripts/clear-beta-demo-data.cjs",
     "catalog:import": "node scripts/import-pokemon-catalog.cjs",
     "import:pokemon-tcg-api": "node pokemon_market_ingestion_kit/import_pokemontcg_cards_to_supabase.mjs",
     "import:tcgcsv": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",

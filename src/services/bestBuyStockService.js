@@ -82,8 +82,8 @@ export function normalizeBestBuyStockResult(result = {}) {
     zipChecked: result.zipChecked || "",
     lastChecked: checkedAt,
     lastStatusChange: result.lastStatusChange || checkedAt,
-    sourceType: result.sourceType || "mock",
-    sourceStatus: result.sourceStatus || result.marketStatus || BEST_BUY_SOURCE_STATUS.MOCK,
+    sourceType: result.sourceType || "unavailable",
+    sourceStatus: result.sourceStatus || result.marketStatus || BEST_BUY_SOURCE_STATUS.UNKNOWN,
     matchedCatalogItemId: result.matchedCatalogItemId || "",
     matchedStoreId: result.matchedStoreId || "",
     matchConfidence: Number(result.matchConfidence || 0),
@@ -198,7 +198,7 @@ export function updateStoreStockFromBestBuy(storeStock = [], result = {}, histor
     timesSeen: (existing?.timesSeen || 0) + (/available|in stock|limited/i.test(normalized.stockStatus) ? 1 : 0),
     timesUnavailable: (existing?.timesUnavailable || 0) + (/out of stock/i.test(normalized.stockStatus) ? 1 : 0),
     deadStockScore: calculateBestBuyDeadStockScore(history, normalized),
-    sourceType: normalized.sourceType || "mock",
+    sourceType: normalized.sourceType || "unavailable",
     lastUpdated: normalized.lastChecked,
   };
   return [nextRecord, ...storeStock.filter((stock) => stock.storeStockId !== key)];
@@ -243,7 +243,7 @@ export function createTidepoolReportFromBestBuyAvailability(result = {}) {
     verifiedByCount: 0,
     disputedByCount: 0,
     helpfulVotes: 0,
-    sourceType: normalized.sourceStatus === "live" ? "best_buy_api" : normalized.sourceStatus || "mock",
+    sourceType: normalized.sourceStatus === "live" ? "best_buy_api" : normalized.sourceStatus || "unavailable",
     lastUpdated: normalized.lastChecked,
   };
 }

@@ -23,7 +23,7 @@ export default function BackupExportImport({
           <input type="file" accept="application/json,.json" onChange={onImportFile} />
         </label>
         <button type="button" className="drawer-link drawer-danger-link" onClick={onClearDemoData}>
-          Clear Demo Data
+          Clear Local Beta Data
         </button>
       </div>
 

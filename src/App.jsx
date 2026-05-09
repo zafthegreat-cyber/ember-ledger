@@ -18,6 +18,13 @@ import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } 
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
 import {
+  cleanupBrowserBetaStorage,
+  emptyTidepoolData,
+  sanitizeAppLocalData,
+  sanitizeScoutLocalData,
+  sanitizeTidepoolLocalData,
+} from "./utils/betaDataCleanup";
+import {
   REVIEW_SECTION_LABELS,
   SUGGESTION_STATUSES,
   SUGGESTION_STORAGE_KEY,
@@ -177,7 +184,11 @@ const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
 const FEEDBACK_STORAGE_KEY = "et-tcg-beta-feedback";
+const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
+const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
+const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
+const LONG_LIST_PAGE_SIZE = 12;
 const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
@@ -738,54 +749,7 @@ function makeTidepoolPost(overrides = {}) {
 }
 
 function createDefaultTidepoolData() {
-  const now = new Date().toISOString();
-  return {
-    posts: [
-      makeTidepoolPost({
-        postId: "tidepool-demo-question",
-        postType: "Question",
-        title: "Has anyone checked Greenbrier today?",
-        body: "Beta sample post: asking whether cards were stocked near Greenbrier. Replace with live community posts later.",
-        city: "Chesapeake",
-        sourceType: "demo",
-        createdAt: now,
-      }),
-      makeTidepoolPost({
-        postId: "tidepool-demo-restock",
-        postType: "Restock sighting",
-        title: "151 bundles seen at Walmart",
-        body: "Beta sample post: several Scarlet & Violet 151 Booster Bundles reported near the cards section. Needs real confirmation.",
-        city: "Suffolk",
-        verificationStatus: "pending",
-        sourceType: "demo",
-        createdAt: now,
-      }),
-      makeTidepoolPost({
-        postId: "tidepool-demo-event",
-        postType: "Event",
-        title: "Demo kids pack pickup",
-        body: "Beta sample event post for kid-friendly community activity. Kid-focused events should require review before public sharing.",
-        city: "Virginia Beach",
-        verificationStatus: "pending",
-        sourceType: "demo",
-        createdAt: now,
-      }),
-    ],
-    comments: [
-      {
-        commentId: "tidepool-demo-comment",
-        postId: "tidepool-demo-question",
-        userId: "demo-helper",
-        displayName: "Community Helper",
-        body: "Beta sample reply: I can check later today.",
-        parentCommentId: "",
-        createdAt: now,
-        updatedAt: now,
-        status: "active",
-      },
-    ],
-    reactions: [],
-  };
+  return emptyTidepoolData();
 }
 
 function getCatalogImage(product = {}) {
@@ -1077,6 +1041,126 @@ function DetailItem({ label, value }) {
   );
 }
 
+function clampPageSize(value, fallback = 24) {
+  const size = Number(value || fallback);
+  return CATALOG_PAGE_SIZE_OPTIONS.includes(size) ? size : fallback;
+}
+
+function getDefaultCatalogPageSize() {
+  if (typeof window === "undefined") return 24;
+  const saved = clampPageSize(localStorage.getItem(CATALOG_PAGE_SIZE_STORAGE_KEY), 0);
+  if (saved) return saved;
+  return window.innerWidth >= 900 ? 48 : 24;
+}
+
+function clampPage(page, pageCount) {
+  return Math.min(Math.max(1, Number(page || 1)), Math.max(1, Number(pageCount || 1)));
+}
+
+function getPageCount(totalCount, pageSize = LONG_LIST_PAGE_SIZE) {
+  return Math.max(1, Math.ceil(Number(totalCount || 0) / Math.max(1, Number(pageSize || LONG_LIST_PAGE_SIZE))));
+}
+
+function getPagedItems(items = [], page = 1, pageSize = LONG_LIST_PAGE_SIZE) {
+  const pageCount = getPageCount(items.length, pageSize);
+  const currentPage = clampPage(page, pageCount);
+  const startIndex = (currentPage - 1) * pageSize;
+  return {
+    items: items.slice(startIndex, startIndex + pageSize),
+    page: currentPage,
+    pageCount,
+    start: items.length ? startIndex + 1 : 0,
+    end: Math.min(startIndex + pageSize, items.length),
+    total: items.length,
+  };
+}
+
+function pageNumberItems(page = 1, pageCount = 1, maxVisible = 7) {
+  const currentPage = clampPage(page, pageCount);
+  const totalPages = Math.max(1, Number(pageCount || 1));
+  if (totalPages <= maxVisible) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const siblings = maxVisible <= 5 ? 1 : 2;
+  const pages = new Set([1, totalPages, currentPage]);
+  for (let offset = 1; offset <= siblings; offset += 1) {
+    if (currentPage - offset > 1) pages.add(currentPage - offset);
+    if (currentPage + offset < totalPages) pages.add(currentPage + offset);
+  }
+
+  const sorted = [...pages].sort((a, b) => a - b);
+  const result = [];
+  sorted.forEach((value, index) => {
+    if (index > 0 && value - sorted[index - 1] > 1) result.push(`gap-${sorted[index - 1]}-${value}`);
+    result.push(value);
+  });
+  return result;
+}
+
+function PaginationControls({
+  label = "Results",
+  page = 1,
+  pageCount = 1,
+  totalCount = 0,
+  pageSize = LONG_LIST_PAGE_SIZE,
+  pageSizeOptions = null,
+  onPageChange,
+  onPageSizeChange,
+  disabled = false,
+  compact = false,
+}) {
+  const safePageCount = Math.max(1, Number(pageCount || 1));
+  const safePage = clampPage(page, safePageCount);
+  const safeTotal = Number(totalCount || 0);
+  const start = safeTotal ? (safePage - 1) * pageSize + 1 : 0;
+  const end = safeTotal ? Math.min(safePage * pageSize, safeTotal) : 0;
+  const visiblePages = pageNumberItems(safePage, safePageCount, compact ? 5 : 7);
+
+  if (safeTotal <= pageSize && !pageSizeOptions) return null;
+
+  return (
+    <nav className={`pagination-controls ${compact ? "pagination-controls--compact" : ""}`.trim()} aria-label={`${label} pagination`}>
+      <div className="pagination-count">
+        {safeTotal ? `Showing ${start}-${end} of ${safeTotal} ${label.toLowerCase()}` : `No ${label.toLowerCase()}`}
+      </div>
+      <div className="pagination-actions">
+        <button type="button" className="secondary-button" disabled={disabled || safePage <= 1} onClick={() => onPageChange?.(safePage - 1)}>
+          Previous
+        </button>
+        <div className="pagination-page-list" aria-label="Page numbers">
+          {visiblePages.map((item) =>
+            typeof item === "number" ? (
+              <button
+                type="button"
+                key={item}
+                className={item === safePage ? "active" : ""}
+                aria-current={item === safePage ? "page" : undefined}
+                disabled={disabled || item === safePage}
+                onClick={() => onPageChange?.(item)}
+              >
+                {item}
+              </button>
+            ) : (
+              <span key={item} aria-hidden="true">...</span>
+            )
+          )}
+        </div>
+        <span className="pagination-mobile-current">Page {safePage} of {safePageCount}</span>
+        <button type="button" className="secondary-button" disabled={disabled || safePage >= safePageCount} onClick={() => onPageChange?.(safePage + 1)}>
+          Next
+        </button>
+      </div>
+      {pageSizeOptions?.length ? (
+        <label className="pagination-size-control">
+          <span>Per page</span>
+          <select value={pageSize} disabled={disabled} onChange={(event) => onPageSizeChange?.(Number(event.target.value))}>
+            {pageSizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </label>
+      ) : null}
+    </nav>
+  );
+}
+
 function QuickActionGrid({ actions = [], className = "", ariaLabel = "Quick actions" }) {
   const visibleActions = actions.filter(Boolean);
   if (!visibleActions.length) return null;
@@ -1277,6 +1361,7 @@ export default function App() {
   const [aliasDraft, setAliasDraft] = useState({ alias: "", canonical: "", type: "personal" });
   const [tidepoolOpen, setTidepoolOpen] = useState(false);
   const [tidepoolFilter, setTidepoolFilter] = useState("Latest");
+  const [tidepoolPage, setTidepoolPage] = useState(1);
   const [tidepoolPosts, setTidepoolPosts] = useState([]);
   const [tidepoolComments, setTidepoolComments] = useState([]);
   const [tidepoolReactions, setTidepoolReactions] = useState([]);
@@ -1285,6 +1370,7 @@ export default function App() {
   const [scoutView, setScoutView] = useState("main");
   const [whatDidISeeSeedProduct, setWhatDidISeeSeedProduct] = useState(null);
   const [scoutReportFilter, setScoutReportFilter] = useState("Latest");
+  const [scoutReportsPage, setScoutReportsPage] = useState(1);
   const [scoutScoreModalOpen, setScoutScoreModalOpen] = useState(false);
   const scoutReportsRef = useRef(null);
   const [homeSubTab, setHomeSubTab] = useState("overview");
@@ -1294,6 +1380,7 @@ export default function App() {
   const [vaultFilter, setVaultFilter] = useState("all");
   const [vaultSearch, setVaultSearch] = useState("");
   const [vaultSort, setVaultSort] = useState("newest");
+  const [vaultPage, setVaultPage] = useState(1);
   const [selectedVaultDetailId, setSelectedVaultDetailId] = useState("");
   const [selectedForgeDetailId, setSelectedForgeDetailId] = useState("");
   const [vaultForgeTransfer, setVaultForgeTransfer] = useState(null);
@@ -1303,6 +1390,7 @@ export default function App() {
   const [vaultMoving, setVaultMoving] = useState(false);
   const [vaultToast, setVaultToast] = useState("");
   const [tideTradrSubTab, setTideTradrSubTab] = useState("overview");
+  const [marketWatchPage, setMarketWatchPage] = useState(1);
   const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
     home_dashboard_cards: true,
     home_quick_actions: false,
@@ -1354,6 +1442,7 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [purchasers, setPurchasers] = useState(createDefaultPurchasers);
   const [catalogProducts, setCatalogProducts] = useState([]);
+  const [catalogPagedResultIds, setCatalogPagedResultIds] = useState([]);
   const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
   const [tideTradrLookupId, setTideTradrLookupId] = useState("");
   const [selectedCatalogDetailId, setSelectedCatalogDetailId] = useState("");
@@ -1389,6 +1478,7 @@ export default function App() {
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
   const [inventorySort, setInventorySort] = useState("newest");
+  const [forgeInventoryPage, setForgeInventoryPage] = useState(1);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [submittedCatalogSearch, setSubmittedCatalogSearch] = useState("");
   const [catalogBarcodeSearch, setCatalogBarcodeSearch] = useState("");
@@ -1407,9 +1497,17 @@ export default function App() {
   const [catalogWatchlistFilter, setCatalogWatchlistFilter] = useState("All");
   const [catalogHistoryFilter, setCatalogHistoryFilter] = useState("All");
   const [catalogSort, setCatalogSort] = useState("bestMatch");
+  const [catalogViewMode, setCatalogViewMode] = useState(() => {
+    if (typeof localStorage === "undefined") return "grid";
+    const saved = localStorage.getItem(CATALOG_VIEW_STORAGE_KEY);
+    return saved === "list" ? "list" : "grid";
+  });
+  const [catalogPageSize, setCatalogPageSize] = useState(() => getDefaultCatalogPageSize());
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [catalogMinValue, setCatalogMinValue] = useState("");
   const [catalogMaxValue, setCatalogMaxValue] = useState("");
   const supabaseCatalogRequestId = useRef(0);
+  const catalogResultsRef = useRef(null);
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
@@ -1464,6 +1562,9 @@ export default function App() {
   const [suggestions, setSuggestions] = useState(() => loadSuggestions());
   const [adminReviewFilter, setAdminReviewFilter] = useState("All");
   const [mySuggestionFilter, setMySuggestionFilter] = useState("All");
+  const [adminReviewPage, setAdminReviewPage] = useState(1);
+  const [marketplaceReviewPage, setMarketplaceReviewPage] = useState(1);
+  const [mySuggestionPage, setMySuggestionPage] = useState(1);
   const [suggestionConflict, setSuggestionConflict] = useState(null);
   const [marketplaceListings, setMarketplaceListings] = useState([]);
   const [marketplaceReports, setMarketplaceReports] = useState([]);
@@ -1501,7 +1602,7 @@ export default function App() {
     loading: false,
     loadedCount: 0,
     page: 1,
-    pageSize: SUPABASE_CATALOG_PAGE_SIZE,
+    pageSize: catalogPageSize,
     totalCount: null,
     hasMore: false,
     message: "",
@@ -1962,6 +2063,33 @@ export default function App() {
     setSearchExpanded(false);
   }
 
+  function scrollToPageTop() {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+  }
+
+  function scrollToResultsTop(targetRef = catalogResultsRef) {
+    if (typeof window === "undefined") return;
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    const target = targetRef?.current;
+    if (!target) {
+      scrollToPageTop();
+      return;
+    }
+    const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - 96);
+    window.scrollTo({
+      top,
+      left: 0,
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+  }
+
   function openTidepoolCommunity(filter = "Latest") {
     setTidepoolOpen(true);
     setTidepoolFilter(filter);
@@ -2263,12 +2391,13 @@ export default function App() {
   }
 
   async function loadImportedPokemonCatalog(searchTerm = catalogSearch, options = {}) {
+    const pageSize = clampPageSize(options.pageSize || catalogPageSize || supabaseCatalogStatus.pageSize, SUPABASE_CATALOG_PAGE_SIZE);
     if (!isSupabaseConfigured || !supabase) {
       setSupabaseCatalogStatus({
         loading: false,
         loadedCount: 0,
         page: 1,
-        pageSize: SUPABASE_CATALOG_PAGE_SIZE,
+        pageSize,
         totalCount: null,
         hasMore: false,
         message: "",
@@ -2279,7 +2408,6 @@ export default function App() {
 
     const requestId = supabaseCatalogRequestId.current + 1;
     supabaseCatalogRequestId.current = requestId;
-    const pageSize = Number(options.pageSize || SUPABASE_CATALOG_PAGE_SIZE);
     const page = Math.max(1, Number(options.page || supabaseCatalogStatus.page || 1));
     const mode = options.mode || "general";
     const force = Boolean(options.forceSearch);
@@ -2301,6 +2429,7 @@ export default function App() {
 
     if (!force && !hasCriteria) {
       setCatalogSearchHasRun(false);
+      setCatalogPagedResultIds([]);
       setCatalogProducts((current) => current.filter((product) => product.sourceType !== "supabase"));
       setSupabaseCatalogStatus({
         loading: false,
@@ -2352,6 +2481,7 @@ export default function App() {
       });
     } catch (error) {
       if (requestId !== supabaseCatalogRequestId.current) return;
+      setCatalogPagedResultIds([]);
       setSupabaseCatalogStatus({
         loading: false,
         loadedCount: 0,
@@ -2370,6 +2500,7 @@ export default function App() {
     if (requestId !== supabaseCatalogRequestId.current) return;
 
     const importedProducts = (result.rows || []).map(mapCatalog);
+    setCatalogPagedResultIds(importedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
       const seen = new Set();
@@ -2526,6 +2657,85 @@ export default function App() {
 
     window.addEventListener("scroll", handleScroll, { passive: true });
 
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return undefined;
+    localStorage.setItem(CATALOG_VIEW_STORAGE_KEY, catalogViewMode);
+    return undefined;
+  }, [catalogViewMode]);
+
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return undefined;
+    localStorage.setItem(CATALOG_PAGE_SIZE_STORAGE_KEY, String(catalogPageSize));
+    return undefined;
+  }, [catalogPageSize]);
+
+  useEffect(() => {
+    setVaultPage(1);
+  }, [vaultFilter, vaultSearch, vaultSort]);
+
+  useEffect(() => {
+    setForgeInventoryPage(1);
+  }, [inventorySearch, inventoryStatusFilter, inventoryPurchaserFilter, inventorySort]);
+
+  useEffect(() => {
+    setScoutReportsPage(1);
+  }, [scoutReportFilter]);
+
+  useEffect(() => {
+    setTidepoolPage(1);
+  }, [tidepoolFilter]);
+
+  useEffect(() => {
+    setMarketWatchPage(1);
+  }, [tideTradrSubTab]);
+
+  useEffect(() => {
+    setAdminReviewPage(1);
+  }, [adminReviewFilter]);
+
+  useEffect(() => {
+    setMySuggestionPage(1);
+  }, [mySuggestionFilter]);
+
+  useEffect(() => {
+    if (!catalogSearchHasRun) {
+      setSupabaseCatalogStatus((current) => ({ ...current, page: 1, pageSize: catalogPageSize }));
+      return undefined;
+    }
+    const query = submittedCatalogSearch || catalogSearch;
+    const barcode = submittedCatalogBarcodeSearch || catalogBarcodeSearch;
+    if (!canRunCatalogSearch(query, barcode)) return undefined;
+    const timer = window.setTimeout(() => {
+      loadImportedPokemonCatalog(query, {
+        page: 1,
+        pageSize: catalogPageSize,
+        mode: barcode ? "barcode" : "general",
+        barcode,
+      }).then(() => scrollToResultsTop(catalogResultsRef));
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [catalogKindFilter, catalogDataFilter, catalogSetFilter, catalogTypeFilter, catalogRarityFilter, catalogSort, catalogPageSize]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    let frameId = 0;
+    const updateBackToTop = () => {
+      frameId = 0;
+      setShowBackToTop((window.scrollY || document.documentElement.scrollTop || 0) > 500);
+    };
+    const handleScroll = () => {
+      if (!frameId) frameId = window.requestAnimationFrame(updateBackToTop);
+    };
+
+    updateBackToTop();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", handleScroll);
       if (frameId) window.cancelAnimationFrame(frameId);
@@ -3624,7 +3834,7 @@ export default function App() {
   }
 
   function loadScoutSnapshot() {
-    const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+    const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
     setScoutSnapshot({
       stores: saved.stores || [],
       reports: saved.reports || [],
@@ -3716,7 +3926,9 @@ export default function App() {
   }
 
   useEffect(() => {
-    const savedTidepool = JSON.parse(localStorage.getItem(TIDEPOOL_STORAGE_KEY) || "null") || createDefaultTidepoolData();
+    if (typeof localStorage !== "undefined") cleanupBrowserBetaStorage(localStorage);
+    if (typeof sessionStorage !== "undefined") cleanupBrowserBetaStorage(sessionStorage);
+    const savedTidepool = sanitizeTidepoolLocalData(JSON.parse(localStorage.getItem(TIDEPOOL_STORAGE_KEY) || "null") || createDefaultTidepoolData());
     setTidepoolPosts(savedTidepool.posts || []);
     setTidepoolComments(savedTidepool.comments || []);
     setTidepoolReactions(savedTidepool.reactions || []);
@@ -3724,7 +3936,9 @@ export default function App() {
 
   useEffect(() => {
     if (BETA_LOCAL_MODE) {
-      const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
+      if (typeof localStorage !== "undefined") cleanupBrowserBetaStorage(localStorage);
+      if (typeof sessionStorage !== "undefined") cleanupBrowserBetaStorage(sessionStorage);
+      const saved = sanitizeAppLocalData(JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}"));
       const savedUserType = normalizeUserType(saved.userType);
       const savedPreset = normalizeDashboardPreset(saved.dashboardPreset || getDashboardPresetForUserType(savedUserType));
       setUserType(savedUserType);
@@ -4036,7 +4250,7 @@ export default function App() {
 
   function resetBetaLocalData() {
     const confirmed = window.confirm(
-      "Clear demo data? This cannot be undone."
+      "Clear local beta data on this device? This cannot be undone."
     );
 
     if (!confirmed) return false;
@@ -4064,7 +4278,7 @@ export default function App() {
     setTideTradrLookupId("");
     setMarketPriceCache({ prices: [], lastSync: "", failedMatches: [] });
     setUserSearchAliases([]);
-    const defaultTidepool = createDefaultTidepoolData();
+    const defaultTidepool = emptyTidepoolData();
     setTidepoolPosts(defaultTidepool.posts);
     setTidepoolComments(defaultTidepool.comments);
     setTidepoolReactions(defaultTidepool.reactions);
@@ -8121,8 +8335,8 @@ function renderForgeHeader() {
   const recentSales = [...sales]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     .slice(0, 5);
-  const recentMarketUpdates = [...catalogProducts]
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+  const recentMarketUpdates = [...tideTradrWatchlist]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
     .slice(0, 5);
   const watchlistPreview = [...missingMarketPriceItems, ...needsMarketCheckItems]
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
@@ -8240,6 +8454,8 @@ function renderForgeHeader() {
     if (scoutReportFilter === "Needs Review") return !report.verified && report.verificationStatus !== "verified";
     return true;
   });
+  const pagedTidepoolPosts = getPagedItems(filteredTidepoolPosts, tidepoolPage, LONG_LIST_PAGE_SIZE);
+  const pagedScoutReports = getPagedItems(filteredScoutReports, scoutReportsPage, LONG_LIST_PAGE_SIZE);
   const dealAskingPrice = Number(dealForm.askingPrice || 0);
   const dealQuantity = Math.max(1, Number(dealForm.quantity || 1));
   const selectedDealProduct = catalogProducts.find((product) => String(product.id) === String(dealForm.productId || tideTradrLookupId));
@@ -8396,6 +8612,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
 });
 
+  const pagedVaultItems = getPagedItems(visibleVaultItems, vaultPage, LONG_LIST_PAGE_SIZE);
+  const pagedForgeInventory = getPagedItems(sortedFilteredItems, forgeInventoryPage, LONG_LIST_PAGE_SIZE);
+  const pagedMarketWatchItems = getPagedItems(tideTradrWatchlist, marketWatchPage, LONG_LIST_PAGE_SIZE);
+
   const filteredCatalogProducts = catalogProducts.filter((product) => {
     const search = (catalogSearchHasRun ? submittedCatalogSearch : "").toLowerCase();
     const marketInfo = getTideTradrMarketInfo(product);
@@ -8515,7 +8735,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     selectedCatalogDetailVariants[0] ||
     null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
-  const tideTradrCatalogResults = catalogSearchHasRun ? filteredCatalogProducts : [];
+  const catalogPagedResultSet = new Set(catalogPagedResultIds.map((id) => String(id)));
+  const tideTradrCatalogResults = catalogSearchHasRun
+    ? (catalogPagedResultSet.size
+        ? catalogPagedResultIds
+            .map((id) => filteredCatalogProducts.find((product) => String(product.id) === String(id)))
+            .filter(Boolean)
+        : filteredCatalogProducts)
+    : [];
   const tideTradrCatalogPageCount = supabaseCatalogStatus.totalCount
     ? Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))
     : null;
@@ -8897,6 +9124,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       closeCatalogSuggestions();
     }
     setCatalogSearchHasRun(false);
+    setCatalogPagedResultIds([]);
     setSupabaseCatalogStatus((current) => ({
       ...current,
       loading: false,
@@ -8923,12 +9151,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setCatalogTypeFilter("All");
     setCatalogRarityFilter("All");
     setCatalogSearchHasRun(false);
+    setCatalogPagedResultIds([]);
     setCatalogProducts((current) => current.filter((product) => product.sourceType !== "supabase"));
     setSupabaseCatalogStatus({
       loading: false,
       loadedCount: 0,
       page: 1,
-      pageSize: SUPABASE_CATALOG_PAGE_SIZE,
+      pageSize: catalogPageSize,
       totalCount: null,
       hasMore: false,
       message: "",
@@ -8976,12 +9205,45 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     loadImportedPokemonCatalog(value, { page: 1, mode: "barcode", barcode: value });
   }
 
+  function activeCatalogSearchPayload() {
+    const query = submittedCatalogSearch || catalogSearch;
+    const barcode = submittedCatalogBarcodeSearch || catalogBarcodeSearch;
+    return {
+      query,
+      barcode,
+      mode: barcode ? "barcode" : "general",
+    };
+  }
+
+  async function goToCatalogPage(page) {
+    const { query, barcode, mode } = activeCatalogSearchPayload();
+    const targetPage = tideTradrCatalogPageCount ? clampPage(page, tideTradrCatalogPageCount) : Math.max(1, Number(page || 1));
+    await loadImportedPokemonCatalog(query, {
+      page: targetPage,
+      pageSize: catalogPageSize,
+      mode,
+      barcode,
+    });
+    scrollToResultsTop(catalogResultsRef);
+  }
+
+  function updateCatalogPageSize(nextPageSize) {
+    const pageSize = clampPageSize(nextPageSize, catalogPageSize);
+    setCatalogPageSize(pageSize);
+    setSupabaseCatalogStatus((current) => ({
+      ...current,
+      page: 1,
+      pageSize,
+    }));
+  }
+
   function selectCatalogRecommendation(recommendation) {
     const value = recommendation.searchValue || recommendation.label || catalogSearch;
     setCatalogSearch(value);
     setSubmittedCatalogSearch("");
     setSubmittedCatalogBarcodeSearch("");
     setCatalogSearchHasRun(false);
+    setCatalogPagedResultIds([]);
     if (recommendation.product?.id) {
       if (recommendation.mode === "barcode" || recommendation.mode === "id" || recommendation.mode === "cardNumber") {
         setCatalogBarcodeSearch(value);
@@ -9055,7 +9317,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function getSharedScoutData() {
     try {
-      return JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      return sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
     } catch {
       return {};
     }
@@ -9355,6 +9617,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const visibleSuggestions = mySuggestionFilter === "All"
       ? ownSuggestions
       : ownSuggestions.filter((suggestion) => suggestion.status === mySuggestionFilter);
+    const pagedSuggestions = getPagedItems(visibleSuggestions, mySuggestionPage, LONG_LIST_PAGE_SIZE);
     return (
       <>
       <PageHeader
@@ -9368,13 +9631,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       />
       <section className="panel approval-page">
         <div className="inventory-list compact-inventory-list">
-          {visibleSuggestions.length ? visibleSuggestions.map((suggestion) => renderSuggestionCard(suggestion, false)) : (
+          {visibleSuggestions.length ? pagedSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, false)) : (
             <div className="empty-state">
               <h3>No suggestions here yet</h3>
               <p>Use Suggest Missing Store, Suggest Correction, or Suggest UPC/SKU from Scout and TideTradr.</p>
             </div>
           )}
         </div>
+        <PaginationControls
+          label="Suggestions"
+          page={pagedSuggestions.page}
+          pageCount={pagedSuggestions.pageCount}
+          totalCount={pagedSuggestions.total}
+          pageSize={LONG_LIST_PAGE_SIZE}
+          onPageChange={(page) => {
+            setMySuggestionPage(page);
+            scrollToResultsTop();
+          }}
+          compact
+        />
       </section>
       </>
     );
@@ -9485,6 +9760,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const openCount = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status)).length;
     const listingReviewItems = marketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
     const totalOpenCount = openCount + listingReviewItems.length;
+    const pagedVisibleSuggestions = getPagedItems(visibleSuggestions, adminReviewPage, LONG_LIST_PAGE_SIZE);
+    const pagedListingReviewItems = getPagedItems(listingReviewItems, marketplaceReviewPage, LONG_LIST_PAGE_SIZE);
     return (
       <>
       <PageHeader
@@ -9567,12 +9844,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
         {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" ? (
         <div className="inventory-list compact-inventory-list">
-          {visibleSuggestions.length ? visibleSuggestions.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
+          {visibleSuggestions.length ? pagedVisibleSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
             <div className="empty-state">
               <h3>No review items</h3>
               <p>No suggestions here yet. Suggestions from stores, catalog items, UPC/SKU, market values, and corrections will appear here.</p>
             </div>
           )}
+          <PaginationControls
+            label="Review Items"
+            page={pagedVisibleSuggestions.page}
+            pageCount={pagedVisibleSuggestions.pageCount}
+            totalCount={pagedVisibleSuggestions.total}
+            pageSize={LONG_LIST_PAGE_SIZE}
+            onPageChange={(page) => {
+              setAdminReviewPage(page);
+              scrollToResultsTop();
+            }}
+            compact
+          />
         </div>
         ) : null}
         {(adminReviewFilter === "All" || adminReviewFilter === "Marketplace Listings") ? (
@@ -9585,12 +9874,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <span className="status-badge">{listingReviewItems.length} listings</span>
             </div>
             <div className="inventory-list compact-inventory-list">
-              {listingReviewItems.length ? listingReviewItems.map((listing) => renderMarketplaceListingCard(listing, true)) : (
+              {listingReviewItems.length ? pagedListingReviewItems.items.map((listing) => renderMarketplaceListingCard(listing, true)) : (
                 <div className="empty-state">
                   <h3>No marketplace listings need review</h3>
                   <p>Submitted or flagged listings will appear here.</p>
                 </div>
               )}
+              <PaginationControls
+                label="Listings"
+                page={pagedListingReviewItems.page}
+                pageCount={pagedListingReviewItems.pageCount}
+                totalCount={pagedListingReviewItems.total}
+                pageSize={LONG_LIST_PAGE_SIZE}
+                onPageChange={(page) => {
+                  setMarketplaceReviewPage(page);
+                  scrollToResultsTop();
+                }}
+                compact
+              />
             </div>
           </section>
         ) : null}
@@ -10199,7 +10500,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <button type="button" onClick={openTidepoolCreatePostFlow}>Create Post</button>
               </div>
             ) : null}
-            {filteredTidepoolPosts.map((post) => {
+            {pagedTidepoolPosts.items.map((post) => {
               const postComments = tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed");
               const locationParts = [post.city, post.state].filter(Boolean);
               const locationLabel = locationParts.length ? locationParts.join(", ") : post.zip ? `ZIP ${post.zip}` : "Community post";
@@ -10282,6 +10583,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               );
             })}
           </div>
+          <PaginationControls
+            label="Posts"
+            page={pagedTidepoolPosts.page}
+            pageCount={pagedTidepoolPosts.pageCount}
+            totalCount={pagedTidepoolPosts.total}
+            pageSize={LONG_LIST_PAGE_SIZE}
+            onPageChange={(page) => {
+              setTidepoolPage(page);
+              scrollToResultsTop();
+            }}
+            compact
+          />
 
           <div className="tidepool-rules-card">
             <strong>Community rules</strong>
@@ -10396,7 +10709,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </button>
         </div>
         <details className="forge-form-step forge-optional-details">
-          <summary>Quick TideTradr seed picker</summary>
+          <summary>Quick TideTradr catalog picker</summary>
           <SmartAddInventory
             onAddInventory={(newItem) => {
               const product = newItem.product;
@@ -11556,7 +11869,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </div>
               ), "Gear")}
-              {renderMenuPullDown("data", "Data & Backup", "Export, import, clear demo data, and storage status", (
+              {renderMenuPullDown("data", "Data & Backup", "Export, import, clear local beta data, and storage status", (
                 <>
                   <div className="drawer-info-card">
                     <strong>Optional Cloud Sync</strong>
@@ -13595,7 +13908,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </div>
                   </div>
                 ) : (
-                  visibleVaultItems.map((item) => (
+                  pagedVaultItems.items.map((item) => (
                     <CompactInventoryCard
                       key={item.id}
                       item={item}
@@ -13618,6 +13931,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 ) : null}
               </div>
+              <PaginationControls
+                label="Vault Items"
+                page={pagedVaultItems.page}
+                pageCount={pagedVaultItems.pageCount}
+                totalCount={pagedVaultItems.total}
+                pageSize={LONG_LIST_PAGE_SIZE}
+                onPageChange={(page) => {
+                  setVaultPage(page);
+                  scrollToResultsTop();
+                }}
+                compact
+              />
             </section>
           </>
         )}
@@ -13663,7 +13988,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
                       </div>
                     ) : null}
-                    {filteredScoutReports.slice(0, 12).map((report) => (
+                    {pagedScoutReports.items.map((report) => (
                       <div className="inventory-card compact-card" key={report.id || report.reportId}>
                         <div className="compact-card-header">
                           <div>
@@ -13677,6 +14002,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       </div>
                     ))}
                   </div>
+                  <PaginationControls
+                    label="Reports"
+                    page={pagedScoutReports.page}
+                    pageCount={pagedScoutReports.pageCount}
+                    totalCount={pagedScoutReports.total}
+                    pageSize={LONG_LIST_PAGE_SIZE}
+                    onPageChange={(page) => {
+                      setScoutReportsPage(page);
+                      scrollToResultsTop(scoutReportsRef);
+                    }}
+                    compact
+                  />
                 </section>
               </>
             ) : scoutView === "submit" ? (
@@ -13825,7 +14162,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
                   </div>
                 ) : null}
-                {filteredScoutReports.slice(0, 8).map((report) => (
+                {pagedScoutReports.items.map((report) => (
                   <div className="inventory-card compact-card" key={report.id || report.reportId}>
                     <div className="compact-card-header">
                       <div>
@@ -13839,6 +14176,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 ))}
               </div>
+              <PaginationControls
+                label="Reports"
+                page={pagedScoutReports.page}
+                pageCount={pagedScoutReports.pageCount}
+                totalCount={pagedScoutReports.total}
+                pageSize={LONG_LIST_PAGE_SIZE}
+                onPageChange={(page) => {
+                  setScoutReportsPage(page);
+                  scrollToResultsTop(scoutReportsRef);
+                }}
+                compact
+              />
             </section>
             </>
             )}
@@ -13915,7 +14264,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </div>
                   ) : (
                     <div className="inventory-list tidetradr-watch-list">
-                      {tideTradrWatchlist.map((item) => (
+                      {pagedMarketWatchItems.items.map((item) => (
                         <div className="inventory-card compact-card tidetradr-watch-card" key={item.id}>
                           <div className="compact-card-header">
                             <div>
@@ -13935,6 +14284,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       ))}
                     </div>
                   )}
+                  <PaginationControls
+                    label="Watched Products"
+                    page={pagedMarketWatchItems.page}
+                    pageCount={pagedMarketWatchItems.pageCount}
+                    totalCount={pagedMarketWatchItems.total}
+                    pageSize={LONG_LIST_PAGE_SIZE}
+                    onPageChange={(page) => {
+                      setMarketWatchPage(page);
+                      scrollToResultsTop();
+                    }}
+                    compact
+                  />
                 </section>
               </>
             ) : tideTradrSubTab === "recent" ? (
@@ -14096,7 +14457,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </section>
                 ) : null}
 
-                <section className={`panel tidetradr-results-panel ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}>
+                <section ref={catalogResultsRef} className={`panel tidetradr-results-panel ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}>
                   <div className="compact-card-header">
                     <div>
                       <h2>Product Results</h2>
@@ -14118,6 +14479,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         ))}
                       </select>
                     </Field>
+                    <div className="catalog-view-toggle" role="group" aria-label="Catalog result view">
+                      <button
+                        type="button"
+                        className={catalogViewMode === "grid" ? "active" : ""}
+                        aria-pressed={catalogViewMode === "grid"}
+                        onClick={() => setCatalogViewMode("grid")}
+                      >
+                        Grid
+                      </button>
+                      <button
+                        type="button"
+                        className={catalogViewMode === "list" ? "active" : ""}
+                        aria-pressed={catalogViewMode === "list"}
+                        onClick={() => setCatalogViewMode("list")}
+                      >
+                        List
+                      </button>
+                    </div>
                     <div className="quick-actions">
                       <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear</button>
                     </div>
@@ -14219,9 +14598,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ) : null}
 
                   {supabaseCatalogStatus.loading ? (
-                    <div className="empty-state">
-                      <h3>Searching catalog...</h3>
-                      <p>Checking imported Pokemon products with the current search and filters.</p>
+                    <div className="catalog-results-list catalog-results-grid catalog-results-loading" aria-label="Loading catalog results">
+                      {Array.from({ length: 6 }).map((_, index) => (
+                        <div className="catalog-result-card catalog-result-skeleton" key={`catalog-loading-${index}`}>
+                          <div className="catalog-thumb" />
+                          <span />
+                          <strong />
+                          <em />
+                        </div>
+                      ))}
                     </div>
                   ) : null}
 
@@ -14233,7 +14618,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ) : null}
 
                   {catalogSearchHasRun && tideTradrCatalogResults.length > 0 ? (
-                    <div className="catalog-results-list">
+                    <div className={`catalog-results-list catalog-results-${catalogViewMode}`}>
                       {tideTradrCatalogResults.map((p) => {
                         const marketInfo = getTideTradrMarketInfo(p);
                         const lowPrice = Number(p.lowPrice || 0);
@@ -14269,20 +14654,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                               <div>
                                 <span className="catalog-pill">{resultGroup}</span>
                                 <h3>{catalogTitle(p)}</h3>
-                                <p>
+                                <p className="catalog-result-detail-line">
                                   {p.productType || resultGroup} | {catalogExpansionName(p) || "Expansion unavailable"}
                                   {p.cardNumber ? ` | #${p.cardNumber}` : ""}
                                 </p>
                                 {(p.barcode || p.sku || p.externalProductId || p.tcgplayerProductId) ? (
-                                  <p className="compact-subtitle">Barcode/SKU: {p.barcode || p.upc || p.sku || p.externalProductId || p.tcgplayerProductId}</p>
+                                  <p className="compact-subtitle catalog-result-id-line">Barcode/SKU: {p.barcode || p.upc || p.sku || p.externalProductId || p.tcgplayerProductId}</p>
                                 ) : null}
-                                <p>
+                                <p className="catalog-result-price-line">
                                   Market: {hasCatalogMarketPrice(p) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}
                                   {p.catalogType !== "card" ? ` | MSRP: ${marketInfo.msrp ? money(marketInfo.msrp) : "MSRP unavailable"}` : ""}
                                 </p>
-                                <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
+                                <p className="compact-subtitle catalog-result-source-line">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
                                 {p.historySnapshotCount > 0 ? (
-                                  <p className="compact-subtitle">History available: {p.historySnapshotCount} snapshot{p.historySnapshotCount === 1 ? "" : "s"}</p>
+                                  <p className="compact-subtitle catalog-result-history-line">History available: {p.historySnapshotCount} snapshot{p.historySnapshotCount === 1 ? "" : "s"}</p>
                                 ) : null}
                                 <span className="status-badge">{MARKET_STATUS_LABELS[marketInfo.marketStatus] || "Unknown"}</span>
                               </div>
@@ -14294,33 +14679,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ) : null}
 
                   {catalogSearchHasRun ? (
-                    <div className="summary-pill-row catalog-pagination-row">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={supabaseCatalogStatus.loading || (supabaseCatalogStatus.page || 1) <= 1}
-                        onClick={() => loadImportedPokemonCatalog(submittedCatalogSearch || catalogSearch, {
-                          page: Math.max(1, (supabaseCatalogStatus.page || 1) - 1),
-                          mode: submittedCatalogBarcodeSearch || catalogBarcodeSearch ? "barcode" : "general",
-                          barcode: submittedCatalogBarcodeSearch || catalogBarcodeSearch,
-                        })}
-                      >
-                        Previous Page
-                      </button>
-                      <span className="status-badge">Page {supabaseCatalogStatus.page || 1}{tideTradrCatalogPageCount ? ` of ${tideTradrCatalogPageCount}` : ""}</span>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={supabaseCatalogStatus.loading || !supabaseCatalogStatus.hasMore}
-                        onClick={() => loadImportedPokemonCatalog(submittedCatalogSearch || catalogSearch, {
-                          page: (supabaseCatalogStatus.page || 1) + 1,
-                          mode: submittedCatalogBarcodeSearch || catalogBarcodeSearch ? "barcode" : "general",
-                          barcode: submittedCatalogBarcodeSearch || catalogBarcodeSearch,
-                        })}
-                      >
-                        Load More
-                      </button>
-                    </div>
+                    <PaginationControls
+                      label="Results"
+                      page={supabaseCatalogStatus.page || 1}
+                      pageCount={tideTradrCatalogPageCount || (supabaseCatalogStatus.hasMore ? (supabaseCatalogStatus.page || 1) + 1 : 1)}
+                      totalCount={supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length}
+                      pageSize={supabaseCatalogStatus.pageSize || catalogPageSize}
+                      pageSizeOptions={CATALOG_PAGE_SIZE_OPTIONS}
+                      onPageChange={goToCatalogPage}
+                      onPageSizeChange={updateCatalogPageSize}
+                      disabled={supabaseCatalogStatus.loading}
+                    />
                   ) : null}
                 </section>
 
@@ -14621,12 +14990,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ) : null}
 
               {adminToolsVisible && (tideTradrSubTab === "overview" || tideTradrSubTab === "watch") ? (
-              <CollapsibleFeatureSection title="Market Sources" summary="Manual Values, Cached Values, Estimated Values, and Live API Placeholder" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
+              <CollapsibleFeatureSection title="Market Sources" summary="Manual Values, Cached Values, Estimated Values, and Live API Setup" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
                 <div className="cards mini-cards">
                   <div className="card"><p>Cached Price Records</p><h2>{cachedMarketPriceCount}</h2></div>
                   <div className="card"><p>Failed Matches</p><h2>{failedMarketMatches.length}</h2></div>
                   <div className="card"><p>Last Sync</p><h2>{lastMarketSync === "Not synced yet" ? "None" : new Date(lastMarketSync).toLocaleDateString()}</h2></div>
-                  <div className="card"><p>Live API</p><h2>Placeholder</h2></div>
+                  <div className="card"><p>Live API</p><h2>Not connected</h2></div>
                 </div>
                 <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Estimated, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
                 {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
@@ -14713,7 +15082,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 TideTradr Catalog is the shared product and value system for Forge, Scout, Vault, and Deal Finder.
               </p>
               <p>
-                Market values are labeled Live, Cached, Manual, or Estimated. Estimated values are beta placeholders until live/cached sources are connected.
+                Market values are labeled Live, Cached, Manual, or Estimated. Estimated values stay labeled until live or cached sources are connected.
               </p>
               <div className="cards mini-cards">
                 <div className="card"><p>Sealed Products</p><h2>{sealedCatalogCount}</h2></div>
@@ -14727,7 +15096,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <p className="compact-subtitle">Beta/dev structure for future imports from Pokemon TCG API/Scrydex, TCGdex, TCGCSV, official Pokemon product data, and manual CSVs. No live keys are required.</p>
               <div className="cards mini-cards">
                 <div className="card"><p>Set Records</p><h2>{POKEMON_SETS.length}</h2></div>
-                <div className="card"><p>Seed Product Rows</p><h2>{POKEMON_PRODUCTS.length}</h2></div>
+                <div className="card"><p>Catalog Rows</p><h2>{POKEMON_PRODUCTS.length}</h2></div>
                 <div className="card"><p>Imported Cards</p><h2>{CATALOG_IMPORT_STATUS.cardsImported || 0}</h2></div>
                 <div className="card"><p>Imported Sealed</p><h2>{CATALOG_IMPORT_STATUS.sealedProductsImported || 0}</h2></div>
                 <div className="card"><p>UPC/SKU Links</p><h2>{catalogUpcCount}</h2></div>
@@ -14737,14 +15106,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
               <p className="compact-subtitle">
                 Last catalog import: {CATALOG_IMPORT_STATUS.lastImportedAt ? new Date(CATALOG_IMPORT_STATUS.lastImportedAt).toLocaleString() : "No generated import yet"}.
-                Source: {CATALOG_IMPORT_STATUS.source || "local seed"}.
+                Source: {CATALOG_IMPORT_STATUS.source || "local catalog"}.
               </p>
               <div className="quick-action-rail">
                 {CATALOG_IMPORT_SOURCES.map((source) => (
                   <button type="button" className="secondary-button" key={source} disabled>{source}</button>
                 ))}
               </div>
-              <p className="compact-subtitle">Import buttons are intentionally placeholders until approved API/CSV sources are connected. CSV/manual catalog import remains available below.</p>
+              <p className="compact-subtitle">Provider import buttons stay disabled until approved API/CSV sources are connected. CSV/manual catalog import remains available below.</p>
             </section>
             ) : (
             <section className="panel">
@@ -15138,7 +15507,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
     </div>
 
     <details className="forge-form-step forge-optional-details">
-      <summary>Quick TideTradr seed picker</summary>
+      <summary>Quick TideTradr catalog picker</summary>
     <SmartAddInventory
   onAddInventory={(newItem) => {
     const product = newItem.product;
@@ -15354,7 +15723,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <p>Purchaser: {inventoryPurchaserFilter === "All" ? "All" : purchasers.find((purchaser) => purchaser.id === inventoryPurchaserFilter)?.name || inventoryPurchaserFilter}</p>
 
               <p>
-              Showing {sortedFilteredItems.length} of {items.length} inventory records
+              Showing {pagedForgeInventory.start || 0}-{pagedForgeInventory.end || 0} of {sortedFilteredItems.length} filtered inventory records
               </p>
 
               <p>{inventorySearch ? ` - Search: ${inventorySearch}` : ""}</p>
@@ -15410,7 +15779,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     Add Forge Item
                   </button>
                 </div>
-              ) : sortedFilteredItems.map((item) => (
+              ) : pagedForgeInventory.items.map((item) => (
                 <CompactInventoryCard
                   key={item.id}
                   item={item}
@@ -15432,6 +15801,18 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 />
               ))}
             </div>
+            <PaginationControls
+              label="Inventory Records"
+              page={pagedForgeInventory.page}
+              pageCount={pagedForgeInventory.pageCount}
+              totalCount={pagedForgeInventory.total}
+              pageSize={LONG_LIST_PAGE_SIZE}
+              onPageChange={(page) => {
+                setForgeInventoryPage(page);
+                scrollToResultsTop();
+              }}
+              compact
+            />
           </section>
           </>
           )
@@ -16134,6 +16515,15 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         ) : null}
 
       </main>
+      <button
+        type="button"
+        className={showBackToTop ? "back-to-top-button is-visible" : "back-to-top-button"}
+        aria-label="Back to top"
+        onClick={scrollToPageTop}
+      >
+        <span aria-hidden="true">↑</span>
+        <b>Top</b>
+      </button>
       <nav className="mobile-bottom-nav" aria-label="Mobile main navigation">
         {mobileBottomTabs.map((tab) => (
           <button

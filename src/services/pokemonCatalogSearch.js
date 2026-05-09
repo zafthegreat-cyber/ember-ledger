@@ -1,4 +1,12 @@
 import { applyCatalogDbSort, compareCatalogProducts } from "../utils/catalogSortUtils";
+import {
+  analyzeCatalogSearch,
+  buildCatalogAliasSuggestions,
+  buildLegacyCatalogSearchAliases,
+  expandCatalogSearchQueries,
+  normalizeSearchQuery,
+  scoreCatalogSearchRow,
+} from "../data/catalogSearchAliases.mjs";
 
 const TEXT_SEARCH_FIELDS = [
   "name",
@@ -44,37 +52,11 @@ const EXACT_FIELDS = [
 export const CATALOG_PAGE_SIZE = 50;
 export const CATALOG_RECOMMENDATION_LIMIT = 12;
 
-export const CATALOG_SEARCH_ALIASES = [
-  { alias: "etb", expansions: ["elite trainer box"], label: "Elite Trainer Box", type: "Product Type" },
-  { alias: "pc etb", expansions: ["pokemon center elite trainer box"], label: "Pokemon Center Elite Trainer Box", type: "Product Type" },
-  { alias: "pkmn center", expansions: ["pokemon center"], label: "Pokemon Center", type: "Product Type" },
-  { alias: "upc", expansions: ["ultra premium collection", "ultra-premium collection"], label: "Ultra-Premium Collection", type: "Product Type" },
-  { alias: "bb", expansions: ["booster box", "booster bundle"], label: "Booster Box / Booster Bundle", type: "Product Type" },
-  { alias: "booster b", expansions: ["booster bundle", "booster box"], label: "Booster Bundle / Booster Box", type: "Product Type" },
-  { alias: "bndl", expansions: ["bundle", "booster bundle"], label: "Bundle", type: "Product Type" },
-  { alias: "tin", expansions: ["tin"], label: "Tin", type: "Product Type" },
-  { alias: "mini tin", expansions: ["mini tin"], label: "Mini Tin", type: "Product Type" },
-  { alias: "collection box", expansions: ["collection", "collection box"], label: "Collection Box", type: "Product Type" },
-  { alias: "prem coll", expansions: ["premium collection"], label: "Premium Collection", type: "Product Type" },
-  { alias: "sv", expansions: ["scarlet violet", "scarlet & violet"], label: "Scarlet & Violet", type: "Set" },
-  { alias: "svi", expansions: ["scarlet violet base", "scarlet & violet base"], label: "Scarlet & Violet Base", type: "Set" },
-  { alias: "pe", expansions: ["prismatic evolutions"], label: "Prismatic Evolutions", type: "Set" },
-  { alias: "pr evo", expansions: ["prismatic evolutions"], label: "Prismatic Evolutions", type: "Set" },
-  { alias: "prism evo", expansions: ["prismatic evolutions"], label: "Prismatic Evolutions", type: "Set" },
-  { alias: "ss", expansions: ["surging sparks", "silver tempest"], label: "Surging Sparks / Silver Tempest", type: "Set" },
-  { alias: "sur spark", expansions: ["surging sparks"], label: "Surging Sparks", type: "Set" },
-  { alias: "obs flames", expansions: ["obsidian flames"], label: "Obsidian Flames", type: "Set" },
-  { alias: "pal evo", expansions: ["paldea evolved"], label: "Paldea Evolved", type: "Set" },
-  { alias: "temp forces", expansions: ["temporal forces"], label: "Temporal Forces", type: "Set" },
-  { alias: "twm", expansions: ["twilight masquerade"], label: "Twilight Masquerade", type: "Set" },
-  { alias: "mew", expansions: ["scarlet violet 151", "scarlet & violet 151", "mew"], label: "Mew / Scarlet & Violet 151", type: "Set" },
-  { alias: "zard", expansions: ["charizard"], label: "Charizard", type: "Pokemon" },
-  { alias: "char", expansions: ["charizard"], label: "Charizard", type: "Pokemon" },
-  { alias: "pika", expansions: ["pikachu"], label: "Pikachu", type: "Pokemon" },
-  { alias: "gren", expansions: ["greninja"], label: "Greninja", type: "Pokemon" },
-];
+export const CATALOG_SEARCH_ALIASES = buildLegacyCatalogSearchAliases();
 
 export function cleanCatalogSearch(value) {
+  return normalizeSearchQuery(value).slice(0, 140);
+/*
   return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -83,10 +65,11 @@ export function cleanCatalogSearch(value) {
     .replace(/[,%()'"]/g, " ")
     .replace(/\s+/g, " ")
     .slice(0, 140);
+*/
 }
 
 export function normalizeCatalogQuery(input) {
-  return cleanCatalogSearch(input).toLowerCase().replace(/[&+-]/g, " ").replace(/\s+/g, " ").trim();
+  return normalizeSearchQuery(input);
 }
 
 function escapeRegExp(value) {
@@ -94,6 +77,8 @@ function escapeRegExp(value) {
 }
 
 export function expandCatalogAliases(input) {
+  return expandCatalogSearchQueries(input, 16);
+/*
   const normalized = normalizeCatalogQuery(input);
   if (!normalized) return [];
   const variants = new Set([normalized]);
@@ -114,6 +99,7 @@ export function expandCatalogAliases(input) {
 
   variants.delete(normalized);
   return [...variants].slice(0, 8);
+*/
 }
 
 export function detectCatalogSearchMode(input) {
@@ -122,7 +108,7 @@ export function detectCatalogSearchMode(input) {
   if (/^\d{8,}$/.test(normalized)) return "barcode";
   if (/^(tg|gg|svp|h|rc)?\d{1,4}(\/(tg|gg|svp|h|rc)?\d{1,4})?$/i.test(normalized)) return "cardNumber";
   if (/^\d{5,}$/.test(normalized)) return "id";
-  if (CATALOG_SEARCH_ALIASES.some((entry) => normalizeCatalogQuery(entry.alias) === normalized || normalized.includes(normalizeCatalogQuery(entry.alias)))) return "shorthand";
+  if (analyzeCatalogSearch(normalized).hasStructuredAlias) return "shorthand";
   return "general";
 }
 
@@ -271,29 +257,9 @@ function dedupeRecommendations(items) {
 }
 
 function buildStaticAliasSuggestions(input) {
-  const normalized = normalizeCatalogQuery(input);
-  if (!normalized) return [];
-  const directMatches = CATALOG_SEARCH_ALIASES.filter((entry) => {
-    const alias = normalizeCatalogQuery(entry.alias);
-    const label = normalizeCatalogQuery(entry.label);
-    return alias.includes(normalized) || normalized.includes(alias) || label.includes(normalized);
-  });
-  const expandedMatches = expandCatalogAliases(input).map((expansion) => ({
-    alias: input,
-    expansions: [expansion],
-    label: expansion.replace(/\b\w/g, (letter) => letter.toUpperCase()),
-    type: "Shorthand",
-  }));
-
-  return [...directMatches, ...expandedMatches].slice(0, 5).map((entry, index) => ({
-    id: `alias-${normalizeCatalogQuery(entry.alias)}-${index}`,
-    section: "Suggested Shorthand",
-    type: entry.type || "Shorthand",
-    label: entry.label,
-    description: `${entry.alias} -> ${entry.expansions.join(" / ")}`,
-    badge: "Shorthand",
-    searchValue: entry.expansions[0],
-    mode: "shorthand",
+  return buildCatalogAliasSuggestions(input, 8).map((entry, index) => ({
+    id: `alias-${normalizeCatalogQuery(entry.searchValue || entry.label)}-${index}`,
+    ...entry,
   }));
 }
 
@@ -301,6 +267,9 @@ async function runSearchAgainstSource({ supabase, sourceName, useBrowseView, que
   const cleanedQuery = cleanCatalogSearch(query);
   const cleanedBarcode = cleanCatalogSearch(barcode);
   const exactTerm = mode === "barcode" ? cleanedBarcode || cleanedQuery : cleanedQuery || cleanedBarcode;
+  const analysis = analyzeCatalogSearch(exactTerm);
+  const expandedTerms = expandCatalogAliases(exactTerm);
+  const aliasAwareSearch = sort === "bestMatch" && analysis.hasStructuredAlias && exactTerm.length >= 2;
   const pageOffset = Math.max(0, (page - 1) * pageSize);
   const exactRows = [];
   let exactMiss = false;
@@ -318,17 +287,29 @@ async function runSearchAgainstSource({ supabase, sourceName, useBrowseView, que
     exactMiss = mode === "barcode" && exactRows.length === 0;
   }
 
-  let broadQuery = supabase
-    .from(sourceName)
-    .select("*", { count: "exact" });
-  broadQuery = applyFilters(broadQuery, filters, useBrowseView);
-  broadQuery = applyTextSearch(broadQuery, cleanedQuery || cleanedBarcode, useBrowseView ? TEXT_SEARCH_FIELDS : LEGACY_TEXT_SEARCH_FIELDS);
-  broadQuery = applyCatalogDbSort(broadQuery, sort === "bestMatch" ? "bestMatch" : sort, useBrowseView).range(pageOffset, pageOffset + pageSize - 1);
-  const { data, error, count } = await broadQuery;
-  if (error) throw error;
+  const broadRows = [];
+  let broadCount = 0;
+  const searchTerms = aliasAwareSearch
+    ? [exactTerm, ...expandedTerms].filter(Boolean).filter((term, index, terms) => terms.indexOf(term) === index).slice(0, 14)
+    : [cleanedQuery || cleanedBarcode].filter(Boolean);
+  const candidateLimit = aliasAwareSearch ? Math.min(Math.max(pageSize * Math.max(page, 1) * 4, 96), 360) : pageSize;
+
+  for (const term of searchTerms.length ? searchTerms : [""]) {
+    let broadQuery = supabase
+      .from(sourceName)
+      .select("*", { count: "exact" });
+    broadQuery = applyFilters(broadQuery, filters, useBrowseView);
+    broadQuery = applyTextSearch(broadQuery, term, useBrowseView ? TEXT_SEARCH_FIELDS : LEGACY_TEXT_SEARCH_FIELDS);
+    broadQuery = applyCatalogDbSort(broadQuery, sort === "bestMatch" ? "bestMatch" : sort, useBrowseView)
+      .range(aliasAwareSearch ? 0 : pageOffset, (aliasAwareSearch ? 0 : pageOffset) + candidateLimit - 1);
+    const { data, error, count } = await broadQuery;
+    if (error) throw error;
+    broadCount = Math.max(broadCount, count ?? 0);
+    broadRows.push(...(data || []));
+  }
 
   const rowsByKey = new Map();
-  for (const row of [...exactRows, ...(data || [])]) {
+  for (const row of [...exactRows, ...broadRows]) {
     const key = String(row.id || `${row.market_source || ""}-${row.external_product_id || row.tcgplayer_product_id || row.name}`).toLowerCase();
     if (!rowsByKey.has(key)) rowsByKey.set(key, row);
   }
@@ -336,17 +317,21 @@ async function runSearchAgainstSource({ supabase, sourceName, useBrowseView, que
   const rows = [...rowsByKey.values()]
     .sort((a, b) => {
       if (sort === "bestMatch") {
-        return exactPriority(a, exactTerm) - exactPriority(b, exactTerm) || compareCatalogProducts(a, b, "bestMatch");
+        const aScore = scoreCatalogSearchRow(a, analysis, exactTerm).score;
+        const bScore = scoreCatalogSearchRow(b, analysis, exactTerm).score;
+        return bScore - aScore || exactPriority(a, exactTerm) - exactPriority(b, exactTerm) || compareCatalogProducts(a, b, "bestMatch");
       }
       return compareCatalogProducts(a, b, sort);
     })
+    .slice(aliasAwareSearch ? pageOffset : 0)
     .slice(0, pageSize);
 
   return {
     rows,
-    count: count ?? rows.length,
+    count: aliasAwareSearch ? Math.max(rowsByKey.size, pageOffset + rows.length) : broadCount || rows.length,
     exactCount: exactRows.length,
     exactMiss,
+    aliasHints: analysis.didYouMean,
   };
 }
 
@@ -540,7 +525,8 @@ export async function getCatalogRecommendations({
     Products: 4,
     "Sets / Expansions": 5,
     "Product Types": 6,
-    "Suggested Shorthand": 7,
+    "Did You Mean?": 7,
+    "Suggested Shorthand": 8,
   };
 
   const uniqueSuggestions = dedupeRecommendations(suggestions)

@@ -20,6 +20,7 @@ import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedSto
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
 import { buildSuggestedRoute, confidenceLabel, explainRouteChoice, numericDistance } from "../utils/routeUtils";
 import { SUGGESTION_TYPES, submitSuggestion } from "../utils/suggestionReviewUtils";
+import { sanitizeScoutLocalData } from "../utils/betaDataCleanup";
 import { VIRGINIA_REGIONS } from "../data/storeGroups";
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_MOCK_PRODUCTS, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
@@ -106,6 +107,29 @@ const BEST_BUY_API_ENV_VARS = [
   "BEST_BUY_API_BASE_URL",
   "BEST_BUY_STOCK_SYNC_ENABLED",
 ];
+const SCOUT_LIST_PAGE_SIZE = 12;
+
+function scoutPageCount(totalCount, pageSize = SCOUT_LIST_PAGE_SIZE) {
+  return Math.max(1, Math.ceil(Number(totalCount || 0) / Math.max(1, Number(pageSize || SCOUT_LIST_PAGE_SIZE))));
+}
+
+function clampScoutPage(page, pageCount) {
+  return Math.min(Math.max(1, Number(page || 1)), Math.max(1, Number(pageCount || 1)));
+}
+
+function getScoutPagedItems(items = [], page = 1, pageSize = SCOUT_LIST_PAGE_SIZE) {
+  const pageCount = scoutPageCount(items.length, pageSize);
+  const currentPage = clampScoutPage(page, pageCount);
+  const startIndex = (currentPage - 1) * pageSize;
+  return {
+    items: items.slice(startIndex, startIndex + pageSize),
+    page: currentPage,
+    pageCount,
+    start: items.length ? startIndex + 1 : 0,
+    end: Math.min(startIndex + pageSize, items.length),
+    total: items.length,
+  };
+}
 
 function makeScoutId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -149,7 +173,7 @@ function makeTidepoolReport(overrides = {}) {
   const verificationStatus = overrides.verificationStatus || "pending";
   return {
     reportId: overrides.reportId || makeScoutId("tidepool"),
-    userId: overrides.userId || "mock-scout",
+    userId: overrides.userId || LOCAL_SCOUT_USER_ID,
     displayName: overrides.displayName || "Verified Scout",
     anonymous: Boolean(overrides.anonymous),
     storeId: overrides.storeId || "",
@@ -172,66 +196,18 @@ function makeTidepoolReport(overrides = {}) {
     verifiedByCount: overrides.verifiedByCount || 0,
     disputedByCount: overrides.disputedByCount || 0,
     helpfulVotes: overrides.helpfulVotes || 0,
-    sourceType: overrides.sourceType || (hasPhoto ? "photo" : "mock"),
+    sourceType: overrides.sourceType || (hasPhoto ? "photo" : "user"),
     favoriteStore: Boolean(overrides.favoriteStore),
     watchlistItem: Boolean(overrides.watchlistItem),
     lastUpdated: overrides.lastUpdated || now,
   };
 }
 
-function createMockTidepoolReports(stores = []) {
-  const first = stores[0] || {};
-  const second = stores[1] || first;
-  const third = stores[2] || first;
-  return [
-    makeTidepoolReport({
-      storeId: first.id,
-      storeName: first.name || "Hampton Roads Target",
-      productName: "Scarlet & Violet 151 Booster Bundle",
-      reportType: "Restock sighting",
-      reportText: "Beta mock: several booster bundles seen near the cards section. Needs real user confirmation.",
-      quantitySeen: "6",
-      purchaseLimit: "Unknown",
-      city: first.city || "Suffolk",
-      zip: first.zip || "",
-      verificationStatus: "pending",
-      confidenceScore: 62,
-      sourceType: "mock",
-      watchlistItem: true,
-    }),
-    makeTidepoolReport({
-      storeId: second.id,
-      storeName: second.name || "Hampton Roads Walmart",
-      productName: "Pokemon ETBs",
-      reportType: "Nothing in stock",
-      reportText: "Beta mock: checked shelves, no Pokemon cards visible.",
-      city: second.city || "Chesapeake",
-      zip: second.zip || "",
-      verificationStatus: "verified",
-      confidenceScore: 76,
-      verifiedByCount: 2,
-      helpfulVotes: 3,
-      sourceType: "mock",
-    }),
-    makeTidepoolReport({
-      storeId: third.id,
-      storeName: third.name || "Online Drop",
-      productName: "Prismatic Evolutions ETB",
-      reportType: "Online drop alert",
-      reportText: "Beta mock online drop placeholder. Alert-only, no checkout automation.",
-      city: third.city || "Virginia Beach",
-      verificationStatus: "pending",
-      confidenceScore: 55,
-      sourceType: "mock",
-    }),
-  ];
-}
-
 function makeTidepoolEvent(overrides = {}) {
   const now = new Date().toISOString();
   return {
     eventId: overrides.eventId || makeScoutId("event"),
-    userId: overrides.userId || "mock-event-host",
+    userId: overrides.userId || LOCAL_SCOUT_USER_ID,
     eventTitle: overrides.eventTitle || "",
     eventType: overrides.eventType || "Other",
     eventDescription: overrides.eventDescription || "",
@@ -260,64 +236,13 @@ function makeTidepoolEvent(overrides = {}) {
     maxAttendees: overrides.maxAttendees || "",
     eventStatus: overrides.eventStatus || "pending",
     verificationStatus: overrides.verificationStatus || "pending",
-    sourceType: overrides.sourceType || "mock",
+    sourceType: overrides.sourceType || "user",
     saved: Boolean(overrides.saved),
     interested: Boolean(overrides.interested),
     reported: Boolean(overrides.reported),
     createdAt: overrides.createdAt || now,
     updatedAt: overrides.updatedAt || now,
   };
-}
-
-function createMockTidepoolEvents() {
-  return [
-    makeTidepoolEvent({
-      eventTitle: "Demo Kids Pack Pickup",
-      eventType: "Kids pack pickup",
-      eventDescription: "Mock/demo event: supervised pickup concept for kid-friendly Pokemon packs. Replace with a real approved event before sharing.",
-      hostName: "Pack It Forward",
-      locationName: "Community location TBD",
-      city: "Suffolk",
-      kidFriendly: true,
-      freeEvent: true,
-      donationAccepted: true,
-      donationDetails: "Demo: sealed packs, sleeves, and bulk donations could be accepted after review.",
-      itemsProvided: "Demo kids packs",
-      ageRange: "Kids and families",
-      eventStatus: "pending",
-      verificationStatus: "pending",
-      sourceType: "mock",
-    }),
-    makeTidepoolEvent({
-      eventTitle: "Demo Trade Day",
-      eventType: "Trade day",
-      eventDescription: "Mock/demo community trade day placeholder. Trades should be supervised and fair.",
-      hostName: "Local Scout",
-      locationName: "Local shop TBD",
-      city: "Chesapeake",
-      kidFriendly: true,
-      freeEvent: true,
-      eventStatus: "approved",
-      verificationStatus: "verified",
-      sourceType: "mock",
-      attendeeCount: 4,
-    }),
-    makeTidepoolEvent({
-      eventTitle: "Demo Whatnot Live Stream",
-      eventType: "Whatnot/live stream event",
-      eventDescription: "Mock/demo online event placeholder for future community sales or giveaways.",
-      hostName: "E&T TCG",
-      locationName: "Online",
-      onlineEvent: true,
-      eventLink: "https://example.com",
-      city: "Online",
-      kidFriendly: false,
-      freeEvent: true,
-      eventStatus: "draft",
-      verificationStatus: "pending",
-      sourceType: "mock",
-    }),
-  ];
 }
 
 function getReportDate(report) {
@@ -722,6 +647,23 @@ function Metric({ label, value }) {
   );
 }
 
+function ScoutPagination({ label = "stores", page, pageCount, total, onPageChange }) {
+  if (Number(total || 0) <= SCOUT_LIST_PAGE_SIZE) return null;
+  const currentPage = clampScoutPage(page, pageCount);
+  const start = (currentPage - 1) * SCOUT_LIST_PAGE_SIZE + 1;
+  const end = Math.min(currentPage * SCOUT_LIST_PAGE_SIZE, total);
+  return (
+    <div className="pagination-controls pagination-controls--compact scout-pagination-controls" style={{ marginTop: "12px" }}>
+      <div className="pagination-count">Showing {start}-{end} of {total} {label}</div>
+      <div className="pagination-actions">
+        <button type="button" style={styles.buttonSoft} disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)}>Previous</button>
+        <span className="pagination-mobile-current" style={{ display: "inline-flex" }}>Page {currentPage} of {pageCount}</span>
+        <button type="button" style={styles.buttonSoft} disabled={currentPage >= pageCount} onClick={() => onPageChange(currentPage + 1)}>Next</button>
+      </div>
+    </div>
+  );
+}
+
 function isUsefulValue(value) {
   if (value === null || value === undefined) return false;
   const text = String(value).trim();
@@ -782,7 +724,7 @@ function scoutCatalogSourceLabel(product = {}) {
   if (raw.includes("live")) return "Live";
   if (raw.includes("cache")) return "Cached";
   if (raw.includes("manual")) return "Manual";
-  if (raw.includes("mock")) return "Mock";
+  if (raw.includes("mock") || raw.includes("demo")) return "Estimated";
   return "Unknown";
 }
 
@@ -808,6 +750,7 @@ export default function Scout({
   const [storeQuickFilter, setStoreQuickFilter] = useState("default");
   const [storeSort, setStoreSort] = useState("nickname");
   const [storeSearch, setStoreSearch] = useState("");
+  const [storePage, setStorePage] = useState(1);
   const [storeDirectoryView, setStoreDirectoryView] = useState("landing");
   const [storeMoreFiltersOpen, setStoreMoreFiltersOpen] = useState(false);
   const [storeImportText, setStoreImportText] = useState("");
@@ -957,6 +900,10 @@ export default function Scout({
     }
   }, [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductName, targetSubTabProductId, targetSubTabProductSnapshot]);
 
+  useEffect(() => {
+    setStorePage(1);
+  }, [selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
+
   const [editStoreForm, setEditStoreForm] = useState({
     name: "",
     chain: "",
@@ -1104,19 +1051,13 @@ export default function Scout({
 
   async function loadStores() {
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
       const savedStores = dedupeStoresByChainAddress(saved.stores?.length ? [...STATEWIDE_SEED_STORES, ...saved.stores] : STATEWIDE_SEED_STORES)
         .map((store) => normalizeImportedStore(store));
       const savedReports = saved.reports || [];
-      const savedTidepoolReports = saved.tidepoolReports?.length
-        ? saved.tidepoolReports
-        : createMockTidepoolReports(savedStores);
-      const savedTidepoolEvents = saved.tidepoolEvents?.length
-        ? saved.tidepoolEvents
-        : createMockTidepoolEvents();
-      const savedBestBuyStockResults = saved.bestBuyStockResults?.length
-        ? saved.bestBuyStockResults
-        : BEST_BUY_MOCK_PRODUCTS.map((product) => normalizeBestBuyStockResult(product));
+      const savedTidepoolReports = saved.tidepoolReports || [];
+      const savedTidepoolEvents = saved.tidepoolEvents || [];
+      const savedBestBuyStockResults = saved.bestBuyStockResults || [];
       const savedBestBuyStockHistory = saved.bestBuyStockHistory || [];
       const savedBestBuyStoreStock = saved.bestBuyStoreStock || [];
       const savedBestBuyAlerts = saved.bestBuyAlerts || [];
@@ -1451,6 +1392,10 @@ function updateBestBuySetting(field, value) {
 }
 
 function syncBestBuyStock(mode = "search") {
+  if (!adminMode) {
+    setBestBuyMessage("Best Buy live lookup is not connected yet. No sample stock rows were created.");
+    return;
+  }
   const zip = bestBuyForm.zip || bestBuyNightlySettings.zip;
   const pulled = mode === "sku" && bestBuyForm.sku
     ? [checkBestBuyStoreAvailability(bestBuyForm.sku, zip, BEST_BUY_MOCK_PRODUCTS)]
@@ -1480,7 +1425,7 @@ function syncBestBuyStock(mode = "search") {
 
   saveBestBuyStock({ results: nextResults, history: nextHistory, storeStock: nextStoreStock, alerts: nextAlerts });
   saveTidepoolReports(nextTidepoolReports);
-  setBestBuyMessage(`Best Buy beta sync checked ${pulled.length} item(s). Source is mock/cached until backend API credentials are configured.`);
+  setBestBuyMessage(`Best Buy beta sync checked ${pulled.length} item(s). Source is admin-only sample/cached until backend API credentials are configured.`);
 }
 
 function addManualBestBuyStock() {
@@ -2515,6 +2460,21 @@ async function handleUpdateStore(e) {
       .filter((entry) => entry.stores.length > 0);
   }, [filteredStores, storeSort]);
 
+  const pagedFilteredStores = useMemo(() => getScoutPagedItems(filteredStores, storePage, SCOUT_LIST_PAGE_SIZE), [filteredStores, storePage]);
+  const groupedPagedStores = useMemo(() => {
+    const groups = pagedFilteredStores.items.reduce((acc, store) => {
+      const group = getStoreGroup(store);
+      acc[group] = [...(acc[group] || []), store];
+      return acc;
+    }, {});
+    return STORE_GROUP_ORDER
+      .map((group) => ({
+        group,
+        stores: sortStores(groups[group] || [], storeSort),
+      }))
+      .filter((entry) => entry.stores.length > 0);
+  }, [pagedFilteredStores.items, storeSort]);
+
   function toggleStoreGroup(group) {
     setOpenStoreGroups((current) => ({ ...current, [group]: current[group] === false }));
   }
@@ -2820,7 +2780,7 @@ async function handleUpdateStore(e) {
     [stores, storeSort]
   );
   const bestBuyLastChecked = bestBuyStockResults[0]?.lastChecked || bestBuyStockHistory[0]?.checkedAt || "Not checked in beta yet";
-  const bestBuySourceStatus = bestBuyStockResults[0]?.sourceStatus || bestBuyStockResults[0]?.sourceType || "mock/manual";
+  const bestBuySourceStatus = bestBuyStockResults[0]?.sourceStatus || bestBuyStockResults[0]?.sourceType || "unavailable";
 
   const bestBuySourceReports = useMemo(
     () => enrichedTidepoolReports.filter((report) => /best_buy|Best Buy Source|Best Buy/i.test(`${report.sourceType} ${report.displayName} ${report.storeName}`)),
@@ -3056,7 +3016,7 @@ async function handleUpdateStore(e) {
 
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Nightly Reports</h2>
-            <p style={styles.empty}>In-app nightly Best Buy summaries are beta-ready. Email, push, and Discord delivery are placeholders.</p>
+            <p style={styles.empty}>In-app nightly Best Buy summaries are beta-ready. Email, push, and Discord delivery are not connected yet.</p>
             {bestBuyNightlyReports.length === 0 ? <p style={styles.empty}>No nightly report yet. Generate one from Online Drops for testing.</p> : null}
             {bestBuyNightlyReports.slice(0, 3).map((report) => (
               <div key={report.reportId} style={styles.listCard}>
@@ -3075,7 +3035,7 @@ async function handleUpdateStore(e) {
           <div style={styles.reportGrid}>
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Best Buy Stock Checker</h2>
-              <p style={styles.empty}>Beta structure uses mock/cached/manual stock data until Best Buy API credentials are connected through a backend/serverless function.</p>
+              <p style={styles.empty}>Best Buy live stock lookup is not connected yet. Manual or cached rows will be labeled clearly when available.</p>
               <div style={styles.statsRow}>
                 <Metric label="In Stock / Ship" value={bestBuySummary.inStock.length} />
                 <Metric label="Pickup / Limited" value={bestBuySummary.pickup.length} />
@@ -3102,7 +3062,7 @@ async function handleUpdateStore(e) {
 
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Best Buy Watchlist & Nearby Availability</h2>
-              {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Refresh Best Buy Stock to create mock/cached beta data.</p> : null}
+              {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Live lookup is not connected for private beta.</p> : null}
               <div style={{ display: "grid", gap: "10px" }}>
                 {bestBuyStockResults.slice(0, 10).map((item) => (
                   <div key={`${item.bestBuySku}-${item.storeId || item.zipChecked}`} style={styles.listCard}>
@@ -3165,9 +3125,9 @@ async function handleUpdateStore(e) {
                 <label style={styles.tiny}><input type="checkbox" checked={bestBuyNightlySettings.includeSoldOutChanges} onChange={(e) => updateBestBuySetting("includeSoldOutChanges", e.target.checked)} /> Include sold-out changes</label>
                 <select style={styles.input} value={bestBuyNightlySettings.deliveryMethod} onChange={(e) => updateBestBuySetting("deliveryMethod", e.target.value)}>
                   <option value="in-app">In-app</option>
-                  <option value="email-placeholder">Email placeholder</option>
-                  <option value="push-placeholder">Push placeholder</option>
-                  <option value="discord-placeholder">Discord/webhook placeholder</option>
+                  <option value="email-disabled">Email not connected</option>
+                  <option value="push-disabled">Push not connected</option>
+                  <option value="discord-disabled">Discord/webhook not connected</option>
                 </select>
               </div>
               <p style={styles.tiny}>Nightly reports run on demand in beta. A real scheduler should run server-side once API credentials and user notification preferences are ready.</p>
@@ -3238,7 +3198,7 @@ async function handleUpdateStore(e) {
             <div style={styles.card}>
               <h2 style={styles.sectionTitle}>Events</h2>
               <p style={styles.empty}>
-                Tidepool Events support community activity, kid-friendly Pokemon meetups, giveaways, donation drives, trade days, local shop events, and online/community sale events. Demo events are clearly marked as mock.
+                Tidepool Events support community activity, kid-friendly Pokemon meetups, giveaways, donation drives, trade days, local shop events, and online/community sale events.
               </p>
               <div style={styles.row}>
                 {TIDEPOOL_EVENT_FILTERS.map((filter) => (
@@ -3374,7 +3334,7 @@ async function handleUpdateStore(e) {
             {reportInputMethod === "Photo" ? (
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Step 4: Photo</h3>
-                <p style={styles.tiny}>Photo upload is a beta placeholder. Add a photo URL in Proof / More Details for now.</p>
+                <p style={styles.tiny}>Photo upload is not connected yet. Add a photo URL in Proof / More Details for now.</p>
               </div>
             ) : null}
             {reportInputMethod === "Link/Text" ? (
@@ -3642,7 +3602,7 @@ async function handleUpdateStore(e) {
                 {topActiveAlerts.length === 0 ? <p style={styles.empty}>No active alerts yet. Favorite stores, add watchlist items, or submit reports to make Scout smarter.</p> : null}
                 {topActiveAlerts.map((alert) => {
                   const alertId = alert.reportId || alert.alertId || `${alert.reportType}-${alert.productName}-${alert.createdAt}`;
-                  const sourceBadge = /mock/i.test(`${alert.sourceType}`) ? "Mock" : /best buy/i.test(`${alert.sourceType} ${alert.storeName}`) ? "Online" : "Scout Report";
+                  const sourceBadge = /mock|demo/i.test(`${alert.sourceType}`) ? "Estimated" : /best buy/i.test(`${alert.sourceType} ${alert.storeName}`) ? "Online" : "Scout Report";
                   const verifyBadge = alert.verified || alert.verificationStatus === "verified" ? "Verified" : alert.verificationStatus === "pending" ? "Needs Review" : "Unverified";
                   return (
                   <div key={alertId} className="scout-alert-card" style={styles.alertCard}>
@@ -4109,11 +4069,11 @@ async function handleUpdateStore(e) {
                         <h2 style={styles.sectionTitle}>Best Buy Stock</h2>
                         <p style={{ ...styles.empty, paddingTop: 0 }}>Check retailer-level stock before selecting a specific Best Buy store.</p>
                       </div>
-                      <span style={styles.badge}>{/mock/i.test(String(bestBuySourceStatus)) ? "Mock data only - live Best Buy lookup not connected" : `Source: ${bestBuySourceStatus}`}</span>
+                      <span style={styles.badge}>{/mock|demo/i.test(String(bestBuySourceStatus)) ? "Estimated data - live Best Buy lookup not connected" : `Source: ${bestBuySourceStatus}`}</span>
                     </div>
                     <p style={styles.tiny}>Last checked: {bestBuyLastChecked}</p>
                     <div style={styles.statsRow}>
-                      <Metric label="Tracked SKUs" value={bestBuyStockResults.length || BEST_BUY_MOCK_PRODUCTS.length} />
+                      <Metric label="Tracked SKUs" value={bestBuyStockResults.length} />
                       <Metric label="Available items" value={bestBuySummary.inStock.length || bestBuySummary.pickup.length} />
                       <Metric label="Watchlist matches" value={bestBuyStockResults.length} />
                       <Metric label="Active alerts" value={bestBuyAlerts.length} />
@@ -4131,11 +4091,11 @@ async function handleUpdateStore(e) {
                         submittedData: { retailer: "Best Buy", bestBuySku: bestBuyForm.sku, productName: bestBuyForm.query, zipChecked: bestBuyForm.zip },
                         notes: "Best Buy SKU/watchlist suggestion from retailer stock layer.",
                       }, setError)}>Suggest Best Buy SKU</button>
-                      <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alert saved as a beta placeholder. Real alerts need backend/push later.")}>Create Alert</button>
+                      <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alerts are not connected yet. Push/email delivery needs a backend before private beta users can receive alerts.")}>Create Alert</button>
                     </div>
                     {bestBuyMessage ? <p style={styles.tiny}>{bestBuyMessage}</p> : null}
-                    {/mock/i.test(String(bestBuySourceStatus)) ? (
-                      <p style={styles.tiny}>Live Best Buy lookup is not connected yet. These results are mock examples for testing the Scout flow.</p>
+                    {/mock|demo/i.test(String(bestBuySourceStatus)) ? (
+                      <p style={styles.tiny}>Live Best Buy lookup is not connected yet. These rows are admin-only testing data.</p>
                     ) : null}
                     <details style={{ marginTop: "12px" }}>
                       <summary style={{ cursor: "pointer", fontWeight: 800 }}>Test Results</summary>
@@ -4151,11 +4111,11 @@ async function handleUpdateStore(e) {
                                 </div>
                                 <div style={styles.row}>
                                   <span style={styles.badge}>{displayStatus}</span>
-                                  <span style={styles.badge}>{/mock/i.test(String(item.sourceStatus || item.sourceType || bestBuySourceStatus)) ? "Mock Data" : item.sourceStatus || item.sourceType || "Unknown"}</span>
+                                  <span style={styles.badge}>{/mock|demo/i.test(String(item.sourceStatus || item.sourceType || bestBuySourceStatus)) ? "Estimated" : item.sourceStatus || item.sourceType || "Unknown"}</span>
                                 </div>
                               </div>
                               <div style={styles.row}>
-                                <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alert saved as a beta placeholder. Real alerts need backend/push later.")}>Create Alert</button>
+                                <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alerts are not connected yet. Push/email delivery needs a backend before private beta users can receive alerts.")}>Create Alert</button>
                                 <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                                   suggestionType: SUGGESTION_TYPES.ADD_BEST_BUY_SKU,
                                   targetTable: "retailer_products",
@@ -4166,7 +4126,7 @@ async function handleUpdateStore(e) {
                             </div>
                           );
                         })}
-                        {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Refresh/check stock to create mock/cached beta rows.</p> : null}
+                        {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Live lookup is not connected for private beta.</p> : null}
                       </div>
                     </details>
                   </div>
@@ -4180,7 +4140,7 @@ async function handleUpdateStore(e) {
                     <p style={styles.empty}>No stores match those filters.</p>
                   ) : (
                     <div style={{ display: "grid", gap: "10px" }}>
-                      {filteredStores.map((store) => {
+                      {pagedFilteredStores.items.map((store) => {
                         const storeReports = reportsByStore[store.id] || [];
                         const statusBadges = getStoreStatusBadges(store, storeReports.length);
                         return (
@@ -4207,6 +4167,13 @@ async function handleUpdateStore(e) {
                       })}
                     </div>
                   )}
+                  <ScoutPagination
+                    label="stores"
+                    page={pagedFilteredStores.page}
+                    pageCount={pagedFilteredStores.pageCount}
+                    total={pagedFilteredStores.total}
+                    onPageChange={setStorePage}
+                  />
                 </div>
               </>
             ) : null}
@@ -4422,7 +4389,7 @@ async function handleUpdateStore(e) {
                     submittedData: { retailer: "Best Buy", bestBuySku: bestBuyForm.sku, productName: bestBuyForm.query, zipChecked: bestBuyForm.zip },
                     notes: "Best Buy SKU/watchlist suggestion from stock checker.",
                   }, setError)}>Suggest Best Buy SKU</button>
-                  <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alert saved as a beta placeholder. Real alerts need backend/push later.")}>Create Alert</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alerts are not connected yet. Push/email delivery needs a backend before private beta users can receive alerts.")}>Create Alert</button>
                   <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                     suggestionType: SUGGESTION_TYPES.ADD_BEST_BUY_SKU,
                     targetTable: "retailer_products",
@@ -4440,12 +4407,12 @@ async function handleUpdateStore(e) {
                         <strong>{item.productName}</strong>
                         <span style={styles.badge}>{item.stockStatus || "Unknown"}</span>
                       </div>
-                      <p style={styles.tiny}>SKU: {item.bestBuySku || "Unknown"} | Price: {item.salePrice || item.price || "Unknown"} | Source: {item.sourceStatus || item.sourceType || "mock"}</p>
+                      <p style={styles.tiny}>SKU: {item.bestBuySku || "Unknown"} | Price: {item.salePrice || item.price || "Unknown"} | Source: {item.sourceStatus || item.sourceType || "Unavailable"}</p>
                       <p style={styles.tiny}>Online: {item.onlineAvailability || "Unknown"} | Pickup: {item.pickupAvailability || "Unknown"} | Shipping: {item.shippingAvailability || "Unknown"}</p>
                       {item.productUrl ? <a style={styles.buttonSoft} href={item.productUrl} target="_blank" rel="noreferrer">Product URL</a> : null}
                     </div>
                   ))}
-                  {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Refresh/check stock to create mock/cached beta rows.</p> : null}
+                  {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Live lookup is not connected for private beta.</p> : null}
                 </div>
 
                 <h3 style={{ marginTop: "18px" }}>Nearby Best Buy Availability</h3>
@@ -4454,7 +4421,7 @@ async function handleUpdateStore(e) {
                     <div key={item.storeStockId || `${item.bestBuySku}-${item.storeId}`} style={styles.listCard}>
                       <strong>{item.storeName || item.productName}</strong>
                       <p style={styles.tiny}>{item.productName} | {item.stockStatus || "Unknown"} | Last checked: {item.lastChecked || item.lastUpdated || "Unknown"}</p>
-                      <p style={styles.tiny}>Source: {item.sourceType || "mock"} | Possible dead stock score: {item.deadStockScore || 0}</p>
+                      <p style={styles.tiny}>Source: {item.sourceType || "Unavailable"} | Possible dead stock score: {item.deadStockScore || 0}</p>
                     </div>
                   ))}
                   {bestBuyStoreStock.length === 0 ? <p style={styles.empty}>Nearby availability will show here when a SKU/check returns store-level data.</p> : null}
@@ -4467,7 +4434,7 @@ async function handleUpdateStore(e) {
                 {bestBuySourceReports.slice(0, 4).map((report) => (
                   <div key={report.reportId} style={styles.listCard}>
                     <strong>{report.productName || report.reportType}</strong>
-                    <p style={styles.tiny}>{report.storeName || "Best Buy"} | {report.verificationStatus || "pending"} | {report.sourceType || "mock"}</p>
+                    <p style={styles.tiny}>{report.storeName || "Best Buy"} | {report.verificationStatus || "pending"} | {report.sourceType || "Unavailable"}</p>
                   </div>
                 ))}
                 {bestBuySourceReports.length === 0 ? <p style={styles.empty}>No Best Buy source reports yet.</p> : null}
@@ -4647,7 +4614,7 @@ async function handleUpdateStore(e) {
                 ) : filteredStores.length === 0 ? (
                   <p style={styles.empty}>No shared stores match those filters.</p>
                 ) : (
-                  groupedFilteredStores.map(({ group, stores: groupStores }) => {
+                  groupedPagedStores.map(({ group, stores: groupStores }) => {
                     const isOpen = openStoreGroups[group] !== false;
                     return (
                       <div key={group} style={styles.storeGroup}>
@@ -4703,6 +4670,13 @@ async function handleUpdateStore(e) {
                     );
                   })
                 )}
+                <ScoutPagination
+                  label="stores"
+                  page={pagedFilteredStores.page}
+                  pageCount={pagedFilteredStores.pageCount}
+                  total={pagedFilteredStores.total}
+                  onPageChange={setStorePage}
+                />
               </div>
             </div>
           </div>
@@ -4874,7 +4848,7 @@ async function handleUpdateStore(e) {
 
                   <div style={styles.card}>
                     <h2 style={styles.sectionTitle}>Stock / Product Sightings</h2>
-                    <p style={styles.empty}>Products recently seen or tracked at this store. Source can be user report, photo, Best Buy API/cache, manual, or mock.</p>
+                    <p style={styles.empty}>Products recently seen or tracked at this store. Source can be user report, photo, Best Buy API/cache, or manual entry.</p>
                     <h3 style={{ marginTop: "14px" }}>{editingTrackedItemId ? "Edit Tracked Item" : "Add Product Sighting"}</h3>
                     <form onSubmit={handleCreateItem} style={styles.formGrid}>
                       <input
