@@ -1,0 +1,162 @@
+{
+  "label": "Beta 1 demo data",
+  "environment": "demo_only",
+  "warning": "Use only in local beta or staging. Do not mix with production data unless these rows remain clearly labeled as demo data.",
+  "catalogProducts": [
+    {
+      "id": "demo-catalog-sv01-001",
+      "name": "Sprigatito",
+      "product_kind": "single_card",
+      "category": "Pokemon",
+      "official_expansion": "Scarlet & Violet",
+      "set_code": "SVI",
+      "card_number": "001/198",
+      "rarity": "Common",
+      "market_state": "Cached",
+      "data_state": "Admin verified demo"
+    },
+    {
+      "id": "demo-catalog-sv01-etb",
+      "name": "Scarlet & Violet Elite Trainer Box",
+      "product_kind": "sealed_product",
+      "sealed_product_type": "elite_trainer_box",
+      "official_expansion": "Scarlet & Violet",
+      "pack_count": 9,
+      "msrp": 49.99,
+      "market_state": "Cached",
+      "data_state": "Admin verified demo"
+    },
+    {
+      "id": "demo-catalog-sv01-pc-etb",
+      "name": "Scarlet & Violet Pokemon Center Elite Trainer Box",
+      "product_kind": "sealed_product",
+      "sealed_product_type": "pokemon_center_elite_trainer_box",
+      "official_expansion": "Scarlet & Violet",
+      "is_pokemon_center_exclusive": true,
+      "pack_count": 11,
+      "msrp": 59.99,
+      "market_state": "Cached",
+      "data_state": "Admin verified demo"
+    }
+  ],
+  "catalogVariants": [
+    {
+      "catalog_product_id": "demo-catalog-sv01-001",
+      "variant_name": "Normal",
+      "finish": "Normal",
+      "condition_name": "Near Mint",
+      "language": "English"
+    },
+    {
+      "catalog_product_id": "demo-catalog-sv01-001",
+      "variant_name": "Reverse Holofoil",
+      "finish": "Reverse Holofoil",
+      "condition_name": "Near Mint",
+      "language": "English"
+    }
+  ],
+  "stores": [
+    {
+      "id": "demo-store-target-001",
+      "name": "Demo Target - Beta Plaza",
+      "retailer": "Target",
+      "city": "Richmond",
+      "state": "VA",
+      "data_state": "Demo only"
+    },
+    {
+      "id": "demo-store-lgs-001",
+      "name": "Demo Local Card Shop",
+      "retailer": "Local Game Store",
+      "city": "Fredericksburg",
+      "state": "VA",
+      "data_state": "Demo only"
+    }
+  ],
+  "scoutReports": [
+    {
+      "id": "demo-report-001",
+      "store_id": "demo-store-target-001",
+      "item_name": "Scarlet & Violet Elite Trainer Box",
+      "status": "submitted",
+      "confidence": "medium",
+      "data_state": "User-submitted demo"
+    },
+    {
+      "id": "demo-report-002",
+      "store_id": "demo-store-lgs-001",
+      "item_name": "Sprigatito Reverse Holofoil",
+      "status": "verified",
+      "confidence": "high",
+      "data_state": "Admin verified demo"
+    }
+  ],
+  "vaultItems": [
+    {
+      "id": "demo-vault-001",
+      "catalog_product_id": "demo-catalog-sv01-001",
+      "catalog_variant_id": "demo-catalog-sv01-001-reverse",
+      "name": "Sprigatito Reverse Holofoil",
+      "quantity": 1,
+      "condition_name": "Near Mint",
+      "status": "Personal collection",
+      "data_state": "Demo only"
+    }
+  ],
+  "forgeEntries": {
+    "inventory": [
+      {
+        "id": "demo-forge-inventory-001",
+        "name": "Scarlet & Violet Elite Trainer Box",
+        "quantity": 2,
+        "unit_cost": 44.99,
+        "planned_sale_price": 54.99,
+        "data_state": "Demo only"
+      }
+    ],
+    "sales": [
+      {
+        "id": "demo-sale-001",
+        "item_name": "Scarlet & Violet Elite Trainer Box",
+        "quantity": 1,
+        "sale_price_each": 54.99,
+        "fees": 5.2,
+        "data_state": "Demo only"
+      }
+    ],
+    "expenses": [
+      {
+        "id": "demo-expense-001",
+        "category": "Shipping supplies",
+        "amount": 8.5,
+        "data_state": "Demo only"
+      }
+    ],
+    "mileage": [
+      {
+        "id": "demo-mileage-001",
+        "purpose": "Store pickup route",
+        "miles": 12.4,
+        "data_state": "Demo only"
+      }
+    ]
+  },
+  "suggestions": [
+    {
+      "id": "demo-suggestion-catalog-001",
+      "type": "catalog_correction",
+      "status": "submitted",
+      "target_record_id": "demo-catalog-sv01-pc-etb",
+      "notes": "Confirm Pokemon Center SKU and UPC before production import.",
+      "data_state": "Demo only"
+    },
+    {
+      "id": "demo-suggestion-store-001",
+      "type": "store_correction",
+      "status": "submitted",
+      "target_record_id": "demo-store-target-001",
+      "notes": "Verify purchase limit policy.",
+      "data_state": "Demo only"
+    }
+  ]
+}

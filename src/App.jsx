@@ -57,39 +57,38 @@ import {
 import { getCurrentUserProfile, makeFallbackUserProfile } from "./lib/userProfile";
 
 function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
-  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const [headerMode, setHeaderMode] = useState("full");
   const lastScrollY = useRef(0);
   const downDistance = useRef(0);
   const upDistance = useRef(0);
-  const lastScrollTime = useRef(0);
-  const lastHideTime = useRef(0);
+
+  const setStableHeaderMode = (mode) => {
+    setHeaderMode((current) => (current === mode ? current : mode));
+  };
 
   useEffect(() => {
-    setIsHeaderHidden(false);
+    setStableHeaderMode("full");
     lastScrollY.current = typeof window === "undefined" ? 0 : window.scrollY || 0;
     downDistance.current = 0;
     upDistance.current = 0;
-    lastScrollTime.current = 0;
-    lastHideTime.current = 0;
   }, [disabled, resetKey]);
 
   useEffect(() => {
     if (typeof window === "undefined" || disabled) {
-      setIsHeaderHidden(false);
+      setStableHeaderMode("full");
       return undefined;
     }
 
-    const hideThreshold = 64;
-    const revealThreshold = 56;
-    const quickRevealDelta = 28;
-    const revealSuppressionMs = 320;
-    const topRevealY = 12;
-    const minHideY = 80;
+    const compactAfterY = 112;
+    const downThreshold = 96;
+    const revealThreshold = 84;
+    const topRevealY = 24;
+    const jitterThreshold = 5;
     let ticking = false;
 
     const headerHasFocus = () => {
       const activeElement = document.activeElement;
-      return Boolean(activeElement?.closest?.(".app-header-card"));
+      return Boolean(activeElement?.closest?.(".header, .topbar, .main-tabs, .mobile-bottom-nav, .app-header-card"));
     };
 
     const resetDistances = () => {
@@ -99,47 +98,43 @@ function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
 
     const reveal = () => {
       resetDistances();
-      lastHideTime.current = 0;
-      setIsHeaderHidden(false);
+      setStableHeaderMode("full");
     };
 
     const update = () => {
       ticking = false;
       const currentY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
       const delta = currentY - lastScrollY.current;
-      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
 
       if (currentY <= topRevealY || headerHasFocus()) {
         reveal();
         lastScrollY.current = currentY;
-        lastScrollTime.current = now;
         return;
       }
 
-      if (Math.abs(delta) < 4) {
+      if (Math.abs(delta) < jitterThreshold) {
+        lastScrollY.current = currentY;
         return;
       }
 
       if (delta > 0) {
         downDistance.current += delta;
         upDistance.current = 0;
-        if (currentY > minHideY && downDistance.current >= hideThreshold) {
-          lastHideTime.current = now;
-          setIsHeaderHidden(true);
+        if (currentY > compactAfterY && downDistance.current >= downThreshold) {
+          setStableHeaderMode("compact");
+          downDistance.current = 0;
         }
       } else {
         const upwardDelta = Math.abs(delta);
-        const quickUp = upwardDelta >= quickRevealDelta && now - lastScrollTime.current <= 180;
         upDistance.current += upwardDelta;
         downDistance.current = 0;
-        if ((quickUp || upDistance.current >= revealThreshold) && now - lastHideTime.current > revealSuppressionMs) {
-          setIsHeaderHidden(false);
+        if (currentY <= compactAfterY || upDistance.current >= revealThreshold) {
+          setStableHeaderMode("full");
           upDistance.current = 0;
         }
       }
 
       lastScrollY.current = currentY;
-      lastScrollTime.current = now;
     };
 
     const onScroll = () => {
@@ -150,7 +145,7 @@ function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
     };
 
     const onFocusIn = (event) => {
-      if (event.target?.closest?.(".app-header-card")) {
+      if (event.target?.closest?.(".header, .topbar, .main-tabs, .mobile-bottom-nav, .app-header-card")) {
         reveal();
       }
     };
@@ -168,16 +163,16 @@ function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
     downDistance.current = 0;
     upDistance.current = 0;
     lastScrollY.current = typeof window === "undefined" ? 0 : window.scrollY || 0;
-    lastHideTime.current = 0;
-    setIsHeaderHidden(false);
+    setStableHeaderMode("full");
   };
 
-  return { isHeaderHidden, revealHeader };
+  return { headerMode, isHeaderCompact: headerMode === "compact", revealHeader };
 }
 
 const IRS_MILEAGE_RATE = 0.725;
 const BETA_LOCAL_MODE = true;
 const SUBSCRIPTIONS_LIVE = false;
+const FEATURE_GATES_ENABLED = true;
 const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
@@ -229,16 +224,64 @@ const BLANK_VAULT_FORM = {
   storageLocation: "",
   condition: "",
   sealedCondition: "",
+  conditionName: "Near Mint",
+  language: "English",
+  finish: "",
+  printing: "",
   conditionNotes: "",
   sourceType: "Manual",
   upc: "",
   sku: "",
   catalogProductId: "",
+  catalogVariantId: "",
   tideTradrProductId: "",
   purchaseDate: "",
   receiptImage: "",
   itemImage: "",
   notes: "",
+};
+const BLANK_MULTI_DESTINATION_FORM = {
+  itemName: "",
+  category: "Pokemon",
+  productType: "",
+  catalogProductId: "",
+  upcSku: "",
+  msrpPrice: "",
+  marketPrice: "",
+  notes: "",
+  destinations: {
+    vault: true,
+    forge: false,
+    tidetradr: false,
+  },
+  vault: {
+    quantity: 1,
+    vaultStatus: "personal_collection",
+    vaultCategory: "Personal collection",
+    unitCost: "",
+    purchaseDate: "",
+  },
+  forge: {
+    quantity: 1,
+    unitCost: "",
+    plannedSellPrice: "",
+    source: "",
+    businessCategory: "Pokemon",
+  },
+  tidetradr: {
+    existingProductId: "",
+    action: "watchlist",
+    msrpPrice: "",
+    upc: "",
+    sku: "",
+    setName: "",
+    productType: "",
+    releaseDate: "",
+    sourceUrl: "",
+  },
+};
+const BLANK_QUICK_FIND_FORM = {
+  lookup: "",
 };
 const SCAN_DESTINATIONS = [
   { value: "none", label: "Choose after review" },
@@ -251,7 +294,7 @@ const SCAN_DESTINATIONS = [
   { value: "pinned", label: "Pinned Market Watch" },
   { value: "scout_report", label: "Scout Report" },
 ];
-const USER_TYPES = ["collector", "seller", "scout", "parent", "advanced"];
+const USER_TYPES = ["collector", "seller", "scout", "budget", "all_in_one"];
 const EXPENSE_CATEGORIES = [
   "Inventory/Product Cost",
   "Shipping",
@@ -418,8 +461,8 @@ const HOME_STAT_DEFAULTS = {
   collector: CORE_HOME_STAT_KEYS,
   seller: CORE_HOME_STAT_KEYS,
   scout: CORE_HOME_STAT_KEYS,
-  parent: CORE_HOME_STAT_KEYS,
-  advanced: HOME_STAT_KEYS,
+  budget: ["monthly_spending", "market_value", "market_vs_msrp_percent", "savings_vs_msrp"],
+  all_in_one: HOME_STAT_KEYS,
 };
 const HOME_VIEW_PRESETS = {
   collector: {
@@ -436,7 +479,7 @@ const HOME_VIEW_PRESETS = {
   },
   budget: {
     label: "Budget",
-    userType: "parent",
+    userType: "budget",
     dashboardPreset: "parent",
     stats: ["monthly_spending", "market_value", "market_vs_msrp_percent", "savings_vs_msrp"],
   },
@@ -446,9 +489,9 @@ const HOME_VIEW_PRESETS = {
     dashboardPreset: "scout",
     stats: ["monthly_spending", "market_value", "savings_vs_msrp", "collection_value"],
   },
-  full: {
-    label: "Full",
-    userType: "advanced",
+  all_in_one: {
+    label: "All-in-one",
+    userType: "all_in_one",
     dashboardPreset: "advanced",
     stats: HOME_STAT_KEYS,
   },
@@ -702,29 +745,29 @@ function createDefaultTidepoolData() {
         postId: "tidepool-demo-question",
         postType: "Question",
         title: "Has anyone checked Greenbrier today?",
-        body: "Mock beta post: asking whether cards were stocked near Greenbrier. Replace with live community posts later.",
+        body: "Beta sample post: asking whether cards were stocked near Greenbrier. Replace with live community posts later.",
         city: "Chesapeake",
-        sourceType: "mock",
+        sourceType: "demo",
         createdAt: now,
       }),
       makeTidepoolPost({
         postId: "tidepool-demo-restock",
         postType: "Restock sighting",
         title: "151 bundles seen at Walmart",
-        body: "Mock beta post: several Scarlet & Violet 151 Booster Bundles reported near the cards section. Needs real confirmation.",
+        body: "Beta sample post: several Scarlet & Violet 151 Booster Bundles reported near the cards section. Needs real confirmation.",
         city: "Suffolk",
         verificationStatus: "pending",
-        sourceType: "mock",
+        sourceType: "demo",
         createdAt: now,
       }),
       makeTidepoolPost({
         postId: "tidepool-demo-event",
         postType: "Event",
         title: "Demo kids pack pickup",
-        body: "Mock/demo event post for kid-friendly community activity. Kid-focused events should require review before public sharing.",
+        body: "Beta sample event post for kid-friendly community activity. Kid-focused events should require review before public sharing.",
         city: "Virginia Beach",
         verificationStatus: "pending",
-        sourceType: "mock",
+        sourceType: "demo",
         createdAt: now,
       }),
     ],
@@ -732,9 +775,9 @@ function createDefaultTidepoolData() {
       {
         commentId: "tidepool-demo-comment",
         postId: "tidepool-demo-question",
-        userId: "mock-helper",
+        userId: "demo-helper",
         displayName: "Community Helper",
-        body: "Mock beta reply: I can check later today.",
+        body: "Beta sample reply: I can check later today.",
         parentCommentId: "",
         createdAt: now,
         updatedAt: now,
@@ -761,7 +804,7 @@ function getImageSourceLabel(item = {}) {
     tcgcsv: "TCGCSV",
     user: "User photo",
     manual: "Manual image",
-    mock: "Mock image",
+    mock: "Demo image",
     placeholder: "Image needed",
     official: "Official/API",
     api: "API",
@@ -841,6 +884,8 @@ function itemPurchaserName(item) {
 }
 
 function normalizeUserType(userType) {
+  if (userType === "parent") return "budget";
+  if (userType === "advanced") return "all_in_one";
   return USER_TYPES.includes(userType) ? userType : "collector";
 }
 
@@ -873,7 +918,7 @@ function normalizeDashboardCardStyle(style) {
 }
 
 function getDashboardPresetForUserType(userType = "collector") {
-  const map = { collector: "collector", seller: "seller", scout: "scout", parent: "parent", advanced: "advanced" };
+  const map = { collector: "collector", seller: "seller", scout: "scout", budget: "parent", all_in_one: "advanced" };
   return map[normalizeUserType(userType)] || "simple";
 }
 
@@ -904,6 +949,20 @@ function normalizeDashboardLayout(layout, preset = "simple") {
         collapsed: Boolean(saved?.collapsed ?? fallback?.collapsed ?? false),
       };
     }).sort((a, b) => a.order - b.order),
+  };
+}
+
+function normalizeLocalSubscriptionProfile(savedProfile = {}) {
+  return {
+    subscriptionPlan: savedProfile.subscriptionPlan || savedProfile.subscription_plan || PLAN_TYPES.FREE,
+    featureTier: savedProfile.featureTier || savedProfile.feature_tier || savedProfile.tier || PLAN_TYPES.FREE,
+    tier: savedProfile.tier || savedProfile.featureTier || savedProfile.feature_tier || PLAN_TYPES.FREE,
+    userRole: savedProfile.userRole || savedProfile.user_role || USER_ROLES.USER,
+    isAdmin: Boolean(savedProfile.isAdmin || savedProfile.is_admin),
+    subscriptionStatus: savedProfile.subscriptionStatus || savedProfile.subscription_status || "active",
+    subscriptionStartedAt: savedProfile.subscriptionStartedAt || savedProfile.subscription_started_at || "",
+    subscriptionExpiresAt: savedProfile.subscriptionExpiresAt || savedProfile.subscription_expires_at || "",
+    lifetimeAccess: Boolean(savedProfile.lifetimeAccess || savedProfile.lifetime_access),
   };
 }
 
@@ -939,10 +998,10 @@ function createSharedCatalogProducts() {
     lowPrice: toNumber(product.marketValueLightPlayed || product.lowPrice),
     midPrice: toNumber(product.marketValueNearMint || product.marketValue || product.midPrice),
     highPrice: toNumber(product.marketValueGraded || product.highPrice),
-    marketSource: product.marketSource || "Mock",
+    marketSource: product.marketSource || "Beta estimate",
     marketLastUpdated: product.marketLastUpdated || now,
-    marketConfidenceLevel: product.marketConfidenceLevel || "Mock",
-    sourceType: product.sourceType || "mock",
+    marketConfidenceLevel: product.marketConfidenceLevel || "Estimated",
+    sourceType: product.sourceType || "estimated",
     setCode: product.setCode || product.cardNumber || "",
     packCount: product.packCount ?? "",
     releaseDate: product.releaseDate || "",
@@ -961,7 +1020,7 @@ function createSharedCatalogProducts() {
     marketValueNearMint: toNumber(product.marketValueNearMint || product.marketValue),
     marketValueLightPlayed: toNumber(product.marketValueLightPlayed),
     marketValueGraded: toNumber(product.marketValueGraded),
-    notes: product.notes || "TideTradr beta catalog item. Market data is mock/manual unless labeled otherwise.",
+    notes: product.notes || "TideTradr beta catalog item. Market data is estimated/manual unless labeled otherwise.",
     createdAt: now,
     lastUpdated: product.lastUpdated || now,
     ...product,
@@ -1024,20 +1083,69 @@ function QuickActionGrid({ actions = [], className = "", ariaLabel = "Quick acti
 
   return (
     <div className={`quick-action-card-grid ${className}`.trim()} aria-label={ariaLabel}>
-      {visibleActions.map((action, index) => (
-        <button
-          key={action.key || action.title || action.label}
-          type="button"
-          className={`quick-action-card ${action.primary || index === 0 ? "primary" : "secondary-button"} ${action.className || ""}`.trim()}
-          onClick={action.onClick}
-          disabled={action.disabled}
-          aria-label={action.ariaLabel || action.title || action.label}
-        >
-          <span>{action.title || action.label}</span>
-          {action.subtitle ? <small>{action.subtitle}</small> : null}
-        </button>
-      ))}
+      {visibleActions.map((action) => {
+        const title = action.title || action.label || "Action";
+        return (
+          <button
+            key={action.key || title}
+            type="button"
+            className={`quick-action-card ${action.primary ? "primary" : "secondary-button"} ${action.className || ""}`.trim()}
+            onClick={action.onClick}
+            disabled={action.disabled}
+            aria-label={action.ariaLabel || title}
+          >
+            <span>{title}</span>
+            {action.subtitle ? <small>{action.subtitle}</small> : null}
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+function PageHeader({
+  className = "",
+  title,
+  subtitle,
+  actions = null,
+  summaryLabel = "",
+  summary = null,
+  tabs = [],
+  activeTab = "",
+  onTabChange = null,
+  children = null,
+}) {
+  return (
+    <section className={`standard-page-header ${className}`.trim()}>
+      <div className="standard-page-header-main">
+        <div className="standard-page-header-copy">
+          <h2>{title}</h2>
+          {subtitle ? <p>{subtitle}</p> : null}
+        </div>
+        {actions ? <div className="standard-page-header-actions">{actions}</div> : null}
+      </div>
+      {summary ? (
+        <div className="standard-page-header-summary">
+          {summaryLabel ? <div className="standard-page-header-label">{summaryLabel}</div> : null}
+          {summary}
+        </div>
+      ) : null}
+      {children ? <div className="standard-page-header-body">{children}</div> : null}
+      {tabs.length ? (
+        <div className="standard-page-header-tabs" aria-label={`${title} navigation`}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={activeTab === tab.key ? "active" : ""}
+              onClick={() => onTabChange?.(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -1247,6 +1355,9 @@ export default function App() {
   const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
   const [tideTradrLookupId, setTideTradrLookupId] = useState("");
   const [selectedCatalogDetailId, setSelectedCatalogDetailId] = useState("");
+  const [catalogDetailExtras, setCatalogDetailExtras] = useState({});
+  const [catalogVariantSelection, setCatalogVariantSelection] = useState({});
+  const [catalogConditionSelection, setCatalogConditionSelection] = useState({});
   const [marketPriceCache, setMarketPriceCache] = useState(() => loadPriceCache());
   const [marketSyncMessage, setMarketSyncMessage] = useState("");
   const [manualMarketForm, setManualMarketForm] = useState({
@@ -1431,6 +1542,7 @@ export default function App() {
   itemImageNeedsReview: false,
   barcode: "",
   catalogProductId: "",
+  catalogVariantId: "",
   externalProductId: "",
   tideTradrUrl: "",
   marketPrice: "",
@@ -1450,6 +1562,10 @@ export default function App() {
   actionNotes: "",
   storageLocation: "",
   condition: "",
+  conditionName: "Near Mint",
+  language: "English",
+  finish: "",
+  printing: "",
   sealedCondition: "",
   conditionNotes: "",
   notes: "",
@@ -1518,13 +1634,15 @@ export default function App() {
   const [tripForm, setTripForm] = useState(blankTrip);
   const [saleForm, setSaleForm] = useState(blankSale);
   const [activeFlowModal, setActiveFlowModal] = useState(null);
+  const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
+  const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
   const flowModalRef = useRef(null);
   const flowModalOpenerRef = useRef(null);
 
   const mainTabs = [
     { key: "home", label: "Home", target: "dashboard" },
     { key: "scout", label: "Scout", target: "scout" },
-    { key: "vault", label: "The Vault", target: "vault" },
+    { key: "vault", label: "Vault", target: "vault" },
     { key: "tideTradr", label: "TideTradr", target: "market" },
     { key: "forge", label: "Forge", target: "inventory" },
   ];
@@ -1539,7 +1657,7 @@ export default function App() {
     { title: "Main Tabs", items: [
       { key: "home", label: "Home", target: "dashboard" },
       { key: "scout-main", label: "Scout", target: "scout" },
-      { key: "vault", label: "The Vault" },
+      { key: "vault", label: "Vault" },
       { key: "tidetradr-main", label: "TideTradr", target: "market" },
       { key: "forge", label: "Forge", target: "inventory" },
     ] },
@@ -1605,52 +1723,12 @@ export default function App() {
     forgeSubTab,
     marketplaceView,
   ].join("|");
-  const { isHeaderHidden, revealHeader } = useAutoHideHeader({
+  const { headerMode } = useAutoHideHeader({
     disabled: autoHideBlocked,
     resetKey: autoHideResetKey,
   });
   const getHeaderCardClass = (className = "") =>
-    `app-header-card${isHeaderHidden ? " app-header-card--hidden" : ""}${className ? ` ${className}` : ""}`;
-  const scoutContextLabels = {
-    main: "Scout",
-    reports: "Scout - Reports",
-    submit: "Scout - Submit Report",
-    alerts: "Scout - Alerts",
-    stores: "Scout - Stores",
-  };
-  const tideTradrContextLabels = {
-    overview: "TideTradr",
-    watch: "TideTradr - Market Watch",
-    recent: "TideTradr - Recent Checks",
-    deal: "TideTradr - Deal Finder",
-  };
-  const forgeContextLabels = {
-    addInventory: "Forge - Add Inventory",
-    addSale: "Forge - Add Sale",
-    sales: "Forge - Sales",
-    expenses: "Forge - Expenses",
-    mileage: "Forge - Mileage",
-    reports: "Forge - Reports",
-    marketplace: "Forge - Marketplace",
-  };
-  const autoHideContextLabel =
-    activeTab === "dashboard"
-      ? "Home"
-      : activeTab === "scout"
-        ? scoutContextLabels[scoutView] || "Scout"
-      : activeTab === "vault"
-        ? "The Vault"
-      : activeTab === "market" || activeTab === "catalog"
-        ? tideTradrContextLabels[tideTradrSubTab] || "TideTradr"
-      : forgeTabActive
-        ? (activeTab === "inventory" && forgeSubTab === "marketplace" ? "Forge - Marketplace" : forgeContextLabels[activeTab] || "Forge")
-      : activeTab === "tidepool"
-        ? "Tidepool"
-      : activeTab === "adminReview"
-        ? "Admin Tools"
-      : activeTab === "mySuggestions"
-        ? "My Suggestions"
-      : activeTabLabel;
+    `app-header-card app-header-card--${headerMode}${className ? ` ${className}` : ""}`;
 
   function navigateMainTab(tab) {
     if (!confirmLeaveVaultWork()) return;
@@ -1687,30 +1765,22 @@ export default function App() {
 
   function renderPageChrome({ title, subtitle, primary, secondary, quickActions = [], tabs = [], activeSubTab, setActiveSubTab }) {
     return (
-      <section className={getHeaderCardClass("page-dashboard-header panel")}>
-        <div className="page-dashboard-header-main">
-          <div>
-            <h2>{title}</h2>
-            <p>{subtitle}</p>
-          </div>
-          <div className="summary-pill-row">
+      <PageHeader
+        className={getHeaderCardClass("panel page-dashboard-header")}
+        title={title}
+        subtitle={subtitle}
+        actions={(
+          <>
             {primary ? <button type="button" onClick={primary.onClick}>{primary.label}</button> : null}
             {secondary ? <button type="button" className="secondary-button" onClick={secondary.onClick}>{secondary.label}</button> : null}
-          </div>
-        </div>
-        {quickActions.length ? (
-          <QuickActionGrid actions={quickActions} ariaLabel={`${title} quick actions`} />
-        ) : null}
-        {tabs.length ? (
-          <div className="subtab-rail">
-            {tabs.map((tab) => (
-              <button key={tab.key} type="button" className={activeSubTab === tab.key ? "active" : ""} onClick={() => setActiveSubTab(tab.key)}>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </section>
+          </>
+        )}
+        tabs={tabs}
+        activeTab={activeSubTab}
+        onTabChange={setActiveSubTab}
+      >
+        {quickActions.length ? <QuickActionGrid actions={quickActions} ariaLabel={`${title} quick actions`} /> : null}
+      </PageHeader>
     );
   }
 
@@ -1943,7 +2013,7 @@ export default function App() {
       return (
         <>
           <button type="button" onClick={() => viewSearchResult(result)}>View details</button>
-          <button type="button" className="secondary-button" onClick={() => { applyCatalogProductToVault(result.source.id); setActiveTab("vault"); setSearchExpanded(false); }}>Add to Vault</button>
+          <button type="button" className="secondary-button" onClick={() => { applyCatalogProductToVault(result.source.id, { stayInContext: true }); setSearchExpanded(false); }}>Add to Vault</button>
           <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(result.source.id)}>Wishlist</button>
           <button type="button" className="secondary-button" onClick={() => viewSearchResult(result)}>More</button>
         </>
@@ -1972,17 +2042,19 @@ export default function App() {
     setMenuOpen(false);
   }
 
-  function openFeedbackDialog(type) {
+  function openFeedbackDialog(type, defaults = {}) {
     const now = new Date().toISOString();
     setFeedbackDialog(type);
     setFeedbackForm({
-      whatHappened: "",
-      page: activeTabLabel,
-      steps: "",
+      whatHappened: defaults.whatHappened || "",
+      page: defaults.page || activeTabLabel,
+      steps: defaults.steps || "",
       screenshotName: "",
       metadata: {
         appVersion: "E&T TCG beta web app",
         route: activeTab,
+        feedbackCategory: type,
+        ...(defaults.metadata || {}),
         device:
           typeof window !== "undefined"
             ? `${window.innerWidth}x${window.innerHeight}`
@@ -1991,6 +2063,23 @@ export default function App() {
         timestamp: now,
       },
     });
+  }
+
+  function feedbackFormHasDraft() {
+    return Boolean(
+      String(feedbackForm.whatHappened || "").trim() ||
+      String(feedbackForm.steps || "").trim() ||
+      String(feedbackForm.screenshotName || "").trim()
+    );
+  }
+
+  function closeFeedbackDialog(force = false) {
+    if (!force && feedbackFormHasDraft() && !window.confirm("Discard changes?")) {
+      return false;
+    }
+    setFeedbackDialog(null);
+    setFeedbackForm({ whatHappened: "", page: "", steps: "", screenshotName: "", metadata: {} });
+    return true;
   }
 
   function submitFeedbackDialog(event) {
@@ -2009,14 +2098,15 @@ export default function App() {
       setVaultToast("Could not submit right now. Please try again or export beta data.");
       return;
     }
-    setFeedbackDialog(null);
-    setFeedbackForm({ whatHappened: "", page: "", steps: "", screenshotName: "", metadata: {} });
+    closeFeedbackDialog(true);
     setVaultToast(
       feedbackDialog === "bug"
         ? "Bug report submitted. We'll review it."
         : feedbackDialog === "feature"
           ? "Feature request submitted."
-          : "Thanks - feedback submitted."
+          : ["catalog_data", "store_data", "market_data"].includes(feedbackDialog)
+            ? "Data issue submitted for review."
+            : "Thanks - feedback submitted."
     );
   }
 
@@ -2064,7 +2154,7 @@ export default function App() {
       setSupabaseImportStatus((current) => ({
         ...current,
         loading: false,
-        errors: ["Supabase anon client is not configured in the frontend. Import scripts still run server-side with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."],
+        errors: ["Supabase anon client is not configured in the frontend. Import scripts still run server-side with server-only credentials."],
       }));
       return;
     }
@@ -2393,6 +2483,8 @@ export default function App() {
   useEffect(() => {
     let frameId = 0;
     const lastScrollY = { current: window.scrollY || 0 };
+    const downDistance = { current: 0 };
+    const upDistance = { current: 0 };
 
     function handleScroll() {
       if (frameId) return;
@@ -2401,15 +2493,28 @@ export default function App() {
         const currentScrollY = window.scrollY || 0;
         const delta = currentScrollY - lastScrollY.current;
 
-        if (currentScrollY <= 5) {
+        if (currentScrollY <= 24) {
           setShowTopbarActions(true);
           setShowFullTopbar(true);
-        } else if (currentScrollY > 20 && delta > 4) {
-          setShowTopbarActions(false);
-          setShowFullTopbar(false);
-        } else if (delta < -4) {
+          downDistance.current = 0;
+          upDistance.current = 0;
+        } else if (Math.abs(delta) >= 5) {
           setShowTopbarActions(true);
-          if (delta < -18) setShowFullTopbar(true);
+          if (delta > 0) {
+            downDistance.current += delta;
+            upDistance.current = 0;
+            if (currentScrollY > 96 && downDistance.current >= 88) {
+              setShowFullTopbar(false);
+              downDistance.current = 0;
+            }
+          } else {
+            upDistance.current += Math.abs(delta);
+            downDistance.current = 0;
+            if (currentScrollY <= 96 || upDistance.current >= 76) {
+              setShowFullTopbar(true);
+              upDistance.current = 0;
+            }
+          }
         }
 
         lastScrollY.current = currentScrollY;
@@ -2466,6 +2571,53 @@ export default function App() {
     }
     return { ...old, [field]: value };
   });
+  const resetMultiDestinationForm = (overrides = {}) => setMultiDestinationForm({
+    ...BLANK_MULTI_DESTINATION_FORM,
+    destinations: { ...BLANK_MULTI_DESTINATION_FORM.destinations, ...(overrides.destinations || {}) },
+    vault: { ...BLANK_MULTI_DESTINATION_FORM.vault, ...(overrides.vault || {}) },
+    forge: { ...BLANK_MULTI_DESTINATION_FORM.forge, ...(overrides.forge || {}) },
+    tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, ...(overrides.tidetradr || {}) },
+    ...overrides,
+  });
+  const updateMultiDestinationField = (field, value) => setMultiDestinationForm((current) => ({ ...current, [field]: value }));
+  const updateMultiDestinationSection = (section, field, value) => setMultiDestinationForm((current) => ({
+    ...current,
+    [section]: {
+      ...current[section],
+      [field]: value,
+    },
+  }));
+  const updateMultiDestinationToggle = (destination, checked) => setMultiDestinationForm((current) => ({
+    ...current,
+    destinations: {
+      ...current.destinations,
+      [destination]: checked,
+    },
+  }));
+
+  function selectMultiDestinationCatalogProduct(productId) {
+    const product = catalogProducts.find((entry) => String(entry.id) === String(productId));
+    setMultiDestinationForm((current) => ({
+      ...current,
+      catalogProductId: productId,
+      itemName: product ? catalogTitle(product) : current.itemName,
+      productType: product?.productType || product?.category || current.productType,
+      category: product?.category || current.category,
+      upcSku: product?.barcode || product?.upc || product?.sku || current.upcSku,
+      msrpPrice: product?.msrpPrice || current.msrpPrice,
+      marketPrice: product?.marketPrice || product?.midPrice || current.marketPrice,
+      tidetradr: {
+        ...current.tidetradr,
+        existingProductId: productId,
+        msrpPrice: product?.msrpPrice || current.tidetradr.msrpPrice,
+        upc: product?.barcode || product?.upc || current.tidetradr.upc,
+        sku: product?.sku || current.tidetradr.sku,
+        setName: catalogExpansionName(product || {}) || current.tidetradr.setName,
+        productType: product?.productType || current.tidetradr.productType,
+        releaseDate: product?.releaseDate || product?.releaseYear || current.tidetradr.releaseDate,
+      },
+    }));
+  }
 
   function isBlankLike(value) {
     return value === undefined || value === null || String(value).trim() === "";
@@ -2584,10 +2736,15 @@ export default function App() {
       "store",
       "storageLocation",
       "condition",
+      "conditionName",
+      "language",
+      "finish",
+      "printing",
       "sealedCondition",
       "conditionNotes",
       "upc",
       "sku",
+      "catalogVariantId",
       "purchaseDate",
       "receiptImage",
       "itemImage",
@@ -3569,17 +3726,7 @@ export default function App() {
       setDashboardLayout(normalizeDashboardLayout(saved.dashboardLayout, savedPreset));
       setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
       setCloudSyncPreference(saved.cloudSyncPreference || "local");
-      setSubscriptionProfile({
-        subscriptionPlan: PLAN_TYPES.FREE,
-        featureTier: PLAN_TYPES.FREE,
-        tier: PLAN_TYPES.FREE,
-        userRole: USER_ROLES.USER,
-        isAdmin: false,
-        subscriptionStatus: "active",
-        subscriptionStartedAt: "",
-        subscriptionExpiresAt: "",
-        lifetimeAccess: false,
-      });
+      setSubscriptionProfile(normalizeLocalSubscriptionProfile(saved.subscriptionProfile));
       setLocationSettings({
         mode: saved.locationSettings?.mode || "manual",
         manualLocation: saved.locationSettings?.manualLocation || "",
@@ -3675,9 +3822,10 @@ export default function App() {
         dashboardCardStyle,
         cloudSyncPreference,
         locationSettings,
+        subscriptionProfile,
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, subscriptionProfile, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -3692,6 +3840,21 @@ export default function App() {
   useEffect(() => {
     let active = true;
     async function loadProfile() {
+      if (BETA_LOCAL_MODE && user?.id === "local-beta") {
+        const profile = makeFallbackUserProfile(user);
+        if (!active) return;
+        setCurrentUserProfile(profile);
+        setSubscriptionProfile((current) => ({
+          ...current,
+          userId: profile.userId,
+          email: profile.email,
+          displayName: profile.displayName,
+          createdAt: profile.createdAt,
+          updatedAt: profile.updatedAt,
+          lastLoginAt: profile.lastLoginAt,
+        }));
+        return;
+      }
       const profile = await getCurrentUserProfile(user);
       if (!active) return;
       setCurrentUserProfile(profile);
@@ -3916,6 +4079,7 @@ export default function App() {
       barcode: vaultForm.upc || "",
       upc: vaultForm.upc || "",
       catalogProductId: vaultForm.catalogProductId || "",
+      catalogVariantId: vaultForm.catalogVariantId || "",
       tideTradrProductId: vaultForm.tideTradrProductId || vaultForm.catalogProductId || "",
       catalogProductName: "",
       externalProductId: vaultForm.tideTradrProductId || vaultForm.catalogProductId || "",
@@ -3937,6 +4101,10 @@ export default function App() {
       notes: vaultForm.notes || "",
       storageLocation: vaultForm.storageLocation || "",
       condition: vaultForm.condition || "",
+      conditionName: vaultForm.conditionName || vaultForm.condition || "Near Mint",
+      language: vaultForm.language || "English",
+      finish: vaultForm.finish || "",
+      printing: vaultForm.printing || "",
       sealedCondition: vaultForm.sealedCondition || "",
       conditionNotes: vaultForm.conditionNotes || "",
       sourceType: vaultForm.sourceType || "Manual",
@@ -4290,7 +4458,7 @@ export default function App() {
     setScoutReportFilter("Latest");
   }
 
-  function openVaultQuickAdd({ category = "Personal collection", productType = "", subTab = "collection" } = {}) {
+function openVaultQuickAdd({ category = "Personal collection", productType = "", subTab = "collection", stayInContext = false } = {}) {
     setVaultSubTab(subTab);
     setVaultForm((current) => ({
       ...current,
@@ -4304,7 +4472,7 @@ export default function App() {
     setVaultFormSections({ basic: true, pricing: false, status: false, extra: false });
     setFeatureSectionsOpen((current) => ({ ...current, vault_add: true }));
     setQuickAddMenuOpen(false);
-    setActiveTab("vault");
+    if (!stayInContext) setActiveTab("vault");
   }
 
   function formsDiffer(current, blank) {
@@ -4321,6 +4489,7 @@ export default function App() {
     if (type === "createListing") return formsDiffer(marketplaceForm, BLANK_MARKETPLACE_FORM);
     if (type === "forgeImport") return formsDiffer(forgeImportForm, FORGE_IMPORT_BLANK);
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
+    if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, BLANK_MULTI_DESTINATION_FORM);
     return false;
   }
 
@@ -4351,6 +4520,12 @@ export default function App() {
     }
     if (type === "tidepoolCreatePost") {
       setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
+    }
+    if (type === "quickFind") {
+      setQuickFindForm(BLANK_QUICK_FIND_FORM);
+    }
+    if (type === "multiDestinationAdd") {
+      resetMultiDestinationForm();
     }
   }
 
@@ -4420,6 +4595,17 @@ export default function App() {
     openFlowModal("vaultQuickAdd", { size: "small", source: "vault" });
   }
 
+  function openQuickFindFlow(options = {}) {
+    setQuickFindForm(BLANK_QUICK_FIND_FORM);
+    if (options.source === "market") setActiveTab("market");
+    openFlowModal("quickFind", { size: "small", source: options.source || "tidetradr" });
+  }
+
+  function openMultiDestinationAddFlow(options = {}) {
+    resetMultiDestinationForm(options.seed || {});
+    openFlowModal("multiDestinationAdd", { size: "large", source: options.source || "quick-add" });
+  }
+
   function openVaultMoveToForgeFlow() {
     setActiveTab("vault");
     openFlowModal("vaultMoveToForge", { size: "medium", source: "vault" });
@@ -4436,9 +4622,26 @@ export default function App() {
 
   function openQuickAddAction(action) {
     setQuickAddMenuOpen(false);
-    if (action === "card") return openVaultQuickAdd({ productType: "Individual Card", subTab: "collection" });
-    if (action === "sealed") return openVaultQuickAdd({ productType: "Sealed Product", subTab: "products" });
-    if (action === "vaultItem") return openVaultQuickAdd({ category: "Personal collection", subTab: "collection" });
+    if (action === "multiDestination") return openMultiDestinationAddFlow();
+    if (action === "card") return openVaultQuickAdd({ productType: "Individual Card", subTab: "collection", stayInContext: true });
+    if (action === "sealed") return openVaultQuickAdd({ productType: "Sealed Product", subTab: "products", stayInContext: true });
+    if (action === "vaultItem") return openVaultQuickAdd({ category: "Personal collection", subTab: "collection", stayInContext: true });
+    if (action === "importCollection") {
+      setActiveTab("vault");
+      setVaultAddMode("import");
+      setShowVaultAddForm(true);
+      return;
+    }
+    if (action === "quickFind" || action === "manualLookup" || action === "enterUpcSku") return openQuickFindFlow({ source: "quick-add" });
+    if (action === "suggestCatalogItem") {
+      return openMultiDestinationAddFlow({
+        seed: {
+          destinations: { vault: false, forge: false, tidetradr: true },
+          tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, action: "suggest" },
+        },
+      });
+    }
+    if (action === "suggestCatalogCorrection") return openFeedbackDialog("catalog_data", { page: "TideTradr", topic: "Catalog correction" });
     if (action === "scanProduct") return beginScanProduct("none");
     if (action === "scanVault") {
       setActiveTab("vault");
@@ -4450,10 +4653,12 @@ export default function App() {
     if (action === "inventory") return openAddInventoryFlow();
     if (action === "sale") return openAddSaleFlow();
     if (action === "expense") return openAddExpenseFlow();
+    if (action === "mileage") return openAddMileageFlow();
+    if (action === "importFile") return openForgeImportFlow();
     if (action === "storeReport") {
       return openScoutSubmitFlow();
     }
-    if (action === "store") {
+    if (action === "store" || action === "storeSuggestion") {
       setScoutSubTabTarget({ tab: "stores", action: "missingStore", id: Date.now() });
       setScoutView("stores");
       setActiveTab("scout");
@@ -4462,7 +4667,7 @@ export default function App() {
     if (action === "storeCorrection") {
       return openScoutSubmitFlow({ action: "storeCorrection" });
     }
-    if (action === "wishlist") return openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist" });
+    if (action === "wishlist") return openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist", stayInContext: true });
     if (action === "searchTidetradr") {
       setActiveTab("market");
       setTideTradrSubTab("overview");
@@ -4476,6 +4681,187 @@ export default function App() {
     if (action === "whatDidISee") return openWhatDidISee();
     if (action === "listing") return openMarketplaceCreate("manual", {});
     return null;
+  }
+
+  function runQuickFindSearch(event, mode = "general") {
+    event?.preventDefault?.();
+    const lookup = String(quickFindForm.lookup || "").trim();
+    setActiveTab("market");
+    setTideTradrSubTab("overview");
+    if (!lookup) {
+      closeFlowModal({ force: true, reset: false });
+      setQuickFindForm(BLANK_QUICK_FIND_FORM);
+      return;
+    }
+    setCatalogSearch(lookup);
+    setCatalogSearchHasRun(true);
+    closeCatalogSuggestions();
+    if (mode === "barcode") {
+      setCatalogBarcodeSearch(lookup);
+      setSubmittedCatalogSearch(lookup);
+      setSubmittedCatalogBarcodeSearch(lookup);
+      loadImportedPokemonCatalog(lookup, { page: 1, mode: "barcode", barcode: lookup });
+    } else {
+      setCatalogBarcodeSearch("");
+      setSubmittedCatalogSearch(lookup);
+      setSubmittedCatalogBarcodeSearch("");
+      loadImportedPokemonCatalog(lookup, { page: 1, mode: "general", barcode: "" });
+    }
+    closeFlowModal({ force: true, reset: false });
+    setQuickFindForm(BLANK_QUICK_FIND_FORM);
+  }
+
+  async function submitMultiDestinationAdd(event) {
+    event.preventDefault();
+    const itemName = String(multiDestinationForm.itemName || "").trim();
+    const destinations = multiDestinationForm.destinations || {};
+    const selectedDestinationCount = Object.values(destinations).filter(Boolean).length;
+    if (!itemName) return alert("Enter an item name first.");
+    if (!selectedDestinationCount) return alert("Choose at least one destination.");
+
+    const now = new Date().toISOString();
+    const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
+    const successes = [];
+    const failures = [];
+    const shared = {
+      name: itemName,
+      category: multiDestinationForm.category || "Pokemon",
+      productType: multiDestinationForm.productType || selectedCatalog?.productType || "",
+      barcode: multiDestinationForm.upcSku || "",
+      catalogProductId: selectedCatalog?.id || "",
+      catalogProductName: selectedCatalog?.name || "",
+      marketPrice: Number(multiDestinationForm.marketPrice || selectedCatalog?.marketPrice || selectedCatalog?.midPrice || 0),
+      msrpPrice: Number(multiDestinationForm.msrpPrice || selectedCatalog?.msrpPrice || 0),
+      setName: selectedCatalog ? catalogExpansionName(selectedCatalog) : multiDestinationForm.tidetradr.setName,
+      expansion: selectedCatalog ? catalogExpansionName(selectedCatalog) : multiDestinationForm.tidetradr.setName,
+      notes: multiDestinationForm.notes || "",
+      sourceType: selectedCatalog ? "TideTradr" : "Multi-destination add",
+    };
+
+    try {
+      if (destinations.vault) {
+        const vaultQuantity = Math.max(1, Number(multiDestinationForm.vault.quantity || 1));
+        const vaultItem = {
+          id: makeId("vault"),
+          ...shared,
+          quantity: vaultQuantity,
+          unitCost: Number(multiDestinationForm.vault.unitCost || 0),
+          status: vaultStatusLabel(multiDestinationForm.vault.vaultStatus),
+          vaultStatus: multiDestinationForm.vault.vaultStatus,
+          vaultCategory: multiDestinationForm.vault.vaultCategory,
+          purchaseDate: multiDestinationForm.vault.purchaseDate,
+          storageLocation: vaultStatusLabel(multiDestinationForm.vault.vaultStatus),
+          conditionName: "Near Mint",
+          language: "English",
+          createdAt: now,
+        };
+        setItems((current) => [vaultItem, ...current]);
+        successes.push("Added to Vault");
+      }
+    } catch (error) {
+      failures.push(`Vault failed: ${error.message || "Could not save"}`);
+    }
+
+    try {
+      if (destinations.forge) {
+        const forgeQuantity = Math.max(1, Number(multiDestinationForm.forge.quantity || 1));
+        const forgeItem = {
+          id: makeId("item"),
+          ...shared,
+          quantity: forgeQuantity,
+          unitCost: Number(multiDestinationForm.forge.unitCost || 0),
+          salePrice: Number(multiDestinationForm.forge.plannedSellPrice || 0),
+          category: multiDestinationForm.forge.businessCategory || shared.category,
+          store: multiDestinationForm.forge.source || "",
+          status: "In Stock",
+          buyer: "Zena",
+          purchaserId: "purchaser-default-1",
+          purchaserName: "Zena",
+          conditionName: "Near Mint",
+          language: "English",
+          createdAt: now,
+        };
+        setItems((current) => [forgeItem, ...current]);
+        successes.push("Added to Forge inventory");
+      }
+    } catch (error) {
+      failures.push(`Forge failed: ${error.message || "Could not save"}`);
+    }
+
+    try {
+      if (destinations.tidetradr) {
+        const existingProductId = multiDestinationForm.tidetradr.existingProductId || selectedCatalog?.id || "";
+        if (existingProductId) {
+          addProductToTideTradrWatchlist(existingProductId);
+          successes.push("Added to Watchlist");
+        } else if (adminUser) {
+          const catalogProduct = {
+            id: makeId("catalog"),
+            name: itemName,
+            productName: itemName,
+            category: multiDestinationForm.category || "Pokemon",
+            productType: multiDestinationForm.tidetradr.productType || multiDestinationForm.productType,
+            setName: multiDestinationForm.tidetradr.setName,
+            expansion: multiDestinationForm.tidetradr.setName,
+            barcode: multiDestinationForm.tidetradr.upc || multiDestinationForm.upcSku,
+            sku: multiDestinationForm.tidetradr.sku,
+            msrpPrice: Number(multiDestinationForm.tidetradr.msrpPrice || multiDestinationForm.msrpPrice || 0),
+            marketPrice: Number(multiDestinationForm.marketPrice || 0),
+            releaseDate: multiDestinationForm.tidetradr.releaseDate,
+            sourceUrl: multiDestinationForm.tidetradr.sourceUrl,
+            sourceType: "admin_created",
+            marketStatus: "Manual",
+            createdAt: now,
+          };
+          setCatalogProducts((current) => [catalogProduct, ...current]);
+          setTideTradrWatchlist((current) => [
+            {
+              id: makeId("watch"),
+              productId: catalogProduct.id,
+              name: catalogProduct.name,
+              setName: catalogProduct.setName,
+              productType: catalogProduct.productType,
+              marketValue: Number(catalogProduct.marketPrice || 0),
+              msrp: Number(catalogProduct.msrpPrice || 0),
+              sourceName: "Admin",
+              pinned: false,
+              lastUpdated: now,
+            },
+            ...current,
+          ]);
+          successes.push("Created TideTradr catalog item");
+        } else {
+          submitUniversalSuggestion({
+            suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+            targetTable: "product_catalog",
+            submittedData: {
+              name: itemName,
+              category: multiDestinationForm.category,
+              productType: multiDestinationForm.tidetradr.productType || multiDestinationForm.productType,
+              setName: multiDestinationForm.tidetradr.setName,
+              releaseDate: multiDestinationForm.tidetradr.releaseDate,
+              msrpPrice: multiDestinationForm.tidetradr.msrpPrice || multiDestinationForm.msrpPrice,
+              upc: multiDestinationForm.tidetradr.upc || multiDestinationForm.upcSku,
+              sku: multiDestinationForm.tidetradr.sku,
+              sourceUrl: multiDestinationForm.tidetradr.sourceUrl,
+              notes: multiDestinationForm.notes,
+            },
+            currentDataSnapshot: {},
+            proofUrl: multiDestinationForm.tidetradr.sourceUrl,
+            notes: multiDestinationForm.notes,
+            source: "user",
+          });
+          successes.push("Submitted TideTradr suggestion");
+        }
+      }
+    } catch (error) {
+      failures.push(`TideTradr failed: ${error.message || "Could not save"}`);
+    }
+
+    if (successes.length) setVaultToast(failures.length ? `${successes.join(" | ")}. ${failures.join(" | ")}` : successes.join(" | "));
+    if (!successes.length && failures.length) setVaultToast(failures.join(" | "));
+    closeFlowModal({ force: true, reset: false });
+    resetMultiDestinationForm();
   }
 
   async function loadAllData() {
@@ -4501,6 +4887,7 @@ export default function App() {
       barcode: row.barcode || row.upc || "",
       upc: row.upc || row.barcode || "",
       catalogProductId: row.catalogProductId || row.catalog_product_id || "",
+      catalogVariantId: row.catalogVariantId || row.catalog_variant_id || "",
       tideTradrProductId: row.tideTradrProductId || row.tide_tradr_product_id || row.catalogProductId || row.catalog_product_id || "",
       catalogProductName: row.catalogProductName || row.catalog_product_name || "",
     externalProductId: row.externalProductId || row.external_product_id || "",
@@ -4532,6 +4919,10 @@ export default function App() {
       actionNotes: row.actionNotes || row.action_notes || "",
       storageLocation: row.storageLocation || row.storage_location || "",
       condition: row.condition || "",
+      conditionName: row.conditionName || row.condition_name || row.condition || "Near Mint",
+      language: row.language || "English",
+      finish: row.finish || "",
+      printing: row.printing || "",
       sealedCondition: row.sealedCondition || row.sealed_condition || "",
       conditionNotes: row.conditionNotes || row.condition_notes || "",
       sourceType: row.sourceType || row.source_type || row.source || "",
@@ -4589,6 +4980,35 @@ function mapCatalog(row) {
   const cardSortMeta = getCardSortMeta({ ...row, cardNumber });
   const mappedCardNumberSort = Number(row.cardNumberSort ?? row.card_number_sort ?? cardSortMeta.sort);
   const mappedPrintedTotal = Number(row.printedTotal ?? row.printed_total ?? cardSortMeta.printedTotal);
+  const expansionRecord = row.expansionRecord || row.expansion_record || row.tcg_expansions || row.expansion_detail || null;
+  const officialExpansionName =
+    row.officialExpansionName ||
+    row.official_expansion_name ||
+    expansionRecord?.officialName ||
+    expansionRecord?.official_name ||
+    expansionRecord?.displayName ||
+    expansionRecord?.display_name ||
+    "";
+  const normalizedIdentifiers = Array.isArray(row.identifiers)
+    ? row.identifiers
+    : Array.isArray(row.product_identifiers)
+      ? row.product_identifiers
+      : Array.isArray(row.productIdentifiers)
+        ? row.productIdentifiers
+        : [];
+  const normalizedVariants = Array.isArray(row.variants)
+    ? row.variants
+    : Array.isArray(row.catalog_product_variants)
+      ? row.catalog_product_variants
+      : Array.isArray(row.catalogProductVariants)
+        ? row.catalogProductVariants
+        : [];
+  const normalizedCardDetails =
+    row.cardDetails ||
+    row.card_details ||
+    row.tcg_card_details ||
+    row.tcgCardDetails ||
+    null;
 
   return {
     id: row.id,
@@ -4598,11 +5018,22 @@ function mapCatalog(row) {
     cardName: catalogType === "card" ? row.cardName || row.card_name || name : row.cardName || row.card_name || "",
     pokemonName: row.pokemonName || row.pokemon_name || (catalogType === "card" ? name : ""),
     category: row.category || "Pokemon",
-    setName: row.setName || row.set_name || row.source_group_name || row.expansion || "",
+    setName: officialExpansionName || row.setName || row.set_name || row.source_group_name || row.expansion || "",
+    legacySetName: row.setName || row.set_name || "",
     productType,
     barcode: row.barcode || row.upc || "",
     upc: row.upc || row.barcode || "",
-    sku: row.sku || row.tcgplayer_product_id || row.external_product_id || "",
+    sku: row.sku || "",
+    identifiers: normalizedIdentifiers.map((identifier) => ({
+      id: identifier.id,
+      catalogProductId: identifier.catalogProductId || identifier.catalog_product_id,
+      identifierType: identifier.identifierType || identifier.identifier_type || "",
+      identifierValue: identifier.identifierValue || identifier.identifier_value || "",
+      source: identifier.source || "",
+      sourceUrl: identifier.sourceUrl || identifier.source_url || "",
+      confidence: identifier.confidence || "",
+    })),
+    identifierSearch: row.identifierSearch || row.identifier_search || "",
     marketSource,
     externalProductId: row.externalProductId || row.external_product_id || "",
     tcgplayerProductId: row.tcgplayerProductId || row.tcgplayer_product_id || "",
@@ -4623,13 +5054,69 @@ function mapCatalog(row) {
     midPrice: Number.isFinite(midPrice) ? midPrice : 0,
     highPrice: Number.isFinite(highPrice) ? highPrice : 0,
     msrpPrice: Number(row.msrpPrice ?? row.msrp_price ?? row.msrp ?? 0),
+    msrpSource: row.msrpSource || row.msrp_source || "",
+    msrpSourceUrl: row.msrpSourceUrl || row.msrp_source_url || "",
+    msrpConfidence: row.msrpConfidence || row.msrp_confidence || "",
     setCode: row.setCode || row.set_code || "",
     expansion: row.expansion || row.set_name || "",
+    expansionId: row.expansionId || row.expansion_id || "",
+    expansionOfficialName: officialExpansionName,
+    expansionDisplayName: row.expansionDisplayName || row.expansion_display_name || expansionRecord?.displayName || expansionRecord?.display_name || officialExpansionName,
+    expansionSeries: row.expansionSeries || row.expansion_series || expansionRecord?.series || "",
+    expansionSymbolUrl: row.expansionSymbolUrl || row.expansion_symbol_url || expansionRecord?.symbolUrl || expansionRecord?.symbol_url || "",
+    expansionLogoUrl: row.expansionLogoUrl || row.expansion_logo_url || expansionRecord?.logoUrl || expansionRecord?.logo_url || "",
+    pokemonTcgIoId: row.pokemonTcgIoId || row.pokemon_tcg_io_id || expansionRecord?.pokemon_tcg_io_id || "",
+    releaseDate: row.releaseDate || row.release_date || expansionRecord?.releaseDate || expansionRecord?.release_date || "",
     productLine: row.productLine || row.product_line || "",
     packCount: Number(row.packCount ?? row.pack_count ?? 0),
+    productKind: row.productKind || row.product_kind || (catalogType === "card" ? "single_card" : isSealed ? "sealed_product" : "unknown"),
+    sealedProductType: row.sealedProductType || row.sealed_product_type || "",
+    isPokemonCenterExclusive: Boolean(row.isPokemonCenterExclusive || row.is_pokemon_center_exclusive),
+    contents: row.contents || {},
+    region: row.region || "US",
+    language: row.language || "English",
     sourceGroupId: row.sourceGroupId || row.source_group_id || "",
     sourceGroupName: row.sourceGroupName || row.source_group_name || "",
     priceSubtype: row.priceSubtype || row.price_subtype || "",
+    variantNames: row.variantNames || row.variant_names || "",
+    variants: normalizedVariants.map((variant) => ({
+      id: variant.id,
+      catalogProductId: variant.catalogProductId || variant.catalog_product_id || "",
+      variantName: variant.variantName || variant.variant_name || "",
+      printing: variant.printing || "",
+      finish: variant.finish || "",
+      language: variant.language || "English",
+      tcgplayerSkuId: variant.tcgplayerSkuId || variant.tcgplayer_sku_id || "",
+      conditionId: variant.conditionId || variant.condition_id || "",
+      conditionName: variant.conditionName || variant.condition_name || "",
+      isDefault: Boolean(variant.isDefault || variant.is_default),
+    })),
+    cardDetails: normalizedCardDetails
+      ? {
+          cardName: normalizedCardDetails.cardName || normalizedCardDetails.card_name || "",
+          supertype: normalizedCardDetails.supertype || "",
+          subtypes: normalizedCardDetails.subtypes || [],
+          stage: normalizedCardDetails.stage || "",
+          evolvesFrom: normalizedCardDetails.evolvesFrom || normalizedCardDetails.evolves_from || "",
+          hp: normalizedCardDetails.hp || "",
+          types: normalizedCardDetails.types || [],
+          abilities: normalizedCardDetails.abilities || [],
+          attacks: normalizedCardDetails.attacks || [],
+          weaknesses: normalizedCardDetails.weaknesses || [],
+          resistances: normalizedCardDetails.resistances || [],
+          retreatCost: normalizedCardDetails.retreatCost || normalizedCardDetails.retreat_cost || [],
+          convertedRetreatCost: normalizedCardDetails.convertedRetreatCost || normalizedCardDetails.converted_retreat_cost || "",
+          cardNumber: normalizedCardDetails.cardNumber || normalizedCardDetails.card_number || "",
+          printedTotal: normalizedCardDetails.printedTotal || normalizedCardDetails.printed_total || "",
+          rarity: normalizedCardDetails.rarity || "",
+          artist: normalizedCardDetails.artist || "",
+          flavorText: normalizedCardDetails.flavorText || normalizedCardDetails.flavor_text || "",
+          regulationMark: normalizedCardDetails.regulationMark || normalizedCardDetails.regulation_mark || "",
+          legalities: normalizedCardDetails.legalities || {},
+          nationalPokedexNumbers: normalizedCardDetails.nationalPokedexNumbers || normalizedCardDetails.national_pokedex_numbers || [],
+          rawSource: normalizedCardDetails.rawSource || normalizedCardDetails.raw_source || {},
+        }
+      : null,
     cardNumber,
     cardNumberPrefix: row.cardNumberPrefix || row.card_number_prefix || cardSortMeta.prefix,
     cardNumberSuffix: row.cardNumberSuffix || row.card_number_suffix || cardSortMeta.suffix,
@@ -4712,9 +5199,12 @@ function mapCatalog(row) {
   }
 
   async function loadCatalog() {
-    const { data, error } = await supabase.from("product_catalog").select("*").order("created_at", { ascending: false });
-    if (error) return alert("Could not load catalog: " + error.message);
-    setCatalogProducts(data.map(mapCatalog));
+    let result = await supabase.from("pokemon_catalog_browse").select("*").order("created_at", { ascending: false });
+    if (result.error) {
+      result = await supabase.from("product_catalog").select("*").order("created_at", { ascending: false });
+    }
+    if (result.error) return alert("Could not load catalog: " + result.error.message);
+    setCatalogProducts((result.data || []).map(mapCatalog));
   }
 
   async function loadExpenses() {
@@ -4774,6 +5264,8 @@ function mapCatalog(row) {
     const cleanName = String(form.name || "").trim().toLowerCase();
     const cleanBarcode = String(form.barcode || "").trim();
     const cleanCatalogId = String(form.catalogProductId || "").trim();
+    const cleanVariantId = String(form.catalogVariantId || "").trim();
+    const cleanCondition = String(form.conditionName || form.condition || "").trim().toLowerCase();
     const cleanExpansion = String(form.expansion || "").trim().toLowerCase();
     const cleanProductType = String(form.productType || "").trim().toLowerCase();
 
@@ -4781,11 +5273,17 @@ function mapCatalog(row) {
       const itemName = String(item.name || "").trim().toLowerCase();
       const itemBarcode = String(item.barcode || "").trim();
       const itemCatalogId = String(item.catalogProductId || "").trim();
+      const itemVariantId = String(item.catalogVariantId || "").trim();
+      const itemCondition = String(item.conditionName || item.condition || "").trim().toLowerCase();
       const itemExpansion = String(item.expansion || "").trim().toLowerCase();
       const itemProductType = String(item.productType || "").trim().toLowerCase();
 
       const sameCatalog =
-        cleanCatalogId && itemCatalogId && cleanCatalogId === itemCatalogId;
+        cleanCatalogId &&
+        itemCatalogId &&
+        cleanCatalogId === itemCatalogId &&
+        ((cleanVariantId || itemVariantId) ? cleanVariantId === itemVariantId : true) &&
+        ((cleanCondition || itemCondition) ? cleanCondition === itemCondition : true);
 
       const sameBarcode =
         cleanBarcode && itemBarcode && cleanBarcode === itemBarcode;
@@ -4804,7 +5302,10 @@ function mapCatalog(row) {
         itemProductType &&
         cleanProductType === itemProductType;
 
-      return sameCatalog || sameBarcode || sameExactName || sameExpansionAndType;
+      const variantConflict = cleanVariantId && itemVariantId && cleanVariantId !== itemVariantId;
+      const conditionConflict = cleanCondition && itemCondition && cleanCondition !== itemCondition;
+
+      return sameCatalog || sameBarcode || (!variantConflict && !conditionConflict && (sameExactName || sameExpansionAndType));
     });
   }
 
@@ -4837,6 +5338,7 @@ function mapCatalog(row) {
         itemImageNeedsReview: Boolean(itemForm.itemImageNeedsReview),
         barcode: itemForm.barcode,
         catalogProductId: selectedCatalog?.id || "",
+        catalogVariantId: itemForm.catalogVariantId || "",
         catalogProductName: selectedCatalog?.name || "",
         externalProductId: itemForm.externalProductId,
         tideTradrUrl: itemForm.tideTradrUrl,
@@ -4854,6 +5356,10 @@ function mapCatalog(row) {
         notes: itemForm.notes || "",
         storageLocation: itemForm.storageLocation || "",
         condition: itemForm.condition || "",
+        conditionName: itemForm.conditionName || itemForm.condition || "Near Mint",
+        language: itemForm.language || "English",
+        finish: itemForm.finish || "",
+        printing: itemForm.printing || "",
         sealedCondition: itemForm.sealedCondition || "",
         conditionNotes: itemForm.conditionNotes || "",
         tags: itemForm.tags || "",
@@ -4917,6 +5423,7 @@ function mapCatalog(row) {
         receipt_image: itemForm.receiptImage || existing.receiptImage || "",
         item_image: itemForm.itemImage || existing.itemImage || "",
         barcode: itemForm.barcode || existing.barcode || "",
+        catalog_variant_id: itemForm.catalogVariantId || existing.catalogVariantId || null,
         external_product_source: "TideTradr",
         external_product_id: itemForm.externalProductId || existing.externalProductId || "",
         tcgplayer_url: itemForm.tideTradrUrl || existing.tideTradrUrl || "",
@@ -4925,6 +5432,10 @@ function mapCatalog(row) {
         listing_url: itemForm.listingUrl || existing.listingUrl || "",
         listed_price: Number(itemForm.listedPrice || existing.listedPrice || 0),
         action_notes: itemForm.actionNotes || existing.actionNotes || "",
+        condition_name: itemForm.conditionName || existing.conditionName || existing.condition || "Near Mint",
+        language: itemForm.language || existing.language || "English",
+        finish: itemForm.finish || existing.finish || "",
+        printing: itemForm.printing || existing.printing || "",
         last_price_checked: itemForm.marketPrice
           ? new Date().toISOString()
           : existing.lastPriceChecked || null,
@@ -4962,6 +5473,7 @@ function mapCatalog(row) {
       item_image: itemForm.itemImage,
       barcode: itemForm.barcode,
       catalog_product_id: selectedCatalog?.id || null,
+      catalog_variant_id: itemForm.catalogVariantId || null,
       catalog_product_name: selectedCatalog?.name || "",
       external_product_source: "TideTradr",
       external_product_id: itemForm.externalProductId,
@@ -4982,6 +5494,10 @@ function mapCatalog(row) {
       listing_url: itemForm.listingUrl,
       listed_price: Number(itemForm.listedPrice || 0),
       action_notes: itemForm.actionNotes,
+      condition_name: itemForm.conditionName || itemForm.condition || "Near Mint",
+      language: itemForm.language || "English",
+      finish: itemForm.finish || "",
+      printing: itemForm.printing || "",
     };
 
     const { data, error } = await supabase.from("inventory_items").insert(row).select().single();
@@ -5045,6 +5561,7 @@ function mapCatalog(row) {
         upc: itemForm.barcode,
         sku: itemForm.sku,
         catalogProductId: itemForm.catalogProductId,
+        catalogVariantId: itemForm.catalogVariantId || "",
         tideTradrProductId: itemForm.catalogProductId,
         externalProductId: itemForm.externalProductId,
         tideTradrUrl: itemForm.tideTradrUrl,
@@ -5070,6 +5587,10 @@ function mapCatalog(row) {
         actionNotes: itemForm.actionNotes,
         storageLocation: itemForm.storageLocation || "",
         condition: itemForm.condition || "",
+        conditionName: itemForm.conditionName || itemForm.condition || "Near Mint",
+        language: itemForm.language || "English",
+        finish: itemForm.finish || "",
+        printing: itemForm.printing || "",
         sealedCondition: itemForm.sealedCondition || "",
         conditionNotes: itemForm.conditionNotes || "",
         tags: itemForm.tags || "",
@@ -5104,6 +5625,7 @@ function mapCatalog(row) {
       receipt_image: itemForm.receiptImage,
       item_image: itemForm.itemImage,
       barcode: itemForm.barcode,
+      catalog_variant_id: itemForm.catalogVariantId || null,
       external_product_source: "TideTradr",
       external_product_id: itemForm.externalProductId,
       tcgplayer_url: itemForm.tideTradrUrl,
@@ -5124,6 +5646,10 @@ function mapCatalog(row) {
       listed_price: Number(itemForm.listedPrice || 0),
       action_notes: itemForm.actionNotes,
       vault_status: itemForm.vaultStatus || null,
+      condition_name: itemForm.conditionName || itemForm.condition || "Near Mint",
+      language: itemForm.language || "English",
+      finish: itemForm.finish || "",
+      printing: itemForm.printing || "",
       updated_at: new Date().toISOString(),
     };
 
@@ -5158,6 +5684,7 @@ function mapCatalog(row) {
       barcode: item.barcode,
       sku: item.sku || "",
       catalogProductId: item.catalogProductId,
+      catalogVariantId: item.catalogVariantId || "",
       externalProductId: item.externalProductId,
       tideTradrUrl: item.tideTradrUrl,
       marketPrice: item.marketPrice,
@@ -5173,6 +5700,10 @@ function mapCatalog(row) {
       vaultStatus: item.vaultStatus || "",
       storageLocation: item.storageLocation || "",
       condition: item.condition || "",
+      conditionName: item.conditionName || item.condition || "Near Mint",
+      language: item.language || "English",
+      finish: item.finish || "",
+      printing: item.printing || "",
       sealedCondition: item.sealedCondition || "",
       conditionNotes: item.conditionNotes || "",
       sourceType: item.sourceType || item.source || "",
@@ -5209,6 +5740,7 @@ function mapCatalog(row) {
       itemImage: item.itemImage,
       barcode: item.barcode,
       catalogProductId: item.catalogProductId,
+      catalogVariantId: item.catalogVariantId || "",
       externalProductId: item.externalProductId,
       tideTradrUrl: item.tideTradrUrl,
       marketPrice: item.marketPrice,
@@ -5226,6 +5758,10 @@ function mapCatalog(row) {
       listingUrl: item.listingUrl,
       listedPrice: item.listedPrice,
       actionNotes: item.actionNotes,
+      conditionName: item.conditionName || item.condition || "Near Mint",
+      language: item.language || "English",
+      finish: item.finish || "",
+      printing: item.printing || "",
     });
     openFlowModal("addInventory", { size: "large", source: "restock" });
   }
@@ -5346,7 +5882,7 @@ function mapCatalog(row) {
   }
 
   function refreshVaultMarket(item) {
-    setVaultToast("Market refresh is not connected yet. Current values are manually entered or mock data.");
+    setVaultToast("Market refresh is not connected yet. Current values are manually entered or estimated beta data.");
     if (!item?.id) return;
     setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, marketStatus: candidate.marketStatus || "manual", updatedAt: new Date().toISOString() } : candidate));
   }
@@ -5696,10 +6232,12 @@ function applyCatalogProduct(productId) {
   const resolvedProductId = product.id || productId;
   updateItemForm("catalogProductId", resolvedProductId);
   const marketInfo = getTideTradrMarketInfo(product);
+  const defaultVariant = getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null;
 
   setItemForm((old) => ({
     ...old,
     catalogProductId: resolvedProductId,
+    catalogVariantId: defaultVariant?.id || "",
 
     name: product.name || "",
     category: product.category || "Pokemon",
@@ -5724,6 +6262,10 @@ function applyCatalogProduct(productId) {
     productLine: product.productLine || "",
     productType: product.productType || "",
     packCount: product.packCount || "",
+    finish: defaultVariant?.finish || product.finish || "",
+    printing: defaultVariant?.printing || product.printing || "",
+    language: defaultVariant?.language || product.language || old.language || "English",
+    conditionName: product.catalogType === "card" ? old.conditionName || "Near Mint" : old.conditionName || "",
 
     unitCost: marketInfo.msrp || old.unitCost || "",
     salePrice: marketInfo.currentMarketValue || old.salePrice || "",
@@ -5745,7 +6287,7 @@ function getTideTradrMarketInfo(product = {}) {
       product.lowPrice ||
       msrp
   );
-  const sourceType = bestPrice.marketStatus || product.marketStatus || product.sourceType || (product.marketSource ? String(product.marketSource).toLowerCase() : "mock");
+  const sourceType = bestPrice.marketStatus || product.marketStatus || product.sourceType || (product.marketSource ? String(product.marketSource).toLowerCase() : "estimated");
   const sourceName =
     bestPrice.externalSource ||
     product.marketSource ||
@@ -5768,8 +6310,8 @@ function getTideTradrMarketInfo(product = {}) {
     marketOverMsrp,
     marketVsMsrpPercent,
     savingsVsMsrp,
-    lastUpdated: bestPrice.timestamp || product.marketLastUpdated || product.lastUpdated || product.updatedAt || product.createdAt || "Local mock data",
-    sourceName: sourceType === "live" ? `Live - ${sourceName}` : sourceType === "cached" ? `Cached - ${sourceName}` : sourceType === "manual" ? `Manual - ${sourceName}` : sourceType === "unknown" ? `Unknown - ${sourceName}` : `Mock - ${sourceName}`,
+    lastUpdated: bestPrice.timestamp || product.marketLastUpdated || product.lastUpdated || product.updatedAt || product.createdAt || "Not checked yet",
+    sourceName: sourceType === "live" ? `Live - ${sourceName}` : sourceType === "cached" ? `Cached - ${sourceName}` : sourceType === "manual" ? `Manual - ${sourceName}` : sourceType === "estimated" ? `Estimated - ${sourceName}` : sourceType === "user_submitted" ? `User-submitted - ${sourceName}` : sourceType === "admin_verified" ? `Admin verified - ${sourceName}` : sourceType === "unknown" ? `Unknown - ${sourceName}` : `Estimated - ${sourceName}`,
     marketStatus: sourceType,
     sourceUrl: bestPrice.sourceUrl || product.sourceUrl || product.externalSourceUrl || product.marketUrl || product.tcgplayerUrl || "",
     needsReview: bestPrice.confidence?.needsReview || sourceType === "unknown",
@@ -5815,7 +6357,7 @@ function addProductToTideTradrWatchlist(productId, pinned = false) {
         id: makeId("watch"),
         productId: product.id,
         name: product.name,
-        setName: product.setName || product.expansion || "",
+        setName: catalogExpansionName(product),
         productType: product.productType || "",
         marketValue: marketInfo.currentMarketValue,
         msrp: marketInfo.msrp,
@@ -5866,18 +6408,18 @@ function refreshMarketCatalog(type = "all") {
   setMarketPriceCache(result.cache);
   setTideTradrWatchlist((current) => refreshWatchlistMarketItems(current, result.catalog, result.cache));
   setMarketSyncMessage(
-    `${type === "card" ? "Card" : type === "sealed" ? "Sealed product" : "Catalog"} market sync used cached/manual/mock beta sources. ${result.cache.failedMatches?.length || 0} items need review.`
+    `${type === "card" ? "Card" : type === "sealed" ? "Sealed product" : "Catalog"} market sync used cached/manual/estimated beta sources. ${result.cache.failedMatches?.length || 0} items need review.`
   );
 }
 
 function refreshMarketWatchlist() {
   setTideTradrWatchlist((current) => refreshWatchlistMarketItems(current, catalogProducts, marketPriceCache));
-  setMarketSyncMessage("Watchlist market values refreshed from the best available cached/manual/mock source.");
+  setMarketSyncMessage("Watchlist market values refreshed from the best available cached/manual/estimated source.");
 }
 
 function refreshPinnedMarketWatch() {
   setTideTradrWatchlist((current) => refreshPinnedMarketItems(current, catalogProducts, marketPriceCache));
-  setMarketSyncMessage("Pinned Market Watch refreshed from the best available cached/manual/mock source.");
+  setMarketSyncMessage("Pinned Market Watch refreshed from the best available cached/manual/estimated source.");
 }
 
 function saveManualMarketPrice(event) {
@@ -5918,12 +6460,13 @@ function saveManualMarketPrice(event) {
   setMarketSyncMessage(`Manual market price saved for ${product.name || product.productName || product.cardName}.`);
 }
 
-function applyCatalogProductToVault(productId) {
+function applyCatalogProductToVault(productId, options = {}) {
   const product = typeof productId === "object"
     ? productId
     : catalogProducts.find((p) => String(p.id) === String(productId));
   if (!product) return;
   const marketInfo = getTideTradrMarketInfo(product);
+  const defaultVariant = getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null;
 
   setVaultForm((old) => ({
     ...old,
@@ -5931,7 +6474,7 @@ function applyCatalogProductToVault(productId) {
     productType: product.catalogType === "card" ? "Individual Card" : product.productType || "",
     vaultStatus: product.catalogType === "sealed" ? "sealed" : "personal_collection",
     status: product.catalogType === "sealed" ? "Sealed / Holding" : "Personal Collection",
-    setName: product.expansion || product.setName || "",
+    setName: catalogExpansionName(product),
     msrpPrice: marketInfo.msrp || "",
     marketPrice: marketInfo.currentMarketValue || "",
     salePrice: marketInfo.currentMarketValue || "",
@@ -5940,8 +6483,13 @@ function applyCatalogProductToVault(productId) {
     upc: product.barcode || product.upc || "",
     sku: product.sku || "",
     catalogProductId: product.id || "",
+    catalogVariantId: defaultVariant?.id || "",
     tideTradrProductId: product.id || "",
     condition: product.catalogType === "card" ? "Unknown" : old.condition,
+    conditionName: product.catalogType === "card" ? "Near Mint" : old.conditionName || "",
+    finish: defaultVariant?.finish || "",
+    printing: defaultVariant?.printing || "",
+    language: defaultVariant?.language || product.language || "English",
     sealedCondition: product.catalogType === "sealed" ? "Sealed" : old.sealedCondition,
     itemImage: getCatalogImage(product) || "",
     itemImageSource: product.imageSource || getDefaultImageSource(product),
@@ -5952,7 +6500,7 @@ function applyCatalogProductToVault(productId) {
   }));
   setShowVaultAddForm(true);
   setVaultFormSections((current) => ({ ...current, basic: true, pricing: true }));
-  setActiveTab("vault");
+  if (!options.stayInContext) setActiveTab("vault");
 }
 
 function useCatalogProductInDeal(productId) {
@@ -6230,11 +6778,16 @@ function renderDealFinderContent() {
 
 function renderTideTradrHeader() {
   return (
-    <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>
-      <div>
-        <h2>TideTradr</h2>
-        <p>Search products, check market values, watch items, and compare deals.</p>
-      </div>
+    <PageHeader
+      className={getHeaderCardClass("panel tidetradr-summary-card")}
+      title="TideTradr"
+      subtitle="Search products, cards, prices, and catalog details."
+      actions={(
+        <>
+          <button type="button" onClick={() => openQuickFindFlow({ source: "market" })}>Quick Find</button>
+        </>
+      )}
+    >
       <form className="catalog-search-form" onSubmit={submitCatalogSearch}>
         <SmartCatalogSearchBox
           value={catalogSearch}
@@ -6259,22 +6812,9 @@ function renderTideTradrHeader() {
         ariaLabel="TideTradr quick actions"
         actions={[
           {
-            key: "tidetradr-watch",
-            title: "Market Watch",
-            subtitle: `${tideTradrWatchlist.length} watched`,
-            onClick: () => setTideTradrSubTab("watch"),
-          },
-          {
-            key: "tidetradr-deal",
-            title: "Deal Finder",
-            subtitle: "Check Deal",
-            ariaLabel: "Check Deal",
-            onClick: () => openDealFinderModal(),
-          },
-          {
             key: "tidetradr-watchlist",
             title: "Watchlist",
-            subtitle: `${tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned`,
+            subtitle: `${tideTradrWatchlist.length} watched`,
             onClick: () => setTideTradrSubTab("watch"),
           },
           {
@@ -6283,9 +6823,16 @@ function renderTideTradrHeader() {
             subtitle: tideTradrLookupProduct ? catalogTitle(tideTradrLookupProduct) : "No recent check yet",
             onClick: () => setTideTradrSubTab("recent"),
           },
+          {
+            key: "tidetradr-deal",
+            title: "Deal Finder",
+            subtitle: "Check Deal",
+            ariaLabel: "Check Deal",
+            onClick: () => openDealFinderModal(),
+          },
         ]}
       />
-    </section>
+    </PageHeader>
   );
 }
 
@@ -6295,18 +6842,21 @@ function renderScoutHeader() {
   const scoutActiveAlertCount = (scoutSnapshot.bestBuyAlerts || []).length;
   const scoutTrustScore = scoutSnapshot.scoutProfile?.trustScore || 72;
   return (
-    <section className={getHeaderCardClass("tab-summary panel scout-summary-card")}>
-      <div className="scout-summary-top">
-        <div>
-          <h2>Scout</h2>
-          <p>Find stores, submit reports, and check alerts near you.</p>
-        </div>
+    <PageHeader
+      className={getHeaderCardClass("panel scout-summary-card")}
+      title="Scout"
+      subtitle="Store reports, restock patterns, and local tracking."
+      actions={(
+        <>
         <button type="button" className="scout-submit-primary" onClick={() => {
           openScoutSubmitFlow();
         }}>
           Submit Report
         </button>
-      </div>
+          <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Add Store Suggestion</button>
+        </>
+      )}
+    >
       <QuickActionGrid
         className="scout-main-actions"
         ariaLabel="Scout quick actions"
@@ -6347,7 +6897,7 @@ function renderScoutHeader() {
           },
         ]}
       />
-    </section>
+    </PageHeader>
   );
 }
 
@@ -6418,18 +6968,20 @@ function renderVaultHeader() {
   }
 
   return (
-    <section className={getHeaderCardClass("tab-summary panel vault-command-center")}>
-      <div className="vault-command-top">
-        <div>
-          <h2>The Vault</h2>
-          <p>Personal collection and held items.</p>
-        </div>
+    <PageHeader
+      className={getHeaderCardClass("panel vault-command-center")}
+      title="Vault"
+      subtitle="Track your collection, wishlist, and stored items."
+      actions={(
+        <>
         <button type="button" className="vault-command-quick-add" onClick={openVaultQuickAddFlow}>
           Quick Add
         </button>
-      </div>
-      <div className="vault-command-section-label">Collection Overview</div>
-      <div className="vault-command-overview" aria-label="Vault Collection Overview">
+        </>
+      )}
+      summaryLabel="Collection Overview"
+      summary={(
+        <div className="vault-command-overview" aria-label="Vault Collection Overview">
         {vaultOverviewCards.map((card) => (
           <button
             key={card.key}
@@ -6443,12 +6995,14 @@ function renderVaultHeader() {
           </button>
         ))}
       </div>
-    </section>
+      )}
+    />
   );
 }
 
 function renderForgeHeader() {
   const activeMarketplaceCount = marketplaceListings.filter((listing) => listing.status === "Active").length;
+  const forgeReportRecordCount = sales.length + expenses.length + mileageTrips.length;
   const forgeOverviewCards = [
     {
       key: "inventory",
@@ -6511,8 +7065,8 @@ function renderForgeHeader() {
     {
       key: "reports",
       title: "Reports",
-      value: money(estimatedProfitAfterExpenses),
-      secondary: `Planned profit: ${money(estimatedProfit)}`,
+      value: forgeReportRecordCount ? `${forgeReportRecordCount} record${forgeReportRecordCount === 1 ? "" : "s"}` : "Create report",
+      secondary: forgeReportRecordCount ? "Export-ready summaries" : "No saved reports yet",
       helper: "Profit/loss, monthly spending, and exports.",
       active: activeTab === "reports",
       onClick: () => {
@@ -6522,18 +7076,20 @@ function renderForgeHeader() {
     },
   ];
   return (
-    <section className={getHeaderCardClass("tab-summary panel forge-hero-panel forge-command-center")}>
-      <div className="forge-command-top">
-        <div>
-          <h2>Forge</h2>
-          <p>Business inventory, sales, expenses, mileage, reports, and marketplace.</p>
-        </div>
+    <PageHeader
+      className={getHeaderCardClass("panel forge-hero-panel forge-command-center")}
+      title="Forge"
+      subtitle="Inventory, sales, expenses, mileage, and reports."
+      actions={(
+        <>
         <button type="button" className="forge-command-quick-add" onClick={openForgeQuickAddFlow}>
           Quick Add
         </button>
-      </div>
-      <div className="forge-command-section-label">Business Overview</div>
-      <div className="forge-command-overview" aria-label="Forge Business Overview">
+        </>
+      )}
+      summaryLabel="Business Overview"
+      summary={(
+        <div className="forge-command-overview" aria-label="Forge Business Overview">
         {forgeOverviewCards.map((card) => (
           <button
             key={card.key}
@@ -6548,7 +7104,8 @@ function renderForgeHeader() {
           </button>
         ))}
       </div>
-    </section>
+      )}
+    />
   );
 }
 
@@ -6710,6 +7267,20 @@ function renderForgeHeader() {
       notes: tripForm.notes,
     };
 
+    if (BETA_LOCAL_MODE || user.id === "local-beta") {
+      const localRow = {
+        ...row,
+        id: editingTripId || makeId("trip"),
+        created_at: mileageTrips.find((trip) => trip.id === editingTripId)?.createdAt || new Date().toISOString(),
+      };
+      const mapped = mapTrip(localRow);
+      setMileageTrips(editingTripId ? mileageTrips.map((trip) => (trip.id === editingTripId ? mapped : trip)) : [mapped, ...mileageTrips]);
+      setEditingTripId(null);
+      setTripForm(blankTrip);
+      if (activeFlowModal?.type === "addMileage") closeFlowModal({ force: true, reset: false });
+      return;
+    }
+
     const { data, error } = editingTripId
       ? await supabase.from("mileage_trips").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingTripId).select().single()
       : await supabase.from("mileage_trips").insert(row).select().single();
@@ -6730,6 +7301,14 @@ function renderForgeHeader() {
   }
 
   async function deleteTrip(id) {
+    if (BETA_LOCAL_MODE || user?.id === "local-beta") {
+      setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
+      if (editingTripId === id) {
+        setEditingTripId(null);
+        setTripForm(blankTrip);
+      }
+      return;
+    }
     const { error } = await supabase.from("mileage_trips").delete().eq("id", id);
     if (error) return alert("Could not delete trip: " + error.message);
     setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
@@ -6774,6 +7353,31 @@ function renderForgeHeader() {
       notes: [saleForm.notes, shippingCharged ? `Shipping charged: ${money(shippingCharged)}` : ""].filter(Boolean).join(" | "),
     };
 
+    if (BETA_LOCAL_MODE || user.id === "local-beta") {
+      const localRow = {
+        ...row,
+        id: editingSaleId || makeId("sale"),
+        created_at: sales.find((sale) => sale.id === editingSaleId)?.createdAt || new Date().toISOString(),
+      };
+      const mapped = mapSale(localRow);
+      setSales(editingSaleId ? sales.map((sale) => (sale.id === editingSaleId ? mapped : sale)) : [mapped, ...sales]);
+      if (!editingSaleId) {
+        setItems(items.map((currentItem) => (
+          currentItem.id === item.id
+            ? { ...currentItem, quantity: remaining, status: remaining === 0 ? "Sold" : currentItem.status, updatedAt: new Date().toISOString() }
+            : currentItem
+        )));
+      }
+      setEditingSaleId(null);
+      setSaleForm(blankSale);
+      if (activeFlowModal?.type === "addSale") {
+        closeFlowModal({ force: true, reset: false });
+      } else {
+        setActiveTab("sales");
+      }
+      return;
+    }
+
     const { data: saleData, error: saleError } = editingSaleId
       ? await supabase.from("sales_records").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingSaleId).select().single()
       : await supabase.from("sales_records").insert(row).select().single();
@@ -6815,6 +7419,14 @@ function renderForgeHeader() {
   }
 
   async function deleteSale(id) {
+    if (BETA_LOCAL_MODE || user?.id === "local-beta") {
+      setSales(sales.filter((sale) => sale.id !== id));
+      if (editingSaleId === id) {
+        setEditingSaleId(null);
+        setSaleForm(blankSale);
+      }
+      return;
+    }
     const { error } = await supabase.from("sales_records").delete().eq("id", id);
     if (error) return alert("Could not delete sale: " + error.message);
     setSales(sales.filter((sale) => sale.id !== id));
@@ -7335,7 +7947,7 @@ function renderForgeHeader() {
     typeof window !== "undefined" && localStorage.getItem("et-tcg-local-admin") === "true";
   const adminToolsVisible = adminUser || localBetaAdminEnabled;
   const canReviewSharedData = adminToolsVisible;
-  const adminReviewIdentityLabel = adminUser ? "Signed in as Admin / Founder" : "Local beta Admin Review";
+  const adminReviewIdentityLabel = adminUser ? "Signed in as Admin" : "Local beta Admin Review";
   const adminReviewIdentityDetail = adminUser
     ? "Supabase auth metadata or profile grants admin access. Service-role keys stay server-only, and shared-data writes remain protected by Supabase rules."
     : "Enabled by local beta admin mode. Normal users submit suggestions for review instead of directly changing shared data.";
@@ -7389,6 +8001,33 @@ function renderForgeHeader() {
       stepsPlaceholder: "Optional: what page or flow were you using?",
       submit: "Submit Feedback",
     },
+    catalog_data: {
+      title: "Report Bad Catalog Data",
+      intro: "Tell us what catalog product, expansion, UPC/SKU, image, or detail needs review.",
+      label: "Catalog issue",
+      placeholder: "Example: This ETB is marked as a regular ETB, but it is the Pokemon Center version.",
+      stepsLabel: "Proof or context",
+      stepsPlaceholder: "Optional: add source links, UPC/SKU, screenshots, or what you expected to see.",
+      submit: "Submit Catalog Report",
+    },
+    store_data: {
+      title: "Report Bad Store Data",
+      intro: "Tell us what store, address, hours, retailer, or Scout information needs review.",
+      label: "Store issue",
+      placeholder: "Example: This store is closed, has the wrong address, or is missing a purchase limit.",
+      stepsLabel: "Proof or context",
+      stepsPlaceholder: "Optional: add a source link, store page, photo note, or correction details.",
+      submit: "Submit Store Report",
+    },
+    market_data: {
+      title: "Report Wrong Market Price",
+      intro: "Tell us what price, source, variant, or timestamp looks wrong.",
+      label: "Market price issue",
+      placeholder: "Example: Reverse Holofoil price is showing as Normal, or MSRP is missing.",
+      stepsLabel: "Source or context",
+      stepsPlaceholder: "Optional: add a price source, product URL, date checked, or expected value.",
+      submit: "Submit Market Report",
+    },
   }[feedbackDialog || "feedback"];
   const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
@@ -7421,7 +8060,7 @@ function renderForgeHeader() {
     mileage: "mileage",
     reports: "seller_tools",
   }[activeTab];
-  const activeTabLocked = Boolean(activeTabFeature && SUBSCRIPTIONS_LIVE && !featureAllowed(activeTabFeature));
+  const activeTabLocked = Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
   const dashboardSectionStyle = (key) => ({ order: dashboardSectionState(key).order });
   const packItForwardItems = items.filter((item) =>
     item.status === "Donated" ||
@@ -7503,7 +8142,7 @@ function renderForgeHeader() {
     { label: "Restock reports", value: scoutSnapshot.reports.length ? `${scoutSnapshot.reports.length} local reports` : "No reports yet", updatedAt: scoutLastUpdated },
     { label: "Scout Tips", value: scoutSnapshot.reports.filter((report) => String(report.reportType || report.report_type || "").includes("tip")).length || "None yet", updatedAt: scoutLastUpdated },
     { label: "Product sightings", value: scoutSnapshot.reports.find((report) => report.itemName || report.product_name)?.itemName || "No sightings yet", updatedAt: scoutLastUpdated },
-    { label: "Online drops", value: "Local mock status", updatedAt: locationSettings.lastUpdated || "Not configured" },
+    { label: "Online drops", value: "Stock data unavailable", updatedAt: locationSettings.lastUpdated || "Needs source" },
     { label: "Price changes", value: recentMarketUpdates[0]?.name || "No catalog changes", updatedAt: recentMarketUpdates[0]?.createdAt || "Local catalog" },
     { label: "Store limit changes", value: scoutSnapshot.stores.find((store) => store.limitPolicy || store.limit_policy)?.limitPolicy || "No limits logged", updatedAt: scoutLastUpdated },
   ];
@@ -7816,8 +8455,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const cachedMarketPriceCount = marketPriceCache.prices?.length || 0;
   const failedMarketMatches = marketPriceCache.failedMatches || [];
   const lastMarketSync = marketPriceCache.lastSync || "Not synced yet";
-  const selectedCatalogDetailProduct = catalogProducts.find((product) => String(product.id) === String(selectedCatalogDetailId));
+  const selectedCatalogDetailBaseProduct = catalogProducts.find((product) => String(product.id) === String(selectedCatalogDetailId));
+  const selectedCatalogDetailExtra = selectedCatalogDetailId ? catalogDetailExtras[selectedCatalogDetailId] : null;
+  const selectedCatalogDetailProduct = selectedCatalogDetailBaseProduct
+    ? {
+        ...selectedCatalogDetailBaseProduct,
+        identifiers: selectedCatalogDetailExtra?.identifiers?.length ? selectedCatalogDetailExtra.identifiers : selectedCatalogDetailBaseProduct.identifiers || [],
+        variants: selectedCatalogDetailExtra?.variants?.length ? selectedCatalogDetailExtra.variants : selectedCatalogDetailBaseProduct.variants || [],
+        cardDetails: selectedCatalogDetailExtra?.cardDetails || selectedCatalogDetailBaseProduct.cardDetails || null,
+      }
+    : null;
   const selectedCatalogDetailMarketInfo = selectedCatalogDetailProduct ? getTideTradrMarketInfo(selectedCatalogDetailProduct) : null;
+  const selectedCatalogDetailVariants = selectedCatalogDetailProduct ? getCatalogVariantOptions(selectedCatalogDetailProduct) : [];
+  const selectedCatalogDetailVariant =
+    selectedCatalogDetailVariants.find((variant) => String(variant.id) === String(catalogVariantSelection[selectedCatalogDetailProduct?.id])) ||
+    selectedCatalogDetailVariants.find((variant) => variant.isDefault) ||
+    selectedCatalogDetailVariants[0] ||
+    null;
+  const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
   const tideTradrCatalogResults = catalogSearchHasRun ? filteredCatalogProducts : [];
   const tideTradrCatalogPageCount = supabaseCatalogStatus.totalCount
     ? Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))
@@ -7835,6 +8490,135 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function catalogSourceUrl(product = {}) {
     return product.sourceUrl || product.source_url || product.marketUrl || product.market_url || product.tcgplayerUrl || product.tcgplayer_url || product.imageSourceUrl || product.image_source_url || "";
+  }
+
+  function catalogExpansionName(product = {}) {
+    return product.expansionOfficialName || product.expansionDisplayName || product.setName || product.expansion || product.series || product.productLine || "";
+  }
+
+  function catalogCardDetails(product = {}) {
+    return product.cardDetails || {};
+  }
+
+  function normalizeCatalogIdentifier(identifier = {}) {
+    return {
+      label: identifier.identifierType || identifier.identifier_type || "Identifier",
+      value: identifier.identifierValue || identifier.identifier_value || "",
+      source: identifier.source || "",
+      confidence: identifier.confidence || "",
+    };
+  }
+
+  function getCatalogIdentifiers(product = {}) {
+    const explicit = Array.isArray(product.identifiers) ? product.identifiers.map(normalizeCatalogIdentifier).filter((entry) => entry.value) : [];
+    const fallback = [
+      product.upc || product.barcode ? { label: "UPC", value: product.upc || product.barcode, source: product.marketSource || product.sourceType || "", confidence: "imported" } : null,
+      product.tcgplayerProductId ? { label: "TCGPLAYER_PRODUCT_ID", value: product.tcgplayerProductId, source: "TCGplayer", confidence: "imported" } : null,
+      product.externalProductId && !product.tcgplayerProductId ? { label: "External ID", value: product.externalProductId, source: product.marketSource || "", confidence: "imported" } : null,
+    ].filter(Boolean);
+    const seen = new Set();
+    return [...explicit, ...fallback].filter((entry) => {
+      const key = `${entry.label}|${entry.value}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function getCatalogVariantOptions(product = {}) {
+    const explicit = Array.isArray(product.variants) ? product.variants.filter((variant) => variant.variantName || variant.variant_name) : [];
+    if (explicit.length) return explicit.map((variant, index) => ({
+      id: variant.id || `${product.id}-variant-${index}`,
+      variantName: variant.variantName || variant.variant_name || "Default",
+      printing: variant.printing || "",
+      finish: variant.finish || "",
+      language: variant.language || "English",
+      tcgplayerSkuId: variant.tcgplayerSkuId || variant.tcgplayer_sku_id || "",
+      conditionName: variant.conditionName || variant.condition_name || "",
+      isDefault: Boolean(variant.isDefault || variant.is_default),
+    }));
+    if (product.priceSubtype || product.variantNames) {
+      const names = String(product.variantNames || product.priceSubtype)
+        .split(/\s{2,}|,\s*/)
+        .map((name) => name.trim())
+        .filter(Boolean);
+      return (names.length ? names : [product.priceSubtype]).map((name, index) => ({
+        id: `${product.id}-legacy-variant-${index}`,
+        variantName: name,
+        printing: /1st edition/i.test(name) ? "1st Edition" : /unlimited/i.test(name) ? "Unlimited" : "",
+        finish: /reverse/i.test(name) ? "Reverse Holofoil" : /holo/i.test(name) ? "Holofoil" : /normal/i.test(name) ? "Normal" : "",
+        language: product.language || "English",
+        conditionName: "",
+        isDefault: index === 0,
+      }));
+    }
+    return product.catalogType === "card"
+      ? [{ id: `${product.id}-default`, variantName: "Default", printing: "", finish: "", language: product.language || "English", conditionName: "", isDefault: true }]
+      : [];
+  }
+
+  function applyCatalogVariantToItemForm(variant = {}, product = {}) {
+    setItemForm((old) => ({
+      ...old,
+      catalogVariantId: variant.id || old.catalogVariantId || "",
+      finish: variant.finish || old.finish || "",
+      printing: variant.printing || old.printing || "",
+      language: variant.language || product.language || old.language || "English",
+      conditionName: old.conditionName || "Near Mint",
+      condition: old.condition || variant.finish || "",
+    }));
+  }
+
+  function applyCatalogVariantToVaultForm(variant = {}, product = {}) {
+    setVaultForm((old) => ({
+      ...old,
+      catalogVariantId: variant.id || old.catalogVariantId || "",
+      finish: variant.finish || old.finish || "",
+      printing: variant.printing || old.printing || "",
+      language: variant.language || product.language || old.language || "English",
+      condition: product.catalogType === "card" ? old.condition || "Near Mint" : old.condition,
+    }));
+  }
+
+  async function loadCatalogProductExtras(productId) {
+    if (!productId || !isSupabaseConfigured || !supabase || catalogDetailExtras[productId]) return;
+    try {
+      const [identifierResult, variantResult, cardDetailResult] = await Promise.all([
+        supabase.from("product_identifiers").select("*").eq("catalog_product_id", productId).order("identifier_type", { ascending: true }),
+        supabase.from("catalog_product_variants").select("*").eq("catalog_product_id", productId).order("is_default", { ascending: false }).order("variant_name", { ascending: true }),
+        supabase.from("tcg_card_details").select("*").eq("catalog_product_id", productId).maybeSingle(),
+      ]);
+
+      setCatalogDetailExtras((current) => ({
+        ...current,
+        [productId]: {
+          identifiers: identifierResult.error ? [] : (identifierResult.data || []).map((identifier) => ({
+            id: identifier.id,
+            catalogProductId: identifier.catalog_product_id,
+            identifierType: identifier.identifier_type,
+            identifierValue: identifier.identifier_value,
+            source: identifier.source,
+            sourceUrl: identifier.source_url,
+            confidence: identifier.confidence,
+          })),
+          variants: variantResult.error ? [] : (variantResult.data || []).map((variant) => ({
+            id: variant.id,
+            catalogProductId: variant.catalog_product_id,
+            variantName: variant.variant_name,
+            printing: variant.printing || "",
+            finish: variant.finish || "",
+            language: variant.language || "English",
+            tcgplayerSkuId: variant.tcgplayer_sku_id || "",
+            conditionId: variant.condition_id || "",
+            conditionName: variant.condition_name || "",
+            isDefault: Boolean(variant.is_default),
+          })),
+          cardDetails: cardDetailResult.error ? null : mapCatalog({ id: productId, name: cardDetailResult.data?.card_name, card_details: cardDetailResult.data }).cardDetails,
+        },
+      }));
+    } catch {
+      setCatalogDetailExtras((current) => ({ ...current, [productId]: { identifiers: [], variants: [], cardDetails: null } }));
+    }
   }
 
   function rememberCatalogProduct(product = {}) {
@@ -7855,6 +8639,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (product?.id) rememberCatalogProduct(product);
     setSelectedCatalogDetailId(resolvedProductId);
     setTideTradrLookupId(resolvedProductId);
+    loadCatalogProductExtras(resolvedProductId);
   }
 
   function getCatalogMarketSourceLabel(product = {}) {
@@ -7868,19 +8653,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       product.priceSource,
     ].filter(Boolean).join(" ").toLowerCase();
     if (raw.includes("live")) return "Live";
-    if (raw.includes("mock") || raw.includes("demo")) return "Mock";
+    if (raw.includes("estimated") || raw.includes("mock") || raw.includes("demo")) return "Estimated";
     if (raw.includes("manual") || raw.includes("admin")) return "Manual";
     if (raw.includes("cached") || raw.includes("cache") || raw.includes("tcgcsv") || raw.includes("tcgplayer") || raw.includes("pokemon tcg") || raw.includes("supabase")) return "Cached";
     return "Unknown";
   }
 
   function getCatalogIdentifierBundle(product = {}) {
-    return [
-      ["UPC / Barcode", product.upc || product.barcode],
-      ["SKU", product.sku],
-      ["External ID", product.externalProductId || product.external_product_id],
-      ["TCGplayer ID", product.tcgplayerProductId || product.tcgplayer_product_id],
-    ].filter(([, value]) => Boolean(value));
+    return getCatalogIdentifiers(product).map((identifier) => [identifier.label, identifier.value]);
   }
 
   function hasCatalogMarketPrice(product = {}) {
@@ -7889,7 +8669,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function hasCatalogUpcSku(product = {}) {
-    return Boolean(product.upc || product.barcode || product.sku);
+    return getCatalogIdentifiers(product).some((identifier) => ["UPC", "EAN", "GTIN", "RETAILER_SKU", "POKEMON_CENTER_SKU"].includes(identifier.label));
   }
 
   function copyCatalogProductIdentifiers(product = {}) {
@@ -7911,7 +8691,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function suggestCatalogMissingPrice(product = {}) {
     submitUniversalSuggestion({
       suggestionType: SUGGESTION_TYPES.CORRECT_PRODUCT_METADATA,
-      targetTable: "catalog_items",
+      targetTable: "product_market_price_current",
       targetRecordId: product.id,
       submittedData: {
         name: catalogTitle(product),
@@ -7928,7 +8708,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function suggestCatalogCorrection(product = {}) {
     submitUniversalSuggestion({
       suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
-      targetTable: "catalog_items",
+      targetTable: "product_catalog",
       targetRecordId: product.id,
       submittedData: { name: catalogTitle(product), needsReview: true },
       currentDataSnapshot: product,
@@ -7940,15 +8720,53 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function suggestCatalogUpcSku(product = {}) {
     submitUniversalSuggestion({
       suggestionType: SUGGESTION_TYPES.ADD_UPC_SKU,
-      targetTable: "catalog_items",
+      targetTable: "product_identifiers",
       targetRecordId: product.id,
       submittedData: {
         name: catalogTitle(product),
         upc: product.upc || product.barcode || "",
         sku: product.sku || "",
+        msrpPrice: product.msrpPrice || "",
+        msrpSource: product.msrpSource || "",
+        identifiers: getCatalogIdentifiers(product),
       },
       currentDataSnapshot: product,
       notes: "User requested UPC/SKU review for this catalog item.",
+      source: "tidetradr-detail",
+    });
+  }
+
+  function suggestCatalogWrongExpansion(product = {}) {
+    submitUniversalSuggestion({
+      suggestionType: SUGGESTION_TYPES.CORRECT_PRODUCT_METADATA,
+      targetTable: "product_catalog",
+      targetRecordId: product.id,
+      submittedData: {
+        name: catalogTitle(product),
+        requestedField: "expansion_id",
+        currentExpansion: catalogExpansionName(product),
+        legacySetName: product.legacySetName || product.setName || "",
+        sourceGroupName: product.sourceGroupName || "",
+      },
+      currentDataSnapshot: product,
+      notes: "User reported that this product is linked to the wrong expansion.",
+      source: "tidetradr-detail",
+    });
+  }
+
+  function suggestCatalogWrongVersionPricing(product = {}) {
+    submitUniversalSuggestion({
+      suggestionType: SUGGESTION_TYPES.CORRECT_PRODUCT_METADATA,
+      targetTable: "catalog_product_variants",
+      targetRecordId: product.id,
+      submittedData: {
+        name: catalogTitle(product),
+        selectedVariant: selectedCatalogDetailVariant,
+        variants: getCatalogVariantOptions(product),
+        requestedField: "variant_or_price_subtype",
+      },
+      currentDataSnapshot: product,
+      notes: "User reported that the card version, finish, printing, or price variant needs review.",
       source: "tidetradr-detail",
     });
   }
@@ -7964,13 +8782,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function addCatalogDetailToVault(product = selectedCatalogDetailProduct) {
     if (!product) return;
-    applyCatalogProductToVault(product.id);
+    applyCatalogProductToVault(product.id, { stayInContext: true });
+    if (selectedCatalogDetailVariant) {
+      applyCatalogVariantToVaultForm(selectedCatalogDetailVariant, product);
+      setVaultForm((old) => ({ ...old, conditionName: selectedCatalogDetailCondition, condition: selectedCatalogDetailCondition }));
+    }
     closeCatalogDetail();
   }
 
   function addCatalogDetailToForge(product = selectedCatalogDetailProduct) {
     if (!product) return;
     addCatalogItemToForge(product.id);
+    if (selectedCatalogDetailVariant) {
+      applyCatalogVariantToItemForm(selectedCatalogDetailVariant, product);
+      setItemForm((old) => ({ ...old, conditionName: selectedCatalogDetailCondition, condition: selectedCatalogDetailCondition }));
+    }
     closeCatalogDetail();
   }
 
@@ -8169,21 +8995,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderCatalogMeta(product = {}) {
     const marketInfo = getTideTradrMarketInfo(product);
-    if (product.catalogType === "card") {
-      return (
-        <>
-          <p>{product.setName || product.expansion || "No set"} • #{product.cardNumber || "No number"} • {product.rarity || "No rarity"}</p>
-          <p>Market: {money(marketInfo.currentMarketValue)}</p>
-        </>
-      );
-    }
+  if (product.catalogType === "card") {
     return (
       <>
-        <p>{product.productType || "Sealed product"} • {product.setName || product.expansion || product.productLine || "No set/series"}</p>
-        <p>MSRP: {product.msrpDisplay === "Unknown" ? "Unknown" : money(marketInfo.msrp)} • Market: {money(marketInfo.currentMarketValue)}</p>
+          <p>{catalogExpansionName(product) || "Expansion unavailable"} • #{product.cardNumber || "No number"} • {product.rarity || "No rarity"}</p>
+          <p>Market: {hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}</p>
       </>
     );
   }
+  return (
+    <>
+        <p>{product.productType || "Sealed product"} • {catalogExpansionName(product) || product.productLine || "Expansion unavailable"}</p>
+        <p>MSRP: {marketInfo.msrp ? money(marketInfo.msrp) : "MSRP unavailable"} • Market: {hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}</p>
+    </>
+  );
+}
 
   function getSharedScoutData() {
     try {
@@ -8248,7 +9074,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       saveSharedScoutData({ ...scoutData, stores: nextStores });
     }
 
-    if (suggestion.targetTable === "catalog_items") {
+    if (suggestion.targetTable === "catalog_items" || suggestion.targetTable === "product_catalog") {
       if (suggestion.suggestionType === SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT) {
         const approvedProduct = {
           ...submitted,
@@ -8270,6 +9096,84 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           )
         );
       }
+    }
+
+    if (suggestion.targetTable === "product_identifiers" && suggestion.targetRecordId) {
+      setCatalogProducts((current) =>
+        current.map((product) => {
+          if (String(product.id) !== String(suggestion.targetRecordId)) return product;
+          const approvedIdentifiers = [
+            ...(Array.isArray(product.identifiers) ? product.identifiers : []),
+            submitted.upc ? { id: makeId("identifier"), identifierType: "UPC", identifierValue: submitted.upc, source: "approved_user_suggestion", confidence: "user_submitted" } : null,
+            submitted.ean ? { id: makeId("identifier"), identifierType: "EAN", identifierValue: submitted.ean, source: "approved_user_suggestion", confidence: "user_submitted" } : null,
+            submitted.gtin ? { id: makeId("identifier"), identifierType: "GTIN", identifierValue: submitted.gtin, source: "approved_user_suggestion", confidence: "user_submitted" } : null,
+            submitted.retailerSku ? { id: makeId("identifier"), identifierType: "RETAILER_SKU", identifierValue: submitted.retailerSku, source: "approved_user_suggestion", confidence: "user_submitted" } : null,
+            submitted.pokemonCenterSku ? { id: makeId("identifier"), identifierType: "POKEMON_CENTER_SKU", identifierValue: submitted.pokemonCenterSku, source: "approved_user_suggestion", confidence: "user_submitted" } : null,
+          ].filter(Boolean);
+          const seen = new Set();
+          const identifiers = approvedIdentifiers.filter((identifier) => {
+            const key = `${identifier.identifierType}|${identifier.identifierValue}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          return {
+            ...product,
+            identifiers,
+            upc: submitted.upc || product.upc,
+            barcode: submitted.upc || product.barcode,
+            msrpPrice: submitted.msrpPrice || product.msrpPrice,
+            msrpSource: submitted.msrpPrice ? "approved_user_suggestion" : product.msrpSource,
+            updatedAt: now,
+          };
+        })
+      );
+    }
+
+    if (suggestion.targetTable === "catalog_product_variants" && suggestion.targetRecordId) {
+      setCatalogProducts((current) =>
+        current.map((product) => {
+          if (String(product.id) !== String(suggestion.targetRecordId)) return product;
+          const submittedVariants = Array.isArray(submitted.variants) ? submitted.variants : [];
+          const variantName = submitted.variantName || submitted.selectedVariant?.variantName || "";
+          const variants = submittedVariants.length
+            ? submittedVariants
+            : variantName
+              ? [
+                  ...(Array.isArray(product.variants) ? product.variants : []),
+                  {
+                    id: makeId("variant"),
+                    variantName,
+                    finish: submitted.finish || "",
+                    printing: submitted.printing || "",
+                    language: submitted.language || "English",
+                    conditionName: "",
+                    source: "approved_user_suggestion",
+                  },
+                ]
+              : product.variants || [];
+          return { ...product, variants, variantNames: variants.map((variant) => variant.variantName).filter(Boolean).join(", "), updatedAt: now };
+        })
+      );
+    }
+
+    if (suggestion.targetTable === "product_market_price_current" && suggestion.targetRecordId) {
+      setCatalogProducts((current) =>
+        current.map((product) =>
+          String(product.id) === String(suggestion.targetRecordId)
+            ? {
+                ...product,
+                marketPrice: Number(submitted.marketPrice || submitted.currentMarketPrice || product.marketPrice || 0),
+                lowPrice: Number(submitted.lowPrice || product.lowPrice || 0),
+                midPrice: Number(submitted.midPrice || submitted.marketPrice || product.midPrice || 0),
+                highPrice: Number(submitted.highPrice || product.highPrice || 0),
+                marketSource: submitted.source || product.marketSource || "approved_user_suggestion",
+                marketStatus: "manual",
+                updatedAt: now,
+              }
+            : product
+        )
+      );
     }
 
     if (suggestion.targetTable === "retailer_products") {
@@ -8410,21 +9314,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       ? ownSuggestions
       : ownSuggestions.filter((suggestion) => suggestion.status === mySuggestionFilter);
     return (
+      <>
+      <PageHeader
+        className={getHeaderCardClass("panel suggestions-page-header")}
+        title="My Suggestions"
+        subtitle="Universal store, catalog, SKU, and Scout data suggestions you submitted for admin approval."
+        actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+        tabs={["All", ...SUGGESTION_STATUSES].map((status) => ({ key: status, label: status }))}
+        activeTab={mySuggestionFilter}
+        onTabChange={setMySuggestionFilter}
+      />
       <section className="panel approval-page">
-        <div className={getHeaderCardClass("compact-card-header")}>
-          <div>
-            <h2>My Suggestions</h2>
-            <p>Universal store, catalog, SKU, and Scout data suggestions you submitted for admin approval.</p>
-          </div>
-          <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
-        </div>
-        <div className="quick-action-rail">
-          {["All", ...SUGGESTION_STATUSES].map((status) => (
-            <button key={status} type="button" className={mySuggestionFilter === status ? "primary" : "secondary-button"} onClick={() => setMySuggestionFilter(status)}>
-              {status}
-            </button>
-          ))}
-        </div>
         <div className="inventory-list compact-inventory-list">
           {visibleSuggestions.length ? visibleSuggestions.map((suggestion) => renderSuggestionCard(suggestion, false)) : (
             <div className="empty-state">
@@ -8434,6 +9334,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           )}
         </div>
       </section>
+      </>
     );
   }
 
@@ -8462,7 +9363,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="card"><p>Last Sync</p><h2>{lastMarketSync === "Not synced yet" ? "None" : new Date(lastMarketSync).toLocaleDateString()}</h2></div>
           <div className="card"><p>Live API</p><h2>Placeholder</h2></div>
         </div>
-        <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Mock, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
+        <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Estimated, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
         {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
         <div className="quick-actions">
           <button type="button" onClick={() => refreshMarketCatalog("card")}>Sync Cards</button>
@@ -8526,10 +9427,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderAdminReviewPage() {
     if (!canReviewSharedData) {
       return (
-        <section className="panel approval-page">
-          <h2>Admin Review</h2>
-          <p>Admin role is required to approve shared data suggestions. Local beta users can submit suggestions, but cannot publish shared data directly.</p>
-        </section>
+        <PageHeader
+          className={getHeaderCardClass("panel admin-page-header")}
+          title="Admin Review"
+          subtitle="Admin role is required to approve shared data suggestions. Local beta users can submit suggestions, but cannot publish shared data directly."
+          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+        />
       );
     }
     const sections = ["All", ...Object.values(REVIEW_SECTION_LABELS), "Marketplace Listings", "Market Source Controls"];
@@ -8541,14 +9444,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const listingReviewItems = marketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
     const totalOpenCount = openCount + listingReviewItems.length;
     return (
-      <section className="panel approval-page">
-        <div className={getHeaderCardClass("compact-card-header")}>
-          <div>
-            <h2>Admin Tools</h2>
-            <p>Import status, shared-data review, Marketplace moderation, and beta data controls in one place.</p>
+      <>
+      <PageHeader
+        className={getHeaderCardClass("panel admin-page-header")}
+        title="Admin Tools"
+        subtitle="Import status, shared-data review, Marketplace moderation, and beta data controls in one place."
+        actions={<span className="status-badge">{totalOpenCount} open</span>}
+        summary={(
+          <div className="settings-header-summary">
+            <span>{adminReviewIdentityLabel}</span>
+            <span>{currentUserProfile?.source || "admin"}</span>
           </div>
-          <span className="status-badge">{totalOpenCount} open</span>
-        </div>
+        )}
+        tabs={sections.map((section) => ({ key: section, label: section }))}
+        activeTab={adminReviewFilter}
+        onTabChange={setAdminReviewFilter}
+      />
+      <section className="panel approval-page">
         <div className="drawer-info-card">
           <strong>{adminReviewIdentityLabel}</strong>
           <p className="compact-subtitle">{adminReviewIdentityDetail}</p>
@@ -8611,13 +9523,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </button>
           ) : null}
         </div>
-        <div className="quick-action-rail">
-          {sections.map((section) => (
-            <button key={section} type="button" className={adminReviewFilter === section ? "primary" : "secondary-button"} onClick={() => setAdminReviewFilter(section)}>
-              {section}
-            </button>
-          ))}
-        </div>
         {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" ? (
         <div className="inventory-list compact-inventory-list">
           {visibleSuggestions.length ? visibleSuggestions.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
@@ -8649,6 +9554,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         ) : null}
         {(adminReviewFilter === "All" || adminReviewFilter === "Market Source Controls") ? renderMarketSourceControls() : null}
       </section>
+      </>
     );
   }
 
@@ -9209,18 +10115,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
     return (
       <>
-        <section className={getHeaderCardClass("panel tidepool-community-header")}>
-          <div className="tidepool-header-top">
-            <div>
-              <h2>Tidepool</h2>
-              <p>Community feed for posts, questions, sightings, events, comments, confirmations, and replies.</p>
-            </div>
-            <div className="tidepool-header-actions">
+        <PageHeader
+          className={getHeaderCardClass("panel tidepool-community-header")}
+          title="Tidepool"
+          subtitle="Community feed for posts, questions, sightings, events, comments, confirmations, and replies."
+          actions={(
+            <>
               <button type="button" onClick={openTidepoolCreatePostFlow}>Create Post</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Close Tidepool</button>
-            </div>
-          </div>
-          <div className="tidepool-stat-grid" aria-label="Tidepool stats">
+            </>
+          )}
+          summary={(
+            <div className="tidepool-stat-grid" aria-label="Tidepool stats">
             {tidepoolStats.map((stat) => (
               <div className="tidepool-stat-card" key={stat.label}>
                 <span>{stat.label}</span>
@@ -9228,7 +10134,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             ))}
           </div>
-        </section>
+          )}
+          tabs={visibleTidepoolFilters.map((filter) => ({ key: filter, label: filter }))}
+          activeTab={tidepoolFilter}
+          onTabChange={setTidepoolFilter}
+        />
 
         <section className="panel tidepool-community">
           <div className="compact-card-header">
@@ -9237,14 +10147,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <p>Browse posts, react, save, flag, and comment without moderation controls crowding the feed.</p>
             </div>
             <span className="status-badge">{tidepoolFilter}</span>
-          </div>
-
-          <div className="tidepool-filter-grid" aria-label="Tidepool filters">
-            {visibleTidepoolFilters.map((filter) => (
-              <button key={filter} type="button" className={tidepoolFilter === filter ? "primary" : "secondary-button"} onClick={() => setTidepoolFilter(filter)}>
-                {filter}
-              </button>
-            ))}
           </div>
 
           <div className="tidepool-feed-grid">
@@ -9261,7 +10163,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               const locationLabel = locationParts.length ? locationParts.join(", ") : post.zip ? `ZIP ${post.zip}` : "Community post";
               const postDate = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : "No date";
               const preview = post.body || "No post body yet.";
-              const sourceBadge = post.sourceType === "mock" ? "Mock" : post.sourceType === "admin" ? "Admin" : "User";
+              const sourceBadge = post.sourceType === "mock" || post.sourceType === "demo" ? "Demo" : post.sourceType === "admin" ? "Admin" : "User";
               return (
                 <article className="tidepool-post-card compact-card" key={post.postId}>
                   <div className="tidepool-post-top">
@@ -9366,8 +10268,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (activeFlowModal?.type === "vaultQuickAdd") {
       return {
         title: "Vault Quick Add",
-        description: "Add, scan, import, or move Vault items without leaving the collection.",
+        description: "Add, scan, or import Vault items without leaving the collection.",
         size: "small",
+      };
+    }
+    if (activeFlowModal?.type === "quickFind") {
+      return {
+        title: "Quick Find",
+        description: "Search TideTradr, scan a product, enter a UPC/SKU, or start a manual lookup.",
+        size: "small",
+      };
+    }
+    if (activeFlowModal?.type === "multiDestinationAdd") {
+      return {
+        title: "Add to Multiple Places",
+        description: "Send one item to Vault, Forge, and TideTradr with separate destination settings.",
+        size: "large",
       };
     }
     if (activeFlowModal?.type === "vaultMoveToForge") {
@@ -9711,7 +10627,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       { key: "sale", title: "Add Sale", helper: "Record revenue and profit.", onClick: () => openAddSaleFlow() },
       { key: "expense", title: "Add Expense", helper: "Receipts, fees, supplies.", onClick: () => openAddExpenseFlow() },
       { key: "mileage", title: "Add Mileage", helper: "Business trip tracking.", onClick: () => openAddMileageFlow() },
-      { key: "listing", title: "Create Listing", helper: "Draft a Marketplace listing.", onClick: () => openMarketplaceCreate("manual", {}) },
+      { key: "listing", title: "Add Marketplace Listing", helper: "Draft a Marketplace listing.", onClick: () => openMarketplaceCreate("manual", {}) },
       { key: "import", title: "Import File", helper: "Import sales, inventory, or expense files.", onClick: () => openForgeImportFlow() },
     ];
 
@@ -9737,7 +10653,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const options = [
       {
         key: "add",
-        title: "Add Item to Vault",
+        title: "Manual Add",
         helper: "Manual add with Vault details.",
         onClick: () => runVaultQuickAction(() => openVaultQuickAdd({ category: "Personal collection", subTab: "collection" })),
       },
@@ -9749,7 +10665,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       },
       {
         key: "catalog",
-        title: "Import from TideTradr",
+        title: "Add from TideTradr",
         helper: "Search catalog and prefill item data.",
         onClick: () => runVaultQuickAction(() => {
           setActiveTab("vault");
@@ -9768,14 +10684,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         }),
       },
       {
-        key: "move",
-        title: "Move Item to Forge",
-        helper: "Choose a Vault item for business inventory.",
-        onClick: () => runVaultQuickAction(openVaultMoveToForgeFlow),
-      },
-      {
         key: "wishlist",
-        title: "Add Wishlist / Held Item",
+        title: "Add Wishlist Item",
         helper: "Save wants and future buys.",
         onClick: () => runVaultQuickAction(() => openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist" })),
       },
@@ -9792,6 +10702,237 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           ))}
         </div>
       </div>
+    );
+  }
+
+  function renderQuickFindFlowContent() {
+    const runOption = (action) => {
+      if (!closeFlowModal({ force: true, reset: false })) return;
+      action();
+      setQuickFindForm(BLANK_QUICK_FIND_FORM);
+    };
+
+    return (
+      <form className="form quick-find-flow" onSubmit={(event) => runQuickFindSearch(event, "general")}>
+        <Field label="Catalog Search / UPC / SKU">
+          <input
+            value={quickFindForm.lookup}
+            onChange={(event) => setQuickFindForm({ lookup: event.target.value })}
+            placeholder="Search product, card, UPC, SKU, or TCGplayer ID..."
+          />
+        </Field>
+        <div className="forge-quick-add-grid quick-find-options">
+          <button type="submit" className="forge-quick-add-option">
+            <strong>Search Catalog</strong>
+            <span>Run the TideTradr catalog search.</span>
+          </button>
+          <button type="button" className="forge-quick-add-option" onClick={() => runOption(() => beginScanProduct("none"))}>
+            <strong>Scan</strong>
+            <span>Scan a product or card barcode.</span>
+          </button>
+          <button type="button" className="forge-quick-add-option" onClick={() => runQuickFindSearch(null, "barcode")}>
+            <strong>Enter UPC/SKU</strong>
+            <span>Lookup by identifier when you have one.</span>
+          </button>
+          <button type="button" className="forge-quick-add-option" onClick={() => runQuickFindSearch(null, "general")}>
+            <strong>Manual Lookup</strong>
+            <span>Use the search text as a manual catalog query.</span>
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  function renderMultiDestinationAddFlowContent() {
+    const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
+    return (
+      <form className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd}>
+        <section className="flow-form-section">
+          <h3>Shared Item Details</h3>
+          <div className="flow-form-grid">
+            <Field label="Product / Card Match">
+              <select value={multiDestinationForm.catalogProductId} onChange={(event) => selectMultiDestinationCatalogProduct(event.target.value)}>
+                <option value="">No TideTradr match selected</option>
+                {catalogProducts.slice(0, 80).map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {catalogTitle(product)}{catalogExpansionName(product) ? ` - ${catalogExpansionName(product)}` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Item Name">
+              <input
+                value={multiDestinationForm.itemName}
+                onChange={(event) => updateMultiDestinationField("itemName", event.target.value)}
+                placeholder="Destined Rivals Elite Trainer Box"
+                required
+              />
+            </Field>
+            <Field label="Type / Category">
+              <input
+                value={multiDestinationForm.productType}
+                onChange={(event) => updateMultiDestinationField("productType", event.target.value)}
+                placeholder="Elite Trainer Box, Single Card, Booster Bundle..."
+              />
+            </Field>
+            <Field label="UPC / SKU if known">
+              <input
+                value={multiDestinationForm.upcSku}
+                onChange={(event) => updateMultiDestinationField("upcSku", event.target.value)}
+                placeholder="UPC, retail SKU, or other identifier"
+              />
+            </Field>
+            <Field label="MSRP">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={multiDestinationForm.msrpPrice}
+                onChange={(event) => updateMultiDestinationField("msrpPrice", event.target.value)}
+                placeholder="0.00"
+              />
+            </Field>
+            <Field label="Market Price">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={multiDestinationForm.marketPrice}
+                onChange={(event) => updateMultiDestinationField("marketPrice", event.target.value)}
+                placeholder="0.00"
+              />
+            </Field>
+          </div>
+          {selectedCatalog ? (
+            <div className="selected-product-card">
+              <strong>{catalogTitle(selectedCatalog)}</strong>
+              <span>{catalogExpansionName(selectedCatalog) || "Expansion unavailable"} | {selectedCatalog.productType || "Product type unavailable"}</span>
+            </div>
+          ) : null}
+          <Field label="Notes">
+            <textarea
+              value={multiDestinationForm.notes}
+              onChange={(event) => updateMultiDestinationField("notes", event.target.value)}
+              placeholder="Condition notes, source notes, or anything the destination should remember."
+            />
+          </Field>
+        </section>
+
+        <section className="flow-form-section">
+          <h3>Destinations</h3>
+          <div className="destination-checkbox-grid">
+            <label className="destination-checkbox">
+              <input type="checkbox" checked={multiDestinationForm.destinations.vault} onChange={(event) => updateMultiDestinationToggle("vault", event.target.checked)} />
+              <span>Add to Vault</span>
+            </label>
+            <label className="destination-checkbox">
+              <input type="checkbox" checked={multiDestinationForm.destinations.forge} onChange={(event) => updateMultiDestinationToggle("forge", event.target.checked)} />
+              <span>Add to Forge</span>
+            </label>
+            <label className="destination-checkbox">
+              <input type="checkbox" checked={multiDestinationForm.destinations.tidetradr} onChange={(event) => updateMultiDestinationToggle("tidetradr", event.target.checked)} />
+              <span>Add / Suggest to TideTradr</span>
+            </label>
+          </div>
+        </section>
+
+        {multiDestinationForm.destinations.vault ? (
+          <section className="flow-form-section destination-settings">
+            <h3>Vault Settings</h3>
+            <div className="flow-form-grid">
+              <Field label="Quantity for Vault">
+                <input type="number" min="1" value={multiDestinationForm.vault.quantity} onChange={(event) => updateMultiDestinationSection("vault", "quantity", event.target.value)} />
+              </Field>
+              <Field label="Status / Location">
+                <select value={multiDestinationForm.vault.vaultStatus} onChange={(event) => updateMultiDestinationSection("vault", "vaultStatus", event.target.value)}>
+                  {VAULT_STATUS_OPTIONS.filter((status) => status.value !== "all").map((status) => (
+                    <option key={status.value} value={status.value}>{status.label}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Collection Category">
+                <input value={multiDestinationForm.vault.vaultCategory} onChange={(event) => updateMultiDestinationSection("vault", "vaultCategory", event.target.value)} />
+              </Field>
+              <Field label="Cost Basis">
+                <input type="number" min="0" step="0.01" value={multiDestinationForm.vault.unitCost} onChange={(event) => updateMultiDestinationSection("vault", "unitCost", event.target.value)} placeholder="Optional" />
+              </Field>
+              <Field label="Purchase Date">
+                <input type="date" value={multiDestinationForm.vault.purchaseDate} onChange={(event) => updateMultiDestinationSection("vault", "purchaseDate", event.target.value)} />
+              </Field>
+            </div>
+          </section>
+        ) : null}
+
+        {multiDestinationForm.destinations.forge ? (
+          <section className="flow-form-section destination-settings">
+            <h3>Forge Settings</h3>
+            <div className="flow-form-grid">
+              <Field label="Quantity for Forge">
+                <input type="number" min="1" value={multiDestinationForm.forge.quantity} onChange={(event) => updateMultiDestinationSection("forge", "quantity", event.target.value)} />
+              </Field>
+              <Field label="Cost Basis">
+                <input type="number" min="0" step="0.01" value={multiDestinationForm.forge.unitCost} onChange={(event) => updateMultiDestinationSection("forge", "unitCost", event.target.value)} placeholder="Optional" />
+              </Field>
+              <Field label="Planned Sell Price">
+                <input type="number" min="0" step="0.01" value={multiDestinationForm.forge.plannedSellPrice} onChange={(event) => updateMultiDestinationSection("forge", "plannedSellPrice", event.target.value)} placeholder="Optional" />
+              </Field>
+              <Field label="Source / Purchase Location">
+                <input value={multiDestinationForm.forge.source} onChange={(event) => updateMultiDestinationSection("forge", "source", event.target.value)} placeholder="Target, Best Buy, show, trade..." />
+              </Field>
+              <Field label="Business Category">
+                <input value={multiDestinationForm.forge.businessCategory} onChange={(event) => updateMultiDestinationSection("forge", "businessCategory", event.target.value)} />
+              </Field>
+            </div>
+          </section>
+        ) : null}
+
+        {multiDestinationForm.destinations.tidetradr ? (
+          <section className="flow-form-section destination-settings">
+            <h3>TideTradr Settings</h3>
+            <p className="compact-subtitle">
+              TideTradr is catalog and market data. Normal users submit new universal catalog items for review; admins can create directly.
+            </p>
+            <div className="flow-form-grid">
+              <Field label="Existing Catalog Product">
+                <select value={multiDestinationForm.tidetradr.existingProductId} onChange={(event) => {
+                  updateMultiDestinationSection("tidetradr", "existingProductId", event.target.value);
+                  if (event.target.value) selectMultiDestinationCatalogProduct(event.target.value);
+                }}>
+                  <option value="">New or missing product</option>
+                  {catalogProducts.slice(0, 80).map((product) => (
+                    <option key={product.id} value={product.id}>{catalogTitle(product)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="MSRP">
+                <input type="number" min="0" step="0.01" value={multiDestinationForm.tidetradr.msrpPrice} onChange={(event) => updateMultiDestinationSection("tidetradr", "msrpPrice", event.target.value)} placeholder="Optional" />
+              </Field>
+              <Field label="UPC">
+                <input value={multiDestinationForm.tidetradr.upc} onChange={(event) => updateMultiDestinationSection("tidetradr", "upc", event.target.value)} />
+              </Field>
+              <Field label="SKU">
+                <input value={multiDestinationForm.tidetradr.sku} onChange={(event) => updateMultiDestinationSection("tidetradr", "sku", event.target.value)} />
+              </Field>
+              <Field label="Set / Expansion">
+                <input value={multiDestinationForm.tidetradr.setName} onChange={(event) => updateMultiDestinationSection("tidetradr", "setName", event.target.value)} />
+              </Field>
+              <Field label="Product Type">
+                <input value={multiDestinationForm.tidetradr.productType} onChange={(event) => updateMultiDestinationSection("tidetradr", "productType", event.target.value)} />
+              </Field>
+              <Field label="Release Date / Year">
+                <input value={multiDestinationForm.tidetradr.releaseDate} onChange={(event) => updateMultiDestinationSection("tidetradr", "releaseDate", event.target.value)} placeholder="2026-05-30 or 2026" />
+              </Field>
+              <Field label="Source / Proof URL">
+                <input value={multiDestinationForm.tidetradr.sourceUrl} onChange={(event) => updateMultiDestinationSection("tidetradr", "sourceUrl", event.target.value)} placeholder="Official, retailer, or price source URL" />
+              </Field>
+            </div>
+          </section>
+        ) : null}
+
+        <div className="flow-form-footer">
+          <button type="submit">Add / Submit Selected Destinations</button>
+        </div>
+      </form>
     );
   }
 
@@ -9917,6 +11058,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (activeFlowModal?.type === "forgeQuickAdd") return renderForgeQuickAddFlowContent();
     if (activeFlowModal?.type === "forgeImport") return renderForgeImportFlowContent();
     if (activeFlowModal?.type === "vaultQuickAdd") return renderVaultQuickAddFlowContent();
+    if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
+    if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
     if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();
     if (activeFlowModal?.type === "addInventory") return renderAddInventoryFlowContent();
     if (activeFlowModal?.type === "addSale") return renderAddSaleFlowContent();
@@ -9943,7 +11086,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }, [activeFlowModal?.id]);
 
   useEffect(() => {
-    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || listingReviewOpen || dealFinderOpen || showVaultAddForm || scoutScoreModalOpen || feedbackDialog);
+    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || feedbackDialog);
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
@@ -9990,6 +11133,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         closeVaultAddModal();
         return;
       }
+      if (selectedCatalogDetailId) {
+        event.preventDefault();
+        setSelectedCatalogDetailId("");
+        return;
+      }
       if (scoutScoreModalOpen) {
         event.preventDefault();
         setScoutScoreModalOpen(false);
@@ -9997,17 +11145,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       }
       if (feedbackDialog) {
         event.preventDefault();
-        setFeedbackDialog(null);
+        closeFeedbackDialog();
       }
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, listingReviewOpen, dealFinderOpen, showVaultAddForm, scoutScoreModalOpen, feedbackDialog, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (!user) {
     return (
       <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
-        <header className="header">
+        <header className="header app-shell-header app-shell-header--full">
           <h1
   onClick={() => {
     const nextClicks = treasureClicks + 1;
@@ -10041,8 +11189,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   return (
-    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
-    <header className="header">
+    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}`}>
+    <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
       const nextClicks = treasureClicks + 1;
@@ -10095,6 +11243,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     Tidepool
   </button>
 
+  <button
+    type="button"
+    className="topbar-scan-button secondary-button"
+    onClick={() => {
+      setQuickAddMenuOpen(false);
+      beginScanProduct("none");
+    }}
+  >
+    Scan
+  </button>
+
   <div className="topbar-actions">
     <div className="quick-add-wrapper" ref={quickAddRef}>
       <button
@@ -10115,33 +11274,37 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <button type="button" className="modal-icon-close" aria-label="Close Quick Add" onClick={() => setQuickAddMenuOpen(false)}>X</button>
           </div>
           <div className="quick-add-group">
-            <span>Scanner</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("scanProduct")}>Scan Product / Barcode</button>
+            <span>Multi-destination</span>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("multiDestination")}>Add to Multiple</button>
+          </div>
+          <div className="quick-add-group">
+            <span>Vault</span>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("card")}>Add Card</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("sealed")}>Add Sealed Product</button>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("scanVault")}>Scan to Vault</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("scanForge")}>Scan to Forge</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("wishlist")}>Add Wishlist Item</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("importCollection")}>Import Collection</button>
+          </div>
+          <div className="quick-add-group">
+            <span>TideTradr</span>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("quickFind")}>Quick Find</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("scanProduct")}>Scan Product/Card</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("enterUpcSku")}>Enter UPC/SKU</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("suggestCatalogItem")}>Suggest Catalog Item</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("suggestCatalogCorrection")}>Suggest Correction</button>
           </div>
           <div className="quick-add-group">
             <span>Forge</span>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("inventory")}>Add Inventory</button>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("sale")}>Add Sale</button>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("expense")}>Add Expense</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("listing")}>Create Listing</button>
-          </div>
-          <div className="quick-add-group">
-            <span>Vault</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("vaultItem")}>Add Item to Vault</button>
-          </div>
-          <div className="quick-add-group">
-            <span>TideTradr</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("searchTidetradr")}>Search TideTradr</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("wishlist")}>Add Wishlist Item</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("checkDeal")}>Check Deal</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("mileage")}>Add Mileage</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("importFile")}>Import File</button>
           </div>
           <div className="quick-add-group">
             <span>Scout</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Submit Store Report</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("store")}>Add Store</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeCorrection")}>Store Correction</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Add Store Report</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeSuggestion")}>Add Store Suggestion</button>
           </div>
         </div>
         </>
@@ -10215,7 +11378,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   </div>
 </div>
 
-      <nav className="main-tabs" aria-label="E&T TCG main tabs">
+      <nav className="main-tabs app-main-tabs" aria-label="E&T TCG main tabs">
         {mainTabs.map((tab) => (
           <button
             key={tab.key}
@@ -10227,13 +11390,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </button>
         ))}
       </nav>
-
-      {isHeaderHidden ? (
-        <div className="app-compact-context-bar" aria-label="Current section">
-          <strong>{autoHideContextLabel}</strong>
-          <button type="button" className="secondary-button" onClick={revealHeader}>Show header</button>
-        </div>
-      ) : null}
 
       {menuOpen ? (
         <>
@@ -10255,16 +11411,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <dl className="drawer-status-list">
                       <div><dt>App Version</dt><dd>E&T TCG beta web app</dd></div>
                       <div><dt>Account</dt><dd>{signedInWithSupabase ? "Supabase" : "Local beta"}</dd></div>
-                      <div><dt>Role</dt><dd>{adminUser ? "Admin / Founder" : "User"}</dd></div>
+                      <div><dt>Role</dt><dd>{adminUser ? "Admin" : "User"}</dd></div>
                       <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
                       <div><dt>Data</dt><dd>{cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
                     </dl>
-                    {adminUser ? <span className="status-badge">Admin / Founder</span> : null}
+                    {adminUser ? <span className="status-badge">Admin</span> : null}
                   </div>
                   {!signedInWithSupabase ? (
                     <form className="drawer-info-card" onSubmit={handleAuth}>
                       <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
-                      <p className="compact-subtitle">Sign in for admin/founder tools and future cloud sync. User-owned beta data stays local for now.</p>
+                      <p className="compact-subtitle">Sign in for admin tools and future cloud sync. User-owned beta data stays local for now.</p>
                       {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
                       <input
                         className="drawer-field"
@@ -10293,7 +11449,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </form>
                   ) : (
                     <div className="drawer-info-card">
-                      <strong>{adminUser ? "Signed in as Admin / Founder" : "Signed in"}</strong>
+                      <strong>{adminUser ? "Signed in as Admin" : "Signed in"}</strong>
                       <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase local beta data.</p>
                       <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
                     </div>
@@ -10445,6 +11601,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Send Feedback</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("catalog_data"))}>Report Bad Catalog Data</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("store_data"))}>Report Bad Store Data</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("market_data"))}>Report Wrong Market Price</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("How to Use App guide is coming soon for beta testers."))}>How to Use App</button>
                 </div>
               ), "Help")}
@@ -10470,11 +11629,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link disabled-link" disabled>Upgrade Coming Soon</button>
                 </div>
               ), "Plan")}
-              {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", "Admin/founder moderation, imports, suggestions, and shared data controls", (
+              {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", "Admin moderation, imports, suggestions, and shared data controls", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
-                    <strong>{adminUser ? "Admin / Founder Tools" : "Local Beta Admin Tools"}</strong>
-                    <p className="compact-subtitle">{adminUser ? "Admin/founder tools for moderation, imports, suggestions, and shared data controls." : "Local beta admin mode is enabled for testing review queues."} Do not expose service-role credentials in frontend code.</p>
+                    <strong>{adminUser ? "Admin Tools" : "Local Beta Admin Tools"}</strong>
+                    <p className="compact-subtitle">{adminUser ? "Admin tools for moderation, imports, suggestions, and shared data controls." : "Local beta admin mode is enabled for testing review queues."} Do not expose service-role credentials in frontend code.</p>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Open Admin Dashboard</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("All"); setActiveTab("adminReview"); })}>Import Status & Review Queue</button>
@@ -10528,7 +11687,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
             <div className="location-modal-actions modal-sticky-footer flow-modal-footer">
               <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
-                {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "scoutSubmit", "tidepoolCreatePost"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
+                {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "scoutSubmit", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
               </button>
             </div>
           </section>
@@ -10555,7 +11714,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       ) : null}
 
       {feedbackDialog ? (
-        <div className="location-modal-backdrop" role="presentation" onClick={() => setFeedbackDialog(null)}>
+        <div className="location-modal-backdrop" role="presentation" onClick={() => closeFeedbackDialog()}>
           <form
             className="location-modal feedback-modal"
             role="dialog"
@@ -10569,7 +11728,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <h2 id="feedback-dialog-title">{feedbackDialogCopy.title}</h2>
                 <p>{feedbackDialogCopy.intro}</p>
               </div>
-              <button type="button" className="modal-close-button" aria-label={`Close ${feedbackDialogCopy.title}`} onClick={() => setFeedbackDialog(null)}>
+              <button type="button" className="modal-close-button" aria-label={`Close ${feedbackDialogCopy.title}`} onClick={() => closeFeedbackDialog()}>
                 X
               </button>
             </div>
@@ -10606,7 +11765,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </dl>
             <div className="location-modal-actions">
               <button type="submit">{feedbackDialogCopy.submit}</button>
-              <button type="button" className="secondary-button" onClick={() => setFeedbackDialog(null)}>Cancel</button>
+              <button type="button" className="secondary-button" onClick={() => closeFeedbackDialog()}>Cancel</button>
             </div>
           </form>
         </div>
@@ -10738,6 +11897,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="modal-close-button" aria-label="Close Deal Finder" onClick={() => setDealFinderOpen(false)}>X</button>
             </div>
             {renderDealFinderContent()}
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={() => setDealFinderOpen(false)}>Close</button>
+            </div>
           </section>
         </div>
       ) : null}
@@ -10749,7 +11911,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
-      {showVaultAddForm && activeTab === "vault" ? (
+      {showVaultAddForm ? (
         <div className="location-modal-backdrop vault-add-backdrop" role="presentation" onClick={() => closeVaultAddModal()}>
           <section className="location-modal vault-add-modal" role="dialog" aria-modal="true" aria-labelledby="vault-add-title" onClick={(event) => event.stopPropagation()}>
             <div className="compact-card-header">
@@ -11046,6 +12208,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
                       </select>
                     </Field>
+                    <Field label="Card Condition">
+                      <select value={vaultForm.conditionName || "Near Mint"} onChange={(e) => {
+                        updateVaultForm("conditionName", e.target.value);
+                        updateVaultForm("condition", e.target.value);
+                      }}>
+                        {["Near Mint", "Lightly Played", "Moderately Played", "Heavily Played", "Damaged"].map((condition) => <option key={condition} value={condition}>{condition}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Finish / Version">
+                      <input value={vaultForm.finish || ""} onChange={(e) => updateVaultForm("finish", e.target.value)} placeholder="Normal, Holofoil, Reverse Holofoil..." />
+                    </Field>
+                    <Field label="Printing">
+                      <input value={vaultForm.printing || ""} onChange={(e) => updateVaultForm("printing", e.target.value)} placeholder="1st Edition, Unlimited..." />
+                    </Field>
+                    <Field label="Language">
+                      <input value={vaultForm.language || "English"} onChange={(e) => updateVaultForm("language", e.target.value)} />
+                    </Field>
                     <Field label="Sealed Condition">
                       <select value={vaultForm.sealedCondition || ""} onChange={(e) => updateVaultForm("sealedCondition", e.target.value)}>
                         {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
@@ -11089,6 +12268,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             </form>
             ) : null}
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={() => closeVaultAddModal()}>Cancel</button>
             </div>
           </section>
         </div>
@@ -11326,20 +12508,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {!activeTabLocked && activeTab === "adminReview" && renderAdminReviewPage()}
         {!activeTabLocked && activeTab === "dashboard" && (
           <div className="dashboard-layout home-clean-layout">
-            <section className={getHeaderCardClass("panel page-summary-card home-summary-card")}>
-              <div className="home-summary-header">
-                <div className="page-summary-copy">
-                  <h1>Home</h1>
-                  <p>Today at a glance.</p>
-                </div>
-                <div className="page-summary-actions">
+            <PageHeader
+              className={getHeaderCardClass("panel page-summary-card home-summary-card")}
+              title="Home"
+              subtitle="Your collection, business, and scouting overview."
+              actions={(
+                <>
                   <button type="button" onClick={() => {
                     setShowTopbarActions(true);
                     setQuickAddMenuOpen(true);
-                  }}>Quick Add</button>
-                </div>
-              </div>
-              <div className="home-summary-stats" aria-label="Home metrics">
+                  }}>+ Add</button>
+                  <button type="button" className="secondary-button" onClick={() => setSearchExpanded(true)}>Search</button>
+                </>
+              )}
+              summary={(
+                <div className="home-summary-stats" aria-label="Home metrics">
                 {homeStatsEnabled.collection_value !== false ? (
                 <button type="button" className="home-metric-card" onClick={() => setActiveTab("vault")}>
                   <p>Collection Value</p>
@@ -11372,7 +12555,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </button>
                 ) : null}
               </div>
-            </section>
+              )}
+            />
 
             {dashboardSectionState("home_stats").enabled !== false ? (
             <section className="panel home-today-panel">
@@ -11932,11 +13116,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ))}
                 </div>
                 <div className="settings-toolbar">
-                  <Field label="User Type">
+                  <Field label="User Mode">
                     <select value={userType} onChange={(event) => updateUserType(event.target.value)}>
                       {USER_TYPES.map((type) => (
                         <option key={type} value={type}>
-                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                          {type === "all_in_one" ? "All-in-one" : type.charAt(0).toUpperCase() + type.slice(1)}
                         </option>
                       ))}
                     </select>
@@ -12673,19 +13857,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "menu" && (
           <>
-            <section className={getHeaderCardClass("tab-summary panel")}>
-              <div>
-                <h2>Menu</h2>
-                <p>Menu now lives in the top drawer so the main tabs stay focused.</p>
-              </div>
-              <div className="summary-pill-row">
-                <span>{TIER_LABELS[currentTier] || currentPlan}</span>
-                <span>{user.email}</span>
-              </div>
-            </section>
-            <section className="panel">
-              <button type="button" onClick={() => setMenuOpen(true)}>Open Menu</button>
-            </section>
+            <PageHeader
+              className={getHeaderCardClass("panel settings-page-header")}
+              title="Settings"
+              subtitle="Account, mode, dashboard, alerts, and subscription."
+              actions={<button type="button" onClick={() => setMenuOpen(true)}>Open Menu</button>}
+              summary={(
+                <div className="settings-header-summary">
+                  <span>{TIER_LABELS[currentTier] || currentPlan}</span>
+                  <span>{user.email}</span>
+                </div>
+              )}
+            />
           </>
         )}
 
@@ -13097,15 +14280,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                                 <span className="catalog-pill">{resultGroup}</span>
                                 <h3>{catalogTitle(p)}</h3>
                                 <p>
-                                  {p.productType || resultGroup} | {p.setName || p.expansion || "No set"}
+                                  {p.productType || resultGroup} | {catalogExpansionName(p) || "Expansion unavailable"}
                                   {p.cardNumber ? ` | #${p.cardNumber}` : ""}
                                 </p>
                                 {(p.barcode || p.sku || p.externalProductId || p.tcgplayerProductId) ? (
                                   <p className="compact-subtitle">Barcode/SKU: {p.barcode || p.upc || p.sku || p.externalProductId || p.tcgplayerProductId}</p>
                                 ) : null}
                                 <p>
-                                  Market: {money(marketInfo.currentMarketValue)}
-                                  {p.catalogType !== "card" ? ` | MSRP: ${marketInfo.msrp ? money(marketInfo.msrp) : "Unknown"}` : ""}
+                                  Market: {hasCatalogMarketPrice(p) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}
+                                  {p.catalogType !== "card" ? ` | MSRP: ${marketInfo.msrp ? money(marketInfo.msrp) : "MSRP unavailable"}` : ""}
                                 </p>
                                 <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
                                 {p.historySnapshotCount > 0 ? (
@@ -13200,7 +14383,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <div className="card"><p>Last Sync</p><h2>{lastMarketSync === "Not synced yet" ? "None" : new Date(lastMarketSync).toLocaleDateString()}</h2></div>
                       <div className="card"><p>Live API</p><h2>Placeholder</h2></div>
                     </div>
-                    <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Mock, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
+                    <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Estimated, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
                     {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
                     <div className="quick-actions">
                       <button type="button" onClick={() => refreshMarketCatalog("card")}>Sync Cards</button>
@@ -13447,15 +14630,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </>
               ) : null}
 
-              {tideTradrSubTab === "overview" || tideTradrSubTab === "watch" ? (
-              <CollapsibleFeatureSection title="Market Sources" summary="Manual Values, Cached Values, Mock Values, and Live API Placeholder" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
+              {adminToolsVisible && (tideTradrSubTab === "overview" || tideTradrSubTab === "watch") ? (
+              <CollapsibleFeatureSection title="Market Sources" summary="Manual Values, Cached Values, Estimated Values, and Live API Placeholder" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
                 <div className="cards mini-cards">
                   <div className="card"><p>Cached Price Records</p><h2>{cachedMarketPriceCount}</h2></div>
                   <div className="card"><p>Failed Matches</p><h2>{failedMarketMatches.length}</h2></div>
                   <div className="card"><p>Last Sync</p><h2>{lastMarketSync === "Not synced yet" ? "None" : new Date(lastMarketSync).toLocaleDateString()}</h2></div>
                   <div className="card"><p>Live API</p><h2>Placeholder</h2></div>
                 </div>
-                <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Mock, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
+                <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Estimated, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
                 {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
                 <div className="quick-actions">
                   <button type="button" onClick={() => refreshMarketCatalog("card")}>Sync Cards</button>
@@ -13540,7 +14723,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 TideTradr Catalog is the shared product and value system for Forge, Scout, Vault, and Deal Finder.
               </p>
               <p>
-                Market values are labeled Live, Cached, Manual, or Mock. Mock values are beta placeholders until live/cached sources are connected.
+                Market values are labeled Live, Cached, Manual, or Estimated. Estimated values are beta placeholders until live/cached sources are connected.
               </p>
               <div className="cards mini-cards">
                 <div className="card"><p>Sealed Products</p><h2>{sealedCatalogCount}</h2></div>
@@ -13684,7 +14867,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <option value="tcgcsv">TCGCSV</option>
                   <option value="user">User uploaded</option>
                   <option value="manual">Manual URL</option>
-                  <option value="mock">Mock</option>
+                  <option value="estimated">Estimated</option>
+                  {adminToolsVisible ? <option value="mock">Mock</option> : null}
                   <option value="placeholder">Placeholder</option>
                   <option value="unknown">Unknown</option>
                 </select></Field>
@@ -13695,7 +14879,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <option value="marketplace">Marketplace</option>
                   <option value="user">User</option>
                   <option value="manual">Manual</option>
-                  <option value="mock">Mock</option>
+                  <option value="estimated">Estimated</option>
+                  {adminToolsVisible ? <option value="mock">Mock</option> : null}
                   <option value="placeholder">Placeholder</option>
                   <option value="unknown">Unknown</option>
                 </select></Field>
@@ -13720,9 +14905,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 ) : null}
                 <Field label="TideTradr Product ID"><input value={catalogForm.externalProductId} onChange={(e) => updateCatalogForm("externalProductId", e.target.value)} /></Field>
                 <Field label="Market Source URL"><input value={catalogForm.marketUrl} onChange={(e) => updateCatalogForm("marketUrl", e.target.value)} /></Field>
-                <Field label="Market Data Label"><select value={catalogForm.sourceType} onChange={(e) => updateCatalogForm("sourceType", e.target.value)}><option value="manual">Manual</option><option value="mock">Mock</option><option value="cached">Cached</option><option value="live">Live</option></select></Field>
-                <Field label="Market Source Name"><input value={catalogForm.marketSource} onChange={(e) => updateCatalogForm("marketSource", e.target.value)} placeholder="Manual, Mock, TCGPlayer, PriceCharting..." /></Field>
-                <Field label="Confidence"><input value={catalogForm.marketConfidenceLevel} onChange={(e) => updateCatalogForm("marketConfidenceLevel", e.target.value)} placeholder="Manual, Mock, Low, Medium, High" /></Field>
+                <Field label="Market Data Label"><select value={catalogForm.sourceType} onChange={(e) => updateCatalogForm("sourceType", e.target.value)}><option value="manual">Manual</option><option value="estimated">Estimated</option>{adminToolsVisible ? <option value="mock">Mock</option> : null}<option value="cached">Cached</option><option value="live">Live</option></select></Field>
+                <Field label="Market Source Name"><input value={catalogForm.marketSource} onChange={(e) => updateCatalogForm("marketSource", e.target.value)} placeholder="Manual, Estimated, TCGPlayer, PriceCharting..." /></Field>
+                <Field label="Confidence"><input value={catalogForm.marketConfidenceLevel} onChange={(e) => updateCatalogForm("marketConfidenceLevel", e.target.value)} placeholder="Manual, Estimated, Low, Medium, High" /></Field>
                 <Field label="Market Last Updated"><input type="date" value={catalogForm.marketLastUpdated} onChange={(e) => updateCatalogForm("marketLastUpdated", e.target.value)} /></Field>
                 <Field label="MSRP Price">
   <input
@@ -14076,18 +15261,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         {activeTab === "inventory" && (
           forgeSubTab === "marketplace" ? (
             <>
-              <section className={getHeaderCardClass("panel marketplace-page-heading")}>
-                <div>
-                  <h2>Forge &gt; Marketplace</h2>
-                  <p>Create listings from Forge inventory, Vault items, TideTradr catalog products, or manual entry.</p>
-                </div>
-                <div className="summary-pill-row">
+              <PageHeader
+                className={getHeaderCardClass("panel marketplace-page-heading")}
+                title="Forge > Marketplace"
+                subtitle="Create listings from Forge inventory, Vault items, TideTradr catalog products, or manual entry."
+                actions={(
                   <button type="button" className="secondary-button" onClick={() => {
                     setMarketplaceView("browse");
                     setForgeSubTab("overview");
                   }}>Back to Forge</button>
-                </div>
-              </section>
+                )}
+              />
               {renderMarketplaceSection()}
             </>
           ) : (
@@ -14719,14 +15903,14 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                         />
                         <div className="catalog-detail-image placeholder" hidden>
                           <strong>{catalogTitle(selectedCatalogDetailProduct)}</strong>
-                          <span>{selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion || selectedCatalogDetailProduct.productType || "Catalog item"}</span>
+                          <span>{catalogExpansionName(selectedCatalogDetailProduct) || selectedCatalogDetailProduct.productType || "Catalog item"}</span>
                           <b>Image needed</b>
                         </div>
                       </>
                     ) : (
                       <div className="catalog-detail-image placeholder">
                         <strong>{catalogTitle(selectedCatalogDetailProduct)}</strong>
-                        <span>{selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion || selectedCatalogDetailProduct.productType || "Catalog item"}</span>
+                        <span>{catalogExpansionName(selectedCatalogDetailProduct) || selectedCatalogDetailProduct.productType || "Catalog item"}</span>
                         <b>Image needed</b>
                       </div>
                     )}
@@ -14743,7 +15927,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                         ) : (
                           <button type="button" className="secondary-button" onClick={() => submitUniversalSuggestion({
                             suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
-                            targetTable: "catalog_items",
+                            targetTable: "product_catalog",
                             targetRecordId: selectedCatalogDetailProduct.id,
                             submittedData: { name: catalogTitle(selectedCatalogDetailProduct), imageNeedsReview: true },
                             currentDataSnapshot: selectedCatalogDetailProduct,
@@ -14757,15 +15941,53 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <div className="catalog-detail-core-panel">
                     <span className="catalog-pill">{selectedCatalogDetailProduct.catalogType === "card" ? "Card" : selectedCatalogDetailProduct.productType || "Product"}</span>
                     <h2>{catalogTitle(selectedCatalogDetailProduct)}</h2>
+                    {selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl ? (
+                      <div className="catalog-expansion-banner">
+                        <img src={selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl} alt="" />
+                        <span>{catalogExpansionName(selectedCatalogDetailProduct)}</span>
+                      </div>
+                    ) : null}
                     <div className="catalog-detail-grid catalog-detail-core-grid">
                       <DetailItem label="Product Type" value={selectedCatalogDetailProduct.productType || selectedCatalogDetailProduct.catalogType} />
-                      <DetailItem label="Set / Expansion" value={selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion || selectedCatalogDetailProduct.series || selectedCatalogDetailProduct.productLine} />
+                      <DetailItem label="Set / Expansion" value={catalogExpansionName(selectedCatalogDetailProduct)} />
                       <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market price missing"} />
                       <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "Unknown"} />
                       <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
                       <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailProduct)} />
                       <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.updatedAt} />
                     </div>
+                    {selectedCatalogDetailVariants.length ? (
+                      <div className="catalog-version-picker">
+                        <span>Version / Finish</span>
+                        <div className="catalog-version-buttons">
+                          {selectedCatalogDetailVariants.map((variant) => (
+                            <button
+                              key={variant.id}
+                              type="button"
+                              className={String(selectedCatalogDetailVariant?.id) === String(variant.id) ? "primary compact-action active" : "secondary-button compact-action"}
+                              onClick={() => setCatalogVariantSelection((current) => ({ ...current, [selectedCatalogDetailProduct.id]: variant.id }))}
+                            >
+                              {variant.variantName}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="form compact-form-grid">
+                          <Field label="Condition">
+                            <select
+                              value={selectedCatalogDetailCondition}
+                              onChange={(event) => setCatalogConditionSelection((current) => ({ ...current, [selectedCatalogDetailProduct.id]: event.target.value }))}
+                            >
+                              {["Near Mint", "Lightly Played", "Moderately Played", "Heavily Played", "Damaged"].map((condition) => (
+                                <option key={condition} value={condition}>{condition}</option>
+                              ))}
+                            </select>
+                          </Field>
+                          <Field label="Language">
+                            <input value={selectedCatalogDetailVariant?.language || selectedCatalogDetailProduct.language || "English"} readOnly />
+                          </Field>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </section>
                 <div className="catalog-detail-action-group catalog-detail-primary-actions">
@@ -14779,8 +16001,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <button type="button" className="secondary-button" onClick={scrollCatalogDetailToMarketHistory}>View Market History</button>
                   <button type="button" className="secondary-button" onClick={() => suggestCatalogMissingPrice(selectedCatalogDetailProduct)}>Suggest Missing Price</button>
                   <button type="button" className="secondary-button" onClick={() => suggestCatalogCorrection(selectedCatalogDetailProduct)}>Suggest Catalog Correction</button>
+                  <button type="button" className="secondary-button" onClick={() => suggestCatalogWrongExpansion(selectedCatalogDetailProduct)}>Wrong Expansion?</button>
+                  <button type="button" className="secondary-button" onClick={() => suggestCatalogWrongVersionPricing(selectedCatalogDetailProduct)}>Wrong Version/Pricing?</button>
                   <button type="button" className="secondary-button" onClick={() => copyCatalogProductIdentifiers(selectedCatalogDetailProduct)}>Copy UPC/SKU</button>
-                  <button type="button" className="secondary-button" onClick={() => suggestCatalogUpcSku(selectedCatalogDetailProduct)}>Suggest UPC/SKU</button>
+                  <button type="button" className="secondary-button" onClick={() => suggestCatalogUpcSku(selectedCatalogDetailProduct)}>Wrong UPC/SKU/MSRP?</button>
                 </div>
                 {(!hasCatalogMarketPrice(selectedCatalogDetailProduct) || !hasCatalogUpcSku(selectedCatalogDetailProduct)) ? (
                   <div className="catalog-detail-warning-list">
@@ -14803,13 +16027,15 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <h3 className="catalog-detail-section-title">Details</h3>
                 <div className="catalog-detail-grid catalog-detail-overview-grid">
                   <DetailItem label="Product Type" value={selectedCatalogDetailProduct.productType || selectedCatalogDetailProduct.catalogType} />
-                  <DetailItem label="Set / Expansion" value={selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion || selectedCatalogDetailProduct.series || selectedCatalogDetailProduct.productLine} />
+                  <DetailItem label="Set / Expansion" value={catalogExpansionName(selectedCatalogDetailProduct)} />
                   <DetailItem label="Card Number" value={selectedCatalogDetailProduct.cardNumber ? `#${selectedCatalogDetailProduct.cardNumber}` : ""} />
-                  <DetailItem label="UPC / Barcode" value={selectedCatalogDetailProduct.upc || selectedCatalogDetailProduct.barcode} />
-                  <DetailItem label="SKU / External IDs" value={[selectedCatalogDetailProduct.sku, selectedCatalogDetailProduct.externalProductId].filter(Boolean).join(" | ")} />
-                  <DetailItem label="TCGplayer ID" value={selectedCatalogDetailProduct.tcgplayerProductId} />
-                  <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "Unknown"} />
-                  <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market price missing"} />
+                  <DetailItem label="UPC / Barcode" value={getCatalogIdentifiers(selectedCatalogDetailProduct).filter((identifier) => ["UPC", "EAN", "GTIN"].includes(identifier.label)).map((identifier) => `${identifier.label}: ${identifier.value}`).join(" | ")} />
+                  <DetailItem label="SKU / External IDs" value={getCatalogIdentifiers(selectedCatalogDetailProduct).filter((identifier) => ["RETAILER_SKU", "POKEMON_CENTER_SKU", "OTHER"].includes(identifier.label)).map((identifier) => `${identifier.label}: ${identifier.value}`).join(" | ")} />
+                  <DetailItem label="TCGplayer ID" value={selectedCatalogDetailProduct.tcgplayerProductId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_PRODUCT_ID")?.value} />
+                  <DetailItem label="Selected Version" value={selectedCatalogDetailVariant?.variantName} />
+                  <DetailItem label="Finish / Printing" value={[selectedCatalogDetailVariant?.finish, selectedCatalogDetailVariant?.printing].filter(Boolean).join(" | ")} />
+                  <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "MSRP unavailable"} />
+                  <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market data unavailable"} />
                   <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
                   <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailProduct)} />
                   <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.updatedAt} />
@@ -14837,15 +16063,25 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   {selectedCatalogDetailProduct.catalogType === "card" ? (
                     <>
                       <DetailItem label="Card Name" value={catalogTitle(selectedCatalogDetailProduct)} />
-                      <DetailItem label="Set" value={selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion} />
-                      <DetailItem label="Series" value={selectedCatalogDetailProduct.series || selectedCatalogDetailProduct.productLine} />
-                      <DetailItem label="Card Number" value={selectedCatalogDetailProduct.cardNumber} />
-                      <DetailItem label="Printed Total" value={selectedCatalogDetailProduct.printedTotal} />
-                      <DetailItem label="Rarity" value={selectedCatalogDetailProduct.rarity} />
-                      <DetailItem label="Type" value={selectedCatalogDetailProduct.type} />
-                      <DetailItem label="HP" value={selectedCatalogDetailProduct.hp} />
-                      <DetailItem label="Artist" value={selectedCatalogDetailProduct.artist} />
-                      <DetailItem label="Variants" value={selectedCatalogDetailProduct.variant} />
+                      <DetailItem label="Set" value={catalogExpansionName(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Series" value={selectedCatalogDetailProduct.expansionSeries || selectedCatalogDetailProduct.productLine} />
+                      <DetailItem label="Stage" value={catalogCardDetails(selectedCatalogDetailProduct).stage} />
+                      <DetailItem label="Evolves From" value={catalogCardDetails(selectedCatalogDetailProduct).evolvesFrom} />
+                      <DetailItem label="Type" value={(catalogCardDetails(selectedCatalogDetailProduct).types || []).join(", ")} />
+                      <DetailItem label="HP" value={catalogCardDetails(selectedCatalogDetailProduct).hp} />
+                      <DetailItem label="Ability" value={(catalogCardDetails(selectedCatalogDetailProduct).abilities || []).map((ability) => `${ability.name || "Ability"}: ${ability.text || ""}`).join(" | ")} />
+                      <DetailItem label="Attacks" value={(catalogCardDetails(selectedCatalogDetailProduct).attacks || []).map((attack) => `${attack.name || "Attack"} ${attack.damage || ""} ${attack.text || ""}`).join(" | ")} />
+                      <DetailItem label="Weakness" value={(catalogCardDetails(selectedCatalogDetailProduct).weaknesses || []).map((entry) => `${entry.type || ""} ${entry.value || ""}`.trim()).join(", ")} />
+                      <DetailItem label="Resistance" value={(catalogCardDetails(selectedCatalogDetailProduct).resistances || []).map((entry) => `${entry.type || ""} ${entry.value || ""}`.trim()).join(", ")} />
+                      <DetailItem label="Retreat Cost" value={(catalogCardDetails(selectedCatalogDetailProduct).retreatCost || []).join(", ")} />
+                      <DetailItem label="Card Number" value={catalogCardDetails(selectedCatalogDetailProduct).cardNumber || selectedCatalogDetailProduct.cardNumber} />
+                      <DetailItem label="Printed Total" value={catalogCardDetails(selectedCatalogDetailProduct).printedTotal || selectedCatalogDetailProduct.printedTotal} />
+                      <DetailItem label="Rarity" value={catalogCardDetails(selectedCatalogDetailProduct).rarity || selectedCatalogDetailProduct.rarity} />
+                      <DetailItem label="Illustrator" value={catalogCardDetails(selectedCatalogDetailProduct).artist} />
+                      <DetailItem label="Regulation Mark" value={catalogCardDetails(selectedCatalogDetailProduct).regulationMark} />
+                      <DetailItem label="Flavor Text" value={catalogCardDetails(selectedCatalogDetailProduct).flavorText} />
+                      <DetailItem label="Pokedex #" value={(catalogCardDetails(selectedCatalogDetailProduct).nationalPokedexNumbers || []).join(", ")} />
+                      <DetailItem label="Variants" value={selectedCatalogDetailVariants.map((variant) => variant.variantName).join(", ")} />
                       <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue)} />
                       <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).lastUpdated} />
@@ -14860,18 +16096,20 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   ) : (
                     <>
                       <DetailItem label="Product Name" value={catalogTitle(selectedCatalogDetailProduct)} />
-                      <DetailItem label="Product Type" value={selectedCatalogDetailProduct.productType} />
+                      <DetailItem label="Product Type" value={selectedCatalogDetailProduct.sealedProductType || selectedCatalogDetailProduct.productType} />
                       <DetailItem label="Product Category" value={selectedCatalogDetailProduct.productCategory || selectedCatalogDetailProduct.category} />
-                      <DetailItem label="Set / Series" value={selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion || selectedCatalogDetailProduct.series || selectedCatalogDetailProduct.productLine} />
+                      <DetailItem label="Set / Series" value={catalogExpansionName(selectedCatalogDetailProduct)} />
                       <DetailItem label="Release Date" value={selectedCatalogDetailProduct.releaseDate} />
-                      <DetailItem label="MSRP" value={selectedCatalogDetailProduct.msrpDisplay === "Unknown" ? "Unknown" : money(getTideTradrMarketInfo(selectedCatalogDetailProduct).msrp)} />
-                      <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue)} />
+                      <DetailItem label="MSRP" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).msrp ? money(getTideTradrMarketInfo(selectedCatalogDetailProduct).msrp) : "MSRP unavailable"} />
+                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailProduct) ? money(getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue) : "Market data unavailable"} />
                       <DetailItem label="Low / High Price" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
                       <DetailItem label="Pack Count" value={selectedCatalogDetailProduct.packCount} />
-                      <DetailItem label="Contents" value={Array.isArray(selectedCatalogDetailProduct.contents) ? selectedCatalogDetailProduct.contents.join(", ") : selectedCatalogDetailProduct.contents} />
-                      <DetailItem label="UPC" value={selectedCatalogDetailProduct.upc || selectedCatalogDetailProduct.barcode} />
-                      <DetailItem label="SKU" value={selectedCatalogDetailProduct.sku || selectedCatalogDetailProduct.externalProductId} />
-                      <DetailItem label="Source Product ID" value={selectedCatalogDetailProduct.externalProductId || selectedCatalogDetailProduct.tcgplayerProductId} />
+                      <DetailItem label="Contents" value={typeof selectedCatalogDetailProduct.contents === "object" ? Object.entries(selectedCatalogDetailProduct.contents || {}).map(([key, value]) => `${key}: ${value}`).join(" | ") : selectedCatalogDetailProduct.contents} />
+                      <DetailItem label="UPC / EAN / GTIN" value={getCatalogIdentifiers(selectedCatalogDetailProduct).filter((identifier) => ["UPC", "EAN", "GTIN"].includes(identifier.label)).map((identifier) => identifier.value).join(" | ")} />
+                      <DetailItem label="Retail / Pokemon Center SKU" value={getCatalogIdentifiers(selectedCatalogDetailProduct).filter((identifier) => ["RETAILER_SKU", "POKEMON_CENTER_SKU"].includes(identifier.label)).map((identifier) => `${identifier.label}: ${identifier.value}`).join(" | ")} />
+                      <DetailItem label="TCGplayer Product ID" value={selectedCatalogDetailProduct.tcgplayerProductId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_PRODUCT_ID")?.value} />
+                      <DetailItem label="TCGplayer SKU ID" value={selectedCatalogDetailVariant?.tcgplayerSkuId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_SKU_ID")?.value} />
+                      <DetailItem label="Pokemon Center Exclusive" value={selectedCatalogDetailProduct.isPokemonCenterExclusive ? "Yes" : ""} />
                       <DetailItem label="Price Type" value={selectedCatalogDetailProduct.priceSubtype} />
                       <DetailItem label="Retailer Exclusivity" value={selectedCatalogDetailProduct.retailerExclusive ? "Retailer exclusive" : "Not listed"} />
                       <DetailItem label="Retailer Name" value={selectedCatalogDetailProduct.retailerName} />
@@ -15403,7 +16641,7 @@ function VaultEditForm({
               <input value={form.marketLastUpdated || form.lastPriceChecked || "Unknown"} readOnly />
             </Field>
             <div className="small-empty-state">
-              Market refresh is not connected yet. Current values are manually entered or mock data.
+              Market refresh is not connected yet. Current values are manually entered or estimated beta data.
             </div>
           </div>
         ))}
@@ -15573,6 +16811,9 @@ function InventoryForm({
   const selectedCatalogName = selectedCatalogProduct
     ? selectedCatalogProduct.name || selectedCatalogProduct.productName || selectedCatalogProduct.cardName || "Catalog product"
     : "";
+  const selectedCatalogVariants = Array.isArray(selectedCatalogProduct?.variants)
+    ? selectedCatalogProduct.variants.filter((variant) => variant.variantName || variant.variant_name)
+    : [];
 
   function selectPurchaser(purchaserId) {
     if (purchaserId === "__add__") {
@@ -15623,6 +16864,39 @@ function InventoryForm({
             <span>{selectedCatalogProduct.setName || selectedCatalogProduct.expansion || selectedCatalogProduct.productType || "Catalog product"}</span>
             <span>Market: {money(selectedCatalogProduct.marketPrice || selectedCatalogProduct.marketValue || 0)} | MSRP: {selectedCatalogProduct.msrpPrice || selectedCatalogProduct.msrp ? money(selectedCatalogProduct.msrpPrice || selectedCatalogProduct.msrp) : "Unknown"}</span>
           </div>
+        </div>
+      ) : null}
+      {selectedCatalogVariants.length ? (
+        <div className="form compact-form-grid">
+          <Field label="Version / Finish">
+            <select
+              value={form.catalogVariantId || ""}
+              onChange={(event) => {
+                const variant = selectedCatalogVariants.find((candidate) => String(candidate.id) === String(event.target.value));
+                setForm("catalogVariantId", event.target.value);
+                setForm("finish", variant?.finish || "");
+                setForm("printing", variant?.printing || "");
+                setForm("language", variant?.language || "English");
+              }}
+            >
+              <option value="">Choose version</option>
+              {selectedCatalogVariants.map((variant) => (
+                <option key={variant.id || variant.variantName || variant.variant_name} value={variant.id || ""}>
+                  {variant.variantName || variant.variant_name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Condition">
+            <select value={form.conditionName || "Near Mint"} onChange={(event) => {
+              setForm("conditionName", event.target.value);
+              setForm("condition", event.target.value);
+            }}>
+              {["Near Mint", "Lightly Played", "Moderately Played", "Heavily Played", "Damaged"].map((condition) => (
+                <option key={condition} value={condition}>{condition}</option>
+              ))}
+            </select>
+          </Field>
         </div>
       ) : null}
       <Field label="Item Name"><input value={form.name} onChange={(e) => setForm("name", e.target.value)} /></Field>

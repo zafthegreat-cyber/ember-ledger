@@ -1,6 +1,16 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { parsePokemonCardNumber } from './card_number_utils.mjs';
+import {
+  buildContents,
+  classifyIdentifierType,
+  classifySealedProduct,
+  explicitMsrpFromExtendedData,
+  formatPriceSubtype,
+  inferPackCount as inferNormalizedPackCount,
+  normalizeText,
+  variantMetaFromName,
+} from './catalog_normalization_utils.mjs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -65,34 +75,8 @@ function extendedDataObject(product) {
   return out;
 }
 
-function inferPackCount(name) {
-  const text = String(name || '').toLowerCase();
-  const explicit = text.match(/(\d+)\s*(pack|packs|booster packs)/i);
-  if (explicit) return Number(explicit[1]);
-  if (/booster box/.test(text)) return 36;
-  if (/elite trainer box|\betb\b/.test(text)) return 8;
-  if (/booster bundle/.test(text)) return 6;
-  if (/build\s*&\s*battle/.test(text)) return 4;
-  if (/single pack|sleeved booster|booster pack/.test(text)) return 1;
-  return 0;
-}
-
-function inferSealed(product, ext) {
-  const name = String(product.name || product.cleanName || '').toLowerCase();
-  const productType = String(ext.product_type || ext.producttype || ext.type || '').toLowerCase();
-
-  if (/sealed|booster|box|pack|tin|collection|bundle|case|blister|deck|trainer kit|premium|portfolio|binder|sleeves/.test(productType)) {
-    return true;
-  }
-  if (/\b(card|single)\b/.test(productType) && !/code card/.test(productType)) {
-    return false;
-  }
-
-  return /booster|elite trainer|\betb\b|box|pack|tin|collection|bundle|case|blister|deck|build\s*&\s*battle|theme deck|trainer kit|premium collection|ultra premium|checklane|sleeved|portfolio|binder|playmat|sleeves/.test(name);
-}
-
 function priceScore(price, isSealed) {
-  const subtype = String(price?.subTypeName || '').toLowerCase();
+  const subtype = normalizeText(price?.subTypeName || '');
   const hasMarket = price?.marketPrice != null ? 0 : 100;
   const order = isSealed
     ? ['normal', 'sealed', 'unlimited']
@@ -140,6 +124,168 @@ async function upsertPriceRows(rows) {
   }
 }
 
+async function upsertIdentifierRows(rows) {
+  const filtered = rows.filter((row) => row.catalog_product_id && row.identifier_type && row.identifier_value);
+  for (const batch of chunk(filtered, PRICE_BATCH_SIZE)) {
+    const { error } = await supabase
+      .from('product_identifiers')
+      .upsert(batch, { onConflict: 'identifier_type,identifier_value' });
+    if (error) throw error;
+  }
+}
+
+async function upsertVariantRows(rows) {
+  const filtered = rows.filter((row) => row.catalog_product_id && row.variant_name);
+  for (const batch of chunk(filtered, PRICE_BATCH_SIZE)) {
+    const { error } = await supabase
+      .from('catalog_product_variants')
+      .upsert(batch, { onConflict: 'catalog_product_id,variant_name,language,condition_name' });
+    if (error) throw error;
+  }
+}
+
+function tcgplayerSkuId(price = {}) {
+  return String(price.skuId || price.skuID || price.tcgplayerSkuId || price.tcgplayer_sku_id || '').trim();
+}
+
+function priceSubtype(price = {}) {
+  return formatPriceSubtype(price.subTypeName || price.subtype || price.priceSubtype || 'Default');
+}
+
+async function findExpansionByTcgplayerGroup(group = {}) {
+  if (!group?.groupId) return null;
+
+  const existing = await supabase
+    .from('tcg_expansions')
+    .select('id')
+    .eq('tcgplayer_group_id', group.groupId)
+    .maybeSingle();
+  if (existing.error) throw existing.error;
+  if (existing.data?.id) return existing.data.id;
+
+  const abbreviation = String(group.abbreviation || '').trim();
+  if (abbreviation) {
+    const byAbbreviation = await supabase
+      .from('tcg_expansions')
+      .select('id')
+      .or(`set_code.eq.${abbreviation},ptcgo_code.eq.${abbreviation},pokemon_tcg_io_id.eq.${abbreviation}`)
+      .limit(1)
+      .maybeSingle();
+    if (byAbbreviation.error) throw byAbbreviation.error;
+    if (byAbbreviation.data?.id) return byAbbreviation.data.id;
+  }
+
+  const name = String(group.name || '').trim();
+  if (name) {
+    const byOfficialName = await supabase
+      .from('tcg_expansions')
+      .select('id')
+      .eq('official_name', name)
+      .limit(1)
+      .maybeSingle();
+    if (byOfficialName.error) throw byOfficialName.error;
+    if (byOfficialName.data?.id) return byOfficialName.data.id;
+
+    const byDisplayName = await supabase
+      .from('tcg_expansions')
+      .select('id')
+      .eq('display_name', name)
+      .limit(1)
+      .maybeSingle();
+    if (byDisplayName.error) throw byDisplayName.error;
+    if (byDisplayName.data?.id) return byDisplayName.data.id;
+  }
+
+  return null;
+}
+
+async function attachTcgplayerGroupMapping(expansionId, group = {}) {
+  if (!expansionId) return false;
+  const { error } = await supabase
+    .from('tcg_expansions')
+    .update({
+      tcgplayer_group_id: group.groupId,
+      tcgplayer_group_name: group.name || null,
+      tcgplayer_abbreviation: group.abbreviation || null,
+      raw_tcgplayer: group,
+    })
+    .eq('id', expansionId);
+  if (error) throw error;
+  return true;
+}
+
+function identifierRowsForProduct(product = {}, ext = {}, catalogProductId = '') {
+  const rows = [
+    {
+      catalog_product_id: catalogProductId,
+      identifier_type: 'TCGPLAYER_PRODUCT_ID',
+      identifier_value: String(product.productId),
+      source: 'TCGCSV',
+      source_url: product.url || null,
+      confidence: 'imported',
+    },
+  ];
+
+  for (const [key, preferredType] of [
+    ['upc', ''],
+    ['ean', 'EAN'],
+    ['gtin', 'GTIN'],
+    ['pokemon_center_sku', 'POKEMON_CENTER_SKU'],
+    ['pokemoncenter_sku', 'POKEMON_CENTER_SKU'],
+    ['pokemon_center_item_number', 'POKEMON_CENTER_SKU'],
+    ['retailer_sku', 'RETAILER_SKU'],
+    ['retail_sku', 'RETAILER_SKU'],
+    ['best_buy_sku', 'RETAILER_SKU'],
+    ['target_sku', 'RETAILER_SKU'],
+    ['walmart_sku', 'RETAILER_SKU'],
+  ]) {
+    const value = String(ext[key] || '').trim();
+    if (!value) continue;
+    rows.push({
+      catalog_product_id: catalogProductId,
+      identifier_type: classifyIdentifierType(value, preferredType),
+      identifier_value: value,
+      source: 'TCGCSV extendedData',
+      source_url: product.url || null,
+      confidence: 'imported',
+    });
+  }
+
+  return rows;
+}
+
+function identifierRowsForPrices(prices = [], catalogProductId = '') {
+  return prices
+    .map((price) => tcgplayerSkuId(price))
+    .filter(Boolean)
+    .map((skuId) => ({
+      catalog_product_id: catalogProductId,
+      identifier_type: 'TCGPLAYER_SKU_ID',
+      identifier_value: skuId,
+      source: 'TCGCSV prices',
+      source_url: null,
+      confidence: 'imported',
+    }));
+}
+
+function variantRowsForPrices(prices = [], catalogProductId = '', primaryPrice = null) {
+  const primarySubtype = priceSubtype(primaryPrice || {});
+  return prices.map((price) => {
+    const meta = variantMetaFromName(priceSubtype(price));
+    return {
+      catalog_product_id: catalogProductId,
+      variant_name: meta.variantName,
+      printing: meta.printing,
+      finish: meta.finish,
+      language: price.language || 'English',
+      tcgplayer_sku_id: tcgplayerSkuId(price) || null,
+      condition_id: price.conditionId || price.conditionID || null,
+      condition_name: price.conditionName || '',
+      is_default: meta.variantName === primarySubtype,
+    };
+  });
+}
+
 function dayBounds(isoDate) {
   const date = new Date(isoDate);
   const start = new Date(date);
@@ -169,7 +315,10 @@ function priceFingerprint(row) {
 function historyRowFromPriceRow(row) {
   const { id, updated_at, ...priceRow } = row;
   const checkedAt = priceRow.checked_at || new Date().toISOString();
-  const condition = priceRow.price_subtype || 'Unopened';
+  const condition =
+    priceRow.raw_source?.conditionName ||
+    priceRow.raw_source?.condition ||
+    (normalizeText(priceRow.price_subtype).includes('sealed') ? 'Unopened' : null);
   return {
     ...priceRow,
     external_product_id: priceRow.source_product_id,
@@ -243,20 +392,30 @@ async function main() {
       pricesByProduct.get(key).push(price);
     }
 
+    const expansionId = await findExpansionByTcgplayerGroup(group);
+    if (expansionId) {
+      await attachTcgplayerGroupMapping(expansionId, group);
+    } else {
+      console.log(`  No normalized expansion match for TCGplayer group ${group.groupId}. Products will remain unmatched for admin review.`);
+    }
+
     const checkedAt = new Date().toISOString();
     const catalogRows = products.map((product) => {
       const ext = extendedDataObject(product);
-      const isSealed = inferSealed(product, ext);
-      const primaryPrice = pickPrimaryPrice(pricesByProduct.get(String(product.productId)), isSealed);
-      const cardNumberMeta = isSealed
+      const classification = classifySealedProduct(product, ext);
+      const productPrices = pricesByProduct.get(String(product.productId)) || [];
+      const primaryPrice = pickPrimaryPrice(productPrices, classification.isSealed);
+      const cardNumberMeta = classification.isSealed
         ? parsePokemonCardNumber(null, null)
         : parsePokemonCardNumber(ext.number || ext.card_number || ext.card_no || null, ext.printed_total || ext.total || ext.set_total);
+      const packCountInfo = inferNormalizedPackCount(product.name || product.cleanName, classification.sealedProductType);
+      const explicitMsrp = explicitMsrpFromExtendedData(ext);
       return {
         user_id: DEFAULT_USER_ID,
         name: product.name || product.cleanName || `TCGplayer Product ${product.productId}`,
         category: 'Pokemon',
         set_name: group.name || null,
-        product_type: isSealed ? 'Sealed Product' : 'Card',
+        product_type: classification.isSealed ? 'Sealed Product' : 'Card',
         barcode: ext.upc || ext.gtin || ext.ean || null,
         market_source: 'TCGCSV',
         external_product_id: String(product.productId),
@@ -267,15 +426,27 @@ async function main() {
         low_price: toNumberOrNull(primaryPrice?.lowPrice),
         mid_price: toNumberOrNull(primaryPrice?.midPrice),
         high_price: toNumberOrNull(primaryPrice?.highPrice),
+        msrp_price: explicitMsrp,
+        msrp_source: explicitMsrp ? 'TCGCSV extendedData' : null,
+        msrp_confidence: explicitMsrp ? 'imported' : null,
         last_price_checked: checkedAt,
         set_code: group.abbreviation || '',
         expansion: group.name || '',
+        expansion_id: expansionId,
         product_line: 'Pokemon',
-        pack_count: inferPackCount(product.name),
+        pack_count: packCountInfo.packCount,
         source_group_id: group.groupId,
         source_group_name: group.name || null,
-        price_subtype: primaryPrice?.subTypeName || null,
-        is_sealed: isSealed,
+        price_subtype: primaryPrice ? priceSubtype(primaryPrice) : null,
+        is_sealed: classification.isSealed,
+        product_kind: classification.productKind,
+        sealed_product_type: classification.sealedProductType,
+        is_pokemon_center_exclusive: classification.isPokemonCenterExclusive,
+        region: 'US',
+        language: 'English',
+        contents: classification.isSealed
+          ? buildContents({ product, sealedProductType: classification.sealedProductType, packCountInfo })
+          : {},
         ...cardNumberMeta,
         rarity: ext.rarity || null,
         raw_source: { group, product, extendedData: ext },
@@ -287,6 +458,22 @@ async function main() {
     const idByProductId = new Map(upserted.map((row) => [String(row.external_product_id), row.id]));
 
     const priceRows = [];
+    const identifierRows = [];
+    const variantRows = [];
+
+    for (const product of products) {
+      const productId = String(product.productId);
+      const catalogProductId = idByProductId.get(productId) || null;
+      if (!catalogProductId) continue;
+      const ext = extendedDataObject(product);
+      const productPrices = pricesByProduct.get(productId) || [];
+      const classification = classifySealedProduct(product, ext);
+      const primaryPrice = pickPrimaryPrice(productPrices, classification.isSealed);
+      identifierRows.push(...identifierRowsForProduct(product, ext, catalogProductId));
+      identifierRows.push(...identifierRowsForPrices(productPrices, catalogProductId));
+      variantRows.push(...variantRowsForPrices(productPrices, catalogProductId, primaryPrice));
+    }
+
     for (const price of prices) {
       const productId = String(price.productId);
       priceRows.push({
@@ -294,7 +481,7 @@ async function main() {
         source: 'TCGCSV',
         source_product_id: productId,
         source_group_id: group.groupId,
-        price_subtype: price.subTypeName || 'Default',
+        price_subtype: priceSubtype(price),
         low_price: toNumberOrNull(price.lowPrice),
         mid_price: toNumberOrNull(price.midPrice),
         high_price: toNumberOrNull(price.highPrice),
@@ -307,6 +494,8 @@ async function main() {
       });
     }
 
+    if (identifierRows.length) await upsertIdentifierRows(identifierRows);
+    if (variantRows.length) await upsertVariantRows(variantRows);
     await upsertPriceRows(priceRows);
 
     totalProducts += products.length;

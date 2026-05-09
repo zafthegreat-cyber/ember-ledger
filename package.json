@@ -9,6 +9,7 @@
     "import:pokemon-tcg-api": "node pokemon_market_ingestion_kit/import_pokemontcg_cards_to_supabase.mjs",
     "import:tcgcsv": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",
     "refresh:pokemon-prices": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",
+    "verify:catalog-normalized": "node pokemon_market_ingestion_kit/verify_normalized_catalog.mjs",
     "import:va-stores": "node pokemon_market_ingestion_kit/import_va_stores_to_supabase.mjs",
     "seed:stores:virginia": "node scripts/import-virginia-stores.cjs",
     "seed:stores:virginia:dry": "node scripts/import-virginia-stores.cjs --dry-run",

@@ -95,7 +95,7 @@ async function main() {
     await assertVisibleText("Home");
     await assertVisibleText("Forge");
     await assertVisibleText("Scout");
-    await assertVisibleText("The Vault");
+    await assertVisibleText("Vault");
     await assertVisibleText("TideTradr");
   });
 
@@ -275,9 +275,9 @@ async function main() {
   });
 
   await step("Vault: add/edit/delete Vault item", async () => {
-    await nav("The Vault");
+    await nav("Vault");
     await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
-    await page.locator(".flow-modal").getByRole("button", { name: /Add Item to Vault/ }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Manual Add/ }).click();
     const vaultForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Add Item to Vault" }) }).first();
     await fillByLabel(vaultForm, "Item Name", "Smoke Vault Binder");
     await fillByLabel(vaultForm, "Quantity", "1");

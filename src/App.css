@@ -535,6 +535,12 @@ button,
   white-space: nowrap;
 }
 
+.topbar-scan-button {
+  min-height: 36px;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
 .topbar-actions {
   display: flex;
   gap: 8px;
@@ -624,6 +630,7 @@ button,
 .topbar-actions-hidden .menu-button,
 .topbar-actions-hidden .topbar-title,
 .topbar-actions-hidden .topbar-market-link,
+.topbar-actions-hidden .topbar-scan-button,
 .topbar-actions-hidden .topbar-actions {
   max-width: 0;
   opacity: 0;
@@ -3741,6 +3748,12 @@ video {
     font-size: 0.84rem;
   }
 
+  .topbar-scan-button {
+    min-height: 44px;
+    padding: 10px 11px;
+    font-size: 0.84rem;
+  }
+
   .quick-add-menu {
     right: 0;
     min-width: min(270px, calc(100vw - 28px));
@@ -3754,7 +3767,8 @@ video {
   }
 
   .topbar-actions-hidden .menu-button,
-  .topbar-actions-hidden .topbar-market-link {
+  .topbar-actions-hidden .topbar-market-link,
+  .topbar-actions-hidden .topbar-scan-button {
     max-width: 0;
     opacity: 0;
     padding-inline: 0;
@@ -3768,6 +3782,12 @@ video {
   }
 
   .topbar-market-link {
+    min-height: 42px;
+    padding-inline: 10px;
+    font-size: 0.8rem;
+  }
+
+  .topbar-scan-button {
     min-height: 42px;
     padding-inline: 10px;
     font-size: 0.8rem;
@@ -4717,6 +4737,7 @@ button.secondary-button,
 
   .topbar-actions .secondary-button,
   .topbar-market-link,
+  .topbar-scan-button,
   .app-search-toggle {
     min-width: 44px;
     padding-inline: 10px;
@@ -5717,11 +5738,21 @@ textarea {
 
 @media (max-width: 430px) {
   .topbar {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    justify-content: flex-start;
+    gap: 5px;
   }
 
-  .topbar-market-link {
+  .topbar-title {
     display: none;
+  }
+
+  .topbar-market-link,
+  .topbar-scan-button,
+  .topbar-actions .secondary-button,
+  .app-search-toggle {
+    min-width: 42px;
+    padding-inline: 8px;
+    font-size: 0.74rem;
   }
 
   .topbar-title h2 {
@@ -5744,7 +5775,9 @@ textarea {
 
   .topbar-actions .secondary-button,
   .app-search-toggle,
-  .menu-button {
+  .menu-button,
+  .topbar-market-link,
+  .topbar-scan-button {
     min-width: 44px;
     padding-inline: 8px;
     font-size: 0.72rem;
@@ -8304,6 +8337,79 @@ button.home-metric-card h2 {
   padding: 14px;
 }
 
+.quick-find-options {
+  margin-top: 8px;
+}
+
+.flow-form-section {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.flow-form-section h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 1rem;
+}
+
+.multi-destination-flow {
+  display: grid;
+  gap: 14px;
+}
+
+.destination-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.destination-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-surface-warm);
+  color: var(--color-heading);
+  font-weight: 850;
+}
+
+.destination-checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--interactive-accent, var(--color-primary));
+}
+
+.selected-product-card {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--interactive-accent-rgb), 0.22);
+  border-radius: var(--radius-card);
+  background: rgba(var(--interactive-accent-rgb), 0.06);
+}
+
+.selected-product-card strong {
+  color: var(--color-heading);
+}
+
+.selected-product-card span {
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 720px) {
+  .destination-checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .forge-quick-add-option strong,
 .vault-quick-add-option strong,
 .vault-move-option strong {
@@ -8855,6 +8961,14 @@ button.topbar-market-link {
   background: var(--gradient-secondary);
   border: 1px solid rgba(20, 184, 166, 0.24);
   box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
+}
+
+.topbar-scan-button,
+button.topbar-scan-button {
+  color: var(--color-secondary-dark);
+  background: var(--color-secondary-soft);
+  border: 1px solid rgba(20, 184, 166, 0.28);
+  box-shadow: none;
 }
 
 .quick-add-wrapper > button.secondary-button {
@@ -9707,6 +9821,71 @@ details > summary {
   overscroll-behavior: contain;
 }
 
+.catalog-expansion-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: fit-content;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.catalog-expansion-banner img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.catalog-version-picker {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.catalog-version-picker > span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.catalog-version-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.compact-action {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+}
+
+.compact-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .compact-form-grid,
+  .catalog-version-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (min-width: 900px) {
   .page-dashboard-header > .quick-action-card-grid,
   .scout-summary-card .scout-main-actions.quick-action-card-grid,
@@ -10115,5 +10294,947 @@ details > summary {
   .tidepool-filter-grid,
   .tidepool-post-actions {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Beta 1 stable header/navigation behavior */
+.app-shell-header,
+.topbar,
+.main-tabs.app-main-tabs,
+.app-header-card {
+  transition:
+    padding 240ms ease,
+    gap 220ms ease,
+    box-shadow 240ms ease,
+    transform 240ms ease,
+    opacity 180ms ease;
+}
+
+.app-shell-header--compact {
+  padding-block: clamp(10px, 1.4vw, 14px);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+}
+
+.app-shell-header--compact h1 {
+  font-size: clamp(1.45rem, 3.6vw, 2.35rem);
+  letter-spacing: 0;
+}
+
+.app-shell-header--compact p {
+  font-size: 0.82rem;
+  opacity: 0.88;
+}
+
+.topbar {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.topbar-actions {
+  flex: 0 0 auto;
+  max-width: none;
+  overflow: visible;
+}
+
+.topbar > button,
+.topbar .quick-add-wrapper,
+.topbar .app-search {
+  flex: 0 0 auto;
+}
+
+.topbar-actions-hidden .menu-button,
+.topbar-actions-hidden .topbar-title,
+.topbar-actions-hidden .topbar-market-link,
+.topbar-actions-hidden .topbar-scan-button,
+.topbar-actions-hidden .topbar-actions {
+  max-width: none !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+.topbar-actions-hidden .menu-button,
+.topbar-actions-hidden .topbar-market-link,
+.topbar-actions-hidden .topbar-scan-button {
+  padding-inline: 10px !important;
+}
+
+.topbar-compact {
+  padding-block: 6px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+}
+
+.main-tabs.app-main-tabs {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: visible;
+}
+
+.main-tabs.app-main-tabs .main-tab {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header-card {
+  will-change: padding, box-shadow;
+}
+
+.app-header-card--hidden {
+  max-height: none !important;
+  margin-top: revert !important;
+  margin-bottom: revert !important;
+  border-top-width: 1px !important;
+  border-bottom-width: 1px !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+  visibility: visible !important;
+}
+
+.app-header-card--compact {
+  max-height: none !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+  visibility: visible !important;
+}
+
+.app-header-card--compact {
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.app-header-card--compact.panel,
+.app-header-card--compact.tab-summary.panel,
+.app-header-card--compact.page-summary-card {
+  padding-block: clamp(12px, 1.6vw, 16px);
+}
+
+@media (min-width: 721px) {
+  .topbar {
+    top: max(0px, env(safe-area-inset-top));
+  }
+
+  .main-tabs.app-main-tabs {
+    top: calc(58px + env(safe-area-inset-top));
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell-header {
+    position: relative;
+  }
+
+  .app-shell-header--compact {
+    padding-block: 10px;
+  }
+
+  .topbar {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 6px;
+    scroll-padding-inline: 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .topbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topbar-title {
+    flex: 0 0 min(150px, 38vw);
+  }
+
+  .topbar-compact .topbar-title {
+    display: none;
+  }
+
+  .menu-button,
+  .topbar-market-link,
+  .topbar-scan-button,
+  .topbar-actions .secondary-button,
+  .app-search-toggle {
+    flex: 0 0 auto;
+    min-width: 52px;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  .topbar-actions-hidden .menu-button,
+  .topbar-actions-hidden .topbar-market-link,
+  .topbar-actions-hidden .topbar-scan-button,
+  .topbar-actions-hidden .topbar-actions {
+    padding-inline: 8px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .topbar-title {
+    display: none;
+  }
+
+  .menu-button,
+  .topbar-market-link,
+  .topbar-scan-button,
+  .topbar-actions .secondary-button,
+  .app-search-toggle {
+    min-width: 48px;
+    padding-inline: 8px;
+    font-size: 0.72rem;
+  }
+}
+
+/* Shared page header system */
+.standard-page-header {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-areas: none !important;
+  gap: var(--space-section);
+  padding: var(--space-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 251, 247, 0.96)),
+    var(--color-surface-elevated);
+  box-shadow: var(--shadow);
+  overflow: visible;
+}
+
+.standard-page-header::before {
+  background: var(--tab-gradient);
+  opacity: 0.82;
+}
+
+.standard-page-header-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-button);
+  min-width: 0;
+}
+
+.standard-page-header-copy {
+  min-width: 0;
+}
+
+.standard-page-header-copy h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.standard-page-header-copy p {
+  max-width: 760px;
+  margin: 6px 0 0;
+  color: var(--color-muted);
+  font-size: var(--text-subtitle);
+  line-height: 1.35;
+}
+
+.standard-page-header-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-button);
+  min-width: 0;
+}
+
+.standard-page-header-actions > * {
+  flex: 0 0 auto;
+}
+
+.standard-page-header-actions button,
+.standard-page-header-tabs button {
+  min-height: var(--control-height);
+  white-space: nowrap;
+}
+
+.standard-page-header-summary,
+.standard-page-header-body {
+  display: grid;
+  gap: var(--space-button);
+  min-width: 0;
+}
+
+.standard-page-header-label,
+.forge-command-section-label,
+.vault-command-section-label {
+  color: var(--color-muted);
+  font-size: var(--text-badge);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.standard-page-header-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.standard-page-header-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.standard-page-header-tabs button {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.standard-page-header-tabs button.active {
+  color: var(--color-text-inverse);
+  background: var(--tab-gradient);
+  border-color: transparent;
+  box-shadow: 0 10px 22px rgba(242, 106, 75, 0.16);
+}
+
+.standard-page-header .quick-action-card-grid,
+.standard-page-header .home-summary-stats,
+.standard-page-header .tidepool-stat-grid,
+.standard-page-header .forge-command-overview,
+.standard-page-header .vault-command-overview {
+  width: 100%;
+  min-width: 0;
+}
+
+.standard-page-header.tidetradr-summary-card .standard-page-header-body {
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+}
+
+.standard-page-header.tidetradr-summary-card .catalog-search-form,
+.standard-page-header.tidetradr-summary-card .tidetradr-shortcut-grid {
+  grid-area: auto !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+.standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+}
+
+.standard-page-header.settings-page-header,
+.standard-page-header.admin-page-header,
+.standard-page-header.suggestions-page-header,
+.standard-page-header.marketplace-page-heading {
+  margin-bottom: var(--space-section);
+}
+
+.settings-header-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-header-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  font-size: var(--text-helper);
+  font-weight: 800;
+}
+
+@media (min-width: 901px) {
+  .standard-page-header .home-summary-stats {
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+  }
+
+  .standard-page-header .tidepool-stat-grid {
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .standard-page-header-main {
+    grid-template-columns: 1fr;
+  }
+
+  .standard-page-header-actions {
+    justify-content: flex-end;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .standard-page-header-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .standard-page-header.tidetradr-summary-card .standard-page-header-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .standard-page-header {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .standard-page-header-copy h2 {
+    font-size: clamp(1.22rem, 6vw, 1.55rem);
+  }
+
+  .standard-page-header-copy p {
+    font-size: 0.88rem;
+  }
+
+  .standard-page-header-actions {
+    justify-content: flex-start;
+    margin-inline: -2px;
+  }
+
+  .standard-page-header-actions button,
+  .standard-page-header-tabs button {
+    flex: 0 0 auto;
+    width: auto !important;
+    max-width: none;
+    min-height: 40px;
+    padding-inline: 10px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid,
+  .standard-page-header .tidetradr-shortcut-grid,
+  .standard-page-header .tidetradr-shortcut-grid.quick-action-card-grid,
+  .standard-page-header .forge-command-overview,
+  .standard-page-header .vault-command-overview,
+  .standard-page-header .tidepool-stat-grid,
+  .standard-page-header .home-summary-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .standard-page-header button.quick-action-card,
+  .standard-page-header .forge-overview-card,
+  .standard-page-header .vault-overview-card,
+  .standard-page-header button.home-metric-card,
+  .standard-page-header .tidepool-stat-card {
+    min-height: 78px;
+    padding: 10px;
+  }
+
+  .standard-page-header .forge-overview-card,
+  .standard-page-header .vault-overview-card {
+    gap: 5px;
+  }
+
+  .standard-page-header .forge-overview-card strong,
+  .standard-page-header .vault-overview-card strong {
+    font-size: 1.12rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .standard-page-header .forge-overview-card span:last-child,
+  .standard-page-header .vault-overview-card span:last-child {
+    display: none;
+  }
+
+  .standard-page-header.tidetradr-summary-card button.quick-action-card small {
+    display: none;
+  }
+}
+
+@media (max-width: 340px) {
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid,
+  .standard-page-header .tidetradr-shortcut-grid,
+  .standard-page-header .tidetradr-shortcut-grid.quick-action-card-grid,
+  .standard-page-header .forge-command-overview,
+  .standard-page-header .vault-command-overview,
+  .standard-page-header .tidepool-stat-grid,
+  .standard-page-header .home-summary-stats {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Final header normalization wins over older tab-specific command-center grids. */
+section.standard-page-header,
+.standard-page-header.panel,
+.standard-page-header.app-header-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-areas: none !important;
+}
+
+section.standard-page-header.tidetradr-summary-card > *,
+.standard-page-header.tidetradr-summary-card > * {
+  grid-column: 1 !important;
+  grid-row: auto !important;
+  grid-area: auto !important;
+  min-width: 0;
+}
+
+section.standard-page-header.tidetradr-summary-card .standard-page-header-body,
+.standard-page-header.tidetradr-summary-card .standard-page-header-body {
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr) !important;
+}
+
+@media (max-width: 900px) {
+  section.standard-page-header.tidetradr-summary-card .standard-page-header-body,
+  .standard-page-header.tidetradr-summary-card .standard-page-header-body {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .standard-page-header .home-summary-stats,
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid,
+  .standard-page-header .tidetradr-shortcut-grid,
+  .standard-page-header .tidetradr-shortcut-grid.quick-action-card-grid,
+  .standard-page-header .vault-command-overview,
+  .standard-page-header .forge-command-overview,
+  .standard-page-header .tidepool-stat-grid {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .standard-page-header .home-summary-stats::-webkit-scrollbar,
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid::-webkit-scrollbar,
+  .standard-page-header .tidetradr-shortcut-grid::-webkit-scrollbar,
+  .standard-page-header .vault-command-overview::-webkit-scrollbar,
+  .standard-page-header .forge-command-overview::-webkit-scrollbar,
+  .standard-page-header .tidepool-stat-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .standard-page-header .home-summary-stats > *,
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid > *,
+  .standard-page-header .tidetradr-shortcut-grid > *,
+  .standard-page-header .vault-command-overview > *,
+  .standard-page-header .forge-command-overview > *,
+  .standard-page-header .tidepool-stat-grid > * {
+    flex: 0 0 min(158px, 72vw);
+    width: min(158px, 72vw);
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar > button,
+  .topbar .quick-add-wrapper,
+  .topbar .quick-add-wrapper > button,
+  .topbar .app-search,
+  .topbar .app-search-toggle {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: none;
+    white-space: nowrap !important;
+  }
+
+  .topbar .menu-button,
+  .topbar .topbar-market-link,
+  .topbar .topbar-scan-button,
+  .topbar .topbar-actions .secondary-button,
+  .topbar .app-search-toggle {
+    min-width: 48px;
+    min-height: 40px;
+    padding-inline: 9px;
+  }
+}
+
+/* Scout-inspired shared header and interactive tile polish */
+:root {
+  --interactive-accent: var(--color-secondary);
+  --interactive-accent-rgb: 20, 184, 166;
+  --interactive-accent-soft: rgba(20, 184, 166, 0.1);
+  --interactive-shadow-rest: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --interactive-shadow-hover:
+    0 16px 34px rgba(var(--interactive-accent-rgb), 0.15),
+    0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.app-home {
+  --interactive-accent: var(--color-accent);
+  --interactive-accent-rgb: 251, 191, 36;
+  --interactive-accent-soft: rgba(251, 191, 36, 0.12);
+}
+
+.app-scout,
+.app-tidepool {
+  --interactive-accent: var(--color-secondary);
+  --interactive-accent-rgb: 20, 184, 166;
+  --interactive-accent-soft: rgba(20, 184, 166, 0.12);
+}
+
+.app-vault {
+  --interactive-accent: var(--accent-vault);
+  --interactive-accent-rgb: 129, 140, 248;
+  --interactive-accent-soft: rgba(129, 140, 248, 0.12);
+}
+
+.app-tidetradr,
+.deal-finder-backdrop {
+  --interactive-accent: var(--color-primary);
+  --interactive-accent-rgb: 242, 106, 75;
+  --interactive-accent-soft: rgba(242, 106, 75, 0.12);
+}
+
+.app-forge {
+  --interactive-accent: var(--color-primary-dark);
+  --interactive-accent-rgb: 194, 65, 45;
+  --interactive-accent-soft: rgba(194, 65, 45, 0.12);
+}
+
+.app-menu,
+.app-adminreview,
+.app-mysuggestions {
+  --interactive-accent: var(--charcoal);
+  --interactive-accent-rgb: 30, 41, 59;
+  --interactive-accent-soft: rgba(30, 41, 59, 0.08);
+}
+
+section.standard-page-header,
+.standard-page-header.panel,
+.standard-page-header.app-header-card {
+  position: relative;
+  gap: 14px;
+  padding: clamp(14px, 1.8vw, 18px) !important;
+  border: 1px solid rgba(var(--interactive-accent-rgb), 0.22);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 251, 247, 0.97) 100%),
+    var(--color-surface-elevated);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+}
+
+section.standard-page-header::before,
+.standard-page-header.panel::before,
+.standard-page-header.app-header-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--interactive-accent), rgba(var(--interactive-accent-rgb), 0.18), transparent);
+  opacity: 0.82;
+}
+
+.standard-page-header-main {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.standard-page-header-copy h2 {
+  font-size: clamp(1.32rem, 2.4vw, 1.78rem);
+  font-weight: 900;
+  line-height: 1.06;
+}
+
+.standard-page-header-copy p {
+  max-width: 760px;
+  margin-top: 5px;
+  color: var(--color-text-muted);
+  font-size: clamp(0.86rem, 1.4vw, 0.98rem);
+}
+
+.standard-page-header-actions {
+  gap: 8px;
+}
+
+.standard-page-header-actions button,
+.standard-page-header-actions .secondary-button,
+.standard-page-header-actions .status-badge,
+.standard-page-header-tabs button {
+  min-height: 38px;
+  border-radius: var(--radius-button);
+}
+
+.standard-page-header-actions button:not(.primary):not(.delete-button),
+.standard-page-header-actions .secondary-button,
+.standard-page-header-tabs button:not(.active),
+.settings-header-summary span {
+  color: var(--color-heading);
+  background: var(--color-surface);
+  border: 1px solid rgba(var(--interactive-accent-rgb), 0.18);
+  box-shadow: var(--interactive-shadow-rest);
+}
+
+.standard-page-header-actions button:hover,
+.standard-page-header-actions button:focus-visible,
+.standard-page-header-tabs button:hover,
+.standard-page-header-tabs button:focus-visible {
+  border-color: rgba(var(--interactive-accent-rgb), 0.36);
+  box-shadow:
+    0 16px 34px rgba(var(--interactive-accent-rgb), 0.15),
+    0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.standard-page-header-tabs button.active {
+  background:
+    linear-gradient(135deg, rgba(var(--interactive-accent-rgb), 0.96), rgba(245, 158, 11, 0.88));
+  box-shadow: 0 12px 26px rgba(var(--interactive-accent-rgb), 0.18);
+}
+
+.standard-page-header-label,
+.forge-command-section-label,
+.vault-command-section-label {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.standard-page-header .quick-action-card-grid,
+.standard-page-header .home-summary-stats,
+.standard-page-header .tidepool-stat-grid,
+.standard-page-header .forge-command-overview,
+.standard-page-header .vault-command-overview {
+  gap: 8px;
+}
+
+.standard-page-header button.quick-action-card,
+.standard-page-header button.home-metric-card,
+.standard-page-header .forge-overview-card,
+.standard-page-header .vault-overview-card,
+.standard-page-header .tidepool-stat-card {
+  min-height: 72px;
+  border-color: rgba(var(--interactive-accent-rgb), 0.16);
+  background: var(--color-surface);
+  box-shadow: var(--interactive-shadow-rest);
+}
+
+.deal-finder-modal .modal-title-row {
+  margin: calc(-1 * var(--space-card)) calc(-1 * var(--space-card)) 0;
+  padding: var(--space-card);
+  border-bottom: 1px solid rgba(var(--interactive-accent-rgb), 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 251, 247, 0.98)),
+    var(--color-surface-elevated);
+}
+
+.interactive-tile,
+button.home-metric-card,
+button.quick-action-card,
+.forge-overview-card,
+.vault-overview-card,
+.forge-preview-card.clickable-card,
+.inventory-card,
+.vault-item-card,
+.catalog-result-card,
+.tidetradr-preview-card,
+.tidetradr-tool-card,
+.scout-store-card,
+.compact-store-card,
+.scout-store-row,
+.scout-alert-card,
+.tidepool-post-card,
+.marketplace-listing-card,
+.suggestion-card,
+.drawer-info-card,
+.settings-group,
+.scanner-review-card,
+.recommendation-grid .card,
+.deal-results-grid .card,
+.deal-finder-modal .mini-cards .card {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--interactive-shadow-rest);
+  transition:
+    transform 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease,
+    background 170ms ease;
+}
+
+.interactive-tile:hover,
+.interactive-tile:focus-visible,
+button.home-metric-card:hover,
+button.home-metric-card:focus-visible,
+button.quick-action-card:hover,
+button.quick-action-card:focus-visible,
+.forge-overview-card:hover,
+.forge-overview-card:focus-visible,
+.vault-overview-card:hover,
+.vault-overview-card:focus-visible,
+.forge-preview-card.clickable-card:hover,
+.forge-preview-card.clickable-card:focus-visible,
+.inventory-card:hover,
+.inventory-card:focus-within,
+.vault-item-card:hover,
+.vault-item-card:focus-within,
+.catalog-result-card:hover,
+.catalog-result-card:focus-within,
+.tidetradr-preview-card:hover,
+.tidetradr-preview-card:focus-within,
+.tidetradr-tool-card:hover,
+.tidetradr-tool-card:focus-within,
+.scout-store-card:hover,
+.scout-store-card:focus-within,
+.compact-store-card:hover,
+.compact-store-card:focus-within,
+.scout-store-row:hover,
+.scout-store-row:focus-within,
+.scout-alert-card:hover,
+.scout-alert-card:focus-within,
+.tidepool-post-card:hover,
+.tidepool-post-card:focus-within,
+.marketplace-listing-card:hover,
+.marketplace-listing-card:focus-within,
+.suggestion-card:hover,
+.suggestion-card:focus-within,
+.drawer-info-card:hover,
+.drawer-info-card:focus-within,
+.settings-group:hover,
+.settings-group:focus-within,
+.scanner-review-card:hover,
+.scanner-review-card:focus-within,
+.recommendation-grid .card:hover,
+.recommendation-grid .card:focus-within,
+.deal-results-grid .card:hover,
+.deal-results-grid .card:focus-within,
+.deal-finder-modal .mini-cards .card:hover,
+.deal-finder-modal .mini-cards .card:focus-within {
+  transform: translateY(-2px);
+  border-color: rgba(var(--interactive-accent-rgb), 0.36);
+  background:
+    linear-gradient(180deg, #ffffff 0%, rgba(var(--interactive-accent-rgb), 0.045) 100%),
+    var(--color-surface);
+  box-shadow:
+    0 16px 34px rgba(var(--interactive-accent-rgb), 0.15),
+    0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+button.quick-action-card.primary:hover,
+button.quick-action-card.primary:focus-visible {
+  border-color: transparent;
+  box-shadow:
+    0 16px 34px rgba(var(--interactive-accent-rgb), 0.2),
+    0 10px 24px rgba(15, 23, 42, 0.1);
+}
+
+@media (hover: none) {
+  .interactive-tile:active,
+  button.home-metric-card:active,
+  button.quick-action-card:active,
+  .forge-overview-card:active,
+  .vault-overview-card:active,
+  .forge-preview-card.clickable-card:active,
+  .inventory-card:active,
+  .vault-item-card:active,
+  .catalog-result-card:active,
+  .scout-store-card:active,
+  .compact-store-card:active,
+  .tidepool-post-card:active,
+  .marketplace-listing-card:active,
+  .suggestion-card:active {
+    transform: translateY(0);
+    border-color: rgba(var(--interactive-accent-rgb), 0.32);
+    box-shadow: 0 8px 18px rgba(var(--interactive-accent-rgb), 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interactive-tile,
+  button.home-metric-card,
+  button.quick-action-card,
+  .forge-overview-card,
+  .vault-overview-card,
+  .forge-preview-card.clickable-card,
+  .inventory-card,
+  .vault-item-card,
+  .catalog-result-card,
+  .tidetradr-preview-card,
+  .tidetradr-tool-card,
+  .scout-store-card,
+  .compact-store-card,
+  .scout-store-row,
+  .scout-alert-card,
+  .tidepool-post-card,
+  .marketplace-listing-card,
+  .suggestion-card,
+  .drawer-info-card,
+  .settings-group,
+  .scanner-review-card,
+  .recommendation-grid .card,
+  .deal-results-grid .card,
+  .deal-finder-modal .mini-cards .card {
+    transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  }
+
+  .interactive-tile:hover,
+  .interactive-tile:focus-visible,
+  button.home-metric-card:hover,
+  button.home-metric-card:focus-visible,
+  button.quick-action-card:hover,
+  button.quick-action-card:focus-visible,
+  .forge-overview-card:hover,
+  .forge-overview-card:focus-visible,
+  .vault-overview-card:hover,
+  .vault-overview-card:focus-visible,
+  .forge-preview-card.clickable-card:hover,
+  .forge-preview-card.clickable-card:focus-visible,
+  .inventory-card:hover,
+  .inventory-card:focus-within,
+  .vault-item-card:hover,
+  .vault-item-card:focus-within,
+  .catalog-result-card:hover,
+  .catalog-result-card:focus-within,
+  .tidetradr-preview-card:hover,
+  .tidetradr-preview-card:focus-within,
+  .tidetradr-tool-card:hover,
+  .tidetradr-tool-card:focus-within,
+  .scout-store-card:hover,
+  .scout-store-card:focus-within,
+  .compact-store-card:hover,
+  .compact-store-card:focus-within,
+  .scout-store-row:hover,
+  .scout-store-row:focus-within,
+  .scout-alert-card:hover,
+  .scout-alert-card:focus-within,
+  .tidepool-post-card:hover,
+  .tidepool-post-card:focus-within,
+  .marketplace-listing-card:hover,
+  .marketplace-listing-card:focus-within,
+  .suggestion-card:hover,
+  .suggestion-card:focus-within,
+  .drawer-info-card:hover,
+  .drawer-info-card:focus-within,
+  .settings-group:hover,
+  .settings-group:focus-within,
+  .scanner-review-card:hover,
+  .scanner-review-card:focus-within,
+  .recommendation-grid .card:hover,
+  .recommendation-grid .card:focus-within,
+  .deal-results-grid .card:hover,
+  .deal-results-grid .card:focus-within,
+  .deal-finder-modal .mini-cards .card:hover,
+  .deal-finder-modal .mini-cards .card:focus-within {
+    transform: none;
   }
 }

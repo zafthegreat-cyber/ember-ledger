@@ -57,7 +57,7 @@ export function getCatalogGroup(product = {}) {
 }
 
 export function getCatalogSetSortName(product = {}) {
-  return String(product.setSortName || product.set_sort_name || product.setName || product.set_name || product.expansion || "Unknown Set").trim();
+  return String(product.setSortName || product.set_sort_name || product.expansionOfficialName || product.official_expansion_name || product.expansionDisplayName || product.expansion_display_name || product.setName || product.set_name || product.expansion || "Unknown Set").trim();
 }
 
 export function getCatalogTitle(product = {}) {

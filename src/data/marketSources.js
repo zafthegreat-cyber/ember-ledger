@@ -2,6 +2,7 @@ export const MARKET_STATUS = {
   LIVE: "live",
   CACHED: "cached",
   MANUAL: "manual",
+  ESTIMATED: "estimated",
   MOCK: "mock",
   UNKNOWN: "unknown",
 };
@@ -10,6 +11,7 @@ export const MARKET_STATUS_LABELS = {
   live: "Live",
   cached: "Cached",
   manual: "Manual",
+  estimated: "Estimated",
   mock: "Mock",
   unknown: "Unknown",
 };

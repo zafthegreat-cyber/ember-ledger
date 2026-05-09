@@ -4,6 +4,26 @@ const TEXT_SEARCH_FIELDS = [
   "name",
   "set_name",
   "expansion",
+  "official_expansion_name",
+  "expansion_display_name",
+  "expansion_series",
+  "product_type",
+  "sealed_product_type",
+  "product_kind",
+  "product_line",
+  "barcode",
+  "external_product_id",
+  "tcgplayer_product_id",
+  "identifier_search",
+  "variant_names",
+  "card_number",
+  "set_code",
+];
+
+const LEGACY_TEXT_SEARCH_FIELDS = [
+  "name",
+  "set_name",
+  "expansion",
   "product_type",
   "product_line",
   "barcode",
@@ -150,10 +170,10 @@ function applyFilters(query, filters = {}, useBrowseView = true) {
   return next;
 }
 
-function applyTextSearch(query, term) {
+function applyTextSearch(query, term, fields = TEXT_SEARCH_FIELDS) {
   if (term.length < 2) return query;
   const like = `%${term}%`;
-  return query.or(TEXT_SEARCH_FIELDS.map((field) => `${field}.ilike.${like}`).join(","));
+  return query.or(fields.map((field) => `${field}.ilike.${like}`).join(","));
 }
 
 function exactPriority(product = {}, term = "") {
@@ -169,11 +189,12 @@ function exactPriority(product = {}, term = "") {
   if (String(values.barcode || "").toLowerCase() === cleaned) return 1;
   if (String(values.tcgplayer || "").toLowerCase() === cleaned) return 2;
   if (String(values.external || "").toLowerCase() === cleaned) return 3;
+  if (String(product.identifier_search || "").toLowerCase().includes(cleaned)) return 3;
   if (String(values.card || "").toLowerCase() === cleaned) return 4;
   if (String(values.name || "").toLowerCase() === cleaned) return 5;
   if (String(values.name || "").toLowerCase().includes(cleaned)) return 6;
-  if (String(product.setName || product.set_name || product.expansion || "").toLowerCase().includes(cleaned)) return 7;
-  if (String(product.productType || product.product_type || "").toLowerCase().includes(cleaned)) return 8;
+  if (String(product.official_expansion_name || product.expansion_display_name || product.setName || product.set_name || product.expansion || "").toLowerCase().includes(cleaned)) return 7;
+  if (String(product.sealed_product_type || product.productType || product.product_type || "").toLowerCase().includes(cleaned)) return 8;
   return 999;
 }
 
@@ -190,11 +211,11 @@ function catalogRowMarketPrice(row = {}) {
 }
 
 function catalogRowSet(row = {}) {
-  return row.set_name || row.expansion || row.product_line || "";
+  return row.official_expansion_name || row.expansion_display_name || row.set_name || row.expansion || row.product_line || "";
 }
 
 function catalogRowProductType(row = {}) {
-  return row.product_type || row.catalog_group || "";
+  return row.sealed_product_type || row.product_type || row.catalog_group || "";
 }
 
 function rowMatchesExactId(row = {}, term = "") {
@@ -203,6 +224,7 @@ function rowMatchesExactId(row = {}, term = "") {
   if (normalizeCatalogQuery(row.barcode || row.upc) === cleaned) return "Barcode";
   if (normalizeCatalogQuery(row.tcgplayer_product_id || row.tcgplayerProductId) === cleaned) return "TCGplayer ID";
   if (normalizeCatalogQuery(row.external_product_id || row.externalProductId) === cleaned) return "External ID";
+  if (normalizeCatalogQuery(row.identifier_search).includes(cleaned)) return "Identifier";
   return "";
 }
 
@@ -300,7 +322,7 @@ async function runSearchAgainstSource({ supabase, sourceName, useBrowseView, que
     .from(sourceName)
     .select("*", { count: "exact" });
   broadQuery = applyFilters(broadQuery, filters, useBrowseView);
-  broadQuery = applyTextSearch(broadQuery, cleanedQuery || cleanedBarcode);
+  broadQuery = applyTextSearch(broadQuery, cleanedQuery || cleanedBarcode, useBrowseView ? TEXT_SEARCH_FIELDS : LEGACY_TEXT_SEARCH_FIELDS);
   broadQuery = applyCatalogDbSort(broadQuery, sort === "bestMatch" ? "bestMatch" : sort, useBrowseView).range(pageOffset, pageOffset + pageSize - 1);
   const { data, error, count } = await broadQuery;
   if (error) throw error;
