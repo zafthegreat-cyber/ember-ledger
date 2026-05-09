@@ -1345,6 +1345,45 @@ export default function App() {
       : activeTab === "market" || activeTab === "catalog"
           ? "tideTradr"
           : "forge";
+  const mobileBottomTabs = [
+    { key: "home", label: "Home", target: "dashboard" },
+    { key: "forge", label: "Forge", target: "inventory" },
+    { key: "vault", label: "Vault", target: "vault" },
+    { key: "scout", label: "Scout", target: "scout" },
+    { key: "tideTradr", label: "TideTradr", target: "market" },
+  ];
+
+  function navigateMainTab(tab) {
+    if (!confirmLeaveVaultWork()) return;
+    if (tab.key === "scout") {
+      setScoutView("main");
+      setScoutSubTabTarget({ tab: "overview", id: Date.now() });
+    }
+    if (tab.key === "tideTradr") {
+      setTideTradrSubTab("overview");
+      setFeatureSectionsOpen((current) => ({
+        ...current,
+        market_watchlist: false,
+        market_deal_finder: false,
+        market_sources: false,
+        market_filters: false,
+      }));
+    }
+    if (tab.key === "forge") {
+      setForgeSubTab("overview");
+      setFeatureSectionsOpen((current) => ({
+        ...current,
+        forge_inventory: false,
+        forge_sales: false,
+        forge_expenses: false,
+        forge_mileage: false,
+        forge_reports: false,
+      }));
+    }
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    setActiveTab(tab.target);
+  }
 
   function renderPageChrome({ title, subtitle, primary, secondary, quickActions = [], tabs = [], activeSubTab, setActiveSubTab }) {
     return (
@@ -3450,12 +3489,18 @@ export default function App() {
     setQuickAddMenuOpen(false);
     if (action === "card") return openVaultQuickAdd({ productType: "Individual Card", subTab: "collection" });
     if (action === "sealed") return openVaultQuickAdd({ productType: "Sealed Product", subTab: "products" });
+    if (action === "vaultItem") return openVaultQuickAdd({ category: "Personal collection", subTab: "collection" });
+    if (action === "scanVault") {
+      setActiveTab("vault");
+      return beginScanProduct("vault");
+    }
     if (action === "inventory") return setActiveTab("addInventory");
     if (action === "sale") return setActiveTab("addSale");
     if (action === "expense") return setActiveTab("expenses");
     if (action === "storeReport") return goToScoutSection("reports");
     if (action === "store") return goToScoutSection("stores");
     if (action === "wishlist") return openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist" });
+    if (action === "listing") return openMarketplaceCreate("manual", {});
     return null;
   }
 
@@ -7200,16 +7245,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <div className="quick-add-group">
             <span>Vault</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("card")}>Add Card</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("sealed")}>Add Sealed Product</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("vaultItem")}>Add Item to Vault</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("scanVault")}>Scan to Vault</button>
           </div>
           <div className="quick-add-group">
             <span>TideTradr</span>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("wishlist")}>Add Wishlist Item</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("listing")}>Create Listing</button>
           </div>
           <div className="quick-add-group">
             <span>Scout</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Add Store Report</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Submit Store Report</button>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("store")}>{adminUser ? "Add Store" : "Suggest Missing Store"}</button>
           </div>
         </div>
@@ -7289,35 +7335,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             key={tab.key}
             type="button"
             className={activeMainTab === tab.key ? "main-tab active" : "main-tab"}
-            onClick={() => {
-              if (!confirmLeaveVaultWork()) return;
-              if (tab.key === "scout") {
-                setScoutView("main");
-                setScoutSubTabTarget({ tab: "overview", id: Date.now() });
-              }
-              if (tab.key === "tideTradr") {
-                setTideTradrSubTab("overview");
-                setFeatureSectionsOpen((current) => ({
-                  ...current,
-                  market_watchlist: false,
-                  market_deal_finder: false,
-                  market_sources: false,
-                  market_filters: false,
-                }));
-              }
-              if (tab.key === "forge") {
-                setForgeSubTab("overview");
-                setFeatureSectionsOpen((current) => ({
-                  ...current,
-                  forge_inventory: false,
-                  forge_sales: false,
-                  forge_expenses: false,
-                  forge_mileage: false,
-                  forge_reports: false,
-                }));
-              }
-              setActiveTab(tab.target);
-            }}
+            onClick={() => navigateMainTab(tab)}
           >
             {tab.label}
           </button>
@@ -11165,6 +11183,22 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         ) : null}
 
       </main>
+      <nav className="mobile-bottom-nav" aria-label="Mobile main navigation">
+        {mobileBottomTabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={activeMainTab === tab.key ? "active" : ""}
+            aria-current={activeMainTab === tab.key ? "page" : undefined}
+            onClick={() => navigateMainTab(tab)}
+          >
+            <span aria-hidden="true">
+              {tab.key === "home" ? "H" : tab.key === "forge" ? "F" : tab.key === "vault" ? "V" : tab.key === "scout" ? "S" : "T"}
+            </span>
+            <b>{tab.label}</b>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
