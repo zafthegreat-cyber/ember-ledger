@@ -292,6 +292,15 @@ const TIDEPOOL_FEED_FILTERS = [
   "Saved",
   "Needs Review",
 ];
+const BLANK_TIDEPOOL_POST_FORM = {
+  postType: "General post",
+  title: "",
+  body: "",
+  city: "",
+  state: "VA",
+  zip: "",
+  photoUrl: "",
+};
 const MARKETPLACE_LISTING_TYPES = ["For Sale", "For Trade", "Looking For", "Free / Donation", "Kid-friendly deal"];
 const MARKETPLACE_STATUSES = ["Draft", "Pending Review", "Active", "Sold", "Traded", "Removed", "Flagged", "Archived"];
 const MARKETPLACE_REPORT_REASONS = ["Wrong item", "Fake/scam", "Price gouging", "Inappropriate", "Duplicate", "Sold already", "Other"];
@@ -1161,15 +1170,7 @@ export default function App() {
   const [tidepoolPosts, setTidepoolPosts] = useState([]);
   const [tidepoolComments, setTidepoolComments] = useState([]);
   const [tidepoolReactions, setTidepoolReactions] = useState([]);
-  const [tidepoolPostForm, setTidepoolPostForm] = useState({
-    postType: "General post",
-    title: "",
-    body: "",
-    city: "",
-    state: "VA",
-    zip: "",
-    photoUrl: "",
-  });
+  const [tidepoolPostForm, setTidepoolPostForm] = useState(BLANK_TIDEPOOL_POST_FORM);
   const [tidepoolCommentDrafts, setTidepoolCommentDrafts] = useState({});
   const [scoutView, setScoutView] = useState("main");
   const [whatDidISeeSeedProduct, setWhatDidISeeSeedProduct] = useState(null);
@@ -1896,6 +1897,12 @@ export default function App() {
     setMenuOpen(false);
     setQuickAddMenuOpen(false);
     setSearchExpanded(false);
+  }
+
+  function openTidepoolCreatePostFlow() {
+    setActiveTab("tidepool");
+    setTidepoolOpen(true);
+    openFlowModal("tidepoolCreatePost", { size: "medium", source: "tidepool" });
   }
 
   function viewSearchResult(result) {
@@ -3477,8 +3484,8 @@ export default function App() {
   }
 
   function submitTidepoolPost(event) {
-    event.preventDefault();
-    if (!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()) return;
+    event?.preventDefault?.();
+    if (!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()) return false;
     const post = makeTidepoolPost({
       ...tidepoolPostForm,
       displayName: currentUserProfile.displayName || "Local Scout",
@@ -3487,8 +3494,12 @@ export default function App() {
       sourceType: "user",
     });
     saveTidepoolCommunity({ posts: [post, ...tidepoolPosts] });
-    setTidepoolPostForm({ postType: "General post", title: "", body: "", city: "", state: "VA", zip: "", photoUrl: "" });
+    setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
     setTidepoolFilter("Latest");
+    if (activeFlowModal?.type === "tidepoolCreatePost") {
+      closeFlowModal({ force: true, reset: false });
+    }
+    return true;
   }
 
   function updateTidepoolPost(postId, updates) {
@@ -4309,6 +4320,7 @@ export default function App() {
     if (type === "addMileage") return Boolean(editingTripId) || formsDiffer(tripForm, blankTrip);
     if (type === "createListing") return formsDiffer(marketplaceForm, BLANK_MARKETPLACE_FORM);
     if (type === "forgeImport") return formsDiffer(forgeImportForm, FORGE_IMPORT_BLANK);
+    if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
     return false;
   }
 
@@ -4336,6 +4348,9 @@ export default function App() {
     }
     if (type === "forgeImport") {
       setForgeImportForm(FORGE_IMPORT_BLANK);
+    }
+    if (type === "tidepoolCreatePost") {
+      setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
     }
   }
 
@@ -7516,9 +7531,12 @@ function renderForgeHeader() {
     commentCount: tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed").length,
     reactionCount: tidepoolReactions.filter((reaction) => reaction.postId === post.postId).length,
   }));
+  const visibleTidepoolFilters = TIDEPOOL_FEED_FILTERS.filter((filter) => filter !== "Needs Review" || adminToolsVisible);
   const filteredTidepoolPosts = tidepoolPostsWithCounts
     .filter((post) => {
       if (post.status === "removed") return false;
+      if (post.status === "hidden" && (!adminToolsVisible || tidepoolFilter !== "Needs Review")) return false;
+      if (tidepoolFilter === "Needs Review" && !adminToolsVisible) return false;
       if (tidepoolFilter === "Verified") return post.verificationStatus === "verified";
       if (tidepoolFilter === "Questions") return post.postType === "Question";
       if (tidepoolFilter === "Events") return post.postType === "Event";
@@ -9181,118 +9199,152 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderTidepoolCommunity() {
+    const sourceLabel = BETA_LOCAL_MODE ? "Local Beta" : "Cloud";
+    const tidepoolStats = [
+      { label: "Posts", value: tidepoolPosts.length },
+      { label: "Comments", value: tidepoolComments.length },
+      { label: "Reactions", value: tidepoolReactions.length },
+      { label: "Source", value: sourceLabel },
+    ];
+
     return (
-      <section className="panel tidepool-community">
-        <div className={getHeaderCardClass("compact-card-header")}>
-          <div>
-            <h2>Tidepool</h2>
-            <p>Community feed for posts, questions, sightings, events, comments, confirmations, and replies.</p>
-          </div>
-          <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Close Tidepool</button>
-        </div>
-
-        <div className="cards mini-cards">
-          <div className="card"><p>Posts</p><h2>{tidepoolPosts.length}</h2></div>
-          <div className="card"><p>Comments</p><h2>{tidepoolComments.length}</h2></div>
-          <div className="card"><p>Reactions</p><h2>{tidepoolReactions.length}</h2></div>
-          <div className="card"><p>Source</p><h2>Local</h2></div>
-        </div>
-
-        <form className="form compact-card" onSubmit={submitTidepoolPost}>
-          <h3>Create Post</h3>
-          <Field label="Post Type">
-            <select value={tidepoolPostForm.postType} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, postType: event.target.value }))}>
-              {TIDEPOOL_POST_TYPES.map((type) => <option key={type}>{type}</option>)}
-            </select>
-          </Field>
-          <Field label="Title">
-            <input value={tidepoolPostForm.title} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, title: event.target.value }))} placeholder="Optional title" />
-          </Field>
-          <Field label="Post">
-            <textarea value={tidepoolPostForm.body} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, body: event.target.value }))} placeholder="Ask a question, share a sighting, post an event, or start a discussion." />
-          </Field>
-          <div className="inline-input-grid">
-            <input value={tidepoolPostForm.city} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, city: event.target.value }))} placeholder="City optional" />
-            <input value={tidepoolPostForm.zip} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, zip: event.target.value }))} placeholder="ZIP optional" />
-            <input value={tidepoolPostForm.photoUrl} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, photoUrl: event.target.value }))} placeholder="Photo URL optional" />
-          </div>
-          <button type="submit">Post to Tidepool</button>
-        </form>
-
-        <div className="quick-action-rail">
-          {TIDEPOOL_FEED_FILTERS.map((filter) => (
-            <button key={filter} type="button" className={tidepoolFilter === filter ? "primary" : ""} onClick={() => setTidepoolFilter(filter)}>
-              {filter}
-            </button>
-          ))}
-        </div>
-
-        <div className="inventory-list compact-inventory-list">
-          {filteredTidepoolPosts.length === 0 ? (
-            <div className="empty-state">
-              <h3>No Tidepool posts yet</h3>
-              <p>Start a question, share a store tip, or post a community update.</p>
+      <>
+        <section className={getHeaderCardClass("panel tidepool-community-header")}>
+          <div className="tidepool-header-top">
+            <div>
+              <h2>Tidepool</h2>
+              <p>Community feed for posts, questions, sightings, events, comments, confirmations, and replies.</p>
             </div>
-          ) : null}
-          {filteredTidepoolPosts.map((post) => {
-            const postComments = tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed");
-            return (
-              <article className="inventory-card compact-card" key={post.postId}>
-                <div className="compact-card-header">
-                  <div>
-                    <span className="status-badge">{post.postType}</span>
-                    <h3>{post.title || post.postType}</h3>
-                    <p>{post.displayName} {post.city ? `- ${post.city}` : ""} - {new Date(post.createdAt).toLocaleString()}</p>
-                  </div>
-                  <span className="status-badge">{post.verificationStatus}</span>
-                </div>
-                <p>{post.body}</p>
-                <p className="compact-subtitle">Source: {post.sourceType} | Comments: {post.commentCount} | Reactions: {post.reactionCount}</p>
-                <div className="quick-actions">
-                  <button type="button" onClick={() => addTidepoolReaction(post.postId, "helpful")}>Helpful</button>
-                  <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "confirmed")}>Confirm</button>
-                  <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "disputed")}>Dispute</button>
-                  <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { saved: true })}>Save</button>
-                  <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { flagged: true, status: "pending" })}>Flag</button>
-                </div>
-                <div className="settings-subsection">
-                  <h4>Comments</h4>
-                  {postComments.map((comment) => (
-                    <div className="compact-card" key={comment.commentId}>
-                      <p><strong>{comment.displayName}</strong>: {comment.body}</p>
-                      <div className="inline-input-grid">
-                        <input value={tidepoolCommentDrafts[comment.commentId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [comment.commentId]: event.target.value }))} placeholder="Reply..." />
-                        <button type="button" className="secondary-button" onClick={() => addTidepoolComment(post.postId, comment.commentId)}>Reply</button>
-                      </div>
-                      {tidepoolComments.filter((reply) => reply.parentCommentId === comment.commentId && reply.status !== "removed").map((reply) => (
-                        <p className="compact-subtitle" key={reply.commentId}><strong>{reply.displayName}</strong>: {reply.body}</p>
-                      ))}
-                    </div>
-                  ))}
-                  <div className="inline-input-grid">
-                    <input value={tidepoolCommentDrafts[post.postId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [post.postId]: event.target.value }))} placeholder="Add a comment..." />
-                    <button type="button" onClick={() => addTidepoolComment(post.postId)}>Comment</button>
-                  </div>
-                </div>
-                {adminUser ? (
-                  <div className="quick-actions">
-                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { verificationStatus: "verified", sourceType: "admin" })}>Verify Post</button>
-                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { verificationStatus: "disputed" })}>Mark Disputed</button>
-                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { status: "hidden" })}>Hide Post</button>
-                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { status: "removed" })}>Remove Post</button>
-                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { commentsLocked: true })}>Lock Comments</button>
-                  </div>
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
+            <div className="tidepool-header-actions">
+              <button type="button" onClick={openTidepoolCreatePostFlow}>Create Post</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Close Tidepool</button>
+            </div>
+          </div>
+          <div className="tidepool-stat-grid" aria-label="Tidepool stats">
+            {tidepoolStats.map((stat) => (
+              <div className="tidepool-stat-card" key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <div className="empty-state">
-          <h3>Community rules</h3>
-          <p>No fake reports, spam, harassment, or unsafe meetup details. Restock claims can be confirmed or disputed, and flagged posts are ready for admin review.</p>
-        </div>
-      </section>
+        <section className="panel tidepool-community">
+          <div className="compact-card-header">
+            <div>
+              <h2>Community Feed</h2>
+              <p>Browse posts, react, save, flag, and comment without moderation controls crowding the feed.</p>
+            </div>
+            <span className="status-badge">{tidepoolFilter}</span>
+          </div>
+
+          <div className="tidepool-filter-grid" aria-label="Tidepool filters">
+            {visibleTidepoolFilters.map((filter) => (
+              <button key={filter} type="button" className={tidepoolFilter === filter ? "primary" : "secondary-button"} onClick={() => setTidepoolFilter(filter)}>
+                {filter}
+              </button>
+            ))}
+          </div>
+
+          <div className="tidepool-feed-grid">
+            {filteredTidepoolPosts.length === 0 ? (
+              <div className="empty-state tidepool-empty-state">
+                <h3>No Tidepool posts here yet.</h3>
+                <p>Create a post or change filters.</p>
+                <button type="button" onClick={openTidepoolCreatePostFlow}>Create Post</button>
+              </div>
+            ) : null}
+            {filteredTidepoolPosts.map((post) => {
+              const postComments = tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed");
+              const locationParts = [post.city, post.state].filter(Boolean);
+              const locationLabel = locationParts.length ? locationParts.join(", ") : post.zip ? `ZIP ${post.zip}` : "Community post";
+              const postDate = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : "No date";
+              const preview = post.body || "No post body yet.";
+              const sourceBadge = post.sourceType === "mock" ? "Mock" : post.sourceType === "admin" ? "Admin" : "User";
+              return (
+                <article className="tidepool-post-card compact-card" key={post.postId}>
+                  <div className="tidepool-post-top">
+                    <div className="tidepool-badge-row">
+                      <span className={statusClass(post.postType)}>{post.postType}</span>
+                      <span className={statusClass(post.verificationStatus)}>{post.verificationStatus}</span>
+                      {post.flagged ? <span className="status-badge needs-review">Needs Review</span> : null}
+                      {post.sourceType !== "user" ? <span className={statusClass(sourceBadge)}>{sourceBadge}</span> : null}
+                    </div>
+                    {adminToolsVisible ? (
+                      <details className="tidepool-moderation-menu">
+                        <summary>Moderation</summary>
+                        <div>
+                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { verificationStatus: "verified", sourceType: "admin" })}>Verify Post</button>
+                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { verificationStatus: "disputed" })}>Mark Disputed</button>
+                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { status: "hidden" })}>Hide Post</button>
+                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { status: "removed" })}>Remove Post</button>
+                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { commentsLocked: true })}>Lock Comments</button>
+                        </div>
+                      </details>
+                    ) : null}
+                  </div>
+                  <div className="tidepool-post-copy">
+                    <h3>{post.title || post.postType}</h3>
+                    <p className="tidepool-post-meta">{locationLabel} | {postDate}</p>
+                    <p>{preview}</p>
+                    {post.photoUrl ? <img className="tidepool-post-image" src={post.photoUrl} alt="" /> : null}
+                  </div>
+                  <div className="tidepool-post-counts">
+                    <span>{post.commentCount} comment{post.commentCount === 1 ? "" : "s"}</span>
+                    <span>{post.reactionCount} reaction{post.reactionCount === 1 ? "" : "s"}</span>
+                    <span>Source: {sourceBadge}</span>
+                  </div>
+                  <div className="tidepool-post-actions">
+                    <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "helpful")}>Helpful</button>
+                    <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "confirmed")}>Confirm</button>
+                    <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "disputed")}>Dispute</button>
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { saved: !post.saved })}>{post.saved ? "Saved" : "Save"}</button>
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { flagged: true, status: "pending" })}>{post.flagged ? "Flagged" : "Flag"}</button>
+                    <button type="button" className="secondary-button" onClick={() => document.getElementById(`tidepool-comment-${post.postId}`)?.focus()}>Comment</button>
+                  </div>
+                  <div className="tidepool-comments">
+                    <div className="tidepool-comments-header">
+                      <strong>Comments</strong>
+                      <span>{postComments.length}</span>
+                    </div>
+                    {postComments.length ? (
+                      <div className="tidepool-comment-list">
+                        {postComments.slice(0, 3).map((comment) => {
+                          const replies = tidepoolComments.filter((reply) => reply.parentCommentId === comment.commentId && reply.status !== "removed");
+                          return (
+                            <div className="tidepool-comment" key={comment.commentId}>
+                              <p><strong>{comment.displayName}</strong>: {comment.body}</p>
+                              {replies.slice(0, 2).map((reply) => (
+                                <p className="compact-subtitle tidepool-reply" key={reply.commentId}><strong>{reply.displayName}</strong>: {reply.body}</p>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="compact-subtitle">No comments yet.</p>
+                    )}
+                    {post.commentsLocked ? (
+                      <p className="compact-subtitle">Comments are locked for this post.</p>
+                    ) : (
+                      <div className="tidepool-comment-box">
+                        <input id={`tidepool-comment-${post.postId}`} value={tidepoolCommentDrafts[post.postId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [post.postId]: event.target.value }))} placeholder="Add a comment..." />
+                        <button type="button" onClick={() => addTidepoolComment(post.postId)}>Comment</button>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="tidepool-rules-card">
+            <strong>Community rules</strong>
+            <p>No fake reports, spam, harassment, or unsafe meetup details. Restock claims can be confirmed or disputed, and flagged posts go to review.</p>
+          </div>
+        </section>
+      </>
     );
   }
 
@@ -9322,6 +9374,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       return {
         title: "Move Item to Forge",
         description: "Choose a Vault item to move into business inventory.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "tidepoolCreatePost") {
+      return {
+        title: "Create Tidepool Post",
+        description: "Share a question, sighting, deal, event, or store tip with the community.",
         size: "medium",
       };
     }
@@ -9600,6 +9659,36 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderTidepoolCreatePostFlowContent() {
+    return (
+      <form className="form flow-form-grid tidepool-create-form" onSubmit={submitTidepoolPost}>
+        <Field label="Post Type">
+          <select value={tidepoolPostForm.postType} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, postType: event.target.value }))}>
+            {TIDEPOOL_POST_TYPES.map((type) => <option key={type}>{type}</option>)}
+          </select>
+        </Field>
+        <Field label="Title">
+          <input value={tidepoolPostForm.title} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, title: event.target.value }))} placeholder="Optional title" />
+        </Field>
+        <Field label="Post">
+          <textarea value={tidepoolPostForm.body} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, body: event.target.value }))} placeholder="Ask a question, share a sighting, post an event, or start a discussion." />
+        </Field>
+        <Field label="City">
+          <input value={tidepoolPostForm.city} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, city: event.target.value }))} placeholder="Optional" />
+        </Field>
+        <Field label="ZIP">
+          <input value={tidepoolPostForm.zip} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, zip: event.target.value }))} placeholder="Optional" />
+        </Field>
+        <Field label="Photo URL">
+          <input value={tidepoolPostForm.photoUrl} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, photoUrl: event.target.value }))} placeholder="Optional beta image URL" />
+        </Field>
+        <div className="flow-form-footer">
+          <button type="submit" disabled={!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()}>Post to Tidepool</button>
+        </div>
+      </form>
+    );
+  }
+
   function renderScoutSubmitFlowContent() {
     return (
       <section className="embedded-page flow-embedded-page">
@@ -9834,6 +9923,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (activeFlowModal?.type === "addExpense") return renderAddExpenseFlowContent();
     if (activeFlowModal?.type === "addMileage") return renderAddMileageFlowContent();
     if (activeFlowModal?.type === "createListing") return renderMarketplaceCreateFlowContent();
+    if (activeFlowModal?.type === "tidepoolCreatePost") return renderTidepoolCreatePostFlowContent();
     if (activeFlowModal?.type === "scoutSubmit") return renderScoutSubmitFlowContent();
     return null;
   }
@@ -9912,7 +10002,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, listingReviewOpen, dealFinderOpen, showVaultAddForm, scoutScoreModalOpen, feedbackDialog, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm]);
+  }, [activeFlowModal, showInventoryScanner, listingReviewOpen, dealFinderOpen, showVaultAddForm, scoutScoreModalOpen, feedbackDialog, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (!user) {
     return (
@@ -10438,7 +10528,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
             <div className="location-modal-actions modal-sticky-footer flow-modal-footer">
               <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
-                {isFlowModalDirty() ? "Cancel" : "Close"}
+                {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "scoutSubmit", "tidepoolCreatePost"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
               </button>
             </div>
           </section>
