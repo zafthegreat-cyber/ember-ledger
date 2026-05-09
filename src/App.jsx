@@ -197,6 +197,12 @@ const PLATFORMS = ["eBay", "Mercari", "Whatnot", "Facebook Marketplace", "In-Sto
 const VAULT_CATEGORIES = ["Personal collection", "Keep sealed", "Rip later", "Trade", "Favorite", "Wishlist", "Set goal", "Kid collection"];
 const VAULT_STATUS_OPTIONS = [
   { value: "personal_collection", label: "Personal Collection", description: "Keeping long term." },
+  { value: "at_home", label: "At home", description: "Owned and stored at home." },
+  { value: "at_store", label: "At store", description: "Owned and stored at a store or booth." },
+  { value: "listed", label: "Listed", description: "Owned and currently listed for sale or trade." },
+  { value: "sold", label: "Sold", description: "Sold or no longer owned." },
+  { value: "trade_pile", label: "Trade pile", description: "Owned and available for trade." },
+  { value: "gift_donation", label: "Gift / donation", description: "Set aside for gifting or donation." },
   { value: "sealed", label: "Sealed / Holding", description: "Unopened or held product." },
   { value: "wishlist", label: "Wishlist", description: "Wanted but not owned yet." },
   { value: "ready_for_forge", label: "Ready for Forge", description: "May sell later." },
@@ -214,7 +220,7 @@ const VAULT_FILTER_OPTIONS = [
   { value: "wishlist", label: "Wishlist / Held" },
   { value: "sold_archived", label: "Sold / Archived" },
 ];
-const ACTIVE_VAULT_STATUSES = new Set(["personal_collection", "held", "sealed", "ripped_opened", "wishlist", "ready_for_forge"]);
+const ACTIVE_VAULT_STATUSES = new Set(["personal_collection", "at_home", "at_store", "listed", "trade_pile", "gift_donation", "held", "sealed", "ripped_opened", "ready_for_forge"]);
 const VAULT_STORAGE_LOCATIONS = ["", "Binder", "ETB", "Shelf", "Box", "Display case", "Closet", "Other"];
 const VAULT_CONDITIONS = ["", "Mint", "Near Mint", "Lightly Played", "Damaged", "Sealed", "Box damage", "Missing wrap", "Unknown"];
 const VAULT_SOURCE_OPTIONS = ["Manual", "TideTradr", "Barcode scan", "Receipt/photo", "Import", "Forge copy"];
@@ -255,13 +261,16 @@ const BLANK_MULTI_DESTINATION_FORM = {
   itemName: "",
   category: "Pokemon",
   productType: "",
+  setName: "",
+  variant: "",
   catalogProductId: "",
   upcSku: "",
   msrpPrice: "",
   marketPrice: "",
   notes: "",
   destinations: {
-    vault: true,
+    vault: false,
+    wishlist: false,
     forge: false,
     tidetradr: false,
   },
@@ -271,6 +280,17 @@ const BLANK_MULTI_DESTINATION_FORM = {
     vaultCategory: "Personal collection",
     unitCost: "",
     purchaseDate: "",
+    storageLocation: "",
+    notes: "",
+  },
+  wishlist: {
+    quantity: 1,
+    priority: "Medium",
+    targetPrice: "",
+    desiredCondition: "",
+    notes: "",
+    alertMarketPrice: true,
+    addToMarketWatch: false,
   },
   forge: {
     quantity: 1,
@@ -278,6 +298,8 @@ const BLANK_MULTI_DESTINATION_FORM = {
     plannedSellPrice: "",
     source: "",
     businessCategory: "Pokemon",
+    conditionName: "",
+    notes: "",
   },
   tidetradr: {
     existingProductId: "",
@@ -289,6 +311,7 @@ const BLANK_MULTI_DESTINATION_FORM = {
     productType: "",
     releaseDate: "",
     sourceUrl: "",
+    correctionNotes: "",
   },
 };
 const BLANK_QUICK_FIND_FORM = {
@@ -420,6 +443,12 @@ function normalizeVaultStatus(item = {}) {
   if (raw.includes("moved_to_forge") || raw.includes("moved to forge")) return "moved_to_forge";
   if (raw.includes("ready_for_forge") || raw.includes("ready for forge")) return "ready_for_forge";
   if (raw.includes("archived") || raw.includes("archive")) return "archived";
+  if (raw.includes("at_home") || raw.includes("at home")) return "at_home";
+  if (raw.includes("at_store") || raw.includes("at store")) return "at_store";
+  if (raw.includes("listed")) return "listed";
+  if (raw.includes("sold")) return "sold";
+  if (raw.includes("trade_pile") || raw.includes("trade pile")) return "trade_pile";
+  if (raw.includes("gift") || raw.includes("donation")) return "gift_donation";
   if (raw.includes("traded") || raw === "trade") return "traded";
   if (raw.includes("ripped") || raw.includes("opened") || raw.includes("rip later")) return "ripped_opened";
   if (raw.includes("wishlist") || raw.includes("wish")) return "wishlist";
@@ -1739,6 +1768,8 @@ export default function App() {
   const [activeFlowModal, setActiveFlowModal] = useState(null);
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
+  const [vaultCatalogSearchQuery, setVaultCatalogSearchQuery] = useState("");
+  const [multiDestinationCatalogQuery, setMultiDestinationCatalogQuery] = useState("");
   const flowModalRef = useRef(null);
   const flowModalOpenerRef = useRef(null);
 
@@ -1832,6 +1863,7 @@ export default function App() {
   });
   const getHeaderCardClass = (className = "") =>
     `app-header-card app-header-card--${headerMode}${className ? ` ${className}` : ""}`;
+  const legacyVaultAddModalEnabled = false; // Deprecated: product adds now route through Add to Multiple Places.
 
   function navigateMainTab(tab) {
     if (!confirmLeaveVaultWork()) return;
@@ -2143,8 +2175,19 @@ export default function App() {
       return (
         <>
           <button type="button" onClick={() => viewSearchResult(result)}>View details</button>
-          <button type="button" className="secondary-button" onClick={() => { applyCatalogProductToVault(result.source.id, { stayInContext: true }); setSearchExpanded(false); }}>Add to Vault</button>
-          <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(result.source.id)}>Wishlist</button>
+          <button type="button" className="secondary-button" onClick={() => {
+            openProductAddFlow({ product: result.source, source: "global-search-vault", destinations: { vault: true } });
+            setSearchExpanded(false);
+          }}>Add to Vault</button>
+          <button type="button" className="secondary-button" onClick={() => {
+            openProductAddFlow({
+              product: result.source,
+              source: "global-search-wishlist",
+              destinations: { wishlist: true },
+              seed: { wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, addToMarketWatch: true } },
+            });
+            setSearchExpanded(false);
+          }}>Wishlist</button>
           <button type="button" className="secondary-button" onClick={() => viewSearchResult(result)}>More</button>
         </>
       );
@@ -2788,14 +2831,28 @@ export default function App() {
     if (returnFocus) setTimeout(() => quickAddButtonRef.current?.focus?.(), 0);
   }
 
-  const resetMultiDestinationForm = (overrides = {}) => setMultiDestinationForm({
-    ...BLANK_MULTI_DESTINATION_FORM,
-    destinations: { ...BLANK_MULTI_DESTINATION_FORM.destinations, ...(overrides.destinations || {}) },
-    vault: { ...BLANK_MULTI_DESTINATION_FORM.vault, ...(overrides.vault || {}) },
-    forge: { ...BLANK_MULTI_DESTINATION_FORM.forge, ...(overrides.forge || {}) },
-    tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, ...(overrides.tidetradr || {}) },
-    ...overrides,
-  });
+  const resetMultiDestinationForm = (overrides = {}) => {
+    const {
+      destinations,
+      vault,
+      wishlist,
+      forge,
+      tidetradr,
+      catalogSearchQuery,
+      ...rest
+    } = overrides;
+
+    setMultiDestinationCatalogQuery(catalogSearchQuery || "");
+    setMultiDestinationForm({
+      ...BLANK_MULTI_DESTINATION_FORM,
+      ...rest,
+      destinations: { ...BLANK_MULTI_DESTINATION_FORM.destinations, ...(destinations || {}) },
+      vault: { ...BLANK_MULTI_DESTINATION_FORM.vault, ...(vault || {}) },
+      wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, ...(wishlist || {}) },
+      forge: { ...BLANK_MULTI_DESTINATION_FORM.forge, ...(forge || {}) },
+      tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, ...(tidetradr || {}) },
+    });
+  };
   const updateMultiDestinationField = (field, value) => setMultiDestinationForm((current) => ({ ...current, [field]: value }));
   const updateMultiDestinationSection = (section, field, value) => setMultiDestinationForm((current) => ({
     ...current,
@@ -2812,14 +2869,31 @@ export default function App() {
     },
   }));
 
-  function selectMultiDestinationCatalogProduct(productId) {
-    const product = catalogProducts.find((entry) => String(entry.id) === String(productId));
+  function selectMultiDestinationCatalogProduct(productOrId) {
+    const product = typeof productOrId === "object"
+      ? productOrId
+      : catalogProducts.find((entry) => String(entry.id) === String(productOrId));
+    const productId = product?.id || (typeof productOrId === "object" ? "" : productOrId);
+    const defaultVariant = product
+      ? (getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null)
+      : null;
+
+    if (product) {
+      setCatalogProducts((current) => [
+        product,
+        ...current.filter((entry) => String(entry.id) !== String(product.id)),
+      ]);
+      setMultiDestinationCatalogQuery(catalogTitle(product));
+    }
+
     setMultiDestinationForm((current) => ({
       ...current,
       catalogProductId: productId,
       itemName: product ? catalogTitle(product) : current.itemName,
-      productType: product?.productType || product?.category || current.productType,
+      productType: product?.productType || product?.sealedProductType || product?.productKind || current.productType,
       category: product?.category || current.category,
+      setName: product ? catalogExpansionName(product) : current.setName,
+      variant: defaultVariant?.variantName || current.variant,
       upcSku: product?.barcode || product?.upc || product?.sku || current.upcSku,
       msrpPrice: product?.msrpPrice || current.msrpPrice,
       marketPrice: product?.marketPrice || product?.midPrice || current.marketPrice,
@@ -2832,6 +2906,37 @@ export default function App() {
         setName: catalogExpansionName(product || {}) || current.tidetradr.setName,
         productType: product?.productType || current.tidetradr.productType,
         releaseDate: product?.releaseDate || product?.releaseYear || current.tidetradr.releaseDate,
+      },
+    }));
+  }
+
+  function clearMultiDestinationCatalogProduct() {
+    setMultiDestinationCatalogQuery("");
+    setMultiDestinationForm((current) => ({
+      ...current,
+      catalogProductId: "",
+      tidetradr: {
+        ...current.tidetradr,
+        existingProductId: "",
+      },
+    }));
+  }
+
+  function markMultiDestinationMissingCatalog() {
+    const query = String(multiDestinationCatalogQuery || "").trim();
+    setMultiDestinationForm((current) => ({
+      ...current,
+      itemName: current.itemName || query,
+      destinations: {
+        ...current.destinations,
+        tidetradr: true,
+      },
+      tidetradr: {
+        ...current.tidetradr,
+        action: "suggest",
+        productType: current.tidetradr.productType || current.productType,
+        upc: current.tidetradr.upc || current.upcSku,
+        msrpPrice: current.tidetradr.msrpPrice || current.msrpPrice,
       },
     }));
   }
@@ -4631,7 +4736,22 @@ export default function App() {
       setScanMessage("No catalog match yet. Submit the item for review or choose a TideTradr lookup first.");
       return;
     }
-    if (destination === "vault" || destination === "forge" || destination === "wishlist") return addScannedItemToCollection(destination);
+    if (destination === "vault" || destination === "forge" || destination === "wishlist") {
+      const product = catalogProducts.find((item) => String(item.id) === String(productId));
+      if (!product) return addScannedItemToCollection(destination);
+      setShowInventoryScanner(false);
+      setScanReview(null);
+      setScanMatches([]);
+      setScanInput("");
+      return openProductAddFlow({
+        product,
+        source: "scanner",
+        destinations: destinationDefaults({ [destination]: true }),
+        seed: {
+          catalogSearchQuery: scanReview?.rawValue || scanInput || catalogTitle(product),
+        },
+      });
+    }
     if (destination === "tidetradr") {
       if (productId) selectTideTradrProduct(productId);
       setActiveTab("market");
@@ -4716,17 +4836,19 @@ export default function App() {
 
 function openVaultQuickAdd({ category = "Personal collection", productType = "", subTab = "collection", stayInContext = false } = {}) {
     setVaultSubTab(subTab);
-    setVaultForm((current) => ({
-      ...current,
-      vaultCategory: category,
-      vaultStatus: category === "Wishlist" ? "wishlist" : normalizeVaultStatus({ status: current.status, actionNotes: category }),
-      status: category === "Wishlist" ? "Wishlist" : current.status || "Personal Collection",
-      productType: productType || current.productType,
-    }));
-    setShowVaultAddForm(true);
-    setVaultAddMode("manual");
-    setVaultFormSections({ basic: true, pricing: false, status: false, extra: false });
-    setFeatureSectionsOpen((current) => ({ ...current, vault_add: true }));
+    const wishlist = category === "Wishlist" || subTab === "wishlist";
+    openProductAddFlow({
+      source: wishlist ? "vault-wishlist" : "vault-manual",
+      destinations: wishlist ? { wishlist: true } : { vault: true },
+      seed: {
+        productType,
+        vault: {
+          vaultCategory: category,
+          vaultStatus: wishlist ? "wishlist" : normalizeVaultStatus({ actionNotes: category }),
+        },
+        wishlist: wishlist ? { ...BLANK_MULTI_DESTINATION_FORM.wishlist, addToMarketWatch: true } : undefined,
+      },
+    });
     setQuickAddMenuOpen(false);
     if (!stayInContext) setActiveTab("vault");
   }
@@ -4779,6 +4901,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     if (type === "quickFind") {
       setQuickFindForm(BLANK_QUICK_FIND_FORM);
+    }
+    if (type === "vaultCatalogSearch") {
+      setVaultCatalogSearchQuery("");
     }
     if (type === "multiDestinationAdd") {
       resetMultiDestinationForm();
@@ -4851,6 +4976,22 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     openFlowModal("vaultQuickAdd", { size: "small", source: "vault" });
   }
 
+  function openVaultCatalogSearchFlow(options = {}) {
+    setActiveTab("vault");
+    setVaultCatalogSearchQuery(options.query || "");
+    openFlowModal("vaultCatalogSearch", { size: "large", source: options.source || "vault" });
+  }
+
+  function openVaultScanFlow() {
+    setActiveTab("vault");
+    openFlowModal("vaultScan", { size: "small", source: "vault" });
+  }
+
+  function openVaultImportCollectionFlow() {
+    setActiveTab("vault");
+    openFlowModal("vaultImportCollection", { size: "small", source: "vault" });
+  }
+
   function openQuickFindFlow(options = {}) {
     setQuickFindForm(BLANK_QUICK_FIND_FORM);
     if (options.source === "market") setActiveTab("market");
@@ -4860,6 +5001,35 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function openMultiDestinationAddFlow(options = {}) {
     resetMultiDestinationForm(options.seed || {});
     openFlowModal("multiDestinationAdd", { size: "large", source: options.source || "quick-add" });
+  }
+
+  function openMultiDestinationAddForProduct(product, options = {}) {
+    if (!product) return;
+    setCatalogProducts((current) => [
+      product,
+      ...current.filter((entry) => String(entry.id) !== String(product.id)),
+    ]);
+    resetMultiDestinationForm(buildMultiDestinationSeedFromProduct(product, options.seed || {}));
+    openFlowModal("multiDestinationAdd", { size: "large", source: options.source || "vault-catalog" });
+  }
+
+  function destinationDefaults(overrides = {}) {
+    return {
+      vault: false,
+      wishlist: false,
+      forge: false,
+      tidetradr: false,
+      ...overrides,
+    };
+  }
+
+  function openProductAddFlow({ product = null, source = "quick-add", seed = {}, destinations = {} } = {}) {
+    const nextSeed = {
+      ...seed,
+      destinations: destinationDefaults({ ...(seed.destinations || {}), ...destinations }),
+    };
+    if (product) return openMultiDestinationAddForProduct(product, { source, seed: nextSeed });
+    return openMultiDestinationAddFlow({ source, seed: nextSeed });
   }
 
   function openVaultMoveToForgeFlow() {
@@ -4878,35 +5048,28 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function openQuickAddAction(action) {
     setQuickAddMenuOpen(false);
-    if (action === "multiDestination") return openMultiDestinationAddFlow();
-    if (action === "card") return openVaultQuickAdd({ productType: "Individual Card", subTab: "collection", stayInContext: true });
-    if (action === "sealed") return openVaultQuickAdd({ productType: "Sealed Product", subTab: "products", stayInContext: true });
-    if (action === "vaultItem") return openVaultQuickAdd({ category: "Personal collection", subTab: "collection", stayInContext: true });
-    if (action === "importCollection") {
-      setActiveTab("vault");
-      setVaultAddMode("import");
-      setShowVaultAddForm(true);
-      return;
-    }
+    if (action === "multiDestination") return openProductAddFlow({ source: "quick-add" });
+    if (action === "card") return openProductAddFlow({ source: "quick-add-card", seed: { productType: "Individual Card" } });
+    if (action === "sealed") return openProductAddFlow({ source: "quick-add-sealed", seed: { productType: "Sealed Product" } });
+    if (action === "vaultItem") return openProductAddFlow({ source: "quick-add-vault", destinations: { vault: true } });
+    if (action === "searchVaultCatalog") return openVaultCatalogSearchFlow({ source: "quick-add" });
+    if (action === "importCollection") return openVaultImportCollectionFlow();
     if (action === "quickFind" || action === "manualLookup" || action === "enterUpcSku") return openQuickFindFlow({ source: "quick-add" });
     if (action === "suggestCatalogItem") {
       return openMultiDestinationAddFlow({
         seed: {
-          destinations: { vault: false, forge: false, tidetradr: true },
+          destinations: destinationDefaults({ tidetradr: true }),
           tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, action: "suggest" },
         },
       });
     }
     if (action === "suggestCatalogCorrection") return openFeedbackDialog("catalog_data", { page: "TideTradr", topic: "Catalog correction" });
     if (action === "scanProduct") return beginScanProduct("none");
-    if (action === "scanVault") {
-      setActiveTab("vault");
-      return beginScanProduct("vault");
-    }
+    if (action === "scanVault") return openVaultScanFlow();
     if (action === "scanForge") {
       return beginScanProduct("forge");
     }
-    if (action === "inventory") return openAddInventoryFlow();
+    if (action === "inventory") return openProductAddFlow({ source: "quick-add-forge-inventory", destinations: { forge: true } });
     if (action === "sale") return openAddSaleFlow();
     if (action === "expense") return openAddExpenseFlow();
     if (action === "mileage") return openAddMileageFlow();
@@ -4923,7 +5086,15 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (action === "storeCorrection") {
       return openScoutSubmitFlow({ action: "storeCorrection" });
     }
-    if (action === "wishlist") return openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist", stayInContext: true });
+    if (action === "wishlist") {
+      return openMultiDestinationAddFlow({
+        source: "quick-add-wishlist",
+        seed: {
+          destinations: destinationDefaults({ wishlist: true }),
+          wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, addToMarketWatch: true },
+        },
+      });
+    }
     if (action === "searchTidetradr") {
       setActiveTab("market");
       setTideTradrSubTab("overview");
@@ -4967,6 +5138,61 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setQuickFindForm(BLANK_QUICK_FIND_FORM);
   }
 
+  function runVaultCatalogSearch(event, value = vaultCatalogSearchQuery) {
+    event?.preventDefault?.();
+    const lookup = String(value || "").trim();
+    setVaultCatalogSearchQuery(lookup);
+    if (!lookup) return;
+    setCatalogSearch(lookup);
+    setCatalogBarcodeSearch("");
+    setSubmittedCatalogSearch(lookup);
+    setSubmittedCatalogBarcodeSearch("");
+    setCatalogSearchHasRun(true);
+    closeCatalogSuggestions();
+    loadImportedPokemonCatalog(lookup, {
+      page: 1,
+      pageSize: Math.min(24, catalogPageSize || 24),
+      mode: "general",
+      barcode: "",
+      forceSearch: true,
+    });
+  }
+
+  function selectVaultCatalogSearchProduct(product) {
+    openMultiDestinationAddForProduct(product, {
+      source: "vault-catalog",
+      seed: {
+        destinations: { vault: true, wishlist: false, forge: false, tidetradr: false },
+      },
+    });
+  }
+
+  function selectVaultCatalogSearchSuggestion(suggestion) {
+    const value = suggestion.searchValue || suggestion.label || vaultCatalogSearchQuery;
+    setVaultCatalogSearchQuery(value);
+    if (suggestion.product?.id) {
+      selectVaultCatalogSearchProduct(suggestion.product);
+      return;
+    }
+    runVaultCatalogSearch(null, value);
+  }
+
+  function selectMultiDestinationCatalogSuggestion(suggestion) {
+    const value = suggestion.searchValue || suggestion.label || multiDestinationCatalogQuery;
+    setMultiDestinationCatalogQuery(value);
+    if (suggestion.product?.id) {
+      selectMultiDestinationCatalogProduct(suggestion.product);
+      return;
+    }
+    loadImportedPokemonCatalog(value, {
+      page: 1,
+      pageSize: Math.min(24, catalogPageSize || 24),
+      mode: "general",
+      barcode: "",
+      forceSearch: true,
+    });
+  }
+
   async function submitMultiDestinationAdd(event) {
     event.preventDefault();
     const itemName = String(multiDestinationForm.itemName || "").trim();
@@ -4988,8 +5214,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       catalogProductName: selectedCatalog?.name || "",
       marketPrice: Number(multiDestinationForm.marketPrice || selectedCatalog?.marketPrice || selectedCatalog?.midPrice || 0),
       msrpPrice: Number(multiDestinationForm.msrpPrice || selectedCatalog?.msrpPrice || 0),
-      setName: selectedCatalog ? catalogExpansionName(selectedCatalog) : multiDestinationForm.tidetradr.setName,
-      expansion: selectedCatalog ? catalogExpansionName(selectedCatalog) : multiDestinationForm.tidetradr.setName,
+      setName: multiDestinationForm.setName || (selectedCatalog ? catalogExpansionName(selectedCatalog) : multiDestinationForm.tidetradr.setName),
+      expansion: multiDestinationForm.setName || (selectedCatalog ? catalogExpansionName(selectedCatalog) : multiDestinationForm.tidetradr.setName),
+      variant: multiDestinationForm.variant || "",
       notes: multiDestinationForm.notes || "",
       sourceType: selectedCatalog ? "TideTradr" : "Multi-destination add",
     };
@@ -5006,7 +5233,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           vaultStatus: multiDestinationForm.vault.vaultStatus,
           vaultCategory: multiDestinationForm.vault.vaultCategory,
           purchaseDate: multiDestinationForm.vault.purchaseDate,
-          storageLocation: vaultStatusLabel(multiDestinationForm.vault.vaultStatus),
+          storageLocation: multiDestinationForm.vault.storageLocation || vaultStatusLabel(multiDestinationForm.vault.vaultStatus),
+          actionNotes: [multiDestinationForm.vault.notes, multiDestinationForm.notes].filter(Boolean).join(" "),
           conditionName: "Near Mint",
           language: "English",
           createdAt: now,
@@ -5016,6 +5244,47 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       }
     } catch (error) {
       failures.push(`Vault failed: ${error.message || "Could not save"}`);
+    }
+
+    try {
+      if (destinations.wishlist) {
+        const wishlistQuantity = Math.max(1, Number(multiDestinationForm.wishlist.quantity || 1));
+        const wishlistItem = {
+          id: makeId("wishlist"),
+          ...shared,
+          quantity: wishlistQuantity,
+          quantityWanted: wishlistQuantity,
+          ownedQuantity: 0,
+          unitCost: 0,
+          targetPrice: Number(multiDestinationForm.wishlist.targetPrice || 0),
+          status: "Wishlist",
+          vaultStatus: "wishlist",
+          vaultCategory: "Wishlist",
+          storageLocation: "Wishlist",
+          wishlistPriority: multiDestinationForm.wishlist.priority,
+          desiredCondition: multiDestinationForm.wishlist.desiredCondition,
+          wishlistNotes: multiDestinationForm.wishlist.notes,
+          alertMarketPrice: Boolean(multiDestinationForm.wishlist.alertMarketPrice),
+          addToMarketWatch: Boolean(multiDestinationForm.wishlist.addToMarketWatch),
+          actionNotes: [
+            "Wishlist item - wanted, not owned.",
+            multiDestinationForm.wishlist.notes,
+            multiDestinationForm.notes,
+          ].filter(Boolean).join(" "),
+          conditionName: multiDestinationForm.wishlist.desiredCondition || "Any",
+          language: "English",
+          createdAt: now,
+        };
+        setItems((current) => [wishlistItem, ...current]);
+        successes.push("Added to Wishlist");
+
+        if (multiDestinationForm.wishlist.addToMarketWatch && selectedCatalog?.id) {
+          addProductToTideTradrWatchlist(selectedCatalog.id);
+          successes.push("Added to Watchlist");
+        }
+      }
+    } catch (error) {
+      failures.push(`Wishlist failed: ${error.message || "Could not save"}`);
     }
 
     try {
@@ -5033,8 +5302,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           buyer: "Zena",
           purchaserId: "purchaser-default-1",
           purchaserName: "Zena",
-          conditionName: "Near Mint",
+          conditionName: multiDestinationForm.forge.conditionName || "Near Mint",
           language: "English",
+          notes: [multiDestinationForm.forge.notes, multiDestinationForm.notes].filter(Boolean).join(" "),
           createdAt: now,
         };
         setItems((current) => [forgeItem, ...current]);
@@ -5057,14 +5327,15 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
             productName: itemName,
             category: multiDestinationForm.category || "Pokemon",
             productType: multiDestinationForm.tidetradr.productType || multiDestinationForm.productType,
-            setName: multiDestinationForm.tidetradr.setName,
-            expansion: multiDestinationForm.tidetradr.setName,
+            setName: multiDestinationForm.tidetradr.setName || shared.setName,
+            expansion: multiDestinationForm.tidetradr.setName || shared.setName,
             barcode: multiDestinationForm.tidetradr.upc || multiDestinationForm.upcSku,
             sku: multiDestinationForm.tidetradr.sku,
             msrpPrice: Number(multiDestinationForm.tidetradr.msrpPrice || multiDestinationForm.msrpPrice || 0),
             marketPrice: Number(multiDestinationForm.marketPrice || 0),
             releaseDate: multiDestinationForm.tidetradr.releaseDate,
             sourceUrl: multiDestinationForm.tidetradr.sourceUrl,
+            notes: [multiDestinationForm.tidetradr.correctionNotes, multiDestinationForm.notes].filter(Boolean).join(" "),
             sourceType: "admin_created",
             marketStatus: "Manual",
             createdAt: now,
@@ -5094,17 +5365,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
               name: itemName,
               category: multiDestinationForm.category,
               productType: multiDestinationForm.tidetradr.productType || multiDestinationForm.productType,
-              setName: multiDestinationForm.tidetradr.setName,
+              setName: multiDestinationForm.tidetradr.setName || shared.setName,
               releaseDate: multiDestinationForm.tidetradr.releaseDate,
               msrpPrice: multiDestinationForm.tidetradr.msrpPrice || multiDestinationForm.msrpPrice,
               upc: multiDestinationForm.tidetradr.upc || multiDestinationForm.upcSku,
               sku: multiDestinationForm.tidetradr.sku,
               sourceUrl: multiDestinationForm.tidetradr.sourceUrl,
-              notes: multiDestinationForm.notes,
+              notes: [multiDestinationForm.tidetradr.correctionNotes, multiDestinationForm.notes].filter(Boolean).join(" "),
             },
             currentDataSnapshot: {},
             proofUrl: multiDestinationForm.tidetradr.sourceUrl,
-            notes: multiDestinationForm.notes,
+            notes: [multiDestinationForm.tidetradr.correctionNotes, multiDestinationForm.notes].filter(Boolean).join(" "),
             source: "user",
           });
           successes.push("Submitted TideTradr suggestion");
@@ -5114,8 +5385,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       failures.push(`TideTradr failed: ${error.message || "Could not save"}`);
     }
 
-    if (successes.length) setVaultToast(failures.length ? `${successes.join(" | ")}. ${failures.join(" | ")}` : successes.join(" | "));
+    const uniqueSuccesses = [...new Set(successes)];
+    if (uniqueSuccesses.length) setVaultToast(failures.length ? `${uniqueSuccesses.join(" | ")}. ${failures.join(" | ")}` : uniqueSuccesses.join(" | "));
     if (!successes.length && failures.length) setVaultToast(failures.join(" | "));
+    if (failures.length) return;
     closeFlowModal({ force: true, reset: false });
     resetMultiDestinationForm();
   }
@@ -6721,41 +6994,15 @@ function applyCatalogProductToVault(productId, options = {}) {
     ? productId
     : catalogProducts.find((p) => String(p.id) === String(productId));
   if (!product) return;
-  const marketInfo = getTideTradrMarketInfo(product);
-  const defaultVariant = getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null;
-
-  setVaultForm((old) => ({
-    ...old,
-    name: product.name || "",
-    productType: product.catalogType === "card" ? "Individual Card" : product.productType || "",
-    vaultStatus: product.catalogType === "sealed" ? "sealed" : "personal_collection",
-    status: product.catalogType === "sealed" ? "Sealed / Holding" : "Personal Collection",
-    setName: catalogExpansionName(product),
-    msrpPrice: marketInfo.msrp || "",
-    marketPrice: marketInfo.currentMarketValue || "",
-    salePrice: marketInfo.currentMarketValue || "",
-    packCount: product.packCount || "",
-    sourceType: "TideTradr",
-    upc: product.barcode || product.upc || "",
-    sku: product.sku || "",
-    catalogProductId: product.id || "",
-    catalogVariantId: defaultVariant?.id || "",
-    tideTradrProductId: product.id || "",
-    condition: product.catalogType === "card" ? "Unknown" : old.condition,
-    conditionName: product.catalogType === "card" ? "Near Mint" : old.conditionName || "",
-    finish: defaultVariant?.finish || "",
-    printing: defaultVariant?.printing || "",
-    language: defaultVariant?.language || product.language || "English",
-    sealedCondition: product.catalogType === "sealed" ? "Sealed" : old.sealedCondition,
-    itemImage: getCatalogImage(product) || "",
-    itemImageSource: product.imageSource || getDefaultImageSource(product),
-    itemImageStatus: product.imageStatus || getDefaultImageStatus(product),
-    itemImageSourceUrl: product.imageSourceUrl || product.marketUrl || "",
-    itemImageLastUpdated: product.imageLastUpdated || product.lastUpdated || "",
-    itemImageNeedsReview: Boolean(product.imageNeedsReview),
-  }));
-  setShowVaultAddForm(true);
-  setVaultFormSections((current) => ({ ...current, basic: true, pricing: true }));
+  setShowVaultAddForm(false);
+  openProductAddFlow({
+    product,
+    source: options.source || "catalog-vault",
+    destinations: { vault: true },
+    seed: {
+      vault: { vaultStatus: product.catalogType === "sealed" ? "sealed" : "personal_collection" },
+    },
+  });
   if (!options.stayInContext) setActiveTab("vault");
 }
 
@@ -6953,6 +7200,26 @@ async function importBulkCatalogProducts() {
   alert(`Imported ${data.length} catalog products.`);
 }
 
+function openDealFinderAddItem() {
+  const quantity = Math.max(1, Number(dealForm.quantity || 1));
+  const marketEach = Number(dealForm.marketTotal || 0) ? Number(dealForm.marketTotal || 0) / quantity : "";
+  const msrpEach = Number(dealForm.retailTotal || 0) ? Number(dealForm.retailTotal || 0) / quantity : "";
+  const seed = {
+    itemName: selectedDealProduct ? catalogTitle(selectedDealProduct) : dealForm.title,
+    marketPrice: marketEach,
+    msrpPrice: msrpEach,
+    notes: [dealForm.notes, dealRecommendation ? `Deal Finder: ${dealRecommendation}` : ""].filter(Boolean).join(" | "),
+    vault: { quantity },
+    forge: { quantity, plannedSellPrice: marketEach || "" },
+  };
+  if (selectedDealProduct) {
+    openProductAddFlow({ product: selectedDealProduct, source: "deal-finder", seed });
+  } else {
+    openProductAddFlow({ source: "deal-finder-manual", seed });
+  }
+  setDealFinderOpen(false);
+}
+
 function renderDealFinderContent() {
   return (
     <section className="panel tidetradr-deal-panel">
@@ -7022,6 +7289,9 @@ function renderDealFinderContent() {
             <div className="card"><p>ROI</p><h2>{dealRoi.toFixed(1)}%</h2></div>
           </div>
           <p className="compact-subtitle">{dealRecommendationReason}</p>
+          <div className="quick-actions">
+            <button type="button" onClick={openDealFinderAddItem}>Add item from this deal</button>
+          </div>
         </>
       ) : (
         <div className="empty-state small-empty-state">
@@ -8765,6 +9035,105 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return product.expansionOfficialName || product.expansionDisplayName || product.setName || product.expansion || product.series || product.productLine || "";
   }
 
+  function catalogProductTypeLabel(product = {}) {
+    if (product.catalogType === "card") return "Individual Card";
+    return product.productType || product.sealedProductType || product.productKind || "Catalog product";
+  }
+
+  function getCatalogPickerResults(query, limit = 12) {
+    const cleanQuery = String(query || "").trim();
+    if (!cleanQuery) return [];
+
+    const scannedMatches = getBestCatalogMatches(cleanQuery, catalogProducts)
+      .map((match) => ({ ...match.item, _matchReason: match.explanation || match.reason || "Best catalog match" }));
+    const normalizedQuery = cleanQuery.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+    const simpleMatches = catalogProducts
+      .map((product) => {
+        const fields = [
+          catalogTitle(product),
+          catalogExpansionName(product),
+          product.productType,
+          product.sealedProductType,
+          product.productKind,
+          product.setCode,
+          product.cardNumber,
+          product.barcode,
+          product.upc,
+          product.sku,
+          product.externalProductId,
+          product.tcgplayerProductId,
+          product.identifierSearch,
+          product.variantNames,
+        ].filter(Boolean).join(" ");
+        const haystack = fields.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        const exactId = [product.barcode, product.upc, product.sku, product.externalProductId, product.tcgplayerProductId]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase() === cleanQuery.toLowerCase());
+        const tokenHits = queryTokens.filter((token) => haystack.includes(token)).length;
+        const score =
+          exactId ? 1000 :
+          haystack.includes(normalizedQuery) ? 650 :
+          queryTokens.length && tokenHits === queryTokens.length ? 420 :
+          tokenHits > 0 ? tokenHits * 80 :
+          0;
+        return { product, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((entry) => ({ ...entry.product, _matchReason: entry.score >= 1000 ? "Exact identifier match" : "Name, set, or product detail match" }));
+
+    const byId = new Map();
+    [...scannedMatches, ...simpleMatches].forEach((product) => {
+      const key = String(product.id || product.externalProductId || product.tcgplayerProductId || catalogTitle(product)).toLowerCase();
+      if (!byId.has(key)) byId.set(key, product);
+    });
+    return [...byId.values()].slice(0, limit);
+  }
+
+  function buildMultiDestinationSeedFromProduct(product = {}, overrides = {}) {
+    const marketInfo = getTideTradrMarketInfo(product);
+    const title = catalogTitle(product);
+    const productType = catalogProductTypeLabel(product);
+    const expansionName = catalogExpansionName(product);
+    const upcSku = product.barcode || product.upc || product.sku || "";
+    const defaultVariant = getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null;
+    const base = {
+      itemName: title,
+      category: product.category || "Pokemon",
+      productType,
+      setName: expansionName,
+      variant: defaultVariant?.variantName || "",
+      catalogProductId: product.id || "",
+      upcSku,
+      msrpPrice: marketInfo.msrp || product.msrpPrice || "",
+      marketPrice: marketInfo.currentMarketValue || product.marketPrice || product.midPrice || "",
+      catalogSearchQuery: title,
+      destinations: { ...BLANK_MULTI_DESTINATION_FORM.destinations },
+      tidetradr: {
+        ...BLANK_MULTI_DESTINATION_FORM.tidetradr,
+        existingProductId: product.id || "",
+        msrpPrice: marketInfo.msrp || product.msrpPrice || "",
+        upc: product.barcode || product.upc || "",
+        sku: product.sku || "",
+        setName: expansionName,
+        productType,
+        releaseDate: product.releaseDate || product.releaseYear || "",
+        sourceUrl: catalogSourceUrl(product),
+      },
+    };
+
+    return {
+      ...base,
+      ...overrides,
+      destinations: { ...base.destinations, ...(overrides.destinations || {}) },
+      vault: { ...(overrides.vault || {}) },
+      wishlist: { ...(overrides.wishlist || {}) },
+      forge: { ...(overrides.forge || {}) },
+      tidetradr: { ...base.tidetradr, ...(overrides.tidetradr || {}) },
+    };
+  }
+
   function catalogCardDetails(product = {}) {
     return product.cardDetails || {};
   }
@@ -9051,21 +9420,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function addCatalogDetailToVault(product = selectedCatalogDetailProduct) {
     if (!product) return;
-    applyCatalogProductToVault(product.id, { stayInContext: true });
-    if (selectedCatalogDetailVariant) {
-      applyCatalogVariantToVaultForm(selectedCatalogDetailVariant, product);
-      setVaultForm((old) => ({ ...old, conditionName: selectedCatalogDetailCondition, condition: selectedCatalogDetailCondition }));
-    }
+    openProductAddFlow({
+      product,
+      source: "catalog-detail-vault",
+      destinations: { vault: true },
+      seed: {
+        variant: selectedCatalogDetailVariant?.variantName || "",
+        vault: { vaultStatus: product.catalogType === "sealed" ? "sealed" : "personal_collection" },
+      },
+    });
     closeCatalogDetail();
   }
 
   function addCatalogDetailToForge(product = selectedCatalogDetailProduct) {
     if (!product) return;
-    addCatalogItemToForge(product.id);
-    if (selectedCatalogDetailVariant) {
-      applyCatalogVariantToItemForm(selectedCatalogDetailVariant, product);
-      setItemForm((old) => ({ ...old, conditionName: selectedCatalogDetailCondition, condition: selectedCatalogDetailCondition }));
-    }
+    openProductAddFlow({
+      product,
+      source: "catalog-detail-forge",
+      destinations: { forge: true },
+      seed: {
+        variant: selectedCatalogDetailVariant?.variantName || "",
+        forge: { conditionName: selectedCatalogDetailCondition || "" },
+      },
+    });
     closeCatalogDetail();
   }
 
@@ -9077,8 +9454,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function addCatalogDetailToWatchlist(product = selectedCatalogDetailProduct) {
     if (!product) return;
-    addProductToTideTradrWatchlist(product.id);
-    setVaultToast("Product added to Watchlist.");
+    openProductAddFlow({
+      product,
+      source: "catalog-detail-watchlist",
+      destinations: { wishlist: true },
+      seed: {
+        variant: selectedCatalogDetailVariant?.variantName || "",
+        wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, addToMarketWatch: true },
+      },
+    });
+    closeCatalogDetail();
   }
 
   function checkCatalogDetailDeal(product = selectedCatalogDetailProduct) {
@@ -9088,8 +9473,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function addCatalogItemToForge(productId) {
-    applyCatalogProduct(productId);
-    openAddInventoryFlow({ preserveForm: true, source: "catalog" });
+    const product = typeof productId === "object"
+      ? productId
+      : catalogProducts.find((p) => String(p.id) === String(productId));
+    if (!product) return;
+    openProductAddFlow({ product, source: "catalog-forge", destinations: { forge: true } });
   }
 
   function currentCatalogProductGroup() {
@@ -10623,7 +11011,28 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (activeFlowModal?.type === "vaultQuickAdd") {
       return {
         title: "Vault Quick Add",
-        description: "Add, scan, or import Vault items without leaving the collection.",
+        description: "Search TideTradr, scan, manually add, import, or save a wishlist item.",
+        size: "small",
+      };
+    }
+    if (activeFlowModal?.type === "vaultCatalogSearch") {
+      return {
+        title: "Search TideTradr Catalog",
+        description: "Search by product, card, set, UPC, SKU, or shorthand, then prefill your Vault item.",
+        size: "large",
+      };
+    }
+    if (activeFlowModal?.type === "vaultScan") {
+      return {
+        title: "Scan to Vault",
+        description: "Scan is being prepared for private beta. Use search or UPC/SKU entry when scanning is not available.",
+        size: "small",
+      };
+    }
+    if (activeFlowModal?.type === "vaultImportCollection") {
+      return {
+        title: "Import Collection",
+        description: "Collection import is being prepared for private beta. Search or manual add is ready now.",
         size: "small",
       };
     }
@@ -10637,7 +11046,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (activeFlowModal?.type === "multiDestinationAdd") {
       return {
         title: "Add to Multiple Places",
-        description: "Send one item to Vault, Forge, and TideTradr with separate destination settings.",
+        description: "Send one item to Vault, Wishlist, Forge, and/or TideTradr with separate destination settings.",
         size: "large",
       };
     }
@@ -10978,7 +11387,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderForgeQuickAddFlowContent() {
     const options = [
-      { key: "inventory", title: "Add Inventory", helper: "Track a sellable item.", onClick: () => openAddInventoryFlow() },
+      { key: "inventory", title: "Add Inventory", helper: "Track a sellable item.", onClick: () => openProductAddFlow({ source: "forge-quick-add-inventory", destinations: { forge: true } }) },
       { key: "sale", title: "Add Sale", helper: "Record revenue and profit.", onClick: () => openAddSaleFlow() },
       { key: "expense", title: "Add Expense", helper: "Receipts, fees, supplies.", onClick: () => openAddExpenseFlow() },
       { key: "mileage", title: "Add Mileage", helper: "Business trip tracking.", onClick: () => openAddMileageFlow() },
@@ -11007,42 +11416,43 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     };
     const options = [
       {
-        key: "add",
-        title: "Manual Add",
-        helper: "Manual add with Vault details.",
-        onClick: () => runVaultQuickAction(() => openVaultQuickAdd({ category: "Personal collection", subTab: "collection" })),
+        key: "catalog",
+        title: "Search TideTradr Catalog",
+        helper: "Search catalog and prefill item data.",
+        onClick: () => runVaultQuickAction(() => openVaultCatalogSearchFlow({ source: "vault" })),
       },
       {
         key: "scan",
         title: "Scan to Vault",
-        helper: "Scan first, review second.",
-        onClick: () => runVaultQuickAction(() => beginScanProduct("vault")),
+        helper: "Scan a card, product, UPC, or barcode.",
+        onClick: () => runVaultQuickAction(() => openVaultScanFlow()),
       },
       {
-        key: "catalog",
-        title: "Add from TideTradr",
-        helper: "Search catalog and prefill item data.",
-        onClick: () => runVaultQuickAction(() => {
-          setActiveTab("vault");
-          setVaultAddMode("catalog");
-          setShowVaultAddForm(true);
-        }),
+        key: "add",
+        title: "Manual Add",
+        helper: "Add an item with your own details.",
+        onClick: () => runVaultQuickAction(() => openMultiDestinationAddFlow({
+          source: "vault-manual",
+          seed: { destinations: { vault: true, wishlist: false, forge: false, tidetradr: false } },
+        })),
       },
       {
         key: "collection-import",
         title: "Import Collection",
-        helper: "Upload or map a collection later.",
-        onClick: () => runVaultQuickAction(() => {
-          setActiveTab("vault");
-          setVaultAddMode("import");
-          setShowVaultAddForm(true);
-        }),
+        helper: "Upload or map a collection file.",
+        onClick: () => runVaultQuickAction(() => openVaultImportCollectionFlow()),
       },
       {
         key: "wishlist",
         title: "Add Wishlist Item",
         helper: "Save wants and future buys.",
-        onClick: () => runVaultQuickAction(() => openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist" })),
+        onClick: () => runVaultQuickAction(() => openMultiDestinationAddFlow({
+          source: "vault-wishlist",
+          seed: {
+            destinations: { vault: false, wishlist: true, forge: false, tidetradr: false },
+            wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, addToMarketWatch: true },
+          },
+        })),
       },
     ];
 
@@ -11055,6 +11465,178 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <span>{option.helper}</span>
             </button>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  function renderCatalogPickerCard(product, onSelect) {
+    const marketInfo = getTideTradrMarketInfo(product);
+    const imageUrl = catalogImage(product);
+    return (
+      <button key={product.id || catalogTitle(product)} type="button" className="catalog-picker-card" onClick={() => onSelect(product)}>
+        <div className="catalog-thumb">
+          {imageUrl ? <img src={imageUrl} alt="" /> : (
+            <div className="image-needed-placeholder">
+              <strong>{catalogProductTypeLabel(product)}</strong>
+              <span>No image</span>
+            </div>
+          )}
+        </div>
+        <span className="catalog-picker-copy">
+          <strong>{catalogTitle(product)}</strong>
+          <small>{catalogProductTypeLabel(product)}{catalogExpansionName(product) ? ` | ${catalogExpansionName(product)}` : ""}</small>
+          <small>{marketInfo.currentMarketValue ? `Market: ${money(marketInfo.currentMarketValue)}` : "Market data unavailable"}</small>
+          {product._matchReason ? <em>{product._matchReason}</em> : null}
+        </span>
+      </button>
+    );
+  }
+
+  function renderVaultCatalogSearchFlowContent() {
+    const query = String(vaultCatalogSearchQuery || "").trim();
+    const results = getCatalogPickerResults(query, 12);
+    const recentSearches = [submittedCatalogSearch, catalogSearch, "151 upc", "pr evo etb", "sv8 booster"]
+      .filter(Boolean)
+      .filter((value, index, list) => list.indexOf(value) === index)
+      .slice(0, 5);
+
+    return (
+      <div className="flow-modal-stack vault-catalog-search-flow">
+        <form className="catalog-search-form" onSubmit={runVaultCatalogSearch}>
+          <Field label="Search TideTradr Catalog">
+            <SmartCatalogSearchBox
+              value={vaultCatalogSearchQuery}
+              onChange={setVaultCatalogSearchQuery}
+              onSearch={(value) => runVaultCatalogSearch(null, value)}
+              onSelectSuggestion={selectVaultCatalogSearchSuggestion}
+              supabase={supabase}
+              isSupabaseConfigured={isSupabaseConfigured}
+              mapRow={mapCatalog}
+              productGroup="All"
+              dataFilter="All"
+              placeholder="Search by product, card, set, UPC, SKU, or shorthand..."
+              maxSuggestions={8}
+              money={money}
+            />
+          </Field>
+          <p className="compact-subtitle">Try: 151 upc, pr evo etb, sv8 booster, zard, pika</p>
+          <button type="submit">Search TideTradr</button>
+        </form>
+
+        {!query ? (
+          <div className="empty-state small-empty-state">
+            <h3>Search TideTradr to prefill your Vault item.</h3>
+            <p>Use a product name, card name, set, UPC, SKU, or shorthand.</p>
+          </div>
+        ) : null}
+
+        {!query && recentSearches.length ? (
+          <div className="catalog-chip-row" aria-label="Recent catalog searches">
+            {recentSearches.map((value) => (
+              <button key={value} type="button" className="secondary-button" onClick={() => {
+                setVaultCatalogSearchQuery(value);
+                runVaultCatalogSearch(null, value);
+              }}>
+                {value}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {query && supabaseCatalogStatus.loading ? (
+          <div className="small-empty-state">
+            <strong>Searching TideTradr...</strong>
+            <span>Looking for catalog matches and shorthand aliases.</span>
+          </div>
+        ) : null}
+
+        {query && results.length ? (
+          <div className="catalog-picker-grid">
+            {results.map((product) => renderCatalogPickerCard(product, selectVaultCatalogSearchProduct))}
+          </div>
+        ) : null}
+
+        {query && !supabaseCatalogStatus.loading && !results.length ? (
+          <div className="empty-state small-empty-state">
+            <h3>No match found.</h3>
+            <p>Continue manual entry or submit a TideTradr suggestion for admin review.</p>
+            <div className="flow-modal-top-actions catalog-selector-actions">
+              <button type="button" className="secondary-button" onClick={() => openMultiDestinationAddFlow({
+                source: "vault-catalog-manual",
+                seed: {
+                  itemName: vaultCatalogSearchQuery,
+                  catalogSearchQuery: vaultCatalogSearchQuery,
+                  destinations: { vault: true, wishlist: false, forge: false, tidetradr: false },
+                },
+              })}>
+                Continue manual entry
+              </button>
+              <button type="button" onClick={() => openMultiDestinationAddFlow({
+                source: "vault-catalog-suggestion",
+                seed: {
+                  itemName: vaultCatalogSearchQuery,
+                  catalogSearchQuery: vaultCatalogSearchQuery,
+                  destinations: { vault: false, wishlist: false, forge: false, tidetradr: true },
+                  tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, action: "suggest" },
+                },
+              })}>
+                Suggest to TideTradr
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderVaultScanFlowContent() {
+    return (
+      <div className="flow-modal-stack vault-placeholder-flow">
+        <div className="small-empty-state">
+          <strong>Scanning is being prepared for private beta.</strong>
+          <span>For now, you can search TideTradr or enter UPC/SKU manually.</span>
+        </div>
+        <div className="forge-quick-add-grid quick-find-options">
+          <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-scan" })}>
+            <strong>Search TideTradr</strong>
+            <span>Find a catalog item and prefill the add flow.</span>
+          </button>
+          <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-upc" })}>
+            <strong>Enter UPC/SKU</strong>
+            <span>Type an identifier into catalog search.</span>
+          </button>
+          <button type="button" className="forge-quick-add-option" onClick={() => {
+            if (!closeFlowModal({ force: true, reset: false })) return;
+            beginScanProduct("vault");
+          }}>
+            <strong>Open Scanner</strong>
+            <span>Use the camera scanner when permissions are available.</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderVaultImportCollectionFlowContent() {
+    return (
+      <div className="flow-modal-stack vault-placeholder-flow">
+        <div className="small-empty-state">
+          <strong>Collection import is being prepared for private beta.</strong>
+          <span>You can manually add items or search TideTradr for now.</span>
+        </div>
+        <div className="forge-quick-add-grid quick-find-options">
+          <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-import" })}>
+            <strong>Search TideTradr</strong>
+            <span>Prefill one item from the catalog.</span>
+          </button>
+          <button type="button" className="forge-quick-add-option" onClick={() => openMultiDestinationAddFlow({
+            source: "vault-import-manual",
+            seed: { destinations: { vault: true, wishlist: false, forge: false, tidetradr: false } },
+          })}>
+            <strong>Manual Add</strong>
+            <span>Add an item with your own details.</span>
+          </button>
         </div>
       </div>
     );
@@ -11082,7 +11664,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <span>Run the TideTradr catalog search.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runOption(() => beginScanProduct("none"))}>
-            <strong>Scan</strong>
+            <strong>Scan Product/Card</strong>
             <span>Scan a product or card barcode.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runQuickFindSearch(null, "barcode")}>
@@ -11100,21 +11682,96 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderMultiDestinationAddFlowContent() {
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
+    const catalogMatchQuery = String(multiDestinationCatalogQuery || "").trim();
+    const catalogMatchResults = getCatalogPickerResults(catalogMatchQuery, 8);
+    const destinationOptions = [
+      {
+        key: "vault",
+        title: "Add to Vault",
+        helper: "Owned collection or stored item.",
+      },
+      {
+        key: "wishlist",
+        title: "Add to Wishlist",
+        helper: "Wanted item, not owned yet.",
+      },
+      {
+        key: "forge",
+        title: "Add to Forge",
+        helper: "Business inventory or seller tracking.",
+      },
+      {
+        key: "tidetradr",
+        title: "Add / Suggest to TideTradr",
+        helper: "Catalog, watchlist, or product suggestion.",
+      },
+    ];
     return (
-      <form className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd}>
+      <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd}>
         <section className="flow-form-section">
           <h3>Shared Item Details</h3>
           <div className="flow-form-grid">
-            <Field label="Product / Card Match">
-              <select value={multiDestinationForm.catalogProductId} onChange={(event) => selectMultiDestinationCatalogProduct(event.target.value)}>
-                <option value="">No TideTradr match selected</option>
-                {catalogProducts.slice(0, 80).map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {catalogTitle(product)}{catalogExpansionName(product) ? ` - ${catalogExpansionName(product)}` : ""}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <div className="catalog-selector-panel">
+              <Field label="Product / Card Match">
+                <SmartCatalogSearchBox
+                  value={multiDestinationCatalogQuery}
+                  onChange={setMultiDestinationCatalogQuery}
+                  onSearch={(value) => {
+                    setMultiDestinationCatalogQuery(value);
+                    if (String(value || "").trim()) {
+                      loadImportedPokemonCatalog(value, {
+                        page: 1,
+                        pageSize: Math.min(24, catalogPageSize || 24),
+                        mode: "general",
+                        barcode: "",
+                        forceSearch: true,
+                      });
+                    }
+                  }}
+                  onSelectSuggestion={selectMultiDestinationCatalogSuggestion}
+                  supabase={supabase}
+                  isSupabaseConfigured={isSupabaseConfigured}
+                  mapRow={mapCatalog}
+                  productGroup="All"
+                  dataFilter="All"
+                  placeholder="Search TideTradr by product, set, UPC, SKU, or shorthand..."
+                  maxSuggestions={8}
+                  money={money}
+                />
+              </Field>
+              {selectedCatalog ? (
+                <div className="selected-product-card">
+                  <div>
+                    <strong>{catalogTitle(selectedCatalog)}</strong>
+                    <span>{catalogExpansionName(selectedCatalog) || "Expansion unavailable"} | {catalogProductTypeLabel(selectedCatalog)}</span>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={clearMultiDestinationCatalogProduct}>
+                    Clear match
+                  </button>
+                </div>
+              ) : (
+                <p className="compact-subtitle">No TideTradr match selected. Search above, continue manual entry, or suggest a missing product.</p>
+              )}
+              {catalogMatchQuery && catalogMatchResults.length ? (
+                <div className="catalog-selector-results">
+                  {catalogMatchResults.map((product) => renderCatalogPickerCard(product, selectMultiDestinationCatalogProduct))}
+                </div>
+              ) : null}
+              {catalogMatchQuery && !catalogMatchResults.length && !selectedCatalog ? (
+                <div className="small-empty-state catalog-selector-empty">
+                  <strong>No match found.</strong>
+                  <span>Continue manual entry or submit this item for TideTradr review.</span>
+                  <div className="catalog-selector-actions">
+                    <button type="button" className="secondary-button" onClick={() => setMultiDestinationCatalogQuery("")}>
+                      Continue manual entry
+                    </button>
+                    <button type="button" onClick={markMultiDestinationMissingCatalog}>
+                      Suggest to TideTradr
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
             <Field label="Item Name">
               <input
                 value={multiDestinationForm.itemName}
@@ -11128,6 +11785,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 value={multiDestinationForm.productType}
                 onChange={(event) => updateMultiDestinationField("productType", event.target.value)}
                 placeholder="Elite Trainer Box, Single Card, Booster Bundle..."
+              />
+            </Field>
+            <Field label="Set / Expansion if known">
+              <input
+                value={multiDestinationForm.setName}
+                onChange={(event) => updateMultiDestinationField("setName", event.target.value)}
+                placeholder="Prismatic Evolutions, 151, Surging Sparks..."
+              />
+            </Field>
+            <Field label="Variant if card">
+              <input
+                value={multiDestinationForm.variant}
+                onChange={(event) => updateMultiDestinationField("variant", event.target.value)}
+                placeholder="Normal, Holofoil, Reverse Holofoil, promo..."
               />
             </Field>
             <Field label="UPC / SKU if known">
@@ -11158,12 +11829,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               />
             </Field>
           </div>
-          {selectedCatalog ? (
-            <div className="selected-product-card">
-              <strong>{catalogTitle(selectedCatalog)}</strong>
-              <span>{catalogExpansionName(selectedCatalog) || "Expansion unavailable"} | {selectedCatalog.productType || "Product type unavailable"}</span>
-            </div>
-          ) : null}
           <Field label="Notes">
             <textarea
               value={multiDestinationForm.notes}
@@ -11176,18 +11841,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <section className="flow-form-section">
           <h3>Destinations</h3>
           <div className="destination-checkbox-grid">
-            <label className="destination-checkbox">
-              <input type="checkbox" checked={multiDestinationForm.destinations.vault} onChange={(event) => updateMultiDestinationToggle("vault", event.target.checked)} />
-              <span>Add to Vault</span>
-            </label>
-            <label className="destination-checkbox">
-              <input type="checkbox" checked={multiDestinationForm.destinations.forge} onChange={(event) => updateMultiDestinationToggle("forge", event.target.checked)} />
-              <span>Add to Forge</span>
-            </label>
-            <label className="destination-checkbox">
-              <input type="checkbox" checked={multiDestinationForm.destinations.tidetradr} onChange={(event) => updateMultiDestinationToggle("tidetradr", event.target.checked)} />
-              <span>Add / Suggest to TideTradr</span>
-            </label>
+            {destinationOptions.map((option) => {
+              const checked = Boolean(multiDestinationForm.destinations[option.key]);
+              return (
+                <label className={`destination-checkbox ${checked ? "is-selected" : ""}`} key={option.key}>
+                  <input type="checkbox" checked={checked} onChange={(event) => updateMultiDestinationToggle(option.key, event.target.checked)} />
+                  <span>
+                    <strong>{option.title}</strong>
+                    <small>{option.helper}</small>
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </section>
 
@@ -11214,6 +11879,57 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <Field label="Purchase Date">
                 <input type="date" value={multiDestinationForm.vault.purchaseDate} onChange={(event) => updateMultiDestinationSection("vault", "purchaseDate", event.target.value)} />
               </Field>
+              <Field label="Storage Location">
+                <input value={multiDestinationForm.vault.storageLocation} onChange={(event) => updateMultiDestinationSection("vault", "storageLocation", event.target.value)} placeholder="Binder, shelf, box, display case..." />
+              </Field>
+              <Field label="Vault Notes">
+                <textarea value={multiDestinationForm.vault.notes} onChange={(event) => updateMultiDestinationSection("vault", "notes", event.target.value)} placeholder="Owned item notes for Vault only." />
+              </Field>
+            </div>
+          </section>
+        ) : null}
+
+        {multiDestinationForm.destinations.wishlist ? (
+          <section className="flow-form-section destination-settings">
+            <h3>Wishlist Settings</h3>
+            <p className="compact-subtitle">
+              Wishlist quantity is wanted quantity only. It does not count as owned Vault inventory or collection value.
+            </p>
+            <div className="flow-form-grid">
+              <Field label="Quantity Wanted">
+                <input type="number" min="1" value={multiDestinationForm.wishlist.quantity} onChange={(event) => updateMultiDestinationSection("wishlist", "quantity", event.target.value)} />
+              </Field>
+              <Field label="Priority">
+                <select value={multiDestinationForm.wishlist.priority} onChange={(event) => updateMultiDestinationSection("wishlist", "priority", event.target.value)}>
+                  {["Low", "Medium", "High", "Grail"].map((priority) => (
+                    <option key={priority} value={priority}>{priority}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Target Price">
+                <input type="number" min="0" step="0.01" value={multiDestinationForm.wishlist.targetPrice} onChange={(event) => updateMultiDestinationSection("wishlist", "targetPrice", event.target.value)} placeholder="Optional" />
+              </Field>
+              <Field label="Desired Condition">
+                <select value={multiDestinationForm.wishlist.desiredCondition} onChange={(event) => updateMultiDestinationSection("wishlist", "desiredCondition", event.target.value)}>
+                  <option value="">Any condition</option>
+                  {VAULT_CONDITIONS.filter(Boolean).map((condition) => (
+                    <option key={condition} value={condition}>{condition}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Wishlist Notes">
+                <textarea value={multiDestinationForm.wishlist.notes} onChange={(event) => updateMultiDestinationSection("wishlist", "notes", event.target.value)} placeholder="Why you want it, preferred edition, gift idea, etc." />
+              </Field>
+              <div className="flow-checkbox-stack">
+                <label>
+                  <input type="checkbox" checked={Boolean(multiDestinationForm.wishlist.alertMarketPrice)} onChange={(event) => updateMultiDestinationSection("wishlist", "alertMarketPrice", event.target.checked)} />
+                  <span>Alert / watch market price when supported</span>
+                </label>
+                <label>
+                  <input type="checkbox" checked={Boolean(multiDestinationForm.wishlist.addToMarketWatch)} onChange={(event) => updateMultiDestinationSection("wishlist", "addToMarketWatch", event.target.checked)} />
+                  <span>Add to Market Watch if this item is linked to TideTradr</span>
+                </label>
+              </div>
             </div>
           </section>
         ) : null}
@@ -11237,6 +11953,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <Field label="Business Category">
                 <input value={multiDestinationForm.forge.businessCategory} onChange={(event) => updateMultiDestinationSection("forge", "businessCategory", event.target.value)} />
               </Field>
+              <Field label="Condition">
+                <select value={multiDestinationForm.forge.conditionName} onChange={(event) => updateMultiDestinationSection("forge", "conditionName", event.target.value)}>
+                  <option value="">Near Mint / Sealed by default</option>
+                  {VAULT_CONDITIONS.filter(Boolean).map((condition) => (
+                    <option key={condition} value={condition}>{condition}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Forge Notes">
+                <textarea value={multiDestinationForm.forge.notes} onChange={(event) => updateMultiDestinationSection("forge", "notes", event.target.value)} placeholder="Business inventory notes for Forge only." />
+              </Field>
             </div>
           </section>
         ) : null}
@@ -11248,17 +11975,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               TideTradr is catalog and market data. Normal users submit new universal catalog items for review; admins can create directly.
             </p>
             <div className="flow-form-grid">
-              <Field label="Existing Catalog Product">
-                <select value={multiDestinationForm.tidetradr.existingProductId} onChange={(event) => {
-                  updateMultiDestinationSection("tidetradr", "existingProductId", event.target.value);
-                  if (event.target.value) selectMultiDestinationCatalogProduct(event.target.value);
-                }}>
-                  <option value="">New or missing product</option>
-                  {catalogProducts.slice(0, 80).map((product) => (
-                    <option key={product.id} value={product.id}>{catalogTitle(product)}</option>
-                  ))}
-                </select>
-              </Field>
+              <div className="selected-product-card tide-tradr-link-card">
+                <div>
+                  <strong>{selectedCatalog ? "Link to existing TideTradr product" : "Suggest missing product"}</strong>
+                  <span>{selectedCatalog ? catalogTitle(selectedCatalog) : "No existing product selected. Search Product / Card Match above to link one."}</span>
+                </div>
+                {selectedCatalog ? (
+                  <button type="button" className="secondary-button" onClick={clearMultiDestinationCatalogProduct}>
+                    Clear
+                  </button>
+                ) : (
+                  <button type="button" className="secondary-button" onClick={markMultiDestinationMissingCatalog}>
+                    Use as suggestion
+                  </button>
+                )}
+              </div>
               <Field label="MSRP">
                 <input type="number" min="0" step="0.01" value={multiDestinationForm.tidetradr.msrpPrice} onChange={(event) => updateMultiDestinationSection("tidetradr", "msrpPrice", event.target.value)} placeholder="Optional" />
               </Field>
@@ -11280,13 +12011,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <Field label="Source / Proof URL">
                 <input value={multiDestinationForm.tidetradr.sourceUrl} onChange={(event) => updateMultiDestinationSection("tidetradr", "sourceUrl", event.target.value)} placeholder="Official, retailer, or price source URL" />
               </Field>
+              <Field label="Correction Notes">
+                <textarea value={multiDestinationForm.tidetradr.correctionNotes} onChange={(event) => updateMultiDestinationSection("tidetradr", "correctionNotes", event.target.value)} placeholder="What should TideTradr/admin review?" />
+              </Field>
             </div>
           </section>
         ) : null}
 
-        <div className="flow-form-footer">
-          <button type="submit">Add / Submit Selected Destinations</button>
-        </div>
+        <p className="compact-subtitle">Cancel and Add Item stay available in the modal footer.</p>
       </form>
     );
   }
@@ -11413,6 +12145,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (activeFlowModal?.type === "forgeQuickAdd") return renderForgeQuickAddFlowContent();
     if (activeFlowModal?.type === "forgeImport") return renderForgeImportFlowContent();
     if (activeFlowModal?.type === "vaultQuickAdd") return renderVaultQuickAddFlowContent();
+    if (activeFlowModal?.type === "vaultCatalogSearch") return renderVaultCatalogSearchFlowContent();
+    if (activeFlowModal?.type === "vaultScan") return renderVaultScanFlowContent();
+    if (activeFlowModal?.type === "vaultImportCollection") return renderVaultImportCollectionFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
     if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
     if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();
@@ -11992,6 +12727,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
                 {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "scoutSubmit", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
               </button>
+              {activeFlowModal?.type === "multiDestinationAdd" ? (
+                <button type="submit" form="multi-destination-add-form">Add Item</button>
+              ) : null}
             </div>
           </section>
         </div>
@@ -12214,19 +12952,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
-      {showVaultAddForm ? (
+      {legacyVaultAddModalEnabled && showVaultAddForm ? (
         <div className="location-modal-backdrop vault-add-backdrop" role="presentation" onClick={() => closeVaultAddModal()}>
           <section className="location-modal vault-add-modal" role="dialog" aria-modal="true" aria-labelledby="vault-add-title" onClick={(event) => event.stopPropagation()}>
             <div className="compact-card-header">
               <div>
                 <h2 id="vault-add-title">Add Item to Vault</h2>
-                <p>Add from TideTradr, scan, import, or enter a card/product manually.</p>
+                <p>Search TideTradr, scan, import, or enter a card/product manually.</p>
               </div>
               <button type="button" className="modal-icon-close" aria-label="Close Add Item to Vault" onClick={() => closeVaultAddModal()}>X</button>
             </div>
             <div className="quick-action-rail vault-add-tabs">
               {[
-                ["catalog", "Add from TideTradr"],
+                ["catalog", "Search TideTradr"],
                 ["scan", "Scan to Vault"],
                 ["manual", "Manual Add"],
                 ["import", "Import Collection"],
@@ -12967,7 +13705,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   {recentPurchases.length === 0 ? (
                     <div className="small-empty-state">
                       <p>No purchases logged yet.</p>
-                      <button type="button" className="secondary-button" onClick={() => openAddInventoryFlow()}>Add Purchase</button>
+                      <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "home-recent-purchase", destinations: { forge: true } })}>Add Purchase</button>
                     </div>
                   ) : (
                     recentPurchases.slice(0, 3).map((item) => (
@@ -13053,7 +13791,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               primary: { label: "Search", onClick: () => setSearchExpanded(true) },
               secondary: null,
               quickActions: [
-                { label: "Add Inventory", onClick: () => openAddInventoryFlow() },
+                { label: "Add Inventory", onClick: () => openProductAddFlow({ source: "home-quick-inventory", destinations: { forge: true } }) },
                 { label: "Add Report", onClick: () => openScoutSubmitFlow() },
                 { label: "Add Expense", onClick: () => openAddExpenseFlow() },
                 { label: "Search", onClick: () => setSearchExpanded(true) },
@@ -13104,7 +13842,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section className="panel dashboard-section" style={dashboardSectionStyle("quick_actions")}>
               <h2>Quick Actions</h2>
               <div className="quick-actions home-inline-actions">
-                <button type="button" onClick={() => openAddInventoryFlow()}>Add Forge Item</button>
+                <button type="button" onClick={() => openProductAddFlow({ source: "home-forge-item", destinations: { forge: true } })}>Add Forge Item</button>
                 <button type="button" onClick={() => {
                   openScoutSubmitFlow();
                 }}>Submit Scout Report</button>
@@ -14869,9 +15607,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   {tideTradrMarketInfo.needsReview ? " | Needs Review" : ""}
                 </p>
                 <div className="quick-actions">
-                  {tideTradrLookupProduct ? <button type="button" onClick={() => { applyCatalogProduct(tideTradrLookupProduct.id); openAddInventoryFlow({ preserveForm: true, source: "tidetradr" }); }}>Add to Forge</button> : null}
-                  {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(tideTradrLookupProduct.id)}>Add to Vault</button> : null}
-                  {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(tideTradrLookupProduct.id)}>Add to Watchlist</button> : null}
+                  {tideTradrLookupProduct ? <button type="button" onClick={() => openProductAddFlow({ product: tideTradrLookupProduct, source: "tidetradr-preview-forge", destinations: { forge: true } })}>Add to Forge</button> : null}
+                  {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: tideTradrLookupProduct, source: "tidetradr-preview-vault", destinations: { vault: true } })}>Add to Vault</button> : null}
+                  {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => openProductAddFlow({
+                    product: tideTradrLookupProduct,
+                    source: "tidetradr-preview-wishlist",
+                    destinations: { wishlist: true },
+                    seed: { wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, addToMarketWatch: true } },
+                  })}>Add to Watchlist</button> : null}
                 </div>
               </CollapsibleFeatureSection>
               ) : null}
@@ -14930,6 +15673,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="card"><p>ROI</p><h2>{dealRoi.toFixed(1)}%</h2></div>
                 </div>
                 <p className="compact-subtitle">{dealRecommendationReason}</p>
+                <div className="quick-actions">
+                  <button type="button" onClick={openDealFinderAddItem}>Add item from this deal</button>
+                </div>
               </CollapsibleFeatureSection>
 
               <CollapsibleFeatureSection title="Pinned Market Watch" summary="Saved watchlist products and pinned market items" open={isFeatureSectionOpen("market_watchlist")} onToggle={() => toggleFeatureSection("market_watchlist")}>
@@ -15642,7 +16388,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <p>Search and manage business inventory. Full product details stay inside item detail.</p>
               </div>
               <div className="summary-pill-row">
-                <button type="button" onClick={() => openAddInventoryFlow()}>Add Inventory</button>
+                <button type="button" onClick={() => openProductAddFlow({ source: "forge-toolbar-inventory", destinations: { forge: true } })}>Add Inventory</button>
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from TideTradr</button>
               </div>
             </div>
@@ -15775,7 +16521,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <div className="inventory-card compact-card">
                   <h3>No Forge items found</h3>
                   <p>Add inventory, import a receipt/list, or select a TideTradr catalog item to start tracking seller inventory.</p>
-                  <button type="button" className="edit-button" onClick={() => openAddInventoryFlow()}>
+                  <button type="button" className="edit-button" onClick={() => openProductAddFlow({ source: "forge-empty-inventory", destinations: { forge: true } })}>
                     Add Forge Item
                   </button>
                 </div>
