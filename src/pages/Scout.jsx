@@ -762,7 +762,7 @@ function getBestBuyDisplayStatus(item) {
   return item.stockStatus || "Unknown";
 }
 
-export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compact = false, onLocationRequired = () => true }) {
+export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compact = false, onLocationRequired = () => true, adminMode = false }) {
   const [stores, setStores] = useState([]);
   const [scoutSubTab, setScoutSubTab] = useState("overview");
   const [selectedStoreId, setSelectedStoreId] = useState("");
@@ -892,15 +892,31 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compa
   });
   const targetSubTabKey = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.tab;
   const targetSubTabId = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.id;
+  const targetSubTabAction = typeof targetSubTab === "string" ? "" : targetSubTab?.action;
+  const targetSubTabProductName = typeof targetSubTab === "string" ? "" : targetSubTab?.productName || "";
 
   useEffect(() => {
     if (targetSubTabKey) {
-      setScoutSubTab(targetSubTabKey);
+      const nextSubTab = targetSubTabKey === "whatDidISee" ? "reports" : targetSubTabKey;
+      setScoutSubTab(nextSubTab);
       if (targetSubTabKey === "stores") {
         setStoreDirectoryView("landing");
       }
+      if (targetSubTabKey === "stores" && targetSubTabAction === "missingStore") {
+        setMissingStoreModalOpen(true);
+      }
+      if ((targetSubTabKey === "reports" || targetSubTabKey === "whatDidISee") && targetSubTabAction === "productSighting") {
+        setReportForm((current) => ({
+          ...current,
+          reportType: "Product Sighting / What Did I See",
+          itemName: targetSubTabProductName || current.itemName,
+        }));
+      }
+      if (targetSubTabKey === "reports" && targetSubTabAction === "storeCorrection") {
+        setReportForm((current) => ({ ...current, reportType: "Store Correction" }));
+      }
     }
-  }, [targetSubTabKey, targetSubTabId]);
+  }, [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductName]);
 
   const [editStoreForm, setEditStoreForm] = useState({
     name: "",
@@ -912,7 +928,7 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compa
   });
 
   const [reportForm, setReportForm] = useState({
-    reportType: "Restock sighting",
+    reportType: "Store Restock Report",
     itemName: "",
     quantitySeen: "",
     price: "",
@@ -1163,7 +1179,7 @@ export default function Scout({ targetSubTab = { tab: "overview", id: 0 }, compa
     setEditingReportId(null);
     setReportPhoto(null);
     setReportForm({
-      reportType: "Restock sighting",
+      reportType: "Store Restock Report",
       itemName: "",
       quantitySeen: "",
       price: "",
@@ -2402,6 +2418,15 @@ async function handleUpdateStore(e) {
     setStoreDirectoryView("detail");
   }
 
+  function openStoreReport(storeId, reportType = "Store Restock Report") {
+    setSelectedStoreId(storeId);
+    setScoutSubTab("reports");
+    setReportForm((current) => ({
+      ...current,
+      reportType,
+    }));
+  }
+
   function backToStoresLanding() {
     setSelectedStoreId("");
     setSelectedChain("All");
@@ -3078,8 +3103,8 @@ async function handleUpdateStore(e) {
                 <div style={styles.row}>
                   <button type="button" style={styles.buttonSoft} onClick={() => confirmTidepoolReport(report.reportId)}>Confirm</button>
                   <button type="button" style={styles.buttonSoft} onClick={() => disputeTidepoolReport(report.reportId)}>Dispute</button>
-                  <button type="button" style={styles.buttonSoft} onClick={() => adminSetTidepoolStatus(report.reportId, "verified")}>Admin Verify</button>
-                  <button type="button" style={styles.buttonSoft} onClick={() => adminSetTidepoolStatus(report.reportId, "expired")}>Expire</button>
+                  {adminMode ? <button type="button" style={styles.buttonSoft} onClick={() => adminSetTidepoolStatus(report.reportId, "verified")}>Admin Verify</button> : null}
+                  {adminMode ? <button type="button" style={styles.buttonSoft} onClick={() => adminSetTidepoolStatus(report.reportId, "expired")}>Expire</button> : null}
                 </div>
               </div>
             ))}
@@ -3134,7 +3159,7 @@ async function handleUpdateStore(e) {
                         <button type="button" style={styles.buttonSoft} onClick={() => shareTidepoolEvent(event)}>Share Event</button>
                         <button type="button" style={styles.buttonSoft} onClick={() => reportTidepoolEvent(event.eventId)}>Report Event</button>
                         {event.userId === LOCAL_SCOUT_USER_ID ? <button type="button" style={styles.buttonDanger} onClick={() => adminSetTidepoolEventStatus(event.eventId, "canceled")}>Cancel My Event</button> : null}
-                        <button type="button" style={styles.buttonSoft} onClick={() => adminSetTidepoolEventStatus(event.eventId, "approved", event.kidFriendly ? "pending" : "verified")}>Admin Approve</button>
+                        {adminMode ? <button type="button" style={styles.buttonSoft} onClick={() => adminSetTidepoolEventStatus(event.eventId, "approved", event.kidFriendly ? "pending" : "verified")}>Admin Approve</button> : null}
                       </div>
                     </div>
                   ))
@@ -3246,13 +3271,15 @@ async function handleUpdateStore(e) {
                 value={reportForm.reportType}
                 onChange={(e) => setReportForm((current) => ({ ...current, reportType: e.target.value }))}
               >
-                <option>Restock sighting</option>
-                <option>Empty shelf</option>
-                <option>Price/limit info</option>
-                <option>Online drop</option>
-                <option>Event/community tip</option>
-                <option>Other</option>
+                <option>Store Restock Report</option>
+                <option>Product Sighting / What Did I See</option>
+                <option>Store Correction</option>
+                <option>Purchase Limit Update</option>
+                <option>Restock Pattern Suggestion</option>
               </select>
+              {reportForm.reportType === "Product Sighting / What Did I See" ? (
+                <p style={styles.tiny}>Use this when you saw products in store but do not need to submit a full restock report.</p>
+              ) : null}
               <h3 style={{ margin: "8px 0 0" }}>Step 2: Where?</h3>
               <select
                 style={styles.input}
@@ -3268,11 +3295,12 @@ async function handleUpdateStore(e) {
               </select>
               <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Suggest missing store</button>
               <h3 style={{ margin: "8px 0 0" }}>Step 3: What did you see?</h3>
+              <p style={styles.tiny}>Leave quantity or price blank if you are not sure.</p>
               <input
                 style={styles.input}
                 value={reportForm.itemName}
                 onChange={(e) => setReportForm((current) => ({ ...current, itemName: e.target.value }))}
-                placeholder="Item name"
+                placeholder={reportForm.reportType === "Store Correction" ? "Store detail to correct" : "Product or item name"}
               />
               <input
                 style={styles.input}
@@ -3293,18 +3321,24 @@ async function handleUpdateStore(e) {
                 placeholder="What did you see?"
               />
               <h3 style={{ margin: "8px 0 0" }}>Date / time</h3>
-              <input
-                style={styles.input}
-                type="date"
-                value={reportForm.reportDate}
-                onChange={(e) => setReportForm((current) => ({ ...current, reportDate: e.target.value }))}
-              />
-              <input
-                style={styles.input}
-                type="time"
-                value={reportForm.reportTime}
-                onChange={(e) => setReportForm((current) => ({ ...current, reportTime: e.target.value }))}
-              />
+              <label style={{ ...styles.tiny, display: "grid", gap: "6px" }}>
+                Date seen
+                <input
+                  style={styles.input}
+                  type="date"
+                  value={reportForm.reportDate}
+                  onChange={(e) => setReportForm((current) => ({ ...current, reportDate: e.target.value }))}
+                />
+              </label>
+              <label style={{ ...styles.tiny, display: "grid", gap: "6px" }}>
+                Time seen
+                <input
+                  style={styles.input}
+                  type="time"
+                  value={reportForm.reportTime}
+                  onChange={(e) => setReportForm((current) => ({ ...current, reportTime: e.target.value }))}
+                />
+              </label>
               <details>
                 <summary>Step 4: Proof / More Details</summary>
                 <div style={{ ...styles.formGrid, marginTop: "12px" }}>
@@ -3800,8 +3834,9 @@ async function handleUpdateStore(e) {
                               </div>
                               <div style={styles.storeRowActions}>
                                 <button type="button" style={styles.iconButton} aria-label={store.favorite ? "Unfavorite store" : "Favorite store"} onClick={(event) => { event.stopPropagation(); toggleStoreFavorite(store.id); }}>
-                                  {store.favorite ? "Fav" : "+"}
+                                  {store.favorite ? "Favorited" : "Favorite"}
                                 </button>
+                                <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreReport(store.id); }}>Report</button>
                                 <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreDetail(store.id); }}>Open Store</button>
                               </div>
                             </div>
@@ -3890,7 +3925,7 @@ async function handleUpdateStore(e) {
                         <h2 style={styles.sectionTitle}>Best Buy Stock</h2>
                         <p style={{ ...styles.empty, paddingTop: 0 }}>Check retailer-level stock before selecting a specific Best Buy store.</p>
                       </div>
-                      <span style={styles.badge}>{/mock/i.test(String(bestBuySourceStatus)) ? "Mock Data" : `Source: ${bestBuySourceStatus}`}</span>
+                      <span style={styles.badge}>{/mock/i.test(String(bestBuySourceStatus)) ? "Mock data only - live Best Buy lookup not connected" : `Source: ${bestBuySourceStatus}`}</span>
                     </div>
                     <p style={styles.tiny}>Last checked: {bestBuyLastChecked}</p>
                     <div style={styles.statsRow}>
@@ -3918,35 +3953,38 @@ async function handleUpdateStore(e) {
                     {/mock/i.test(String(bestBuySourceStatus)) ? (
                       <p style={styles.tiny}>Live Best Buy lookup is not connected yet. These results are mock examples for testing the Scout flow.</p>
                     ) : null}
-                    <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
-                      {bestBuyStockResults.slice(0, 3).map((item) => {
-                        const displayStatus = getBestBuyDisplayStatus(item);
-                        return (
-                          <div key={`${item.bestBuySku}-${item.storeId || item.zipChecked || item.productName}`} style={styles.listCard}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "start" }}>
-                              <div>
-                                <strong>{item.productName}</strong>
-                                <p style={styles.tiny}>Best Buy SKU: {item.bestBuySku || "Unknown"}</p>
+                    <details style={{ marginTop: "12px" }}>
+                      <summary style={{ cursor: "pointer", fontWeight: 800 }}>Test Results</summary>
+                      <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
+                        {bestBuyStockResults.slice(0, 3).map((item) => {
+                          const displayStatus = getBestBuyDisplayStatus(item);
+                          return (
+                            <div key={`${item.bestBuySku}-${item.storeId || item.zipChecked || item.productName}`} style={styles.listCard}>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "start" }}>
+                                <div>
+                                  <strong>{item.productName}</strong>
+                                  <p style={styles.tiny}>Best Buy SKU: {item.bestBuySku || "Unknown"}</p>
+                                </div>
+                                <div style={styles.row}>
+                                  <span style={styles.badge}>{displayStatus}</span>
+                                  <span style={styles.badge}>{/mock/i.test(String(item.sourceStatus || item.sourceType || bestBuySourceStatus)) ? "Mock Data" : item.sourceStatus || item.sourceType || "Unknown"}</span>
+                                </div>
                               </div>
                               <div style={styles.row}>
-                                <span style={styles.badge}>{displayStatus}</span>
-                                <span style={styles.badge}>{/mock/i.test(String(item.sourceStatus || item.sourceType || bestBuySourceStatus)) ? "Mock Data" : item.sourceStatus || item.sourceType || "Unknown"}</span>
+                                <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alert saved as a beta placeholder. Real alerts need backend/push later.")}>Create Alert</button>
+                                <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                                  suggestionType: SUGGESTION_TYPES.ADD_BEST_BUY_SKU,
+                                  targetTable: "retailer_products",
+                                  submittedData: item,
+                                  notes: "Best Buy SKU submitted for shared tracker review.",
+                                }, setError)}>Suggest SKU</button>
                               </div>
                             </div>
-                            <div style={styles.row}>
-                              <button type="button" style={styles.buttonSoft} onClick={() => setError("Best Buy alert saved as a beta placeholder. Real alerts need backend/push later.")}>Create Alert</button>
-                              <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
-                                suggestionType: SUGGESTION_TYPES.ADD_BEST_BUY_SKU,
-                                targetTable: "retailer_products",
-                                submittedData: item,
-                                notes: "Best Buy SKU submitted for shared tracker review.",
-                              }, setError)}>Suggest SKU</button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Refresh/check stock to create mock/cached beta rows.</p> : null}
-                    </div>
+                          );
+                        })}
+                        {bestBuyStockResults.length === 0 ? <p style={styles.empty}>No Best Buy stock rows yet. Refresh/check stock to create mock/cached beta rows.</p> : null}
+                      </div>
+                    </details>
                   </div>
                 ) : null}
 
@@ -3974,8 +4012,9 @@ async function handleUpdateStore(e) {
                               </div>
                               <div style={styles.storeRowActions}>
                                 <button type="button" style={styles.iconButton} aria-label={store.favorite ? "Unfavorite store" : "Favorite store"} onClick={(event) => { event.stopPropagation(); toggleStoreFavorite(store.id); }}>
-                                  {store.favorite ? "Fav" : "+"}
+                                  {store.favorite ? "Favorited" : "Favorite"}
                                 </button>
+                                <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreReport(store.id); }}>Report</button>
                                 <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreDetail(store.id); }}>Open Store</button>
                               </div>
                             </div>
@@ -4009,7 +4048,7 @@ async function handleUpdateStore(e) {
                     <Metric label="Purchase limits" value={selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"} />
                   </div>
                   <div style={styles.row}>
-                    <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Submit Report</button>
+                    <button type="button" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit Report</button>
                     <button type="button" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite ? "Unfavorite" : "Favorite"}</button>
                     <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                       suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
@@ -4036,7 +4075,7 @@ async function handleUpdateStore(e) {
                     {reports.length === 0 ? (
                       <div style={styles.calloutCard}>
                         <p style={{ ...styles.empty, padding: 0 }}>No store reports yet. Submit a report to help improve Scout predictions.</p>
-                        <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Submit First Report</button>
+                        <button type="button" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit First Report</button>
                       </div>
                     ) : (
                       reports.slice(0, 6).map((report) => (

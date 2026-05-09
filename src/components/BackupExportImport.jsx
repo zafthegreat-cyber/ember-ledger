@@ -11,7 +11,7 @@ export default function BackupExportImport({
     <section className="backup-panel">
       <div className="beta-data-note">
         <strong>Beta data note</strong>
-        <span>Beta data is saved on this device unless you export or connect cloud sync.</span>
+        <span>Your beta data is stored on this device unless you export it or connect cloud sync.</span>
       </div>
 
       <div className="backup-actions">
@@ -27,8 +27,8 @@ export default function BackupExportImport({
         </button>
       </div>
 
-      <div className="storage-status-card">
-        <h4>Storage Status</h4>
+      <details className="storage-status-card">
+        <summary>Storage Status</summary>
         <dl>
           {storageStatus.map((item) => (
             <div key={item.label}>
@@ -37,7 +37,7 @@ export default function BackupExportImport({
             </div>
           ))}
         </dl>
-      </div>
+      </details>
 
       {importPreview ? (
         <div className="backup-preview">

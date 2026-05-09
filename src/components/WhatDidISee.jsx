@@ -125,6 +125,7 @@ export default function WhatDidISee({
   onSaveScoutReport,
   onMessage,
   onBack,
+  showHeader = true,
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
@@ -402,13 +403,15 @@ export default function WhatDidISee({
       <datalist id="what-see-stores">
         {stores.map((store) => <option key={store.id || store.name} value={store.nickname || store.storeName || store.name} />)}
       </datalist>
-      <div className="compact-card-header">
-        <div>
-          <h2>What Did I See?</h2>
-          <p>Search the imported Pokemon catalog, check what you saw in-store, and save a beta Scout sighting list.</p>
+      {showHeader ? (
+        <div className="compact-card-header">
+          <div>
+            <h2>What Did I See?</h2>
+            <p>Search the imported Pokemon catalog, check what you saw in-store, and save a beta Scout sighting list.</p>
+          </div>
+          {onBack ? <button type="button" className="secondary-button" onClick={onBack}>Back</button> : null}
         </div>
-        {onBack ? <button type="button" className="secondary-button" onClick={onBack}>Back</button> : null}
-      </div>
+      ) : null}
 
       <div className="what-see-toolbar">
         <SmartCatalogSearchBox

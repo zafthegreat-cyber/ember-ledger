@@ -31,6 +31,8 @@ export default function SmartCatalogSearchBox({
   placeholder = "Search Pokemon catalog...",
   className = "",
   inputClassName = "",
+  closeSignal = 0,
+  maxSuggestions = 5,
   money = (amount) => `$${Number(amount || 0).toFixed(2)}`,
 }) {
   const [suggestions, setSuggestions] = useState([]);
@@ -46,10 +48,16 @@ export default function SmartCatalogSearchBox({
   }, [mapRow]);
 
   useEffect(() => {
+    setOpen(false);
+    setActiveIndex(-1);
+  }, [closeSignal]);
+
+  useEffect(() => {
     const mode = detectCatalogSearchMode(value);
     if (!isSupabaseConfigured || !supabase || (!cleanedValue || (cleanedValue.length < 2 && !["barcode", "id", "cardNumber"].includes(mode)))) {
       setSuggestions([]);
       setLoading(false);
+      setOpen(false);
       setActiveIndex(-1);
       return;
     }
@@ -67,9 +75,10 @@ export default function SmartCatalogSearchBox({
           mapRow: mapRowRef.current,
         });
         if (requestId.current !== currentRequestId) return;
-        setSuggestions(result.suggestions || []);
+        const nextSuggestions = (result.suggestions || []).slice(0, maxSuggestions);
+        setSuggestions(nextSuggestions);
         setOpen(true);
-        setActiveIndex((result.suggestions || []).length ? 0 : -1);
+        setActiveIndex(nextSuggestions.length ? 0 : -1);
       } catch {
         if (requestId.current !== currentRequestId) return;
         setSuggestions([]);
@@ -80,7 +89,7 @@ export default function SmartCatalogSearchBox({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [cleanedValue, dataFilter, isSupabaseConfigured, productGroup, supabase, value]);
+  }, [cleanedValue, dataFilter, isSupabaseConfigured, maxSuggestions, productGroup, supabase, value]);
 
   const groupedSuggestions = useMemo(() => {
     return suggestions.reduce((groups, suggestion, index) => {
@@ -122,6 +131,9 @@ export default function SmartCatalogSearchBox({
       return;
     }
     if (event.key === "Enter" && onSearch) {
+      event.preventDefault();
+      setOpen(false);
+      setActiveIndex(-1);
       onSearch(value);
     }
   }

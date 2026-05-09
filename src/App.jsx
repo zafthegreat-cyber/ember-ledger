@@ -6,7 +6,6 @@ import SmartAddInventory from "./components/SmartAddInventory";
 import SmartAddCatalog from "./components/SmartAddCatalog";
 import OverflowMenu from "./components/OverflowMenu";
 import BackupExportImport from "./components/BackupExportImport";
-import WhatDidISee from "./components/WhatDidISee";
 import MarketPriceHistoryPanel from "./components/MarketPriceHistoryPanel";
 import SmartCatalogSearchBox from "./components/SmartCatalogSearchBox";
 import Scout from "./pages/Scout";
@@ -61,6 +60,7 @@ const BETA_LOCAL_MODE = true;
 const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
+const FEEDBACK_STORAGE_KEY = "et-tcg-beta-feedback";
 const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
 const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
@@ -994,6 +994,7 @@ export default function App() {
     page: "",
     steps: "",
     screenshotName: "",
+    metadata: {},
   });
   const [userSearchAliases, setUserSearchAliases] = useState([]);
   const [aliasDraft, setAliasDraft] = useState({ alias: "", canonical: "", type: "personal" });
@@ -1039,6 +1040,7 @@ export default function App() {
     forge_inventory: false,
     forge_catalog: false,
     forge_tidetradr: false,
+    forge_marketplace: false,
     vault_summary: true,
     vault_add: false,
     vault_tidetradr: false,
@@ -1116,7 +1118,9 @@ export default function App() {
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
   const [inventorySort, setInventorySort] = useState("newest");
   const [catalogSearch, setCatalogSearch] = useState("");
+  const [submittedCatalogSearch, setSubmittedCatalogSearch] = useState("");
   const [catalogBarcodeSearch, setCatalogBarcodeSearch] = useState("");
+  const [submittedCatalogBarcodeSearch, setSubmittedCatalogBarcodeSearch] = useState("");
   const [catalogDataFilter, setCatalogDataFilter] = useState("All");
   const [catalogKindFilter, setCatalogKindFilter] = useState("All");
   const [catalogSetFilter, setCatalogSetFilter] = useState("All");
@@ -1195,6 +1199,7 @@ export default function App() {
   const [marketplaceStatusFilter, setMarketplaceStatusFilter] = useState("Active");
   const [marketplaceForm, setMarketplaceForm] = useState(BLANK_MARKETPLACE_FORM);
   const [marketplaceSourcePicker, setMarketplaceSourcePicker] = useState("manual");
+  const [marketplaceView, setMarketplaceView] = useState("landing");
   const [listingReviewOpen, setListingReviewOpen] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState("");
   const [listingReportTarget, setListingReportTarget] = useState(null);
@@ -1217,6 +1222,7 @@ export default function App() {
     errors: [],
   });
   const [catalogSearchHasRun, setCatalogSearchHasRun] = useState(false);
+  const [catalogSuggestionCloseSignal, setCatalogSuggestionCloseSignal] = useState(0);
   const [supabaseCatalogStatus, setSupabaseCatalogStatus] = useState({
     loading: false,
     loadedCount: 0,
@@ -1392,10 +1398,10 @@ export default function App() {
           : "forge";
   const mobileBottomTabs = [
     { key: "home", label: "Home", target: "dashboard" },
-    { key: "forge", label: "Forge", target: "inventory" },
-    { key: "vault", label: "Vault", target: "vault" },
     { key: "scout", label: "Scout", target: "scout" },
+    { key: "vault", label: "Vault", target: "vault" },
     { key: "tideTradr", label: "TideTradr", target: "market" },
+    { key: "forge", label: "Forge", target: "inventory" },
   ];
 
   function navigateMainTab(tab) {
@@ -1423,6 +1429,7 @@ export default function App() {
         forge_expenses: false,
         forge_mileage: false,
         forge_reports: false,
+        forge_marketplace: false,
       }));
     }
     setQuickAddMenuOpen(false);
@@ -1718,19 +1725,51 @@ export default function App() {
   }
 
   function openFeedbackDialog(type) {
+    const now = new Date().toISOString();
     setFeedbackDialog(type);
     setFeedbackForm({
       whatHappened: "",
       page: activeTabLabel,
       steps: "",
       screenshotName: "",
+      metadata: {
+        appVersion: "E&T TCG beta web app",
+        route: activeTab,
+        device:
+          typeof window !== "undefined"
+            ? `${window.innerWidth}x${window.innerHeight}`
+            : "Unknown",
+        betaMode: BETA_LOCAL_MODE ? "Local beta" : "Cloud-ready",
+        timestamp: now,
+      },
     });
   }
 
   function submitFeedbackDialog(event) {
     event.preventDefault();
+    const payload = {
+      id: makeId(feedbackDialog || "feedback"),
+      type: feedbackDialog || "feedback",
+      ...feedbackForm,
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      const existing = JSON.parse(localStorage.getItem(FEEDBACK_STORAGE_KEY) || "[]");
+      localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify([payload, ...(Array.isArray(existing) ? existing : [])]));
+    } catch (error) {
+      console.warn("Unable to save beta feedback", error);
+      setVaultToast("Could not submit right now. Please try again or export beta data.");
+      return;
+    }
     setFeedbackDialog(null);
-    setVaultToast(feedbackDialog === "bug" ? "Bug report saved for beta review." : "Feedback saved for beta review.");
+    setFeedbackForm({ whatHappened: "", page: "", steps: "", screenshotName: "", metadata: {} });
+    setVaultToast(
+      feedbackDialog === "bug"
+        ? "Bug report submitted. We'll review it."
+        : feedbackDialog === "feature"
+          ? "Feature request submitted."
+          : "Thanks - feedback submitted."
+    );
   }
 
   function updateCloudSyncPreference(mode) {
@@ -2100,14 +2139,8 @@ export default function App() {
         exactMatchCount: 0,
         exactBarcodeMiss: false,
       }));
-      return;
     }
-    const delay = catalogSearch.trim() ? 350 : 80;
-    const timer = window.setTimeout(() => {
-      loadImportedPokemonCatalog(catalogSearch, { page: 1, mode: "general" });
-    }, delay);
-    return () => window.clearTimeout(timer);
-  }, [activeTab, tideTradrSubTab, catalogSearch, catalogKindFilter, catalogSetFilter, catalogTypeFilter, catalogRarityFilter, catalogDataFilter, catalogSort]);
+  }, [activeTab, tideTradrSubTab, catalogSearch, isSupabaseConfigured, supabase]);
 
   useEffect(() => {
     let frameId = 0;
@@ -3063,6 +3096,19 @@ export default function App() {
     updateLocationSettings({ trackingEnabled: false, mode: "manual" });
   }
 
+  function updateScoutAlertPreference(key, value) {
+    const nextAlertSettings = { ...(scoutSnapshot.alertSettings || {}), [key]: value };
+    setScoutSnapshot((current) => ({ ...current, alertSettings: nextAlertSettings }));
+    try {
+      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, alertSettings: nextAlertSettings }));
+      setVaultToast("Preference saved.");
+    } catch (error) {
+      console.warn("Unable to save Scout alert preference", error);
+      setVaultToast("Could not save preference right now.");
+    }
+  }
+
   function loadScoutSnapshot() {
     const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
     setScoutSnapshot({
@@ -3675,6 +3721,12 @@ export default function App() {
   }
 
   function handleCatalogScanMatch(value) {
+    if (!String(value || "").trim()) {
+      setScanMessage("Scan a barcode or enter a product name before searching.");
+      setScanReview(null);
+      setScanMatches([]);
+      return;
+    }
     setScanInput(value);
     const matches = getBestCatalogMatches(value, catalogProducts);
     setScanMatches(matches);
@@ -3839,15 +3891,20 @@ export default function App() {
       return;
     }
     setScoutSubTabTarget({ tab: subTab, id: Date.now() });
-    setScoutView(subTab === "reports" ? "submit" : subTab === "alerts" ? "alerts" : subTab === "stores" ? "stores" : "main");
+    setScoutView(subTab === "reports" ? "reports" : subTab === "alerts" ? "alerts" : subTab === "stores" ? "stores" : "main");
     setActiveTab("scout");
     setQuickAddMenuOpen(false);
   }
 
   function openWhatDidISee(product = null) {
-    setWhatDidISeeSeedProduct(product?.id ? product : null);
-    setScoutView("whatDidISee");
-    setScoutSubTabTarget({ tab: "whatDidISee", id: Date.now() });
+    setWhatDidISeeSeedProduct(null);
+    setScoutView("submit");
+    setScoutSubTabTarget({
+      tab: "reports",
+      id: Date.now(),
+      action: "productSighting",
+      productName: product?.name || product?.itemName || product?.productName || "",
+    });
     setActiveTab("scout");
     setQuickAddMenuOpen(false);
   }
@@ -3911,9 +3968,36 @@ export default function App() {
     if (action === "inventory") return setActiveTab("addInventory");
     if (action === "sale") return setActiveTab("addSale");
     if (action === "expense") return setActiveTab("expenses");
-    if (action === "storeReport") return goToScoutSection("reports");
-    if (action === "store") return goToScoutSection("stores");
+    if (action === "storeReport") {
+      setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+      setScoutView("submit");
+      setActiveTab("scout");
+      return;
+    }
+    if (action === "store") {
+      setScoutSubTabTarget({ tab: "stores", action: "missingStore", id: Date.now() });
+      setScoutView("stores");
+      setActiveTab("scout");
+      return;
+    }
+    if (action === "storeCorrection") {
+      setScoutSubTabTarget({ tab: "reports", action: "storeCorrection", id: Date.now() });
+      setScoutView("submit");
+      setActiveTab("scout");
+      return;
+    }
     if (action === "wishlist") return openVaultQuickAdd({ category: "Wishlist", subTab: "wishlist" });
+    if (action === "searchTidetradr") {
+      setActiveTab("market");
+      setTideTradrSubTab("overview");
+      return;
+    }
+    if (action === "checkDeal") {
+      setActiveTab("market");
+      setTideTradrSubTab("deal");
+      return;
+    }
+    if (action === "whatDidISee") return openWhatDidISee();
     if (action === "listing") return openMarketplaceCreate("manual", {});
     return null;
   }
@@ -5245,6 +5329,30 @@ function removeTideTradrWatchlistItem(id) {
   setTideTradrWatchlist((current) => current.filter((item) => item.id !== id));
 }
 
+function openWatchlistProductDetails(item = {}) {
+  const product = catalogProducts.find((candidate) => String(candidate.id) === String(item.productId));
+  if (product) {
+    openCatalogDetails(product);
+    return;
+  }
+  openCatalogDetails({
+    id: item.productId || item.id,
+    name: item.name,
+    setName: item.setName,
+    productType: item.productType,
+    marketPrice: item.marketValue,
+    msrp: item.msrp,
+    imageUrl: item.imageUrl,
+    imageSource: item.imageSource,
+    imageStatus: item.imageStatus,
+    imageNeedsReview: item.imageNeedsReview,
+    sourceName: item.sourceName,
+    sourceType: "watchlist",
+    lastPriceChecked: item.lastUpdated,
+    marketLastUpdated: item.lastUpdated,
+  });
+}
+
 function refreshMarketCatalog(type = "all") {
   const result = refreshCatalogMarketItems(catalogProducts, marketPriceCache, type);
   setCatalogProducts(result.catalog);
@@ -5356,6 +5464,8 @@ function useCatalogProductInDeal(productId) {
   }));
   setTideTradrLookupId(productId);
   setActiveTab("market");
+  setTideTradrSubTab("deal");
+  setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true }));
 }
 
 function goToReport(focus) {
@@ -6290,12 +6400,65 @@ async function importBulkCatalogProducts() {
   const accountStatusDescription = signedInWithSupabase
     ? currentUserProfile.email || user?.email || "Supabase account"
     : "Beta data is saved on this device unless you export or connect cloud sync.";
-  const canReviewSharedData = adminUser || BETA_LOCAL_MODE;
-  const adminToolsVisible = adminUser;
+  const localBetaAdminEnabled =
+    typeof window !== "undefined" && localStorage.getItem("et-tcg-local-admin") === "true";
+  const adminToolsVisible = adminUser || localBetaAdminEnabled;
+  const canReviewSharedData = adminToolsVisible;
   const adminReviewIdentityLabel = adminUser ? "Signed in as Admin / Founder" : "Local beta Admin Review";
   const adminReviewIdentityDetail = adminUser
     ? "Supabase auth metadata or profile grants admin access. Service-role keys stay server-only, and shared-data writes remain protected by Supabase rules."
-    : "Available only for local beta testing. Normal users submit suggestions for review instead of directly changing shared data.";
+    : "Enabled by local beta admin mode. Normal users submit suggestions for review instead of directly changing shared data.";
+  const notificationPreferenceRows = [
+    { key: "scoutAlerts", label: "Scout alerts", description: "Store, report, and restock intelligence alerts." },
+    { key: "favoriteStoreAlerts", label: "Favorite store alerts", description: "Updates tied to stores you have saved." },
+    { key: "watchlistProductAlerts", label: "Watchlist product alerts", description: "Catalog or market changes for watched products." },
+    { key: "onlineDropAlerts", label: "Online drop alerts", description: "Best Buy and online availability checks when connected." },
+    { key: "verifiedOnly", label: "Verified-only alerts", description: "Prefer alerts backed by verified reports." },
+    { key: "quietHours", label: "Quiet hours", description: "Keep overnight notifications quiet when alerts go live." },
+  ];
+  const menuHomeStatRows = [
+    { key: "collection_value", label: "Collection Value" },
+    { key: "monthly_spending", label: "Monthly Spending" },
+    { key: "marketUpdates", label: "Market Updates" },
+    { key: "alerts", label: "Active Alerts" },
+  ];
+  const menuDashboardSectionRows = [
+    { key: "home_stats", label: "Today / Overview" },
+    { key: "action_center", label: "Beta Tester Path" },
+    { key: "recent_inventory", label: "Recent Activity" },
+    { key: "purchaser_spending", label: "Recent Purchases" },
+    { key: "watchlist", label: "Market Watch" },
+    { key: "store_reports", label: "Recent Reports" },
+  ];
+  const feedbackDialogCopy = {
+    bug: {
+      title: "Report a Bug",
+      intro: "Tell us what broke or looked wrong so we can clean it up for beta.",
+      label: "What happened?",
+      placeholder: "Describe what broke or looked wrong.",
+      stepsLabel: "Steps to reproduce",
+      stepsPlaceholder: "Example: Opened Scout, tapped Stores, then the list overlapped.",
+      submit: "Submit Bug Report",
+    },
+    feature: {
+      title: "Request a Feature",
+      intro: "Tell us what would make E&T TCG more useful.",
+      label: "Feature request",
+      placeholder: "What should we add, change, or make easier?",
+      stepsLabel: "What were you doing?",
+      stepsPlaceholder: "Optional context: where you expected this feature to show up.",
+      submit: "Submit Feature Request",
+    },
+    feedback: {
+      title: "Send Feedback",
+      intro: "Share what would make the beta easier to use.",
+      label: "Feedback",
+      placeholder: "What should we improve, add, remove, or make clearer?",
+      stepsLabel: "What were you doing?",
+      stepsPlaceholder: "Optional: what page or flow were you using?",
+      submit: "Submit Feedback",
+    },
+  }[feedbackDialog || "feedback"];
   const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
   const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
@@ -6619,7 +6782,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 });
 
   const filteredCatalogProducts = catalogProducts.filter((product) => {
-    const search = catalogSearch.toLowerCase();
+    const search = (catalogSearchHasRun ? submittedCatalogSearch : "").toLowerCase();
     const marketInfo = getTideTradrMarketInfo(product);
     const owned = items.some((item) => String(item.catalogProductId || "") === String(product.id));
     const watched = tideTradrWatchlist.some((item) => String(item.productId || "") === String(product.id));
@@ -6736,12 +6899,162 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function catalogSourceUrl(product = {}) {
-    return product.sourceUrl || product.marketUrl || product.tcgplayerUrl || product.imageSourceUrl || "";
+    return product.sourceUrl || product.source_url || product.marketUrl || product.market_url || product.tcgplayerUrl || product.tcgplayer_url || product.imageSourceUrl || product.image_source_url || "";
+  }
+
+  function rememberCatalogProduct(product = {}) {
+    if (!product?.id) return;
+    setCatalogProducts((current) => {
+      const exists = current.some((item) => String(item.id) === String(product.id));
+      if (exists) {
+        return current.map((item) => String(item.id) === String(product.id) ? { ...item, ...product } : item);
+      }
+      return [product, ...current];
+    });
   }
 
   function openCatalogDetails(productId) {
-    setSelectedCatalogDetailId(productId);
-    setTideTradrLookupId(productId);
+    const product = typeof productId === "object" ? productId : null;
+    const resolvedProductId = product?.id || productId;
+    if (!resolvedProductId) return;
+    if (product?.id) rememberCatalogProduct(product);
+    setSelectedCatalogDetailId(resolvedProductId);
+    setTideTradrLookupId(resolvedProductId);
+  }
+
+  function getCatalogMarketSourceLabel(product = {}) {
+    const marketInfo = getTideTradrMarketInfo(product);
+    const raw = [
+      marketInfo.sourceName,
+      marketInfo.marketStatus,
+      product.marketSource,
+      product.sourceType,
+      product.sourceName,
+      product.priceSource,
+    ].filter(Boolean).join(" ").toLowerCase();
+    if (raw.includes("live")) return "Live";
+    if (raw.includes("mock") || raw.includes("demo")) return "Mock";
+    if (raw.includes("manual") || raw.includes("admin")) return "Manual";
+    if (raw.includes("cached") || raw.includes("cache") || raw.includes("tcgcsv") || raw.includes("tcgplayer") || raw.includes("pokemon tcg") || raw.includes("supabase")) return "Cached";
+    return "Unknown";
+  }
+
+  function getCatalogIdentifierBundle(product = {}) {
+    return [
+      ["UPC / Barcode", product.upc || product.barcode],
+      ["SKU", product.sku],
+      ["External ID", product.externalProductId || product.external_product_id],
+      ["TCGplayer ID", product.tcgplayerProductId || product.tcgplayer_product_id],
+    ].filter(([, value]) => Boolean(value));
+  }
+
+  function hasCatalogMarketPrice(product = {}) {
+    const marketInfo = getTideTradrMarketInfo(product);
+    return Number(marketInfo.currentMarketValue || product.marketPrice || product.market_price || product.midPrice || product.mid_price || 0) > 0;
+  }
+
+  function hasCatalogUpcSku(product = {}) {
+    return Boolean(product.upc || product.barcode || product.sku);
+  }
+
+  function copyCatalogProductIdentifiers(product = {}) {
+    const identifiers = getCatalogIdentifierBundle(product);
+    if (!identifiers.length) {
+      setVaultToast("UPC/SKU missing. You can suggest UPC/SKU from Product Detail.");
+      return;
+    }
+    const text = identifiers.map(([label, value]) => `${label}: ${value}`).join("\n");
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => setVaultToast("UPC/SKU copied."))
+        .catch(() => setVaultToast(text));
+      return;
+    }
+    setVaultToast(text);
+  }
+
+  function suggestCatalogMissingPrice(product = {}) {
+    submitUniversalSuggestion({
+      suggestionType: SUGGESTION_TYPES.CORRECT_PRODUCT_METADATA,
+      targetTable: "catalog_items",
+      targetRecordId: product.id,
+      submittedData: {
+        name: catalogTitle(product),
+        requestedField: "market_price",
+        marketPriceMissing: !hasCatalogMarketPrice(product),
+        currentMarketPrice: getTideTradrMarketInfo(product).currentMarketValue || "",
+      },
+      currentDataSnapshot: product,
+      notes: "User requested a market price review from TideTradr Product Detail.",
+      source: "tidetradr-detail",
+    });
+  }
+
+  function suggestCatalogCorrection(product = {}) {
+    submitUniversalSuggestion({
+      suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
+      targetTable: "catalog_items",
+      targetRecordId: product.id,
+      submittedData: { name: catalogTitle(product), needsReview: true },
+      currentDataSnapshot: product,
+      notes: "User requested a full catalog detail correction review.",
+      source: "tidetradr-detail",
+    });
+  }
+
+  function suggestCatalogUpcSku(product = {}) {
+    submitUniversalSuggestion({
+      suggestionType: SUGGESTION_TYPES.ADD_UPC_SKU,
+      targetTable: "catalog_items",
+      targetRecordId: product.id,
+      submittedData: {
+        name: catalogTitle(product),
+        upc: product.upc || product.barcode || "",
+        sku: product.sku || "",
+      },
+      currentDataSnapshot: product,
+      notes: "User requested UPC/SKU review for this catalog item.",
+      source: "tidetradr-detail",
+    });
+  }
+
+  function scrollCatalogDetailToMarketHistory() {
+    if (typeof document === "undefined") return;
+    document.getElementById("catalog-market-history")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function closeCatalogDetail() {
+    setSelectedCatalogDetailId("");
+  }
+
+  function addCatalogDetailToVault(product = selectedCatalogDetailProduct) {
+    if (!product) return;
+    applyCatalogProductToVault(product.id);
+    closeCatalogDetail();
+  }
+
+  function addCatalogDetailToForge(product = selectedCatalogDetailProduct) {
+    if (!product) return;
+    addCatalogItemToForge(product.id);
+    closeCatalogDetail();
+  }
+
+  function addCatalogDetailToScoutSighting(product = selectedCatalogDetailProduct) {
+    if (!product) return;
+    closeCatalogDetail();
+    openWhatDidISee(product);
+  }
+
+  function addCatalogDetailToWatchlist(product = selectedCatalogDetailProduct) {
+    if (!product) return;
+    addProductToTideTradrWatchlist(product.id);
+    setVaultToast("Product added to Watchlist.");
+  }
+
+  function checkCatalogDetailDeal(product = selectedCatalogDetailProduct) {
+    if (!product) return;
+    useCatalogProductInDeal(product.id);
+    closeCatalogDetail();
   }
 
   function addCatalogItemToForge(productId) {
@@ -6768,10 +7081,39 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     });
   }
 
+  function closeCatalogSuggestions() {
+    setCatalogSuggestionCloseSignal((current) => current + 1);
+  }
+
+  function updateCatalogSearchInput(value) {
+    setCatalogSearch(value);
+    setCatalogBarcodeSearch("");
+    setSubmittedCatalogSearch("");
+    setSubmittedCatalogBarcodeSearch("");
+    if (!String(value || "").trim()) {
+      closeCatalogSuggestions();
+    }
+    setCatalogSearchHasRun(false);
+    setSupabaseCatalogStatus((current) => ({
+      ...current,
+      loading: false,
+      loadedCount: 0,
+      page: 1,
+      hasMore: false,
+      message: "",
+      error: "",
+      exactMatchCount: 0,
+      exactBarcodeMiss: false,
+    }));
+  }
+
   function clearCatalogSearch() {
     supabaseCatalogRequestId.current += 1;
+    closeCatalogSuggestions();
     setCatalogSearch("");
+    setSubmittedCatalogSearch("");
     setCatalogBarcodeSearch("");
+    setSubmittedCatalogBarcodeSearch("");
     setCatalogKindFilter("All");
     setCatalogDataFilter("All");
     setCatalogSetFilter("All");
@@ -6796,6 +7138,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function submitCatalogSearch(event) {
     event?.preventDefault?.();
+    closeCatalogSuggestions();
     if (!canRunCatalogSearch(catalogSearch, catalogBarcodeSearch)) {
       setCatalogSearchHasRun(false);
       setSupabaseCatalogStatus((current) => ({
@@ -6806,11 +7149,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       }));
       return;
     }
-    loadImportedPokemonCatalog(catalogSearch, { page: 1, mode: "general" });
+    const nextQuery = String(catalogSearch || "").trim();
+    setSubmittedCatalogSearch(nextQuery);
+    setSubmittedCatalogBarcodeSearch(catalogBarcodeSearch);
+    loadImportedPokemonCatalog(nextQuery, { page: 1, mode: "general", barcode: catalogBarcodeSearch });
   }
 
   function submitCatalogBarcodeSearch(event) {
     event?.preventDefault?.();
+    closeCatalogSuggestions();
     const value = catalogBarcodeSearch || catalogSearch;
     if (!String(value || "").trim()) {
       setSupabaseCatalogStatus((current) => ({
@@ -6821,27 +7168,46 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       }));
       return;
     }
+    setSubmittedCatalogSearch(value);
+    setSubmittedCatalogBarcodeSearch(value);
     loadImportedPokemonCatalog(value, { page: 1, mode: "barcode", barcode: value });
   }
 
   function selectCatalogRecommendation(recommendation) {
     const value = recommendation.searchValue || recommendation.label || catalogSearch;
     setCatalogSearch(value);
+    setSubmittedCatalogSearch("");
+    setSubmittedCatalogBarcodeSearch("");
+    setCatalogSearchHasRun(false);
+    if (recommendation.product?.id) {
+      if (recommendation.mode === "barcode" || recommendation.mode === "id" || recommendation.mode === "cardNumber") {
+        setCatalogBarcodeSearch(value);
+      }
+      openCatalogDetails(recommendation.product);
+      setSupabaseCatalogStatus((current) => ({
+        ...current,
+        loading: false,
+        loadedCount: 0,
+        page: 1,
+        hasMore: false,
+        message: "Product details opened.",
+        error: "",
+        exactMatchCount: 0,
+        exactBarcodeMiss: false,
+      }));
+      return;
+    }
     if (recommendation.mode === "barcode" || recommendation.mode === "id" || recommendation.mode === "cardNumber") {
       setCatalogBarcodeSearch(value);
+      setSubmittedCatalogSearch(value);
+      setSubmittedCatalogBarcodeSearch(value);
+      loadImportedPokemonCatalog(value, { page: 1, mode: "barcode", barcode: value });
+      return;
     }
-    if (recommendation.product?.id) {
-      setCatalogProducts((current) => [
-        recommendation.product,
-        ...current.filter((product) => String(product.id) !== String(recommendation.product.id)),
-      ]);
-    }
-    const mode = recommendation.mode === "barcode" || recommendation.mode === "id" || recommendation.mode === "cardNumber" ? "barcode" : "general";
-    loadImportedPokemonCatalog(value, {
-      page: 1,
-      mode,
-      barcode: mode === "barcode" ? value : "",
-    });
+    setCatalogBarcodeSearch("");
+    setSubmittedCatalogSearch(value);
+    setSubmittedCatalogBarcodeSearch("");
+    loadImportedPokemonCatalog(value, { page: 1, mode: recommendation.mode || "general", barcode: "" });
   }
 
   function selectVaultCatalogRecommendation(recommendation) {
@@ -7136,6 +7502,92 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderMarketSourceControls() {
+    if (!adminToolsVisible) return null;
+    return (
+      <section className="settings-subsection marketplace-admin-review">
+        <div className="compact-card-header">
+          <div>
+            <h3>Market Source Controls</h3>
+            <p>Admin-only source status, sync actions, manual values, and market to-do items.</p>
+          </div>
+          <span className="status-badge">Admin only</span>
+        </div>
+        <div className="small-empty-state admin-only-note">
+          <strong>Admin only.</strong>
+          <span>Do not expose API keys or service-role credentials in frontend code.</span>
+        </div>
+        <div className="cards mini-cards">
+          <div className="card"><p>Catalog Products</p><h2>{supabaseCatalogStatus.totalCount ?? catalogProducts.length}</h2></div>
+          <div className="card"><p>Found Market Values</p><h2>{catalogMarketPriceCount}</h2></div>
+          <div className="card"><p>Missing Market Prices</p><h2>{missingMarketPriceItems.length}</h2></div>
+          <div className="card"><p>Needs Market Check</p><h2>{needsMarketCheckItems.length}</h2></div>
+          <div className="card"><p>Cached Price Records</p><h2>{cachedMarketPriceCount}</h2></div>
+          <div className="card"><p>Failed Matches</p><h2>{failedMarketMatches.length}</h2></div>
+          <div className="card"><p>Last Sync</p><h2>{lastMarketSync === "Not synced yet" ? "None" : new Date(lastMarketSync).toLocaleDateString()}</h2></div>
+          <div className="card"><p>Live API</p><h2>Placeholder</h2></div>
+        </div>
+        <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Mock, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
+        {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
+        <div className="quick-actions">
+          <button type="button" onClick={() => refreshMarketCatalog("card")}>Sync Cards</button>
+          <button type="button" className="secondary-button" onClick={() => refreshMarketCatalog("sealed")}>Sync Sealed Products</button>
+          <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
+          <button type="button" className="secondary-button" onClick={refreshPinnedMarketWatch}>Refresh Pinned Market Watch</button>
+        </div>
+        <details className="scout-score-guidelines">
+          <summary>Manual Price Entry</summary>
+          <form className="form market-price-form" onSubmit={saveManualMarketPrice}>
+            <Field label="Catalog Item">
+              <select value={manualMarketForm.catalogItemId} onChange={(event) => setManualMarketForm((current) => ({ ...current, catalogItemId: event.target.value }))}>
+                <option value="">Choose item</option>
+                {catalogProducts.map((product) => (
+                  <option key={product.id} value={product.id}>{catalogTitle(product)}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Market Price">
+              <input type="number" step="0.01" value={manualMarketForm.marketPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, marketPrice: event.target.value }))} placeholder="Manual market value" />
+            </Field>
+            <Field label="Low / Mid / High">
+              <div className="inline-input-grid">
+                <input type="number" step="0.01" value={manualMarketForm.lowPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, lowPrice: event.target.value }))} placeholder="Low" />
+                <input type="number" step="0.01" value={manualMarketForm.midPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, midPrice: event.target.value }))} placeholder="Mid" />
+                <input type="number" step="0.01" value={manualMarketForm.highPrice} onChange={(event) => setManualMarketForm((current) => ({ ...current, highPrice: event.target.value }))} placeholder="High" />
+              </div>
+            </Field>
+            <button type="submit">Save Manual Price</button>
+          </form>
+        </details>
+        <details className="scout-score-guidelines">
+          <summary>Market To-Do</summary>
+          {needsMarketCheckItems.length || missingMarketPriceItems.length || missingMsrpItems.length ? (
+            <>
+              <ActionReport title="Needs Market Check" items={needsMarketCheckItems} button="Update Market" action={startEditingItem} />
+              <ActionReport title="Missing Market Price" items={missingMarketPriceItems} button="Add Market Price" action={startEditingItem} />
+              <ActionReport title="Missing MSRP" items={missingMsrpItems} button="Add MSRP" action={startEditingItem} />
+            </>
+          ) : (
+            <div className="empty-state">
+              <h3>No items need review</h3>
+              <p>Market to-do items will appear here when catalog prices or MSRP fields need attention.</p>
+            </div>
+          )}
+        </details>
+        <div className="market-source-list">
+          {MARKET_SOURCES.map((source) => (
+            <div className="market-source-row" key={source.key}>
+              <strong>{source.label}</strong>
+              <span>{source.status}</span>
+              <p>{source.notes}</p>
+            </div>
+          ))}
+        </div>
+        <p className="compact-subtitle">Live API keys and protected provider credentials still need backend environment variables. No service role keys or paid API keys are used in the frontend.</p>
+      </section>
+    );
+  }
+
   function renderAdminReviewPage() {
     if (!canReviewSharedData) {
       return (
@@ -7145,7 +7597,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </section>
       );
     }
-    const sections = ["All", ...Object.values(REVIEW_SECTION_LABELS)];
+    const sections = ["All", ...Object.values(REVIEW_SECTION_LABELS), "Marketplace Listings", "Market Source Controls"];
     const visibleSuggestions = suggestions.filter((suggestion) => {
       if (adminReviewFilter === "All") return true;
       return REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)] === adminReviewFilter;
@@ -7217,20 +7669,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <p>Marketplace Listings</p>
             <h2>{listingReviewItems.length}</h2>
           </button>
+          {adminToolsVisible ? (
+            <button type="button" className="card suggestion-section-card" onClick={() => setAdminReviewFilter("Market Source Controls")}>
+              <p>Market Source Controls</p>
+              <h2>{cachedMarketPriceCount}</h2>
+            </button>
+          ) : null}
         </div>
         <div className="quick-action-rail">
-          {[...sections, "Marketplace Listings"].map((section) => (
+          {sections.map((section) => (
             <button key={section} type="button" className={adminReviewFilter === section ? "primary" : "secondary-button"} onClick={() => setAdminReviewFilter(section)}>
               {section}
             </button>
           ))}
         </div>
-        {adminReviewFilter !== "Marketplace Listings" ? (
+        {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" ? (
         <div className="inventory-list compact-inventory-list">
           {visibleSuggestions.length ? visibleSuggestions.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
             <div className="empty-state">
               <h3>No review items</h3>
-              <p>Shared data suggestions will appear here before they can update public store, catalog, SKU, or Scout data.</p>
+              <p>No suggestions here yet. Suggestions from stores, catalog items, UPC/SKU, market values, and corrections will appear here.</p>
             </div>
           )}
         </div>
@@ -7254,6 +7712,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           </section>
         ) : null}
+        {(adminReviewFilter === "All" || adminReviewFilter === "Market Source Controls") ? renderMarketSourceControls() : null}
       </section>
     );
   }
@@ -7297,9 +7756,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setMarketplaceSourcePicker(sourceType);
     setMarketplaceForm(listingFromSource(sourceType, source));
     setListingReviewOpen(false);
-    setFeatureSectionsOpen((current) => ({ ...current, market_marketplace: true }));
-    setActiveTab("market");
-    setTideTradrSubTab("overview");
+    setMarketplaceView("create");
+    setActiveTab("inventory");
+    setForgeSubTab("marketplace");
+    setFeatureSectionsOpen((current) => ({ ...current, forge_marketplace: true }));
     setVaultToast("Marketplace listing draft ready. Review before submitting.");
   }
 
@@ -7378,6 +7838,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setMarketplaceForm(BLANK_MARKETPLACE_FORM);
     setListingReviewOpen(false);
     setMarketplaceSourcePicker("manual");
+    setMarketplaceView("my");
     setVaultToast(finalStatus === "Draft" ? "Listing draft saved." : "Listing submitted for review.");
   }
 
@@ -7399,9 +7860,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setMarketplaceSourcePicker(listing.sourceType || "manual");
     setListingReviewOpen(false);
     setSelectedListingId("");
-    setFeatureSectionsOpen((current) => ({ ...current, market_marketplace: true }));
-    setActiveTab("market");
-    setTideTradrSubTab("overview");
+    setMarketplaceView("create");
+    setActiveTab("inventory");
+    setForgeSubTab("marketplace");
+    setFeatureSectionsOpen((current) => ({ ...current, forge_marketplace: true }));
     setVaultToast("Listing opened for editing.");
   }
 
@@ -7492,6 +7954,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const currentSellerId = currentUserProfile.userId || user?.id;
     const publicListings = marketplaceListings.filter((listing) => listing.status === "Active");
     const myListings = marketplaceListings.filter((listing) => listing.sellerUserId === currentSellerId);
+    const draftListings = myListings.filter((listing) => listing.status === "Draft");
+    const pendingReviewListings = marketplaceListings.filter((listing) =>
+      listing.status === "Pending Review" && (listing.sellerUserId === currentSellerId || canReviewSharedData)
+    );
     const visibleMarketplaceListings = marketplaceListings.filter((listing) =>
       listing.status === "Active" || listing.sellerUserId === currentSellerId || canReviewSharedData
     );
@@ -7508,6 +7974,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         .some((value) => String(value).toLowerCase().includes(normalizedSearch));
       return matchesStatus && matchesType && matchesSearch;
     });
+    const savedListings = visibleMarketplaceListings.filter((listing) => marketplaceSavedIds.includes(listing.id));
+    const marketplacePanelTitle =
+      marketplaceView === "my" ? "My Listings" :
+      marketplaceView === "saved" ? "Saved Listings" :
+      marketplaceView === "drafts" ? "Drafts" :
+      marketplaceView === "pending" ? "Pending Review" :
+      "Browse Listings";
+    const marketplacePanelDescription =
+      marketplaceView === "my" ? "Drafts, pending review, and active listings you created." :
+      marketplaceView === "saved" ? "Listings you saved for later." :
+      marketplaceView === "drafts" ? "Listing drafts that have not been submitted yet." :
+      marketplaceView === "pending" ? "Listings waiting for admin review before becoming public." :
+      "Approved community listings only. Pending listings stay private to seller/admin.";
+    const panelListings =
+      marketplaceView === "my" ? myListings :
+      marketplaceView === "saved" ? savedListings :
+      marketplaceView === "drafts" ? draftListings :
+      marketplaceView === "pending" ? pendingReviewListings :
+      filteredListings;
     const selectedListing = marketplaceListings.find((listing) => listing.id === selectedListingId);
     const reviewListing = buildMarketplaceListing("Pending Review");
 
@@ -7524,11 +8009,28 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="card"><p>Saved</p><h2>{marketplaceSavedIds.length}</h2></div>
         </div>
 
+        <div className="quick-actions marketplace-nav-actions">
+          <button type="button" onClick={() => setMarketplaceView("create")}>Create Listing</button>
+          <button type="button" className="secondary-button" onClick={() => setMarketplaceView("browse")}>Browse Listings</button>
+          <button type="button" className="secondary-button" onClick={() => setMarketplaceView("my")}>My Listings</button>
+          <button type="button" className="secondary-button" onClick={() => setMarketplaceView("saved")}>Saved Listings</button>
+          <button type="button" className="secondary-button" onClick={() => setMarketplaceView("drafts")}>Drafts</button>
+          <button type="button" className="secondary-button" onClick={() => setMarketplaceView("pending")}>Pending Review</button>
+        </div>
+
+        {marketplaceView === "landing" ? (
+          <div className="empty-state">
+            <h3>Choose a Marketplace tool</h3>
+            <p>Create a listing, browse approved listings, review your listings, or open saved listings. Public listings go to review first.</p>
+          </div>
+        ) : null}
+
+        {marketplaceView === "create" ? (
         <div className="marketplace-create-panel">
           <div className="compact-card-header">
             <div>
               <h3>Create Listing</h3>
-              <p>Draft a listing from Forge, Vault, Catalog, or manual entry. Public listings go to review first.</p>
+              <p>Draft a listing from Vault, TideTradr Catalog, Forge, or manual entry. Public listings go to review first.</p>
             </div>
           </div>
           <div className="quick-action-rail">
@@ -7618,14 +8120,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           </form>
         </div>
+        ) : null}
 
+        {["browse", "my", "saved", "drafts", "pending"].includes(marketplaceView) ? (
         <div className="marketplace-browse-panel">
           <div className="compact-card-header">
             <div>
-              <h3>Browse Listings</h3>
-              <p>Approved community listings only. Pending listings stay private to seller/admin.</p>
+              <h3>{marketplacePanelTitle}</h3>
+              <p>{marketplacePanelDescription}</p>
             </div>
           </div>
+          {marketplaceView === "browse" ? (
           <div className="filter-grid">
             <Field label="Search">
               <input value={marketplaceSearch} onChange={(event) => setMarketplaceSearch(event.target.value)} placeholder="Search title, set, UPC, SKU, city..." />
@@ -7644,17 +8149,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </select>
             </Field>
           </div>
+          ) : null}
           <div className="inventory-list compact-inventory-list">
-            {filteredListings.length ? filteredListings.map((listing) => renderMarketplaceListingCard(listing)) : (
+            {panelListings.length ? panelListings.map((listing) => renderMarketplaceListingCard(listing)) : (
               <div className="empty-state">
                 <h3>No marketplace listings yet</h3>
-                <p>Approved listings will appear here after admin review.</p>
+                <p>
+                  {marketplaceView === "saved"
+                    ? "Saved listings will appear here."
+                    : marketplaceView === "my"
+                      ? "Create a listing draft to see it here."
+                      : marketplaceView === "drafts"
+                        ? "Saved drafts will appear here."
+                        : marketplaceView === "pending"
+                          ? "Listings submitted for admin review will appear here."
+                          : "Approved listings will appear here after admin review."}
+                </p>
               </div>
             )}
           </div>
         </div>
+        ) : null}
 
-        {myListings.length ? (
+        {false && myListings.length ? (
           <details className="scout-score-guidelines">
             <summary>My Listings</summary>
             <div className="inventory-list compact-inventory-list">
@@ -7930,7 +8447,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   <button
     type="button"
     className="topbar-market-link"
-    onClick={goToTidepool}
+    onClick={() => {
+      setQuickAddMenuOpen(false);
+      openTidepoolCommunity("Latest");
+    }}
   >
     Tidepool
   </button>
@@ -7955,12 +8475,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         + Add
       </button>
       {quickAddMenuOpen ? (
+        <>
+        <div className="quick-add-backdrop" role="presentation" onClick={() => setQuickAddMenuOpen(false)} />
         <div className="quick-add-menu" role="menu">
+          <div className="quick-add-sheet-header">
+            <strong>Quick Add</strong>
+            <button type="button" className="modal-icon-close" aria-label="Close Quick Add" onClick={() => setQuickAddMenuOpen(false)}>X</button>
+          </div>
           <div className="quick-add-group">
             <span>Forge</span>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("inventory")}>Add Inventory</button>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("sale")}>Add Sale</button>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("expense")}>Add Expense</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("listing")}>Create Listing</button>
           </div>
           <div className="quick-add-group">
             <span>Vault</span>
@@ -7969,15 +8496,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <div className="quick-add-group">
             <span>TideTradr</span>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("searchTidetradr")}>Search TideTradr</button>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("wishlist")}>Add Wishlist Item</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("listing")}>Create Listing</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("checkDeal")}>Check Deal</button>
           </div>
           <div className="quick-add-group">
             <span>Scout</span>
             <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Submit Store Report</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("store")}>{adminUser ? "Add Store" : "Suggest Missing Store"}</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("store")}>Add Store</button>
+            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeCorrection")}>Store Correction</button>
           </div>
         </div>
+        </>
       ) : null}
     </div>
   </div>
@@ -8071,7 +8601,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => setMenuOpen(false)}>Close</button>
             </div>
             <div className="drawer-menu-stack">
-              {renderMenuPullDown("profile", "Profile", "Account status and beta profile", (
+              {renderMenuPullDown("account", "Account", "App version, sign-in, local beta status, and account actions", (
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">
                     <div>
@@ -8079,8 +8609,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <p className="compact-subtitle">{accountStatusDescription}</p>
                     </div>
                     <dl className="drawer-status-list">
+                      <div><dt>App Version</dt><dd>E&T TCG beta web app</dd></div>
                       <div><dt>Account</dt><dd>{signedInWithSupabase ? "Supabase" : "Local beta"}</dd></div>
-                      <div><dt>Role</dt><dd>{adminUser ? "Admin" : BETA_LOCAL_MODE ? "User + local beta review" : "User"}</dd></div>
+                      <div><dt>Role</dt><dd>{adminUser ? "Admin / Founder" : "User"}</dd></div>
                       <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
                       <div><dt>Data</dt><dd>{cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
                     </dl>
@@ -8123,19 +8654,35 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
                     </div>
                   )}
-                  <div className="drawer-info-card">
-                    <strong>Local Beta Admin Review</strong>
-                    <p className="compact-subtitle">Review tools remain available for local beta testing. Public/shared data changes still require admin approval and protected Supabase rules.</p>
-                  </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
+                  <div className="drawer-danger-zone">
+                    <strong>Danger zone</strong>
+                    <p className="compact-subtitle">Resetting local beta data clears saved beta records on this device. Export first if you want a backup.</p>
+                    <button type="button" className="drawer-link drawer-danger-link" onClick={resetBetaLocalData}>Reset Local Beta Data</button>
+                  </div>
                 </div>
-              ), "User")}
+              ), "Acct")}
               {renderMenuPullDown("settings", "Settings", "Appearance, location, notifications, and dashboard display", (
                 <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setDashboardCardStyle(dashboardCardStyle === "compact" ? "comfortable" : "compact"))}>Appearance</button>
+                  <div className="drawer-info-card">
+                    <strong>Appearance</strong>
+                    <p className="compact-subtitle">Current density: {dashboardCardStyle}. Keep the beta compact on mobile, or switch to a roomier card style.</p>
+                    <div className="drawer-inline-actions">
+                      {DASHBOARD_CARD_STYLES.map((style) => (
+                        <button
+                          key={style}
+                          type="button"
+                          className={dashboardCardStyle === style ? "drawer-link active" : "drawer-link"}
+                          onClick={() => updateDashboardCardStyle(style)}
+                        >
+                          {style.charAt(0).toUpperCase() + style.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="drawer-info-card">
                     <strong>Location</strong>
-                    <p className="compact-subtitle">Enter a ZIP code or city to personalize nearby Scout stores. Device location stays off unless you enable it.</p>
+                    <p className="compact-subtitle">Location is used for nearby Scout stores and alerts. Device location stays off unless you enable it.</p>
                     <input
                       className="drawer-field"
                       value={locationSettings.manualLocation}
@@ -8148,22 +8695,89 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <button type="button" className="drawer-link" onClick={disableLocationTracking}>Turn Off Location</button>
                     </div>
                   </div>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_alerts: true })); })}>Notifications</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("dashboard"); setFeatureSectionsOpen((current) => ({ ...current, home_display_settings: true })); })}>Dashboard Display Settings</button>
+                  <div className="drawer-info-card">
+                    <strong>Notifications</strong>
+                    <p className="compact-subtitle">Push/text notifications are coming soon. These local preferences keep the Scout Alerts flow ready for beta.</p>
+                    <div className="menu-toggle-list">
+                      {notificationPreferenceRows.map((row) => (
+                        <label className="toggle-row" key={row.key}>
+                          <span>
+                            <strong>{row.label}</strong>
+                            <small>{row.description}</small>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={scoutSnapshot.alertSettings?.[row.key] !== false}
+                            onChange={(event) => updateScoutAlertPreference(row.key, event.target.checked)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="drawer-info-card">
+                    <strong>Dashboard Display Settings</strong>
+                    <p className="compact-subtitle">Choose which Home cards and sections are visible. This only changes the dashboard display, not your saved data.</p>
+                    <div className="menu-toggle-list">
+                      {menuHomeStatRows.map((row) => (
+                        <label className="toggle-row" key={row.key}>
+                          <span><strong>{row.label}</strong></span>
+                          <input
+                            type="checkbox"
+                            checked={
+                              row.key === "alerts"
+                                ? scoutSnapshot.alertSettings?.showHomeActiveAlerts !== false
+                                : row.key === "marketUpdates"
+                                  ? scoutSnapshot.alertSettings?.showHomeMarketUpdates !== false
+                                  : homeStatsEnabled[row.key] !== false
+                            }
+                            onChange={(event) => {
+                              if (row.key === "alerts") {
+                                updateScoutAlertPreference("showHomeActiveAlerts", event.target.checked);
+                                return;
+                              }
+                              if (row.key === "marketUpdates") {
+                                updateScoutAlertPreference("showHomeMarketUpdates", event.target.checked);
+                                return;
+                              }
+                              updateHomeStatsEnabled({ [row.key]: event.target.checked });
+                            }}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    <details className="drawer-subdetails">
+                      <summary>Home sections</summary>
+                      <div className="menu-toggle-list">
+                        {menuDashboardSectionRows.map((row) => {
+                          const section = dashboardSectionState(row.key);
+                          return (
+                            <label className="toggle-row" key={row.key}>
+                              <span><strong>{row.label}</strong></span>
+                              <input
+                                type="checkbox"
+                                checked={section.enabled !== false}
+                                onChange={(event) => updateDashboardSection(row.key, { enabled: event.target.checked })}
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  </div>
                 </div>
               ), "Gear")}
               {renderMenuPullDown("data", "Data & Backup", "Export, import, clear demo data, and storage status", (
                 <>
                   <div className="drawer-info-card">
                     <strong>Optional Cloud Sync</strong>
-                    <p className="compact-subtitle">Vault, Forge, watchlist, favorites, Scout reports, and settings stay local for beta. Cloud sync is optional and will require sign-in before it moves user-owned data.</p>
+                    <p className="compact-subtitle">Your beta data is stored on this device unless you export it or connect cloud sync. Cloud sync is not active yet.</p>
                     <dl className="drawer-status-list">
                       <div><dt>Current mode</dt><dd>{BETA_LOCAL_MODE ? "Local beta" : "Cloud-ready"}</dd></div>
-                      <div><dt>Preference</dt><dd>{cloudSyncPreference === "cloud" ? "Cloud sync requested" : "Keep local"}</dd></div>
+                      <div><dt>Preference</dt><dd>{cloudSyncPreference === "cloud" ? "Cloud sync access requested" : "Keep local"}</dd></div>
                     </dl>
                     <div className="drawer-inline-actions">
                       <button type="button" className={cloudSyncPreference === "local" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("local")}>Keep Local Beta</button>
-                      <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync</button>
+                      <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync Access</button>
                     </div>
                   </div>
                   <BackupExportImport
@@ -8175,9 +8789,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     onApplyImport={applyBetaBackupImport}
                     onClearDemoData={resetBetaLocalData}
                   />
-                  {BETA_LOCAL_MODE ? (
+                  {adminToolsVisible ? (
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>
-                      Admin Review Queue (Local Beta)
+                      Admin Review Queue
                     </button>
                   ) : null}
                 </>
@@ -8186,53 +8800,61 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="drawer-links">
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Send Feedback</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("How to Use App guide is coming soon for beta testers."))}>How to Use App</button>
                 </div>
               ), "Help")}
-              {renderMenuPullDown("community", "Community", "Tidepool, guidelines, and community rules", (
+              {renderMenuPullDown("community", "Community / Tidepool", "Tidepool, guidelines, and community rules", (
                 <div className="drawer-links">
+                  <div className="drawer-info-card">
+                    <strong>Tidepool</strong>
+                    <p className="compact-subtitle">Community hub for reports, guidelines, questions, and future Discord/community tools.</p>
+                  </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Open Tidepool</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Needs Review"))}>Report Guidelines</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Community rules</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Discord community is coming soon."))}>Discord Coming Soon</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Report Guidelines are coming soon for beta."))}>Report Guidelines</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Community Rules are coming soon for beta."))}>Community Rules</button>
+                  <button type="button" className="drawer-link disabled-link" disabled>Discord Coming Soon</button>
                 </div>
               ), "Chat")}
               {renderMenuPullDown("subscription", "Plans & Features", "Free vs paid features and beta planning", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
                     <strong>Paid plans are not active yet.</strong>
-                    <p className="compact-subtitle">This is a preview for beta planning.</p>
+                    <p className="compact-subtitle">This is a preview for beta planning. Preview only. Plans are not active.</p>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Free vs Paid Feature Preview</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Upgrade Coming Soon</button>
+                  <button type="button" className="drawer-link disabled-link" disabled>Upgrade Coming Soon</button>
                 </div>
               ), "Plan")}
-              {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", adminUser ? "Admin-only moderation, imports, and shared data controls" : "Local beta import status and review tools", (
+              {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", "Admin/founder moderation, imports, suggestions, and shared data controls", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
-                    <strong>{adminUser ? "Admin / Founder" : "Local Beta Admin Tools"}</strong>
-                    <p className="compact-subtitle">{adminUser ? "Supabase auth metadata or profile grants admin tools. Backend/RLS still protects shared-data writes." : "Review/import tools are visible for local beta testing. Shared-data edits still go through suggestions unless your signed-in profile is admin."}</p>
+                    <strong>{adminUser ? "Admin / Founder Tools" : "Local Beta Admin Tools"}</strong>
+                    <p className="compact-subtitle">{adminUser ? "Admin/founder tools for moderation, imports, suggestions, and shared data controls." : "Local beta admin mode is enabled for testing review queues."} Do not expose service-role credentials in frontend code.</p>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Open Admin Dashboard</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("All"); setActiveTab("adminReview"); })}>Import Status & Review Queue</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Needs Review"))}>Tidepool Moderation</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("market"); setFeatureSectionsOpen((current) => ({ ...current, market_sources: true })); })}>Market Source Controls</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Market Source Controls"); setActiveTab("adminReview"); })}>Market Source Controls</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Marketplace Listings"); setActiveTab("adminReview"); })}>Marketplace Listing Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Store Suggestions"); setActiveTab("adminReview"); })}>Store Correction Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Catalog Suggestions"); setActiveTab("adminReview"); })}>Catalog Correction Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("SKU / UPC Suggestions"); setActiveTab("adminReview"); })}>Best Buy SKU Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); })}>Scout Report Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Store Intelligence Suggestions"); setActiveTab("adminReview"); })}>Store Intelligence Suggestions</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Flagged / Duplicate Items"); setActiveTab("adminReview"); })}>Flagged / Duplicate Items</button>
                 </div>
               ), "Admin") : null}
-              {renderMenuPullDown("account", "Account", "Log out, reset beta data, and app version", (
-                <div className="drawer-links">
-                  <div className="drawer-info-card app-version-card">
-                    <strong>App Version</strong>
-                    <p className="compact-subtitle">E&T TCG beta web app</p>
-                  </div>
-                  <button type="button" className="drawer-link drawer-danger-link" onClick={resetBetaLocalData}>Reset Local Beta Data</button>
-                  {signedInWithSupabase ? (
-                    <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
-                  ) : (
-                    <button type="button" className="drawer-link" onClick={() => { setAuthMode("login"); setMenuSectionsOpen({ profile: true }); }}>Sign In from Profile</button>
-                  )}
-                </div>
-              ), "Acct")}
+            </div>
+            <div className="drawer-footer-card">
+              <span>E&T TCG beta web app</span>
+              {signedInWithSupabase ? (
+                <button type="button" className="logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
+              ) : (
+                <button type="button" className="secondary-button" onClick={() => { setAuthMode("login"); setMenuSectionsOpen({ account: true }); }}>
+                  Sign In
+                </button>
+              )}
             </div>
           </aside>
         </>
@@ -8248,15 +8870,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             onSubmit={submitFeedbackDialog}
             onClick={(event) => event.stopPropagation()}
           >
-            <div>
-              <h2 id="feedback-dialog-title">{feedbackDialog === "bug" ? "Report a Bug" : "Send Feedback"}</h2>
-              <p>{feedbackDialog === "bug" ? "Tell us what broke so we can clean it up for beta." : "Share what would make the beta easier to use."}</p>
+            <div className="modal-title-row">
+              <div>
+                <h2 id="feedback-dialog-title">{feedbackDialogCopy.title}</h2>
+                <p>{feedbackDialogCopy.intro}</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label={`Close ${feedbackDialogCopy.title}`} onClick={() => setFeedbackDialog(null)}>
+                X
+              </button>
             </div>
-            <Field label={feedbackDialog === "bug" ? "What happened?" : "Feedback"}>
+            <Field label={feedbackDialogCopy.label}>
               <textarea
                 value={feedbackForm.whatHappened}
                 onChange={(event) => setFeedbackForm((current) => ({ ...current, whatHappened: event.target.value }))}
-                placeholder={feedbackDialog === "bug" ? "Describe the issue" : "What should we improve?"}
+                placeholder={feedbackDialogCopy.placeholder}
               />
             </Field>
             <Field label="Page / screen">
@@ -8266,23 +8893,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 placeholder="Home, Scout, The Vault..."
               />
             </Field>
-            <Field label="Steps to reproduce">
+            <Field label={feedbackDialogCopy.stepsLabel}>
               <textarea
                 value={feedbackForm.steps}
                 onChange={(event) => setFeedbackForm((current) => ({ ...current, steps: event.target.value }))}
-                placeholder="What did you tap or enter before this happened?"
+                placeholder={feedbackDialogCopy.stepsPlaceholder}
               />
             </Field>
-            <Field label="Optional screenshot">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => setFeedbackForm((current) => ({ ...current, screenshotName: event.target.files?.[0]?.name || "" }))}
-              />
-              {feedbackForm.screenshotName ? <p className="compact-subtitle">Attached: {feedbackForm.screenshotName}</p> : null}
-            </Field>
+            <div className="small-empty-state">
+              <strong>Optional screenshot - coming soon</strong>
+              <p>Screenshot upload is not connected yet. For now, describe what you saw or export beta data if support needs details.</p>
+            </div>
+            <dl className="drawer-status-list feedback-metadata">
+              <div><dt>Version</dt><dd>{feedbackForm.metadata?.appVersion || "Beta"}</dd></div>
+              <div><dt>Screen</dt><dd>{feedbackForm.metadata?.route || activeTab}</dd></div>
+              <div><dt>Device</dt><dd>{feedbackForm.metadata?.device || "Unknown"}</dd></div>
+              <div><dt>Time</dt><dd>{feedbackForm.metadata?.timestamp ? new Date(feedbackForm.metadata.timestamp).toLocaleString() : "Now"}</dd></div>
+            </dl>
             <div className="location-modal-actions">
-              <button type="submit">{feedbackDialog === "bug" ? "Submit Bug Report" : "Submit Feedback"}</button>
+              <button type="submit">{feedbackDialogCopy.submit}</button>
               <button type="button" className="secondary-button" onClick={() => setFeedbackDialog(null)}>Cancel</button>
             </div>
           </form>
@@ -8381,7 +9010,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="compact-card-header">
               <div>
                 <h2 id="scout-score-title">Scout Score</h2>
-                <p>Trust, rewards, badges, streaks, warnings, and cooldown.</p>
+                <p>Scout Score increases when reports are accurate and verified. False or spam reports lower trust.</p>
               </div>
               {scoutSnapshot.scoutProfile?.badgeLevel ? <span className="status-badge">{scoutSnapshot.scoutProfile.badgeLevel}</span> : null}
             </div>
@@ -8398,7 +9027,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <p>Verified reports increase score. Helpful reports and report streaks add reward points. Bad reports, warnings, spam, or disputed posts can reduce score. Cooldown can happen after too many rejected reports. Add photos when possible and do not report old information as current.</p>
             </details>
             <div className="location-modal-actions">
-              <button type="button" onClick={() => setScoutScoreModalOpen(false)}>Close</button>
+              <button type="button" className="secondary-button" onClick={() => setScoutScoreModalOpen(false)}>Close</button>
             </div>
           </section>
         </div>
@@ -8419,7 +9048,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <h2 id="vault-add-title">Add Item to Vault</h2>
                 <p>Add from TideTradr, scan, import, or enter a card/product manually.</p>
               </div>
-              <button type="button" className="secondary-button" onClick={() => closeVaultAddModal()}>Close</button>
+              <button type="button" className="modal-icon-close" aria-label="Close Add Item to Vault" onClick={() => closeVaultAddModal()}>X</button>
             </div>
             <div className="quick-action-rail vault-add-tabs">
               {[
@@ -8775,8 +9404,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <section className="scanner-review-modal" role="dialog" aria-modal="true" aria-labelledby="scanner-review-title" onClick={(event) => event.stopPropagation()}>
             <div className="compact-card-header">
               <div>
-                <h2 id="scanner-review-title">Review Detected Item</h2>
-                <p>Scan or enter an item first, then choose where it should go.</p>
+                <h2 id="scanner-review-title">{scanReview ? "Review Detected Item" : "Scan or Search Item"}</h2>
+                <p>{scanReview ? "Confirm the match, then choose where this item should go." : "Scan a barcode or search manually to choose where this item should go."}</p>
               </div>
               <button type="button" className="secondary-button" onClick={() => { setShowInventoryScanner(false); setScanReview(null); setScanMatches([]); setScanInput(""); }}>Cancel</button>
             </div>
@@ -8813,15 +9442,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <input
                     value={scanReview?.rawValue || scanInput}
                     onChange={(event) => {
-                      setScanInput(event.target.value);
-                      const matches = getBestCatalogMatches(event.target.value, catalogProducts);
+                      const nextValue = event.target.value;
+                      setScanInput(nextValue);
+                      if (!nextValue.trim()) {
+                        setScanMatches([]);
+                        setScanReview(null);
+                        setScanMessage("");
+                        return;
+                      }
+                      const matches = getBestCatalogMatches(nextValue, catalogProducts);
                       setScanMatches(matches);
-                      setScanReview(buildScanReview(event.target.value, matches, scanDestination));
+                      setScanReview(buildScanReview(nextValue, matches, scanDestination));
                     }}
                     placeholder={scanMode === "card" ? "Try 199/165, zard sir, sv8 card 159" : "Try pri etb, 151 bundle, UPC/SKU"}
                   />
                 </Field>
                 <button type="button" onClick={() => handleCatalogScanMatch(scanReview?.rawValue || scanInput)}>Search Item</button>
+              </div>
+            ) : null}
+
+            {!scanReview ? (
+              <div className="small-empty-state scanner-start-state">
+                <strong>No item detected yet.</strong>
+                <span>Use the camera, enter a UPC/SKU, or type a product name. Nothing is saved until you review the match and choose a destination.</span>
               </div>
             ) : null}
 
@@ -8896,18 +9539,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 }}>Quick Add</button>
               </div>
               <div className="cards mini-cards home-summary-stats">
+                {homeStatsEnabled.collection_value !== false ? (
                 <div className="card">
                   <p>Collection Value</p>
                   <h2>{money(vaultValue)}</h2>
                 </div>
+                ) : null}
+                {homeStatsEnabled.monthly_spending !== false ? (
                 <div className="card">
                   <p>Monthly Spending</p>
                   <h2>{money(monthlySpending)}</h2>
                 </div>
+                ) : null}
+                {scoutSnapshot.alertSettings?.showHomeMarketUpdates !== false ? (
                 <button type="button" className="card stat-button-card" onClick={() => setActiveTab("market")}>
                   <p>Market Updates</p>
                   <h2>{recentMarketUpdates.length}</h2>
                 </button>
+                ) : null}
+                {scoutSnapshot.alertSettings?.showHomeActiveAlerts !== false ? (
                 <button type="button" className="card stat-button-card" onClick={() => {
                   setActiveTab("scout");
                   setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
@@ -8916,9 +9566,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <p>Active Alerts</p>
                   <h2>{activeHomeAlertCount}</h2>
                 </button>
+                ) : null}
               </div>
             </section>
 
+            {dashboardSectionState("home_stats").enabled !== false ? (
             <section className="panel home-today-panel">
               <div className="compact-card-header">
                 <div>
@@ -8955,29 +9607,33 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </button>
               </div>
             </section>
+            ) : null}
 
+            {dashboardSectionState("action_center").enabled !== false ? (
             <section className="panel beta-path-panel">
               <div className="compact-card-header">
                 <div>
                   <h2>Beta Tester Path</h2>
-                  <p>Core flow: search a product, add it, report a store, check a deal, then export a backup.</p>
+                  <p>Core flow: Scout a store, submit a report, save collection items to Vault, search TideTradr for market values, then use Forge when an item becomes business inventory.</p>
                 </div>
               </div>
-              <div className="quick-action-rail">
-                <button type="button" onClick={() => { setActiveTab("market"); setTideTradrSubTab("overview"); }}>Search Product</button>
+              <div className="quick-action-rail scout-filter-grid">
+                <button type="button" onClick={() => openQuickAddAction("storeReport")}>Submit Scout Report</button>
                 <button type="button" className="secondary-button" onClick={() => openQuickAddAction("vaultItem")}>Add to Vault</button>
-                <button type="button" className="secondary-button" onClick={() => openQuickAddAction("inventory")}>Add to Forge</button>
-                <button type="button" className="secondary-button" onClick={() => goToScoutSection("reports")}>Submit Scout Report</button>
+                <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); setTideTradrSubTab("overview"); }}>Search TideTradr</button>
                 <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); setTideTradrSubTab("deal"); }}>Check Deal</button>
+                <button type="button" className="secondary-button" onClick={() => openQuickAddAction("inventory")}>Add to Forge</button>
                 <button type="button" className="secondary-button" onClick={() => { setMenuSectionsOpen({ data: true }); setMenuOpen(true); }}>Export Backup</button>
               </div>
             </section>
+            ) : null}
 
+            {dashboardSectionState("recent_inventory").enabled !== false ? (
             <section className="panel">
               <div className="compact-card-header">
                 <div>
                   <h2>Recent Activity</h2>
-                  <p>Latest Forge, Vault, Scout, and market updates.</p>
+                  <p>Latest Scout, Vault, TideTradr, and Forge updates.</p>
                 </div>
               </div>
               <div className="home-list compact-home-list">
@@ -8999,13 +9655,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 )}
               </div>
             </section>
+            ) : null}
 
+            {(dashboardSectionState("purchaser_spending").enabled !== false || dashboardSectionState("market_summary").enabled !== false) ? (
             <section className="home-grid home-preview-grid">
+              {dashboardSectionState("purchaser_spending").enabled !== false ? (
               <div className="panel">
                 <div className="compact-card-header">
                   <div>
                     <h2>Recent Purchases</h2>
-                    <p>Newest Forge or Vault entries.</p>
+                    <p>Newest Vault or Forge entries.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("inventory")}>View</button>
                 </div>
@@ -9028,7 +9687,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   )}
                 </div>
               </div>
+              ) : null}
 
+              {dashboardSectionState("market_summary").enabled !== false ? (
               <div className="panel">
                 <div className="compact-card-header">
                   <div>
@@ -9056,8 +9717,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   )}
                 </div>
               </div>
+              ) : null}
             </section>
+            ) : null}
 
+            {dashboardSectionState("watchlist").enabled !== false ? (
             <section className="feature-dropdown-stack home-optional-sections">
               <CollapsibleFeatureSection
                 title="Pinned Market Watch"
@@ -9082,21 +9746,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 )}
               </CollapsibleFeatureSection>
 
-              <CollapsibleFeatureSection
-                title="Dashboard Settings"
-                summary="Moved to Menu > Settings for beta"
-                open={isFeatureSectionOpen("home_display_settings")}
-                onToggle={() => toggleFeatureSection("home_display_settings")}
-              >
-                <div className="home-callout">
-                  <p>Dashboard display options now live in Menu &gt; Settings so Home can stay focused on today.</p>
-                  <button type="button" className="secondary-button" onClick={() => {
-                    setMenuSectionsOpen({ settings: true });
-                    setMenuOpen(true);
-                  }}>Open Settings</button>
-                </div>
-              </CollapsibleFeatureSection>
             </section>
+            ) : null}
           </div>
         )}
         {!activeTabLocked && false && activeTab === "dashboard" && (
@@ -9159,7 +9810,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <h2>Quick Actions</h2>
               <div className="quick-actions home-inline-actions">
                 <button type="button" onClick={() => setActiveTab("addInventory")}>Add Forge Item</button>
-                <button type="button" onClick={() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_submit_report: true, scout_store_tracker: true })); }}>Submit Scout Report</button>
+                <button type="button" onClick={() => {
+                  setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+                  setScoutView("submit");
+                  setActiveTab("scout");
+                  setFeatureSectionsOpen((current) => ({ ...current, scout_submit_report: true, scout_store_tracker: true }));
+                }}>Submit Scout Report</button>
                 <button type="button" onClick={() => { setActiveTab("market"); setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); }}>Check Deal</button>
                 <button type="button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
               </div>
@@ -9181,12 +9837,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="compact-card-header">
                   <div>
                     <h2>Recent Activity</h2>
-                    <p>Latest Forge, Vault, sales, and expense updates.</p>
+                    <p>Latest Scout, Vault, TideTradr, and Forge updates.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>View All</button>
                 </div>
                 <div className="inventory-list compact-inventory-list">
-                  {[...items.map((item) => ({ id: `item-${item.id}`, title: item.name, detail: `Forge/Vault item | ${money(Number(item.quantity || 0) * Number(item.unitCost || 0))}`, createdAt: item.createdAt })),
+                  {[...items.map((item) => ({ id: `item-${item.id}`, title: item.name, detail: `Vault/Forge item | ${money(Number(item.quantity || 0) * Number(item.unitCost || 0))}`, createdAt: item.createdAt })),
                     ...sales.map((sale) => ({ id: `sale-${sale.id}`, title: sale.itemName || "Sale", detail: `Sale | ${money(sale.grossSale)}`, createdAt: sale.createdAt })),
                     ...expenses.map((expense) => ({ id: `expense-${expense.id}`, title: expense.vendor || "Expense", detail: `${expense.category} | ${money(expense.amount)}`, createdAt: expense.createdAt })),
                   ]
@@ -10016,12 +10672,33 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {activeTab === "scout" && (
           <>
-            {scoutView === "whatDidISee" ? (
+            <nav className="scout-sticky-subnav" aria-label="Scout navigation">
+              <button type="button" className={scoutView === "stores" ? "primary" : ""} onClick={() => {
+                if (!requestScoutLocation()) return;
+                setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+                setScoutView("stores");
+              }}>Stores</button>
+              <button type="button" className={scoutView === "reports" ? "primary" : ""} onClick={() => {
+                setScoutReportFilter("Latest");
+                setScoutView("reports");
+              }}>Reports</button>
+              <button type="button" className={scoutView === "alerts" ? "primary" : ""} onClick={() => {
+                setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+                setScoutView("alerts");
+              }}>Alerts</button>
+              <button type="button" className={scoutView === "submit" ? "primary" : ""} onClick={() => {
+                setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+                setScoutView("submit");
+              }}>Submit</button>
+              <button type="button" onClick={() => setScoutScoreModalOpen(true)}>Score</button>
+            </nav>
+
+            {scoutView === "reports" ? (
               <>
                 <section className="tab-summary panel">
                   <div>
-                    <h2>Scout &gt; What Did I See?</h2>
-                    <p>Search the imported Pokemon catalog, check what you saw, and save a local beta sighting list.</p>
+                    <h2>Scout &gt; Reports</h2>
+                    <p>Recent Scout reports for store sightings, restocks, prices, limits, and local intelligence.</p>
                   </div>
                   <div className="summary-pill-row">
                     <button type="button" className="secondary-button" onClick={() => {
@@ -10029,25 +10706,52 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       setScoutSubTabTarget({ tab: "overview", id: Date.now() });
                       loadScoutSnapshot();
                     }}>Back to Scout</button>
+                    <button type="button" onClick={() => {
+                      setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+                      setScoutView("submit");
+                    }}>Submit Report</button>
                   </div>
                 </section>
-                <WhatDidISee
-                  supabase={supabase}
-                  isSupabaseConfigured={isSupabaseConfigured}
-                  mapCatalogRow={mapCatalog}
-                  initialProduct={whatDidISeeSeedProduct}
-                  stores={scoutSnapshot.stores || []}
-                  money={money}
-                  onAddToVault={applyCatalogProductToVault}
-                  onAddToForge={addCatalogItemToForge}
-                  onSaveScoutReport={saveWhatDidISeeScoutReport}
-                  onMessage={setVaultToast}
-                  onBack={() => {
-                    setScoutView("main");
-                    setScoutSubTabTarget({ tab: "overview", id: Date.now() });
-                    loadScoutSnapshot();
-                  }}
-                />
+                <section className="panel" ref={scoutReportsRef} tabIndex={-1}>
+                  <div className="compact-card-header">
+                    <div>
+                      <h2>Reports</h2>
+                      <p>Filter recent reports without leaving Scout.</p>
+                    </div>
+                    <span className="status-badge">{filteredScoutReports.length} shown</span>
+                  </div>
+                  <div className="quick-action-rail scout-filter-grid">
+                    {["Nearby", "Latest", "Verified", "My Reports", "Needs Review"].map((filter) => (
+                      <button key={filter} type="button" className={scoutReportFilter === filter ? "primary" : ""} onClick={() => {
+                        if (filter === "Nearby" && !requestScoutLocation()) return;
+                        setScoutReportFilter(filter);
+                      }}>
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="inventory-list compact-inventory-list">
+                    {filteredScoutReports.length === 0 ? (
+                      <div className="empty-state">
+                        <h3>No Scout reports yet</h3>
+                        <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
+                      </div>
+                    ) : null}
+                    {filteredScoutReports.slice(0, 12).map((report) => (
+                      <div className="inventory-card compact-card" key={report.id || report.reportId}>
+                        <div className="compact-card-header">
+                          <div>
+                            <h3>{report.itemName || report.productName || report.reportType || "Store report"}</h3>
+                            <p>{report.storeName || report.store_name || "Unknown store"} - {report.reportDate || report.report_date || "No date"}</p>
+                          </div>
+                          <span className="status-badge">{report.verified ? "Verified" : "Needs Review"}</span>
+                        </div>
+                        <p>{report.note || report.notes || report.reportText || "No report details yet."}</p>
+                        <p className="compact-subtitle">{report.reportType || report.stockStatus || "Scout report"} {report.quantitySeen ? `| Qty ${report.quantitySeen}` : ""} {report.price ? `| ${money(report.price)}` : ""}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               </>
             ) : scoutView === "submit" ? (
               <>
@@ -10065,7 +10769,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </section>
                 <section className="embedded-page">
-                  <Scout targetSubTab={{ tab: "reports", id: scoutSubTabTarget.id }} compact />
+                  <Scout targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }} compact adminMode={adminUser} />
                 </section>
               </>
             ) : scoutView === "alerts" ? (
@@ -10090,7 +10794,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </section>
                 <section className="embedded-page">
-                  <Scout targetSubTab={{ tab: "alerts", id: scoutSubTabTarget.id }} compact onLocationRequired={requestScoutLocation} />
+                  <Scout targetSubTab={{ tab: "alerts", id: scoutSubTabTarget.id }} compact onLocationRequired={requestScoutLocation} adminMode={adminUser} />
                 </section>
               </>
             ) : scoutView === "stores" ? (
@@ -10115,7 +10819,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </section>
                 <section className="embedded-page">
-                  <Scout targetSubTab={{ tab: "stores", id: scoutSubTabTarget.id }} compact onLocationRequired={requestScoutLocation} />
+                  <Scout targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }} compact onLocationRequired={requestScoutLocation} adminMode={adminUser} />
                 </section>
               </>
             ) : (
@@ -10123,28 +10827,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section className="tab-summary panel">
               <div>
                 <h2>Scout</h2>
-                <p>Find stores, check reports, and see alerts near you.</p>
+                <p>Find stores, submit reports, and check alerts near you.</p>
               </div>
               <div className="summary-pill-row scout-main-actions">
-                <button type="button" className="secondary-button" onClick={() => {
-                  if (!requestScoutLocation()) return;
-                  setScoutSubTabTarget({ tab: "stores", id: Date.now() });
-                  setScoutView("stores");
-                }}>Stores</button>
                 <button type="button" onClick={() => {
                   setScoutSubTabTarget({ tab: "reports", id: Date.now() });
                   setScoutView("submit");
                 }}>Submit Report</button>
-                <button type="button" className="secondary-button" onClick={openWhatDidISee}>What Did I See?</button>
-                <button type="button" className="secondary-button" onClick={() => {
-                  setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-                  setScoutView("alerts");
-                }}>Alerts</button>
-                <button type="button" className="secondary-button" onClick={() => {
-                  setScoutReportFilter("My Reports");
-                  scoutReportsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}>My Reports</button>
-                <button type="button" className="secondary-button" onClick={() => setScoutScoreModalOpen(true)}>Scout Score</button>
               </div>
               <div className="cards mini-cards">
                 <button type="button" className="card stat-button-card" onClick={() => {
@@ -10153,7 +10842,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   setScoutView("stores");
                 }}><p>Nearby stores</p><h2>{scoutSnapshot.stores.length}</h2></button>
                 <button type="button" className="card stat-button-card" onClick={() => {
-                  scoutReportsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  setScoutReportFilter("Latest");
+                  setScoutView("reports");
                 }}><p>Recent reports</p><h2>{(scoutSnapshot.reports || []).length}</h2></button>
                 <button type="button" className="card stat-button-card" onClick={() => {
                   setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
@@ -10307,17 +10997,72 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <p className="compact-subtitle">{dealRecommendationReason}</p>
                 </section>
               </>
+            ) : tideTradrSubTab === "watch" ? (
+              <>
+                <section className="tab-summary panel">
+                  <div>
+                    <h2>TideTradr &gt; Market Watch</h2>
+                    <p>Watched products, pinned items, recent value checks, and deal shortcuts.</p>
+                  </div>
+                  <div className="summary-pill-row">
+                    <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("overview")}>Back to TideTradr</button>
+                  </div>
+                </section>
+                <section className="panel tidetradr-watch-panel">
+                  <div className="compact-card-header">
+                    <div>
+                      <h2>Market Watch</h2>
+                      <p>{tideTradrWatchlist.length} watched item{tideTradrWatchlist.length === 1 ? "" : "s"}.</p>
+                    </div>
+                    <span className="status-badge">{tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned</span>
+                  </div>
+                  <div className="quick-actions tidetradr-watch-actions">
+                    <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Values</button>
+                    <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
+                    <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("overview")}>Search Catalog</button>
+                  </div>
+                  {tideTradrWatchlist.length === 0 ? (
+                    <div className="empty-state">
+                      <h3>No watched products yet</h3>
+                      <p>Add products from TideTradr search to track market values here.</p>
+                      <button type="button" onClick={() => setTideTradrSubTab("overview")}>Search Catalog</button>
+                    </div>
+                  ) : (
+                    <div className="inventory-list tidetradr-watch-list">
+                      {tideTradrWatchlist.map((item) => (
+                        <div className="inventory-card compact-card tidetradr-watch-card" key={item.id}>
+                          <div className="compact-card-header">
+                            <div>
+                              <h3>{item.name}</h3>
+                              <p>{item.setName || "No set"} | {item.productType || "No type"}</p>
+                            </div>
+                            <span className="status-badge">{item.pinned ? "Pinned" : MARKET_STATUS_LABELS[item.marketStatus] || "Watchlist"}</span>
+                          </div>
+                          <p>Market: {money(item.marketValue)} | MSRP: {money(item.msrp)}</p>
+                          <p className="compact-subtitle">Source: {item.sourceName || "Unknown"} | Last updated: {item.lastUpdated ? new Date(item.lastUpdated).toLocaleDateString() : "Unknown"}</p>
+                          <div className="quick-actions tidetradr-watch-actions">
+                            <button type="button" onClick={() => useCatalogProductInDeal(item.productId)}>Check Deal</button>
+                            <button type="button" className="secondary-button" onClick={() => openWatchlistProductDetails(item)}>View Details</button>
+                            <button type="button" className="secondary-button" onClick={() => removeTideTradrWatchlistItem(item.id)}>Remove</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </>
             ) : (
               <>
                 <section className="tab-summary panel tidetradr-summary-card">
                   <div>
                     <h2>TideTradr</h2>
-                    <p>Search products, cards, market values, and deals.</p>
+                    <p>Search products, check market values, watch items, and compare deals.</p>
                   </div>
                   <form className="catalog-search-form" onSubmit={submitCatalogSearch}>
                     <SmartCatalogSearchBox
                       value={catalogSearch}
-                      onChange={setCatalogSearch}
+                      onChange={updateCatalogSearchInput}
+                      onSearch={() => submitCatalogSearch()}
                       onSelectSuggestion={selectCatalogRecommendation}
                       supabase={supabase}
                       isSupabaseConfigured={isSupabaseConfigured}
@@ -10326,20 +11071,74 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       dataFilter={catalogDataFilter}
                       inputClassName="search-input"
                       placeholder="Search by name, set, product type, card number, or scanned barcode..."
+                      closeSignal={catalogSuggestionCloseSignal}
+                      maxSuggestions={5}
                       money={money}
                     />
                     <button type="submit">Search</button>
                   </form>
-                  <div className="summary-pill-row">
-                    <button type="button" onClick={() => setTideTradrSubTab("deal")}>Check Deal</button>
-                    <button type="button" className="secondary-button" onClick={submitCatalogSearch}>Search Catalog</button>
+                  <div className="tidetradr-shortcut-grid" aria-label="TideTradr shortcuts">
+                    <button type="button" className="tidetradr-shortcut-card" onClick={() => submitCatalogSearch()}>
+                      <span>Search Catalog</span>
+                      <strong>{catalogSearchHasRun ? `${supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length} results` : "Search first"}</strong>
+                    </button>
+                    <button type="button" className="tidetradr-shortcut-card" onClick={() => setTideTradrSubTab("watch")}>
+                      <span>Market Watch</span>
+                      <strong>{tideTradrWatchlist.length} watched</strong>
+                    </button>
+                    <button type="button" className="tidetradr-shortcut-card" aria-label="Check Deal" onClick={() => {
+                      const currentQuery = String(catalogSearch || "").trim();
+                      if (currentQuery) {
+                        setDealForm((current) => ({ ...current, title: current.title || currentQuery }));
+                      }
+                      setTideTradrSubTab("deal");
+                    }}>
+                      <span>Deal Finder</span>
+                      <strong>Check Deal</strong>
+                    </button>
+                    <button type="button" className="tidetradr-shortcut-card" onClick={() => setTideTradrSubTab("watch")}>
+                      <span>Watchlist</span>
+                      <strong>{tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned</strong>
+                    </button>
+                    {tideTradrLookupProduct ? (
+                      <button type="button" className="tidetradr-shortcut-card" onClick={() => openCatalogDetails(tideTradrLookupProduct.id)}>
+                        <span>Recently Viewed</span>
+                        <strong>{catalogTitle(tideTradrLookupProduct)}</strong>
+                      </button>
+                    ) : null}
                   </div>
-                  <div className="cards mini-cards">
-                    <div className="card"><p>Catalog Products</p><h2>{supabaseCatalogStatus.totalCount ?? catalogProducts.length}</h2></div>
-                    <div className="card"><p>Found Market Values</p><h2>{catalogMarketPriceCount}</h2></div>
-                    <div className="card"><p>Missing Market Prices</p><h2>{missingMarketPriceItems.length}</h2></div>
-                    <div className="card"><p>Needs Market Check</p><h2>{needsMarketCheckItems.length}</h2></div>
-                  </div>
+                </section>
+
+                <section className="tidetradr-hub-grid">
+                  <article className="compact-card tidetradr-preview-card">
+                    <div>
+                      <h3>Market Watch</h3>
+                      <p>{tideTradrWatchlist.length ? `${tideTradrWatchlist.length} watched item${tideTradrWatchlist.length === 1 ? "" : "s"}.` : "No watched products yet."}</p>
+                      <p className="compact-subtitle">
+                        {tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned | {tideTradrWatchlist.filter((item) => item.lastUpdated).length} recent checks | {tideTradrWatchlist.filter((item) => Number(item.marketValue || 0) <= 0).length} missing prices
+                      </p>
+                    </div>
+                    {tideTradrWatchlist.length ? (
+                      <div className="tidetradr-preview-list">
+                        {tideTradrWatchlist.slice(0, 2).map((item) => (
+                          <button type="button" key={item.id} onClick={() => openWatchlistProductDetails(item)}>
+                            <strong>{item.name}</strong>
+                            <span>{money(item.marketValue)} | {item.setName || item.productType || "Watchlist item"}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="compact-subtitle">Add products from search to watch market updates here.</p>
+                    )}
+                    <button type="button" onClick={() => setTideTradrSubTab("watch")}>Open Market Watch</button>
+                  </article>
+                  <article className="compact-card tidetradr-preview-card">
+                    <div>
+                      <h3>Deal Finder</h3>
+                      <p>Check asking price against market and MSRP.</p>
+                    </div>
+                    <button type="button" onClick={() => setTideTradrSubTab("deal")}>Open Deal Finder</button>
+                  </article>
                 </section>
 
                 <section className="panel">
@@ -10349,28 +11148,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <p>
                         {catalogSearchHasRun
                           ? `${tideTradrCatalogResults.length} shown from the current paged search.`
-                          : "Search the imported Pokemon catalog before loading results."}
+                          : "Search TideTradr to load catalog results."}
                       </p>
                     </div>
-                    <span className="status-badge">{supabaseCatalogStatus.loading ? "Searching..." : catalogSearchHasRun ? "Paged results" : "Search first"}</span>
+                    <span className="status-badge">{supabaseCatalogStatus.loading ? "Searching..." : catalogSearchHasRun ? `${supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length} results` : "Search first"}</span>
                   </div>
 
-                  <form className="form catalog-search-tools" onSubmit={submitCatalogSearch}>
-                    <Field label="Catalog search">
-                      <SmartCatalogSearchBox
-                        value={catalogSearch}
-                        onChange={setCatalogSearch}
-                        onSelectSuggestion={selectCatalogRecommendation}
-                        supabase={supabase}
-                        isSupabaseConfigured={isSupabaseConfigured}
-                        mapRow={mapCatalog}
-                        productGroup={currentCatalogProductGroup()}
-                        dataFilter={catalogDataFilter}
-                        inputClassName="search-input"
-                        placeholder="Prismatic Evolutions, Charizard, Elite Trainer Box, SVP001..."
-                        money={money}
-                      />
-                    </Field>
+                  {catalogSearchHasRun ? (
+                  <div className="catalog-results-toolbar">
                     <Field label="Sort">
                       <select value={catalogSort} onChange={(e) => setCatalogSort(e.target.value)}>
                         {CATALOG_SORT_OPTIONS.map((option) => (
@@ -10379,25 +11164,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       </select>
                     </Field>
                     <div className="quick-actions">
-                      <button type="submit">{supabaseCatalogStatus.loading ? "Searching..." : "Search Catalog"}</button>
                       <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear</button>
                     </div>
-                  </form>
+                  </div>
+                  ) : null}
 
-                  <form className="form catalog-search-tools" onSubmit={submitCatalogBarcodeSearch}>
-                    <Field label="Barcode / SKU / product ID">
-                      <input
-                        value={catalogBarcodeSearch}
-                        onChange={(e) => setCatalogBarcodeSearch(e.target.value)}
-                        placeholder="Scan or type barcode, SKU, TCGplayer ID, external ID, or card number"
-                        inputMode="search"
-                      />
-                    </Field>
-                    <div className="quick-actions">
-                      <button type="submit" className="secondary-button">Search Exact ID</button>
-                    </div>
-                  </form>
-
+                  {catalogSearchHasRun ? (
                   <div className="quick-action-rail">
                     {[
                       ["All", "All"],
@@ -10425,11 +11197,31 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       </button>
                     ))}
                     <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>More Filters</button>
-                    <button type="button" className="secondary-button" onClick={openWhatDidISee}>Start What Did I See List</button>
-                    <button type="button" className="secondary-button" onClick={() => { setActiveTab("catalog"); setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true })); }}>{adminUser ? "Add Catalog Item" : "Suggest Missing Product"}</button>
+                    <button type="button" className="secondary-button" onClick={openWhatDidISee}>Add Scout Sighting</button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => {
+                        if (adminUser) {
+                          setActiveTab("catalog");
+                          setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
+                          return;
+                        }
+                        submitUniversalSuggestion({
+                          suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+                          targetTable: "catalog_items",
+                          submittedData: { searchTerm: catalogSearch, productType: catalogTypeFilter, setName: catalogSetFilter },
+                          notes: "User suggested a missing catalog product from TideTradr search.",
+                          source: "tidetradr-search",
+                        });
+                      }}
+                    >
+                      {adminUser ? "Add Catalog Item" : "Suggest Missing Product"}
+                    </button>
                   </div>
+                  ) : null}
 
-                  {isFeatureSectionOpen("market_filters") ? (
+                  {catalogSearchHasRun && isFeatureSectionOpen("market_filters") ? (
                     <div className="filter-grid">
                       <Field label="Set / Expansion">
                         <select value={catalogSetFilter} onChange={(e) => setCatalogSetFilter(e.target.value)}>
@@ -10464,8 +11256,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
                   {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
                     <div className="empty-state">
-                      <h3>Search the Pokemon catalog</h3>
-                      <p>Search by name, set, product type, card number, or scanned barcode.</p>
+                      <h3>Search TideTradr to load catalog results.</h3>
+                      <p>Use the top search for product names, sets, product types, UPC, SKU, IDs, card numbers, and shorthand.</p>
                     </div>
                   ) : null}
 
@@ -10514,9 +11306,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                                 ) : null}
                                 <p>
                                   Market: {money(marketInfo.currentMarketValue)}
-                                  {lowPrice ? ` | Low ${money(lowPrice)}` : ""}
-                                  {midPrice ? ` | Mid ${money(midPrice)}` : ""}
-                                  {highPrice ? ` | High ${money(highPrice)}` : ""}
                                   {p.catalogType !== "card" ? ` | MSRP: ${marketInfo.msrp ? money(marketInfo.msrp) : "Unknown"}` : ""}
                                 </p>
                                 <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
@@ -10526,15 +11315,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                                 <span className="status-badge">{MARKET_STATUS_LABELS[marketInfo.marketStatus] || "Unknown"}</span>
                               </div>
                             </button>
-                            <div className="catalog-result-actions">
-                              <button type="button" onClick={() => openCatalogDetails(p.id)}>View Details</button>
-                              <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(p.id)}>Check Deal</button>
-                              <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
-                              <button type="button" className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
-                              <button type="button" className="secondary-button" onClick={() => openWhatDidISee(p)}>Add to What Did I See</button>
-                              <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Watchlist</button>
-                              {catalogSourceUrl(p) ? <a className="secondary-button" href={catalogSourceUrl(p)} target="_blank" rel="noreferrer">Source</a> : null}
-                            </div>
                           </div>
                         );
                       })}
@@ -10547,10 +11327,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         type="button"
                         className="secondary-button"
                         disabled={supabaseCatalogStatus.loading || (supabaseCatalogStatus.page || 1) <= 1}
-                        onClick={() => loadImportedPokemonCatalog(catalogSearch, {
+                        onClick={() => loadImportedPokemonCatalog(submittedCatalogSearch || catalogSearch, {
                           page: Math.max(1, (supabaseCatalogStatus.page || 1) - 1),
-                          mode: catalogBarcodeSearch ? "barcode" : "general",
-                          barcode: catalogBarcodeSearch,
+                          mode: submittedCatalogBarcodeSearch || catalogBarcodeSearch ? "barcode" : "general",
+                          barcode: submittedCatalogBarcodeSearch || catalogBarcodeSearch,
                         })}
                       >
                         Previous Page
@@ -10560,10 +11340,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         type="button"
                         className="secondary-button"
                         disabled={supabaseCatalogStatus.loading || !supabaseCatalogStatus.hasMore}
-                        onClick={() => loadImportedPokemonCatalog(catalogSearch, {
+                        onClick={() => loadImportedPokemonCatalog(submittedCatalogSearch || catalogSearch, {
                           page: (supabaseCatalogStatus.page || 1) + 1,
-                          mode: catalogBarcodeSearch ? "barcode" : "general",
-                          barcode: catalogBarcodeSearch,
+                          mode: submittedCatalogBarcodeSearch || catalogBarcodeSearch ? "barcode" : "general",
+                          barcode: submittedCatalogBarcodeSearch || catalogBarcodeSearch,
                         })}
                       >
                         Load More
@@ -10573,6 +11353,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </section>
 
                 <section className="feature-dropdown-stack">
+                  {false ? (
                   <CollapsibleFeatureSection title="Market Watch" summary="Watchlist, pinned market items, and recent value checks" open={isFeatureSectionOpen("market_watchlist")} onToggle={() => toggleFeatureSection("market_watchlist")}>
                     <div className="quick-actions">
                       <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Market Values</button>
@@ -10594,18 +11375,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       ))}
                     </div>
                   </CollapsibleFeatureSection>
+                  ) : null}
 
-                  <CollapsibleFeatureSection title="Deal Finder" summary="Open the deal checker when you need it" open={isFeatureSectionOpen("market_deal_finder")} onToggle={() => toggleFeatureSection("market_deal_finder")}>
-                    <div className="quick-actions">
+                  {false ? (
+                  <section className="tidetradr-tool-grid">
+                    <article className="compact-card tidetradr-tool-card">
+                      <div>
+                        <h3>Deal Finder</h3>
+                        <p>Check asking price against market and MSRP before you buy, keep, or pass.</p>
+                      </div>
                       <button type="button" onClick={() => setTideTradrSubTab("deal")}>Open Deal Finder</button>
+                    </article>
+                  </section>
+                  ) : null}
+
+                  {false && adminUser ? (
+                  <CollapsibleFeatureSection title="Market Sources / Admin" summary="Admin-only source, sync, manual value, and market to-do tools" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
+                    <div className="small-empty-state admin-only-note">
+                      <strong>Admin only.</strong>
+                      <span>Do not expose API keys or service-role credentials in frontend code.</span>
                     </div>
-                  </CollapsibleFeatureSection>
-
-                  <CollapsibleFeatureSection title="TideTradr Marketplace" summary="Community listings, trade board, saved listings, and listing review" open={isFeatureSectionOpen("market_marketplace")} onToggle={() => toggleFeatureSection("market_marketplace")}>
-                    {renderMarketplaceSection()}
-                  </CollapsibleFeatureSection>
-
-                  <CollapsibleFeatureSection title="Market Sources" summary="Manual, cached, mock, and future live market source tools" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
                     <div className="cards mini-cards">
                       <div className="card"><p>Cached Price Records</p><h2>{cachedMarketPriceCount}</h2></div>
                       <div className="card"><p>Failed Matches</p><h2>{failedMarketMatches.length}</h2></div>
@@ -10670,6 +11459,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </div>
                     <p className="compact-subtitle">Live API keys and protected provider credentials still need backend environment variables. No service role keys or paid API keys are used in the frontend.</p>
                   </CollapsibleFeatureSection>
+                  ) : null}
                 </section>
               </>
             )}
@@ -10995,6 +11785,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </section>
             )}
           <CollapsibleFeatureSection title={adminUser ? "Manual Catalog Item" : "Catalog Suggestions"} summary={adminUser ? "Add or edit missing sealed products and individual cards locally" : "Suggest missing products, UPC/SKU links, and corrections for admin review"} open={isFeatureSectionOpen("catalog_manual")} onToggle={() => toggleFeatureSection("catalog_manual")}>
+          {adminUser ? (
+          <>
           <SmartAddCatalog onUseProduct={useSmartCatalogProduct} />
           <section className="panel">
   <h2>Bulk Import Catalog Items</h2>
@@ -11052,6 +11844,13 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
     </div>
   )}
 </section>
+          </>
+          ) : (
+            <div className="small-empty-state">
+              <strong>Suggestions only for beta users.</strong>
+              <span>Catalog changes are universal data. Submit missing products or corrections below so an admin can review them.</span>
+            </div>
+          )}
             <section className="panel">
               <h2>{adminUser ? (editingCatalogId ? "Edit Catalog Product" : "Add Product Catalog Item") : (editingCatalogId ? "Suggest Product Correction" : "Suggest Missing Product")}</h2>
               <button type="button" className="secondary-button" onClick={() => setShowCatalogScanner(true)}>Open Catalog Scanner</button>
@@ -11199,7 +11998,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </CollapsibleFeatureSection>
             <section className="panel">
               <h2>Product Catalog</h2>
-              <input className="search-input" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} placeholder="Search products, cards, Pokemon, set, UPC, SKU, rarity..." />
+              <input className="search-input" value={catalogSearch} onChange={(e) => updateCatalogSearchInput(e.target.value)} placeholder="Search products, cards, Pokemon, set, UPC, SKU, rarity..." />
               <div className="filter-grid">
                 <Field label="Sealed vs Card">
                   <select value={catalogKindFilter} onChange={(e) => setCatalogKindFilter(e.target.value)}>
@@ -11322,34 +12121,6 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                         ) : null}
                       </div>
                     </button>
-                    <div className="catalog-result-actions">
-                      <button className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
-                      <button className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
-                      <button className="secondary-button" onClick={() => openCatalogDetails(p.id)}>View Details</button>
-                      {catalogSourceUrl(p) ? <a className="secondary-button" href={catalogSourceUrl(p)} target="_blank" rel="noreferrer">Source</a> : null}
-                      {!adminUser ? (
-                        <>
-                          <button className="secondary-button" onClick={() => submitUniversalSuggestion({
-                            suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
-                            targetTable: "catalog_items",
-                            targetRecordId: p.id,
-                            submittedData: { name: catalogTitle(p), needsReview: true },
-                            currentDataSnapshot: p,
-                            notes: "User requested a product correction review.",
-                            source: "tidetradr-search-result",
-                          })}>Suggest Correction</button>
-                          <button className="secondary-button" onClick={() => submitUniversalSuggestion({
-                            suggestionType: SUGGESTION_TYPES.ADD_UPC_SKU,
-                            targetTable: "catalog_items",
-                            targetRecordId: p.id,
-                            submittedData: { name: catalogTitle(p), upc: p.barcode || p.upc || "", sku: p.sku || "" },
-                            currentDataSnapshot: p,
-                            notes: "User suggested reviewing UPC/SKU metadata.",
-                            source: "tidetradr-search-result",
-                          })}>Suggest UPC/SKU</button>
-                        </>
-                      ) : null}
-                    </div>
                   </div>
                 ))}
                 {!catalogSearchHasRun ? (
@@ -11479,11 +12250,28 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 )}
 
         {activeTab === "inventory" && (
+          forgeSubTab === "marketplace" ? (
+            <>
+              <section className="tab-summary panel">
+                <div>
+                  <h2>Forge &gt; Marketplace</h2>
+                  <p>Create listings from Forge inventory, Vault items, TideTradr catalog products, or manual entry.</p>
+                </div>
+                <div className="summary-pill-row">
+                  <button type="button" className="secondary-button" onClick={() => {
+                    setMarketplaceView("landing");
+                    setForgeSubTab("overview");
+                  }}>Back to Forge</button>
+                </div>
+              </section>
+              {renderMarketplaceSection()}
+            </>
+          ) : (
           <>
           <section className="tab-summary panel">
             <div>
               <h2>Forge</h2>
-              <p>Business inventory, sales, expenses, mileage, and reports.</p>
+              <p>Business inventory, sales, expenses, mileage, reports, and marketplace.</p>
             </div>
           </section>
 
@@ -11491,6 +12279,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="summary-pill-row">
               <button type="button" onClick={() => setActiveTab("addInventory")}>Add Inventory</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
+              <button type="button" className="secondary-button" onClick={() => {
+                setMarketplaceView("landing");
+                setForgeSubTab("marketplace");
+              }}>Marketplace</button>
             </div>
           </section>
 
@@ -11693,11 +12485,37 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             {false && <CollapsibleFeatureSection title="Forge Receipts" summary="Receipt and item photo tools" open={isFeatureSectionOpen("forge_receipts")} onToggle={() => toggleFeatureSection("forge_receipts")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("addInventory")}>Import Receipt</button><button type="button" onClick={beginScanProduct}>Scan Product</button></div>
             </CollapsibleFeatureSection>}
+            <CollapsibleFeatureSection title="Marketplace" summary="Create listings, browse approved listings, drafts, saved listings, and pending review" open={isFeatureSectionOpen("forge_marketplace")} onToggle={() => toggleFeatureSection("forge_marketplace")}>
+              <div className="quick-actions">
+                <button type="button" onClick={() => {
+                  setMarketplaceView("create");
+                  setForgeSubTab("marketplace");
+                }}>Create Listing</button>
+                <button type="button" className="secondary-button" onClick={() => {
+                  setMarketplaceView("browse");
+                  setForgeSubTab("marketplace");
+                }}>Browse Listings</button>
+                <button type="button" className="secondary-button" onClick={() => {
+                  setMarketplaceView("my");
+                  setForgeSubTab("marketplace");
+                }}>My Listings</button>
+                <button type="button" className="secondary-button" onClick={() => {
+                  setMarketplaceView("saved");
+                  setForgeSubTab("marketplace");
+                }}>Saved Listings</button>
+                <button type="button" className="secondary-button" onClick={() => {
+                  setMarketplaceView("pending");
+                  setForgeSubTab("marketplace");
+                }}>Pending Review</button>
+              </div>
+              <p className="compact-subtitle">Public marketplace listings stay pending until admin review. Payments and shipping are not handled in-app.</p>
+            </CollapsibleFeatureSection>
             <CollapsibleFeatureSection title="Reports" summary="Profit/loss, monthly spending, and exports" open={isFeatureSectionOpen("forge_reports")} onToggle={() => toggleFeatureSection("forge_reports")}>
               <div className="quick-actions"><button type="button" onClick={() => setActiveTab("reports")}>Profit/Loss</button><button type="button" onClick={() => setActiveTab("dashboard")}>Monthly Spending</button><button type="button" onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Data</button></div>
             </CollapsibleFeatureSection>
           </section>
           </>
+          )
         )}
 
         {activeTab === "addSale" && (
@@ -12076,14 +12894,14 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 
         {selectedCatalogDetailProduct ? (
           <>
-            <div className="drawer-backdrop" onClick={() => setSelectedCatalogDetailId("")} />
+            <div className="drawer-backdrop catalog-detail-backdrop" onClick={() => setSelectedCatalogDetailId("")} />
             <aside className="catalog-detail-drawer" aria-label="Catalog item details">
               <div className="drawer-header catalog-detail-header">
                 <div>
                   <p>{selectedCatalogDetailProduct.catalogType === "card" ? "Individual Card" : "Sealed Product"}</p>
                   <h3>{catalogTitle(selectedCatalogDetailProduct)}</h3>
                 </div>
-                <button type="button" className="secondary-button" onClick={() => setSelectedCatalogDetailId("")}>Close</button>
+                <button type="button" className="drawer-close-button" aria-label="Close product detail" onClick={() => setSelectedCatalogDetailId("")}>×</button>
               </div>
               <div className="catalog-detail-body">
                 {catalogImage(selectedCatalogDetailProduct) ? (
@@ -12118,42 +12936,71 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     )}
                   </div>
                 </div>
-                <div className="quick-actions">
-                  <button type="button" onClick={() => applyCatalogProductToVault(selectedCatalogDetailProduct.id)}>Add to Vault</button>
-                  <button type="button" className="secondary-button" onClick={() => addCatalogItemToForge(selectedCatalogDetailProduct.id)}>Add to Forge</button>
-                  <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(selectedCatalogDetailProduct.id)}>Add to Wishlist</button>
-                  <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(selectedCatalogDetailProduct.id)}>Compare Market</button>
-                  <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setSelectedCatalogDetailId(""); }}>Add Store Report</button>
-                  <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("catalog", selectedCatalogDetailProduct)}>Create Listing</button>
-                  {catalogSourceUrl(selectedCatalogDetailProduct) ? <a className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailProduct)} target="_blank" rel="noreferrer">Open Source</a> : null}
-                  {!adminUser ? (
-                    <>
-                      <button type="button" className="secondary-button" onClick={() => submitUniversalSuggestion({
-                        suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
-                        targetTable: "catalog_items",
-                        targetRecordId: selectedCatalogDetailProduct.id,
-                        submittedData: { name: catalogTitle(selectedCatalogDetailProduct), needsReview: true },
-                        currentDataSnapshot: selectedCatalogDetailProduct,
-                        notes: "User requested a full catalog detail correction review.",
-                        source: "tidetradr-detail",
-                      })}>Suggest Correction</button>
-                      <button type="button" className="secondary-button" onClick={() => submitUniversalSuggestion({
-                        suggestionType: SUGGESTION_TYPES.ADD_UPC_SKU,
-                        targetTable: "catalog_items",
-                        targetRecordId: selectedCatalogDetailProduct.id,
-                        submittedData: {
-                          name: catalogTitle(selectedCatalogDetailProduct),
-                          upc: selectedCatalogDetailProduct.upc || selectedCatalogDetailProduct.barcode || "",
-                          sku: selectedCatalogDetailProduct.sku || "",
-                        },
-                        currentDataSnapshot: selectedCatalogDetailProduct,
-                        notes: "User requested UPC/SKU review for this catalog item.",
-                        source: "tidetradr-detail",
-                      })}>Suggest UPC/SKU</button>
-                    </>
-                  ) : null}
+                <div className="catalog-detail-action-group catalog-detail-primary-actions">
+                  <button type="button" onClick={() => addCatalogDetailToVault(selectedCatalogDetailProduct)}>Add to Vault</button>
+                  <button type="button" onClick={() => addCatalogDetailToForge(selectedCatalogDetailProduct)}>Add to Forge</button>
+                  <button type="button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Add to Watchlist</button>
+                  <button type="button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
+                  <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Scout Sighting</button>
                 </div>
-                <div className="catalog-detail-grid">
+                <div className="catalog-detail-action-group catalog-detail-secondary-actions">
+                  <button type="button" className="secondary-button" onClick={scrollCatalogDetailToMarketHistory}>View Market History</button>
+                  <button type="button" className="secondary-button" onClick={() => suggestCatalogMissingPrice(selectedCatalogDetailProduct)}>Suggest Missing Price</button>
+                  <button type="button" className="secondary-button" onClick={() => suggestCatalogCorrection(selectedCatalogDetailProduct)}>Suggest Catalog Correction</button>
+                  <button type="button" className="secondary-button" onClick={() => copyCatalogProductIdentifiers(selectedCatalogDetailProduct)}>Copy UPC/SKU</button>
+                  <button type="button" className="secondary-button" onClick={() => suggestCatalogUpcSku(selectedCatalogDetailProduct)}>Suggest UPC/SKU</button>
+                </div>
+                {(!hasCatalogMarketPrice(selectedCatalogDetailProduct) || !hasCatalogUpcSku(selectedCatalogDetailProduct)) ? (
+                  <div className="catalog-detail-warning-list">
+                    {!hasCatalogMarketPrice(selectedCatalogDetailProduct) ? (
+                      <div className="catalog-detail-warning">
+                        <strong>Market price missing</strong>
+                        <span>Suggest a missing price so admins can review the catalog data.</span>
+                        <button type="button" className="secondary-button" onClick={() => suggestCatalogMissingPrice(selectedCatalogDetailProduct)}>Suggest Missing Price</button>
+                      </div>
+                    ) : null}
+                    {!hasCatalogUpcSku(selectedCatalogDetailProduct) ? (
+                      <div className="catalog-detail-warning">
+                        <strong>UPC/SKU missing</strong>
+                        <span>Add a suggestion if you know the barcode, SKU, or product ID.</span>
+                        <button type="button" className="secondary-button" onClick={() => suggestCatalogUpcSku(selectedCatalogDetailProduct)}>Suggest UPC/SKU</button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="catalog-detail-grid catalog-detail-overview-grid">
+                  <DetailItem label="Product Type" value={selectedCatalogDetailProduct.productType || selectedCatalogDetailProduct.catalogType} />
+                  <DetailItem label="Set / Expansion" value={selectedCatalogDetailProduct.setName || selectedCatalogDetailProduct.expansion || selectedCatalogDetailProduct.series || selectedCatalogDetailProduct.productLine} />
+                  <DetailItem label="Card Number" value={selectedCatalogDetailProduct.cardNumber ? `#${selectedCatalogDetailProduct.cardNumber}` : ""} />
+                  <DetailItem label="UPC / Barcode" value={selectedCatalogDetailProduct.upc || selectedCatalogDetailProduct.barcode} />
+                  <DetailItem label="SKU / External IDs" value={[selectedCatalogDetailProduct.sku, selectedCatalogDetailProduct.externalProductId].filter(Boolean).join(" | ")} />
+                  <DetailItem label="TCGplayer ID" value={selectedCatalogDetailProduct.tcgplayerProductId} />
+                  <DetailItem label="MSRP" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).msrp ? money(getTideTradrMarketInfo(selectedCatalogDetailProduct).msrp) : "Unknown"} />
+                  <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailProduct) ? money(getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue) : "Market price missing"} />
+                  <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
+                  <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailProduct)} />
+                  <DetailItem label="Last Updated" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).lastUpdated || selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.updatedAt} />
+                  <DetailItem label="Notes / Warnings" value={[
+                    selectedCatalogDetailProduct.notes,
+                    !hasCatalogMarketPrice(selectedCatalogDetailProduct) ? "Market price missing" : "",
+                    !hasCatalogUpcSku(selectedCatalogDetailProduct) ? "UPC/SKU missing" : "",
+                  ].filter(Boolean).join(" | ")} />
+                </div>
+                <details className="catalog-source-details">
+                  <summary>Source Details</summary>
+                  <div className="catalog-detail-grid">
+                    <DetailItem label="Source Name" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName || selectedCatalogDetailProduct.marketSource || selectedCatalogDetailProduct.sourceType} />
+                    <DetailItem label="Source Product ID" value={selectedCatalogDetailProduct.externalProductId || selectedCatalogDetailProduct.tcgplayerProductId} />
+                    <DetailItem label="Price Type" value={selectedCatalogDetailProduct.priceSubtype} />
+                    <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailProduct)} />
+                  </div>
+                  {catalogSourceUrl(selectedCatalogDetailProduct) ? (
+                    <a className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailProduct)} target="_blank" rel="noreferrer">Open Source</a>
+                  ) : null}
+                </details>
+                <details className="catalog-source-details">
+                  <summary>Full Product Data</summary>
+                  <div className="catalog-detail-grid">
                   {selectedCatalogDetailProduct.catalogType === "card" ? (
                     <>
                       <DetailItem label="Card Name" value={catalogTitle(selectedCatalogDetailProduct)} />
@@ -12203,8 +13050,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Image Last Updated" value={selectedCatalogDetailProduct.imageLastUpdated || "Unknown"} />
                     </>
                   )}
-                </div>
-                <MarketPriceHistoryPanel
+                  </div>
+                </details>
+                <div id="catalog-market-history">
+                  <MarketPriceHistoryPanel
                   catalogProductId={selectedCatalogDetailProduct.id}
                   tcgplayerProductId={selectedCatalogDetailProduct.tcgplayerProductId}
                   externalProductId={selectedCatalogDetailProduct.externalProductId}
@@ -12215,7 +13064,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   currentHighPrice={selectedCatalogDetailProduct.highPrice}
                   lastPriceChecked={selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.marketLastUpdated}
                   money={money}
-                />
+                  />
+                </div>
                 {selectedCatalogDetailProduct.notes ? <p className="compact-subtitle">{selectedCatalogDetailProduct.notes}</p> : null}
               </div>
             </aside>
@@ -12432,7 +13282,7 @@ function CompactInventoryCard({
     );
   }
   return (
-    <div className="inventory-card compact-card">
+    <div className="inventory-card compact-card forge-inventory-card">
       <div className="compact-card-header">
         <div className="compact-title-block">
           <h3>{item.name}</h3>
