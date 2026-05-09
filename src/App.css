@@ -2540,6 +2540,22 @@ button.overflow-menu-delete:hover {
   gap: 8px;
 }
 
+.catalog-result-actions a.secondary-button,
+.quick-actions a.secondary-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 16px;
+  border-radius: 15px;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.danger-text {
+  color: #b42318 !important;
+}
+
 .catalog-detail-drawer {
   position: fixed;
   top: 0;

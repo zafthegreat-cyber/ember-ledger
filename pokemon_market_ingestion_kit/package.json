@@ -1,0 +1,16 @@
+{
+  "name": "pokemon-market-ingestion-kit",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "import:tcgcsv": "node import_tcgcsv_to_supabase.mjs",
+    "import:pokemon-tcg-api": "node import_pokemontcg_cards_to_supabase.mjs",
+    "import:va-stores": "node import_va_stores_to_supabase.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "latest",
+    "cheerio": "latest",
+    "dotenv": "latest"
+  }
+}

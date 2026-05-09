@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import "./App.css";
-import { supabase } from "./supabaseClient";
+import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import SmartAddInventory from "./components/SmartAddInventory";
 import SmartAddCatalog from "./components/SmartAddCatalog";
 import OverflowMenu from "./components/OverflowMenu";
@@ -55,6 +55,7 @@ const BETA_LOCAL_MODE = true;
 const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
+const SUPABASE_CATALOG_PAGE_SIZE = 60;
 const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
@@ -1056,6 +1057,7 @@ export default function App() {
   const [dashboardPreset, setDashboardPreset] = useState("simple");
   const [dashboardLayout, setDashboardLayout] = useState(() => getDefaultDashboardLayoutForPreset("simple"));
   const [dashboardCardStyle, setDashboardCardStyle] = useState("comfortable");
+  const [cloudSyncPreference, setCloudSyncPreference] = useState("local");
   const [subscriptionProfile, setSubscriptionProfile] = useState({
     subscriptionPlan: PLAN_TYPES.FREE,
     tier: PLAN_TYPES.FREE,
@@ -1119,6 +1121,7 @@ export default function App() {
   const [catalogWatchlistFilter, setCatalogWatchlistFilter] = useState("All");
   const [catalogMinValue, setCatalogMinValue] = useState("");
   const [catalogMaxValue, setCatalogMaxValue] = useState("");
+  const supabaseCatalogRequestId = useRef(0);
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
@@ -1185,6 +1188,28 @@ export default function App() {
   const [listingReportTarget, setListingReportTarget] = useState(null);
   const [listingReportReason, setListingReportReason] = useState("Wrong item");
   const [vaultListingDecision, setVaultListingDecision] = useState(null);
+  const [supabaseImportStatus, setSupabaseImportStatus] = useState({
+    loading: false,
+    totalPokemonProducts: null,
+    sealedProducts: null,
+    cards: null,
+    marketPriceRows: null,
+    vaStores: null,
+    lastPriceChecked: "",
+    productsMissingImages: null,
+    productsMissingMarketPrices: null,
+    errors: [],
+  });
+  const [supabaseCatalogStatus, setSupabaseCatalogStatus] = useState({
+    loading: false,
+    loadedCount: 0,
+    page: 1,
+    pageSize: SUPABASE_CATALOG_PAGE_SIZE,
+    totalCount: null,
+    hasMore: false,
+    message: "",
+    error: "",
+  });
   const [importOptions, setImportOptions] = useState({
     pinHighValue: false,
     addToWatchlist: false,
@@ -1466,9 +1491,15 @@ export default function App() {
           product.barcode,
           product.upc,
           product.sku,
+          product.externalProductId,
+          product.tcgplayerProductId,
+          product.marketSource,
+          product.priceSubtype,
+          product.sourceUrl,
+          product.marketUrl,
           product.releaseYear,
         ],
-        exactIds: [product.barcode, product.upc, product.sku],
+        exactIds: [product.barcode, product.upc, product.sku, product.externalProductId, product.tcgplayerProductId],
         cardNumbers: [product.cardNumber],
         setCodes: [product.setCode],
         aliases: [...setAliases, ...productTypeAliasesFor(product.productType), ...pokemonAliasesFor(product.pokemonName), ...rarityAliasesFor(product.rarity, product.variant)],
@@ -1682,6 +1713,15 @@ export default function App() {
     setVaultToast(feedbackDialog === "bug" ? "Bug report saved for beta review." : "Feedback saved for beta review.");
   }
 
+  function updateCloudSyncPreference(mode) {
+    setCloudSyncPreference(mode);
+    setVaultToast(
+      mode === "cloud"
+        ? "Cloud sync preference saved. User-owned beta data still stays local until sign-in sync is connected."
+        : "Local beta storage preference saved."
+    );
+  }
+
   function renderMenuPullDown(key, title, summary, children, icon = "+") {
     const open = Boolean(menuSectionsOpen[key]);
     return (
@@ -1710,6 +1750,209 @@ export default function App() {
     const next = loadSuggestions();
     setSuggestions(next);
     return next;
+  }
+
+  async function loadSupabaseImportStatus() {
+    if (!isSupabaseConfigured || !supabase) {
+      setSupabaseImportStatus((current) => ({
+        ...current,
+        loading: false,
+        errors: ["Supabase anon client is not configured in the frontend. Import scripts still run server-side with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."],
+      }));
+      return;
+    }
+
+    const nextStatus = {
+      loading: true,
+      totalPokemonProducts: null,
+      sealedProducts: null,
+      cards: null,
+      marketPriceRows: null,
+      vaStores: null,
+      lastPriceChecked: "",
+      productsMissingImages: null,
+      productsMissingMarketPrices: null,
+      errors: [],
+    };
+    setSupabaseImportStatus(nextStatus);
+
+    async function countQuery(label, query) {
+      const { count, error } = await query;
+      if (error) {
+        nextStatus.errors.push(`${label}: ${error.message}`);
+        return null;
+      }
+      return count ?? 0;
+    }
+
+    nextStatus.totalPokemonProducts = await countQuery(
+      "Pokemon products",
+      supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("category", "Pokemon")
+    );
+    nextStatus.sealedProducts = await countQuery(
+      "Sealed products",
+      supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("category", "Pokemon").eq("is_sealed", true)
+    );
+    nextStatus.cards = await countQuery(
+      "Cards",
+      supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("category", "Pokemon").eq("product_type", "Card")
+    );
+    nextStatus.marketPriceRows = await countQuery(
+      "Current market prices",
+      supabase.from("product_market_price_current").select("id", { count: "exact", head: true })
+    );
+    nextStatus.vaStores = await countQuery(
+      "Virginia stores",
+      supabase.from("pokemon_retail_stores").select("id", { count: "exact", head: true }).eq("state", "VA")
+    );
+    const missingImageNulls = await countQuery(
+      "Products missing image_url nulls",
+      supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("category", "Pokemon").is("image_url", null)
+    );
+    const missingImageBlanks = await countQuery(
+      "Products missing image_url blanks",
+      supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("category", "Pokemon").eq("image_url", "")
+    );
+    nextStatus.productsMissingImages =
+      missingImageNulls === null || missingImageBlanks === null ? null : missingImageNulls + missingImageBlanks;
+    const missingMarketNulls = await countQuery(
+      "Products missing market price nulls",
+      supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("category", "Pokemon").is("market_price", null)
+    );
+    const missingMarketZeroes = await countQuery(
+      "Products missing market price zeroes",
+      supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("category", "Pokemon").eq("market_price", 0)
+    );
+    nextStatus.productsMissingMarketPrices =
+      missingMarketNulls === null || missingMarketZeroes === null ? null : missingMarketNulls + missingMarketZeroes;
+
+    const { data: latestRows, error: latestError } = await supabase
+      .from("product_catalog")
+      .select("last_price_checked")
+      .not("last_price_checked", "is", null)
+      .order("last_price_checked", { ascending: false })
+      .limit(1);
+    if (latestError) {
+      nextStatus.errors.push(`Last price checked: ${latestError.message}`);
+    } else {
+      nextStatus.lastPriceChecked = latestRows?.[0]?.last_price_checked || "";
+    }
+
+    setSupabaseImportStatus({ ...nextStatus, loading: false });
+  }
+
+  async function loadImportedPokemonCatalog(searchTerm = catalogSearch, options = {}) {
+    if (!isSupabaseConfigured || !supabase) {
+      setSupabaseCatalogStatus({
+        loading: false,
+        loadedCount: 0,
+        page: 1,
+        pageSize: SUPABASE_CATALOG_PAGE_SIZE,
+        totalCount: null,
+        hasMore: false,
+        message: "",
+        error: "Supabase anon client is not configured. Imported catalog rows can still be loaded through server/import scripts later.",
+      });
+      return;
+    }
+
+    const requestId = supabaseCatalogRequestId.current + 1;
+    supabaseCatalogRequestId.current = requestId;
+    const pageSize = Number(options.pageSize || SUPABASE_CATALOG_PAGE_SIZE);
+    const page = Math.max(1, Number(options.page || supabaseCatalogStatus.page || 1));
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const cleanedSearch = String(searchTerm || "").trim().replace(/[,%()'"]/g, " ").slice(0, 140);
+    setSupabaseCatalogStatus({
+      loading: true,
+      loadedCount: 0,
+      page,
+      pageSize,
+      totalCount: supabaseCatalogStatus.totalCount,
+      hasMore: false,
+      message: cleanedSearch ? `Searching Supabase catalog for "${cleanedSearch}"...` : "Loading Supabase Pokemon catalog...",
+      error: "",
+    });
+
+    let query = supabase
+      .from("product_catalog")
+      .select("*", { count: "exact" })
+      .eq("category", "Pokemon")
+      .order("updated_at", { ascending: false })
+      .range(from, to);
+
+    if (catalogKindFilter === "card") {
+      query = query.eq("product_type", "Card");
+    } else if (catalogKindFilter === "sealed") {
+      query = query.eq("is_sealed", true);
+    }
+    if (catalogSetFilter !== "All") query = query.eq("set_name", catalogSetFilter);
+    if (catalogTypeFilter !== "All") query = query.eq("product_type", catalogTypeFilter);
+    if (catalogRarityFilter !== "All") query = query.eq("rarity", catalogRarityFilter);
+
+    if (cleanedSearch.length >= 2) {
+      const like = `%${cleanedSearch}%`;
+      query = query.or([
+        `name.ilike.${like}`,
+        `set_name.ilike.${like}`,
+        `product_type.ilike.${like}`,
+        `set_code.ilike.${like}`,
+        `expansion.ilike.${like}`,
+        `product_line.ilike.${like}`,
+        `external_product_id.ilike.${like}`,
+        `tcgplayer_product_id.ilike.${like}`,
+        `barcode.ilike.${like}`,
+        `card_number.ilike.${like}`,
+        `rarity.ilike.${like}`,
+      ].join(","));
+    }
+
+    const { data, error, count } = await query;
+    if (requestId !== supabaseCatalogRequestId.current) return;
+    if (error) {
+      setSupabaseCatalogStatus({
+        loading: false,
+        loadedCount: 0,
+        page,
+        pageSize,
+        totalCount: null,
+        hasMore: false,
+        message: "",
+        error: `Could not load imported catalog rows: ${error.message}`,
+      });
+      return;
+    }
+
+    const importedProducts = (data || []).map(mapCatalog);
+    setCatalogProducts((current) => {
+      const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
+      const seen = new Set();
+      return [...importedProducts, ...baseline].filter((product) => {
+        const sourceId = product.externalProductId || product.tcgplayerProductId || "";
+        const key = String(
+          product.id ||
+            (sourceId ? `${product.marketSource || ""}-${sourceId}` : "") ||
+            `${product.catalogType || "sealed"}-${product.name || product.productName || product.cardName || ""}-${product.setName || product.expansion || ""}`
+        ).toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    });
+    const totalCount = count ?? null;
+    const loadedEnd = totalCount === null ? from + importedProducts.length : Math.min(to + 1, totalCount);
+    setSupabaseCatalogStatus({
+      loading: false,
+      loadedCount: importedProducts.length,
+      page,
+      pageSize,
+      totalCount,
+      hasMore: totalCount === null ? importedProducts.length === pageSize : loadedEnd < totalCount,
+      message: importedProducts.length
+        ? `Showing ${from + 1}-${loadedEnd} of ${totalCount ?? "many"} Supabase Pokemon catalog rows.`
+        : "No Supabase Pokemon catalog rows matched that search or filter.",
+      error: "",
+    });
   }
 
   function submitUniversalSuggestion(input, options = {}) {
@@ -1760,7 +2003,20 @@ export default function App() {
     if (activeTab === "adminReview" || activeTab === "mySuggestions") {
       refreshSuggestionsFromStorage();
     }
+    if (activeTab === "adminReview") {
+      loadSupabaseImportStatus();
+    }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "market" || tideTradrSubTab !== "overview") return;
+    if (!isSupabaseConfigured || !supabase) return;
+    const delay = catalogSearch.trim() ? 350 : 80;
+    const timer = window.setTimeout(() => {
+      loadImportedPokemonCatalog(catalogSearch, { page: 1 });
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, tideTradrSubTab, catalogSearch, catalogKindFilter, catalogSetFilter, catalogTypeFilter, catalogRarityFilter]);
 
   useEffect(() => {
     let frameId = 0;
@@ -2821,6 +3077,7 @@ export default function App() {
       setDashboardPreset(savedPreset);
       setDashboardLayout(normalizeDashboardLayout(saved.dashboardLayout, savedPreset));
       setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
+      setCloudSyncPreference(saved.cloudSyncPreference || "local");
       setSubscriptionProfile({
         subscriptionPlan: saved.subscriptionProfile?.subscriptionPlan || PLAN_TYPES.FREE,
         featureTier: saved.subscriptionProfile?.featureTier || saved.subscriptionProfile?.subscriptionPlan || PLAN_TYPES.FREE,
@@ -2839,7 +3096,10 @@ export default function App() {
       });
       setItems(saved.items || []);
       setPurchasers(normalizePurchasers(saved.purchasers));
-      setCatalogProducts(saved.catalogProducts?.length ? mergeSharedCatalogProducts(saved.catalogProducts) : createSharedCatalogProducts());
+      const localCatalogProducts = Array.isArray(saved.catalogProducts)
+        ? saved.catalogProducts.filter((product) => product.sourceType !== "supabase")
+        : [];
+      setCatalogProducts(localCatalogProducts.length ? mergeSharedCatalogProducts(localCatalogProducts) : createSharedCatalogProducts());
       setTideTradrWatchlist(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : []);
       setMarketplaceListings(Array.isArray(saved.marketplaceListings) ? saved.marketplaceListings : []);
       setMarketplaceReports(Array.isArray(saved.marketplaceReports) ? saved.marketplaceReports : []);
@@ -2893,7 +3153,7 @@ export default function App() {
       JSON.stringify({
         items,
         purchasers,
-        catalogProducts,
+        catalogProducts: catalogProducts.filter((product) => product.sourceType !== "supabase"),
         tideTradrWatchlist,
         marketplaceListings,
         marketplaceReports,
@@ -2911,11 +3171,12 @@ export default function App() {
         dashboardPreset,
         dashboardLayout,
         dashboardCardStyle,
+        cloudSyncPreference,
         subscriptionProfile,
         locationSettings,
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, subscriptionProfile, locationSettings, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, subscriptionProfile, locationSettings, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -3570,35 +3831,98 @@ export default function App() {
   }
 
 function mapCatalog(row) {
+  const productType = row.productType || row.product_type || "";
+  const productTypeText = String(productType).toLowerCase();
+  const isSealedValue = row.isSealed ?? row.is_sealed;
+  const isSealed =
+    isSealedValue === true ||
+    isSealedValue === "true" ||
+    productTypeText.includes("sealed") ||
+    productTypeText.includes("booster") ||
+    productTypeText.includes("elite trainer") ||
+    productTypeText.includes("collection") ||
+    productTypeText.includes("tin");
+  const catalogType =
+    row.catalogType ||
+    row.catalog_type ||
+    (isSealed ? "sealed" : productTypeText.includes("card") || row.card_number || row.rarity ? "card" : "sealed");
+  const name = row.name || row.product_name || row.card_name || "";
+  const marketSource = row.marketSource || row.market_source || row.source || "TideTradr";
+  const sourceUrl = row.sourceUrl || row.source_url || row.marketUrl || row.market_url || row.tcgplayerUrl || row.tcgplayer_url || "";
+  const imageSmall = row.imageSmall || row.image_small || row.images?.small || "";
+  const imageLarge = row.imageLarge || row.image_large || row.images?.large || row.imageUrl || row.image_url || "";
+  const imageUrl = row.imageUrl || row.image_url || imageLarge || imageSmall || "";
+  const marketPrice = Number(row.marketPrice ?? row.market_price ?? row.marketValue ?? row.market_value ?? 0);
+  const lowPrice = Number(row.lowPrice ?? row.low_price ?? 0);
+  const midPrice = Number(row.midPrice ?? row.mid_price ?? 0);
+  const highPrice = Number(row.highPrice ?? row.high_price ?? 0);
+  const imageProbe = {
+    ...row,
+    catalogType,
+    imageUrl,
+    imageSmall,
+    imageLarge,
+    imageSource: row.imageSource || row.image_source,
+    imageStatus: row.imageStatus || row.image_status,
+  };
+  const inferredImageSource =
+    String(marketSource).toLowerCase().includes("pokemon")
+      ? "pokemon_tcg_api"
+      : String(marketSource).toLowerCase().includes("tcgcsv")
+        ? "tcgcsv"
+        : getDefaultImageSource(imageProbe);
+  const marketStatus = row.marketStatus || row.market_status || (marketPrice || lowPrice || midPrice || highPrice ? "cached" : "unknown");
+
   return {
     id: row.id,
-    name: row.name || "",
+    catalogType,
+    name,
+    productName: catalogType === "card" ? "" : row.productName || row.product_name || name,
+    cardName: catalogType === "card" ? row.cardName || row.card_name || name : row.cardName || row.card_name || "",
+    pokemonName: row.pokemonName || row.pokemon_name || (catalogType === "card" ? name : ""),
     category: row.category || "Pokemon",
-    setName: row.setName || row.set_name || "",
-    productType: row.productType || row.product_type || "",
-    barcode: row.barcode || "",
-    marketSource: row.marketSource || row.market_source || "TideTradr",
+    setName: row.setName || row.set_name || row.source_group_name || row.expansion || "",
+    productType,
+    barcode: row.barcode || row.upc || "",
+    upc: row.upc || row.barcode || "",
+    sku: row.sku || row.tcgplayer_product_id || row.external_product_id || "",
+    marketSource,
     externalProductId: row.externalProductId || row.external_product_id || "",
+    tcgplayerProductId: row.tcgplayerProductId || row.tcgplayer_product_id || "",
     marketUrl: row.marketUrl || row.market_url || "",
-    imageUrl: row.imageUrl || row.image_url || row.imageLarge || row.imageSmall || "",
-    imageSmall: row.imageSmall || row.image_small || row.images?.small || "",
-    imageLarge: row.imageLarge || row.image_large || row.images?.large || row.imageUrl || row.image_url || "",
-    imageSource: row.imageSource || row.image_source || getDefaultImageSource(row),
-    imageSourceUrl: row.imageSourceUrl || row.image_source_url || row.marketUrl || row.market_url || "",
-    imageStatus: row.imageStatus || row.image_status || getDefaultImageStatus(row),
-    imageLastUpdated: row.imageLastUpdated || row.image_last_updated || row.lastUpdated || row.updated_at || "",
+    sourceUrl,
+    tcgplayerUrl: row.tcgplayerUrl || row.tcgplayer_url || row.marketUrl || row.market_url || "",
+    imageUrl,
+    imageSmall,
+    imageLarge,
+    imageSource: row.imageSource || row.image_source || inferredImageSource,
+    imageSourceUrl: row.imageSourceUrl || row.image_source_url || sourceUrl || "",
+    imageStatus: row.imageStatus || row.image_status || getDefaultImageStatus({ ...imageProbe, imageSource: row.imageSource || row.image_source || inferredImageSource }),
+    imageLastUpdated: row.imageLastUpdated || row.image_last_updated || row.lastPriceChecked || row.last_price_checked || row.lastUpdated || row.updated_at || "",
     imageNeedsReview: Boolean(row.imageNeedsReview || row.image_needs_review),
-    marketPrice: Number(row.marketPrice ?? row.market_price ?? 0),
-    lowPrice: Number(row.lowPrice ?? row.low_price ?? 0),
-    midPrice: Number(row.midPrice ?? row.mid_price ?? 0),
-    highPrice: Number(row.highPrice ?? row.high_price ?? 0),
-    msrpPrice: Number(row.msrpPrice ?? row.msrp_price ?? 0),
+    marketPrice: Number.isFinite(marketPrice) ? marketPrice : 0,
+    marketValue: Number.isFinite(marketPrice) ? marketPrice : 0,
+    lowPrice: Number.isFinite(lowPrice) ? lowPrice : 0,
+    midPrice: Number.isFinite(midPrice) ? midPrice : 0,
+    highPrice: Number.isFinite(highPrice) ? highPrice : 0,
+    msrpPrice: Number(row.msrpPrice ?? row.msrp_price ?? row.msrp ?? 0),
     setCode: row.setCode || row.set_code || "",
-    expansion: row.expansion || "",
+    expansion: row.expansion || row.set_name || "",
     productLine: row.productLine || row.product_line || "",
     packCount: Number(row.packCount ?? row.pack_count ?? 0),
+    sourceGroupId: row.sourceGroupId || row.source_group_id || "",
+    sourceGroupName: row.sourceGroupName || row.source_group_name || "",
+    priceSubtype: row.priceSubtype || row.price_subtype || "",
+    cardNumber: row.cardNumber || row.card_number || "",
+    rarity: row.rarity || "",
+    marketStatus,
+    marketLastUpdated: row.marketLastUpdated || row.market_last_updated || row.lastPriceChecked || row.last_price_checked || row.updated_at || "",
+    lastPriceChecked: row.lastPriceChecked || row.last_price_checked || "",
+    sourceType: row.sourceType || row.source_type || "supabase",
+    rawSource: row.rawSource || row.raw_source || null,
     notes: row.notes || "",
     createdAt: row.createdAt || row.created_at,
+    updatedAt: row.updatedAt || row.updated_at || row.createdAt || row.created_at,
   };
 }
 
@@ -4686,7 +5010,7 @@ function getTideTradrMarketInfo(product = {}) {
     lastUpdated: bestPrice.timestamp || product.marketLastUpdated || product.lastUpdated || product.updatedAt || product.createdAt || "Local mock data",
     sourceName: sourceType === "live" ? `Live - ${sourceName}` : sourceType === "cached" ? `Cached - ${sourceName}` : sourceType === "manual" ? `Manual - ${sourceName}` : sourceType === "unknown" ? `Unknown - ${sourceName}` : `Mock - ${sourceName}`,
     marketStatus: sourceType,
-    sourceUrl: bestPrice.sourceUrl || product.externalSourceUrl || product.marketUrl || "",
+    sourceUrl: bestPrice.sourceUrl || product.sourceUrl || product.externalSourceUrl || product.marketUrl || product.tcgplayerUrl || "",
     needsReview: bestPrice.confidence?.needsReview || sourceType === "unknown",
     confidenceLevel,
   };
@@ -5560,6 +5884,7 @@ async function importBulkCatalogProducts() {
 
   const storageStatus = [
     { label: "Mode", value: BETA_LOCAL_MODE ? "Local beta mode" : "Cloud sync mode" },
+    { label: "Cloud sync", value: cloudSyncPreference === "cloud" ? "Requested" : "Off" },
     { label: "Forge inventory", value: items.length },
     { label: "Vault items", value: items.filter((item) => item.status === "Personal Collection" || item.status === "Held").length },
     { label: "Scout stores", value: scoutSnapshot.stores?.length || 0 },
@@ -5773,6 +6098,7 @@ async function importBulkCatalogProducts() {
   const paidUser = isPaidUser(planProfile);
   const adminUser = isAdminUser(planProfile);
   const canReviewSharedData = adminUser || BETA_LOCAL_MODE;
+  const adminToolsVisible = adminUser || BETA_LOCAL_MODE;
   const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
   const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
@@ -6113,6 +6439,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       String(product.rarity || "").toLowerCase().includes(search) ||
       String(product.variant || "").toLowerCase().includes(search) ||
       String(product.cardNumber || "").toLowerCase().includes(search) ||
+      String(product.externalProductId || "").toLowerCase().includes(search) ||
+      String(product.tcgplayerProductId || "").toLowerCase().includes(search) ||
+      String(product.marketSource || "").toLowerCase().includes(search) ||
+      String(product.priceSubtype || "").toLowerCase().includes(search) ||
+      String(product.sourceUrl || "").toLowerCase().includes(search) ||
+      String(product.marketUrl || "").toLowerCase().includes(search) ||
       String(product.sku || "").toLowerCase().includes(search) ||
       String(product.releaseYear || "").toLowerCase().includes(search) ||
       String(product.barcode || "").toLowerCase().includes(search);
@@ -6169,6 +6501,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function catalogImage(product = {}) {
     return getCatalogImage(product);
+  }
+
+  function catalogSourceUrl(product = {}) {
+    return product.sourceUrl || product.marketUrl || product.tcgplayerUrl || product.imageSourceUrl || "";
   }
 
   function openCatalogDetails(productId) {
@@ -6482,11 +6818,45 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <section className="panel approval-page">
         <div className="compact-card-header">
           <div>
-            <h2>Admin Review</h2>
-            <p>Approve, reject, merge, or request more info before universal data becomes public.</p>
+            <h2>Admin Tools</h2>
+            <p>Import status, shared-data review, Marketplace moderation, and beta data controls in one place.</p>
           </div>
           <span className="status-badge">{totalOpenCount} open</span>
         </div>
+        <section className="settings-subsection marketplace-admin-review">
+          <div className="compact-card-header">
+            <div>
+              <h3>Pokemon Import Dashboard</h3>
+              <p>Supabase-backed catalog, market price, image, and Virginia retailer ingestion status.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={loadSupabaseImportStatus}>
+              {supabaseImportStatus.loading ? "Refreshing..." : "Refresh Status"}
+            </button>
+          </div>
+          <div className="cards mini-cards">
+            <div className="card"><p>Total Pokemon Products</p><h2>{supabaseImportStatus.totalPokemonProducts ?? "N/A"}</h2></div>
+            <div className="card"><p>Sealed Products</p><h2>{supabaseImportStatus.sealedProducts ?? "N/A"}</h2></div>
+            <div className="card"><p>Card Products</p><h2>{supabaseImportStatus.cards ?? "N/A"}</h2></div>
+            <div className="card"><p>VA Stores</p><h2>{supabaseImportStatus.vaStores ?? "N/A"}</h2></div>
+            <div className="card"><p>Market Price Rows</p><h2>{supabaseImportStatus.marketPriceRows ?? "N/A"}</h2></div>
+            <div className="card"><p>Latest Last Price Checked</p><h2>{supabaseImportStatus.lastPriceChecked ? new Date(supabaseImportStatus.lastPriceChecked).toLocaleString() : "N/A"}</h2></div>
+            <div className="card"><p>Products Missing Images</p><h2>{supabaseImportStatus.productsMissingImages ?? "N/A"}</h2></div>
+            <div className="card"><p>Products Missing Market Price</p><h2>{supabaseImportStatus.productsMissingMarketPrices ?? "N/A"}</h2></div>
+          </div>
+          {supabaseImportStatus.errors.length ? (
+            <div className="empty-state">
+              <h3>Import status notes</h3>
+              {supabaseImportStatus.errors.map((error) => <p key={error}>{error}</p>)}
+            </div>
+          ) : supabaseImportStatus.totalPokemonProducts === 0 && Number(supabaseImportStatus.marketPriceRows || 0) > 0 ? (
+            <div className="empty-state">
+              <h3>Catalog rows may be hidden by RLS</h3>
+              <p>Market prices and stores are visible, but product_catalog returned 0 rows to the frontend. Run the latest Supabase migration to enable read-only access for shared Pokemon catalog rows.</p>
+            </div>
+          ) : (
+            <p className="compact-subtitle">No import status errors reported by the current client. Service-role imports must still run from npm/server only.</p>
+          )}
+        </section>
         <div className="cards mini-cards">
           {Object.entries(REVIEW_SECTION_LABELS).map(([key, label]) => (
             <button type="button" className="card suggestion-section-card" key={key} onClick={() => setAdminReviewFilter(label)}>
@@ -7360,9 +7730,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <p className="compact-subtitle">{currentUserProfile.displayName || user.email || "Local beta user"}</p>
                     </div>
                     <dl className="drawer-status-list">
-                      <div><dt>Role</dt><dd>{adminUser ? "Admin" : "User"}</dd></div>
+                      <div><dt>Role</dt><dd>{adminUser ? "Admin" : BETA_LOCAL_MODE ? "User + local admin tools" : "User"}</dd></div>
                       <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
-                      <div><dt>Data</dt><dd>Stored on this device</dd></div>
+                      <div><dt>Data</dt><dd>{cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
                     </dl>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
@@ -7392,6 +7762,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ), "Gear")}
               {renderMenuPullDown("data", "Data & Backup", "Export, import, clear demo data, and storage status", (
                 <>
+                  <div className="drawer-info-card">
+                    <strong>Optional Cloud Sync</strong>
+                    <p className="compact-subtitle">Vault, Forge, watchlist, favorites, Scout reports, and settings stay local for beta. Cloud sync is optional and will require sign-in before it moves user-owned data.</p>
+                    <dl className="drawer-status-list">
+                      <div><dt>Current mode</dt><dd>{BETA_LOCAL_MODE ? "Local beta" : "Cloud-ready"}</dd></div>
+                      <div><dt>Preference</dt><dd>{cloudSyncPreference === "cloud" ? "Cloud sync requested" : "Keep local"}</dd></div>
+                    </dl>
+                    <div className="drawer-inline-actions">
+                      <button type="button" className={cloudSyncPreference === "local" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("local")}>Keep Local Beta</button>
+                      <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync</button>
+                    </div>
+                  </div>
                   <BackupExportImport
                     storageStatus={storageStatus}
                     importPreview={backupImportPreview}
@@ -7401,11 +7783,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     onApplyImport={applyBetaBackupImport}
                     onClearDemoData={resetBetaLocalData}
                   />
-                  {BETA_LOCAL_MODE ? (
-                    <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>
-                      Admin Review Queue (Local Beta)
-                    </button>
-                  ) : null}
                 </>
               ), "Data")}
               {renderMenuPullDown("feedback", "Feedback / Help", "Send feedback, report bugs, and app help", (
@@ -7433,15 +7810,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Upgrade Coming Soon</button>
                 </div>
               ), "Plan")}
-              {adminUser ? renderMenuPullDown("admin", "Admin Tools", "User, tier, catalog, store, report, and data controls", (
+              {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", adminUser ? "Admin-only moderation, imports, and shared data controls" : "Local beta import status and review tools", (
                 <div className="drawer-links">
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>User Management</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Tier Management</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("catalog"))}>Catalog Import / Status</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setFeatureSectionsOpen((current) => ({ ...current, scout_stores: true })); })}>Store Import / Status</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Admin Review Queue</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Needs Review"))}>Report Moderation</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("market"))}>Mock / Live Data Controls</button>
+                  <div className="drawer-info-card">
+                    <strong>{adminUser ? "Admin / Founder" : "Local Beta Admin Tools"}</strong>
+                    <p className="compact-subtitle">{adminUser ? "Supabase profile grants admin tools. Backend/RLS still protects shared-data writes." : "Review/import tools are visible for local beta testing. Shared-data edits still go through suggestions unless your signed-in profile is admin."}</p>
+                  </div>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Open Admin Dashboard</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("All"); setActiveTab("adminReview"); })}>Import Status & Review Queue</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Needs Review"))}>Tidepool Moderation</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("market"); setFeatureSectionsOpen((current) => ({ ...current, market_sources: true })); })}>Market Source Controls</button>
                 </div>
               ), "Admin") : null}
               {renderMenuPullDown("account", "Account", "Log out, reset beta data, and app version", (
@@ -8167,6 +8545,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <strong>{tideTradrWatchlist.length} watchlist item{tideTradrWatchlist.length === 1 ? "" : "s"}</strong>
                   <small>{missingMarketPriceItems.length} missing prices</small>
                 </button>
+              </div>
+            </section>
+
+            <section className="panel beta-path-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h2>Beta Tester Path</h2>
+                  <p>Core flow: search a product, add it, report a store, check a deal, then export a backup.</p>
+                </div>
+              </div>
+              <div className="quick-action-rail">
+                <button type="button" onClick={() => { setActiveTab("market"); setTideTradrSubTab("overview"); }}>Search Product</button>
+                <button type="button" className="secondary-button" onClick={() => openQuickAddAction("vaultItem")}>Add to Vault</button>
+                <button type="button" className="secondary-button" onClick={() => openQuickAddAction("inventory")}>Add to Forge</button>
+                <button type="button" className="secondary-button" onClick={() => goToScoutSection("reports")}>Submit Scout Report</button>
+                <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); setTideTradrSubTab("deal"); }}>Check Deal</button>
+                <button type="button" className="secondary-button" onClick={() => { setMenuSectionsOpen({ data: true }); setMenuOpen(true); }}>Export Backup</button>
               </div>
             </section>
 
@@ -9483,7 +9878,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
                   </div>
                   <div className="cards mini-cards">
-                    <div className="card"><p>Catalog Products</p><h2>{catalogProducts.length}</h2></div>
+                    <div className="card"><p>Catalog Products</p><h2>{supabaseCatalogStatus.totalCount ?? catalogProducts.length}</h2></div>
                     <div className="card"><p>Found Market Values</p><h2>{catalogMarketPriceCount}</h2></div>
                     <div className="card"><p>Missing Market Prices</p><h2>{missingMarketPriceItems.length}</h2></div>
                     <div className="card"><p>Needs Market Check</p><h2>{needsMarketCheckItems.length}</h2></div>
@@ -9497,10 +9892,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <p>{filteredCatalogProducts.length} results from TideTradr Catalog.</p>
                     </div>
                     <div className="summary-pill-row">
+                      <button type="button" className="secondary-button" onClick={() => loadImportedPokemonCatalog(catalogSearch, { page: supabaseCatalogStatus.page || 1 })}>
+                        {supabaseCatalogStatus.loading ? "Refreshing..." : "Refresh Results"}
+                      </button>
                       <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>Filters</button>
                       <button type="button" className="secondary-button" onClick={() => { setActiveTab("catalog"); setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true })); }}>{adminUser ? "Add Catalog Item" : "Suggest Missing Product"}</button>
                     </div>
                   </div>
+                  <p className="compact-subtitle">TideTradr now searches the Supabase Pokemon catalog natively. Vault, Forge, reports, and settings stay local beta data unless cloud sync is enabled later.</p>
+                  {supabaseCatalogStatus.message ? <p className="compact-subtitle">{supabaseCatalogStatus.message}</p> : null}
+                  {supabaseCatalogStatus.error ? <p className="compact-subtitle danger-text">{supabaseCatalogStatus.error}</p> : null}
                   {isFeatureSectionOpen("market_filters") ? (
                     <div className="filter-grid">
                       <Field label="Cards / Sealed">
@@ -9549,6 +9950,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                             <h3>{catalogTitle(p)}</h3>
                             <p>{p.setName || p.expansion || "No set"} | {p.catalogType === "card" ? p.rarity || "No rarity" : p.productType || "No product type"}</p>
                             <p>Market: {money(getTideTradrMarketInfo(p).currentMarketValue)}{p.catalogType !== "card" ? ` | MSRP: ${getTideTradrMarketInfo(p).msrp ? money(getTideTradrMarketInfo(p).msrp) : "Unknown"}` : ""}</p>
+                            <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
                             <span className="status-badge">{MARKET_STATUS_LABELS[getTideTradrMarketInfo(p).marketStatus] || "Unknown"}</span>
                           </div>
                         </button>
@@ -9559,6 +9961,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           <button type="button" className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
                           <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(p.id)}>Watchlist</button>
                           <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("catalog", p)}>Create Listing</button>
+                          {catalogSourceUrl(p) ? <a className="secondary-button" href={catalogSourceUrl(p)} target="_blank" rel="noreferrer">Source</a> : null}
                         </div>
                       </div>
                     ))}
@@ -9568,6 +9971,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <p>Try a broader search, clear filters, or add a missing catalog item.</p>
                       </div>
                     ) : null}
+                  </div>
+                  <div className="summary-pill-row catalog-pagination-row">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={supabaseCatalogStatus.loading || (supabaseCatalogStatus.page || 1) <= 1}
+                      onClick={() => loadImportedPokemonCatalog(catalogSearch, { page: Math.max(1, (supabaseCatalogStatus.page || 1) - 1) })}
+                    >
+                      Previous Page
+                    </button>
+                    <span className="status-badge">Page {supabaseCatalogStatus.page || 1}{supabaseCatalogStatus.totalCount ? ` of ${Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))}` : ""}</span>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={supabaseCatalogStatus.loading || !supabaseCatalogStatus.hasMore}
+                      onClick={() => loadImportedPokemonCatalog(catalogSearch, { page: (supabaseCatalogStatus.page || 1) + 1 })}
+                    >
+                      Next Page
+                    </button>
                   </div>
                 </section>
 
@@ -10304,12 +10726,14 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                           Image: {getImageSourceLabel(p)}
                           {p.imageNeedsReview ? " • Needs review" : ""}
                         </p>
+                        <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
                       </div>
                     </button>
                     <div className="catalog-result-actions">
                       <button className="secondary-button" onClick={() => addCatalogItemToForge(p.id)}>Add to Forge</button>
                       <button className="secondary-button" onClick={() => applyCatalogProductToVault(p.id)}>Add to Vault</button>
                       <button className="secondary-button" onClick={() => openCatalogDetails(p.id)}>View Details</button>
+                      {catalogSourceUrl(p) ? <a className="secondary-button" href={catalogSourceUrl(p)} target="_blank" rel="noreferrer">Source</a> : null}
                       {!adminUser ? (
                         <>
                           <button className="secondary-button" onClick={() => submitUniversalSuggestion({
@@ -11102,6 +11526,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(selectedCatalogDetailProduct.id)}>Compare Market</button>
                   <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setSelectedCatalogDetailId(""); }}>Add Store Report</button>
                   <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("catalog", selectedCatalogDetailProduct)}>Create Listing</button>
+                  {catalogSourceUrl(selectedCatalogDetailProduct) ? <a className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailProduct)} target="_blank" rel="noreferrer">Open Source</a> : null}
                   {!adminUser ? (
                     <>
                       <button type="button" className="secondary-button" onClick={() => submitUniversalSuggestion({
@@ -11147,6 +11572,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).lastUpdated} />
                       <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName} />
                       <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailProduct).marketStatus] || "Unknown"} />
+                      <DetailItem label="Source Product ID" value={selectedCatalogDetailProduct.externalProductId || selectedCatalogDetailProduct.tcgplayerProductId} />
+                      <DetailItem label="Price Type" value={selectedCatalogDetailProduct.priceSubtype} />
                       <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).needsReview ? "Yes" : "No"} />
                       <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailProduct)} />
                       <DetailItem label="Image Last Updated" value={selectedCatalogDetailProduct.imageLastUpdated || "Unknown"} />
@@ -11165,6 +11592,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Contents" value={Array.isArray(selectedCatalogDetailProduct.contents) ? selectedCatalogDetailProduct.contents.join(", ") : selectedCatalogDetailProduct.contents} />
                       <DetailItem label="UPC" value={selectedCatalogDetailProduct.upc || selectedCatalogDetailProduct.barcode} />
                       <DetailItem label="SKU" value={selectedCatalogDetailProduct.sku || selectedCatalogDetailProduct.externalProductId} />
+                      <DetailItem label="Source Product ID" value={selectedCatalogDetailProduct.externalProductId || selectedCatalogDetailProduct.tcgplayerProductId} />
+                      <DetailItem label="Price Type" value={selectedCatalogDetailProduct.priceSubtype} />
                       <DetailItem label="Retailer Exclusivity" value={selectedCatalogDetailProduct.retailerExclusive ? "Retailer exclusive" : "Not listed"} />
                       <DetailItem label="Retailer Name" value={selectedCatalogDetailProduct.retailerName} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).lastUpdated} />

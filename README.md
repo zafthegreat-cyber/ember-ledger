@@ -59,7 +59,37 @@ BESTBUY_API_KEY
 BESTBUY_API_BASE_URL
 ```
 
+Server-only Pokemon ingestion imports:
+
+```text
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+DEFAULT_USER_ID
+POKEMON_TCG_API_KEY
+```
+
 Do not put service-role keys or private API keys in frontend code.
+
+## Pokemon Market Ingestion
+
+The Pokemon market-data ingestion kit is integrated under `pokemon_market_ingestion_kit/`.
+
+Docs:
+
+```text
+docs/pokemon-market-ingestion.md
+```
+
+Commands:
+
+```bash
+GROUP_LIMIT=2 npm run import:tcgcsv
+npm run import:pokemon-tcg-api
+GROUP_LIMIT=0 npm run import:tcgcsv
+npm run import:va-stores
+```
+
+Run `supabase/migrations/20260508203900_pokemon_market_ingestion_schema.sql` before running the imports.
 
 ## Admin / Founder Setup
 

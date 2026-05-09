@@ -6,6 +6,9 @@
     "preview": "vite preview",
     "smoke:beta": "node scripts/beta-smoke.cjs",
     "catalog:import": "node scripts/import-pokemon-catalog.cjs",
+    "import:pokemon-tcg-api": "node pokemon_market_ingestion_kit/import_pokemontcg_cards_to_supabase.mjs",
+    "import:tcgcsv": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",
+    "import:va-stores": "node pokemon_market_ingestion_kit/import_va_stores_to_supabase.mjs",
     "seed:stores:virginia": "node scripts/import-virginia-stores.cjs",
     "seed:stores:virginia:dry": "node scripts/import-virginia-stores.cjs --dry-run",
     "backend:dev": "npm --prefix backend run dev",
@@ -13,9 +16,11 @@
     "backend:start": "npm --prefix backend run start"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.2",
+    "@supabase/supabase-js": "^2.105.4",
     "@vitejs/plugin-react": "^5.0.4",
     "@zxing/browser": "^0.2.0",
+    "cheerio": "^1.2.0",
+    "dotenv": "^17.4.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "vite": "^8.0.10"
