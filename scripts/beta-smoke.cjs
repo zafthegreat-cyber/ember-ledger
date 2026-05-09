@@ -24,7 +24,17 @@ async function main() {
     }
   }
 
+  async function closeOpenModals() {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const modalCount = await page.locator(".location-modal-backdrop, .catalog-detail-backdrop, .drawer-backdrop").count();
+      if (!modalCount) return;
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(200);
+    }
+  }
+
   async function nav(label) {
+    await closeOpenModals();
     await page.locator(".main-tabs button").filter({ hasText: new RegExp(`^${label}$`) }).click();
   }
 
@@ -101,11 +111,11 @@ async function main() {
   await step("Scout: shared store directory loads", async () => {
     await nav("Scout");
     await page.waitForTimeout(500);
-    await page.getByRole("button", { name: /Nearby stores/i }).click();
+    await page.getByRole("button", { name: /Nearby stores|Stores/i }).first().click();
     if (await page.getByRole("dialog", { name: "Location Needed" }).count()) {
       await page.getByLabel("ZIP or city").fill("23434");
       await page.getByRole("button", { name: "Enter ZIP" }).click();
-      await page.getByRole("button", { name: /Nearby stores/i }).click();
+      await page.getByRole("button", { name: /Nearby stores|Stores/i }).first().click();
     }
     await assertVisibleText("Retailers");
     if (await page.getByRole("button", { name: /Target/i }).count()) {
@@ -301,6 +311,7 @@ async function main() {
     await fillByLabel(page, "Retail / MSRP Total", "120");
     await fillByLabel(page, "Notes", "Smoke deal check");
     await assertVisibleText("Great deal");
+    await page.getByRole("button", { name: /Close Deal Finder/i }).click();
   });
 
   await step("Home: totals update", async () => {

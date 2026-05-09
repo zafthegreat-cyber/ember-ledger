@@ -927,6 +927,8 @@ export default function Scout({
   const targetSubTabId = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.id;
   const targetSubTabAction = typeof targetSubTab === "string" ? "" : targetSubTab?.action;
   const targetSubTabProductName = typeof targetSubTab === "string" ? "" : targetSubTab?.productName || "";
+  const targetSubTabProductId = typeof targetSubTab === "string" ? "" : targetSubTab?.productId || "";
+  const targetSubTabProductSnapshot = typeof targetSubTab === "string" ? null : targetSubTab?.productSnapshot || null;
 
   useEffect(() => {
     if (targetSubTabKey) {
@@ -943,9 +945,9 @@ export default function Scout({
           ...current,
           reportType: "Product Sighting / What Did I See",
           itemName: targetSubTabProductName || current.itemName,
-          catalogProductId: "",
-          catalogProductSnapshot: null,
-          manualItemEntry: true,
+          catalogProductId: targetSubTabProductId,
+          catalogProductSnapshot: targetSubTabProductSnapshot,
+          manualItemEntry: !targetSubTabProductId,
         }));
         if (targetSubTabProductName) setReportProductSearch(targetSubTabProductName);
       }
@@ -953,7 +955,7 @@ export default function Scout({
         setReportForm((current) => ({ ...current, reportType: "Store Correction" }));
       }
     }
-  }, [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductName]);
+  }, [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductName, targetSubTabProductId, targetSubTabProductSnapshot]);
 
   const [editStoreForm, setEditStoreForm] = useState({
     name: "",
@@ -3643,7 +3645,7 @@ async function handleUpdateStore(e) {
                   const sourceBadge = /mock/i.test(`${alert.sourceType}`) ? "Mock" : /best buy/i.test(`${alert.sourceType} ${alert.storeName}`) ? "Online" : "Scout Report";
                   const verifyBadge = alert.verified || alert.verificationStatus === "verified" ? "Verified" : alert.verificationStatus === "pending" ? "Needs Review" : "Unverified";
                   return (
-                  <div key={alertId} style={styles.alertCard}>
+                  <div key={alertId} className="scout-alert-card" style={styles.alertCard}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                       <strong>{alert.reportType || "Scout alert"}</strong>
                       <div style={styles.row}>
@@ -3656,7 +3658,7 @@ async function handleUpdateStore(e) {
                       {alert.duplicateCount > 1 ? ` (${alert.duplicateCount} similar)` : ""}
                     </p>
                     <p style={styles.tiny}>Last updated: {alert.createdAt || "Local beta"}</p>
-                    <div style={styles.row}>
+                    <div className="scout-alert-actions" style={styles.row}>
                       <button type="button" style={styles.buttonSoft} onClick={() => setError("Alert detail view is coming later. Use Scout reports or Stores for details now.")}>View</button>
                       <button type="button" style={styles.buttonSoft} onClick={() => {
                         setDismissedAlertIds((current) => [...new Set([...current, alertId])]);
@@ -3701,7 +3703,7 @@ async function handleUpdateStore(e) {
               </div>
             </details>
 
-            <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
+            <div className="scout-advanced-alerts" style={{ ...styles.calloutCard, marginTop: "14px" }}>
               <strong>Advanced Alerts</strong>
               <p style={{ margin: "6px 0 0 0", color: "#475569" }}>Advanced Alerts are part of Plus. Upgrade to unlock advanced scouting, alerts, seller tools, mileage, expenses, and deeper deal analysis.</p>
             </div>
@@ -4016,7 +4018,7 @@ async function handleUpdateStore(e) {
                               </div>
                               <div style={styles.storeRowActions}>
                                 <button type="button" style={styles.iconButton} aria-label={store.favorite ? "Unfavorite store" : "Favorite store"} onClick={(event) => { event.stopPropagation(); toggleStoreFavorite(store.id); }}>
-                                  {store.favorite ? "Favorited" : "Favorite"}
+                                  {store.favorite ? "★" : "☆"}
                                 </button>
                                 <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreReport(store.id); }}>Report</button>
                                 <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreDetail(store.id); }}>Open Store</button>
@@ -4194,7 +4196,7 @@ async function handleUpdateStore(e) {
                               </div>
                               <div style={styles.storeRowActions}>
                                 <button type="button" style={styles.iconButton} aria-label={store.favorite ? "Unfavorite store" : "Favorite store"} onClick={(event) => { event.stopPropagation(); toggleStoreFavorite(store.id); }}>
-                                  {store.favorite ? "Favorited" : "Favorite"}
+                                  {store.favorite ? "★" : "☆"}
                                 </button>
                                 <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreReport(store.id); }}>Report</button>
                                 <button type="button" style={styles.buttonSoft} onClick={(event) => { event.stopPropagation(); openStoreDetail(store.id); }}>Open Store</button>
@@ -4243,11 +4245,10 @@ async function handleUpdateStore(e) {
                     {selectedStore.address ? (
                       <a style={styles.buttonSoft} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedStore.name} ${selectedStore.address} ${selectedStore.city || ""} ${selectedStore.state || ""}`)}`} target="_blank" rel="noreferrer">Open Directions</a>
                     ) : null}
-                    {selectedStore.phone ? <a style={styles.buttonSoft} href={`tel:${selectedStore.phone}`}>Call Store</a> : null}
                     <button type="button" style={styles.buttonSoft} onClick={() => {
                       setSelectedStoreId("");
                       setStoreDirectoryView("retailer");
-                    }}>Back to {selectedChain === "All" ? "Stores" : selectedChain}</button>
+                    }}>Back to Retailer</button>
                   </div>
                 </div>
 
