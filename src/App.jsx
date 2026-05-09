@@ -1261,6 +1261,8 @@ export default function App() {
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
   const quickAddRef = useRef(null);
+  const quickAddButtonRef = useRef(null);
+  const quickAddMenuRef = useRef(null);
   const [appSearchQuery, setAppSearchQuery] = useState("");
   const [menuSectionsOpen, setMenuSectionsOpen] = useState({});
   const [feedbackDialog, setFeedbackDialog] = useState(null);
@@ -2571,6 +2573,11 @@ export default function App() {
     }
     return { ...old, [field]: value };
   });
+  function closeQuickAddMenu(returnFocus = true) {
+    setQuickAddMenuOpen(false);
+    if (returnFocus) setTimeout(() => quickAddButtonRef.current?.focus?.(), 0);
+  }
+
   const resetMultiDestinationForm = (overrides = {}) => setMultiDestinationForm({
     ...BLANK_MULTI_DESTINATION_FORM,
     destinations: { ...BLANK_MULTI_DESTINATION_FORM.destinations, ...(overrides.destinations || {}) },
@@ -3883,10 +3890,29 @@ export default function App() {
     function closeQuickAddOnOutsidePointer(event) {
       if (!quickAddMenuOpen) return;
       if (quickAddRef.current?.contains(event.target)) return;
-      setQuickAddMenuOpen(false);
+      closeQuickAddMenu();
     }
     document.addEventListener("pointerdown", closeQuickAddOnOutsidePointer);
     return () => document.removeEventListener("pointerdown", closeQuickAddOnOutsidePointer);
+  }, [quickAddMenuOpen]);
+
+  useEffect(() => {
+    document.body.classList.toggle("quick-add-open", quickAddMenuOpen);
+    if (!quickAddMenuOpen) return () => document.body.classList.remove("quick-add-open");
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = requestAnimationFrame(() => {
+      const focusTarget = [...(quickAddMenuRef.current?.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])") || [])]
+        .find((node) => !node.disabled && node.offsetParent !== null);
+      focusTarget?.focus?.();
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      document.body.classList.remove("quick-add-open");
+      document.body.style.overflow = previousOverflow;
+    };
   }, [quickAddMenuOpen]);
 
   useEffect(() => {
@@ -3896,9 +3922,25 @@ export default function App() {
 
   useEffect(() => {
     function handleEscape(event) {
+      if (quickAddMenuOpen && event.key === "Tab" && quickAddMenuRef.current) {
+        const focusable = [...quickAddMenuRef.current.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")]
+          .filter((node) => !node.disabled && node.offsetParent !== null);
+        if (focusable.length) {
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+        return;
+      }
       if (event.key !== "Escape") return;
       if (quickAddMenuOpen) {
-        setQuickAddMenuOpen(false);
+        closeQuickAddMenu();
         return;
       }
       if (feedbackDialog) {
@@ -11218,6 +11260,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     <div className={`${showTopbarActions ? "topbar topbar-actions-visible" : "topbar topbar-actions-hidden"} ${showFullTopbar ? "topbar-full" : "topbar-compact"} ${searchExpanded ? "topbar-search-open" : ""}`}>
   <button
     type="button"
+    className="topbar-brand"
+    aria-label="Go to Home"
+    onClick={() => {
+      setQuickAddMenuOpen(false);
+      setSearchExpanded(false);
+      setActiveTab("dashboard");
+    }}
+  >
+    E&amp;T TCG
+  </button>
+  <button
+    type="button"
     className="menu-button"
     onClick={() => {
       setQuickAddMenuOpen(false);
@@ -11226,11 +11280,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   >
     ☰ Menu
   </button>
-
-  <div className="topbar-title">
-    <p>E&T TCG</p>
-    <h2>{activeTabLabel}</h2>
-  </div>
 
   <button
     type="button"
@@ -11243,86 +11292,27 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     Tidepool
   </button>
 
-  <button
-    type="button"
-    className="topbar-scan-button secondary-button"
-    onClick={() => {
-      setQuickAddMenuOpen(false);
-      beginScanProduct("none");
-    }}
-  >
-    Scan
-  </button>
-
-  <div className="topbar-actions">
-    <div className="quick-add-wrapper" ref={quickAddRef}>
-      <button
-        type="button"
-        className="secondary-button"
-        onClick={() => setQuickAddMenuOpen((current) => !current)}
-        aria-expanded={quickAddMenuOpen}
-        aria-haspopup="menu"
-      >
-        + Add
-      </button>
-      {quickAddMenuOpen ? (
-        <>
-        <div className="quick-add-backdrop" role="presentation" onClick={() => setQuickAddMenuOpen(false)} />
-        <div className="quick-add-menu" role="menu">
-          <div className="quick-add-sheet-header">
-            <strong>Quick Add</strong>
-            <button type="button" className="modal-icon-close" aria-label="Close Quick Add" onClick={() => setQuickAddMenuOpen(false)}>X</button>
-          </div>
-          <div className="quick-add-group">
-            <span>Multi-destination</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("multiDestination")}>Add to Multiple</button>
-          </div>
-          <div className="quick-add-group">
-            <span>Vault</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("card")}>Add Card</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("sealed")}>Add Sealed Product</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("scanVault")}>Scan to Vault</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("wishlist")}>Add Wishlist Item</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("importCollection")}>Import Collection</button>
-          </div>
-          <div className="quick-add-group">
-            <span>TideTradr</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("quickFind")}>Quick Find</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("scanProduct")}>Scan Product/Card</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("enterUpcSku")}>Enter UPC/SKU</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("suggestCatalogItem")}>Suggest Catalog Item</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("suggestCatalogCorrection")}>Suggest Correction</button>
-          </div>
-          <div className="quick-add-group">
-            <span>Forge</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("inventory")}>Add Inventory</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("sale")}>Add Sale</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("expense")}>Add Expense</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("mileage")}>Add Mileage</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("importFile")}>Import File</button>
-          </div>
-          <div className="quick-add-group">
-            <span>Scout</span>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeReport")}>Add Store Report</button>
-            <button type="button" role="menuitem" onClick={() => openQuickAddAction("storeSuggestion")}>Add Store Suggestion</button>
-          </div>
-        </div>
-        </>
-      ) : null}
-    </div>
-  </div>
-
   <div className={searchExpanded ? "app-search expanded" : "app-search"}>
+    {searchExpanded ? (
+      <div className="app-search-mobile-header">
+        <strong>{activeTab === "market" ? "Quick Find" : "Search"}</strong>
+        <button type="button" className="modal-icon-close" aria-label="Close search" onClick={closeSearchResults}>X</button>
+      </div>
+    ) : null}
     <button
       type="button"
       className="app-search-toggle"
-      aria-label="Search E&T TCG"
+      aria-label={activeTab === "market" ? "Quick Find TideTradr" : "Search E&T TCG"}
       onClick={() => {
         setQuickAddMenuOpen(false);
+        if (activeTab === "market") {
+          openQuickFindFlow({ source: "market" });
+          return;
+        }
         setSearchExpanded((current) => !current);
       }}
     >
-      Search
+      {activeTab === "market" ? "Quick Find" : "Search"}
     </button>
     <input
       value={appSearchQuery}
@@ -12516,7 +12506,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <>
                   <button type="button" onClick={() => {
                     setShowTopbarActions(true);
-                    setQuickAddMenuOpen(true);
+                    openMultiDestinationAddFlow({ source: "home" });
                   }}>+ Add</button>
                   <button type="button" className="secondary-button" onClick={() => setSearchExpanded(true)}>Search</button>
                 </>
