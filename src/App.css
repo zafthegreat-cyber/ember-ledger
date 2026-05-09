@@ -16,6 +16,80 @@
   --radius-md: 18px;
   --radius-sm: 12px;
   --bottom-nav-height: 74px;
+  --rust: #9a3f25;
+  --color-app-bg: #fbf6ef;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #fffdfa;
+  --color-primary: var(--ember);
+  --color-primary-dark: var(--ember-dark);
+  --color-primary-soft: rgba(180, 87, 53, 0.11);
+  --color-secondary-bg: rgba(31, 111, 139, 0.08);
+  --color-secondary-border: rgba(31, 111, 139, 0.22);
+  --color-border: var(--line);
+  --color-border-strong: rgba(22, 32, 51, 0.18);
+  --color-text: var(--ink);
+  --color-heading: var(--navy);
+  --color-muted: var(--muted);
+  --color-danger: #b42318;
+  --color-danger-bg: #fff1f2;
+  --color-success: #087443;
+  --color-success-bg: #ecfdf3;
+  --color-warning: #b76e00;
+  --color-warning-bg: #fffaeb;
+  --color-info: var(--water);
+  --color-info-bg: #eff8ff;
+  --color-mock-bg: #f3e8ff;
+  --color-mock-text: #6d28d9;
+  --color-cached-bg: #eef4ff;
+  --color-cached-text: #1d4ed8;
+  --color-manual-bg: #fff7ed;
+  --color-manual-text: #9a3412;
+  --color-unknown-bg: #f1f5f9;
+  --color-unknown-text: #475569;
+  --color-pending-bg: #fffaeb;
+  --color-pending-text: #92400e;
+  --color-approved-bg: #ecfdf3;
+  --color-approved-text: #166534;
+  --color-review-bg: #fef3c7;
+  --color-review-text: #92400e;
+  --color-admin-bg: #e0f2fe;
+  --color-admin-text: #075985;
+  --color-founder-bg: #fff1f2;
+  --color-founder-text: #9f1239;
+  --color-local-beta-bg: #f8fafc;
+  --color-local-beta-text: #334155;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-page: clamp(12px, 2vw, 24px);
+  --space-section: clamp(12px, 1.8vw, 18px);
+  --space-card: clamp(14px, 1.8vw, 18px);
+  --space-card-compact: clamp(10px, 1.4vw, 14px);
+  --space-form: 12px;
+  --space-button: 8px;
+  --space-mobile: 10px;
+  --space-desktop: 24px;
+  --radius-card: 16px;
+  --radius-button: 14px;
+  --radius-input: 12px;
+  --radius-modal: 22px;
+  --radius-badge: 999px;
+  --shadow-card: 0 10px 24px rgba(13, 24, 40, 0.08);
+  --shadow-elevated: 0 18px 42px rgba(13, 24, 40, 0.14);
+  --shadow-modal: 0 26px 70px rgba(13, 24, 40, 0.24);
+  --shadow-button: 0 8px 16px rgba(123, 47, 34, 0.12);
+  --app-shell-max: 1220px;
+  --form-page-max: 960px;
+  --text-page-title: clamp(1.45rem, 3vw, 2.1rem);
+  --text-section-title: clamp(1.12rem, 2vw, 1.4rem);
+  --text-card-title: clamp(0.98rem, 1.5vw, 1.12rem);
+  --text-label: 0.84rem;
+  --text-helper: 0.88rem;
+  --text-metric: clamp(1.25rem, 3vw, 1.8rem);
+  --text-badge: 0.72rem;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--ink);
@@ -3794,6 +3868,19 @@ video {
   padding: 14px;
 }
 
+.forge-preview-card.clickable-card {
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.forge-preview-card.clickable-card:hover,
+.forge-preview-card.clickable-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(31, 111, 139, 0.35);
+  box-shadow: 0 14px 30px rgba(19, 35, 47, 0.1);
+  outline: none;
+}
+
 .forge-preview-card h3 {
   margin: 0;
   color: var(--navy);
@@ -3802,6 +3889,10 @@ video {
 
 .forge-preview-card .summary-pill-row {
   grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+}
+
+.forge-home-inventory-section {
+  scroll-margin-top: calc(90px + env(safe-area-inset-top));
 }
 
 .forge-inventory-form,
@@ -5505,7 +5596,15 @@ textarea {
 }
 
 .forge-inventory-card .compact-image-wrap {
-  min-height: 72px;
+  width: 88px !important;
+  height: 88px !important;
+  min-height: 88px;
+  border-radius: 14px;
+}
+
+.forge-inventory-card h3 {
+  font-size: 1.05rem;
+  line-height: 1.2;
 }
 
 @media (max-width: 720px) {
@@ -6085,5 +6184,675 @@ textarea {
     overflow: auto;
     border-radius: 16px;
     box-shadow: 0 12px 28px rgba(13, 24, 40, 0.12);
+  }
+}
+
+/* Shared design system consistency layer */
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(180, 87, 53, 0.18), transparent 32rem),
+    radial-gradient(circle at top right, rgba(31, 111, 139, 0.18), transparent 34rem),
+    linear-gradient(180deg, #fffaf3 0%, #edf5f7 100%);
+}
+
+body {
+  color: var(--color-text);
+  background: var(--color-app-bg);
+}
+
+.app {
+  width: min(var(--app-shell-max), 100%);
+  padding:
+    max(var(--space-page), env(safe-area-inset-top))
+    max(var(--space-page), env(safe-area-inset-right))
+    max(var(--space-page), env(safe-area-inset-bottom))
+    max(var(--space-page), env(safe-area-inset-left));
+}
+
+.main {
+  gap: var(--space-section);
+  max-width: var(--app-shell-max);
+  margin-inline: auto;
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 32px);
+}
+
+.page-card,
+.section-card,
+.metric-card,
+.item-card,
+.empty-state-card,
+.info-card,
+.admin-card,
+.panel,
+.card,
+.compact-card,
+.inventory-card,
+.feature-dropdown,
+.catalog-result-card,
+.marketplace-create-panel,
+.marketplace-browse-panel,
+.marketplace-detail-panel,
+.marketplace-listing-card,
+.forge-preview-card,
+.forge-form-step,
+.forge-sale-product-summary,
+.suggestion-card,
+.drawer-info-card,
+.drawer-danger-zone,
+.location-modal,
+.scanner-review-modal,
+.vault-add-modal,
+.vault-transfer-modal,
+.marketplace-review-modal {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.panel,
+.page-card,
+.section-card,
+.compact-card,
+.inventory-card,
+.catalog-result-card,
+.marketplace-create-panel,
+.marketplace-browse-panel,
+.marketplace-detail-panel,
+.marketplace-listing-card,
+.forge-preview-card,
+.forge-form-step,
+.forge-sale-product-summary,
+.suggestion-card,
+.drawer-info-card {
+  padding: var(--space-card);
+}
+
+.panel h2,
+.page-dashboard-header h2,
+.page-summary-card h2,
+.tab-summary h2,
+.section-title,
+.compact-card h3,
+.inventory-card h3,
+.forge-preview-card h3,
+.marketplace-create-panel h3,
+.marketplace-browse-panel h3,
+.marketplace-detail-panel h3,
+.drawer-info-card h3 {
+  color: var(--color-heading);
+  font-size: var(--text-section-title);
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.compact-card h3,
+.inventory-card h3,
+.forge-preview-card h3,
+.marketplace-listing-card h3,
+.suggestion-card h3,
+.item-card h3 {
+  font-size: var(--text-card-title);
+}
+
+.panel p,
+.page-dashboard-header p,
+.page-summary-card p,
+.compact-subtitle,
+.feature-dropdown-toggle small,
+.drawer-info-card p,
+.marketplace-beta-note span,
+.marketplace-safety-rules p,
+.empty-state p,
+.small-empty-state p,
+.empty-state-card p,
+.info-card p {
+  color: var(--color-muted);
+  font-size: var(--text-helper);
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.cards,
+.mini-cards,
+.home-summary-stats,
+.vault-summary-grid,
+.forge-summary-grid,
+.scout-score-grid,
+.preview-grid,
+.recommendation-grid {
+  gap: var(--space-button);
+}
+
+.metric-card,
+.mini-cards .card,
+.home-summary-card .card,
+.vault-summary-grid .card,
+.forge-summary-grid .card,
+.scout-score-stat,
+.preview-grid div {
+  min-height: 76px;
+  padding: var(--space-card-compact);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.metric-card p,
+.mini-cards .card p,
+.home-summary-card .card p,
+.vault-summary-grid .card p,
+.forge-summary-grid .card p,
+.scout-score-stat p,
+.preview-grid span {
+  margin: 0 0 6px;
+  color: var(--color-muted);
+  font-size: var(--text-badge);
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.metric-card h2,
+.metric-card h3,
+.mini-cards .card h2,
+.mini-cards .card h3,
+.home-summary-card .card h2,
+.vault-summary-grid .card h2,
+.forge-summary-grid .card h2,
+.scout-score-stat h3,
+.preview-grid strong {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--text-metric);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+button,
+.button,
+.secondary-button,
+.ghost-button,
+.danger-button,
+.drawer-link,
+.main-tab,
+.vault-add-tab,
+.chip {
+  min-height: 44px;
+  border-radius: var(--radius-button);
+  font-weight: 850;
+  line-height: 1.15;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+button.primary,
+.button.primary,
+.primary-button,
+.form button:not(.secondary-button):not(.ghost-button):not(.delete-button):not(.overflow-menu-button),
+.quick-action-rail button.primary,
+.scout-sticky-subnav button.primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  box-shadow: var(--shadow-button);
+}
+
+.secondary-button,
+button.secondary-button,
+.drawer-link,
+.main-tab:not(.active),
+.quick-action-rail button:not(.primary),
+.subtab-rail button:not(.active),
+.scout-filter-grid button,
+.vault-add-tab,
+.chip {
+  color: var(--water-dark);
+  background: var(--color-surface);
+  border: 1px solid var(--color-secondary-border);
+  box-shadow: none;
+}
+
+.ghost-button,
+button.ghost-button,
+.clear-button {
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+
+.danger-button,
+button.danger-button,
+button.delete-button,
+.drawer-danger-link,
+.logout-link {
+  color: #fff;
+  background: linear-gradient(135deg, #dc2626, var(--color-danger));
+  border: 1px solid rgba(180, 35, 24, 0.28);
+  box-shadow: 0 8px 16px rgba(180, 35, 24, 0.14);
+}
+
+button:hover,
+.button:hover,
+.secondary-button:hover,
+.drawer-link:hover,
+.chip:hover,
+.clickable-card:hover,
+.stat-button-card:hover {
+  transform: translateY(-1px);
+}
+
+button:focus-visible,
+.button:focus-visible,
+.secondary-button:focus-visible,
+.drawer-link:focus-visible,
+.main-tab:focus-visible,
+.chip:focus-visible,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 3px solid rgba(31, 111, 139, 0.18);
+  outline-offset: 2px;
+}
+
+.form,
+.inline-form,
+.inline-input-grid,
+.vault-form-grid,
+.forge-inventory-form,
+.forge-sale-form,
+.marketplace-form,
+.drawer-alias-form,
+.what-see-form-grid {
+  gap: var(--space-form);
+}
+
+.form label,
+.drawer-alias-form label,
+.what-see-form-grid label,
+.scout-report-product-search label,
+.drawer-field-label,
+.field-label {
+  color: var(--color-heading);
+  font-size: var(--text-label);
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+input,
+select,
+textarea,
+.search-input,
+.vault-search-input,
+.vault-filter-select,
+.drawer-field {
+  min-height: 46px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-input);
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(101, 114, 134, 0.72);
+}
+
+textarea {
+  line-height: 1.35;
+}
+
+.status-badge,
+.badge,
+.chip,
+.catalog-pill,
+.summary-pill-row span,
+.marketplace-badges span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 5px 9px;
+  border-radius: var(--radius-badge);
+  border: 1px solid rgba(22, 32, 51, 0.08);
+  color: var(--color-unknown-text);
+  background: var(--color-unknown-bg);
+  font-size: var(--text-badge);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.status-badge.live,
+.badge.live,
+.status-badge.verified,
+.status-badge.approved,
+.status-badge.in-stock,
+.suggestion-status-approved,
+.suggestion-status-merged {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.status-badge.cached,
+.badge.cached {
+  color: var(--color-cached-text);
+  background: var(--color-cached-bg);
+}
+
+.status-badge.manual,
+.badge.manual {
+  color: var(--color-manual-text);
+  background: var(--color-manual-bg);
+}
+
+.status-badge.mock,
+.badge.mock {
+  color: var(--color-mock-text);
+  background: var(--color-mock-bg);
+}
+
+.status-badge.pending,
+.status-badge.needs-review,
+.suggestion-status-needs-more-info,
+.suggestion-status-under-review {
+  color: var(--color-pending-text);
+  background: var(--color-pending-bg);
+}
+
+.status-badge.admin,
+.badge.admin {
+  color: var(--color-admin-text);
+  background: var(--color-admin-bg);
+}
+
+.status-badge.founder,
+.badge.founder {
+  color: var(--color-founder-text);
+  background: var(--color-founder-bg);
+}
+
+.empty-state,
+.small-empty-state,
+.empty-state-card {
+  display: grid;
+  gap: 8px;
+  padding: var(--space-card);
+  border: 1px dashed rgba(31, 111, 139, 0.28);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, rgba(31, 111, 139, 0.06), rgba(255, 255, 255, 0.9));
+  box-shadow: none;
+}
+
+.empty-state h3,
+.small-empty-state h3,
+.empty-state-card h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--text-card-title);
+  letter-spacing: 0;
+}
+
+.location-modal-backdrop,
+.drawer-backdrop,
+.catalog-detail-backdrop {
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+}
+
+.location-modal,
+.scanner-review-modal,
+.vault-add-modal,
+.vault-transfer-modal,
+.marketplace-review-modal,
+.feedback-modal,
+.scout-score-modal {
+  max-width: min(760px, calc(100vw - 24px));
+  max-height: min(90dvh, 920px);
+  overflow: auto;
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-modal);
+  overscroll-behavior: contain;
+}
+
+.catalog-detail-drawer {
+  height: 100vh;
+  height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: var(--shadow-modal);
+}
+
+.modal-title-row,
+.compact-card-header,
+.drawer-header,
+.catalog-detail-header {
+  gap: var(--space-3);
+}
+
+.modal-close-button,
+.drawer-close-button {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-badge);
+  box-shadow: none;
+}
+
+.quick-actions,
+.home-inline-actions,
+.settings-toolbar,
+.catalog-result-actions,
+.catalog-detail-action-group,
+.vault-card-actions,
+.marketplace-nav-actions,
+.suggestion-actions,
+.location-modal-actions,
+.scout-main-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: var(--space-button);
+  align-items: stretch;
+}
+
+.quick-actions button,
+.home-inline-actions button,
+.catalog-result-actions button,
+.catalog-detail-action-group button,
+.vault-card-actions button,
+.marketplace-nav-actions button,
+.suggestion-actions button,
+.location-modal-actions button,
+.quick-actions a.secondary-button,
+.catalog-result-actions a.secondary-button,
+.catalog-detail-action-group a.secondary-button {
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+}
+
+.main-tabs,
+.quick-action-rail,
+.subtab-rail,
+.chip-row,
+.summary-pill-row,
+.compact-chip-row,
+.scout-sticky-subnav,
+.scout-filter-grid {
+  overflow: visible;
+}
+
+.quick-action-rail,
+.subtab-rail,
+.chip-row,
+.summary-pill-row,
+.compact-chip-row,
+.scout-sticky-subnav {
+  flex-wrap: wrap;
+}
+
+.catalog-result-card,
+.forge-inventory-card,
+.vault-item-card,
+.marketplace-listing-card,
+.scout-store-row {
+  min-width: 0;
+}
+
+.catalog-result-title,
+.catalog-result-copy h3,
+.forge-inventory-card h3,
+.vault-item-card h3,
+.marketplace-listing-card h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.catalog-thumb,
+.catalog-detail-image,
+.vault-image-wrap,
+.compact-image-wrap,
+.marketplace-thumb,
+.scout-selected-product-thumb {
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+}
+
+@media (min-width: 900px) {
+  .form-page,
+  .forge-inventory-form,
+  .forge-sale-form,
+  .marketplace-form,
+  .vault-add-modal,
+  .scanner-review-modal {
+    max-width: var(--form-page-max);
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  :root {
+    --bottom-nav-height: 78px;
+    --space-page: var(--space-mobile);
+    --space-card: 14px;
+    --space-section: 12px;
+  }
+
+  .app {
+    padding:
+      max(var(--space-mobile), env(safe-area-inset-top))
+      max(var(--space-mobile), env(safe-area-inset-right))
+      max(var(--space-mobile), env(safe-area-inset-bottom))
+      max(var(--space-mobile), env(safe-area-inset-left));
+  }
+
+  .main {
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 36px);
+  }
+
+  .header,
+  .topbar {
+    border-radius: var(--radius-card);
+  }
+
+  .panel,
+  .page-card,
+  .section-card,
+  .compact-card,
+  .inventory-card,
+  .catalog-result-card,
+  .marketplace-create-panel,
+  .marketplace-browse-panel,
+  .marketplace-detail-panel,
+  .marketplace-listing-card,
+  .forge-preview-card,
+  .forge-form-step,
+  .suggestion-card {
+    padding: var(--space-card);
+    border-radius: var(--radius-card);
+  }
+
+  .home-summary-stats,
+  .vault-summary-grid,
+  .forge-summary-grid,
+  .scout-score-grid,
+  .home-today-grid,
+  .forge-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick-actions,
+  .home-inline-actions,
+  .catalog-result-actions,
+  .catalog-detail-action-group,
+  .vault-card-actions,
+  .marketplace-nav-actions,
+  .suggestion-actions,
+  .location-modal-actions,
+  .scout-main-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form,
+  .inline-form,
+  .inline-input-grid,
+  .vault-form-grid,
+  .forge-inventory-form,
+  .forge-sale-form,
+  .marketplace-form,
+  .what-see-form-grid,
+  .catalog-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .location-modal,
+  .scanner-review-modal,
+  .vault-add-modal,
+  .vault-transfer-modal,
+  .marketplace-review-modal,
+  .feedback-modal,
+  .scout-score-modal {
+    width: min(100%, calc(100vw - 18px));
+    max-height: min(90dvh, 920px);
+  }
+
+  .vault-form-actions,
+  .what-see-footer-actions,
+  .marketplace-form .quick-actions {
+    bottom: calc(env(safe-area-inset-bottom));
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 390px) {
+  .home-summary-stats,
+  .vault-summary-grid,
+  .forge-summary-grid,
+  .scout-score-grid,
+  .home-today-grid,
+  .forge-preview-grid,
+  .quick-actions,
+  .home-inline-actions,
+  .catalog-result-actions,
+  .catalog-detail-action-group,
+  .vault-card-actions,
+  .marketplace-nav-actions,
+  .suggestion-actions,
+  .location-modal-actions,
+  .scout-main-actions {
+    grid-template-columns: 1fr;
   }
 }

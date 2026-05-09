@@ -12359,61 +12359,81 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </div>
             </div>
             <div className="forge-preview-grid">
-              <article className="forge-preview-card">
+              <article
+                className="forge-preview-card clickable-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setForgeSubTab("overview");
+                  setActiveTab("inventory");
+                  setTimeout(() => document.getElementById("forge-inventory-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setTimeout(() => document.getElementById("forge-inventory-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+                  }
+                }}
+              >
                 <span className="status-badge">Inventory</span>
                 <h3>{activeForgeItems.length ? `${activeForgeItems.length} item${activeForgeItems.length === 1 ? "" : "s"}` : "No Forge items found"}</h3>
                 <p>{activeForgeItems[0]?.name || "Add inventory, import from TideTradr, or scan an item."}</p>
-                <div className="summary-pill-row">
-                  <button type="button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }))}>Open Inventory</button>
+                <div className="summary-pill-row" onClick={(event) => event.stopPropagation()}>
+                  <button type="button" onClick={() => setTimeout(() => document.getElementById("forge-inventory-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0)}>Open Inventory</button>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("addInventory")}>Add</button>
                 </div>
               </article>
-              <article className="forge-preview-card">
+              <article
+                className="forge-preview-card clickable-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveTab("sales")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActiveTab("sales");
+                  }
+                }}
+              >
                 <span className="status-badge">Sales</span>
                 <h3>{money(totalSalesRevenue)}</h3>
                 <p>{sales.length ? `${sales.length} recorded sale${sales.length === 1 ? "" : "s"}` : "Record sales without opening a long table first."}</p>
-                <div className="summary-pill-row">
+                <div className="summary-pill-row" onClick={(event) => event.stopPropagation()}>
                   <button type="button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("sales")}>View</button>
                 </div>
               </article>
-              <article className="forge-preview-card">
+              <article className="forge-preview-card clickable-card" role="button" tabIndex={0} onClick={() => setActiveTab("expenses")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActiveTab("expenses"); } }}>
                 <span className="status-badge">Expenses</span>
                 <h3>{money(totalExpenses)}</h3>
                 <p>Receipts, shipping, packaging, fees, marketing, events, and supplies.</p>
-                <button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Add / View Expenses</button>
+                <button type="button" className="secondary-button" onClick={(event) => { event.stopPropagation(); setActiveTab("expenses"); }}>Add / View Expenses</button>
               </article>
-              <article className="forge-preview-card">
+              <article className="forge-preview-card clickable-card" role="button" tabIndex={0} onClick={() => setActiveTab("mileage")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActiveTab("mileage"); } }}>
                 <span className="status-badge">Mileage</span>
                 <h3>{totalBusinessMiles.toFixed(1)} mi</h3>
                 <p>Business miles and vehicle costs stay separate from inventory.</p>
-                <button type="button" className="secondary-button" onClick={() => setActiveTab("mileage")}>Open Mileage</button>
+                <button type="button" className="secondary-button" onClick={(event) => { event.stopPropagation(); setActiveTab("mileage"); }}>Open Mileage</button>
               </article>
-              <article className="forge-preview-card">
+              <article className="forge-preview-card clickable-card" role="button" tabIndex={0} onClick={() => { setMarketplaceView("landing"); setForgeSubTab("marketplace"); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setMarketplaceView("landing"); setForgeSubTab("marketplace"); } }}>
                 <span className="status-badge">Marketplace</span>
                 <h3>{marketplaceListings.length} listing{marketplaceListings.length === 1 ? "" : "s"}</h3>
                 <p>Public listings stay pending until admin review. Payments and shipping are not handled in-app.</p>
-                <button type="button" className="secondary-button" onClick={() => {
+                <button type="button" className="secondary-button" onClick={(event) => {
+                  event.stopPropagation();
                   setMarketplaceView("landing");
                   setForgeSubTab("marketplace");
                 }}>Open Marketplace</button>
               </article>
-              <article className="forge-preview-card">
+              <article className="forge-preview-card clickable-card" role="button" tabIndex={0} onClick={() => setActiveTab("reports")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActiveTab("reports"); } }}>
                 <span className="status-badge">Reports</span>
                 <h3>{money(estimatedProfitAfterExpenses)}</h3>
                 <p>Profit/loss, monthly spending, exports, and seller summaries.</p>
-                <button type="button" className="secondary-button" onClick={() => setActiveTab("reports")}>Open Reports</button>
+                <button type="button" className="secondary-button" onClick={(event) => { event.stopPropagation(); setActiveTab("reports"); }}>Open Reports</button>
               </article>
             </div>
           </section>
-          <section className="feature-dropdown-stack">
-            <CollapsibleFeatureSection
-              title="Inventory"
-              summary="Add, view, edit, delete, search, and import inventory"
-              open={isFeatureSectionOpen("forge_inventory")}
-              onToggle={() => toggleFeatureSection("forge_inventory")}
-            >
-          <section className="panel">
+          <section id="forge-inventory-section" className="panel forge-home-inventory-section">
             <div className="forge-toolbar">
               <div>
                 <h2>The Forge Inventory</h2>
@@ -12579,53 +12599,6 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 />
               ))}
             </div>
-          </section>
-            </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Sales" summary="Add sales, view sales, planned sales, and sold items" open={isFeatureSectionOpen("forge_sales")} onToggle={() => toggleFeatureSection("forge_sales")}>
-              <div className="quick-actions">
-                <button type="button" onClick={() => setActiveTab("addSale")}>Add Sale</button>
-                <button type="button" onClick={() => setActiveTab("sales")}>View Sales</button>
-                <button type="button" className="secondary-button" onClick={() => goToReport("readyToList")}>Planned Sales</button>
-                <button type="button" className="secondary-button" onClick={() => setActiveTab("sales")}>Sold Items</button>
-              </div>
-            </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Expenses" summary="Receipts, marketing, events/giveaways, supplies, fees, shipping, and miscellaneous categories" open={isFeatureSectionOpen("forge_expenses")} onToggle={() => toggleFeatureSection("forge_expenses")}>
-              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("expenses")}>Add / View Expenses</button><button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Receipts</button></div>
-            </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Mileage" summary="Business miles and vehicle costs" open={isFeatureSectionOpen("forge_mileage")} onToggle={() => toggleFeatureSection("forge_mileage")}>
-              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("mileage")}>Add Mileage</button><button type="button" onClick={() => setActiveTab("mileage")}>Business Miles</button><button type="button" onClick={() => setActiveTab("vehicles")}>Vehicle Costs</button></div>
-            </CollapsibleFeatureSection>
-            {false && <CollapsibleFeatureSection title="Forge Receipts" summary="Receipt and item photo tools" open={isFeatureSectionOpen("forge_receipts")} onToggle={() => toggleFeatureSection("forge_receipts")}>
-              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("addInventory")}>Import Receipt</button><button type="button" onClick={beginScanProduct}>Scan Product</button></div>
-            </CollapsibleFeatureSection>}
-            <CollapsibleFeatureSection title="Marketplace" summary="Create listings, browse approved listings, drafts, saved listings, and pending review" open={isFeatureSectionOpen("forge_marketplace")} onToggle={() => toggleFeatureSection("forge_marketplace")}>
-              <div className="quick-actions">
-                <button type="button" onClick={() => {
-                  setMarketplaceView("create");
-                  setForgeSubTab("marketplace");
-                }}>Create Listing</button>
-                <button type="button" className="secondary-button" onClick={() => {
-                  setMarketplaceView("browse");
-                  setForgeSubTab("marketplace");
-                }}>Browse Listings</button>
-                <button type="button" className="secondary-button" onClick={() => {
-                  setMarketplaceView("my");
-                  setForgeSubTab("marketplace");
-                }}>My Listings</button>
-                <button type="button" className="secondary-button" onClick={() => {
-                  setMarketplaceView("saved");
-                  setForgeSubTab("marketplace");
-                }}>Saved Listings</button>
-                <button type="button" className="secondary-button" onClick={() => {
-                  setMarketplaceView("pending");
-                  setForgeSubTab("marketplace");
-                }}>Pending Review</button>
-              </div>
-              <p className="compact-subtitle">Public marketplace listings stay pending until admin review. Payments and shipping are not handled in-app.</p>
-            </CollapsibleFeatureSection>
-            <CollapsibleFeatureSection title="Reports" summary="Profit/loss, monthly spending, and exports" open={isFeatureSectionOpen("forge_reports")} onToggle={() => toggleFeatureSection("forge_reports")}>
-              <div className="quick-actions"><button type="button" onClick={() => setActiveTab("reports")}>Profit/Loss</button><button type="button" onClick={() => setActiveTab("dashboard")}>Monthly Spending</button><button type="button" onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Data</button></div>
-            </CollapsibleFeatureSection>
           </section>
           </>
           )
