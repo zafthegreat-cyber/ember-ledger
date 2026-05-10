@@ -5658,6 +5658,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     openFlowModal("scoutSubmit", { size: "large", source: options.source });
   }
 
+  function openScoutGuessFlow() {
+    openScoutSubmitFlow({ action: "addGuess", source: "scout-forecast" });
+  }
+
   function openQuickAddAction(action) {
     setQuickAddMenuOpen(false);
     if (action === "multiDestination") return openProductAddFlow({ source: "quick-add" });
@@ -9557,6 +9561,114 @@ function renderForgeHeader() {
     return [date, time].filter(Boolean).join(" ");
   }
 
+  function scoutForecastConfidenceKey(value = "") {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "confirmed" || normalized === "verified") return "confirmed";
+    if (normalized === "likely") return "likely";
+    if (normalized === "possible" || normalized === "rumor") return "possible";
+    return "unknown";
+  }
+
+  function scoutForecastConfidenceLabel(value = "") {
+    const labels = {
+      confirmed: "Confirmed",
+      likely: "Likely",
+      possible: "Possible",
+      unknown: "Unknown",
+    };
+    return labels[scoutForecastConfidenceKey(value)] || "Unknown";
+  }
+
+  function scoutForecastSourceBadges(sourceType = "", confidence = "") {
+    const source = String(sourceType || "").toLowerCase();
+    const normalizedConfidence = String(confidence || "").toLowerCase();
+    const badges = [];
+    if (normalizedConfidence === "confirmed") badges.push("Verified");
+    if (source === "employee_tip") badges.push("Employee Tip");
+    else if (["planner_guess", "manual_prediction", "user_correction"].includes(source) || normalizedConfidence === "guess") badges.push("User Guess");
+    else if (["user_report", "photo_report", "text_screenshot", "group_chat", "called_store", "social_media_post"].includes(source)) badges.push("User Report");
+    else if (source) badges.push(scoutSourceTypeLabel(source));
+    else badges.push("Pattern");
+    return [...new Set(badges)];
+  }
+
+  function scoutForecastDayNames(...values) {
+    const haystack = values.filter(Boolean).join(" ").toLowerCase();
+    if (!haystack) return [];
+    if (/\btoday\b|this morning|stocking now|being stocked now|just hit/.test(haystack)) return ["Today"];
+    if (/\btomorrow\b/.test(haystack)) return ["Tomorrow"];
+    if (/\bweekend\b/.test(haystack)) return ["This weekend"];
+    const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return weekdays.filter((day) => haystack.includes(day.toLowerCase()));
+  }
+
+  function scoutForecastDayDistance(day = "") {
+    const normalized = String(day || "").toLowerCase();
+    if (normalized === "today") return 0;
+    if (normalized === "tomorrow") return 1;
+    if (normalized === "this weekend") {
+      const currentDay = new Date().getDay();
+      const saturdayDistance = (6 - currentDay + 7) % 7;
+      return saturdayDistance || 1;
+    }
+    const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const index = weekdays.indexOf(normalized);
+    if (index === -1) return 99;
+    return (index - new Date().getDay() + 7) % 7;
+  }
+
+  function scoutForecastWindowLabel(days = [], timeWindow = "", fallback = "") {
+    const cleanDays = [...new Set((days || []).filter(Boolean))];
+    const dayLabel = cleanDays.length ? cleanDays.join(" / ") : fallback || "Unknown window";
+    const cleanTime = String(timeWindow || "").trim();
+    if (cleanTime && cleanTime.toLowerCase() !== "unknown") return `${dayLabel} | ${cleanTime}`;
+    return dayLabel;
+  }
+
+  function scoutForecastGroupLabel(days = []) {
+    const cleanDays = [...new Set((days || []).filter(Boolean))];
+    if (!cleanDays.length) return "Unknown window";
+    const distances = cleanDays.map(scoutForecastDayDistance);
+    const minDistance = Math.min(...distances);
+    if (minDistance === 0) return "Today";
+    if (minDistance === 1) return "Tomorrow";
+    if (cleanDays.includes("This weekend")) return "This weekend";
+    return cleanDays.join(" / ");
+  }
+
+  function scoutForecastSourceRank(row = {}) {
+    const source = String(row.sourceType || row.source_type || "").toLowerCase();
+    const confidence = String(row.confidence || "").toLowerCase();
+    if (confidence === "confirmed" || ["user_report", "photo_report", "called_store", "text_screenshot", "group_chat", "social_media_post"].includes(source)) return 0;
+    if (confidence === "likely") return 1;
+    if (["planner_guess", "manual_prediction", "user_correction"].includes(source) || confidence === "guess") return 2;
+    if (confidence === "possible" || confidence === "rumor") return 3;
+    return 4;
+  }
+
+  function scoutForecastProducts(row = {}) {
+    const rawProducts = Array.isArray(row.productsMentioned) ? row.productsMentioned : Array.isArray(row.products_mentioned) ? row.products_mentioned : [];
+    const products = rawProducts.map((item) => String(item || "").trim()).filter(Boolean);
+    if (products.length) return products;
+    const rawProductText = String(row.rawProductText || row.raw_product_text || "").trim();
+    if (rawProductText && !/no specific products/i.test(rawProductText)) return [rawProductText];
+    return [];
+  }
+
+  function scoutForecastReason(row = {}, pattern = {}) {
+    const candidates = [
+      row.reason,
+      row.pattern,
+      pattern.productTypePattern,
+      row.sourceText,
+      row.source_text,
+      pattern.notes,
+    ];
+    return candidates
+      .map((candidate) => String(candidate || "").trim())
+      .find((candidate) => candidate && !/no specific products|needs more reports/i.test(candidate)) || "";
+  }
+
   function isCurrentUserScoutReport(report = {}) {
     const userIds = [currentUserProfile.userId, user?.id, "local-beta", "local-beta-scout"].filter(Boolean).map(String);
     return userIds.some((id) => String(report.userId || report.reportedBy || report.reported_by || "").includes(id));
@@ -9614,6 +9726,54 @@ function renderForgeHeader() {
       products: latest?.productsMentioned?.length ? latest.productsMentioned.join(", ") : latest?.rawProductText || "No specific products",
       status: latest?.confidence === "confirmed" || latest?.confidence === "likely" ? "Reported stocked" : "Unknown",
     };
+  });
+  const scoutForecastPreviewRows = scoutPatternRows.map((pattern) => {
+    const relatedIntel = scoutIntelRows
+      .filter((row) => {
+        const rowStore = String(row.storeAlias || row.store_alias || "").toLowerCase();
+        const rowRetailer = String(row.retailer || "").toLowerCase();
+        const patternStore = String(pattern.storeAlias || pattern.nickname || "").toLowerCase();
+        const patternRetailer = String(pattern.retailer || "").toLowerCase();
+        return rowStore === patternStore && (!patternRetailer || !rowRetailer || rowRetailer === patternRetailer);
+      })
+      .sort((a, b) => scoutForecastSourceRank(a) - scoutForecastSourceRank(b));
+    const latest = relatedIntel[0] || {};
+    const confidence = latest.confidence || pattern.computedConfidence || "unknown";
+    const sourceType = latest.sourceType || latest.source_type || pattern.patternCandidates?.[0]?.sourceType || "pattern";
+    const days = pattern.usualDays?.length
+      ? pattern.usualDays
+      : scoutForecastDayNames(latest.pattern, latest.sourceText, latest.source_text, pattern.productTypePattern);
+    const groupLabel = scoutForecastGroupLabel(days);
+    const windowLabel = scoutForecastWindowLabel(days, pattern.usualTimeWindow, groupLabel);
+    const products = scoutForecastProducts(latest);
+    const reason = scoutForecastReason(latest, pattern);
+    const updatedAt = latest.updatedAt || latest.updated_at || latest.submittedAt || latest.submitted_at || latest.createdAt || latest.created_at || pattern.lastConfirmedRestockAt || "";
+    const updatedLabel = updatedAt ? scoutReportDateTimeLabel({ submittedAt: updatedAt }) : "";
+    const submittedBy = latest.submittedBy || latest.submitted_by || latest.username || latest.userName || latest.user_name || "";
+    return {
+      id: pattern.id || `${pattern.storeAlias || pattern.nickname}-${pattern.retailer}`,
+      storeName: pattern.nickname || pattern.storeAlias || "Store not selected",
+      retailer: pattern.retailer || latest.retailer || "Retailer unknown",
+      confidence,
+      confidenceKey: scoutForecastConfidenceKey(confidence),
+      confidenceLabel: scoutForecastConfidenceLabel(confidence),
+      sourceType,
+      sourceLabel: sourceType ? scoutSourceTypeLabel(sourceType) : "",
+      badges: scoutForecastSourceBadges(sourceType, confidence),
+      days,
+      groupLabel,
+      windowLabel,
+      products,
+      reason,
+      updatedLabel,
+      submittedBy,
+      sortRank: scoutForecastSourceRank({ sourceType, confidence }),
+      dayDistance: Math.min(...(days.length ? days.map(scoutForecastDayDistance) : [99])),
+    };
+  }).sort((a, b) => {
+    if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank;
+    if (a.dayDistance !== b.dayDistance) return a.dayDistance - b.dayDistance;
+    return String(a.storeName).localeCompare(String(b.storeName));
   });
   const filteredScoutReports = scoutReportRows.filter((report) => {
     if (scoutReportFilter === "Verified") return Boolean(report.verified || report.verificationStatus === "verified");
@@ -10809,8 +10969,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderScoutOverviewPanel() {
     const latestReports = scoutReportRows.slice(0, 3);
-    const forecastRows = scoutStoreStockSnapshots.slice(0, 3);
-    const scoutStoreCount = scoutSnapshot.stores?.length || VIRGINIA_STORES_SEED.length;
+    const forecastRows = scoutForecastPreviewRows.slice(0, 5);
+    const forecastGroups = forecastRows.reduce((groups, row) => {
+      const label = row.groupLabel || "Unknown window";
+      const existing = groups.find((group) => group.label === label);
+      if (existing) existing.rows.push(row);
+      else groups.push({ label, rows: [row] });
+      return groups;
+    }, []);
     return (
       <section className="scout-dashboard-overview" aria-label="Scout overview">
         <article className="panel scout-overview-card scout-overview-card--wide">
@@ -10835,38 +11001,51 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
         </article>
 
-        <button type="button" className="panel scout-overview-link-card" onClick={() => {
-          setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-          setScoutView("alerts");
-        }}>
-          <span>Alerts</span>
-          <strong>{(scoutSnapshot.bestBuyAlerts || []).length} active</strong>
-          <small>Open Alerts</small>
-        </button>
-
-        <button type="button" className="panel scout-overview-link-card" onClick={() => {
-          setScoutSubTabTarget({ tab: "stores", id: Date.now() });
-          setScoutView("stores");
-        }}>
-          <span>Stores</span>
-          <strong>{scoutStoreCount} nearby</strong>
-          <small>Open Stores</small>
-        </button>
-
-        <article className="panel scout-overview-card">
-          <div className="compact-card-header">
+        <article className="panel scout-overview-card scout-overview-card--wide scout-forecast-overview-card">
+          <div className="compact-card-header scout-forecast-header">
             <div>
               <h2>Restock Forecast</h2>
-              <p>Next likely windows only.</p>
+              <p>Next likely restock windows based on reports, patterns, and user guesses.</p>
             </div>
-            <button type="button" className="secondary-button" onClick={() => setScoutView("predictions")}>Open Predictions</button>
+            <div className="scout-forecast-actions">
+              <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
+              <button type="button" className="secondary-button" onClick={() => setScoutView("predictions")}>Open Predictions</button>
+            </div>
           </div>
-          <div className="scout-forecast-list">
-            {forecastRows.length ? forecastRows.map(({ pattern, latest, products }) => (
-              <div className="scout-forecast-row" key={`overview-${pattern.id}`}>
-                <strong>{pattern.nickname}</strong>
-                <span>{pattern.usualDays.join(" / ") || "This week"}{pattern.usualTimeWindow !== "Unknown" ? ` at ${pattern.usualTimeWindow}` : ""}</span>
-                <small>{latest?.confidence || pattern.computedConfidence} - {products}</small>
+          <div className="scout-forecast-groups">
+            {forecastGroups.length ? forecastGroups.map((group) => (
+              <div className="scout-forecast-group" key={`forecast-group-${group.label}`}>
+                <span className="scout-forecast-group-label">{group.label}</span>
+                <div className="scout-forecast-card-grid">
+                  {group.rows.map((row) => (
+                    <article className="scout-forecast-card-item" key={`overview-forecast-${row.id}`}>
+                      <div className="scout-forecast-card-top">
+                        <div>
+                          <strong>{row.storeName}</strong>
+                          <span>{row.retailer}</span>
+                        </div>
+                        <span className={`status-badge scout-confidence-badge scout-confidence-badge--${row.confidenceKey}`}>
+                          {row.confidenceLabel}
+                        </span>
+                      </div>
+                      <div className="scout-forecast-meta">
+                        <span>Expected: {row.windowLabel}</span>
+                        {row.updatedLabel ? <span>Updated: {row.updatedLabel}</span> : null}
+                      </div>
+                      <div className="scout-forecast-chip-row">
+                        {row.badges.map((badge) => <span className="mini-badge" key={`${row.id}-${badge}`}>{badge}</span>)}
+                      </div>
+                      {row.products.length ? (
+                        <p className="scout-forecast-products">Items: {row.products.join(", ")}</p>
+                      ) : (
+                        <p className="scout-forecast-products scout-forecast-products--empty">Products unknown</p>
+                      )}
+                      {row.reason ? <p className="scout-forecast-reason">Reason: {row.reason}</p> : null}
+                      {row.sourceLabel ? <small>Source: {row.sourceLabel}</small> : null}
+                      {row.submittedBy ? <small>Submitted by {row.submittedBy}</small> : null}
+                    </article>
+                  ))}
+                </div>
               </div>
             )) : (
               <div className="small-empty-state">
@@ -10874,6 +11053,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <span>Scout will build this as reports come in.</span>
               </div>
             )}
+          </div>
+          <div className="scout-forecast-footer">
+            <button type="button" className="secondary-button" onClick={() => setScoutView("predictions")}>View All Predictions</button>
           </div>
         </article>
       </section>
@@ -10888,7 +11070,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <h2>Predictions</h2>
             <p>Reported intel, guesses, calendar windows, and one-stop stock checks.</p>
           </div>
-          <span className="status-badge">This week</span>
+          <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
         </div>
         <div className="scout-intel-dashboard">
           <div className="scout-intel-column">

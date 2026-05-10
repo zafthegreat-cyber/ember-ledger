@@ -57,7 +57,31 @@ Backend/API placeholders:
 DATABASE_URL
 BESTBUY_API_KEY
 BESTBUY_API_BASE_URL
+BESTBUY_MONITOR_ENABLED
+BESTBUY_MONITOR_QUERY
+BESTBUY_MONITOR_ZIP
+BESTBUY_MONITOR_SKUS
+BESTBUY_ALERT_ONLY_ON_CHANGE
+BESTBUY_DISCORD_WEBHOOK_URL
+BESTBUY_MONITOR_SECRET
 ```
+
+The Vercel beta now includes a serverless `/api/*` bridge to the existing Express backend via `api/[...path].ts`.
+That means the static Vite frontend can call same-origin `/api/bestbuy/*` endpoints after deploy, as long as the
+server-only environment variables are configured in Vercel. Keep `BESTBUY_API_KEY`, `DATABASE_URL`, and Discord
+webhook values server-only; never prefix them with `VITE_`.
+
+Best Buy monitor storage is the Postgres/Supabase version of the starter kit SQLite model:
+
+```text
+retailer_products
+retailer_observations
+retailer_alert_log
+retailer_monitor_targets
+```
+
+Apply `supabase/migrations/20260510140000_bestbuy_restock_monitoring.sql` before turning on scheduled monitoring.
+The Vercel cron route is `/api/bestbuy/monitor/run`; it no-ops until `BESTBUY_MONITOR_ENABLED=true` is set.
 
 Server-only Pokemon ingestion imports:
 

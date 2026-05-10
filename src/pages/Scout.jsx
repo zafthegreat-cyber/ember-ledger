@@ -12,6 +12,8 @@ import {
   createTrackedItem,
   updateTrackedItem,
   deleteTrackedItem,
+  searchBestBuyProducts as searchBestBuyProductsApi,
+  getBestBuyAvailability as getBestBuyAvailabilityApi,
 } from "../api";
 import SmartCatalogSearchBox from "../components/SmartCatalogSearchBox";
 import OverflowMenu from "../components/OverflowMenu";
@@ -1134,6 +1136,17 @@ export default function Scout({
     if (targetSubTabKey === "reports" && targetSubTabAction === "storeCorrection") {
       setReportForm((current) => ({ ...current, reportType: "Store Correction" }));
     }
+    if (targetSubTabKey === "reports" && targetSubTabAction === "addGuess") {
+      setReportInputMethod("Manual");
+      setReportForm((current) => ({
+        ...current,
+        reportType: "Restock Pattern Suggestion",
+        sourceType: "manual_prediction",
+        confidence: "guess",
+        visibility: "private",
+        stockStatus: current.stockStatus || "unknown",
+      }));
+    }
     if (targetSubTabKey === "reports" && targetSubTabAction === "importIntel") {
       setReportInputMethod("Import Intel");
     }
@@ -1887,15 +1900,47 @@ function updateBestBuySetting(field, value) {
   saveLocalScout({ bestBuyNightlySettings: next });
 }
 
-function syncBestBuyStock(mode = "search") {
+function extractBestBuyApiRows(payload) {
+  if (!payload || payload.error) return [];
+  if (Array.isArray(payload)) return payload.filter((item) => item && !item.error);
+  const rows = [];
+  if (Array.isArray(payload.products)) rows.push(...payload.products);
+  ["local", "online", "product"].forEach((key) => {
+    if (payload[key] && !payload[key].error) rows.push(payload[key]);
+  });
+  if (payload.bestBuySku || payload.sku || payload.productName || payload.name) rows.push(payload);
+  return rows.filter((item, index, list) => {
+    if (!item || item.error) return false;
+    const key = `${item.bestBuySku || item.sku || item.productName || item.name}-${item.storeId || item.zipChecked || ""}`;
+    return list.findIndex((candidate) => `${candidate.bestBuySku || candidate.sku || candidate.productName || candidate.name}-${candidate.storeId || candidate.zipChecked || ""}` === key) === index;
+  });
+}
+
+async function syncBestBuyStock(mode = "search") {
   if (!adminMode) {
     setBestBuyMessage("Best Buy live lookup is not connected yet. No sample stock rows were created.");
     return;
   }
   const zip = bestBuyForm.zip || bestBuyNightlySettings.zip;
-  const pulled = mode === "sku" && bestBuyForm.sku
-    ? [checkBestBuyStoreAvailability(bestBuyForm.sku, zip, BEST_BUY_MOCK_PRODUCTS)]
-    : pullBestBuyStockData({ query: bestBuyForm.query || "pokemon", zip, products: BEST_BUY_MOCK_PRODUCTS, scoutStores: stores });
+  setBestBuyMessage("Checking Best Buy...");
+  let pulled = [];
+  let liveSourceUsed = false;
+
+  try {
+    const payload = mode === "sku" && bestBuyForm.sku
+      ? await getBestBuyAvailabilityApi(bestBuyForm.sku, zip)
+      : await searchBestBuyProductsApi(bestBuyForm.query || "pokemon tcg");
+    pulled = extractBestBuyApiRows(payload);
+    liveSourceUsed = pulled.some((item) => item.sourceStatus === "live" || item.sourceType === "bestbuy_api");
+  } catch (error) {
+    pulled = [];
+  }
+
+  if (!pulled.length) {
+    pulled = mode === "sku" && bestBuyForm.sku
+      ? [checkBestBuyStoreAvailability(bestBuyForm.sku, zip, BEST_BUY_MOCK_PRODUCTS)]
+      : pullBestBuyStockData({ query: bestBuyForm.query || "pokemon", zip, products: BEST_BUY_MOCK_PRODUCTS, scoutStores: stores });
+  }
 
   let nextResults = bestBuyStockResults;
   let nextHistory = bestBuyStockHistory;
@@ -1925,7 +1970,9 @@ function syncBestBuyStock(mode = "search") {
 
   saveBestBuyStock({ results: nextResults, history: nextHistory, storeStock: nextStoreStock, alerts: nextAlerts });
   saveTidepoolReports(nextTidepoolReports);
-  setBestBuyMessage(`Best Buy beta sync checked ${pulled.length} item(s). Source is admin-only sample/cached until backend API credentials are configured.`);
+  setBestBuyMessage(liveSourceUsed
+    ? `Best Buy API checked ${pulled.length} item(s). Official API data is still treated as availability intel until confirmed.`
+    : `Best Buy beta sync checked ${pulled.length} item(s). Add BESTBUY_API_KEY and a backend API URL to use the official live source.`);
   openWebsiteWhenDropDetected(dropToOpen);
 }
 

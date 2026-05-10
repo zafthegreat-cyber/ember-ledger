@@ -1664,6 +1664,11 @@ app.post("/seed", async (_req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Collector backend running on http://localhost:${PORT}`);
-});
+if (process.env.VERCEL !== "1") {
+  app.listen(PORT, () => {
+    console.log(`Collector backend running on http://localhost:${PORT}`);
+  });
+}
+
+export { app };
+export default app;

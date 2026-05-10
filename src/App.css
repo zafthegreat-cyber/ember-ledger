@@ -13027,6 +13027,166 @@ button.home-metric-card small,
   font-size: 0.9rem;
 }
 
+.scout-forecast-overview-card {
+  display: grid;
+  gap: 14px;
+}
+
+.scout-forecast-header {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.scout-forecast-actions,
+.scout-forecast-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.scout-forecast-footer {
+  justify-content: center;
+}
+
+.scout-forecast-groups {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.scout-forecast-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scout-forecast-group-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scout-forecast-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.scout-forecast-card-item {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 3px solid rgba(10, 150, 110, 0.46);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+
+.scout-forecast-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scout-forecast-card-top > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scout-forecast-card-top strong {
+  color: var(--color-heading);
+  font-size: 0.94rem;
+  line-height: 1.2;
+}
+
+.scout-forecast-card-top span,
+.scout-forecast-meta,
+.scout-forecast-card-item small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.scout-forecast-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.scout-forecast-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mini-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  background: rgba(236, 253, 245, 0.76);
+  color: #047857;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.scout-forecast-products,
+.scout-forecast-reason {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.scout-forecast-reason {
+  color: var(--muted);
+}
+
+.scout-forecast-products--empty {
+  color: var(--muted);
+}
+
+.scout-confidence-badge {
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 0.72rem;
+}
+
+.scout-confidence-badge--confirmed {
+  background: rgba(220, 252, 231, 0.95);
+  border-color: rgba(22, 163, 74, 0.28);
+  color: #166534;
+}
+
+.scout-confidence-badge--likely {
+  background: rgba(224, 242, 254, 0.95);
+  border-color: rgba(2, 132, 199, 0.26);
+  color: #075985;
+}
+
+.scout-confidence-badge--possible,
+.scout-confidence-badge--unknown {
+  background: rgba(254, 243, 199, 0.9);
+  border-color: rgba(245, 158, 11, 0.24);
+  color: #92400e;
+}
+
 .scout-accordion-section {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 16px;
@@ -13617,6 +13777,27 @@ button.home-metric-card small,
   .scout-dashboard-overview,
   .scout-report-card-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-forecast-header {
+    align-items: stretch;
+  }
+
+  .scout-forecast-actions {
+    justify-content: stretch;
+  }
+
+  .scout-forecast-actions .secondary-button,
+  .scout-forecast-footer .secondary-button {
+    flex: 1 1 140px;
+  }
+
+  .scout-forecast-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-forecast-card-top {
+    align-items: flex-start;
   }
 
   .scout-overview-link-card {
