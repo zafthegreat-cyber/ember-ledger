@@ -24,6 +24,7 @@ import { sanitizeScoutLocalData } from "../utils/betaDataCleanup";
 import { VIRGINIA_REGIONS } from "../data/storeGroups";
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_MOCK_PRODUCTS, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
+import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import {
   cacheBestBuyStockResult,
   checkBestBuyOnlineAvailability,
@@ -836,7 +837,75 @@ function scoutReportStatusLabel(report = {}) {
   if (report.verified || raw === "verified") return "Verified";
   if (raw === "pending") return "Pending";
   if (raw.includes("review")) return "Needs Review";
+  if (raw === "user_report" || raw === "unverified") return "User Report";
   return report.userId || report.reportedBy || report.reported_by ? "User Report" : "Pending";
+}
+
+const SCOUT_STOCK_STATUS_OPTIONS = [
+  { value: "in_stock", label: "In stock", storeStatus: "Found" },
+  { value: "low_stock", label: "Low stock", storeStatus: "Low" },
+  { value: "empty", label: "Empty", storeStatus: "Sold Out", reportType: "Store Restock Report" },
+  { value: "vendor_stocking", label: "Vendor stocking", storeStatus: "Found" },
+  { value: "behind_counter", label: "Behind counter", storeStatus: "Found" },
+  { value: "customer_service", label: "Customer service", storeStatus: "Found" },
+  { value: "limit_posted", label: "Limit posted", storeStatus: "Found", reportType: "Purchase Limit Update" },
+  { value: "unknown", label: "Unknown / not sure", storeStatus: "Unknown" },
+];
+
+function scoutStockStatusLabel(value = "") {
+  const normalized = String(value || "").toLowerCase();
+  return SCOUT_STOCK_STATUS_OPTIONS.find((option) => option.value === normalized)?.label || "";
+}
+
+function scoutStockStoreStatus(value = "") {
+  const normalized = String(value || "").toLowerCase();
+  return SCOUT_STOCK_STATUS_OPTIONS.find((option) => option.value === normalized)?.storeStatus || "Found";
+}
+
+function getScoutReportPhotoUrls(report = {}) {
+  const urls = [
+    ...(Array.isArray(report.photoUrls) ? report.photoUrls : []),
+    ...(Array.isArray(report.photo_urls) ? report.photo_urls : []),
+    report.imageUrl,
+    report.image_url,
+    report.photoUrl,
+    report.photo_url,
+  ]
+    .map((url) => String(url || "").trim())
+    .filter(Boolean);
+  return [...new Set(urls)];
+}
+
+function getScoutReportNowParts(date = new Date()) {
+  return {
+    iso: date.toISOString(),
+    date: date.toISOString().slice(0, 10),
+    time: date.toTimeString().slice(0, 5),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+  };
+}
+
+function friendlyScoutTimestamp(report = {}) {
+  const rawDate = report.reportedAt || report.reported_at || report.submittedAt || report.submitted_at || report.createdAt || report.created_at || report.reportDate || report.report_date || "";
+  const rawTime = report.reportTime || report.report_time || "";
+  const parsed = rawDate
+    ? new Date(String(rawDate).includes("T") ? rawDate : `${String(rawDate).slice(0, 10)}T${rawTime || "00:00"}`)
+    : null;
+  if (!parsed || Number.isNaN(parsed.getTime())) return "Date not added";
+  const diffMinutes = Math.floor((Date.now() - parsed.getTime()) / 60000);
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const today = new Date();
+  if (parsed.toDateString() === today.toDateString()) {
+    return `Today at ${parsed.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  }
+  return parsed.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function scoutSourceTypeLabel(value = "") {
+  return String(value || "user_report")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export default function Scout({
@@ -970,6 +1039,10 @@ export default function Scout({
     verified: false,
     keepScreenshot: true,
   });
+  const [intelImportText, setIntelImportText] = useState("");
+  const [intelImportPreview, setIntelImportPreview] = useState([]);
+  const [restockIntel, setRestockIntel] = useState([]);
+  const [restockPatterns, setRestockPatterns] = useState([]);
 
   const [storeForm, setStoreForm] = useState({
     name: "",
@@ -1041,6 +1114,9 @@ export default function Scout({
     if (targetSubTabKey === "reports" && targetSubTabAction === "storeCorrection") {
       setReportForm((current) => ({ ...current, reportType: "Store Correction" }));
     }
+    if (targetSubTabKey === "reports" && targetSubTabAction === "importIntel") {
+      setReportInputMethod("Import Intel");
+    }
     handledTargetSubTabRef.current = targetToken;
   }, [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductName, targetSubTabProductId, targetSubTabProductSnapshot, targetSubTabReportId, allReports]);
 
@@ -1063,13 +1139,25 @@ export default function Scout({
     quantitySeen: "",
     price: "",
     note: "",
-    reportDate: "",
-    reportTime: "",
+    reportDate: getScoutReportNowParts().date,
+    reportTime: getScoutReportNowParts().time,
+    reportedAt: getScoutReportNowParts().iso,
+    submittedAt: "",
+    timezone: getScoutReportNowParts().timezone,
+    reportTimeManuallyEdited: false,
     reportedBy: "Zena",
     verified: true,
+    stockStatus: "",
+    sourceType: "user_report",
+    confidence: "possible",
+    visibility: "public_cleaned",
+    evidence: [],
     lat: null,
     lng: null,
     imageUrl: "",
+    photoUrls: [],
+    aiDetectedItems: [],
+    needsReview: false,
     catalogProductId: "",
     catalogProductSnapshot: null,
     manualItemEntry: false,
@@ -1169,6 +1257,8 @@ export default function Scout({
       setReportForm((current) => ({
         ...current,
         imageUrl: String(reader.result || ""),
+        photoUrls: [String(reader.result || "")].filter(Boolean),
+        needsReview: true,
       }));
     };
     reader.readAsDataURL(file);
@@ -1194,6 +1284,123 @@ export default function Scout({
     );
   }
 
+  async function savePhotoFirstScoutReport(imageUrl, imageName = "") {
+    const activeStoreId = selectedStoreId;
+    if (!activeStoreId) {
+      setError("Select a store before adding a photo report.");
+      return;
+    }
+
+    const store = stores.find((candidate) => candidate.id === activeStoreId) || {};
+    const now = new Date();
+    const reportDate = now.toISOString().slice(0, 10);
+    const reportTime = now.toTimeString().slice(0, 5);
+    const photoNote = reportForm.note?.trim() || "Photo uploaded. Items not identified yet.";
+    const status = reportForm.stockStatus || "unknown";
+    const reportPayload = {
+      storeId: activeStoreId,
+      storeName: store.nickname || store.name || "",
+      retailer: store.chain || store.storeGroup || "",
+      city: store.city || "",
+      region: store.region || "",
+      reportType: "Photo shelf report",
+      stockStatus: status,
+      stock_status: status,
+      itemName: "",
+      quantitySeen: "",
+      price: "",
+      note: photoNote,
+      reportDate,
+      reportTime,
+      reportedAt: now.toISOString(),
+      reported_at: now.toISOString(),
+      submittedAt: now.toISOString(),
+      submitted_at: now.toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      reportedBy: reportForm.reportedBy || "Zena",
+      verified: false,
+      verificationStatus: "needs_review",
+      lat: reportForm.lat,
+      lng: reportForm.lng,
+      imageUrl,
+      photoUrls: [imageUrl],
+      photo_urls: [imageUrl],
+      photoName: imageName,
+      photo_name: imageName,
+      itemsSeen: [],
+      items_seen: [],
+      aiDetectedItems: [],
+      ai_detected_items: [],
+      needsReview: true,
+      needs_review: true,
+      reportLevel: "photo",
+      sourceType: "photo_report",
+      source_type: "photo_report",
+      confidence: "confirmed",
+      visibility: "public_cleaned",
+      evidence: [{
+        type: "photo",
+        url: imageUrl,
+        transcript: "",
+        submittedBy: "user",
+        private: false,
+      }],
+    };
+
+    if (BETA_LOCAL_SCOUT) {
+      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const newReport = {
+        ...reportPayload,
+        id: makeScoutId("report"),
+        createdAt: now.toISOString(),
+      };
+      const nextReports = [newReport, ...(saved.reports || [])];
+      const nextStores = (saved.stores || stores).map((candidate) =>
+        candidate.id === activeStoreId
+          ? { ...candidate, status: scoutStockStoreStatus(status), lastRestock: reportDate }
+          : candidate
+      );
+      saveLocalScout({ stores: nextStores, reports: nextReports });
+      setStores(nextStores);
+      setAllReports(nextReports);
+      setReports(nextReports.filter((report) => getReportStoreId(report) === activeStoreId));
+      resetReportForm();
+      setError("Photo report saved. Items not identified yet.");
+      return;
+    }
+
+    try {
+      await createReport(activeStoreId, reportPayload);
+      resetReportForm();
+      await loadStoreDetails(activeStoreId);
+      await loadStores();
+      setError("Photo report saved. Items not identified yet.");
+    } catch (err) {
+      setError(err.message || "Failed to save photo report");
+    }
+  }
+
+  function handlePhotoFirstReportUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageUrl = String(reader.result || "");
+      setReportPhoto({ name: file.name, preview: imageUrl });
+      setReportForm((current) => ({
+        ...current,
+        imageUrl,
+        photoUrls: [imageUrl],
+        stockStatus: current.stockStatus || "unknown",
+        needsReview: true,
+      }));
+      savePhotoFirstScoutReport(imageUrl, file.name);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  }
+
   async function loadStores() {
     if (BETA_LOCAL_SCOUT) {
       const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
@@ -1210,6 +1417,8 @@ export default function Scout({
       const savedBestBuyNightlySettings = { ...BEST_BUY_NIGHTLY_DEFAULTS, ...(saved.bestBuyNightlySettings || {}) };
       const savedScoutProfile = saved.scoutProfile || createDefaultScoutProfile();
       const savedAlertSettings = saved.alertSettings || createDefaultAlertSettings();
+      const savedRestockIntel = saved.restockIntel?.length ? saved.restockIntel : SCOUT_HISTORICAL_INTEL_SEED;
+      const savedRestockPatterns = saved.restockPatterns?.length ? saved.restockPatterns : buildScoutRestockPatterns(savedRestockIntel);
       if (!saved.stores?.length) {
         localStorage.setItem(
           SCOUT_STORAGE_KEY,
@@ -1227,8 +1436,21 @@ export default function Scout({
             bestBuyNightlySettings: savedBestBuyNightlySettings,
             scoutProfile: savedScoutProfile,
             alertSettings: savedAlertSettings,
+            restockIntel: savedRestockIntel,
+            restockPatterns: savedRestockPatterns,
+            storeAliases: SCOUT_STORE_ALIASES,
             items: saved.items || [],
             routes: saved.routes || [],
+          })
+        );
+      } else if (!saved.restockIntel?.length || !saved.restockPatterns?.length) {
+        localStorage.setItem(
+          SCOUT_STORAGE_KEY,
+          JSON.stringify({
+            ...saved,
+            restockIntel: savedRestockIntel,
+            restockPatterns: savedRestockPatterns,
+            storeAliases: saved.storeAliases?.length ? saved.storeAliases : SCOUT_STORE_ALIASES,
           })
         );
       }
@@ -1244,6 +1466,8 @@ export default function Scout({
       setBestBuyNightlySettings(savedBestBuyNightlySettings);
       setScoutProfile(savedScoutProfile);
       setAlertSettings(savedAlertSettings);
+      setRestockIntel(savedRestockIntel);
+      setRestockPatterns(savedRestockPatterns);
       setRoutes(saved.routes || []);
       setError("");
       setLoading(false);
@@ -1321,6 +1545,7 @@ export default function Scout({
   const selectedStore = stores.find((s) => s.id === selectedStoreId);
 
   function resetReportForm() {
+    const nowParts = getScoutReportNowParts();
     setEditingReportId(null);
     setReportPhoto(null);
     setReportForm({
@@ -1329,13 +1554,25 @@ export default function Scout({
       quantitySeen: "",
       price: "",
       note: "",
-      reportDate: "",
-      reportTime: "",
+      reportDate: nowParts.date,
+      reportTime: nowParts.time,
+      reportedAt: nowParts.iso,
+      submittedAt: "",
+      timezone: nowParts.timezone,
+      reportTimeManuallyEdited: false,
       reportedBy: "Zena",
       verified: true,
+      stockStatus: "",
+      sourceType: "user_report",
+      confidence: "possible",
+      visibility: "public_cleaned",
+      evidence: [],
       lat: null,
       lng: null,
       imageUrl: "",
+      photoUrls: [],
+      aiDetectedItems: [],
+      needsReview: false,
       catalogProductId: "",
       catalogProductSnapshot: null,
       manualItemEntry: false,
@@ -1359,11 +1596,27 @@ export default function Scout({
       note: report.note || "",
       reportDate: getReportDate(report),
       reportTime: getReportTime(report),
+      reportedAt: report.reportedAt || report.reported_at || report.createdAt || report.created_at || "",
+      submittedAt: report.submittedAt || report.submitted_at || "",
+      timezone: report.timezone || "",
+      reportTimeManuallyEdited: true,
       reportedBy: report.reportedBy || report.reported_by || "Zena",
       verified: Boolean(report.verified),
+      stockStatus: report.stockStatus || report.stock_status || "",
+      sourceType: report.sourceType || report.source_type || "user_report",
+      confidence: report.confidence || "possible",
+      visibility: report.visibility || "public_cleaned",
+      evidence: Array.isArray(report.evidence) ? report.evidence : [],
       lat: report.lat || null,
       lng: report.lng || null,
       imageUrl: report.imageUrl || report.image_url || "",
+      photoUrls: getScoutReportPhotoUrls(report),
+      aiDetectedItems: Array.isArray(report.aiDetectedItems)
+        ? report.aiDetectedItems
+        : Array.isArray(report.ai_detected_items)
+          ? report.ai_detected_items
+          : [],
+      needsReview: Boolean(report.needsReview || report.needs_review),
       catalogProductId: report.catalogProductId || report.catalog_product_id || productSnapshot?.id || "",
       catalogProductSnapshot: productSnapshot,
       manualItemEntry: !(report.catalogProductId || report.catalog_product_id || productSnapshot?.id),
@@ -2193,11 +2446,22 @@ async function handleUpdateStore(e) {
 
   async function handleCreateReport(e) {
     e.preventDefault();
-    const activeStoreId = selectedStoreId || stores[0]?.id;
-    if (!activeStoreId) return;
+    const activeStoreId = selectedStoreId;
+    if (!activeStoreId) {
+      setError("Select a store before submitting a Scout report.");
+      return;
+    }
     const submitMode = e.currentTarget?.dataset?.submitMode || e.nativeEvent?.submitter?.value || "public";
     if (e.currentTarget?.dataset) e.currentTarget.dataset.submitMode = "";
     const submitForReview = submitMode === "review";
+    const note = String(reportForm.note || "").trim();
+    const photoUrls = [
+      ...(Array.isArray(reportForm.photoUrls) ? reportForm.photoUrls : []),
+      reportForm.imageUrl,
+    ]
+      .map((url) => String(url || "").trim())
+      .filter(Boolean);
+    const uniquePhotoUrls = [...new Set(photoUrls)];
     const itemsSeen = normalizeReportItemsForForm(reportForm)
       .map((item) => ({
         productId: item.productId || "",
@@ -2210,31 +2474,91 @@ async function handleUpdateStore(e) {
         manualItemEntry: Boolean(item.manualItemEntry || !item.productId),
       }))
       .filter((item) => item.productName);
-    if (reportForm.reportType !== "Store Correction" && itemsSeen.length === 0) {
-      setError("Add at least one sealed product before submitting the report.");
+    const hasQuickReportSignal = Boolean(note || reportForm.stockStatus || uniquePhotoUrls.length || itemsSeen.length || reportForm.itemName);
+    if (!hasQuickReportSignal) {
+      setError("Add a quick stock status, note, photo, or optional item before submitting.");
       return;
     }
-    const firstItem = itemsSeen[0] || makeBlankReportItem({ productName: reportForm.itemName });
+    const firstItem = itemsSeen[0] || makeBlankReportItem();
+    const needsReview = submitForReview
+      || Boolean(reportForm.needsReview)
+      || (uniquePhotoUrls.length > 0 && itemsSeen.length === 0)
+      || reportForm.stockStatus === "unknown";
+    const verificationStatus = needsReview
+      ? (submitForReview ? "pending" : "needs_review")
+      : reportForm.verified ? "verified" : "user_report";
+    const reportLevel = itemsSeen.length
+      ? uniquePhotoUrls.length ? "photo_itemized" : "itemized"
+      : uniquePhotoUrls.length ? "photo" : "general";
+    const nowParts = getScoutReportNowParts();
+    const reportDate = reportForm.reportTimeManuallyEdited ? reportForm.reportDate || nowParts.date : nowParts.date;
+    const reportTime = reportForm.reportTimeManuallyEdited ? reportForm.reportTime || nowParts.time : nowParts.time;
+    const reportedAt = reportForm.reportTimeManuallyEdited
+      ? reportForm.reportedAt || `${reportDate}T${reportTime}:00`
+      : nowParts.iso;
+    const storeForPayload = stores.find((store) => String(store.id) === String(activeStoreId)) || {};
+    const evidence = [
+      ...(Array.isArray(reportForm.evidence) ? reportForm.evidence : []),
+      ...uniquePhotoUrls.map((url) => ({
+        type: "photo",
+        url,
+        transcript: "",
+        submittedBy: "user",
+        private: reportForm.visibility !== "public_cleaned",
+      })),
+      note ? {
+        type: "note",
+        url: "",
+        transcript: note,
+        submittedBy: "user",
+        private: reportForm.visibility !== "public_cleaned",
+      } : null,
+    ].filter(Boolean);
 
     const reportPayload = {
         storeId: activeStoreId,
+        storeName: storeForPayload.nickname || storeForPayload.name || "",
+        retailer: storeForPayload.chain || storeForPayload.storeGroup || "",
+        city: storeForPayload.city || "",
+        region: storeForPayload.region || "",
         reportType: reportForm.reportType,
-        itemName: firstItem.productName || reportForm.itemName,
+        stockStatus: reportForm.stockStatus,
+        stock_status: reportForm.stockStatus,
+        itemName: firstItem.productName || (reportForm.reportType === "Store Correction" ? reportForm.itemName : ""),
         quantitySeen: firstItem.quantity || "",
         price: firstItem.price || "",
-        note: reportForm.note,
-        reportDate: reportForm.reportDate,
-        reportTime: reportForm.reportTime,
+        note,
+        reportDate,
+        reportTime,
+        reportedAt,
+        reported_at: reportedAt,
+        submittedAt: nowParts.iso,
+        submitted_at: nowParts.iso,
+        timezone: reportForm.timezone || nowParts.timezone,
         reportedBy: reportForm.reportedBy,
-        verified: submitForReview ? false : reportForm.verified,
-        verificationStatus: submitForReview ? "pending" : reportForm.verified ? "verified" : "unverified",
+        verified: needsReview ? false : reportForm.verified,
+        verificationStatus,
+        sourceType: reportForm.sourceType || (uniquePhotoUrls.length ? "photo_report" : "user_report"),
+        source_type: reportForm.sourceType || (uniquePhotoUrls.length ? "photo_report" : "user_report"),
+        confidence: reportForm.confidence || (uniquePhotoUrls.length ? "confirmed" : "possible"),
+        visibility: reportForm.visibility || "public_cleaned",
+        evidence,
         lat: reportForm.lat,
         lng: reportForm.lng,
-        imageUrl: reportForm.imageUrl,
+        imageUrl: uniquePhotoUrls[0] || "",
+        photoUrls: uniquePhotoUrls,
+        photo_urls: uniquePhotoUrls,
         catalogProductId: firstItem.productId || reportForm.catalogProductId || "",
         catalogProductSnapshot: firstItem.catalogProductSnapshot || reportForm.catalogProductSnapshot || null,
-        manualItemName: firstItem.productId ? "" : firstItem.productName || reportForm.itemName,
+        manualItemName: firstItem.productId ? "" : firstItem.productName || "",
         itemsSeen,
+        items_seen: itemsSeen,
+        aiDetectedItems: reportForm.aiDetectedItems || [],
+        ai_detected_items: reportForm.aiDetectedItems || [],
+        needsReview,
+        needs_review: needsReview,
+        reportLevel,
+        report_level: reportLevel,
       };
 
     if (BETA_LOCAL_SCOUT) {
@@ -2263,7 +2587,7 @@ async function handleUpdateStore(e) {
       const nextReports = [newReport, ...(saved.reports || [])];
       const nextStores = (saved.stores || stores).map((store) =>
         store.id === activeStoreId
-          ? { ...store, status: "Found", lastRestock: reportForm.reportDate || new Date().toISOString().slice(0, 10) }
+          ? { ...store, status: scoutStockStoreStatus(reportForm.stockStatus), lastRestock: reportForm.reportDate || new Date().toISOString().slice(0, 10) }
           : store
       );
       saveLocalScout({ stores: nextStores, reports: nextReports });
@@ -2319,7 +2643,7 @@ async function handleUpdateStore(e) {
 
   function handleSaveScreenshotTip(event) {
     event.preventDefault();
-    const activeStoreId = selectedStoreId || stores[0]?.id;
+    const activeStoreId = selectedStoreId;
 
     if (!activeStoreId) {
       setError("Select or create a store before saving a screenshot.");
@@ -2338,21 +2662,25 @@ async function handleUpdateStore(e) {
 
     const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
     const reportDate = tipImport.reportDate || new Date().toISOString().slice(0, 10);
+    const nowParts = getScoutReportNowParts();
+    const reportTime = tipImport.reportTime || nowParts.time;
     const screenshotLocalId = tipImport.keepScreenshot ? makeScoutId("screenshot") : "";
-    const screenshotItemsSeen = [
-      makeBlankReportItem({
-        productName: tipImport.productName || "Screenshot item",
-        productType: tipImport.productCategory || "Sealed product",
-        quantity: tipImport.quantitySeen,
-        price: tipImport.price,
-        note: tipImport.limitInfo ? `Limit: ${tipImport.limitInfo}` : "",
-        manualItemEntry: true,
-      }),
-    ];
+    const screenshotItemsSeen = tipImport.productName
+      ? [
+          makeBlankReportItem({
+            productName: tipImport.productName,
+            productType: tipImport.productCategory || "Sealed product",
+            quantity: tipImport.quantitySeen,
+            price: tipImport.price,
+            note: tipImport.limitInfo ? `Limit: ${tipImport.limitInfo}` : "",
+            manualItemEntry: true,
+          }),
+        ]
+      : [];
     const newReport = {
       id: makeScoutId("report"),
       storeId: activeStoreId,
-      itemName: tipImport.productName || "Screenshot",
+      itemName: tipImport.productName || "",
       productName: tipImport.productName || "",
       productCategory: tipImport.productCategory || "Pokemon",
       note: [
@@ -2364,22 +2692,36 @@ async function handleUpdateStore(e) {
         .filter(Boolean)
         .join(" | "),
       reportDate,
-      reportTime: tipImport.reportTime,
+      reportTime,
+      reportedAt: `${reportDate}T${reportTime}:00`,
+      reported_at: `${reportDate}T${reportTime}:00`,
+      submittedAt: nowParts.iso,
+      submitted_at: nowParts.iso,
+      timezone: nowParts.timezone,
       dayOfWeek: dayName(reportDate),
       reportedBy: "Screenshot",
       verified: tipImport.verified,
+      verificationStatus: tipImport.verified ? "verified" : "needs_review",
       reportType: "facebook_screenshot",
       report_type: "facebook_screenshot",
       sourceFormat: "facebook_screenshot",
       source_format: "facebook_screenshot",
       sourceName: tipImport.sourceName,
       source_name: tipImport.sourceName,
+      sourceType: "text_screenshot",
+      source_type: "text_screenshot",
+      confidence: tipImport.verified ? "confirmed" : "likely",
+      visibility: "private",
       stockStatus: tipImport.stockStatus,
       stock_status: tipImport.stockStatus,
       quantitySeen: tipImport.quantitySeen,
       quantity_seen: tipImport.quantitySeen,
       itemsSeen: screenshotItemsSeen,
       items_seen: screenshotItemsSeen,
+      aiDetectedItems: [],
+      ai_detected_items: [],
+      needsReview: !tipImport.productName || !tipImport.verified,
+      needs_review: !tipImport.productName || !tipImport.verified,
       quantityRemaining: tipImport.quantityRemaining,
       quantity_remaining: tipImport.quantityRemaining,
       limitInfo: tipImport.limitInfo,
@@ -2405,6 +2747,21 @@ async function handleUpdateStore(e) {
       screenshotLocalId,
       screenshot_local_id: screenshotLocalId,
       imageUrl: tipImport.keepScreenshot ? tipImport.screenshotPreview : "",
+      photoUrls: tipImport.keepScreenshot && tipImport.screenshotPreview ? [tipImport.screenshotPreview] : [],
+      photo_urls: tipImport.keepScreenshot && tipImport.screenshotPreview ? [tipImport.screenshotPreview] : [],
+      rawProductText: tipImport.productName || tipImport.notes || "",
+      raw_product_text: tipImport.productName || tipImport.notes || "",
+      matchedProducts: [],
+      matched_products: [],
+      needsCatalogReview: Boolean(tipImport.productName),
+      needs_catalog_review: Boolean(tipImport.productName),
+      evidence: [{
+        type: "screenshot",
+        url: tipImport.keepScreenshot ? tipImport.screenshotPreview : "",
+        transcript: tipImport.notes,
+        submittedBy: "user",
+        private: true,
+      }],
       createdAt: new Date().toISOString(),
     };
 
@@ -2444,9 +2801,16 @@ async function handleUpdateStore(e) {
       note: noteParts.join(" | ") || current.note,
       reportDate: tipImport.reportDate || current.reportDate,
       reportTime: tipImport.reportTime || current.reportTime,
+      reportTimeManuallyEdited: Boolean(tipImport.reportDate || tipImport.reportTime),
       reportedBy: tipImport.sourceName || current.reportedBy || "Screenshot",
       verified: tipImport.verified,
       imageUrl: tipImport.keepScreenshot ? tipImport.screenshotPreview || current.imageUrl : current.imageUrl,
+      photoUrls: tipImport.keepScreenshot && tipImport.screenshotPreview ? [tipImport.screenshotPreview] : current.photoUrls || [],
+      stockStatus: tipImport.stockStatus || current.stockStatus,
+      sourceType: "text_screenshot",
+      confidence: tipImport.verified ? "confirmed" : "likely",
+      visibility: "private",
+      needsReview: true,
       itemsSeen: [
         makeBlankReportItem({
           productName: tipImport.productName || current.itemsSeen?.[0]?.productName || "",
@@ -2459,6 +2823,94 @@ async function handleUpdateStore(e) {
       ],
     }));
     setError("Screenshot fields were copied into the report review form. Review/edit, then submit.");
+  }
+
+  function inferIntelSourceType(text = "") {
+    const normalized = text.toLowerCase();
+    if (normalized.includes("called") || normalized.includes("worker told") || normalized.includes("employee")) return "called_store";
+    if (normalized.includes("facebook") || normalized.includes("post")) return "social_media_post";
+    if (normalized.includes("planner")) return "planner_guess";
+    if (normalized.includes("guess") || normalized.includes("probably")) return "manual_prediction";
+    return "text_screenshot";
+  }
+
+  function inferIntelConfidence(text = "", sourceType = "text_screenshot") {
+    const normalized = text.toLowerCase();
+    if (sourceType === "called_store" || normalized.includes("confirmed")) return "confirmed";
+    if (normalized.includes("heard") || normalized.includes("apparently")) return "possible";
+    if (sourceType === "planner_guess" || sourceType === "manual_prediction") return "guess";
+    return "likely";
+  }
+
+  function matchStoreAliasFromText(text = "") {
+    const normalized = text.toLowerCase();
+    const aliasMatch = SCOUT_STORE_ALIASES.find((entry) => normalized.includes(String(entry.alias || "").toLowerCase()));
+    if (!aliasMatch) return { storeAlias: "", retailer: "" };
+    return {
+      storeAlias: aliasMatch.likelyStore || aliasMatch.likelyStoreOptions?.[0] || aliasMatch.likelyArea || aliasMatch.alias,
+      retailer: aliasMatch.retailer || (aliasMatch.likelyStore || aliasMatch.likelyStoreOptions?.[0] || "").split(" ").slice(-1)[0] || "",
+    };
+  }
+
+  function extractIntelProducts(text = "") {
+    const productTerms = ["ETB", "box", "boxes", "bundle", "bundles", "tin", "tins", "blister", "blisters", "booster", "First Partner", "One Piece", "OP", "PO", "AH", "pin collection", "poster"];
+    return productTerms.filter((term) => text.toLowerCase().includes(term.toLowerCase()));
+  }
+
+  function previewIntelImport() {
+    const rows = intelImportText
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line, index) => {
+        const alias = matchStoreAliasFromText(line);
+        const sourceType = inferIntelSourceType(line);
+        const productsMentioned = extractIntelProducts(line);
+        return {
+          id: makeScoutId(`intel-preview-${index}`),
+          storeAlias: alias.storeAlias || "Needs store review",
+          retailer: alias.retailer || "Needs retailer review",
+          sourceText: line,
+          rawProductText: productsMentioned.join(", ") || line,
+          productsMentioned,
+          matchedProducts: [],
+          needsCatalogReview: true,
+          confidence: inferIntelConfidence(line, sourceType),
+          sourceType,
+          visibility: "private",
+          evidence: [{
+            type: sourceType === "called_store" ? "call" : "screenshot",
+            url: "",
+            transcript: line,
+            submittedBy: "user",
+            private: true,
+          }],
+          createdAt: new Date().toISOString(),
+        };
+      });
+    setIntelImportPreview(rows);
+    setError(rows.length ? `Found ${rows.length} possible report${rows.length === 1 ? "" : "s"} for review.` : "Paste or upload restock intel before previewing.");
+  }
+
+  function saveIntelImportRows(rows = intelImportPreview) {
+    if (!rows.length) {
+      setError("Preview restock intel before saving.");
+      return;
+    }
+    const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+    const nextIntel = [...rows, ...(saved.restockIntel || restockIntel || [])];
+    const nextPatterns = buildScoutRestockPatterns(nextIntel);
+    saveLocalScout({
+      restockIntel: nextIntel,
+      restockPatterns: nextPatterns,
+      intelImportReviews: rows,
+      storeAliases: SCOUT_STORE_ALIASES,
+    });
+    setRestockIntel(nextIntel);
+    setRestockPatterns(nextPatterns);
+    setIntelImportPreview([]);
+    setIntelImportText("");
+    setError("Restock intel saved privately for review.");
   }
 
   async function handleCreateItem(e) {
@@ -2833,11 +3285,17 @@ async function handleUpdateStore(e) {
     const itemsSeen = normalizeReportItemsForForm(report).filter((item) => String(item.productName || "").trim());
     const visibleItems = itemsSeen.slice(0, 3);
     const extraCount = Math.max(0, itemsSeen.length - visibleItems.length);
-    const storeName = store.nickname || store.name || report.storeName || report.store_name || "Store not selected";
+    const rawStoreName = store.nickname || store.name || report.storeName || report.store_name || "";
+    const storeName = rawStoreName && !/unknown store/i.test(rawStoreName) ? rawStoreName : "Store not selected";
     const retailer = store.chain || store.storeGroup || report.retailer || "Retailer not added";
     const area = [store.city || report.city, store.region || report.region].filter(Boolean).join(" / ");
     const note = report.note || report.notes || report.reportText || report.report_text || "";
-    const photo = report.imageUrl || report.image_url || report.photoUrl || report.photo_url || "";
+    const photoUrls = getScoutReportPhotoUrls(report);
+    const photo = photoUrls[0] || "";
+    const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status);
+    const aiPending = Boolean(photo && !itemsSeen.length) || report.needsReview || report.needs_review;
+    const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
+    const confidence = report.confidence || "";
     return (
       <article className="scout-report-compact-card scout-page-report-card" key={report.id || report.reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -2849,17 +3307,28 @@ async function handleUpdateStore(e) {
             <span className={`status-badge scout-report-status scout-report-status-${status.toLowerCase().replace(/\s+/g, "-")}`}>{status}</span>
           </div>
           <div className="scout-report-meta">
-            <span>{[getReportDate(report) || report.createdAt?.slice?.(0, 10), getReportTime(report)].filter(Boolean).join(" ") || "Date not added"}</span>
+            <span>{friendlyScoutTimestamp(report)}</span>
+            {stockStatus ? <span>{stockStatus}</span> : null}
+            {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
+            {confidence ? <span>Confidence: {confidence}</span> : null}
             <span>Submitted by {isUserOwnedScoutReport(report) ? "You" : report.displayName || report.reportedBy || report.reported_by || "Scout user"}</span>
           </div>
           <div className="scout-report-items">
             <strong>Items seen</strong>
             {visibleItems.length ? visibleItems.map((item, index) => (
               <p key={`${item.productName}-${index}`}>{summarizeReportItem(item, money)}{item.note ? ` - ${item.note}` : ""}</p>
-            )) : <p>No item details added</p>}
+            )) : (
+              <div className="scout-report-general-details">
+                {stockStatus ? <p>{stockStatus}</p> : null}
+                {photo ? <p>Photo uploaded - Items not identified yet</p> : null}
+                {aiPending && !photo ? <p>Items not identified yet</p> : null}
+                {note && !stockStatus && !photo ? <p>General store note</p> : null}
+                {!stockStatus && !photo && !note ? <p>No item details added</p> : null}
+              </div>
+            )}
             {extraCount ? <p className="compact-subtitle">+ {extraCount} more item{extraCount === 1 ? "" : "s"}</p> : null}
           </div>
-          {!options.compact ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
+          {!options.compact && (note || (!stockStatus && !photo)) ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
         </div>
         <div className="scout-report-side">
           {photo ? <img src={photo} alt="" /> : <span>No photo attached</span>}
@@ -3594,7 +4063,7 @@ async function handleUpdateStore(e) {
             <h2 style={styles.sectionTitle}>Submit Store Report</h2>
             <p style={styles.empty}>Share what you saw. Use review if you are unsure or missing details.</p>
             <div style={styles.row}>
-              {["Manual", "Screenshot", "Photo", "Link/Text"].map((method) => (
+              {["Manual", "Screenshot", "Photo", "Import Intel", "Link/Text"].map((method) => (
                 <button
                   key={method}
                   type="button"
@@ -3641,7 +4110,42 @@ async function handleUpdateStore(e) {
             {reportInputMethod === "Photo" ? (
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Step 4: Photo</h3>
-                <p style={styles.tiny}>Photo upload is not connected yet. Add a photo URL in Proof / More Details for now.</p>
+                <p style={styles.tiny}>Add a shelf photo and Scout will save it right away. Product detection can happen later.</p>
+                <label className="scout-photo-first-button">
+                  <span>Add photo / scan shelf</span>
+                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoFirstReportUpload} />
+                </label>
+              </div>
+            ) : null}
+            {reportInputMethod === "Import Intel" ? (
+              <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
+                <h3 style={{ marginTop: 0 }}>Import restock intel</h3>
+                <p style={styles.tiny}>
+                  Paste cleaned notes from screenshots, group chats, calls, or planner notes. Raw private details stay private by default.
+                </p>
+                <textarea
+                  style={styles.textarea}
+                  value={intelImportText}
+                  onChange={(event) => setIntelImportText(event.target.value)}
+                  placeholder="Example: Redmill has 2 full cases of First Partner. I just called."
+                />
+                <div style={styles.row}>
+                  <button type="button" style={styles.buttonSoft} onClick={previewIntelImport}>Preview Intel</button>
+                  <button type="button" style={styles.buttonPrimary} disabled={!intelImportPreview.length} onClick={() => saveIntelImportRows()}>Save all private</button>
+                </div>
+                {intelImportPreview.length ? (
+                  <div className="scout-intel-review-list">
+                    <p style={styles.tiny}>Found {intelImportPreview.length} possible report{intelImportPreview.length === 1 ? "" : "s"}.</p>
+                    {intelImportPreview.map((row, index) => (
+                      <div key={row.id} className="scout-intel-review-card">
+                        <strong>{index + 1}. {row.storeAlias}</strong>
+                        <span>{scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
+                        <p>{row.rawProductText || "No product phrase detected"}</p>
+                        <small>Visibility: private | Needs review before public sharing</small>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {reportInputMethod === "Link/Text" ? (
@@ -3672,7 +4176,7 @@ async function handleUpdateStore(e) {
                 value={selectedStoreId}
                 onChange={(e) => setSelectedStoreId(e.target.value)}
               >
-                <option value="">Select store or submit for review</option>
+                <option value="">Select store</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.nickname || store.name} - {store.city || "No city"}
@@ -3680,8 +4184,42 @@ async function handleUpdateStore(e) {
                 ))}
               </select>
               <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Suggest missing store</button>
-              <h3 style={{ margin: "8px 0 0" }}>Step 3: What did you see?</h3>
-              <p style={styles.tiny}>Add one or more sealed products. Leave quantity or price blank if you are not sure.</p>
+              <div className="scout-quick-report-panel">
+                <div>
+                  <h3>Quick report</h3>
+                  <p>Tap a stock status, add a note or photo, then submit. Product details are optional.</p>
+                </div>
+                <div className="scout-stock-status-grid" role="group" aria-label="Stock status">
+                  {SCOUT_STOCK_STATUS_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`scout-stock-status-button ${reportForm.stockStatus === option.value ? "selected" : ""}`}
+                      onClick={() => setReportForm((current) => ({
+                        ...current,
+                        stockStatus: option.value,
+                        reportType: option.reportType || current.reportType,
+                        needsReview: option.value === "unknown" ? true : current.needsReview,
+                      }))}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <label className="scout-photo-first-button">
+                  <span>Add photo / scan shelf</span>
+                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoFirstReportUpload} />
+                </label>
+                {(reportPhoto?.preview || reportForm.imageUrl) ? (
+                  <div className="scout-photo-preview">
+                    <img src={reportPhoto?.preview || reportForm.imageUrl} alt="" />
+                    <div>
+                      <strong>Photo uploaded</strong>
+                      <span>Items not identified yet. Needs review.</span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               {reportForm.reportType === "Store Correction" ? (
                 <input
                   style={styles.input}
@@ -3690,120 +4228,139 @@ async function handleUpdateStore(e) {
                   placeholder="Store detail to correct"
                 />
               ) : (
-                <div className="scout-report-items-editor">
-                  {(reportForm.itemsSeen?.length ? reportForm.itemsSeen : [makeBlankReportItem()]).map((item, index) => {
-                    const product = item.catalogProductSnapshot;
-                    const productIdLine = product
-                      ? [product.upc || product.barcode, product.sku || product.externalProductId || product.tcgplayerProductId].filter(Boolean).join(" / ")
-                      : "";
-                    return (
-                      <div className="scout-report-item-editor" key={item.rowId || index}>
-                        <div className="scout-report-item-editor-header">
-                          <strong>Item {index + 1}</strong>
-                          {(reportForm.itemsSeen || []).length > 1 ? (
-                            <button type="button" className="secondary-button" onClick={() => removeReportItem(index)}>Remove</button>
-                          ) : null}
-                        </div>
-                        <label>
-                          Product / item seen
-                          <SmartCatalogSearchBox
-                            value={item.productName || ""}
-                            onChange={(value) => {
-                              if (index === 0) setReportProductSearch(value);
-                              updateReportItem(index, {
-                                productName: value,
+                <details className="scout-report-optional-items" defaultOpen={Boolean(reportForm.itemsSeen?.some((item) => item.productName))}>
+                  <summary>Items seen - optional</summary>
+                  <p className="compact-subtitle">Add sealed products only when it is quick. Quantity and price can be blank.</p>
+                  <div className="scout-report-items-editor">
+                    {(reportForm.itemsSeen?.length ? reportForm.itemsSeen : [makeBlankReportItem()]).map((item, index) => {
+                      const product = item.catalogProductSnapshot;
+                      const productIdLine = product
+                        ? [product.upc || product.barcode, product.sku || product.externalProductId || product.tcgplayerProductId].filter(Boolean).join(" / ")
+                        : "";
+                      return (
+                        <div className="scout-report-item-editor" key={item.rowId || index}>
+                          <div className="scout-report-item-editor-header">
+                            <strong>Item {index + 1}</strong>
+                            {(reportForm.itemsSeen || []).length > 1 ? (
+                              <button type="button" className="secondary-button" onClick={() => removeReportItem(index)}>Remove</button>
+                            ) : null}
+                          </div>
+                          <label>
+                            Product / item seen
+                            <SmartCatalogSearchBox
+                              value={item.productName || ""}
+                              onChange={(value) => {
+                                if (index === 0) setReportProductSearch(value);
+                                updateReportItem(index, {
+                                  productName: value,
+                                  productId: "",
+                                  catalogProductSnapshot: null,
+                                  manualItemEntry: true,
+                                });
+                              }}
+                              onSelectSuggestion={(suggestion) => selectReportCatalogProductForItem(index, suggestion)}
+                              supabase={supabase}
+                              isSupabaseConfigured={isSupabaseConfigured}
+                              mapRow={mapCatalogRow}
+                              placeholder="Search product, UPC, SKU"
+                              closeSignal={reportProductSearchCloseSignal}
+                              maxSuggestions={5}
+                              suggestionFilter={isSealedScoutCatalogProduct}
+                              money={money}
+                            />
+                          </label>
+                          {product ? (
+                            <div className="scout-selected-product-card scout-selected-product-card--small">
+                              {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">No image</span>}
+                              <div className="scout-selected-product-copy">
+                                <strong>{scoutCatalogTitle(product)}</strong>
+                                <small>
+                                  {product.productType || product.catalogType || "Sealed product"}
+                                  {(product.setName || product.expansion) ? ` | ${product.setName || product.expansion}` : ""}
+                                </small>
+                                {productIdLine ? <small>UPC/SKU: {productIdLine}</small> : null}
+                                <small>Market: {money(scoutCatalogMarketValue(product))}</small>
+                              </div>
+                              <span className="status-badge">{scoutCatalogSourceLabel(product)}</span>
+                              <button type="button" className="secondary-button" onClick={() => updateReportItem(index, {
                                 productId: "",
                                 catalogProductSnapshot: null,
                                 manualItemEntry: true,
-                              });
-                            }}
-                            onSelectSuggestion={(suggestion) => selectReportCatalogProductForItem(index, suggestion)}
-                            supabase={supabase}
-                            isSupabaseConfigured={isSupabaseConfigured}
-                            mapRow={mapCatalogRow}
-                            placeholder="Search product, UPC, SKU"
-                            closeSignal={reportProductSearchCloseSignal}
-                            maxSuggestions={5}
-                            suggestionFilter={isSealedScoutCatalogProduct}
-                            money={money}
-                          />
-                        </label>
-                        {product ? (
-                          <div className="scout-selected-product-card scout-selected-product-card--small">
-                            {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">No image</span>}
-                            <div className="scout-selected-product-copy">
-                              <strong>{scoutCatalogTitle(product)}</strong>
-                              <small>
-                                {product.productType || product.catalogType || "Sealed product"}
-                                {(product.setName || product.expansion) ? ` | ${product.setName || product.expansion}` : ""}
-                              </small>
-                              {productIdLine ? <small>UPC/SKU: {productIdLine}</small> : null}
-                              <small>Market: {money(scoutCatalogMarketValue(product))}</small>
+                              })}>Clear match</button>
                             </div>
-                            <span className="status-badge">{scoutCatalogSourceLabel(product)}</span>
-                            <button type="button" className="secondary-button" onClick={() => updateReportItem(index, {
-                              productId: "",
-                              catalogProductSnapshot: null,
-                              manualItemEntry: true,
-                            })}>Clear match</button>
+                          ) : null}
+                          <div className="scout-report-item-fields">
+                            <input
+                              style={styles.input}
+                              value={item.quantity || ""}
+                              onChange={(e) => updateReportItem(index, { quantity: e.target.value })}
+                              placeholder="Qty or unknown"
+                            />
+                            <input
+                              style={styles.input}
+                              value={item.price || ""}
+                              onChange={(e) => updateReportItem(index, { price: e.target.value })}
+                              placeholder="Price"
+                            />
                           </div>
-                        ) : null}
-                        <div className="scout-report-item-fields">
                           <input
                             style={styles.input}
-                            value={item.quantity || ""}
-                            onChange={(e) => updateReportItem(index, { quantity: e.target.value })}
-                            placeholder="Qty or unknown"
-                          />
-                          <input
-                            style={styles.input}
-                            value={item.price || ""}
-                            onChange={(e) => updateReportItem(index, { price: e.target.value })}
-                            placeholder="Price"
+                            value={item.note || ""}
+                            onChange={(e) => updateReportItem(index, { note: e.target.value })}
+                            placeholder="Optional item note"
                           />
                         </div>
-                        <input
-                          style={styles.input}
-                          value={item.note || ""}
-                          onChange={(e) => updateReportItem(index, { note: e.target.value })}
-                          placeholder="Optional item note"
-                        />
-                      </div>
-                    );
-                  })}
-                  <div className="scout-report-item-actions">
-                    <button type="button" style={styles.buttonSoft} onClick={addReportItem}>+ Add another item</button>
-                    <button type="button" style={styles.buttonSoft} onClick={enableManualReportItem}>Continue manual entry</button>
+                      );
+                    })}
+                    <div className="scout-report-item-actions">
+                      <button type="button" style={styles.buttonSoft} onClick={addReportItem}>+ Add another item</button>
+                      <button type="button" style={styles.buttonSoft} onClick={enableManualReportItem}>Continue manual entry</button>
+                    </div>
                   </div>
-                </div>
+                </details>
               )}
               <textarea
                 style={styles.textarea}
                 value={reportForm.note}
                 onChange={(e) => setReportForm((current) => ({ ...current, note: e.target.value }))}
-                placeholder="What did you see?"
+                placeholder="Quick note, limit, or shelf details"
               />
-              <h3 style={{ margin: "8px 0 0" }}>Date / time</h3>
-              <label style={{ ...styles.tiny, display: "grid", gap: "6px" }}>
-                Date seen
-                <input
-                  style={styles.input}
-                  type="date"
-                  value={reportForm.reportDate}
-                  onChange={(e) => setReportForm((current) => ({ ...current, reportDate: e.target.value }))}
-                />
-              </label>
-              <label style={{ ...styles.tiny, display: "grid", gap: "6px" }}>
-                Time seen
-                <input
-                  style={styles.input}
-                  type="time"
-                  value={reportForm.reportTime}
-                  onChange={(e) => setReportForm((current) => ({ ...current, reportTime: e.target.value }))}
-                />
-              </label>
+              <details className="scout-report-advanced-time">
+                <summary>Advanced: change report time</summary>
+                <div style={{ ...styles.formGrid, marginTop: "12px" }}>
+                  <label style={{ ...styles.tiny, display: "grid", gap: "6px" }}>
+                    Date seen
+                    <input
+                      style={styles.input}
+                      type="date"
+                      value={reportForm.reportDate}
+                      onChange={(e) => setReportForm((current) => ({
+                        ...current,
+                        reportDate: e.target.value,
+                        reportedAt: "",
+                        reportTimeManuallyEdited: true,
+                      }))}
+                    />
+                  </label>
+                  <label style={{ ...styles.tiny, display: "grid", gap: "6px" }}>
+                    Time seen
+                    <input
+                      style={styles.input}
+                      type="time"
+                      value={reportForm.reportTime}
+                      onChange={(e) => setReportForm((current) => ({
+                        ...current,
+                        reportTime: e.target.value,
+                        reportedAt: "",
+                        reportTimeManuallyEdited: true,
+                      }))}
+                    />
+                  </label>
+                  <p style={styles.tiny}>Default is now. Timezone: {reportForm.timezone || getScoutReportNowParts().timezone || "local time"}.</p>
+                </div>
+              </details>
               <details>
-                <summary>Step 4: Proof / More Details</summary>
+                <summary>Proof / source / visibility</summary>
                 <div style={{ ...styles.formGrid, marginTop: "12px" }}>
                   <input
                     style={styles.input}
@@ -3811,12 +4368,40 @@ async function handleUpdateStore(e) {
                     onChange={(e) => setReportForm((current) => ({ ...current, reportedBy: e.target.value }))}
                     placeholder="Reported by"
                   />
+                  <select
+                    style={styles.input}
+                    value={reportForm.sourceType}
+                    onChange={(e) => setReportForm((current) => ({ ...current, sourceType: e.target.value }))}
+                  >
+                    {SCOUT_SOURCE_TYPES.map((sourceType) => (
+                      <option key={sourceType} value={sourceType}>{scoutSourceTypeLabel(sourceType)}</option>
+                    ))}
+                  </select>
+                  <select
+                    style={styles.input}
+                    value={reportForm.confidence}
+                    onChange={(e) => setReportForm((current) => ({ ...current, confidence: e.target.value }))}
+                  >
+                    {SCOUT_CONFIDENCE_LEVELS.map((confidence) => (
+                      <option key={confidence} value={confidence}>{confidence[0].toUpperCase() + confidence.slice(1)}</option>
+                    ))}
+                  </select>
+                  <select
+                    style={styles.input}
+                    value={reportForm.visibility}
+                    onChange={(e) => setReportForm((current) => ({ ...current, visibility: e.target.value }))}
+                  >
+                    {SCOUT_VISIBILITY_LEVELS.map((visibility) => (
+                      <option key={visibility} value={visibility}>{scoutSourceTypeLabel(visibility)}</option>
+                    ))}
+                  </select>
                   <input
                     style={styles.input}
                     value={reportForm.imageUrl}
                     onChange={(e) => setReportForm((current) => ({ ...current, imageUrl: e.target.value }))}
                     placeholder="Photo, screenshot, or link/text proof"
                   />
+                  <p style={styles.tiny}>Text screenshots, names, phone numbers, and group chats stay private unless you choose a cleaned public report.</p>
                   <label style={styles.tiny}>
                     <input
                       type="checkbox"
@@ -5245,14 +5830,23 @@ async function handleUpdateStore(e) {
               {renderCompactReportCard(selectedReportTarget)}
               <div className="scout-report-detail-items">
                 <h3>Full items seen</h3>
-                {normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).map((item, index) => (
-                  <div key={`${item.productName}-${index}`} className="scout-report-detail-item">
-                    <strong>{item.productName}</strong>
-                    <span>{item.quantity ? `Qty ${item.quantity}` : "Qty unknown"}</span>
-                    <span>{Number(item.price || 0) > 0 ? money(item.price) : "Price not added"}</span>
-                    {item.note ? <p>{item.note}</p> : null}
+                {normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).length ? (
+                  normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).map((item, index) => (
+                    <div key={`${item.productName}-${index}`} className="scout-report-detail-item">
+                      <strong>{item.productName}</strong>
+                      <span>{item.quantity ? `Qty ${item.quantity}` : "Qty unknown"}</span>
+                      <span>{Number(item.price || 0) > 0 ? money(item.price) : "Price not added"}</span>
+                      {item.note ? <p>{item.note}</p> : null}
+                    </div>
+                  ))
+                ) : (
+                  <div className="scout-report-detail-item">
+                    <strong>General report</strong>
+                    <span>{scoutStockStatusLabel(selectedReportTarget.stockStatus || selectedReportTarget.stock_status) || "Stock status not selected"}</span>
+                    {getScoutReportPhotoUrls(selectedReportTarget).length ? <span>Photo uploaded - Items not identified yet</span> : null}
+                    {selectedReportTarget.note ? <p>{selectedReportTarget.note}</p> : null}
                   </div>
-                ))}
+                )}
               </div>
               <div className="location-modal-actions modal-sticky-footer">
                 <button type="button" onClick={() => startEditingReport(selectedReportTarget)}>Edit</button>

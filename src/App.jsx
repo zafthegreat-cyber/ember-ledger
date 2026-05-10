@@ -13,6 +13,7 @@ import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA, SHARE
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
 import { POKEMON_PRODUCT_UPCS, POKEMON_PRODUCTS } from "./data/pokemonProductCatalog";
 import { VIRGINIA_STORES_SEED } from "./data/virginiaStoresSeed";
+import { SCOUT_HISTORICAL_INTEL_SEED, buildScoutRestockPatterns } from "./data/scoutRestockIntelSeed";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
@@ -1747,6 +1748,9 @@ export default function App() {
     reports: [],
     tidepoolReports: [],
     bestBuyAlerts: [],
+    restockIntel: [],
+    restockPatterns: [],
+    intelImportReviews: [],
     scoutProfile: {},
     alertSettings: {},
   });
@@ -4318,14 +4322,25 @@ export default function App() {
 
   function loadScoutSnapshot() {
     const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
+    const restockIntel = saved.restockIntel?.length ? saved.restockIntel : SCOUT_HISTORICAL_INTEL_SEED;
     setScoutSnapshot({
       stores: saved.stores || [],
       reports: saved.reports || [],
       tidepoolReports: saved.tidepoolReports || [],
       bestBuyAlerts: saved.bestBuyAlerts || [],
+      restockIntel,
+      restockPatterns: saved.restockPatterns || buildScoutRestockPatterns(restockIntel),
+      intelImportReviews: saved.intelImportReviews || [],
       scoutProfile: saved.scoutProfile || {},
       alertSettings: saved.alertSettings || {},
     });
+    if (!saved.restockIntel?.length) {
+      localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({
+        ...saved,
+        restockIntel,
+        restockPatterns: buildScoutRestockPatterns(restockIntel),
+      }));
+    }
   }
 
   function saveTidepoolCommunity(next) {
@@ -8047,7 +8062,7 @@ function renderScoutHeader() {
     <PageHeader
       className={getHeaderCardClass("panel scout-summary-card")}
       title="Scout"
-      subtitle="Store reports, restock patterns, and local tracking."
+      subtitle="Store reports, restock sightings, and local tracking."
       actions={(
         <>
         <button type="button" className="scout-submit-primary" onClick={() => {
@@ -8067,6 +8082,7 @@ function renderScoutHeader() {
             key: "scout-stores",
             title: "Stores",
             subtitle: `${scoutStoreCount} nearby entries`,
+            className: "scout-hero-nav-tile",
             onClick: () => {
               if (!requestScoutLocation()) return;
               setScoutSubTabTarget({ tab: "stores", id: Date.now() });
@@ -8077,6 +8093,7 @@ function renderScoutHeader() {
             key: "scout-reports",
             title: "Reports",
             subtitle: `${scoutRecentReportCount} recent`,
+            className: "scout-hero-nav-tile",
             onClick: () => {
               setScoutReportFilter("Latest");
               setScoutView("reports");
@@ -8086,6 +8103,7 @@ function renderScoutHeader() {
             key: "scout-alerts",
             title: "Alerts",
             subtitle: `${scoutActiveAlertCount} active`,
+            className: "scout-hero-stat-tile",
             onClick: () => {
               setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
               setScoutView("alerts");
@@ -8095,6 +8113,7 @@ function renderScoutHeader() {
             key: "scout-score",
             title: "Scout Score",
             subtitle: `${scoutTrustScore} trust score`,
+            className: "scout-hero-stat-tile",
             onClick: () => setScoutScoreModalOpen(true),
           },
         ]}
@@ -9451,11 +9470,57 @@ function renderForgeHeader() {
     if (report.verified || rawStatus === "verified") return "Verified";
     if (rawStatus === "pending") return "Pending";
     if (rawStatus.includes("review")) return "Needs Review";
+    if (rawStatus === "user_report" || rawStatus === "unverified") return "User Report";
     return report.userId || report.reportedBy || report.reported_by ? "User Report" : "Pending";
   }
 
+  function scoutStockStatusLabel(value = "") {
+    const labels = {
+      in_stock: "In stock",
+      low_stock: "Low stock",
+      empty: "Empty",
+      vendor_stocking: "Vendor stocking",
+      behind_counter: "Behind counter",
+      customer_service: "Customer service",
+      limit_posted: "Limit posted",
+      unknown: "Unknown / not sure",
+    };
+    return labels[String(value || "").toLowerCase()] || "";
+  }
+
+  function scoutSourceTypeLabel(value = "") {
+    return String(value || "user_report")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function scoutReportPhotoUrls(report = {}) {
+    const urls = [
+      ...(Array.isArray(report.photoUrls) ? report.photoUrls : []),
+      ...(Array.isArray(report.photo_urls) ? report.photo_urls : []),
+      report.imageUrl,
+      report.image_url,
+      report.photoUrl,
+      report.photo_url,
+    ].map((url) => String(url || "").trim()).filter(Boolean);
+    return [...new Set(urls)];
+  }
+
   function scoutReportDateTimeLabel(report = {}) {
-    const date = report.reportDate || report.report_date || report.createdAt || report.created_at || "";
+    const rawTimestamp = report.reportedAt || report.reported_at || report.submittedAt || report.submitted_at || report.createdAt || report.created_at || "";
+    if (rawTimestamp) {
+      const parsed = new Date(rawTimestamp);
+      if (!Number.isNaN(parsed.getTime())) {
+        const diffMinutes = Math.floor((Date.now() - parsed.getTime()) / 60000);
+        if (diffMinutes < 1) return "Just now";
+        if (diffMinutes < 60) return `${diffMinutes} min ago`;
+        if (parsed.toDateString() === new Date().toDateString()) {
+          return `Today at ${parsed.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+        }
+        return parsed.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+      }
+    }
+    const date = report.reportDate || report.report_date || "";
     const time = report.reportTime || report.report_time || "";
     if (!date && !time) return "Date not added";
     const parsed = date ? new Date(`${String(date).slice(0, 10)}T${time || "00:00"}`) : null;
@@ -9509,6 +9574,19 @@ function renderForgeHeader() {
     const aDate = `${a.reportDate || a.report_date || a.createdAt || ""}T${a.reportTime || a.report_time || "00:00"}`;
     const bDate = `${b.reportDate || b.report_date || b.createdAt || ""}T${b.reportTime || b.report_time || "00:00"}`;
     return new Date(bDate) - new Date(aDate);
+  });
+  const scoutIntelRows = scoutSnapshot.restockIntel?.length ? scoutSnapshot.restockIntel : SCOUT_HISTORICAL_INTEL_SEED;
+  const scoutPatternRows = scoutSnapshot.restockPatterns?.length ? scoutSnapshot.restockPatterns : buildScoutRestockPatterns(scoutIntelRows);
+  const confirmedScoutIntel = scoutIntelRows.filter((row) => ["confirmed", "likely"].includes(row.confidence));
+  const predictionScoutIntel = scoutIntelRows.filter((row) => ["guess", "possible", "rumor"].includes(row.confidence) || /guess|prediction|planner/i.test(row.sourceType || ""));
+  const scoutStoreStockSnapshots = scoutPatternRows.slice(0, 6).map((pattern) => {
+    const latest = scoutIntelRows.find((row) => row.storeAlias === pattern.storeAlias);
+    return {
+      pattern,
+      latest,
+      products: latest?.productsMentioned?.length ? latest.productsMentioned.join(", ") : latest?.rawProductText || "No specific products",
+      status: latest?.confidence === "confirmed" || latest?.confidence === "likely" ? "Reported stocked" : "Unknown",
+    };
   });
   const filteredScoutReports = scoutReportRows.filter((report) => {
     if (scoutReportFilter === "Verified") return Boolean(report.verified || report.verificationStatus === "verified");
@@ -10588,12 +10666,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const visibleItems = itemsSeen.slice(0, 3);
     const extraCount = Math.max(0, itemsSeen.length - visibleItems.length);
     const reportId = getScoutReportId(report);
-    const storeName = store.name || store.nickname || report.storeName || report.store_name || "Store not selected";
+    const rawStoreName = store.name || store.nickname || report.storeName || report.store_name || "";
+    const storeName = rawStoreName && !/unknown store/i.test(rawStoreName) ? rawStoreName : "Store not selected";
     const retailer = store.chain || store.retailer || report.retailer || "Retailer not added";
     const area = [store.city || report.city, store.region || report.region].filter(Boolean).join(" / ");
     const statusLabel = scoutReportStatusLabel(report);
     const note = report.note || report.notes || report.reportText || report.report_text || "";
-    const photo = report.imageUrl || report.image_url || report.photoUrl || report.photo_url || "";
+    const photoUrls = scoutReportPhotoUrls(report);
+    const photo = photoUrls[0] || "";
+    const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status);
+    const aiPending = Boolean(photo && !itemsSeen.length) || report.needsReview || report.needs_review;
+    const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
+    const confidence = report.confidence || "";
     return (
       <article className="scout-report-compact-card" key={reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -10606,6 +10690,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <div className="scout-report-meta">
             <span>{scoutReportDateTimeLabel(report)}</span>
+            {stockStatus ? <span>{stockStatus}</span> : null}
+            {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
+            {confidence ? <span>Confidence: {confidence}</span> : null}
             <span>Submitted by {isCurrentUserScoutReport(report) ? "You" : (report.displayName || report.reportedBy || report.reported_by || "Scout user")}</span>
           </div>
           <div className="scout-report-items">
@@ -10620,11 +10707,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </p>
               ))
             ) : (
-              <p>No item details added</p>
+              <div className="scout-report-general-details">
+                {stockStatus ? <p>{stockStatus}</p> : null}
+                {photo ? <p>Photo uploaded - Items not identified yet</p> : null}
+                {aiPending && !photo ? <p>Items not identified yet</p> : null}
+                {note && !stockStatus && !photo ? <p>General store note</p> : null}
+                {!stockStatus && !photo && !note ? <p>No item details added</p> : null}
+              </div>
             )}
             {extraCount ? <p className="compact-subtitle">+ {extraCount} more item{extraCount === 1 ? "" : "s"}</p> : null}
           </div>
-          {!compact ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
+          {!compact && (note || (!stockStatus && !photo)) ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
         </div>
         <div className="scout-report-side">
           {photo ? <img src={photo} alt="" /> : <span>No photo attached</span>}
@@ -16117,6 +16210,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 children: (
                   <div className="scout-quick-action-grid">
                     <button type="button" onClick={() => openScoutSubmitFlow()}>Submit Report</button>
+                    <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ action: "importIntel" })}>Import restock intel</button>
                     <button type="button" className="secondary-button" onClick={() => {
                       setScoutSubTabTarget({ tab: "stores", action: "missingStore", id: Date.now() });
                       setScoutView("stores");
@@ -16193,11 +16287,50 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {renderScoutAccordionSection({
                 id: "predictions",
                 title: "Predictions",
-                summary: "Restock patterns",
+                summary: "This week",
                 children: (
-                  <div className="small-empty-state">
-                    <strong>Prediction windows are based on verified report history.</strong>
-                    <span>Submit consistent store reports to make this more useful during beta.</span>
+                  <div className="scout-intel-dashboard">
+                    <div className="scout-intel-column">
+                      <h3>Confirmed / Reported</h3>
+                      {confirmedScoutIntel.slice(0, 4).map((row) => (
+                        <div className="scout-intel-card" key={row.id}>
+                          <strong>{row.storeAlias}</strong>
+                          <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
+                          <p>{row.productsMentioned?.join(", ") || row.sourceText || "Reported stock intel"}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="scout-intel-column">
+                      <h3>Predictions / Guesses</h3>
+                      {predictionScoutIntel.slice(0, 4).map((row) => (
+                        <div className="scout-intel-card scout-intel-card--prediction" key={row.id}>
+                          <strong>{row.storeAlias}</strong>
+                          <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
+                          <p>{row.pattern || row.sourceText || "Pattern candidate"}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="scout-intel-column scout-intel-column--wide">
+                      <h3>Weekly Restock Calendar</h3>
+                      {scoutPatternRows.slice(0, 5).map((pattern) => (
+                        <div className="scout-intel-card" key={pattern.id}>
+                          <strong>{pattern.usualDays.length ? pattern.usualDays.join(" / ") : "This week"} - {pattern.nickname}</strong>
+                          <span>Expected: {pattern.usualTimeWindow || "Unknown"} | Confidence: {pattern.computedConfidence}</span>
+                          <p>{pattern.productTypePattern}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="scout-intel-column scout-intel-column--wide">
+                      <h3>One-stop Stock Checker</h3>
+                      {scoutStoreStockSnapshots.slice(0, 5).map(({ pattern, latest, products, status }) => (
+                        <div className="scout-intel-card" key={`stock-${pattern.id}`}>
+                          <strong>{pattern.nickname}</strong>
+                          <span>{status} | Confidence: {latest?.confidence || pattern.computedConfidence}</span>
+                          <p>Products mentioned: {products}</p>
+                          <small>Next predicted window: {pattern.usualDays.join(" / ") || "Unknown"} {pattern.usualTimeWindow !== "Unknown" ? `at ${pattern.usualTimeWindow}` : ""}</small>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ),
               })}
@@ -18844,29 +18977,18 @@ function CompactInventoryCard({
         {item.receiptImage && <a href={item.receiptImage} target="_blank" rel="noreferrer">Receipt</a>}
       </div>
 
-      <div className="compact-actions">
+      <div className="compact-actions forge-card-actions">
         <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
-        <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
         <button type="button" className="secondary-button" onClick={() => onSell?.(item)}>Sell</button>
-        <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>List</button>
-        <select
-          value={item.status || "In Stock"}
-          onChange={(event) => onStatusChange(item, event.target.value)}
-        >
-          {STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-
-        <button className="edit-button" onClick={() => onRestock(item)}>
-          Restock
-        </button>
-
         <OverflowMenu
-          onEdit={() => onEdit(item)}
-          onDelete={() => onDelete(item.id)}
+          buttonLabel="More"
+          actions={[
+            { label: "Edit", onClick: () => onEdit?.(item) },
+            { label: "List", onClick: () => onCreateListing?.(item) },
+            { label: "Restock", onClick: () => onRestock?.(item) },
+            { label: "Change Status", onClick: () => onEdit?.(item) },
+          ]}
+          onDelete={() => onDelete?.(item.id)}
         />
       </div>
     </div>

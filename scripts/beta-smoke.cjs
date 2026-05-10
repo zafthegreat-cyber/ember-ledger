@@ -298,24 +298,33 @@ async function main() {
 
   await step("Scout: add/edit/delete restock report", async () => {
     await nav("Scout");
-    if (await page.locator('textarea[placeholder="What did you see?"]').count() === 0) {
+    const noteSelector = 'textarea[placeholder="Quick note, limit, or shelf details"], textarea[placeholder="What did you see?"]';
+    if (await page.locator(noteSelector).count() === 0) {
       await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
     }
-    const reportForm = page.locator("form").filter({ has: page.locator('textarea[placeholder="What did you see?"]') }).first();
+    const reportForm = page.locator("form").filter({ has: page.locator(noteSelector) }).first();
+    const optionalItems = reportForm.locator("details.scout-report-optional-items").first();
+    if (await optionalItems.count()) {
+      const open = await optionalItems.evaluate((node) => node.open);
+      if (!open) await optionalItems.locator("summary").click();
+    }
     await reportForm.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB");
     await reportForm.getByPlaceholder("Qty or unknown").first().fill("2");
-    await reportForm.getByPlaceholder("What did you see?").fill("Two ETBs on the shelf.");
-    await reportForm.locator('input[type="date"]').fill("2026-05-08");
-    await reportForm.locator('input[type="time"]').fill("10:30");
+    await reportForm.locator(noteSelector).fill("Two ETBs on the shelf.");
     await reportForm.locator('button[type="submit"]').click();
     await assertVisibleText("Smoke ETB");
 
     const reportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB" }).first();
     await reportCard.waitFor({ state: "visible", timeout: 10000 });
     await overflowAction(reportCard, "Edit");
-    const editReportPanel = page.locator("form").filter({ has: page.locator('textarea[placeholder="What did you see?"]') }).first();
+    const editReportPanel = page.locator("form").filter({ has: page.locator(noteSelector) }).first();
+    const editOptionalItems = editReportPanel.locator("details.scout-report-optional-items").first();
+    if (await editOptionalItems.count()) {
+      const editOpen = await editOptionalItems.evaluate((node) => node.open);
+      if (!editOpen) await editOptionalItems.locator("summary").click();
+    }
     await editReportPanel.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB Edited");
-    await editReportPanel.getByPlaceholder("What did you see?").fill("Three ETBs after edit.");
+    await editReportPanel.locator(noteSelector).fill("Three ETBs after edit.");
     await editReportPanel.locator('button[type="submit"]').click();
     await assertVisibleText("Smoke ETB Edited");
 
@@ -324,6 +333,20 @@ async function main() {
     await overflowAction(editedReportCard, "Delete");
     await page.getByRole("button", { name: "Delete Report" }).click();
     await assert.equal(await page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB Edited" }).count(), 0);
+
+    if (await page.locator(noteSelector).count() === 0) {
+      await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+    }
+    const quickReportForm = page.locator("form").filter({ has: page.locator(noteSelector) }).first();
+    await quickReportForm.getByRole("button", { name: "Low stock" }).click();
+    await quickReportForm.locator(noteSelector).fill("Smoke quick report with limit 2 posted.");
+    await quickReportForm.locator('button[type="submit"]').click();
+    await assertVisibleText("Low stock");
+    await assertVisibleText("Smoke quick report with limit 2 posted.");
+    const quickReportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke quick report with limit 2 posted." }).first();
+    await quickReportCard.waitFor({ state: "visible", timeout: 10000 });
+    await overflowAction(quickReportCard, "Delete");
+    await page.getByRole("button", { name: "Delete Report" }).click();
   });
 
   await step("Scout: add/edit/delete tracked item", async () => {
@@ -429,7 +452,7 @@ async function main() {
     await screenshotPanel.getByPlaceholder("Source notes / group name").fill("757 Pokemon Finds");
     await screenshotPanel.getByPlaceholder("Notes from the screenshot").fill("Manual screenshot review save.");
     await screenshotPanel.getByRole("button", { name: "Copy to Report Review" }).click();
-    const reportForm = page.locator("form").filter({ has: page.locator('textarea[placeholder="What did you see?"]') }).first();
+    const reportForm = page.locator("form").filter({ has: page.locator('textarea[placeholder="Quick note, limit, or shelf details"], textarea[placeholder="What did you see?"]') }).first();
     await reportForm.locator('button[type="submit"]').click();
     await assertVisibleText("Smoke Screenshot ETB");
     await assertVisibleText("Manual screenshot review save.");

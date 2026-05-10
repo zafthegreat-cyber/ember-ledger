@@ -126,6 +126,10 @@ export function sanitizeScoutLocalData(value = {}) {
     bestBuyStoreStock: filterDemoArray(value.bestBuyStoreStock),
     bestBuyAlerts: filterDemoArray(value.bestBuyAlerts),
     bestBuyNightlyReports: filterDemoArray(value.bestBuyNightlyReports),
+    restockIntel: filterDemoArray(value.restockIntel),
+    restockPatterns: filterDemoArray(value.restockPatterns),
+    intelImportReviews: filterDemoArray(value.intelImportReviews),
+    storeAliases: Array.isArray(value.storeAliases) ? value.storeAliases : [],
     items: filterDemoArray(value.items),
     routes: filterDemoArray(value.routes),
   };

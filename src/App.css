@@ -4550,6 +4550,15 @@ video {
   min-width: 0;
 }
 
+.forge-card-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.forge-card-actions .overflow-menu,
+.forge-card-actions .overflow-menu-button {
+  width: 100%;
+}
+
 @media (max-width: 720px) {
   .compact-card-header {
     flex-direction: column;
@@ -4562,6 +4571,10 @@ video {
   .compact-actions {
     grid-template-columns: 1fr auto;
     align-items: center;
+  }
+
+  .forge-card-actions {
+    grid-template-columns: 1fr 1fr auto;
   }
 
   .compact-actions select,
@@ -13068,6 +13081,118 @@ button.home-metric-card small,
   color: var(--color-heading);
 }
 
+.scout-report-general-details {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.scout-quick-report-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(20, 184, 166, 0.14);
+  border-radius: 16px;
+  background: rgba(240, 253, 250, 0.68);
+  min-width: 0;
+}
+
+.scout-quick-report-panel h3,
+.scout-quick-report-panel p {
+  margin: 0;
+}
+
+.scout-quick-report-panel h3 {
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.scout-quick-report-panel p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.scout-stock-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.scout-stock-status-button,
+.scout-photo-first-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-heading);
+  font-size: 0.84rem;
+  font-weight: 720;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.scout-stock-status-button.selected {
+  border-color: rgba(20, 184, 166, 0.45);
+  background: rgba(20, 184, 166, 0.11);
+  box-shadow: 0 10px 24px rgba(20, 184, 166, 0.12);
+}
+
+.scout-photo-first-button {
+  width: fit-content;
+  gap: 8px;
+  color: var(--color-secondary);
+}
+
+.scout-photo-first-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scout-photo-preview {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.76);
+  min-width: 0;
+}
+
+.scout-photo-preview img {
+  width: 58px;
+  height: 46px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.scout-photo-preview div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scout-photo-preview strong {
+  font-size: 0.86rem;
+}
+
+.scout-photo-preview span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
 .scout-report-side {
   display: grid;
   align-content: space-between;
@@ -13097,10 +13222,30 @@ button.home-metric-card small,
 }
 
 .scout-report-items-editor,
-.scout-report-item-editor {
+.scout-report-item-editor,
+.scout-report-optional-items {
   display: grid;
   gap: 10px;
   min-width: 0;
+}
+
+.scout-report-optional-items {
+  padding: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.scout-report-optional-items > summary {
+  cursor: pointer;
+  color: var(--color-heading);
+  font-size: 0.9rem;
+  font-weight: 800;
+  list-style-position: inside;
+}
+
+.scout-report-optional-items > .compact-subtitle {
+  margin: 0;
 }
 
 .scout-report-item-editor {
@@ -13172,6 +13317,67 @@ button.home-metric-card small,
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 12px;
   background: rgba(248, 250, 252, 0.9);
+}
+
+.scout-intel-dashboard,
+.scout-intel-review-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scout-intel-dashboard {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.scout-intel-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scout-intel-column--wide {
+  grid-column: 1 / -1;
+}
+
+.scout-intel-column h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.92rem;
+}
+
+.scout-intel-card,
+.scout-intel-review-card {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.scout-intel-card--prediction {
+  background: rgba(255, 251, 235, 0.82);
+}
+
+.scout-intel-card strong,
+.scout-intel-review-card strong {
+  color: var(--color-heading);
+  font-size: 0.9rem;
+}
+
+.scout-intel-card span,
+.scout-intel-card small,
+.scout-intel-review-card span,
+.scout-intel-review-card small,
+.scout-intel-card p,
+.scout-intel-review-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .overflow-menu {
@@ -13286,6 +13492,51 @@ button.home-metric-card small,
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     overflow: visible !important;
     padding-inline: 0 !important;
+  }
+
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid .scout-hero-nav-tile {
+    display: none;
+  }
+
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid .scout-hero-stat-tile {
+    min-height: 58px;
+  }
+
+  .standard-page-header.scout-summary-card .standard-page-header-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: start;
+  }
+
+  .standard-page-header.scout-summary-card .standard-page-header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    overflow: visible;
+  }
+
+  .standard-page-header.scout-summary-card .standard-page-header-actions button {
+    width: 100% !important;
+  }
+
+  .flow-modal[data-flow="scoutSubmit"] .modal-icon-close,
+  .flow-modal[data-flow="scoutSubmit"] .modal-close-button {
+    width: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    height: 36px;
+  }
+
+  .scout-stock-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scout-photo-first-button {
+    width: 100%;
+  }
+
+  .scout-intel-dashboard {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .scout-report-compact-card {
