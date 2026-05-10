@@ -191,6 +191,20 @@ const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 const LONG_LIST_PAGE_SIZE = 12;
 const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
+const DEFAULT_PERSONAL_WORKSPACE_ID = "workspace-personal-local-beta";
+const WORKSPACE_TYPES = [
+  { value: "personal", label: "Personal", description: "Only your user account." },
+  { value: "shared_collection", label: "Shared Collection", description: "A shared collection or household Vault." },
+  { value: "business", label: "Business", description: "Shared Forge inventory, sales, expenses, mileage, and reports." },
+  { value: "family", label: "Family", description: "Family collection space." },
+  { value: "team", label: "Team", description: "Small team workspace." },
+];
+const WORKSPACE_ROLES = [
+  { value: "owner", label: "Owner" },
+  { value: "admin", label: "Admin" },
+  { value: "editor", label: "Editor" },
+  { value: "viewer", label: "Viewer" },
+];
 const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
 const STATUSES = ["In Stock", "Needs Photos", "Needs Market Check", "Ready to List", "Listed", "Sold", "Held", "Personal Collection", "Damaged"];
 const PLATFORMS = ["eBay", "Mercari", "Whatnot", "Facebook Marketplace", "In-Store", "Instagram", "TikTok Shop", "Other"];
@@ -275,6 +289,7 @@ const BLANK_MULTI_DESTINATION_FORM = {
     tidetradr: false,
   },
   vault: {
+    workspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
     quantity: 1,
     vaultStatus: "personal_collection",
     vaultCategory: "Personal collection",
@@ -284,6 +299,7 @@ const BLANK_MULTI_DESTINATION_FORM = {
     notes: "",
   },
   wishlist: {
+    workspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
     quantity: 1,
     priority: "Medium",
     targetPrice: "",
@@ -293,6 +309,7 @@ const BLANK_MULTI_DESTINATION_FORM = {
     addToMarketWatch: false,
   },
   forge: {
+    workspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
     quantity: 1,
     unitCost: "",
     plannedSellPrice: "",
@@ -836,6 +853,166 @@ function shortDate(value) {
 
 function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function workspaceTypeLabel(type = "personal") {
+  return WORKSPACE_TYPES.find((option) => option.value === type)?.label || "Workspace";
+}
+
+function workspaceRoleLabel(role = "viewer") {
+  return WORKSPACE_ROLES.find((option) => option.value === role)?.label || "Viewer";
+}
+
+function createDefaultWorkspaceBundle(user = {}) {
+  const now = new Date().toISOString();
+  const userId = user?.id || "local-beta";
+  return {
+    activeWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
+    workspaces: [
+      {
+        id: DEFAULT_PERSONAL_WORKSPACE_ID,
+        name: "My Personal Space",
+        type: "personal",
+        ownerUserId: userId,
+        owner_user_id: userId,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ],
+    members: [
+      {
+        workspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
+        workspace_id: DEFAULT_PERSONAL_WORKSPACE_ID,
+        userId,
+        user_id: userId,
+        role: "owner",
+        status: "active",
+        invitedBy: userId,
+        invited_by: userId,
+        createdAt: now,
+        acceptedAt: now,
+      },
+    ],
+    invites: [],
+  };
+}
+
+function normalizeWorkspace(record = {}, fallback = {}) {
+  const id = record.id || record.workspaceId || record.workspace_id || fallback.id || makeId("workspace");
+  const now = new Date().toISOString();
+  return {
+    id,
+    name: String(record.name || fallback.name || "My Personal Space").trim() || "My Personal Space",
+    type: record.type || fallback.type || "personal",
+    ownerUserId: record.ownerUserId || record.owner_user_id || fallback.ownerUserId || fallback.owner_user_id || "local-beta",
+    owner_user_id: record.owner_user_id || record.ownerUserId || fallback.owner_user_id || fallback.ownerUserId || "local-beta",
+    createdAt: record.createdAt || record.created_at || fallback.createdAt || now,
+    updatedAt: record.updatedAt || record.updated_at || fallback.updatedAt || now,
+  };
+}
+
+function normalizeWorkspaceMember(member = {}, fallback = {}) {
+  const workspaceId = member.workspaceId || member.workspace_id || fallback.workspaceId || fallback.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID;
+  const userId = member.userId || member.user_id || fallback.userId || fallback.user_id || "local-beta";
+  const role = ["owner", "admin", "editor", "viewer"].includes(member.role) ? member.role : fallback.role || "viewer";
+  const status = ["invited", "active", "removed"].includes(member.status) ? member.status : fallback.status || "active";
+  const now = new Date().toISOString();
+  return {
+    workspaceId,
+    workspace_id: workspaceId,
+    userId,
+    user_id: userId,
+    email: member.email || fallback.email || "",
+    role,
+    status,
+    invitedBy: member.invitedBy || member.invited_by || fallback.invitedBy || fallback.invited_by || "",
+    invited_by: member.invited_by || member.invitedBy || fallback.invited_by || fallback.invitedBy || "",
+    createdAt: member.createdAt || member.created_at || fallback.createdAt || now,
+    acceptedAt: member.acceptedAt || member.accepted_at || fallback.acceptedAt || (status === "active" ? now : ""),
+  };
+}
+
+function normalizeWorkspaceInvite(invite = {}) {
+  const now = new Date().toISOString();
+  const workspaceId = invite.workspaceId || invite.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID;
+  const email = String(invite.email || "").trim().toLowerCase();
+  return {
+    id: invite.id || makeId("invite"),
+    workspaceId,
+    workspace_id: workspaceId,
+    email,
+    role: ["admin", "editor", "viewer"].includes(invite.role) ? invite.role : "viewer",
+    status: ["invited", "active", "removed"].includes(invite.status) ? invite.status : "invited",
+    note: invite.note || "",
+    invitedBy: invite.invitedBy || invite.invited_by || "",
+    invited_by: invite.invited_by || invite.invitedBy || "",
+    createdAt: invite.createdAt || invite.created_at || now,
+    acceptedAt: invite.acceptedAt || invite.accepted_at || "",
+  };
+}
+
+function normalizeWorkspaceState(saved = {}, user = {}) {
+  const defaults = createDefaultWorkspaceBundle(user);
+  const savedWorkspaces = Array.isArray(saved.workspaces) ? saved.workspaces : [];
+  const byId = new Map();
+  [...defaults.workspaces, ...savedWorkspaces.map((workspace) => normalizeWorkspace(workspace, defaults.workspaces[0]))]
+    .forEach((workspace) => {
+      if (workspace.id) byId.set(workspace.id, workspace);
+    });
+  const workspaces = [...byId.values()];
+
+  const savedMembers = Array.isArray(saved.workspaceMembers) ? saved.workspaceMembers : [];
+  const memberKey = (member) => `${member.workspaceId || member.workspace_id}:${member.userId || member.user_id || member.email || ""}`;
+  const memberMap = new Map();
+  [...defaults.members, ...savedMembers.map(normalizeWorkspaceMember)].forEach((member) => {
+    memberMap.set(memberKey(member), member);
+  });
+
+  const activeWorkspaceId = workspaces.some((workspace) => workspace.id === saved.activeWorkspaceId)
+    ? saved.activeWorkspaceId
+    : DEFAULT_PERSONAL_WORKSPACE_ID;
+
+  return {
+    activeWorkspaceId,
+    workspaces,
+    workspaceMembers: [...memberMap.values()],
+    workspaceInvites: Array.isArray(saved.workspaceInvites) ? saved.workspaceInvites.map(normalizeWorkspaceInvite).filter((invite) => invite.email) : [],
+  };
+}
+
+function workspaceIdForRecord(record = {}) {
+  return record.workspaceId || record.workspace_id || record.workspace || DEFAULT_PERSONAL_WORKSPACE_ID;
+}
+
+function recordBelongsToWorkspace(record = {}, workspaceId = DEFAULT_PERSONAL_WORKSPACE_ID) {
+  return String(workspaceIdForRecord(record) || DEFAULT_PERSONAL_WORKSPACE_ID) === String(workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID);
+}
+
+function applyWorkspaceToRecord(record = {}, workspace = {}) {
+  const workspaceId = workspace.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+  return {
+    ...record,
+    workspaceId,
+    workspace_id: workspaceId,
+    workspaceName: workspace.name || "My Personal Space",
+    workspaceType: workspace.type || "personal",
+    workspaceScope: "workspace",
+  };
+}
+
+function migrateRecordsToWorkspace(records = [], workspaceId = DEFAULT_PERSONAL_WORKSPACE_ID, workspaces = []) {
+  const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || { id: workspaceId, name: "My Personal Space", type: "personal" };
+  return Array.isArray(records)
+    ? records.map((record) => record?.workspaceId || record?.workspace_id ? record : applyWorkspaceToRecord(record, workspace))
+    : [];
+}
+
+function workspaceCanEdit(role = "viewer") {
+  return ["owner", "admin", "editor"].includes(role);
+}
+
+function workspaceCanManage(role = "viewer") {
+  return ["owner", "admin"].includes(role);
 }
 
 function createDefaultPurchasers() {
@@ -1479,6 +1656,19 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const initialWorkspaceBundle = useMemo(() => createDefaultWorkspaceBundle({ id: "local-beta" }), []);
+  const [workspaces, setWorkspaces] = useState(initialWorkspaceBundle.workspaces);
+  const [workspaceMembers, setWorkspaceMembers] = useState(initialWorkspaceBundle.members);
+  const [workspaceInvites, setWorkspaceInvites] = useState(initialWorkspaceBundle.invites);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(initialWorkspaceBundle.activeWorkspaceId);
+  const [workspaceForm, setWorkspaceForm] = useState({ name: "", type: "shared_collection" });
+  const [workspaceInviteForm, setWorkspaceInviteForm] = useState({
+    email: "",
+    workspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
+    role: "viewer",
+    note: "",
+  });
+  const [workspaceMessage, setWorkspaceMessage] = useState("");
 
   const [items, setItems] = useState([]);
   const [purchasers, setPurchasers] = useState(createDefaultPurchasers);
@@ -1843,6 +2033,67 @@ export default function App() {
     { key: "settings", label: "Settings", target: "menu" },
   ];
   const topbarSectionValue = activeTab === "menu" ? "settings" : activeMainTab || "home";
+  const activeWorkspace = useMemo(
+    () => workspaces.find((workspace) => String(workspace.id) === String(activeWorkspaceId)) || workspaces[0] || createDefaultWorkspaceBundle(user).workspaces[0],
+    [workspaces, activeWorkspaceId, user]
+  );
+  const activeWorkspaceMember = useMemo(
+    () => workspaceMembers.find((member) =>
+      String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id) &&
+      (String(member.userId || member.user_id) === String(user?.id || "local-beta") || String(member.email || "").toLowerCase() === String(user?.email || "").toLowerCase()) &&
+      member.status === "active"
+    ),
+    [workspaceMembers, activeWorkspace, user]
+  );
+  const activeWorkspaceRole = activeWorkspaceMember?.role || (activeWorkspace?.ownerUserId === user?.id || activeWorkspace?.owner_user_id === user?.id ? "owner" : "viewer");
+  const canEditActiveWorkspace = workspaceCanEdit(activeWorkspaceRole);
+  const canManageActiveWorkspace = workspaceCanManage(activeWorkspaceRole);
+  const workspaceRoleForId = (workspaceId = activeWorkspace?.id) => {
+    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
+    const member = workspaceMembers.find((entry) =>
+      String(entry.workspaceId || entry.workspace_id) === String(workspace?.id) &&
+      entry.status === "active" &&
+      (String(entry.userId || entry.user_id) === String(user?.id || "local-beta") || String(entry.email || "").toLowerCase() === String(user?.email || "").toLowerCase())
+    );
+    if (member?.role) return member.role;
+    return workspace?.ownerUserId === user?.id || workspace?.owner_user_id === user?.id ? "owner" : "viewer";
+  };
+  const canEditWorkspaceId = (workspaceId = activeWorkspace?.id) => workspaceCanEdit(workspaceRoleForId(workspaceId));
+  const ensureWorkspaceEditor = (workspaceId = activeWorkspace?.id) => {
+    if (canEditWorkspaceId(workspaceId)) return true;
+    alert("You do not have permission to edit this workspace.");
+    return false;
+  };
+  const workspaceSelectorOptions = useMemo(
+    () => workspaces.filter((workspace) =>
+      workspaceMembers.some((member) =>
+        String(member.workspaceId || member.workspace_id) === String(workspace.id) &&
+        member.status === "active" &&
+        (String(member.userId || member.user_id) === String(user?.id || "local-beta") || String(member.email || "").toLowerCase() === String(user?.email || "").toLowerCase())
+      ) || workspace.ownerUserId === user?.id || workspace.owner_user_id === user?.id || BETA_LOCAL_MODE
+    ),
+    [workspaces, workspaceMembers, user]
+  );
+  const destinationWorkspaceOptions = useMemo(() => {
+    const visible = workspaceSelectorOptions.length ? workspaceSelectorOptions : workspaces;
+    const personalish = visible.filter((workspace) => ["personal", "shared_collection", "family", "team"].includes(workspace.type));
+    const business = visible.filter((workspace) => ["business", "team"].includes(workspace.type));
+    return {
+      vault: personalish.length ? personalish : visible,
+      wishlist: personalish.length ? personalish : visible,
+      forge: business.length ? business : visible,
+    };
+  }, [workspaceSelectorOptions, workspaces]);
+  const defaultWorkspaceIdForDestination = (destination) => {
+    if (destination === "forge") {
+      return destinationWorkspaceOptions.forge[0]?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+    }
+    if (["vault", "wishlist"].includes(destination)) {
+      const matchingActive = destinationWorkspaceOptions[destination]?.find((workspace) => workspace.id === activeWorkspace?.id);
+      return matchingActive?.id || destinationWorkspaceOptions[destination]?.[0]?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+    }
+    return activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+  };
   const forgeTabActive = ["addInventory", "inventory", "addSale", "sales", "expenses", "mileage", "reports"].includes(activeTab);
   const autoHideBlocked = Boolean(
     activeFlowModal ||
@@ -2876,13 +3127,30 @@ export default function App() {
 
     setMultiDestinationCatalogQuery(catalogSearchQuery || "");
     setMultiDestinationMatchSearchOpen(!rest.catalogProductId);
+    const nextDestinations = { ...BLANK_MULTI_DESTINATION_FORM.destinations, ...(destinations || {}) };
+    const nextVault = {
+      ...BLANK_MULTI_DESTINATION_FORM.vault,
+      workspaceId: defaultWorkspaceIdForDestination("vault"),
+      ...(vault || {}),
+    };
+    const nextWishlist = {
+      ...BLANK_MULTI_DESTINATION_FORM.wishlist,
+      workspaceId: defaultWorkspaceIdForDestination("wishlist"),
+      ...(wishlist || {}),
+    };
+    const nextForge = {
+      ...BLANK_MULTI_DESTINATION_FORM.forge,
+      workspaceId: defaultWorkspaceIdForDestination("forge"),
+      ...(forge || {}),
+    };
+
     setMultiDestinationForm({
       ...BLANK_MULTI_DESTINATION_FORM,
       ...rest,
-      destinations: { ...BLANK_MULTI_DESTINATION_FORM.destinations, ...(destinations || {}) },
-      vault: { ...BLANK_MULTI_DESTINATION_FORM.vault, ...(vault || {}) },
-      wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, ...(wishlist || {}) },
-      forge: { ...BLANK_MULTI_DESTINATION_FORM.forge, ...(forge || {}) },
+      destinations: nextDestinations,
+      vault: nextVault,
+      wishlist: nextWishlist,
+      forge: nextForge,
       tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, ...(tidetradr || {}) },
     });
   };
@@ -2894,13 +3162,22 @@ export default function App() {
       [field]: value,
     },
   }));
-  const updateMultiDestinationToggle = (destination, checked) => setMultiDestinationForm((current) => ({
-    ...current,
-    destinations: {
-      ...current.destinations,
-      [destination]: checked,
-    },
-  }));
+  const updateMultiDestinationToggle = (destination, checked) => setMultiDestinationForm((current) => {
+    const next = {
+      ...current,
+      destinations: {
+        ...current.destinations,
+        [destination]: checked,
+      },
+    };
+    if (checked && ["vault", "wishlist", "forge"].includes(destination)) {
+      next[destination] = {
+        ...next[destination],
+        workspaceId: next[destination]?.workspaceId || defaultWorkspaceIdForDestination(destination),
+      };
+    }
+    return next;
+  });
 
   function selectMultiDestinationCatalogProduct(productOrId) {
     const product = typeof productOrId === "object"
@@ -4144,10 +4421,18 @@ export default function App() {
     if (BETA_LOCAL_MODE) {
       if (typeof localStorage !== "undefined") cleanupBrowserBetaStorage(localStorage);
       if (typeof sessionStorage !== "undefined") cleanupBrowserBetaStorage(sessionStorage);
+      const localBetaUser = { id: "local-beta", email: "local beta mode" };
       const saved = sanitizeAppLocalData(JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}"));
+      const workspaceState = normalizeWorkspaceState(saved, localBetaUser);
+      const personalWorkspace = workspaceState.workspaces.find((workspace) => workspace.id === DEFAULT_PERSONAL_WORKSPACE_ID) || workspaceState.workspaces[0];
       const savedUserType = normalizeUserType(saved.userType);
       const savedPreset = normalizeDashboardPreset(saved.dashboardPreset || getDashboardPresetForUserType(savedUserType));
       setUserType(savedUserType);
+      setWorkspaces(workspaceState.workspaces);
+      setWorkspaceMembers(workspaceState.workspaceMembers);
+      setWorkspaceInvites(workspaceState.workspaceInvites);
+      setActiveWorkspaceId(workspaceState.activeWorkspaceId);
+      setWorkspaceInviteForm((current) => ({ ...current, workspaceId: workspaceState.activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID }));
       setHomeStatsEnabled(normalizeHomeStatsEnabled(saved.homeStatsEnabled, savedUserType));
       setDashboardPreset(savedPreset);
       setDashboardLayout(normalizeDashboardLayout(saved.dashboardLayout, savedPreset));
@@ -4162,23 +4447,23 @@ export default function App() {
         trackingEnabled: Boolean(saved.locationSettings?.trackingEnabled),
         lastUpdated: saved.locationSettings?.lastUpdated || "",
       });
-      setItems(saved.items || []);
+      setItems(migrateRecordsToWorkspace(saved.items || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setPurchasers(normalizePurchasers(saved.purchasers));
       const localCatalogProducts = Array.isArray(saved.catalogProducts)
         ? saved.catalogProducts.filter((product) => product.sourceType !== "supabase")
         : [];
       setCatalogProducts(localCatalogProducts.length ? mergeSharedCatalogProducts(localCatalogProducts) : createSharedCatalogProducts());
-      setTideTradrWatchlist(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : []);
-      setMarketplaceListings(Array.isArray(saved.marketplaceListings) ? saved.marketplaceListings : []);
-      setMarketplaceReports(Array.isArray(saved.marketplaceReports) ? saved.marketplaceReports : []);
+      setTideTradrWatchlist(migrateRecordsToWorkspace(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
+      setMarketplaceListings(migrateRecordsToWorkspace(Array.isArray(saved.marketplaceListings) ? saved.marketplaceListings : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
+      setMarketplaceReports(migrateRecordsToWorkspace(Array.isArray(saved.marketplaceReports) ? saved.marketplaceReports : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
       setMarketplaceSavedIds(Array.isArray(saved.marketplaceSavedIds) ? saved.marketplaceSavedIds : []);
       setTideTradrLookupId(saved.tideTradrLookupId || "");
       setMarketPriceCache(saved.marketPriceCache || loadPriceCache());
       setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
-      setExpenses((saved.expenses || []).map(mapExpense));
-      setSales(saved.sales || []);
+      setExpenses(migrateRecordsToWorkspace(saved.expenses || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(mapExpense));
+      setSales(migrateRecordsToWorkspace(saved.sales || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setVehicles(saved.vehicles || []);
-      setMileageTrips(saved.mileageTrips || []);
+      setMileageTrips(migrateRecordsToWorkspace(saved.mileageTrips || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setDealForm({
         productId: "",
         title: "",
@@ -4191,7 +4476,6 @@ export default function App() {
         ...(saved.dealForm || {}),
       });
       loadScoutSnapshot();
-      const localBetaUser = { id: "local-beta", email: "local beta mode" };
       setUser(localBetaUser);
       setLocalDataLoaded(true);
       if (!isSupabaseConfigured || !supabase) return;
@@ -4257,6 +4541,10 @@ export default function App() {
         sales,
         vehicles,
         mileageTrips,
+        workspaces,
+        workspaceMembers,
+        workspaceInvites,
+        activeWorkspaceId,
         dealForm,
         userType,
         homeStatsEnabled,
@@ -4268,7 +4556,7 @@ export default function App() {
         subscriptionProfile,
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, subscriptionProfile, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, subscriptionProfile, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -4474,6 +4762,122 @@ export default function App() {
     setUser(null);
   }
 
+  function changeActiveWorkspace(workspaceId) {
+    if (!workspaces.some((workspace) => String(workspace.id) === String(workspaceId))) return;
+    setActiveWorkspaceId(workspaceId);
+    setWorkspaceInviteForm((current) => ({ ...current, workspaceId }));
+    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId));
+    setWorkspaceMessage(`Switched to ${workspace?.name || "workspace"}.`);
+    setVaultPage(1);
+    setForgeInventoryPage(1);
+    setMarketWatchPage(1);
+  }
+
+  function createWorkspace(event) {
+    event?.preventDefault?.();
+    const name = String(workspaceForm.name || "").trim();
+    if (!name) {
+      setWorkspaceMessage("Enter a workspace name first.");
+      return;
+    }
+    const now = new Date().toISOString();
+    const ownerId = user?.id || "local-beta";
+    const workspace = {
+      id: makeId("workspace"),
+      name,
+      type: workspaceForm.type || "shared_collection",
+      ownerUserId: ownerId,
+      owner_user_id: ownerId,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const ownerMember = normalizeWorkspaceMember({
+      workspaceId: workspace.id,
+      userId: ownerId,
+      email: user?.email || "",
+      role: "owner",
+      status: "active",
+      invitedBy: ownerId,
+      createdAt: now,
+      acceptedAt: now,
+    });
+    setWorkspaces((current) => [workspace, ...current]);
+    setWorkspaceMembers((current) => [ownerMember, ...current]);
+    setWorkspaceForm({ name: "", type: "shared_collection" });
+    setActiveWorkspaceId(workspace.id);
+    setWorkspaceInviteForm((current) => ({ ...current, workspaceId: workspace.id }));
+    setWorkspaceMessage(`${workspace.name} created. Personal data was not moved or shared.`);
+  }
+
+  function sendWorkspaceInvite(event) {
+    event?.preventDefault?.();
+    const email = String(workspaceInviteForm.email || "").trim().toLowerCase();
+    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceInviteForm.workspaceId));
+    if (!email || !workspace) {
+      setWorkspaceMessage("Choose a workspace and enter an email address.");
+      return;
+    }
+    const role = workspaceInviteForm.role === "owner" ? "viewer" : workspaceInviteForm.role || "viewer";
+    const now = new Date().toISOString();
+    const invite = normalizeWorkspaceInvite({
+      id: makeId("invite"),
+      workspaceId: workspace.id,
+      email,
+      role,
+      note: workspaceInviteForm.note,
+      status: "invited",
+      invitedBy: user?.id || "local-beta",
+      createdAt: now,
+    });
+    setWorkspaceInvites((current) => [invite, ...current.filter((entry) => !(entry.email === email && entry.workspaceId === workspace.id && entry.status === "invited"))]);
+    setWorkspaceMembers((current) => {
+      const existingIndex = current.findIndex((entry) =>
+        String(entry.workspaceId || entry.workspace_id) === String(workspace.id) &&
+        String(entry.email || "").toLowerCase() === email
+      );
+      const pendingMember = normalizeWorkspaceMember({
+        workspaceId: workspace.id,
+        email,
+        userId: "",
+        role,
+        status: "invited",
+        invitedBy: user?.id || "local-beta",
+        createdAt: now,
+      });
+      if (existingIndex >= 0) {
+        return current.map((entry, index) => index === existingIndex ? pendingMember : entry);
+      }
+      return [pendingMember, ...current];
+    });
+    setWorkspaceInviteForm((current) => ({ ...current, email: "", note: "" }));
+    setWorkspaceMessage(`Invite created for ${email}. They get access after accepting with that email.`);
+  }
+
+  function acceptWorkspaceInvite(inviteId) {
+    const invite = workspaceInvites.find((entry) => entry.id === inviteId);
+    if (!invite) return;
+    const now = new Date().toISOString();
+    const userId = user?.id || "local-beta";
+    setWorkspaceInvites((current) => current.map((entry) => entry.id === inviteId ? { ...entry, status: "active", acceptedAt: now } : entry));
+    setWorkspaceMembers((current) => {
+      const activeMember = normalizeWorkspaceMember({
+        workspaceId: invite.workspaceId,
+        email: invite.email,
+        userId,
+        role: invite.role,
+        status: "active",
+        invitedBy: invite.invitedBy,
+        createdAt: invite.createdAt,
+        acceptedAt: now,
+      });
+      return [activeMember, ...current.filter((entry) =>
+        !(String(entry.workspaceId || entry.workspace_id) === String(invite.workspaceId) && String(entry.email || "").toLowerCase() === String(invite.email || "").toLowerCase())
+      )];
+    });
+    setActiveWorkspaceId(invite.workspaceId);
+    setWorkspaceMessage(`Invite accepted. You are now viewing ${workspaces.find((workspace) => workspace.id === invite.workspaceId)?.name || "that workspace"}.`);
+  }
+
   function resetBetaLocalData() {
     const confirmed = window.confirm(
       "Clear private beta data on this device? This cannot be undone."
@@ -4485,6 +4889,14 @@ export default function App() {
     localStorage.removeItem(SCOUT_STORAGE_KEY);
     localStorage.removeItem(TIDEPOOL_STORAGE_KEY);
     localStorage.removeItem(SUGGESTION_STORAGE_KEY);
+    const defaultWorkspaceState = createDefaultWorkspaceBundle(user || { id: "local-beta" });
+    setWorkspaces(defaultWorkspaceState.workspaces);
+    setWorkspaceMembers(defaultWorkspaceState.members);
+    setWorkspaceInvites(defaultWorkspaceState.invites);
+    setActiveWorkspaceId(defaultWorkspaceState.activeWorkspaceId);
+    setWorkspaceForm({ name: "", type: "shared_collection" });
+    setWorkspaceInviteForm({ email: "", workspaceId: defaultWorkspaceState.activeWorkspaceId, role: "viewer", note: "" });
+    setWorkspaceMessage("");
     setScoutSnapshot({
       stores: [],
       reports: [],
@@ -4542,7 +4954,7 @@ export default function App() {
     const vaultCategory = vaultForm.vaultCategory || "Personal collection";
     const vaultStatus = vaultForm.vaultStatus || normalizeVaultStatus({ status: vaultForm.status, actionNotes: vaultCategory });
     const status = vaultStatusLabel(vaultStatus);
-    return {
+    return applyWorkspaceToRecord({
       id: makeId("vault"),
       itemName: vaultForm.name,
       name: vaultForm.name,
@@ -4613,7 +5025,7 @@ export default function App() {
       purchaseDate: vaultForm.purchaseDate || "",
       createdAt: vaultForm.purchaseDate ? new Date(vaultForm.purchaseDate).toISOString() : now,
       updatedAt: now,
-    };
+    }, activeWorkspace);
   }
 
   function createVaultItemRecord(newItem) {
@@ -4805,7 +5217,9 @@ export default function App() {
     const marketInfo = getTideTradrMarketInfo(product || {});
     const defaultPurchaser = purchaserOptions[0] || { id: "", name: "Zena" };
     const isVaultDestination = destination === "vault" || destination === "wishlist";
-    return {
+    const workspaceId = defaultWorkspaceIdForDestination(destination === "wishlist" ? "wishlist" : destination === "forge" ? "forge" : "vault");
+    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
+    return applyWorkspaceToRecord({
       ...blankItem,
       id: makeId(isVaultDestination ? "scan-vault" : "scan-forge"),
       itemName: product?.name || product?.productName || product?.cardName || scanReview?.itemName || "Scanned item",
@@ -4863,7 +5277,7 @@ export default function App() {
       notes: `Added from scanner review. Raw scan: ${scanReview?.rawValue || "manual"}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    };
+    }, workspace);
   }
 
   function addScannedItemToCollection(destination) {
@@ -5391,6 +5805,20 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
     const successes = [];
     const failures = [];
+    const destinationWorkspace = (destination) => {
+      const workspaceId = multiDestinationForm[destination]?.workspaceId || defaultWorkspaceIdForDestination(destination);
+      return workspaces.find((workspace) => String(workspace.id) === String(workspaceId)) || activeWorkspace;
+    };
+    const canWriteDestination = (destination) => {
+      const workspace = destinationWorkspace(destination);
+      const member = workspaceMembers.find((entry) =>
+        String(entry.workspaceId || entry.workspace_id) === String(workspace?.id) &&
+        entry.status === "active" &&
+        (String(entry.userId || entry.user_id) === String(user?.id || "local-beta") || String(entry.email || "").toLowerCase() === String(user?.email || "").toLowerCase())
+      );
+      const role = member?.role || (workspace?.ownerUserId === user?.id || workspace?.owner_user_id === user?.id ? "owner" : activeWorkspaceRole);
+      return workspaceCanEdit(role);
+    };
     const shared = {
       name: itemName,
       category: multiDestinationForm.category || "Pokemon",
@@ -5409,8 +5837,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
     try {
       if (destinations.vault) {
+        if (!canWriteDestination("vault")) throw new Error("You do not have permission to edit this workspace.");
         const vaultQuantity = Math.max(1, Number(multiDestinationForm.vault.quantity || 1));
-        const vaultItem = {
+        const vaultWorkspace = destinationWorkspace("vault");
+        const vaultItem = applyWorkspaceToRecord({
           id: makeId("vault"),
           ...shared,
           destinationScope: ["vault"],
@@ -5430,9 +5860,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           conditionName: "Near Mint",
           language: "English",
           createdAt: now,
-        };
+        }, vaultWorkspace);
         setItems((current) => [vaultItem, ...current]);
-        successes.push("Added to Vault");
+        successes.push(`Added to Vault (${vaultWorkspace?.name || "Workspace"})`);
       }
     } catch (error) {
       failures.push(`Vault failed: ${error.message || "Could not save"}`);
@@ -5440,8 +5870,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
     try {
       if (destinations.wishlist) {
+        if (!canWriteDestination("wishlist")) throw new Error("You do not have permission to edit this workspace.");
         const wishlistQuantity = Math.max(1, Number(multiDestinationForm.wishlist.quantity || 1));
-        const wishlistItem = {
+        const wishlistWorkspace = destinationWorkspace("wishlist");
+        const wishlistItem = applyWorkspaceToRecord({
           id: makeId("wishlist"),
           ...shared,
           destinationScope: ["wishlist"],
@@ -5470,12 +5902,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           conditionName: multiDestinationForm.wishlist.desiredCondition || "Any",
           language: "English",
           createdAt: now,
-        };
+        }, wishlistWorkspace);
         setItems((current) => [wishlistItem, ...current]);
-        successes.push("Added to Wishlist");
+        successes.push(`Added to Wishlist (${wishlistWorkspace?.name || "Workspace"})`);
 
         if (multiDestinationForm.wishlist.addToMarketWatch && selectedCatalog?.id) {
-          addProductToTideTradrWatchlist(selectedCatalog.id);
+          addProductToTideTradrWatchlist(selectedCatalog.id, false, wishlistWorkspace?.id);
           successes.push("Added to Watchlist");
         }
       }
@@ -5485,8 +5917,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
     try {
       if (destinations.forge) {
+        if (!canWriteDestination("forge")) throw new Error("You do not have permission to edit this workspace.");
         const forgeQuantity = Math.max(1, Number(multiDestinationForm.forge.quantity || 1));
-        const forgeItem = {
+        const forgeWorkspace = destinationWorkspace("forge");
+        const forgeItem = applyWorkspaceToRecord({
           id: makeId("item"),
           ...shared,
           destinationScope: ["forge"],
@@ -5507,9 +5941,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           language: "English",
           notes: [multiDestinationForm.forge.notes, multiDestinationForm.notes].filter(Boolean).join(" "),
           createdAt: now,
-        };
+        }, forgeWorkspace);
         setItems((current) => [forgeItem, ...current]);
-        successes.push("Added to Forge inventory");
+        successes.push(`Added to Forge inventory (${forgeWorkspace?.name || "Workspace"})`);
       }
     } catch (error) {
       failures.push(`Forge failed: ${error.message || "Could not save"}`);
@@ -5519,7 +5953,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       if (destinations.tidetradr) {
         const existingProductId = multiDestinationForm.tidetradr.existingProductId || selectedCatalog?.id || "";
         if (existingProductId) {
-          addProductToTideTradrWatchlist(existingProductId);
+          addProductToTideTradrWatchlist(existingProductId, false, activeWorkspace?.id);
           successes.push("Added to Watchlist");
         } else if (adminUser) {
           const catalogProduct = {
@@ -5537,13 +5971,15 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
             releaseDate: multiDestinationForm.tidetradr.releaseDate,
             sourceUrl: multiDestinationForm.tidetradr.sourceUrl,
             notes: [multiDestinationForm.tidetradr.correctionNotes, multiDestinationForm.notes].filter(Boolean).join(" "),
+            workspaceId: activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+            workspaceName: activeWorkspace?.name || "My Personal Space",
             sourceType: "admin_created",
             marketStatus: "Manual",
             createdAt: now,
           };
           setCatalogProducts((current) => [catalogProduct, ...current]);
           setTideTradrWatchlist((current) => [
-            {
+            applyWorkspaceToRecord({
               id: makeId("watch"),
               productId: catalogProduct.id,
               name: catalogProduct.name,
@@ -5554,7 +5990,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
               sourceName: "Admin",
               pinned: false,
               lastUpdated: now,
-            },
+            }, activeWorkspace),
             ...current,
           ]);
           successes.push("Created TideTradr catalog item");
@@ -5573,6 +6009,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
               sku: multiDestinationForm.tidetradr.sku,
               sourceUrl: multiDestinationForm.tidetradr.sourceUrl,
               notes: [multiDestinationForm.tidetradr.correctionNotes, multiDestinationForm.notes].filter(Boolean).join(" "),
+              workspaceId: activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+              workspaceName: activeWorkspace?.name || "My Personal Space",
             },
             currentDataSnapshot: {},
             proofUrl: multiDestinationForm.tidetradr.sourceUrl,
@@ -5664,6 +6102,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       recordType: row.recordType || row.record_type || "",
       businessInventory: Boolean(row.businessInventory || row.business_inventory),
       isWishlist: Boolean(row.isWishlist || row.is_wishlist),
+      workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: row.workspaceName || row.workspace_name || "",
+      workspaceType: row.workspaceType || row.workspace_type || "",
+      workspaceScope: row.workspaceScope || row.workspace_scope || "workspace",
       lastPriceChecked: row.lastPriceChecked || row.last_price_checked || "",
       plannedSalePrice: Number(row.plannedSalePrice ?? row.planned_sale_price ?? row.salePrice ?? row.sale_price ?? 0),
       createdAt: row.createdAt || row.created_at,
@@ -5916,6 +6359,9 @@ function mapCatalog(row) {
       endDate: row.endDate || row.end_date || "",
       linkedSales: row.linkedSales || row.linked_sales || "",
       resultsNotes: row.resultsNotes || row.results_notes || "",
+      workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: row.workspaceName || row.workspace_name || "",
       createdAt: row.createdAt || row.created_at,
       updatedAt: row.updatedAt || row.updated_at,
     };
@@ -5926,11 +6372,11 @@ function mapCatalog(row) {
   }
 
   function mapTrip(row) {
-    return { id: row.id, vehicleId: row.vehicle_id, vehicleName: row.vehicle_name || "", purpose: row.purpose || "", driver: row.driver || "Zena", startMiles: Number(row.start_miles || 0), endMiles: Number(row.end_miles || 0), businessMiles: Number(row.business_miles || 0), gasPrice: Number(row.gas_price || 0), fuelCost: Number(row.fuel_cost || 0), wearCost: Number(row.wear_cost || 0), totalVehicleCost: Number(row.total_vehicle_cost || 0), mileageValue: Number(row.mileage_value || 0), gasReceiptImage: row.gas_receipt_image || "", notes: row.notes || "", createdAt: row.created_at };
+    return { id: row.id, vehicleId: row.vehicle_id, vehicleName: row.vehicle_name || "", purpose: row.purpose || "", driver: row.driver || "Zena", startMiles: Number(row.start_miles || 0), endMiles: Number(row.end_miles || 0), businessMiles: Number(row.business_miles || 0), gasPrice: Number(row.gas_price || 0), fuelCost: Number(row.fuel_cost || 0), wearCost: Number(row.wear_cost || 0), totalVehicleCost: Number(row.total_vehicle_cost || 0), mileageValue: Number(row.mileage_value || 0), gasReceiptImage: row.gas_receipt_image || "", notes: row.notes || "", workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID, workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceName: row.workspaceName || row.workspace_name || "", createdAt: row.createdAt || row.created_at };
   }
 
   function mapSale(row) {
-    return { id: row.id, itemId: row.item_id, itemName: row.item_name || "", sku: row.sku || "", platform: row.platform || "", quantitySold: Number(row.quantity_sold || 0), finalSalePrice: Number(row.final_sale_price || 0), grossSale: Number(row.gross_sale || 0), itemCost: Number(row.item_cost || 0), shippingCost: Number(row.shipping_cost || 0), platformFees: Number(row.platform_fees || 0), netProfit: Number(row.net_profit || 0), notes: row.notes || "", createdAt: row.created_at };
+    return { id: row.id, itemId: row.item_id || row.itemId, itemName: row.item_name || row.itemName || "", sku: row.sku || "", platform: row.platform || "", quantitySold: Number(row.quantity_sold ?? row.quantitySold ?? 0), finalSalePrice: Number(row.final_sale_price ?? row.finalSalePrice ?? 0), grossSale: Number(row.gross_sale ?? row.grossSale ?? 0), itemCost: Number(row.item_cost ?? row.itemCost ?? 0), shippingCost: Number(row.shipping_cost ?? row.shippingCost ?? 0), platformFees: Number(row.platform_fees ?? row.platformFees ?? 0), netProfit: Number(row.net_profit ?? row.netProfit ?? 0), notes: row.notes || "", workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID, workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceName: row.workspaceName || row.workspace_name || "", createdAt: row.createdAt || row.created_at };
   }
 
   async function loadInventory() {
@@ -6011,6 +6457,7 @@ function mapCatalog(row) {
     const cleanProductType = String(form.productType || "").trim().toLowerCase();
 
     return items.find((item) => {
+      if (!recordBelongsToWorkspace(item, activeWorkspace?.id)) return false;
       const itemName = String(item.name || "").trim().toLowerCase();
       const itemBarcode = String(item.barcode || "").trim();
       const itemCatalogId = String(item.catalogProductId || "").trim();
@@ -6052,13 +6499,14 @@ function mapCatalog(row) {
 
   async function addItem(event) {
     event.preventDefault();
+    if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
     if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) return alert("Please fill out item name, quantity, and unit cost.");
 
     if (BETA_LOCAL_MODE) {
       const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(itemForm.catalogProductId));
       const now = new Date().toISOString();
       const purchaser = resolvePurchaser(itemForm);
-      const newItem = {
+      const newItem = applyWorkspaceToRecord({
         id: makeId("item"),
         name: itemForm.name,
         destinationScope: ["forge"],
@@ -6119,7 +6567,7 @@ function mapCatalog(row) {
         actionNotes: itemForm.actionNotes,
         lastPriceChecked: itemForm.marketPrice ? now : "",
         createdAt: now,
-      };
+      }, activeWorkspace);
 
       setItems([newItem, ...items]);
       setItemForm(blankItem);
@@ -6207,6 +6655,7 @@ function mapCatalog(row) {
 
     const row = {
       user_id: user.id,
+      workspace_id: activeWorkspace?.id || null,
       name: itemForm.name,
       buyer: purchaser.purchaserName,
       purchaser_id: purchaser.purchaserId || null,
@@ -6263,6 +6712,8 @@ function mapCatalog(row) {
 
   async function saveEditedItem(event) {
     event.preventDefault();
+    const currentEditingItem = items.find((item) => item.id === editingItemId);
+    if (!ensureWorkspaceEditor(currentEditingItem?.workspaceId || currentEditingItem?.workspace_id || activeWorkspace?.id)) return;
     const editingVault = isEditingVaultItem();
     if (editingVault) {
       const validationMessage = validateVaultDraft({
@@ -6411,6 +6862,7 @@ function mapCatalog(row) {
   }
 
   function startEditingItem(item) {
+    if (!ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     setEditingItemId(item.id);
     setItemForm({
       name: item.name,
@@ -6516,6 +6968,7 @@ function mapCatalog(row) {
 
   async function deleteItem(id) {
     const itemToDelete = items.find((item) => item.id === id);
+    if (!ensureWorkspaceEditor(itemToDelete?.workspaceId || itemToDelete?.workspace_id || activeWorkspace?.id)) return false;
     const isVaultDelete = Boolean(itemToDelete?.vaultStatus);
     const confirmed = window.confirm(
       isVaultDelete ? "Delete this Vault item?" : `Delete ${itemToDelete?.name || "this item"}? This cannot be undone in private beta mode.`
@@ -6543,6 +6996,7 @@ function mapCatalog(row) {
     return true;
   }
   async function updateItemStatus(item, newStatus) {
+    if (!ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     const vaultOption = VAULT_STATUS_OPTIONS.find((option) => option.value === newStatus || option.label === newStatus);
     const nextStatus = vaultOption ? vaultStatusLabel(vaultOption.value) : newStatus;
     if (BETA_LOCAL_MODE) {
@@ -6579,6 +7033,7 @@ function mapCatalog(row) {
   }
 
   function openVaultForgeTransfer(item, mode = "move") {
+    if (!ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     const quantity = Math.max(1, Number(item.quantity || 1));
     setVaultForgeTransfer({
       item,
@@ -6590,6 +7045,7 @@ function mapCatalog(row) {
   }
 
   function openVaultDuplicateItem(item) {
+    if (!ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     setVaultDuplicateItem({
       item,
       sameItem: true,
@@ -7092,16 +7548,17 @@ function openDealFinderModal(productId = "") {
   setTideTradrSubTab((current) => current === "deal" ? "overview" : current);
 }
 
-function addProductToTideTradrWatchlist(productId, pinned = false) {
+function addProductToTideTradrWatchlist(productId, pinned = false, workspaceId = activeWorkspace?.id) {
   const product = catalogProducts.find((p) => String(p.id) === String(productId));
   if (!product) return;
+  const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
   setTideTradrWatchlist((current) => {
-    if (current.some((item) => String(item.productId) === String(productId))) {
-      return current.map((item) => String(item.productId) === String(productId) ? { ...item, pinned: item.pinned || pinned } : item);
+    if (current.some((item) => String(item.productId) === String(productId) && recordBelongsToWorkspace(item, workspace?.id))) {
+      return current.map((item) => String(item.productId) === String(productId) && recordBelongsToWorkspace(item, workspace?.id) ? { ...item, pinned: item.pinned || pinned } : item);
     }
     const marketInfo = getTideTradrMarketInfo(product);
     return [
-      {
+      applyWorkspaceToRecord({
         id: makeId("watch"),
         productId: product.id,
         name: product.name,
@@ -7116,7 +7573,7 @@ function addProductToTideTradrWatchlist(productId, pinned = false) {
         sourceName: marketInfo.sourceName,
         pinned,
         lastUpdated: new Date().toISOString(),
-      },
+      }, workspace),
       ...current,
     ];
   });
@@ -7559,7 +8016,7 @@ function renderTideTradrHeader() {
           {
             key: "tidetradr-watchlist",
             title: "Watchlist",
-            subtitle: `${tideTradrWatchlist.length} watched`,
+            subtitle: `${workspaceWatchlist.length} watched`,
             onClick: () => setTideTradrSubTab("watch"),
           },
           {
@@ -7746,8 +8203,8 @@ function renderVaultHeader() {
 }
 
 function renderForgeHeader() {
-  const activeMarketplaceCount = marketplaceListings.filter((listing) => listing.status === "Active").length;
-  const forgeReportRecordCount = sales.length + expenses.length + mileageTrips.length;
+  const activeMarketplaceCount = workspaceMarketplaceListings.filter((listing) => listing.status === "Active").length;
+  const forgeReportRecordCount = workspaceSales.length + workspaceExpenses.length + workspaceMileageTrips.length;
   const forgeOverviewCards = [
     {
       key: "inventory",
@@ -7857,6 +8314,7 @@ function renderForgeHeader() {
   async function addExpense(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
+    if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
     if (!expenseForm.vendor || !expenseForm.amount) return alert("Please enter vendor and amount.");
 
     if (BETA_LOCAL_MODE || user.id === "local-beta") {
@@ -7866,6 +8324,9 @@ function renderForgeHeader() {
         ...expenseForm,
         id: localId,
         expenseId: localId,
+        workspaceId: activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+        workspace_id: activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+        workspaceName: activeWorkspace?.name || "My Personal Space",
         amount: Number(expenseForm.amount),
         receiptPhoto: expenseForm.receiptImage,
         createdAt: expenses.find((expense) => expense.id === editingExpenseId)?.createdAt || new Date().toISOString(),
@@ -7880,6 +8341,7 @@ function renderForgeHeader() {
 
     const row = {
       user_id: user.id,
+      workspace_id: activeWorkspace?.id || null,
       date: expenseForm.date || null,
       vendor: expenseForm.vendor,
       category: expenseForm.category,
@@ -7916,12 +8378,15 @@ function renderForgeHeader() {
   }
 
   function startEditingExpense(expense) {
+    if (!ensureWorkspaceEditor(expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id)) return;
     setEditingExpenseId(expense.id);
     setExpenseForm({ ...blankExpense, ...expense });
     openFlowModal("addExpense", { size: "medium", source: "edit" });
   }
 
   async function deleteExpense(id) {
+    const expense = expenses.find((entry) => entry.id === id);
+    if (!ensureWorkspaceEditor(expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id)) return;
     if (BETA_LOCAL_MODE || user?.id === "local-beta") {
       setExpenses(expenses.filter((expense) => expense.id !== id));
       if (editingExpenseId === id) {
@@ -7987,6 +8452,7 @@ function renderForgeHeader() {
   async function addTrip(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
+    if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
     if (!tripForm.purpose || !tripForm.startMiles || !tripForm.endMiles) return alert("Please enter purpose, start miles, and end miles.");
     if (!tripForm.gasPrice) return alert("Please enter gas price paid.");
 
@@ -7995,6 +8461,7 @@ function renderForgeHeader() {
 
     const row = {
       user_id: user.id,
+      workspace_id: activeWorkspace?.id || null,
       vehicle_id: costs.vehicle?.id || null,
       vehicle_name: costs.vehicle?.name || "",
       purpose: tripForm.purpose,
@@ -8016,6 +8483,8 @@ function renderForgeHeader() {
       const localRow = {
         ...row,
         id: editingTripId || makeId("trip"),
+        workspaceId: activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+        workspaceName: activeWorkspace?.name || "My Personal Space",
         created_at: mileageTrips.find((trip) => trip.id === editingTripId)?.createdAt || new Date().toISOString(),
       };
       const mapped = mapTrip(localRow);
@@ -8040,12 +8509,15 @@ function renderForgeHeader() {
   }
 
   function startEditingTrip(trip) {
+    if (!ensureWorkspaceEditor(trip?.workspaceId || trip?.workspace_id || activeWorkspace?.id)) return;
     setEditingTripId(trip.id);
     setTripForm({ purpose: trip.purpose, driver: trip.driver, vehicleId: trip.vehicleId || "", startMiles: trip.startMiles, endMiles: trip.endMiles, gasPrice: trip.gasPrice, notes: trip.notes, gasReceiptImage: trip.gasReceiptImage });
     openFlowModal("addMileage", { size: "medium", source: "edit" });
   }
 
   async function deleteTrip(id) {
+    const trip = mileageTrips.find((entry) => entry.id === id);
+    if (!ensureWorkspaceEditor(trip?.workspaceId || trip?.workspace_id || activeWorkspace?.id)) return;
     if (BETA_LOCAL_MODE || user?.id === "local-beta") {
       setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
       if (editingTripId === id) {
@@ -8066,6 +8538,7 @@ function renderForgeHeader() {
 
     const item = forgeInventoryItems.find((i) => String(i.id) === String(saleForm.itemId));
     if (!item) return alert("Item not found.");
+    if (!ensureWorkspaceEditor(item.workspaceId || item.workspace_id || activeWorkspace?.id)) return;
 
     const qty = Number(saleForm.quantitySold);
     if (qty > item.quantity) return alert("You cannot sell more than you have.");
@@ -8081,6 +8554,7 @@ function renderForgeHeader() {
 
     const row = {
       user_id: user.id,
+      workspace_id: item.workspaceId || activeWorkspace?.id || null,
       item_id: item.id,
       item_name: item.name,
       sku: item.sku,
@@ -8102,6 +8576,8 @@ function renderForgeHeader() {
       const localRow = {
         ...row,
         id: editingSaleId || makeId("sale"),
+        workspaceId: item.workspaceId || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+        workspaceName: item.workspaceName || activeWorkspace?.name || "My Personal Space",
         created_at: sales.find((sale) => sale.id === editingSaleId)?.createdAt || new Date().toISOString(),
       };
       const mapped = mapSale(localRow);
@@ -8158,12 +8634,15 @@ function renderForgeHeader() {
   }
 
   function startEditingSale(sale) {
+    if (!ensureWorkspaceEditor(sale?.workspaceId || sale?.workspace_id || activeWorkspace?.id)) return;
     setEditingSaleId(sale.id);
     setSaleForm({ itemId: sale.itemId, platform: sale.platform, quantitySold: sale.quantitySold, finalSalePrice: sale.finalSalePrice, shippingCharged: "", shippingCost: sale.shippingCost, platformFees: sale.platformFees, notes: sale.notes });
     openFlowModal("addSale", { size: "medium", source: "edit" });
   }
 
   async function deleteSale(id) {
+    const sale = sales.find((entry) => entry.id === id);
+    if (!ensureWorkspaceEditor(sale?.workspaceId || sale?.workspace_id || activeWorkspace?.id)) return;
     if (BETA_LOCAL_MODE || user?.id === "local-beta") {
       setSales(sales.filter((sale) => sale.id !== id));
       if (editingSaleId === id) {
@@ -8224,6 +8703,10 @@ function renderForgeHeader() {
         sales,
         vehicles,
         mileageTrips,
+        workspaces,
+        workspaceMembers,
+        workspaceInvites,
+        activeWorkspaceId,
         scout: {
           stores: savedScout.stores || scoutSnapshot.stores || [],
           reports: savedScout.reports || scoutSnapshot.reports || [],
@@ -8281,6 +8764,10 @@ function renderForgeHeader() {
       sales: Array.isArray(data.sales) ? data.sales : [],
       vehicles: Array.isArray(data.vehicles) ? data.vehicles : [],
       mileageTrips: Array.isArray(data.mileageTrips) ? data.mileageTrips : [],
+      workspaces: Array.isArray(data.workspaces) ? data.workspaces : [],
+      workspaceMembers: Array.isArray(data.workspaceMembers) ? data.workspaceMembers : [],
+      workspaceInvites: Array.isArray(data.workspaceInvites) ? data.workspaceInvites : [],
+      activeWorkspaceId: data.activeWorkspaceId || settings.activeWorkspaceId || "",
       scout: data.scout || {
         stores: data.scoutStores || [],
         reports: data.scoutReports || [],
@@ -8308,6 +8795,7 @@ function renderForgeHeader() {
       { label: "Forge inventory", value: countBackupItems(data.items) },
       { label: "Sales", value: countBackupItems(data.sales) },
       { label: "Expenses", value: countBackupItems(data.expenses) },
+      { label: "Workspaces", value: countBackupItems(data.workspaces) },
       { label: "Catalog items", value: countBackupItems(data.catalogProducts) },
       { label: "Scout stores", value: countBackupItems(data.scout.stores) },
       { label: "Scout reports", value: countBackupItems(data.scout.reports) },
@@ -8376,6 +8864,13 @@ function renderForgeHeader() {
     const nextSales = mode === "replace" ? data.sales : mergeById(sales, data.sales);
     const nextVehicles = mode === "replace" ? data.vehicles : mergeById(vehicles, data.vehicles);
     const nextTrips = mode === "replace" ? data.mileageTrips : mergeById(mileageTrips, data.mileageTrips);
+    const importedWorkspaceState = normalizeWorkspaceState(data, user || { id: "local-beta" });
+    const nextWorkspaces = mode === "replace" ? importedWorkspaceState.workspaces : mergeById(workspaces, importedWorkspaceState.workspaces).map(normalizeWorkspace);
+    const nextWorkspaceMembers = mode === "replace" ? importedWorkspaceState.workspaceMembers : mergeById(workspaceMembers, importedWorkspaceState.workspaceMembers).map(normalizeWorkspaceMember);
+    const nextWorkspaceInvites = mode === "replace" ? importedWorkspaceState.workspaceInvites : mergeById(workspaceInvites, importedWorkspaceState.workspaceInvites).map(normalizeWorkspaceInvite);
+    const nextActiveWorkspaceId = nextWorkspaces.some((workspace) => workspace.id === data.activeWorkspaceId)
+      ? data.activeWorkspaceId
+      : activeWorkspaceId;
     const nextWatchlist = mode === "replace"
       ? data.tideTradrWatchlist
       : mergeById(tideTradrWatchlist, data.tideTradrWatchlist);
@@ -8421,16 +8916,21 @@ function renderForgeHeader() {
       ? data.suggestions || []
       : mergeById(suggestions, data.suggestions || []);
 
-    setItems(nextItems.map(mapItem));
+    const personalWorkspaceId = nextWorkspaces.find((workspace) => workspace.type === "personal")?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+    setItems(migrateRecordsToWorkspace(nextItems, personalWorkspaceId, nextWorkspaces).map(mapItem));
     setPurchasers(nextPurchasers.length ? nextPurchasers : createDefaultPurchasers());
     setCatalogProducts(nextCatalog.length ? mergeSharedCatalogProducts(nextCatalog) : createSharedCatalogProducts());
-    setExpenses(nextExpenses.map(mapExpense));
-    setSales(nextSales);
+    setExpenses(migrateRecordsToWorkspace(nextExpenses, personalWorkspaceId, nextWorkspaces).map(mapExpense));
+    setSales(migrateRecordsToWorkspace(nextSales, personalWorkspaceId, nextWorkspaces).map(mapSale));
     setVehicles(nextVehicles);
-    setMileageTrips(nextTrips);
-    setTideTradrWatchlist(nextWatchlist);
-    setMarketplaceListings(nextMarketplaceListings);
-    setMarketplaceReports(nextMarketplaceReports);
+    setMileageTrips(migrateRecordsToWorkspace(nextTrips, personalWorkspaceId, nextWorkspaces).map(mapTrip));
+    setWorkspaces(nextWorkspaces);
+    setWorkspaceMembers(nextWorkspaceMembers);
+    setWorkspaceInvites(nextWorkspaceInvites);
+    setActiveWorkspaceId(nextActiveWorkspaceId || personalWorkspaceId);
+    setTideTradrWatchlist(migrateRecordsToWorkspace(nextWatchlist, nextActiveWorkspaceId || personalWorkspaceId, nextWorkspaces));
+    setMarketplaceListings(migrateRecordsToWorkspace(nextMarketplaceListings, nextActiveWorkspaceId || personalWorkspaceId, nextWorkspaces));
+    setMarketplaceReports(migrateRecordsToWorkspace(nextMarketplaceReports, nextActiveWorkspaceId || personalWorkspaceId, nextWorkspaces));
     setMarketplaceSavedIds(nextMarketplaceSavedIds);
     setMarketPriceCache({ ...loadPriceCache(), ...(data.marketPriceCache || {}) });
     setSuggestions(nextSuggestions);
@@ -8458,18 +8958,25 @@ function renderForgeHeader() {
     return new Blob([localStorage.getItem(key) || ""]).size;
   }
 
-  const forgeInventoryItems = items.filter(isForgeInventoryItem);
+  const workspaceItems = items.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
+  const workspaceExpenses = expenses.filter((expense) => recordBelongsToWorkspace(expense, activeWorkspace?.id));
+  const workspaceSales = sales.filter((sale) => recordBelongsToWorkspace(sale, activeWorkspace?.id));
+  const workspaceMileageTrips = mileageTrips.filter((trip) => recordBelongsToWorkspace(trip, activeWorkspace?.id));
+  const workspaceWatchlist = tideTradrWatchlist.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
+  const workspaceMarketplaceListings = marketplaceListings.filter((listing) => recordBelongsToWorkspace(listing, activeWorkspace?.id));
+  const forgeInventoryItems = workspaceItems.filter(isForgeInventoryItem);
 
   const storageStatus = [
     { label: "Mode", value: BETA_LOCAL_MODE ? "Private beta mode" : "Cloud sync mode" },
     { label: "Cloud sync", value: cloudSyncPreference === "cloud" ? "Requested" : "Off" },
     { label: "Forge inventory", value: forgeInventoryItems.length },
-    { label: "Vault items", value: items.filter(isVaultItemRecord).length },
+    { label: "Workspace", value: activeWorkspace?.name || "My Personal Space" },
+    { label: "Vault items", value: workspaceItems.filter(isVaultItemRecord).length },
     { label: "Scout stores", value: scoutSnapshot.stores?.length || 0 },
     { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
     { label: "Shared suggestions", value: suggestions.length },
-    { label: "TideTradr watchlist", value: tideTradrWatchlist.length },
-    { label: "Marketplace listings", value: marketplaceListings.length },
+    { label: "TideTradr watchlist", value: workspaceWatchlist.length },
+    { label: "Marketplace listings", value: workspaceMarketplaceListings.length },
     { label: "App storage", value: `${Math.ceil(storageSizeForKey(LOCAL_STORAGE_KEY) / 1024)} KB` },
     { label: "Scout storage", value: `${Math.ceil(storageSizeForKey(SCOUT_STORAGE_KEY) / 1024)} KB` },
     { label: "Suggestion storage", value: `${Math.ceil(storageSizeForKey(SUGGESTION_STORAGE_KEY) / 1024)} KB` },
@@ -8507,18 +9014,18 @@ function renderForgeHeader() {
 
   const msrpRoiPercent =
     totalMsrpValue > 0 ? (profitOverMsrp / totalMsrpValue) * 100 : 0;
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const totalMarketingSpend = expenses
+  const totalExpenses = workspaceExpenses.reduce((s, e) => s + e.amount, 0);
+  const totalMarketingSpend = workspaceExpenses
     .filter((expense) => expense.category === "Marketing")
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-  const totalEventsGiveawaysSpend = expenses
+  const totalEventsGiveawaysSpend = workspaceExpenses
     .filter((expense) => expense.category === "Events/Giveaways")
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const estimatedProfitAfterMarketing = estimatedProfit - totalMarketingSpend;
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
-  const totalSalesRevenue = sales.reduce((s, sale) => s + sale.grossSale, 0);
-  const totalSalesProfit = sales.reduce((s, sale) => s + sale.netProfit, 0);
-  const totalItemsSold = sales.reduce((s, sale) => s + sale.quantitySold, 0);
+  const totalSalesRevenue = workspaceSales.reduce((s, sale) => s + sale.grossSale, 0);
+  const totalSalesProfit = workspaceSales.reduce((s, sale) => s + sale.netProfit, 0);
+  const totalItemsSold = workspaceSales.reduce((s, sale) => s + sale.quantitySold, 0);
   const activeForgeItems = forgeInventoryItems;
   const selectedSaleItem = forgeInventoryItems.find((item) => String(item.id) === String(saleForm.itemId));
   const saleQuantity = Number(saleForm.quantitySold || 0);
@@ -8529,11 +9036,11 @@ function renderForgeHeader() {
   const saleCostBasis = selectedSaleItem ? Number(selectedSaleItem.unitCost || 0) * saleQuantity : 0;
   const saleGrossPreview = salePriceEach * saleQuantity + saleShippingCharged;
   const saleProfitPreview = saleGrossPreview - saleCostBasis - saleShippingCost - saleFees;
-  const totalBusinessMiles = mileageTrips.reduce((s, t) => s + t.businessMiles, 0);
-  const totalFuelCost = mileageTrips.reduce((s, t) => s + t.fuelCost, 0);
-  const totalWearCost = mileageTrips.reduce((s, t) => s + t.wearCost, 0);
-  const totalVehicleCost = mileageTrips.reduce((s, t) => s + t.totalVehicleCost, 0);
-  const totalMileageValue = mileageTrips.reduce((s, t) => s + t.mileageValue, 0);
+  const totalBusinessMiles = workspaceMileageTrips.reduce((s, t) => s + t.businessMiles, 0);
+  const totalFuelCost = workspaceMileageTrips.reduce((s, t) => s + t.fuelCost, 0);
+  const totalWearCost = workspaceMileageTrips.reduce((s, t) => s + t.wearCost, 0);
+  const totalVehicleCost = workspaceMileageTrips.reduce((s, t) => s + t.totalVehicleCost, 0);
+  const totalMileageValue = workspaceMileageTrips.reduce((s, t) => s + t.mileageValue, 0);
 
   const inventorySpendingFor = (person, list = forgeInventoryItems) =>
     list
@@ -8542,8 +9049,8 @@ function renderForgeHeader() {
 
   const spendingFor = (person) =>
     inventorySpendingFor(person) +
-    expenses.filter((e) => e.buyer === person).reduce((s, e) => s + e.amount, 0) +
-    mileageTrips.filter((t) => t.driver === person).reduce((s, t) => s + t.totalVehicleCost, 0);
+    workspaceExpenses.filter((e) => e.buyer === person).reduce((s, e) => s + e.amount, 0) +
+    workspaceMileageTrips.filter((t) => t.driver === person).reduce((s, t) => s + t.totalVehicleCost, 0);
 
   const purchaserSummaryNames = [
     ...new Set([
@@ -8553,8 +9060,8 @@ function renderForgeHeader() {
     ]),
   ].filter(Boolean);
 
-  const salesByPlatform = sales.reduce((a, s) => ({ ...a, [s.platform]: (a[s.platform] || 0) + s.grossSale }), {});
-  const expensesByCategory = expenses.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + e.amount }), {});
+  const salesByPlatform = workspaceSales.reduce((a, s) => ({ ...a, [s.platform]: (a[s.platform] || 0) + s.grossSale }), {});
+  const expensesByCategory = workspaceExpenses.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + e.amount }), {});
   const inventoryByCategory = forgeInventoryItems.reduce((a, i) => ({ ...a, [i.category || "Uncategorized"]: (a[i.category || "Uncategorized"] || 0) + i.quantity }), {});
   const inventoryByStatus = forgeInventoryItems.reduce((a, i) => ({ ...a, [i.status || "In Stock"]: (a[i.status || "In Stock"] || 0) + i.quantity }), {});
 
@@ -8600,18 +9107,18 @@ function renderForgeHeader() {
     }))
     .filter((row) => row.amount > 0 || row.total > 0 || row.active)
     .sort((a, b) => b.amount - a.amount || b.total - a.total || a.name.localeCompare(b.name));
-  const monthlyExpenses = expenses
+  const monthlyExpenses = workspaceExpenses
     .filter((expense) => isThisMonth(expense.date || expense.createdAt))
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-  const monthlyMarketingSpend = expenses
+  const monthlyMarketingSpend = workspaceExpenses
     .filter((expense) => expense.category === "Marketing" && isThisMonth(expense.date || expense.createdAt))
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-  const monthlySalesProfit = sales
+  const monthlySalesProfit = workspaceSales
     .filter((sale) => isThisMonth(sale.createdAt))
     .reduce((sum, sale) => sum + Number(sale.netProfit || 0), 0);
   const monthlySpending = monthlyItemSpending + monthlyExpenses;
   const monthlyProfitLoss = monthlySalesProfit - monthlyExpenses;
-  const vaultItems = useMemo(() => items.filter(isVaultItemRecord), [items]);
+  const vaultItems = useMemo(() => workspaceItems.filter(isVaultItemRecord), [workspaceItems]);
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const vaultCatalogSearchTerm = String(vaultForm.tideTradrSearch || vaultForm.name || "").trim().toLowerCase();
   const vaultSuggestedCatalogItems = useMemo(() => catalogProducts
@@ -8816,17 +9323,17 @@ function renderForgeHeader() {
   const recentPurchases = [...forgeInventoryItems]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     .slice(0, 5);
-  const recentSales = [...sales]
+  const recentSales = [...workspaceSales]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     .slice(0, 5);
-  const recentMarketUpdates = [...tideTradrWatchlist]
+  const recentMarketUpdates = [...workspaceWatchlist]
     .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
     .slice(0, 5);
   const watchlistPreview = [...missingMarketPriceItems, ...needsMarketCheckItems]
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
     .slice(0, 5);
   const activeHomeAlertCount = (scoutSnapshot.bestBuyAlerts || []).length + needsPhotosItems.length + needsMarketCheckItems.length;
-  const pinnedMarketWatchItems = tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).slice(0, 3);
+  const pinnedMarketWatchItems = workspaceWatchlist.filter((item) => item.pinned || item.isPinned).slice(0, 3);
   const homeRecentActivity = [
     recentPurchases[0]
       ? {
@@ -9183,13 +9690,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   const pagedVaultItems = getPagedItems(visibleVaultItems, vaultPage, LONG_LIST_PAGE_SIZE);
   const pagedForgeInventory = getPagedItems(sortedFilteredItems, forgeInventoryPage, LONG_LIST_PAGE_SIZE);
-  const pagedMarketWatchItems = getPagedItems(tideTradrWatchlist, marketWatchPage, LONG_LIST_PAGE_SIZE);
+  const pagedMarketWatchItems = getPagedItems(workspaceWatchlist, marketWatchPage, LONG_LIST_PAGE_SIZE);
 
   const filteredCatalogProducts = catalogProducts.filter((product) => {
     const search = (catalogSearchHasRun ? submittedCatalogSearch : "").toLowerCase();
     const marketInfo = getTideTradrMarketInfo(product);
     const owned = items.some((item) => String(item.catalogProductId || "") === String(product.id));
-    const watched = tideTradrWatchlist.some((item) => String(item.productId || "") === String(product.id));
+    const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
     const matchesSearch =
       String(product.name || "").toLowerCase().includes(search) ||
       String(product.productName || "").toLowerCase().includes(search) ||
@@ -10579,7 +11086,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       return REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)] === adminReviewFilter;
     });
     const openCount = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status)).length;
-    const listingReviewItems = marketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
+    const listingReviewItems = workspaceMarketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
     const totalOpenCount = openCount + listingReviewItems.length;
     const pagedVisibleSuggestions = getPagedItems(visibleSuggestions, adminReviewPage, LONG_LIST_PAGE_SIZE);
     const pagedListingReviewItems = getPagedItems(listingReviewItems, marketplaceReviewPage, LONG_LIST_PAGE_SIZE);
@@ -10958,13 +11465,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderMarketplaceSection() {
     const normalizedSearch = marketplaceSearch.trim().toLowerCase();
     const currentSellerId = currentUserProfile.userId || user?.id;
-    const publicListings = marketplaceListings.filter((listing) => listing.status === "Active");
-    const myListings = marketplaceListings.filter((listing) => listing.sellerUserId === currentSellerId);
+    const publicListings = workspaceMarketplaceListings.filter((listing) => listing.status === "Active");
+    const myListings = workspaceMarketplaceListings.filter((listing) => listing.sellerUserId === currentSellerId);
     const draftListings = myListings.filter((listing) => listing.status === "Draft");
-    const pendingReviewListings = marketplaceListings.filter((listing) =>
+    const pendingReviewListings = workspaceMarketplaceListings.filter((listing) =>
       listing.status === "Pending Review" && (listing.sellerUserId === currentSellerId || canReviewSharedData)
     );
-    const visibleMarketplaceListings = marketplaceListings.filter((listing) =>
+    const visibleMarketplaceListings = workspaceMarketplaceListings.filter((listing) =>
       listing.status === "Active" || listing.sellerUserId === currentSellerId || canReviewSharedData
     );
     const filteredListings = visibleMarketplaceListings.filter((listing) => {
@@ -11010,7 +11517,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
         <div className="cards mini-cards">
           <div className="card"><p>Active Listings</p><h2>{publicListings.length}</h2></div>
-          <div className="card"><p>Pending Review</p><h2>{marketplaceListings.filter((listing) => listing.status === "Pending Review").length}</h2></div>
+          <div className="card"><p>Pending Review</p><h2>{workspaceMarketplaceListings.filter((listing) => listing.status === "Pending Review").length}</h2></div>
           <div className="card"><p>My Listings</p><h2>{myListings.length}</h2></div>
           <div className="card"><p>Saved</p><h2>{marketplaceSavedIds.length}</h2></div>
         </div>
@@ -11654,7 +12161,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
         <Field label="Payment Method"><input value={expenseForm.paymentMethod} placeholder="Card, cash, PayPal, business account..." onChange={(e) => updateExpenseForm("paymentMethod", e.target.value)} /></Field>
         <Field label="Linked Forge Item"><select value={expenseForm.linkedItemId} onChange={(e) => updateExpenseForm("linkedItemId", e.target.value)}><option value="">None</option>{forgeInventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-        <Field label="Linked Sale"><select value={expenseForm.linkedSaleId} onChange={(e) => updateExpenseForm("linkedSaleId", e.target.value)}><option value="">None</option>{sales.map((sale) => <option key={sale.id} value={sale.id}>{sale.itemName} - {sale.platform}</option>)}</select></Field>
+        <Field label="Linked Sale"><select value={expenseForm.linkedSaleId} onChange={(e) => updateExpenseForm("linkedSaleId", e.target.value)}><option value="">None</option>{workspaceSales.map((sale) => <option key={sale.id} value={sale.id}>{sale.itemName} - {sale.platform}</option>)}</select></Field>
         {expenseForm.category === "Marketing" ? (
           <>
             <Field label="Campaign Name"><input value={expenseForm.campaignName} placeholder="Spring restock ads, giveaway push..." onChange={(e) => updateExpenseForm("campaignName", e.target.value)} /></Field>
@@ -12160,6 +12667,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         helper: "Catalog, watchlist, or product suggestion.",
       },
     ];
+    const renderDestinationWorkspaceField = (destination, label) => {
+      const options = destinationWorkspaceOptions[destination] || workspaceSelectorOptions;
+      return (
+        <Field label={label}>
+          <select
+            value={multiDestinationForm[destination]?.workspaceId || defaultWorkspaceIdForDestination(destination)}
+            onChange={(event) => updateMultiDestinationSection(destination, "workspaceId", event.target.value)}
+          >
+            {options.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name} - {workspaceTypeLabel(workspace.type)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      );
+    };
     return (
       <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd}>
         <section className="flow-form-section">
@@ -12352,6 +12876,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <section className="flow-form-section destination-settings">
             <h3>Vault Settings</h3>
             <div className="flow-form-grid">
+              {renderDestinationWorkspaceField("vault", "Vault Workspace")}
               <Field label="Quantity for Vault">
                 <input type="number" min="1" value={multiDestinationForm.vault.quantity} onChange={(event) => updateMultiDestinationSection("vault", "quantity", event.target.value)} />
               </Field>
@@ -12388,6 +12913,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               Wishlist quantity is wanted quantity only. It does not count as owned Vault inventory or collection value.
             </p>
             <div className="flow-form-grid">
+              {renderDestinationWorkspaceField("wishlist", "Wishlist Workspace")}
               <Field label="Quantity Wanted">
                 <input type="number" min="1" value={multiDestinationForm.wishlist.quantity} onChange={(event) => updateMultiDestinationSection("wishlist", "quantity", event.target.value)} />
               </Field>
@@ -12430,6 +12956,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <section className="flow-form-section destination-settings">
             <h3>Forge Settings</h3>
             <div className="flow-form-grid">
+              {renderDestinationWorkspaceField("forge", "Forge Workspace")}
               <Field label="Quantity for Forge">
                 <input type="number" min="1" value={multiDestinationForm.forge.quantity} onChange={(event) => updateMultiDestinationSection("forge", "quantity", event.target.value)} />
               </Field>
@@ -13032,6 +13559,130 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </div>
               ), "Acct")}
+              {renderMenuPullDown("workspace", "Workspace", "Switch spaces, invite members, and keep personal data separate", (
+                <div className="drawer-links workspace-settings-panel">
+                  <div className="drawer-info-card">
+                    <strong>Current workspace</strong>
+                    <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this workspace.</p>
+                    <Field label="Workspace">
+                      <select value={activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID} onChange={(event) => changeActiveWorkspace(event.target.value)}>
+                        {workspaceSelectorOptions.map((workspace) => (
+                          <option key={workspace.id} value={workspace.id}>
+                            {workspace.name} - {workspaceTypeLabel(workspace.type)}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <dl className="drawer-status-list">
+                      <div><dt>Type</dt><dd>{workspaceTypeLabel(activeWorkspace?.type)}</dd></div>
+                      <div><dt>Your role</dt><dd>{workspaceRoleLabel(activeWorkspaceRole)}</dd></div>
+                      <div><dt>Vault items</dt><dd>{vaultItems.length}</dd></div>
+                      <div><dt>Forge items</dt><dd>{forgeInventoryItems.length}</dd></div>
+                    </dl>
+                  </div>
+
+                  <form className="drawer-info-card" onSubmit={createWorkspace}>
+                    <strong>Create workspace</strong>
+                    <p className="compact-subtitle">New workspaces start empty. Existing personal data stays private until you intentionally add or move items.</p>
+                    <input
+                      className="drawer-field"
+                      value={workspaceForm.name}
+                      onChange={(event) => setWorkspaceForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Zena + Dillon Collection"
+                    />
+                    <select
+                      className="drawer-field"
+                      value={workspaceForm.type}
+                      onChange={(event) => setWorkspaceForm((current) => ({ ...current, type: event.target.value }))}
+                    >
+                      {WORKSPACE_TYPES.filter((type) => type.value !== "personal").map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                    <button type="submit" className="drawer-link">Create Workspace</button>
+                  </form>
+
+                  <form className="drawer-info-card" onSubmit={sendWorkspaceInvite}>
+                    <strong>Invite member</strong>
+                    <p className="compact-subtitle">
+                      {canManageActiveWorkspace
+                        ? "Invite by email. They cannot see data until the invite is accepted."
+                        : "You do not have permission to invite members in this workspace."}
+                    </p>
+                    <select
+                      className="drawer-field"
+                      value={workspaceInviteForm.workspaceId}
+                      onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, workspaceId: event.target.value }))}
+                      disabled={!canManageActiveWorkspace}
+                    >
+                      {workspaceSelectorOptions.map((workspace) => (
+                        <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      className="drawer-field"
+                      type="email"
+                      value={workspaceInviteForm.email}
+                      onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, email: event.target.value }))}
+                      placeholder="member@example.com"
+                      disabled={!canManageActiveWorkspace}
+                    />
+                    <select
+                      className="drawer-field"
+                      value={workspaceInviteForm.role}
+                      onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, role: event.target.value }))}
+                      disabled={!canManageActiveWorkspace}
+                    >
+                      {WORKSPACE_ROLES.filter((role) => role.value !== "owner").map((role) => (
+                        <option key={role.value} value={role.value}>{role.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      className="drawer-field"
+                      value={workspaceInviteForm.note}
+                      onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, note: event.target.value }))}
+                      placeholder="Optional note"
+                      disabled={!canManageActiveWorkspace}
+                    />
+                    <button type="submit" className="drawer-link" disabled={!canManageActiveWorkspace}>Send Invite</button>
+                  </form>
+
+                  <div className="drawer-info-card">
+                    <strong>Members</strong>
+                    <div className="workspace-member-list">
+                      {workspaceMembers
+                        .filter((member) => String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id))
+                        .map((member) => (
+                          <div className="workspace-member-row" key={`${member.workspaceId}-${member.userId || member.email || member.role}`}>
+                            <span>
+                              <strong>{member.email || (member.userId === "local-beta" ? "You" : member.userId || "Invited user")}</strong>
+                              <small>{workspaceRoleLabel(member.role)} - {member.status === "active" ? "Active" : "Invite pending"}</small>
+                            </span>
+                          </div>
+                        ))}
+                      {!workspaceMembers.filter((member) => String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id)).length ? (
+                        <p className="compact-subtitle">No members yet. Invite someone by email.</p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {workspaceInvites.filter((invite) => invite.status === "invited").length ? (
+                    <div className="drawer-info-card">
+                      <strong>Pending invites</strong>
+                      {workspaceInvites.filter((invite) => invite.status === "invited").map((invite) => (
+                        <div className="workspace-member-row" key={invite.id}>
+                          <span>
+                            <strong>{invite.email}</strong>
+                            <small>{workspaces.find((workspace) => workspace.id === invite.workspaceId)?.name || "Workspace"} - {workspaceRoleLabel(invite.role)}</small>
+                          </span>
+                          <button type="button" className="drawer-link" onClick={() => acceptWorkspaceInvite(invite.id)}>Accept locally</button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {workspaceMessage ? <p className="compact-subtitle">{workspaceMessage}</p> : null}
+                </div>
+              ), "Work")}
               {renderMenuPullDown("settings", "Settings", "Appearance, location, notifications, and dashboard display", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
@@ -14235,7 +14886,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </button>
                 <button type="button" className="home-today-tile" onClick={() => setActiveTab("market")}>
                   <span>Wishlist Item</span>
-                  <strong>{tideTradrWatchlist.length} watchlist item{tideTradrWatchlist.length === 1 ? "" : "s"}</strong>
+                  <strong>{workspaceWatchlist.length} watchlist item{workspaceWatchlist.length === 1 ? "" : "s"}</strong>
                   <small>{missingMarketPriceItems.length} missing prices</small>
                 </button>
               </div>
@@ -14459,7 +15110,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <CollapsibleFeatureSection title="Pinned Market Watch" summary="Pinned products, watchlist count, and market value snapshot" open={isFeatureSectionOpen("home_tidetradr")} onToggle={() => toggleFeatureSection("home_tidetradr")}>
                 <div className="cards mini-cards">
                   <div className="card"><p>Catalog</p><h2>{catalogProducts.length}</h2></div>
-                  <div className="card"><p>Watchlist</p><h2>{tideTradrWatchlist.length}</h2></div>
+                  <div className="card"><p>Watchlist</p><h2>{workspaceWatchlist.length}</h2></div>
                   <div className="card"><p>Market Value</p><h2>{money(totalMarketValue)}</h2></div>
                 </div>
                 <div className="quick-actions">
@@ -14476,9 +15127,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>View All</button>
                 </div>
                 <div className="inventory-list compact-inventory-list">
-                  {[...items.map((item) => ({ id: `item-${item.id}`, title: item.name, detail: `Vault/Forge item | ${money(Number(item.quantity || 0) * Number(item.unitCost || 0))}`, createdAt: item.createdAt })),
-                    ...sales.map((sale) => ({ id: `sale-${sale.id}`, title: sale.itemName || "Sale", detail: `Sale | ${money(sale.grossSale)}`, createdAt: sale.createdAt })),
-                    ...expenses.map((expense) => ({ id: `expense-${expense.id}`, title: expense.vendor || "Expense", detail: `${expense.category} | ${money(expense.amount)}`, createdAt: expense.createdAt })),
+                  {[...workspaceItems.map((item) => ({ id: `item-${item.id}`, title: item.name, detail: `Vault/Forge item | ${money(Number(item.quantity || 0) * Number(item.unitCost || 0))}`, createdAt: item.createdAt })),
+                    ...workspaceSales.map((sale) => ({ id: `sale-${sale.id}`, title: sale.itemName || "Sale", detail: `Sale | ${money(sale.grossSale)}`, createdAt: sale.createdAt })),
+                    ...workspaceExpenses.map((expense) => ({ id: `expense-${expense.id}`, title: expense.vendor || "Expense", detail: `${expense.category} | ${money(expense.amount)}`, createdAt: expense.createdAt })),
                   ]
                     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
                     .slice(0, 5)
@@ -14490,8 +15141,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         </div>
                       </div>
                     ))}
-                  {!forgeInventoryItems.length && !vaultItems.length && !sales.length && !expenses.length ? <p>No recent activity yet.</p> : null}
-                  {!forgeInventoryItems.length && !vaultItems.length && !sales.length && !expenses.length ? <p className="compact-subtitle">Add a Vault item, Forge inventory, Scout report, or market watch to start building your dashboard.</p> : null}
+                  {!forgeInventoryItems.length && !vaultItems.length && !workspaceSales.length && !workspaceExpenses.length ? <p>No recent activity yet.</p> : null}
+                  {!forgeInventoryItems.length && !vaultItems.length && !workspaceSales.length && !workspaceExpenses.length ? <p className="compact-subtitle">Add a Vault item, Forge inventory, Scout report, or market watch to start building your dashboard.</p> : null}
                 </div>
               </section>
               </>
@@ -15589,6 +16240,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               actions={<button type="button" onClick={() => setMenuOpen(true)}>Open Menu</button>}
               summary={(
                 <div className="settings-header-summary">
+                  <span>{activeWorkspace?.name || "My Personal Space"}</span>
                   <span>{TIER_LABELS[currentTier] || currentPlan}</span>
                   <span>{user.email}</span>
                 </div>
@@ -15633,16 +16285,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="compact-card-header">
                     <div>
                       <h2>Market Watch</h2>
-                      <p>{tideTradrWatchlist.length} watched item{tideTradrWatchlist.length === 1 ? "" : "s"}.</p>
+                      <p>{workspaceWatchlist.length} watched item{workspaceWatchlist.length === 1 ? "" : "s"}.</p>
                     </div>
-                    <span className="status-badge">{tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned</span>
+                    <span className="status-badge">{workspaceWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned</span>
                   </div>
                   <div className="quick-actions tidetradr-watch-actions">
                     <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Values</button>
                     <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
                     <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("overview")}>Search Catalog</button>
                   </div>
-                  {tideTradrWatchlist.length === 0 ? (
+                  {workspaceWatchlist.length === 0 ? (
                     <div className="empty-state">
                       <h3>No watched products yet</h3>
                       <p>Add products from TideTradr search to track market values here.</p>
@@ -15776,7 +16428,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       {
                         key: "tidetradr-watch",
                         title: "Market Watch",
-                        subtitle: `${tideTradrWatchlist.length} watched`,
+                        subtitle: `${workspaceWatchlist.length} watched`,
                         onClick: () => setTideTradrSubTab("watch"),
                       },
                       {
@@ -15795,7 +16447,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       {
                         key: "tidetradr-watchlist",
                         title: "Watchlist",
-                        subtitle: `${tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned`,
+                        subtitle: `${workspaceWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned`,
                         onClick: () => setTideTradrSubTab("watch"),
                       },
                       {
@@ -15814,14 +16466,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <article className="compact-card tidetradr-preview-card">
                     <div>
                       <h3>Market Watch</h3>
-                      <p>{tideTradrWatchlist.length ? `${tideTradrWatchlist.length} watched item${tideTradrWatchlist.length === 1 ? "" : "s"}.` : "No watched products yet."}</p>
+                      <p>{workspaceWatchlist.length ? `${workspaceWatchlist.length} watched item${workspaceWatchlist.length === 1 ? "" : "s"}.` : "No watched products yet."}</p>
                       <p className="compact-subtitle">
-                        {tideTradrWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned | {tideTradrWatchlist.filter((item) => item.lastUpdated).length} recent checks | {tideTradrWatchlist.filter((item) => Number(item.marketValue || 0) <= 0).length} missing prices
+                        {workspaceWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned | {workspaceWatchlist.filter((item) => item.lastUpdated).length} recent checks | {workspaceWatchlist.filter((item) => Number(item.marketValue || 0) <= 0).length} missing prices
                       </p>
                     </div>
-                    {tideTradrWatchlist.length ? (
+                    {workspaceWatchlist.length ? (
                       <div className="tidetradr-preview-list">
-                        {tideTradrWatchlist.slice(0, 2).map((item) => (
+                        {workspaceWatchlist.slice(0, 2).map((item) => (
                           <button type="button" key={item.id} onClick={() => openWatchlistProductDetails(item)}>
                             <strong>{item.name}</strong>
                             <span>{money(item.marketValue)} | {item.setName || item.productType || "Watchlist item"}</span>
@@ -16086,9 +16738,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Market Values</button>
                       <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
                     </div>
-                    {tideTradrWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
+                    {workspaceWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
                     <div className="inventory-list">
-                      {tideTradrWatchlist.map((item) => (
+                      {workspaceWatchlist.map((item) => (
                         <div className="inventory-card compact-card" key={item.id}>
                           <h3>{item.name}</h3>
                           <p>{item.setName || "No set"} | {item.productType || "No type"}</p>
@@ -16331,9 +16983,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Pinned Market Watch</button>
                   <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
                 </div>
-                {tideTradrWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
+                {workspaceWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
                 <div className="inventory-list">
-                  {tideTradrWatchlist.map((item) => (
+                  {workspaceWatchlist.map((item) => (
                     <div className="inventory-card compact-card" key={item.id}>
                       <h3>{item.name}</h3>
                       <p>{item.setName || "No set"} | {item.productType || "No type"}</p>
@@ -16481,7 +17133,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="cards mini-cards">
                 <div className="card"><p>Sealed Products</p><h2>{sealedCatalogCount}</h2></div>
                 <div className="card"><p>Individual Cards</p><h2>{cardCatalogCount}</h2></div>
-                <div className="card"><p>Watchlist</p><h2>{tideTradrWatchlist.length}</h2></div>
+                <div className="card"><p>Watchlist</p><h2>{workspaceWatchlist.length}</h2></div>
               </div>
             </section>
             {adminUser ? (
@@ -17269,7 +17921,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 
         {!activeTabLocked && activeTab === "sales" && (
           <ListPanel title="Forge Sales" emptyText="No sales added yet.">
-            {sales.map((sale) => (
+            {workspaceSales.map((sale) => (
               <div className="inventory-card" key={sale.id}>
                 <h3>{sale.itemName}</h3>
                 <p>SKU: {sale.sku}</p>
@@ -17314,7 +17966,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
                 <Field label="Payment Method"><input value={expenseForm.paymentMethod} placeholder="Card, cash, PayPal, business account..." onChange={(e) => updateExpenseForm("paymentMethod", e.target.value)} /></Field>
                 <Field label="Linked Forge Item"><select value={expenseForm.linkedItemId} onChange={(e) => updateExpenseForm("linkedItemId", e.target.value)}><option value="">None</option>{forgeInventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-                <Field label="Linked Sale"><select value={expenseForm.linkedSaleId} onChange={(e) => updateExpenseForm("linkedSaleId", e.target.value)}><option value="">None</option>{sales.map((sale) => <option key={sale.id} value={sale.id}>{sale.itemName} - {sale.platform}</option>)}</select></Field>
+                <Field label="Linked Sale"><select value={expenseForm.linkedSaleId} onChange={(e) => updateExpenseForm("linkedSaleId", e.target.value)}><option value="">None</option>{workspaceSales.map((sale) => <option key={sale.id} value={sale.id}>{sale.itemName} - {sale.platform}</option>)}</select></Field>
                 {expenseForm.category === "Marketing" && (
                   <>
                     <Field label="Campaign Name"><input value={expenseForm.campaignName} placeholder="Spring restock ads, giveaway push..." onChange={(e) => updateExpenseForm("campaignName", e.target.value)} /></Field>
@@ -17339,7 +17991,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             </section>
             )}
             <ListPanel title="Business Expenses" emptyText="No expenses added yet.">
-              {expenses.map((expense) => (
+              {workspaceExpenses.map((expense) => (
                 <div className="inventory-card" key={expense.id}>
                   <h3>{expense.vendor}</h3>
                   {expense.date && <p>Date: {expense.date}</p>}
@@ -17432,7 +18084,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             </section>
             )}
             <ListPanel title="Mileage Trips" emptyText="No mileage trips added yet.">
-              {mileageTrips.map((t) => (
+              {workspaceMileageTrips.map((t) => (
                 <div className="inventory-card" key={t.id}>
                   <h3>{t.purpose}</h3>
                   <p>Driver: {t.driver}</p>
@@ -17483,7 +18135,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 
                 <div className="card">
                   <p>Avg Profit / Sale</p>
-                  <h2>{money(sales.length ? totalSalesProfit / sales.length : 0)}</h2>
+                  <h2>{money(workspaceSales.length ? totalSalesProfit / workspaceSales.length : 0)}</h2>
                 </div>
 
                 <div className="card">

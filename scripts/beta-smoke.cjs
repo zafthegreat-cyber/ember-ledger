@@ -8,6 +8,19 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1366, height: 1600 } });
   const results = [];
 
+  await page.addInitScript(() => {
+    const appSeed = sessionStorage.getItem("__etSmokeAppData");
+    if (appSeed) {
+      localStorage.setItem("et-tcg-beta-data", appSeed);
+      sessionStorage.removeItem("__etSmokeAppData");
+    }
+    const scoutSeed = sessionStorage.getItem("__etSmokeScoutData");
+    if (scoutSeed) {
+      localStorage.setItem("et-tcg-beta-scout", scoutSeed);
+      sessionStorage.removeItem("__etSmokeScoutData");
+    }
+  });
+
   page.on("dialog", async (dialog) => {
     await dialog.accept();
   });
@@ -40,52 +53,95 @@ async function main() {
 
   async function resetBetaData() {
     await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
-    await page.evaluate(() => {
+    const now = new Date().toISOString();
+    const sharedStore = {
+      id: "shared-store-smoke-target",
+      name: "Smoke Shared Target",
+      chain: "Target",
+      nickname: "Smoke Shared Target",
+      address: "123 Verified Beta Way",
+      city: "Suffolk",
+      state: "VA",
+      zip: "23434",
+      region: "Hampton Roads / 757",
+      phone: "757-555-0100",
+      storeType: "Big Box",
+      sellsPokemon: true,
+      notes: "Seeded shared directory store for beta smoke testing.",
+      status: "Unknown",
+    };
+    const scoutData = {
+      stores: [sharedStore],
+      reports: [],
+      items: [],
+      routes: [],
+    };
+    const appData = {
+      workspaces: [
+        {
+          id: "workspace-personal-local-beta",
+          name: "My Personal Space",
+          type: "personal",
+          ownerUserId: "local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "workspace-smoke-shared",
+          name: "Smoke Shared Workspace",
+          type: "shared_collection",
+          ownerUserId: "local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+      workspaceMembers: [
+        {
+          workspaceId: "workspace-personal-local-beta",
+          userId: "local-beta",
+          role: "owner",
+          status: "active",
+          acceptedAt: now,
+        },
+        {
+          workspaceId: "workspace-smoke-shared",
+          userId: "local-beta",
+          role: "owner",
+          status: "active",
+          acceptedAt: now,
+        },
+      ],
+      workspaceInvites: [],
+      activeWorkspaceId: "workspace-personal-local-beta",
+      items: [],
+      expenses: [],
+      sales: [],
+      mileageTrips: [],
+      locationSettings: {
+        mode: "manual",
+        manualLocation: "23434",
+        selectedSavedLocation: "23434",
+        savedLocations: ["23434"],
+        trackingEnabled: false,
+        lastUpdated: now,
+      },
+    };
+    await page.evaluate(({ appData, scoutData }) => {
       localStorage.removeItem("et-tcg-beta-data");
       localStorage.removeItem("et-tcg-beta-scout");
       localStorage.removeItem("et-tcg-beta-tidepool");
       localStorage.removeItem("et-tcg-beta-suggestions");
       localStorage.removeItem("et-tcg-beta-feedback");
-    });
+      sessionStorage.setItem("__etSmokeAppData", JSON.stringify(appData));
+      sessionStorage.setItem("__etSmokeScoutData", JSON.stringify(scoutData));
+    }, { appData, scoutData });
     await page.reload({ waitUntil: "domcontentloaded" });
-    await page.evaluate(() => {
-      const sharedStore = {
-        id: "shared-store-smoke-target",
-        name: "Smoke Shared Target",
-        chain: "Target",
-        nickname: "Smoke Shared Target",
-        address: "123 Verified Beta Way",
-        city: "Suffolk",
-        state: "VA",
-        zip: "23434",
-        region: "Hampton Roads / 757",
-        phone: "757-555-0100",
-        storeType: "Big Box",
-        sellsPokemon: true,
-        notes: "Seeded shared directory store for beta smoke testing.",
-        status: "Unknown",
-      };
-      localStorage.setItem("et-tcg-beta-scout", JSON.stringify({
-        stores: [sharedStore],
-        reports: [],
-        items: [],
-        routes: [],
-      }));
-      localStorage.setItem("et-tcg-beta-data", JSON.stringify({
-        items: [],
-        expenses: [],
-        sales: [],
-        mileageTrips: [],
-        locationSettings: {
-          mode: "manual",
-          manualLocation: "23434",
-          selectedSavedLocation: "23434",
-          savedLocations: ["23434"],
-          trackingEnabled: false,
-          lastUpdated: new Date().toISOString(),
-        },
-      }));
-    });
+  }
+
+  async function reloadWithAppData(appData) {
+    await page.evaluate((nextAppData) => {
+      sessionStorage.setItem("__etSmokeAppData", JSON.stringify(nextAppData));
+    }, appData);
     await page.reload({ waitUntil: "domcontentloaded" });
   }
 
@@ -130,13 +186,91 @@ async function main() {
     await assertVisibleText("TideTradr");
   });
 
+  await step("Workspace: personal and shared records stay separated", async () => {
+    const personalWorkspaceData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.items = [
+        {
+          id: "workspace-smoke-personal-vault",
+          name: "Smoke Personal Vault Item",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          vaultStatus: "personal_collection",
+          quantity: 1,
+          unitCost: 10,
+          marketPrice: 12,
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: "workspace-smoke-shared-vault",
+          name: "Smoke Shared Vault Item",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          vaultStatus: "personal_collection",
+          quantity: 1,
+          unitCost: 20,
+          marketPrice: 25,
+          workspaceId: "workspace-smoke-shared",
+          workspaceName: "Smoke Shared Workspace",
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: "workspace-smoke-shared-forge",
+          name: "Smoke Shared Forge Item",
+          destinationScope: ["forge"],
+          recordType: "forge_inventory",
+          businessInventory: true,
+          quantity: 2,
+          unitCost: 30,
+          marketPrice: 40,
+          workspaceId: "workspace-smoke-shared",
+          workspaceName: "Smoke Shared Workspace",
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      data.activeWorkspaceId = "workspace-personal-local-beta";
+      return data;
+    });
+    await reloadWithAppData(personalWorkspaceData);
+    await nav("Vault");
+    await assertVisibleText("Smoke Personal Vault Item");
+    assert.equal(await page.getByText("Smoke Shared Vault Item", { exact: false }).count(), 0);
+
+    const sharedWorkspaceData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.activeWorkspaceId = "workspace-smoke-shared";
+      return data;
+    });
+    await reloadWithAppData(sharedWorkspaceData);
+    await nav("Vault");
+    await assertVisibleText("Smoke Shared Vault Item");
+    assert.equal(await page.getByText("Smoke Personal Vault Item", { exact: false }).count(), 0);
+    await nav("Forge");
+    await assertVisibleText("Smoke Shared Forge Item");
+
+    const cleanedWorkspaceData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.items = [];
+      data.activeWorkspaceId = "workspace-personal-local-beta";
+      return data;
+    });
+    await reloadWithAppData(cleanedWorkspaceData);
+  });
+
   async function assertVisibleText(text) {
-    const matches = page.getByText(text, { exact: false });
-    const count = await matches.count();
-    for (let index = 0; index < count; index += 1) {
-      if (await matches.nth(index).isVisible()) return;
+    try {
+      await page.waitForFunction(
+        (expectedText) => document.body && document.body.innerText.toLowerCase().includes(String(expectedText).toLowerCase()),
+        text,
+        { timeout: 7000 }
+      );
+    } catch (error) {
+      const bodyPreview = await page.locator("body").innerText().catch(() => "");
+      error.message = `${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
+      throw error;
     }
-    assert.fail(`Expected visible text: ${text}`);
   }
 
   await step("Scout: shared store directory loads", async () => {
@@ -384,6 +518,7 @@ async function main() {
     assert.ok(wishlistRecord, "Wishlist record should be written to beta storage");
     assert.ok((wishlistRecord.destinationScope || []).includes("wishlist"), "Wishlist destination scope should be present");
     assert.equal(Boolean(wishlistRecord.businessInventory), false);
+    assert.equal(wishlistRecord.workspaceId, "workspace-personal-local-beta");
     await nav("Forge");
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
     await page.evaluate(() => {

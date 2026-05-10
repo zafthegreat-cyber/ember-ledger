@@ -151,6 +151,10 @@ export function sanitizeAppLocalData(value = {}) {
     sales: filterDemoArray(value.sales),
     vehicles: filterDemoArray(value.vehicles),
     mileageTrips: filterDemoArray(value.mileageTrips),
+    workspaces: filterDemoArray(value.workspaces),
+    workspaceMembers: filterDemoArray(value.workspaceMembers),
+    workspaceInvites: filterDemoArray(value.workspaceInvites),
+    activeWorkspaceId: value.activeWorkspaceId || "",
     marketPriceCache: sanitizeMarketPriceCache(value.marketPriceCache || {}),
   };
 }

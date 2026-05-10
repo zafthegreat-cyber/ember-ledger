@@ -5816,6 +5816,43 @@ textarea {
   }
 }
 
+.workspace-settings-panel .drawer-info-card {
+  gap: 10px;
+}
+
+.workspace-member-list {
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-soft, rgba(15, 23, 42, 0.1));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.workspace-member-row span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.workspace-member-row strong,
+.workspace-member-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workspace-member-row small {
+  color: var(--muted-text, #64748b);
+  font-size: var(--text-meta, 0.78rem);
+}
+
 /* Beta mobile cleanup pass */
 .app-search-toggle {
   width: auto;
