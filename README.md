@@ -80,8 +80,9 @@ retailer_alert_log
 retailer_monitor_targets
 ```
 
-Apply `supabase/migrations/20260510140000_bestbuy_restock_monitoring.sql` before turning on scheduled monitoring.
-The Vercel cron route is `/api/bestbuy/monitor/run`; it no-ops until `BESTBUY_MONITOR_ENABLED=true` is set.
+Apply `supabase/migrations/20260510035208_bestbuy_restock_monitoring.sql` before turning on scheduled monitoring.
+The monitor route is `/api/bestbuy/monitor/run`; it no-ops until `BESTBUY_MONITOR_ENABLED=true` is set.
+Use Vercel Cron, GitHub Actions, or another scheduler to call that route after the live API path and account limits are confirmed.
 
 Server-only Pokemon ingestion imports:
 

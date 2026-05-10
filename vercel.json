@@ -2,12 +2,6 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "crons": [
-    {
-      "path": "/api/bestbuy/monitor/run",
-      "schedule": "*/15 * * * *"
-    }
-  ],
   "routes": [
     {
       "handle": "filesystem"
