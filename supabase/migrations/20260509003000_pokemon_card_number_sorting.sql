@@ -45,7 +45,9 @@ create index if not exists product_catalog_pokemon_browse_sort_idx
     name
   );
 
-create or replace view public.pokemon_catalog_browse
+drop view if exists public.pokemon_catalog_browse;
+
+create view public.pokemon_catalog_browse
 with (security_invoker = true)
 as
 select

@@ -28,34 +28,34 @@ where category = 'Pokemon'
   and nullif(trim(coalesce(card_number, '')), '') is not null;
 
 create index if not exists product_catalog_name_trgm_idx
-  on public.product_catalog using gin (name gin_trgm_ops);
+  on public.product_catalog using gin (name extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_set_name_trgm_idx
-  on public.product_catalog using gin (set_name gin_trgm_ops);
+  on public.product_catalog using gin (set_name extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_expansion_trgm_idx
-  on public.product_catalog using gin (expansion gin_trgm_ops);
+  on public.product_catalog using gin (expansion extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_product_type_trgm_idx
-  on public.product_catalog using gin (product_type gin_trgm_ops);
+  on public.product_catalog using gin (product_type extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_product_line_trgm_idx
-  on public.product_catalog using gin (product_line gin_trgm_ops);
+  on public.product_catalog using gin (product_line extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_barcode_trgm_idx
-  on public.product_catalog using gin (barcode gin_trgm_ops);
+  on public.product_catalog using gin (barcode extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_external_product_id_trgm_idx
-  on public.product_catalog using gin (external_product_id gin_trgm_ops);
+  on public.product_catalog using gin (external_product_id extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_tcgplayer_product_id_trgm_idx
-  on public.product_catalog using gin (tcgplayer_product_id gin_trgm_ops);
+  on public.product_catalog using gin (tcgplayer_product_id extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_card_number_trgm_idx
-  on public.product_catalog using gin (card_number gin_trgm_ops);
+  on public.product_catalog using gin (card_number extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_set_code_trgm_idx
-  on public.product_catalog using gin (set_code gin_trgm_ops);
+  on public.product_catalog using gin (set_code extensions.gin_trgm_ops);
 
 create index if not exists product_catalog_category_barcode_idx
   on public.product_catalog (category, barcode)

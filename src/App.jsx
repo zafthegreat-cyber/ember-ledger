@@ -9,9 +9,18 @@ import BackupExportImport from "./components/BackupExportImport";
 import MarketPriceHistoryPanel from "./components/MarketPriceHistoryPanel";
 import SmartCatalogSearchBox from "./components/SmartCatalogSearchBox";
 import Scout from "./pages/Scout";
-import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA, SHARED_POKEMON_PRODUCTS } from "./data/sharedPokemonCatalog";
+import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/sharedPokemonCatalog";
+import {
+  ALERT_TYPE_OPTIONS,
+  APP_STRUCTURE_LINKS,
+  DASHBOARD_PRESET_OPTIONS,
+  DEAL_SCORE_BANDS,
+  SCANNER_INTAKE_TYPES,
+  TCG_OS_MODES,
+  UNIVERSAL_DATA_ENTITIES,
+} from "./data/tcgOperatingSystem";
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
-import { POKEMON_PRODUCT_UPCS, POKEMON_PRODUCTS } from "./data/pokemonProductCatalog";
+import { POKEMON_PRODUCT_UPCS } from "./data/pokemonProductCatalog";
 import { VIRGINIA_STORES_SEED } from "./data/virginiaStoresSeed";
 import { SCOUT_HISTORICAL_INTEL_SEED, buildScoutRestockPatterns } from "./data/scoutRestockIntelSeed";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
@@ -47,6 +56,19 @@ import {
   refreshPinnedMarketItems,
   refreshWatchlistMarketItems,
 } from "./services/marketDataService";
+import {
+  loadLocalPhase2Data,
+  loadPhase2Data,
+  parseReceiptText,
+  classifyPhase2SyncError,
+  saveAppPreferences,
+  saveDealFinderSession,
+  saveKidCommunityProject,
+  saveMarketplaceListingChannels,
+  saveNotificationPreference,
+  saveReceiptRecord,
+  saveScannerIntakeSession,
+} from "./services/phase2Persistence";
 import {
   FEATURE_LABELS,
   FEATURE_TIERS,
@@ -178,7 +200,9 @@ function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
 }
 
 const IRS_MILEAGE_RATE = 0.725;
-const BETA_LOCAL_MODE = true;
+const runtimeParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+const BETA_LOCAL_MODE = runtimeParams?.get("betaLocalMode") === "true" || import.meta.env.VITE_BETA_LOCAL_MODE !== "false";
+const QA_UNLOCK_PAID_FEATURES = runtimeParams?.get("qaUnlockPaid") === "true" || import.meta.env.VITE_QA_UNLOCK_PAID_FEATURES === "true";
 const SUBSCRIPTIONS_LIVE = false;
 const FEATURE_GATES_ENABLED = true;
 const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
@@ -446,6 +470,10 @@ const blankExpense = {
   linkedSaleId: "",
   notes: "",
   receiptImage: "",
+  rawReceiptText: "",
+  receiptSplitMode: "expense_only",
+  receiptTax: "",
+  receiptPersonalTotal: "",
   taxDeductible: false,
   campaignName: "",
   platform: "",
@@ -491,10 +519,13 @@ const HOME_STATS = [
   { key: "monthly_spending", label: "Monthly Spending", group: "Collection & Spending" },
   { key: "market_value", label: "Market Value", group: "Collection & Spending" },
   { key: "savings_vs_msrp", label: "Savings vs MSRP", group: "Collection & Spending" },
+  { key: "wishlist_value", label: "Wishlist Value", group: "Collection & Spending" },
+  { key: "missing_set_cards", label: "Missing Set Cards", group: "Collection & Spending" },
   { key: "forge_inventory_value", label: "Forge Inventory Value", group: "Inventory & Sales" },
   { key: "forge_planned_sales", label: "Forge Planned Sales", group: "Inventory & Sales" },
   { key: "forge_sales_revenue", label: "Forge Sales Revenue", group: "Inventory & Sales" },
   { key: "items_sold", label: "Items Sold", group: "Inventory & Sales" },
+  { key: "active_listings", label: "Active Listings", group: "Inventory & Sales" },
   { key: "monthly_profit_loss", label: "Monthly Profit/Loss", group: "Profit & ROI" },
   { key: "market_roi", label: "Market ROI", group: "Profit & ROI" },
   { key: "planned_roi", label: "Planned ROI", group: "Profit & ROI" },
@@ -506,6 +537,9 @@ const HOME_STATS = [
   { key: "market_over_msrp", label: "Market Over MSRP", group: "MSRP / Deal Metrics" },
   { key: "business_miles", label: "Business Miles", group: "Mileage & Vehicle" },
   { key: "total_vehicle_cost", label: "Total Vehicle Cost", group: "Mileage & Vehicle" },
+  { key: "store_alerts", label: "Store Alerts", group: "Scout & Community" },
+  { key: "upcoming_restocks", label: "Upcoming Restocks", group: "Scout & Community" },
+  { key: "kid_pack_budget", label: "Kid Pack Budget", group: "Scout & Community" },
 ];
 const HOME_STAT_GROUPS = [...new Set(HOME_STATS.map((stat) => stat.group))];
 const HOME_STAT_KEYS = HOME_STATS.map((stat) => stat.key);
@@ -520,6 +554,9 @@ const HOME_STAT_DEFAULTS = {
   seller: CORE_HOME_STAT_KEYS,
   scout: CORE_HOME_STAT_KEYS,
   budget: ["monthly_spending", "market_value", "market_vs_msrp_percent", "savings_vs_msrp"],
+  budget_parent: ["monthly_spending", "kid_pack_budget", "wishlist_value", "savings_vs_msrp"],
+  restock_scout: ["store_alerts", "upcoming_restocks", "monthly_spending", "wishlist_value"],
+  full_business: HOME_STAT_KEYS,
   all_in_one: HOME_STAT_KEYS,
 };
 const HOME_VIEW_PRESETS = {
@@ -536,26 +573,26 @@ const HOME_VIEW_PRESETS = {
     stats: ["forge_inventory_value", "monthly_spending", "profit_after_expenses", "items_sold"],
   },
   budget: {
-    label: "Budget",
+    label: "Budget Parent",
     userType: "budget",
-    dashboardPreset: "parent",
-    stats: ["monthly_spending", "market_value", "market_vs_msrp_percent", "savings_vs_msrp"],
+    dashboardPreset: "budget_parent",
+    stats: ["monthly_spending", "kid_pack_budget", "wishlist_value", "savings_vs_msrp"],
   },
   scout: {
-    label: "Scout",
+    label: "Restock Scout",
     userType: "scout",
-    dashboardPreset: "scout",
-    stats: ["monthly_spending", "market_value", "savings_vs_msrp", "collection_value"],
+    dashboardPreset: "restock_scout",
+    stats: ["store_alerts", "upcoming_restocks", "monthly_spending", "wishlist_value"],
   },
   all_in_one: {
-    label: "All-in-one",
+    label: "Full Business",
     userType: "all_in_one",
-    dashboardPreset: "advanced",
+    dashboardPreset: "full_business",
     stats: HOME_STAT_KEYS,
   },
 };
 const DASHBOARD_CARD_STYLES = ["compact", "comfortable", "detailed"];
-const DASHBOARD_PRESETS = ["simple", "collector", "seller", "scout", "parent", "advanced"];
+const DASHBOARD_PRESETS = ["simple", "collector", "seller", "budget_parent", "restock_scout", "full_business"];
 const DASHBOARD_SECTIONS = [
   { key: "quick_actions", label: "Quick Actions", group: "Core" },
   { key: "home_stats", label: "Home Stats", group: "Core" },
@@ -574,17 +611,22 @@ const DASHBOARD_SECTIONS = [
   { key: "people_wishlists", label: "People Wishlists", group: "Parent" },
   { key: "market_summary", label: "Market Summary", group: "Market" },
   { key: "pack_it_forward", label: "Pack It Forward", group: "Parent" },
+  { key: "tcg_os", label: "TCG OS Command Center", group: "Core" },
+  { key: "kid_community", label: "Kid / Community Mode", group: "Parent" },
   { key: "action_center", label: "Action Center", group: "Core" },
   { key: "purchaser_spending", label: "Purchaser Spending", group: "Seller" },
   { key: "exports", label: "Exports", group: "Advanced" },
   { key: "settings", label: "Settings", group: "Core", locked: true },
 ];
 const DASHBOARD_PRESET_SECTIONS = {
-  simple: ["quick_actions", "home_stats", "catalog_shortcut", "recent_inventory", "deal_checker", "settings"],
-  collector: ["home_stats", "quick_actions", "catalog_shortcut", "recent_inventory", "wishlist", "market_summary", "settings"],
-  seller: ["home_stats", "quick_actions", "recent_inventory", "recent_sales", "expenses_summary", "mileage_summary", "action_center", "settings"],
+  simple: ["tcg_os", "quick_actions", "home_stats", "catalog_shortcut", "recent_inventory", "deal_checker", "settings"],
+  collector: ["tcg_os", "home_stats", "quick_actions", "catalog_shortcut", "recent_inventory", "wishlist", "market_summary", "settings"],
+  seller: ["tcg_os", "home_stats", "quick_actions", "recent_inventory", "recent_sales", "expenses_summary", "mileage_summary", "action_center", "settings"],
   scout: ["quick_actions", "store_reports", "nearby_stores", "restock_calendar", "watchlist", "alerts", "settings"],
   parent: ["quick_actions", "deal_checker", "people_wishlists", "home_stats", "wishlist", "nearby_stores", "settings"],
+  budget_parent: ["tcg_os", "quick_actions", "home_stats", "deal_checker", "people_wishlists", "kid_community", "wishlist", "settings"],
+  restock_scout: ["tcg_os", "quick_actions", "home_stats", "store_reports", "nearby_stores", "restock_calendar", "watchlist", "alerts", "settings"],
+  full_business: DASHBOARD_SECTIONS.map((section) => section.key),
   advanced: DASHBOARD_SECTIONS.map((section) => section.key),
 };
 
@@ -1081,15 +1123,28 @@ function isHomeStatEnabled(profile, statKey) {
 }
 
 function normalizeDashboardPreset(preset) {
-  return DASHBOARD_PRESETS.includes(preset) ? preset : "simple";
+  const aliases = {
+    parent: "budget_parent",
+    budget: "budget_parent",
+    scout: "restock_scout",
+    advanced: "full_business",
+    all_in_one: "full_business",
+  };
+  const normalized = aliases[preset] || preset;
+  return DASHBOARD_PRESETS.includes(normalized) ? normalized : "simple";
 }
 
 function normalizeDashboardCardStyle(style) {
   return DASHBOARD_CARD_STYLES.includes(style) ? style : "comfortable";
 }
 
+function dashboardPresetLabel(preset) {
+  const normalized = normalizeDashboardPreset(preset);
+  return DASHBOARD_PRESET_OPTIONS.find((option) => option.key === normalized)?.label || normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
 function getDashboardPresetForUserType(userType = "collector") {
-  const map = { collector: "collector", seller: "seller", scout: "scout", budget: "parent", all_in_one: "advanced" };
+  const map = { collector: "collector", seller: "seller", scout: "restock_scout", budget: "budget_parent", all_in_one: "full_business" };
   return map[normalizeUserType(userType)] || "simple";
 }
 
@@ -1141,86 +1196,6 @@ function isDashboardSectionEnabled(profile, sectionKey) {
   const preset = normalizeDashboardPreset(profile?.dashboardPreset || profile?.dashboard_preset);
   const layout = normalizeDashboardLayout(profile?.dashboardLayout || profile?.dashboard_layout, preset);
   return layout.sections.find((section) => section.key === sectionKey)?.enabled !== false;
-}
-
-function createSharedCatalogProducts() {
-  const now = new Date().toISOString();
-  return SHARED_POKEMON_PRODUCTS.map((product, index) => ({
-    id: `shared-product-${index + 1}`,
-    catalogType: product.catalogType || "sealed",
-    name: product.productName || product.cardName || product.name || "",
-    productName: product.productName || product.name || "",
-    cardName: product.cardName || "",
-    pokemonName: product.pokemonName || "",
-    category: "Pokemon",
-    barcode: product.barcode || product.upc || "",
-    sku: product.sku || "",
-    externalProductId: product.externalProductId || product.sku || "",
-    marketUrl: "",
-    imageUrl: product.imageUrl || product.images?.large || product.images?.small || "",
-    imageSmall: product.imageSmall || product.images?.small || "",
-    imageLarge: product.imageLarge || product.images?.large || product.imageUrl || "",
-    imageSource: product.imageSource || getDefaultImageSource(product),
-    imageSourceUrl: product.imageSourceUrl || product.sourceUrl || "",
-    imageStatus: product.imageStatus || getDefaultImageStatus(product),
-    imageLastUpdated: product.imageLastUpdated || product.lastUpdated || now,
-    imageNeedsReview: Boolean(product.imageNeedsReview || (product.matchConfidence && Number(product.matchConfidence) < 80)),
-    marketPrice: toNumber(product.marketValue || product.marketValueNearMint || product.marketValueRaw),
-    lowPrice: toNumber(product.marketValueLightPlayed || product.lowPrice),
-    midPrice: toNumber(product.marketValueNearMint || product.marketValue || product.midPrice),
-    highPrice: toNumber(product.marketValueGraded || product.highPrice),
-    marketSource: product.marketSource || "Beta estimate",
-    marketLastUpdated: product.marketLastUpdated || now,
-    marketConfidenceLevel: product.marketConfidenceLevel || "Estimated",
-    sourceType: product.sourceType || "estimated",
-    setCode: product.setCode || product.cardNumber || "",
-    packCount: product.packCount ?? "",
-    releaseDate: product.releaseDate || "",
-    releaseYear: product.releaseYear || "",
-    series: product.series || product.productLine || "",
-    productLine: product.series || product.productLine || "",
-    cardNumber: product.cardNumber || "",
-    rarity: product.rarity || "",
-    variant: product.variant || "",
-    condition: product.condition || "Near Mint",
-    language: product.language || "English",
-    graded: Boolean(product.graded),
-    gradingCompany: product.gradingCompany || "",
-    grade: product.grade || "",
-    marketValueRaw: toNumber(product.marketValueRaw),
-    marketValueNearMint: toNumber(product.marketValueNearMint || product.marketValue),
-    marketValueLightPlayed: toNumber(product.marketValueLightPlayed),
-    marketValueGraded: toNumber(product.marketValueGraded),
-    notes: product.notes || "TideTradr beta catalog item. Market data is estimated/manual unless labeled otherwise.",
-    createdAt: now,
-    lastUpdated: product.lastUpdated || now,
-    ...product,
-    msrpPrice: toNumber(product.msrpPrice || product.msrp),
-    msrpDisplay: product.msrpPrice || product.msrp || "Unknown",
-    marketValue: toNumber(product.marketValue || product.marketValueNearMint),
-    expansion: product.expansion || product.setName || "",
-  }));
-}
-
-function mergeSharedCatalogProducts(savedProducts = []) {
-  const sharedProducts = createSharedCatalogProducts();
-  const saved = Array.isArray(savedProducts) ? savedProducts : [];
-  const savedKeys = new Set(
-    saved.map((product) =>
-      String(product.id || `${product.catalogType || "sealed"}-${product.name || product.productName || product.cardName}-${product.setName || ""}`).toLowerCase()
-    )
-  );
-  const savedNameKeys = new Set(
-    saved.map((product) =>
-      String(`${product.catalogType || "sealed"}-${product.name || product.productName || product.cardName}-${product.setName || ""}`).toLowerCase()
-    )
-  );
-  const missingShared = sharedProducts.filter((product) => {
-    const idKey = String(product.id || "").toLowerCase();
-    const nameKey = String(`${product.catalogType || "sealed"}-${product.name || product.productName || product.cardName}-${product.setName || ""}`).toLowerCase();
-    return !savedKeys.has(idKey) && !savedNameKeys.has(nameKey);
-  });
-  return [...saved, ...missingShared];
 }
 
 function statusClass(status) {
@@ -1765,6 +1740,26 @@ export default function App() {
     notes: "",
   });
   const [dealFinderOpen, setDealFinderOpen] = useState(false);
+  const [phase2Data, setPhase2Data] = useState(() => loadLocalPhase2Data());
+  const [phase2SyncStatus, setPhase2SyncStatus] = useState({
+    source: "local",
+    message: "Phase 2 workflow records are saved locally until cloud tables are available.",
+  });
+  const [kidProjectForm, setKidProjectForm] = useState({
+    name: "Kid Pack Builder",
+    budget: "",
+    targetPackCount: "24",
+    eventDate: "",
+    notes: "",
+  });
+  const [kidProjectDraftItem, setKidProjectDraftItem] = useState({
+    itemName: "",
+    quantity: "1",
+    unitCost: "",
+    marketValue: "",
+    notes: "",
+  });
+  const [kidProjectDraftItems, setKidProjectDraftItems] = useState([]);
   const [vaultForm, setVaultForm] = useState(BLANK_VAULT_FORM);
   const [showVaultAddForm, setShowVaultAddForm] = useState(false);
   const [vaultFormSections, setVaultFormSections] = useState({
@@ -2203,6 +2198,190 @@ export default function App() {
       >
         {quickActions.length ? <QuickActionGrid actions={quickActions} ariaLabel={`${title} quick actions`} /> : null}
       </PageHeader>
+    );
+  }
+
+  function openOperatingSystemFeature(modeKey, action = "") {
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    if (modeKey === "vault") {
+      setActiveTab("vault");
+      if (action === "Open Sets") setVaultSubTab("sets");
+      else if (action === "Portfolio") setVaultSubTab("portfolio");
+      else setVaultSubTab("collection");
+      if (action === "Add Item") openVaultQuickAdd({ stayInContext: true });
+      if (action === "Search Catalog") {
+        setActiveTab("market");
+        setTideTradrSubTab("overview");
+      }
+      return;
+    }
+    if (modeKey === "forge") {
+      setActiveTab("inventory");
+      setForgeSubTab(action === "Marketplace" ? "marketplace" : "overview");
+      if (action === "Add Inventory") openQuickAddAction("inventory");
+      if (action === "Record Sale") openQuickAddAction("sale");
+      if (action === "Add Expense") openQuickAddAction("expense");
+      return;
+    }
+    if (modeKey === "scout") {
+      setActiveTab("scout");
+      if (action === "Open Predictions") setScoutView("predictions");
+      else if (action === "Alerts") setScoutView("alerts");
+      else setScoutView("overview");
+      setScoutSubTabTarget({ tab: action === "Alerts" ? "alerts" : "overview", id: Date.now() });
+      if (action === "Submit Report") openScoutSubmitFlow();
+      if (action === "Import Intel") openScoutSubmitFlow({ action: "importIntel" });
+      return;
+    }
+    if (modeKey === "tidepool") {
+      openTidepoolCommunity(action === "Deal Check" ? "Deals" : "Latest");
+      if (action === "Create Post" || action === "Donation Post") openTidepoolCreatePostFlow();
+      return;
+    }
+    if (modeKey === "catalog") {
+      setActiveTab("market");
+      setTideTradrSubTab("overview");
+      if (action === "Market Sources") setFeatureSectionsOpen((current) => ({ ...current, market_sources: true }));
+      if (action === "Suggest Correction") openFeedbackDialog("catalog_data");
+      return;
+    }
+    if (modeKey === "deal_finder") {
+      setActiveTab("market");
+      openDealFinderModal();
+      return;
+    }
+    if (modeKey === "scanner") {
+      beginScanProduct("none");
+      return;
+    }
+    if (modeKey === "kid_community") {
+      setActiveTab("dashboard");
+      setHomeSubTab("goals");
+      updateDashboardSection("kid_community", { enabled: true });
+      return;
+    }
+    if (modeKey === "wishlist") {
+      setActiveTab("vault");
+      setVaultSubTab("collection");
+      setVaultFilter("wishlist");
+      return;
+    }
+    if (modeKey === "marketplace") {
+      setActiveTab("inventory");
+      setForgeSubTab("marketplace");
+      return;
+    }
+    if (modeKey === "reports") {
+      setActiveTab("reports");
+      return;
+    }
+    if (modeKey === "settings") {
+      setActiveTab("menu");
+      setMenuOpen(true);
+      return;
+    }
+    if (modeKey === "admin") {
+      setActiveTab(adminToolsVisible ? "adminReview" : "menu");
+      setMenuOpen(!adminToolsVisible);
+    }
+  }
+
+  function renderTcgOperatingSystemPanel({ compact = false } = {}) {
+    return (
+      <section className={`panel tcg-os-panel${compact ? " tcg-os-panel-compact" : ""}`}>
+        <div className="compact-card-header">
+          <div>
+            <h2>TCG Operating System</h2>
+            <p>Collect, sell, find, share, know, decide, scan, and give from one mobile-first command center.</p>
+            <div className="phase2-sync-status">
+              <strong>{phase2SyncStatus.label || (phase2SyncStatus.source === "supabase" ? "Supabase connected" : "Local only mode")}</strong>
+              <span>{phase2SyncStatus.message}</span>
+              {phase2SyncStatus.source !== "supabase" ? (
+                <button type="button" className="ghost-button" onClick={retryPhase2Sync}>Retry sync</button>
+              ) : null}
+            </div>
+          </div>
+          <div className="quick-actions">
+            <button type="button" className="secondary-button" onClick={() => setMenuOpen(true)}>Menu</button>
+            <button type="button" className="secondary-button" onClick={() => { setMenuSectionsOpen({ settings: true }); setMenuOpen(true); }}>Notifications</button>
+          </div>
+        </div>
+        {phase2SyncStatus.source === "supabase" && (
+          phase2RecentDeals.length ||
+          phase2RecentScannerIntakes.length ||
+          phase2RecentReceipts.length ||
+          phase2MarketplaceDraftListings.length ||
+          phase2RecentKidProjects.length
+        ) ? (
+          <div className="home-list compact-home-list phase2-workflow-list">
+            {phase2RecentDeals.slice(0, 1).map((session) => (
+              <button type="button" className="home-list-row" key={`deal-${session.id}`} onClick={() => setActiveTab("market")}>
+                <span>
+                  <strong>{session.title || "Saved deal check"}</strong>
+                  <small>Deal Finder | {session.recommendation || "saved"} | View only</small>
+                </span>
+                <b>{money(session.askingPrice)}</b>
+              </button>
+            ))}
+            {phase2RecentScannerIntakes.slice(0, 3).map((session) => (
+              <button type="button" className="home-list-row" key={`scan-${session.id}`} onClick={() => openInventoryScanner("manual")}>
+                <span>
+                  <strong>{session.extractedClues?.itemName || session.rawValue || "Saved scanner intake"}</strong>
+                  <small>Scanner Intake | {session.destination || "review"} | Cloud synced {session.createdAt ? new Date(session.createdAt).toLocaleDateString() : ""}</small>
+                </span>
+                <b>Synced</b>
+              </button>
+            ))}
+            {phase2RecentReceipts.slice(0, 1).map((receipt) => (
+              <button type="button" className="home-list-row" key={`receipt-${receipt.id}`} onClick={() => setActiveTab("inventory")}>
+                <span>
+                  <strong>{receipt.merchant || "Saved receipt"}</strong>
+                  <small>Receipt Draft | {receipt.category || "expense"} | {phase2ReceiptLineItemCounts[receipt.id] || 0} lines</small>
+                </span>
+                <b>{money(receipt.total)}</b>
+              </button>
+            ))}
+            {phase2MarketplaceDraftListings.slice(0, 1).map((listing) => (
+              <button type="button" className="home-list-row" key={`market-${listing.id}`} onClick={() => { setActiveTab("inventory"); setForgeSubTab("marketplace"); setMarketplaceView("my"); }}>
+                <span>
+                  <strong>{listing.title || "Marketplace channel draft"}</strong>
+                  <small>Marketplace Channels | {listing.channels?.length || 0} platforms</small>
+                </span>
+                <b>{money(listing.askingPrice)}</b>
+              </button>
+            ))}
+            {phase2RecentKidProjects.slice(0, 1).map((project) => (
+              <button type="button" className="home-list-row" key={`kid-${project.id}`} onClick={() => setActiveTab("home")}>
+                <span>
+                  <strong>{project.name || "Kid Pack Builder"}</strong>
+                  <small>Kid Pack Builder | {project.targetPackCount || 0} packs | {phase2KidProjectItemCounts[project.id] || 0} items</small>
+                </span>
+                <b>{project.status || "planning"}</b>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="tcg-os-grid">
+          {TCG_OS_MODES.map((mode) => (
+            <article className="tcg-os-card" key={mode.key}>
+              <div>
+                <span className="tcg-os-verb">{mode.verb}</span>
+                <h3>{mode.title}</h3>
+                <p>{mode.summary}</p>
+                <small>{mode.benchmark}</small>
+              </div>
+              <div className="tcg-os-actions">
+                {mode.actions.slice(0, compact ? 2 : 4).map((action) => (
+                  <button type="button" className="secondary-button" key={action} onClick={() => openOperatingSystemFeature(mode.key, action)}>
+                    {action}
+                  </button>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     );
   }
 
@@ -3107,6 +3286,65 @@ export default function App() {
   const updateTripForm = (field, value) => setTripForm((old) => ({ ...old, [field]: value }));
   const updateSaleForm = (field, value) => setSaleForm((old) => ({ ...old, [field]: value }));
   const updateDealForm = (field, value) => setDealForm((old) => ({ ...old, [field]: value }));
+  const updateKidProjectForm = (field, value) => setKidProjectForm((old) => ({ ...old, [field]: value }));
+  const phase2Context = () => ({ supabase, isSupabaseConfigured, user, workspaceId: activeWorkspaceId, requireSupabase: !BETA_LOCAL_MODE });
+  const phase2RecentDeals = phase2Data.dealFinderSessions || [];
+  const phase2RecentScannerIntakes = phase2Data.scannerIntakeSessions || [];
+  const phase2RecentReceipts = phase2Data.receiptRecords || [];
+  const phase2ReceiptLineItemCounts = (phase2Data.receiptLineItems || []).reduce((acc, item) => {
+    if (item.receiptId) acc[item.receiptId] = (acc[item.receiptId] || 0) + 1;
+    return acc;
+  }, {});
+  const phase2RecentKidProjects = phase2Data.kidCommunityProjects || [];
+  const phase2KidProjectItemCounts = (phase2Data.kidCommunityProjectItems || []).reduce((acc, item) => {
+    if (item.projectId) acc[item.projectId] = (acc[item.projectId] || 0) + 1;
+    return acc;
+  }, {});
+  const phase2MarketplaceDraftListings = Object.values(
+    (phase2Data.marketplaceListingChannels || []).reduce((acc, channel) => {
+      const key = channel.sourceInventoryId || channel.id;
+      if (!acc[key]) {
+        acc[key] = {
+          id: key,
+          title: channel.listingTitle || "Marketplace channel draft",
+          listingType: "Cross-listing",
+          status: channel.listingStatus || "Draft",
+          askingPrice: Number(channel.listedPrice || 0),
+          condition: "Channel draft",
+          locationState: "VA",
+          sourceType: "phase2-channel",
+          sourceItemId: channel.sourceInventoryId || "",
+          catalogItemId: channel.catalogItemId || "",
+          channels: [],
+          createdAt: channel.createdAt,
+          updatedAt: channel.updatedAt,
+        };
+      }
+      acc[key].channels.push(channel);
+      return acc;
+    }, {})
+  );
+  const updatePhase2Status = (result, fallbackMessage = "Phase 2 workflow saved.") => {
+    const source = result?.source || "local";
+    const error = result?.error;
+    if (source === "supabase") {
+      setPhase2SyncStatus({ source, kind: "connected", label: "Supabase connected", message: "Supabase connected. Saved to Supabase Phase 2 tables." });
+      return;
+    }
+    const classified = classifyPhase2SyncError(error);
+    setPhase2SyncStatus({
+      source,
+      kind: classified.kind,
+      label: classified.label,
+      message: error ? classified.message : `Local only mode. ${fallbackMessage}`,
+    });
+  };
+  const retryPhase2Sync = async () => {
+    const { data, status } = await loadPhase2Data(phase2Context());
+    setPhase2Data(data);
+    setPhase2SyncStatus(status);
+    setVaultToast(status.source === "supabase" ? "Supabase sync is available." : `${status.label || "Supabase sync unavailable"}. Saved locally.`);
+  };
   const updateVaultForm = (field, value) => setVaultForm((old) => {
     if (field === "vaultStatus") {
       return { ...old, vaultStatus: value, status: vaultStatusLabel(value) };
@@ -4310,6 +4548,26 @@ export default function App() {
   function updateScoutAlertPreference(key, value) {
     const nextAlertSettings = { ...(scoutSnapshot.alertSettings || {}), [key]: value };
     setScoutSnapshot((current) => ({ ...current, alertSettings: nextAlertSettings }));
+    setPhase2Data((current) => ({
+      ...current,
+      notificationPreferences: {
+        ...(current.notificationPreferences || {}),
+        [key]: {
+          key,
+          enabled: Boolean(value),
+          channels: { inApp: true },
+          filters: {},
+          quietHours: {},
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    }));
+    void saveNotificationPreference(phase2Context(), {
+      key,
+      enabled: Boolean(value),
+      channels: { inApp: true },
+      filters: {},
+    }).then((result) => updatePhase2Status(result, "Alert preference saved locally."));
     try {
       const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
       localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, alertSettings: nextAlertSettings }));
@@ -4467,7 +4725,7 @@ export default function App() {
       const localCatalogProducts = Array.isArray(saved.catalogProducts)
         ? saved.catalogProducts.filter((product) => product.sourceType !== "supabase")
         : [];
-      setCatalogProducts(localCatalogProducts.length ? mergeSharedCatalogProducts(localCatalogProducts) : createSharedCatalogProducts());
+      setCatalogProducts(localCatalogProducts);
       setTideTradrWatchlist(migrateRecordsToWorkspace(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
       setMarketplaceListings(migrateRecordsToWorkspace(Array.isArray(saved.marketplaceListings) ? saved.marketplaceListings : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
       setMarketplaceReports(migrateRecordsToWorkspace(Array.isArray(saved.marketplaceReports) ? saved.marketplaceReports : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
@@ -4503,6 +4761,12 @@ export default function App() {
       return () => subscription.unsubscribe();
     }
 
+    setLocalDataLoaded(true);
+    if (!isSupabaseConfigured || !supabase) {
+      setUser(null);
+      return undefined;
+    }
+
     checkUser();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user || null));
     return () => subscription.unsubscribe();
@@ -4520,6 +4784,46 @@ export default function App() {
       setMileageTrips([]);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!localDataLoaded) return undefined;
+    let cancelled = false;
+    loadPhase2Data(phase2Context()).then(({ data, status }) => {
+      if (cancelled) return;
+      setPhase2Data(data);
+      setPhase2SyncStatus(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [localDataLoaded, user?.id, activeWorkspaceId]);
+
+  useEffect(() => {
+    const preferences = phase2Data.notificationPreferences || {};
+    const entries = Object.entries(preferences);
+    if (!entries.length) return;
+    setScoutSnapshot((current) => ({
+      ...current,
+      alertSettings: {
+        ...(current.alertSettings || {}),
+        ...Object.fromEntries(entries.map(([key, preference]) => [key, preference.enabled !== false])),
+      },
+    }));
+  }, [phase2Data.notificationPreferences]);
+
+  useEffect(() => {
+    if (!localDataLoaded) return undefined;
+    const timeout = window.setTimeout(() => {
+      saveAppPreferences(phase2Context(), {
+        dashboardPreset,
+        enabledHomeCards: homeStatsEnabled,
+        enabledDashboardSections: dashboardLayout?.sections || {},
+        defaultVisibility: "private",
+        notificationChannels: { inApp: true },
+      }).then((result) => updatePhase2Status(result, "Dashboard preferences saved locally."));
+    }, 700);
+    return () => window.clearTimeout(timeout);
+  }, [localDataLoaded, user?.id, activeWorkspaceId, dashboardPreset, homeStatsEnabled, dashboardLayout]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -4922,7 +5226,7 @@ export default function App() {
     });
     setItems([]);
     setPurchasers(createDefaultPurchasers());
-    setCatalogProducts(createSharedCatalogProducts());
+    setCatalogProducts([]);
     setTideTradrWatchlist([]);
     setMarketplaceListings([]);
     setMarketplaceReports([]);
@@ -5337,8 +5641,54 @@ export default function App() {
     if (destination === "vault" || destination === "wishlist") setVaultToast("Vault item saved.");
   }
 
-  function confirmScannerDestination(destinationOverride = "") {
-    const destination = destinationOverride || scanDestination || scanReview?.destination || "none";
+  async function persistScannerIntake(destinationOverride = "", status = "saved") {
+    if (!scanReview) return null;
+    const explicitDestination = typeof destinationOverride === "string" ? destinationOverride : "";
+    const destination = explicitDestination || scanDestination || scanReview.destination || "search_only";
+    const destinationMap = {
+      tidetradr: "search_only",
+      pinned: "wishlist",
+      watchlist: "wishlist",
+      scout_report: "store_report",
+    };
+    const scanType = scanReview.scanType === "barcode" ? (scanReview.upc ? "upc" : "manual") : scanReview.scanType;
+    const session = {
+      id: scanReview.scanId || makeId("scan"),
+      scanType: ["upc", "sku", "card_image", "sealed_image", "slab_label", "receipt", "shelf_photo", "marketplace_screenshot", "manual"].includes(scanType)
+        ? scanType
+        : "manual",
+      rawValue: scanReview.rawValue || scanInput || "",
+      matchedCatalogItemId: scanReview.masterCatalogItemId || scanReview.master_catalog_item_id || "",
+      matchConfidence: scanReview.matchConfidence || 0,
+      destination: destinationMap[destination] || destination,
+      status,
+      extractedClues: {
+        itemName: scanReview.itemName,
+        catalogType: scanReview.catalogType,
+        productType: scanReview.productType,
+        setName: scanReview.setName,
+        upc: scanReview.upc,
+        sku: scanReview.sku,
+      },
+      possibleMatches: (scanReview.possibleMatches || []).slice(0, 5).map((match) => ({
+        id: match.item?.id,
+        name: match.item?.name || match.item?.productName || match.item?.cardName,
+        confidence: match.confidencePercent,
+      })),
+      createdAt: scanReview.createdAt || new Date().toISOString(),
+    };
+    setPhase2Data((current) => ({
+      ...current,
+      scannerIntakeSessions: [session, ...(current.scannerIntakeSessions || []).filter((entry) => entry.id !== session.id)],
+    }));
+    const result = await saveScannerIntakeSession(phase2Context(), session);
+    updatePhase2Status(result, "Scanner intake saved locally.");
+    return result;
+  }
+
+  async function confirmScannerDestination(destinationOverride = "") {
+    const explicitDestination = typeof destinationOverride === "string" ? destinationOverride : "";
+    const destination = explicitDestination || scanDestination || scanReview?.destination || "none";
     const productId = scanReview?.matchedCatalogItemId;
     if (!destination || destination === "none") {
       setScanMessage("Choose where this scanned item should go.");
@@ -5354,6 +5704,7 @@ export default function App() {
         setScanMessage("No verified catalog match yet. Search TideTradr, enter UPC/SKU manually, add manually, or suggest a missing product.");
         return;
       }
+      await persistScannerIntake(destination, "confirmed");
       closeInventoryScanner();
       return openProductAddFlow({
         product,
@@ -5365,20 +5716,24 @@ export default function App() {
       });
     }
     if (destination === "tidetradr") {
+      await persistScannerIntake(destination, "review");
       if (productId) selectTideTradrProduct(productId);
       setActiveTab("market");
     }
     if (destination === "deal_finder") {
+      await persistScannerIntake(destination, "review");
       setActiveTab("market");
       if (productId) useCatalogProductInDeal(productId);
       else openDealFinderModal();
     }
     if (destination === "watchlist" || destination === "pinned") {
+      await persistScannerIntake(destination, "saved");
       if (productId) addProductToTideTradrWatchlist(productId, destination === "pinned");
       setActiveTab("market");
       setTideTradrSubTab("watch");
     }
     if (destination === "scout_report") {
+      await persistScannerIntake(destination, "review");
       openScoutSubmitFlow();
     }
     if (destination === "scout_report" || destination === "tidetradr" || destination === "deal_finder" || destination === "watchlist" || destination === "pinned") {
@@ -6208,6 +6563,12 @@ function mapCatalog(row) {
     row.tcg_card_details ||
     row.tcgCardDetails ||
     null;
+  const normalizedMarketSources = Array.isArray(row.marketSources)
+    ? row.marketSources
+    : Array.isArray(row.market_sources)
+      ? row.market_sources
+      : [];
+  const normalizedMarketSummary = row.marketSummary || row.market_summary || null;
 
   return {
     id: row.id,
@@ -6281,6 +6642,30 @@ function mapCatalog(row) {
     sourceGroupId: row.sourceGroupId || row.source_group_id || "",
     sourceGroupName: row.sourceGroupName || row.source_group_name || "",
     priceSubtype: row.priceSubtype || row.price_subtype || "",
+    masterCatalogItemId: row.masterCatalogItemId || row.master_catalog_item_id || "",
+    catalogItemType: row.catalogItemType || row.catalog_item_type || catalogType,
+    priceConfidence: row.priceConfidence || row.price_confidence || normalizedMarketSummary?.price_confidence || "",
+    marketSourceCount: Number(row.marketSourceCount ?? row.market_source_count ?? normalizedMarketSummary?.source_count ?? 0),
+    dataConfidenceScore: Number(row.dataConfidenceScore ?? row.data_confidence_score ?? 0),
+    lastVerifiedAt: row.lastVerifiedAt || row.last_verified_at || "",
+    marketSummary: normalizedMarketSummary,
+    marketSources: normalizedMarketSources.map((source) => ({
+      id: source.id,
+      source: source.source || "",
+      sourceItemId: source.sourceItemId || source.source_item_id || "",
+      priceType: source.priceType || source.price_type || "",
+      marketPrice: Number(source.marketPrice ?? source.market_price ?? 0),
+      lowPrice: Number(source.lowPrice ?? source.low_price ?? 0),
+      midPrice: Number(source.midPrice ?? source.mid_price ?? 0),
+      highPrice: Number(source.highPrice ?? source.high_price ?? 0),
+      soldAverage: Number(source.soldAverage ?? source.sold_average ?? 0),
+      currency: source.currency || "USD",
+      sampleSize: Number(source.sampleSize ?? source.sample_size ?? 0),
+      sourceUrl: source.sourceUrl || source.source_url || "",
+      lastUpdatedAt: source.lastUpdatedAt || source.last_updated_at || "",
+      confidenceScore: Number(source.confidenceScore ?? source.confidence_score ?? 0),
+      status: source.status || "",
+    })),
     variantNames: row.variantNames || row.variant_names || "",
     variants: normalizedVariants.map((variant) => ({
       id: variant.id,
@@ -6370,6 +6755,10 @@ function mapCatalog(row) {
       notes: row.notes || "",
       receiptImage: row.receiptImage || row.receipt_image || row.receipt_photo || "",
       receiptPhoto: row.receiptPhoto || row.receipt_photo || row.receipt_image || "",
+      rawReceiptText: row.rawReceiptText || row.raw_receipt_text || row.raw_ocr_text || "",
+      receiptSplitMode: row.receiptSplitMode || row.receipt_split_mode || "expense_only",
+      receiptTax: row.receiptTax || row.receipt_tax || "",
+      receiptPersonalTotal: row.receiptPersonalTotal || row.receipt_personal_total || "",
       taxDeductible: !!(row.taxDeductible || row.tax_deductible),
       campaignName: row.campaignName || row.campaign_name || "",
       platform: row.platform || "",
@@ -6405,9 +6794,19 @@ function mapCatalog(row) {
   }
 
   async function loadCatalog() {
-    let result = await supabase.from("pokemon_catalog_browse").select("*").order("created_at", { ascending: false });
-    if (result.error) {
-      result = await supabase.from("product_catalog").select("*").order("created_at", { ascending: false });
+    let result = await supabase
+      .from("catalog_search_lightweight")
+      .select("id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,set_name,product_type,barcode,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,expansion,product_line,card_number,rarity,is_sealed,identifier_search,variant_names,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at")
+      .order("last_verified_at", { ascending: false, nullsFirst: false })
+      .order("name", { ascending: true })
+      .limit(50);
+    if (result.error && /catalog_search_lightweight|schema cache/i.test(result.error.message || "")) {
+      result = await supabase
+        .from("pokemon_catalog_browse")
+        .select("id,name,category,set_name,product_type,barcode,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,expansion,product_line,card_number,rarity,is_sealed,created_at,updated_at")
+        .order("last_price_checked", { ascending: false, nullsFirst: false })
+        .order("name", { ascending: true })
+        .limit(50);
     }
     if (result.error) return alert("Could not load catalog: " + result.error.message);
     setCatalogProducts((result.data || []).map(mapCatalog));
@@ -7497,13 +7896,20 @@ function applyCatalogProduct(productId) {
 
 function getTideTradrMarketInfo(product = {}) {
   const bestPrice = getBestAvailableMarketPrice(product, marketPriceCache);
-  const msrp = toNumber(product.msrpPrice || product.msrp);
+  const marketSummary = product.marketSummary || {};
+  const sourceRows = Array.isArray(product.marketSources) ? product.marketSources : [];
+  const primaryMarketSource = sourceRows.find((source) => source.marketPrice || source.midPrice || source.lowPrice || source.highPrice) || sourceRows[0] || {};
+  const msrp = toNumber(product.msrpPrice || product.msrp || marketSummary.msrp);
   const currentMarketValue = toNumber(
     bestPrice.marketPrice ||
       bestPrice.price ||
+      marketSummary.recommended_market_value ||
+      marketSummary.recommendedMarketValue ||
       product.marketPrice ||
       product.marketValue ||
       product.marketValueNearMint ||
+      primaryMarketSource.marketPrice ||
+      primaryMarketSource.midPrice ||
       product.midPrice ||
       product.marketValueRaw ||
       product.highPrice ||
@@ -7514,10 +7920,15 @@ function getTideTradrMarketInfo(product = {}) {
   const sourceName =
     bestPrice.externalSource ||
     product.marketSource ||
+    primaryMarketSource.source ||
     (product.marketUrl ? "Manual market source link" : "") ||
     (product.marketPrice ? "Internal/manual catalog value" : "") ||
     (msrp ? "MSRP fallback" : "Manual fallback needed");
-  const confidenceLevel = bestPrice.confidence?.label || product.marketConfidenceLevel || (product.marketPrice || product.marketValueNearMint
+  const confidenceLabel = String(product.priceConfidence || marketSummary.price_confidence || marketSummary.priceConfidence || "").toLowerCase();
+  const confidenceLevel = bestPrice.confidence?.label ||
+    product.marketConfidenceLevel ||
+    (confidenceLabel ? confidenceLabel[0].toUpperCase() + confidenceLabel.slice(1) : "") ||
+    (product.marketPrice || product.marketValueNearMint
     ? "Medium"
     : product.midPrice || product.lowPrice || product.highPrice
       ? "Low"
@@ -7533,11 +7944,11 @@ function getTideTradrMarketInfo(product = {}) {
     marketOverMsrp,
     marketVsMsrpPercent,
     savingsVsMsrp,
-    lastUpdated: bestPrice.timestamp || product.marketLastUpdated || product.lastUpdated || product.updatedAt || product.createdAt || "Not checked yet",
+    lastUpdated: bestPrice.timestamp || marketSummary.last_updated_at || marketSummary.lastUpdatedAt || primaryMarketSource.lastUpdatedAt || product.marketLastUpdated || product.lastUpdated || product.updatedAt || product.createdAt || "Not checked yet",
     sourceName: sourceType === "live" ? `Live - ${sourceName}` : sourceType === "cached" ? `Cached - ${sourceName}` : sourceType === "manual" ? `Manual - ${sourceName}` : sourceType === "estimated" ? `Estimated - ${sourceName}` : sourceType === "user_submitted" ? `User-submitted - ${sourceName}` : sourceType === "admin_verified" ? `Admin verified - ${sourceName}` : sourceType === "unknown" ? `Unknown - ${sourceName}` : `Estimated - ${sourceName}`,
     marketStatus: sourceType,
-    sourceUrl: bestPrice.sourceUrl || product.sourceUrl || product.externalSourceUrl || product.marketUrl || product.tcgplayerUrl || "",
-    needsReview: bestPrice.confidence?.needsReview || sourceType === "unknown",
+    sourceUrl: bestPrice.sourceUrl || primaryMarketSource.sourceUrl || product.sourceUrl || product.externalSourceUrl || product.marketUrl || product.tcgplayerUrl || "",
+    needsReview: bestPrice.confidence?.needsReview || sourceType === "unknown" || confidenceLevel === "Unknown",
     confidenceLevel,
   };
 }
@@ -7895,7 +8306,82 @@ async function importBulkCatalogProducts() {
   alert(`Imported ${data.length} catalog products.`);
 }
 
+function buildDealFinderSessionRecord() {
+  const quantity = Math.max(1, Number(dealForm.quantity || 1));
+  const marketEach = Number(dealForm.marketTotal || 0) ? Number(dealForm.marketTotal || 0) / quantity : "";
+  const msrpEach = Number(dealForm.retailTotal || 0) ? Number(dealForm.retailTotal || 0) / quantity : "";
+  const selectedProductTitle = selectedDealProduct ? catalogTitle(selectedDealProduct) : "";
+  const recommendationValue =
+    dealScore >= 90 ? "buy" :
+    dealScore >= 60 ? "maybe" :
+    dealScore >= 40 ? "personal_collection_only" :
+    "skip";
+  const item = {
+    id: makeId("deal-item"),
+    productName: selectedProductTitle || dealForm.title || "Manual deal item",
+    productType: selectedDealProduct?.productType || dealForm.condition || "",
+    catalogItemId: selectedDealProduct?.masterCatalogItemId || selectedDealProduct?.master_catalog_item_id || "",
+    quantity,
+    askingPrice: dealAskingPrice,
+    msrp: msrpEach || 0,
+    marketValue: marketEach || 0,
+    estimatedSalePrice: marketEach || 0,
+    fees: Math.max(0, dealMarketTotal * 0.12),
+    shipping: 0,
+    netProfit: dealPotentialProfit,
+    roiPercent: dealRoi,
+    riskNote: dealRecommendationReason,
+    rawProductText: dealForm.title,
+    matchedConfidence: selectedDealProduct ? "likely" : "possible",
+  };
+  return {
+    id: makeId("deal"),
+    title: dealForm.title || selectedProductTitle || "Manual deal",
+    sourceType: "manual",
+    askingPrice: dealAskingPrice,
+    marketTotal: dealMarketTotal,
+    msrpTotal: dealRetailTotal,
+    feeEstimate: Math.max(0, dealMarketTotal * 0.12),
+    shippingEstimate: 0,
+    netProfit: dealPotentialProfit,
+    roiPercent: dealRoi,
+    riskScore: Math.max(0, 100 - dealScore),
+    dealScore,
+    recommendation: recommendationValue,
+    notes: dealForm.notes,
+    rawInput: dealForm.title,
+    visibility: "private",
+    items: [item],
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function saveDealFinderWorkflow(options = {}) {
+  if (!dealForm.title && !selectedDealProduct) {
+    setVaultToast("Add a deal title or choose a product first.");
+    return null;
+  }
+  if (!dealAskingPrice || !dealMarketTotal) {
+    setVaultToast("Add asking price and market total before saving a deal session.");
+    return null;
+  }
+  const session = buildDealFinderSessionRecord();
+  setPhase2Data((current) => ({
+    ...current,
+    dealFinderSessions: [session, ...(current.dealFinderSessions || []).filter((entry) => entry.id !== session.id)],
+    dealFinderItems: [
+      ...session.items.map((item) => ({ ...item, sessionId: session.id })),
+      ...(current.dealFinderItems || []),
+    ],
+  }));
+  const result = await saveDealFinderSession(phase2Context(), session);
+  updatePhase2Status(result, "Deal Finder session saved locally.");
+  if (!options.silent) setVaultToast(result.source === "supabase" ? "Deal session saved to Supabase." : "Deal session saved locally.");
+  return session;
+}
+
 function openDealFinderAddItem() {
+  void saveDealFinderWorkflow({ silent: true });
   const quantity = Math.max(1, Number(dealForm.quantity || 1));
   const marketEach = Number(dealForm.marketTotal || 0) ? Number(dealForm.marketTotal || 0) / quantity : "";
   const msrpEach = Number(dealForm.retailTotal || 0) ? Number(dealForm.retailTotal || 0) / quantity : "";
@@ -7971,7 +8457,7 @@ function renderDealFinderContent() {
             </Field>
           </div>
         </details>
-        <button type="button" onClick={() => setVaultToast("Deal recommendation updated.")}>Calculate Deal</button>
+        <button type="button" onClick={() => saveDealFinderWorkflow()}>Calculate & Save Deal</button>
       </form>
       {dealAskingPrice && dealMarketTotal ? (
         <>
@@ -7987,6 +8473,19 @@ function renderDealFinderContent() {
           <div className="quick-actions">
             <button type="button" onClick={openDealFinderAddItem}>Add item from this deal</button>
           </div>
+          {phase2Data.dealFinderSessions?.length ? (
+            <div className="home-list compact-home-list">
+              {phase2Data.dealFinderSessions.slice(0, 3).map((session) => (
+                <div className="home-list-row" key={session.id}>
+                  <span>
+                    <strong>{session.title}</strong>
+                    <small>{session.recommendation || "saved"} | score {Math.round(Number(session.dealScore || 0))}/100</small>
+                  </span>
+                  <b>{money(session.askingPrice)}</b>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </>
       ) : (
         <div className="empty-state small-empty-state">
@@ -8041,7 +8540,7 @@ function renderTideTradrHeader() {
           {
             key: "tidetradr-recent",
             title: "Recent Checks",
-            subtitle: tideTradrLookupProduct ? catalogTitle(tideTradrLookupProduct) : "No recent check yet",
+            subtitle: phase2RecentDeals[0]?.title || (tideTradrLookupProduct ? catalogTitle(tideTradrLookupProduct) : "No recent check yet"),
             onClick: () => setTideTradrSubTab("recent"),
           },
           {
@@ -8158,8 +8657,10 @@ function renderVaultHeader() {
   const sealedHoldingCount = vaultItems.filter((item) => ["sealed", "held"].includes(normalizeVaultStatus(item))).length;
   const wishlistHeldCount = vaultItems.filter((item) => ["wishlist", "held"].includes(normalizeVaultStatus(item))).length;
   const movedToForgeCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "moved_to_forge").length;
+  const activeVaultPage = vaultSubTab === "overview" ? "collection" : vaultSubTab;
 
   const openVaultItems = (filter = "all") => {
+    setVaultSubTab("collection");
     setVaultFilter(filter);
     setActiveTab("vault");
     setTimeout(() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
@@ -8231,6 +8732,18 @@ function renderVaultHeader() {
         </button>
         </>
       )}
+      tabs={[
+        { key: "collection", label: "Collection" },
+        { key: "sets", label: "Sets" },
+        { key: "portfolio", label: "Portfolio" },
+      ]}
+      activeTab={activeVaultPage}
+      onTabChange={(nextTab) => {
+        setVaultSubTab(nextTab);
+        if (nextTab === "collection") {
+          setTimeout(() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+        }
+      }}
       summaryLabel="Collection Overview"
       summary={(
         <div className="vault-command-overview" aria-label="Vault Collection Overview">
@@ -8361,6 +8874,72 @@ function renderForgeHeader() {
   );
 }
 
+  function buildReceiptWorkflowFromExpense(expense = {}) {
+    const rawText = expense.rawReceiptText || "";
+    const parsedLines = parseReceiptText(rawText);
+    const fallbackLine = !parsedLines.length && expense.vendor
+      ? [{
+          productName: expense.subcategory || expense.category || expense.vendor,
+          quantity: 1,
+          unitPrice: Number(expense.amount || 0),
+          lineTotal: Number(expense.amount || 0),
+          destination: "expense_only",
+          matchedConfidence: "needs_review",
+        }]
+      : [];
+    return {
+      id: makeId("receipt"),
+      merchant: expense.vendor || "",
+      purchasedAt: expense.date ? new Date(`${expense.date}T12:00:00`).toISOString() : new Date().toISOString(),
+      total: Number(expense.amount || 0),
+      tax: Number(expense.receiptTax || 0),
+      paymentMethod: expense.paymentMethod || "",
+      category: expense.category || "Supplies",
+      imageUrl: expense.receiptImage || expense.receiptPhoto || "",
+      splitMode: expense.receiptSplitMode || "expense_only",
+      businessTotal: Math.max(0, Number(expense.amount || 0) - Number(expense.receiptPersonalTotal || 0)),
+      personalTotal: Number(expense.receiptPersonalTotal || 0),
+      notes: expense.notes || "",
+      rawOcrText: rawText,
+      lines: parsedLines.length ? parsedLines : fallbackLine,
+      createdAt: expense.createdAt || new Date().toISOString(),
+    };
+  }
+
+  async function persistReceiptWorkflowFromExpense(expense = {}) {
+    if (!expense.receiptImage && !expense.rawReceiptText && !expense.receiptPhoto) return null;
+    const receipt = buildReceiptWorkflowFromExpense(expense);
+    setPhase2Data((current) => ({
+      ...current,
+      receiptRecords: [receipt, ...(current.receiptRecords || []).filter((entry) => entry.id !== receipt.id)],
+      receiptLineItems: [
+        ...receipt.lines.map((line) => ({ ...line, receiptId: receipt.id })),
+        ...(current.receiptLineItems || []),
+      ],
+    }));
+    const result = await saveReceiptRecord(phase2Context(), receipt);
+    updatePhase2Status(result, "Receipt workflow saved locally.");
+    return result;
+  }
+
+  function prefillQaReceiptDraft() {
+    if (!QA_UNLOCK_PAID_FEATURES) return;
+    setExpenseForm((current) => ({
+      ...current,
+      date: "2026-05-10",
+      vendor: "QA Receipt Merchant 2026-05-10",
+      category: current.category || "Supplies",
+      subcategory: "QA Receipt Line Item",
+      amount: "12.34",
+      paymentMethod: "QA card",
+      notes: "QA Receipt 2026-05-10 persistence test",
+      rawReceiptText: "QA Receipt Line Item 11.35",
+      receiptTax: "0.99",
+      receiptSplitMode: "expense_only",
+    }));
+    setVaultToast("QA receipt draft filled. Save with Add Expense to test normal persistence.");
+  }
+
   async function addExpense(event) {
     event.preventDefault();
     if (!user) return alert("Please log in first.");
@@ -8383,6 +8962,7 @@ function renderForgeHeader() {
         updatedAt: new Date().toISOString(),
       };
       setExpenses(editingExpenseId ? expenses.map((expense) => (expense.id === editingExpenseId ? localExpense : expense)) : [localExpense, ...expenses]);
+      void persistReceiptWorkflowFromExpense(localExpense);
       setEditingExpenseId(null);
       setExpenseForm(blankExpense);
       if (activeFlowModal?.type === "addExpense") closeFlowModal({ force: true, reset: false });
@@ -8421,6 +9001,7 @@ function renderForgeHeader() {
     if (error) return alert("Could not save expense: " + error.message);
 
     const mapped = mapExpense(data);
+    void persistReceiptWorkflowFromExpense({ ...mapped, ...expenseForm, receiptPhoto: expenseForm.receiptImage });
     setExpenses(editingExpenseId ? expenses.map((e) => (e.id === editingExpenseId ? mapped : e)) : [mapped, ...expenses]);
     setEditingExpenseId(null);
     setExpenseForm(blankExpense);
@@ -8969,7 +9550,7 @@ function renderForgeHeader() {
     const personalWorkspaceId = nextWorkspaces.find((workspace) => workspace.type === "personal")?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
     setItems(migrateRecordsToWorkspace(nextItems, personalWorkspaceId, nextWorkspaces).map(mapItem));
     setPurchasers(nextPurchasers.length ? nextPurchasers : createDefaultPurchasers());
-    setCatalogProducts(nextCatalog.length ? mergeSharedCatalogProducts(nextCatalog) : createSharedCatalogProducts());
+    setCatalogProducts(nextCatalog);
     setExpenses(migrateRecordsToWorkspace(nextExpenses, personalWorkspaceId, nextWorkspaces).map(mapExpense));
     setSales(migrateRecordsToWorkspace(nextSales, personalWorkspaceId, nextWorkspaces).map(mapSale));
     setVehicles(nextVehicles);
@@ -9208,11 +9789,77 @@ function renderForgeHeader() {
     0
   ), [activeVaultItems]);
   const homeStatsProfile = { userType, homeStatsEnabled };
+  const wishlistItems = vaultItems.filter((item) => normalizeVaultStatus(item) === "wishlist");
+  const wishlistValue = wishlistItems.reduce(
+    (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || item.targetPrice || 0),
+    0
+  ) + workspaceWatchlist.reduce((sum, item) => sum + Number(item.marketPrice || item.marketValue || item.targetPrice || 0), 0);
+  const ownedCatalogKeys = new Set(activeVaultItems.map((item) => {
+    const setName = String(item.setName || item.expansion || "").toLowerCase();
+    const cardNumber = String(item.cardNumber || item.card_number || "").toLowerCase();
+    return setName && cardNumber ? `${setName}:${cardNumber}` : "";
+  }).filter(Boolean));
+  const missingSetCardCount = catalogProducts.filter((product) => {
+    const setName = String(product.setName || product.expansion || product.set_name || "").toLowerCase();
+    const cardNumber = String(product.cardNumber || product.card_number || "").toLowerCase();
+    return setName && cardNumber && !ownedCatalogKeys.has(`${setName}:${cardNumber}`);
+  }).length;
+  const activeListingCount = workspaceMarketplaceListings.filter((listing) =>
+    ["Active", "Listed", "Cross-listed", "cross_listed", "listed", "active"].includes(listing.status || listing.listingStatus)
+  ).length;
+  const activeStoreAlertCount = (scoutSnapshot.bestBuyAlerts || []).length + needsPhotosItems.length + needsMarketCheckItems.length;
+  const upcomingRestockCount = (scoutSnapshot.restockPatterns || []).length || (scoutSnapshot.predictions || []).length || 0;
+  const kidCommunityBudgetValue = vaultItems
+    .filter((item) => {
+      const text = `${item.status || ""} ${item.actionNotes || ""} ${item.notes || ""}`.toLowerCase();
+      return text.includes("kid") || text.includes("donat") || text.includes("giveaway");
+    })
+    .reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0), 0);
+  const vaultCostBasis = activeVaultItems.reduce(
+    (sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0),
+    0
+  );
+  const vaultGainLoss = vaultValue - vaultCostBasis;
+  const vaultMsrpValue = activeVaultItems.reduce(
+    (sum, item) => sum + Number(item.quantity || 0) * Number(item.msrpPrice || item.msrp || 0),
+    0
+  );
+  const vaultPortfolioStats = [
+    { key: "value", label: "Market Value", value: money(vaultValue) },
+    { key: "cost", label: "Cost Basis", value: money(vaultCostBasis) },
+    { key: "gain", label: "Gain / Loss", value: money(vaultGainLoss) },
+    { key: "msrp", label: "MSRP Value", value: money(vaultMsrpValue) },
+    { key: "duplicates", label: "Duplicates", value: activeVaultItems.filter((item) => Number(item.quantity || 0) > 1).length },
+    { key: "trade", label: "Trade / Sell", value: activeVaultItems.filter((item) => ["trade_pile", "listed", "ready_for_forge"].includes(normalizeVaultStatus(item))).length },
+  ];
+  const vaultSetCompletionRows = POKEMON_SETS.map((set) => {
+    const aliases = [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase());
+    const owned = activeVaultItems.filter((item) => {
+      const setName = String(item.setName || item.expansion || item.setCode || "").toLowerCase();
+      return setName && aliases.some((alias) => setName === alias || setName.includes(alias));
+    });
+    const ownedCards = new Set(owned.map((item) => item.cardNumber || item.card_number || item.name).filter(Boolean));
+    const totalCards = Number(set.total || set.printedTotal || 0);
+    const ownedCount = ownedCards.size || owned.length;
+    return {
+      id: set.setId || set.code || set.name,
+      name: set.name,
+      series: set.series,
+      totalCards,
+      ownedCount,
+      percent: totalCards > 0 ? Math.min(100, Math.round((ownedCount / totalCards) * 100)) : 0,
+    };
+  })
+    .filter((row) => row.ownedCount > 0 || row.totalCards > 0)
+    .sort((a, b) => b.ownedCount - a.ownedCount || String(a.name).localeCompare(String(b.name)))
+    .slice(0, 12);
   const dashboardStats = [
     { key: "collection_value", label: "Collection Value", value: money(vaultValue) },
     { key: "monthly_spending", label: "Monthly Spending", value: money(monthlySpending) },
     { key: "forge_inventory_value", label: "Forge Inventory Value", value: money(totalMsrpValue) },
     { key: "market_value", label: "Market Value", value: money(totalMarketValue) },
+    { key: "wishlist_value", label: "Wishlist Value", value: money(wishlistValue) },
+    { key: "missing_set_cards", label: "Missing Set Cards", value: missingSetCardCount },
     { key: "monthly_profit_loss", label: "Monthly Profit/Loss", value: money(monthlyProfitLoss) },
     { key: "market_roi", label: "Market ROI", value: `${marketRoiPercent.toFixed(1)}%` },
     { key: "planned_roi", label: "Planned ROI", value: `${plannedRoiPercent.toFixed(1)}%` },
@@ -9226,8 +9873,12 @@ function renderForgeHeader() {
     { key: "expenses", label: "Expenses", value: money(totalExpenses) },
     { key: "profit_after_expenses", label: "Profit After Expenses", value: money(estimatedProfitAfterExpenses) },
     { key: "items_sold", label: "Items Sold", value: totalItemsSold },
+    { key: "active_listings", label: "Active Listings", value: activeListingCount },
     { key: "business_miles", label: "Business Miles", value: totalBusinessMiles.toFixed(1) },
     { key: "total_vehicle_cost", label: "Total Vehicle Cost", value: money(totalVehicleCost) },
+    { key: "store_alerts", label: "Store Alerts", value: activeStoreAlertCount },
+    { key: "upcoming_restocks", label: "Upcoming Restocks", value: upcomingRestockCount },
+    { key: "kid_pack_budget", label: "Kid Pack Budget", value: money(kidCommunityBudgetValue) },
   ];
   const dashboardProfile = { dashboardPreset, dashboardLayout };
   const planProfile = subscriptionProfile;
@@ -9236,10 +9887,14 @@ function renderForgeHeader() {
   const paidUser = isPaidUser(planProfile);
   const adminUser = isAdminUser(planProfile);
   const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
-  const accountStatusTitle = signedInWithSupabase ? "Signed In" : "Private Beta Mode";
+  const accountStatusTitle = signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Private Beta Mode" : "Supabase Sign-In Required";
   const accountStatusDescription = signedInWithSupabase
     ? currentUserProfile.email || user?.email || "Supabase account"
-    : "Beta data is saved on this device unless you export or connect cloud sync.";
+    : BETA_LOCAL_MODE
+      ? "Beta data is saved on this device unless you export or connect cloud sync."
+      : isSupabaseConfigured
+        ? "Cloud sync is enabled. Sign in with Supabase to save Phase 2 workflows."
+        : "Cloud sync is enabled, but Supabase URL/key configuration is missing.";
   const localBetaAdminEnabled =
     typeof window !== "undefined" && localStorage.getItem("et-tcg-local-admin") === "true";
   const adminToolsVisible = adminUser || localBetaAdminEnabled;
@@ -9249,26 +9904,28 @@ function renderForgeHeader() {
     ? "Your profile has admin review access. Shared-data writes remain protected by server-side database rules."
     : "Enabled by private beta admin mode. Normal users submit suggestions for review instead of directly changing shared data.";
   const notificationPreferenceRows = [
-    { key: "scoutAlerts", label: "Scout alerts", description: "Store, report, and restock intelligence alerts." },
-    { key: "favoriteStoreAlerts", label: "Favorite store alerts", description: "Updates tied to stores you have saved." },
-    { key: "watchlistProductAlerts", label: "Watchlist product alerts", description: "Catalog or market changes for watched products." },
-    { key: "onlineDropAlerts", label: "Online drop alerts", description: "Best Buy and online availability checks when connected." },
+    ...ALERT_TYPE_OPTIONS.map((option) => ({
+      key: option.key,
+      label: option.label,
+      description: option.description,
+    })),
     { key: "verifiedOnly", label: "Verified-only alerts", description: "Prefer alerts backed by verified reports." },
     { key: "quietHours", label: "Quiet hours", description: "Keep overnight notifications quiet when alerts go live." },
   ];
   const menuHomeStatRows = [
-    { key: "collection_value", label: "Collection Value" },
-    { key: "monthly_spending", label: "Monthly Spending" },
+    ...HOME_STATS.map((stat) => ({ key: stat.key, label: stat.label })),
     { key: "marketUpdates", label: "Market Updates" },
     { key: "alerts", label: "Active Alerts" },
   ];
   const menuDashboardSectionRows = [
+    { key: "tcg_os", label: "TCG OS Command Center" },
     { key: "home_stats", label: "Today / Overview" },
     { key: "action_center", label: "Beta Tester Path" },
     { key: "recent_inventory", label: "Recent Activity" },
     { key: "purchaser_spending", label: "Recent Purchases" },
     { key: "watchlist", label: "Market Watch" },
     { key: "store_reports", label: "Recent Reports" },
+    { key: "kid_community", label: "Kid / Community Mode" },
   ];
   const feedbackDialogCopy = {
     bug: {
@@ -9326,7 +9983,7 @@ function renderForgeHeader() {
       submit: "Submit Market Report",
     },
   }[feedbackDialog || "feedback"];
-  const featureAllowed = (featureKey) => hasPlanAccess(planProfile, featureKey);
+  const featureAllowed = (featureKey) => QA_UNLOCK_PAID_FEATURES || hasPlanAccess(planProfile, featureKey);
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
   const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
   const visibleCoreHomeStats = visibleDashboardStats.filter((stat) => CORE_HOME_STAT_KEYS.includes(stat.key));
@@ -9366,10 +10023,93 @@ function renderForgeHeader() {
     String(item.notes || "").toLowerCase().includes("kid") ||
     String(item.notes || "").toLowerCase().includes("donat")
   );
-  const packItForwardCost = packItForwardItems.reduce(
+  const kidBuilderItems = [
+    ...packItForwardItems.map((item) => ({
+      id: item.id,
+      catalogItemId: item.masterCatalogItemId || item.master_catalog_item_id || "",
+      itemName: item.name || item.itemName || "Community item",
+      quantity: Number(item.quantity || 1),
+      unitCost: Number(item.unitCost || 0),
+      msrp: Number(item.msrpPrice || item.msrp || 0),
+      marketValue: Number(item.marketPrice || item.marketValue || 0),
+      communityPrice: Number(item.msrpPrice || item.msrp || item.unitCost || 0),
+      donationAmount: Number(item.quantity || 1) * Number(item.unitCost || 0),
+      notes: item.notes || item.actionNotes || "",
+    })),
+    ...kidProjectDraftItems,
+  ];
+  const packItForwardCost = kidBuilderItems.reduce(
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0),
     0
   );
+
+  function updateKidProjectDraftItem(field, value) {
+    setKidProjectDraftItem((current) => ({ ...current, [field]: value }));
+  }
+
+  function addKidProjectDraftItem() {
+    const itemName = kidProjectDraftItem.itemName.trim();
+    if (!itemName) {
+      setVaultToast("Add a Kid Pack item name first.");
+      return;
+    }
+    setKidProjectDraftItems((current) => [
+      {
+        id: makeId("kid-item"),
+        itemName,
+        quantity: Math.max(1, Number(kidProjectDraftItem.quantity || 1)),
+        unitCost: Number(kidProjectDraftItem.unitCost || 0),
+        marketValue: Number(kidProjectDraftItem.marketValue || 0),
+        communityPrice: Number(kidProjectDraftItem.marketValue || kidProjectDraftItem.unitCost || 0),
+        donationAmount: Math.max(1, Number(kidProjectDraftItem.quantity || 1)) * Number(kidProjectDraftItem.unitCost || 0),
+        notes: kidProjectDraftItem.notes || "",
+      },
+      ...current,
+    ]);
+    setKidProjectDraftItem({ itemName: "", quantity: "1", unitCost: "", marketValue: "", notes: "" });
+    setVaultToast("Kid Pack item added.");
+  }
+
+  async function saveKidPackProjectWorkflow() {
+    const targetPackCount = Math.max(0, Number(kidProjectForm.targetPackCount || 0));
+    const project = {
+      id: makeId("kid-project"),
+      projectType: "kid_pack_builder",
+      name: kidProjectForm.name || "Kid Pack Builder",
+      budget: Number(kidProjectForm.budget || 0),
+      targetPackCount,
+      costPerPack: targetPackCount ? packItForwardCost / targetPackCount : 0,
+      donationTotal: packItForwardCost,
+      eventDate: kidProjectForm.eventDate || "",
+      status: "planning",
+      notes: kidProjectForm.notes || "",
+      items: kidBuilderItems.map((item) => ({ ...item, id: item.id || makeId("kid-item") })),
+      createdAt: new Date().toISOString(),
+    };
+    setPhase2Data((current) => ({
+      ...current,
+      kidCommunityProjects: [project, ...(current.kidCommunityProjects || []).filter((entry) => entry.id !== project.id)],
+      kidCommunityProjectItems: [
+        ...project.items.map((item) => ({ ...item, projectId: project.id })),
+        ...(current.kidCommunityProjectItems || []),
+      ],
+    }));
+    const result = await saveKidCommunityProject(phase2Context(), project);
+    updatePhase2Status(result, "Kid Pack Builder project saved locally.");
+    setVaultToast(result.source === "supabase" ? "Kid Pack project saved to Supabase." : "Kid Pack project saved locally.");
+  }
+
+  function exportKidPackPlan() {
+    const rows = kidBuilderItems.map((item) => ({
+      item: item.name || item.itemName,
+      quantity: item.quantity || 1,
+      unitCost: item.unitCost || 0,
+      marketValue: item.marketPrice || item.marketValue || 0,
+      notes: item.notes || item.actionNotes || "",
+    }));
+    downloadCSV("ember-tide-kid-pack-builder.csv", rows);
+  }
+
   const recentPurchases = [...forgeInventoryItems]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     .slice(0, 5);
@@ -9819,34 +10559,33 @@ function renderForgeHeader() {
   const dealPercentOfRetail = dealRetailTotal > 0 ? (dealAskingPrice / dealRetailTotal) * 100 : 0;
   const dealPotentialProfit = dealMarketTotal - dealAskingPrice;
   const dealRoi = dealAskingPrice > 0 ? (dealPotentialProfit / dealAskingPrice) * 100 : 0;
+  const dealScore = !dealAskingPrice || !dealMarketTotal
+    ? 0
+    : Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            100 -
+              Math.max(0, dealPercentOfMarket - 55) * 1.4 +
+              Math.min(Math.max(dealRoi, -50), 100) * 0.15 -
+              (dealPercentOfRetail > 120 ? 8 : 0)
+          )
+        )
+      );
+  const dealBand = DEAL_SCORE_BANDS.find((band) => dealScore >= band.min) || DEAL_SCORE_BANDS[DEAL_SCORE_BANDS.length - 1];
   const dealRating =
     !dealAskingPrice || !dealMarketTotal
       ? "Enter a deal"
-      : dealPercentOfMarket < 65
-        ? "Great deal"
-        : dealPercentOfMarket <= 80
-          ? "Good deal"
-          : dealPercentOfMarket <= 95
-            ? "Fair deal"
-            : dealPercentOfMarket <= 110
-              ? "Personal collection / neutral"
-              : "Too high / avoid";
+      : `${dealBand.label}${dealScore >= 90 ? " / Great deal" : ""} (${dealScore}/100)`;
   const dealRecommendation =
     !dealAskingPrice || !dealMarketTotal
       ? "Enter product and asking price"
-      : dealPercentOfMarket <= 80 && dealRoi >= 20
-        ? "Buy"
-        : dealPercentOfMarket <= 95
-          ? "Maybe"
-          : "Pass";
+      : dealBand.recommendation;
   const dealRecommendationReason =
-    dealRecommendation === "Buy"
-      ? "Asking price is comfortably below TideTradr market and leaves useful upside."
-      : dealRecommendation === "Maybe"
-        ? "Price is close enough to market that condition, taxes, fees, and personal goals matter."
-        : dealRecommendation === "Pass"
-          ? "Asking price is too close to or above market for a clean beta recommendation."
-          : "Choose a TideTradr product or enter market totals to calculate a recommendation.";
+    !dealAskingPrice || !dealMarketTotal
+      ? "Choose a TideTradr product or enter market totals to calculate a recommendation."
+      : `${dealBand.description} Fees, shipping, taxes, and condition still matter before buying.`;
 
   const quickInventoryFilters = [
     {
@@ -10071,9 +10810,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const selectedCatalogDetailProduct = selectedCatalogDetailBaseProduct
     ? {
         ...selectedCatalogDetailBaseProduct,
+        ...(selectedCatalogDetailExtra?.product || {}),
         identifiers: selectedCatalogDetailExtra?.identifiers?.length ? selectedCatalogDetailExtra.identifiers : selectedCatalogDetailBaseProduct.identifiers || [],
         variants: selectedCatalogDetailExtra?.variants?.length ? selectedCatalogDetailExtra.variants : selectedCatalogDetailBaseProduct.variants || [],
         cardDetails: selectedCatalogDetailExtra?.cardDetails || selectedCatalogDetailBaseProduct.cardDetails || null,
+        marketSources: selectedCatalogDetailExtra?.marketSources || selectedCatalogDetailBaseProduct.marketSources || [],
+        marketSummary: selectedCatalogDetailExtra?.marketSummary || selectedCatalogDetailBaseProduct.marketSummary || null,
       }
     : null;
   const selectedCatalogDetailMarketInfo = selectedCatalogDetailProduct ? getTideTradrMarketInfo(selectedCatalogDetailProduct) : null;
@@ -10301,6 +11043,28 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   async function loadCatalogProductExtras(productId) {
     if (!productId || !isSupabaseConfigured || !supabase || catalogDetailExtras[productId]) return;
     try {
+      const detailResult = await supabase
+        .from("catalog_item_details")
+        .select("*")
+        .eq("id", productId)
+        .maybeSingle();
+
+      if (!detailResult.error && detailResult.data) {
+        const detailProduct = mapCatalog(detailResult.data);
+        setCatalogDetailExtras((current) => ({
+          ...current,
+          [productId]: {
+            product: detailProduct,
+            identifiers: detailProduct.identifiers || [],
+            variants: detailProduct.variants || [],
+            cardDetails: detailProduct.cardDetails || null,
+            marketSources: detailProduct.marketSources || [],
+            marketSummary: detailProduct.marketSummary || null,
+          },
+        }));
+        return;
+      }
+
       const [identifierResult, variantResult, cardDetailResult] = await Promise.all([
         supabase.from("product_identifiers").select("*").eq("catalog_product_id", productId).order("identifier_type", { ascending: true }),
         supabase.from("catalog_product_variants").select("*").eq("catalog_product_id", productId).order("is_default", { ascending: false }).order("variant_name", { ascending: true }),
@@ -10336,10 +11100,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             isDefault: Boolean(variant.is_default),
           })),
           cardDetails: cardDetailResult.error ? null : mapCatalog({ id: productId, name: cardDetailResult.data?.card_name, card_details: cardDetailResult.data }).cardDetails,
+          marketSources: [],
+          marketSummary: null,
         },
       }));
     } catch {
-      setCatalogDetailExtras((current) => ({ ...current, [productId]: { identifiers: [], variants: [], cardDetails: null } }));
+      setCatalogDetailExtras((current) => ({ ...current, [productId]: { identifiers: [], variants: [], cardDetails: null, marketSources: [], marketSummary: null } }));
     }
   }
 
@@ -11863,6 +12629,123 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     };
   }
 
+  function marketplaceSkuLabel(listing = {}) {
+    const base = [listing.category || "TCG", listing.productType || "ITEM", listing.id || makeId("sku")]
+      .join("-")
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, "")
+      .slice(0, 32);
+    return base || `TCG-${Date.now()}`;
+  }
+
+  function buildCrossListingChannels(listing = {}) {
+    const skuLabel = marketplaceSkuLabel(listing);
+    const price = Number(listing.askingPrice || listing.tradeValue || 0);
+    const baseDescription = [
+      listing.description,
+      listing.condition ? `Condition: ${listing.condition}` : "",
+      listing.quantity ? `Quantity: ${listing.quantity}` : "",
+      listing.pickupOnly ? "Local pickup available." : "",
+      listing.shippingAvailable ? "Shipping available." : "",
+      listing.intendedForKids ? "Kid/family-friendly pricing intent." : "",
+    ].filter(Boolean).join("\n");
+    return [
+      {
+        platform: "ebay",
+        listingTitle: `${listing.title}`.slice(0, 80),
+        listingDescription: baseDescription,
+        listedPrice: price,
+        platformFees: Number((price * 0.13).toFixed(2)),
+        shippingCost: 0,
+        listingStatus: "draft",
+        skuLabel,
+      },
+      {
+        platform: "facebook",
+        listingTitle: `${listing.title} - ${money(price)}`.slice(0, 100),
+        listingDescription: `${baseDescription}\nMeet locally and verify item before payment.`.trim(),
+        listedPrice: price,
+        platformFees: 0,
+        shippingCost: 0,
+        listingStatus: "draft",
+        skuLabel,
+      },
+      {
+        platform: "whatnot",
+        listingTitle: `${listing.title}`.slice(0, 60),
+        listingDescription: baseDescription,
+        listedPrice: price,
+        platformFees: Number((price * 0.11).toFixed(2)),
+        shippingCost: 0,
+        listingStatus: "draft",
+        skuLabel,
+      },
+      {
+        platform: "instagram",
+        listingTitle: `${listing.title}`.slice(0, 80),
+        listingDescription: `${baseDescription}\n#PokemonTCG #TCGCommunity #EmberAndTide`.trim(),
+        listedPrice: price,
+        platformFees: 0,
+        shippingCost: 0,
+        listingStatus: "draft",
+        skuLabel,
+      },
+    ].map((channel) => ({
+      ...channel,
+      id: `${listing.id}-${channel.platform}`,
+      sourceInventoryId: listing.sourceItemId || listing.id,
+      catalogItemId: listing.catalogItemId || "",
+      createdAt: new Date().toISOString(),
+    }));
+  }
+
+  async function persistCrossListingChannels(listing = {}) {
+    const channels = buildCrossListingChannels(listing);
+    setPhase2Data((current) => ({
+      ...current,
+      marketplaceListingChannels: [
+        ...channels,
+        ...(current.marketplaceListingChannels || []).filter((channel) => channel.sourceInventoryId !== (listing.sourceItemId || listing.id)),
+      ],
+    }));
+    const result = await saveMarketplaceListingChannels(phase2Context(), listing, channels);
+    updatePhase2Status(result, "Cross-listing channel drafts saved locally.");
+    return channels;
+  }
+
+  function exportCrossListingCSV(platform = "all") {
+    const listingsToExport = workspaceMarketplaceListings.length ? workspaceMarketplaceListings : marketplaceListings;
+    const savedChannelRows = (phase2Data.marketplaceListingChannels || [])
+      .filter((channel) => platform === "all" || channel.platform === platform)
+      .map((channel) => ({
+        platform: channel.platform,
+        sku: channel.skuLabel,
+        title: channel.listingTitle,
+        description: channel.listingDescription,
+        price: channel.listedPrice,
+        estimatedFees: channel.platformFees,
+        status: channel.listingStatus,
+        sourceListingId: channel.sourceInventoryId,
+        catalogItemId: channel.catalogItemId || "",
+      }));
+    const rows = listingsToExport.length
+      ? listingsToExport.flatMap((listing) => buildCrossListingChannels(listing).map((channel) => ({
+        platform: channel.platform,
+        sku: channel.skuLabel,
+        title: channel.listingTitle,
+        description: channel.listingDescription,
+        price: channel.listedPrice,
+        estimatedFees: channel.platformFees,
+        status: channel.listingStatus,
+        sourceListingId: listing.id,
+        catalogItemId: listing.catalogItemId || "",
+      })))
+        .filter((row) => platform === "all" || row.platform === platform)
+      : savedChannelRows;
+    downloadCSV(`ember-tide-cross-listings-${platform}.csv`, rows);
+    setVaultToast("Cross-listing export created.");
+  }
+
   function saveMarketplaceListing(status = "Draft") {
     if (!marketplaceFormReady()) {
       setVaultToast(!marketplaceForm.title.trim() ? "Listing title is required." : "Quantity must be at least 1.");
@@ -11880,6 +12763,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setMarketplaceSourcePicker("manual");
     setMarketplaceView("my");
     if (activeFlowModal?.type === "createListing") closeFlowModal({ force: true, reset: false });
+    void persistCrossListingChannels(listing);
     setVaultToast(finalStatus === "Draft" ? "Listing draft saved." : "Listing submitted for review.");
   }
 
@@ -11992,7 +12876,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const currentSellerId = currentUserProfile.userId || user?.id;
     const publicListings = workspaceMarketplaceListings.filter((listing) => listing.status === "Active");
     const myListings = workspaceMarketplaceListings.filter((listing) => listing.sellerUserId === currentSellerId);
-    const draftListings = myListings.filter((listing) => listing.status === "Draft");
+    const phase2ChannelDrafts = phase2MarketplaceDraftListings.filter((listing) => listing.status.toLowerCase() === "draft");
+    const visibleMyListings = myListings.length ? myListings : phase2MarketplaceDraftListings;
+    const draftListings = myListings.length ? myListings.filter((listing) => listing.status === "Draft") : phase2ChannelDrafts;
     const pendingReviewListings = workspaceMarketplaceListings.filter((listing) =>
       listing.status === "Pending Review" && (listing.sellerUserId === currentSellerId || canReviewSharedData)
     );
@@ -12026,7 +12912,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       marketplaceView === "pending" ? "Listings waiting for admin review before becoming public." :
       "Approved community listings only. Pending listings stay private to seller/admin.";
     const panelListings =
-      marketplaceView === "my" ? myListings :
+      marketplaceView === "my" ? visibleMyListings :
       marketplaceView === "saved" ? savedListings :
       marketplaceView === "drafts" ? draftListings :
       marketplaceView === "pending" ? pendingReviewListings :
@@ -12043,7 +12929,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <div className="cards mini-cards">
           <div className="card"><p>Active Listings</p><h2>{publicListings.length}</h2></div>
           <div className="card"><p>Pending Review</p><h2>{workspaceMarketplaceListings.filter((listing) => listing.status === "Pending Review").length}</h2></div>
-          <div className="card"><p>My Listings</p><h2>{myListings.length}</h2></div>
+          <div className="card"><p>My Listings</p><h2>{visibleMyListings.length}</h2></div>
           <div className="card"><p>Saved</p><h2>{marketplaceSavedIds.length}</h2></div>
         </div>
 
@@ -12071,6 +12957,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {label}
             </button>
           ))}
+          <button type="button" className="secondary-button" onClick={() => exportCrossListingCSV("all")}>Export Listings</button>
+          <button type="button" className="secondary-button" onClick={() => exportCrossListingCSV("whatnot")}>Whatnot CSV</button>
         </div>
 
         {marketplaceView === "landing" ? (
@@ -12678,6 +13566,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderAddExpenseFlowContent() {
     return (
       <form onSubmit={addExpense} className="form flow-form-grid">
+        {QA_UNLOCK_PAID_FEATURES ? (
+          <div className="flow-form-top-actions">
+            <button type="button" className="secondary-button" onClick={prefillQaReceiptDraft}>Fill QA Receipt Draft</button>
+          </div>
+        ) : null}
         <Field label="Date"><input type="date" value={expenseForm.date} onChange={(e) => updateExpenseForm("date", e.target.value)} /></Field>
         <Field label="Vendor / Store"><input value={expenseForm.vendor} onChange={(e) => updateExpenseForm("vendor", e.target.value)} /></Field>
         <Field label="Expense Category"><select value={expenseForm.category} onChange={(e) => updateExpenseForm("category", e.target.value)}>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
@@ -12701,6 +13594,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <Field label="Notes"><input value={expenseForm.notes} onChange={(e) => updateExpenseForm("notes", e.target.value)} /></Field>
         <label className="toggle-row"><span>Tax deductible</span><input type="checkbox" checked={!!expenseForm.taxDeductible} onChange={(e) => updateExpenseForm("taxDeductible", e.target.checked)} /></label>
         <Field label="Receipt / Screenshot"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateExpenseForm("receiptImage", url), "expenses")} /></Field>
+        <Field label="Receipt OCR / Transcript">
+          <textarea
+            value={expenseForm.rawReceiptText || ""}
+            onChange={(e) => updateExpenseForm("rawReceiptText", e.target.value)}
+            placeholder="Paste receipt text here for beta OCR parsing. Lines ending in prices become receipt line items."
+          />
+        </Field>
+        <Field label="Receipt Split">
+          <select value={expenseForm.receiptSplitMode || "expense_only"} onChange={(e) => updateExpenseForm("receiptSplitMode", e.target.value)}>
+            <option value="expense_only">Create expense only</option>
+            <option value="forge">Create / attach Forge inventory later</option>
+            <option value="vault">Add to Vault later</option>
+            <option value="split_business_personal">Split business / personal</option>
+            <option value="attach_existing">Attach to existing item</option>
+          </select>
+        </Field>
+        <Field label="Receipt Tax"><input type="number" step="0.01" value={expenseForm.receiptTax || ""} onChange={(e) => updateExpenseForm("receiptTax", e.target.value)} /></Field>
+        <Field label="Personal Split Total"><input type="number" step="0.01" value={expenseForm.receiptPersonalTotal || ""} onChange={(e) => updateExpenseForm("receiptPersonalTotal", e.target.value)} /></Field>
         {expenseForm.receiptImage ? <div className="receipt-preview"><p>Receipt</p><img src={expenseForm.receiptImage} alt="Receipt" /></div> : null}
         <div className="flow-form-footer">
           <button type="submit">{editingExpenseId ? "Save Expense" : "Add Expense"}</button>
@@ -13837,7 +14748,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     E&T TCG
   </h1>
 
-  <p>{activeTabLabel} | {BETA_LOCAL_MODE ? "Private Beta" : `Cloud sync: ${user.email}`}</p>
+  <p>{activeTabLabel} | {BETA_LOCAL_MODE ? "Private Beta" : user ? `Cloud sync: ${user.email}` : "Supabase mode"}</p>
 
   {showTreasure && (
     <div className="hidden-treasure">
@@ -14196,6 +15107,40 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   {workspaceMessage ? <p className="compact-subtitle">{workspaceMessage}</p> : null}
                 </div>
               ), "Work")}
+              {renderMenuPullDown("tcg_os", "TCG OS", "Jump to collect, sell, find, share, know, decide, scan, and give", (
+                <div className="drawer-links">
+                  <div className="drawer-info-card">
+                    <strong>App identity</strong>
+                    <p className="compact-subtitle">Vault = collect. Forge = sell. Scout = find. Tidepool = share. Catalog = know. Deal Finder = decide. Scanner = add anything.</p>
+                    <div className="tcg-os-link-grid">
+                      {TCG_OS_MODES.map((mode) => (
+                        <button type="button" className="drawer-link" key={mode.key} onClick={() => runMenuAction(() => openOperatingSystemFeature(mode.key))}>
+                          <strong>{mode.title}</strong>
+                          <small>{mode.verb}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="drawer-info-card">
+                    <strong>More tools</strong>
+                    <div className="tcg-os-link-grid">
+                      {APP_STRUCTURE_LINKS.map((link) => (
+                        <button type="button" className="drawer-link" key={link.key} onClick={() => runMenuAction(() => openOperatingSystemFeature(link.key))}>
+                          <strong>{link.label}</strong>
+                          <small>{link.description}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="drawer-info-card">
+                    <strong>Universal data uses admin approval</strong>
+                    <p className="compact-subtitle">Users can suggest changes, but shared store/catalog/identifier defaults should be reviewed before becoming universal data.</p>
+                    <div className="universal-data-chip-grid">
+                      {UNIVERSAL_DATA_ENTITIES.map((entity) => <span key={entity}>{entity}</span>)}
+                    </div>
+                  </div>
+                </div>
+              ), "OS")}
               {renderMenuPullDown("settings", "Settings", "Appearance, location, notifications, and dashboard display", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
@@ -14304,7 +15249,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <>
                   <div className="drawer-info-card">
                     <strong>Optional Cloud Sync</strong>
-                    <p className="compact-subtitle">Your beta data is stored on this device unless you export it or connect cloud sync. Cloud sync is not active yet.</p>
+                    <p className="compact-subtitle">
+                      {BETA_LOCAL_MODE
+                        ? "Your beta data is stored on this device unless you export it or connect cloud sync. Cloud sync is not active yet."
+                        : isSupabaseConfigured
+                          ? "Cloud sync is enabled for QA. Sign in to save Phase 2 workflows to Supabase."
+                          : "Cloud sync is enabled for QA, but Supabase URL/key configuration is missing."}
+                    </p>
                     <dl className="drawer-status-list">
                       <div><dt>Current mode</dt><dd>{BETA_LOCAL_MODE ? "Private beta" : "Cloud-ready"}</dd></div>
                       <div><dt>Preference</dt><dd>{cloudSyncPreference === "cloud" ? "Cloud sync access requested" : "Keep local"}</dd></div>
@@ -15179,6 +16130,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </button>
               ))}
             </div>
+            <div className="scanner-intake-grid" aria-label="Supported scanner intake types">
+              {SCANNER_INTAKE_TYPES.map((type) => (
+                <span className="scanner-intake-chip" key={type.key}>
+                  <strong>{type.label}</strong>
+                  <small>{type.status}</small>
+                </span>
+              ))}
+            </div>
             {scanMode === "picture" ? (
               <div className="picture-lookup-panel">
                 <div className="small-empty-state">
@@ -15367,6 +16326,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               )}
             />
 
+            {dashboardSectionState("tcg_os").enabled !== false ? renderTcgOperatingSystemPanel({ compact: true }) : null}
+
             {dashboardSectionState("home_stats").enabled !== false ? (
             <section className="panel home-today-panel">
               <div className="compact-card-header">
@@ -15426,6 +16387,91 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   { key: "export-backup", title: "Export Backup", subtitle: "Save private beta data", onClick: () => { setMenuSectionsOpen({ data: true }); setMenuOpen(true); } },
                 ]}
               />
+            </section>
+            ) : null}
+
+            {dashboardSectionState("kid_community").enabled !== false ? (
+            <section className="panel kid-community-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h2>Kid / Community Mode</h2>
+                  <p>Plan kid packs, donation items, community pricing, giveaways, and event prep without mixing it into business P/L.</p>
+                </div>
+                <button type="button" className="secondary-button" onClick={addKidProjectDraftItem}>Add Item</button>
+              </div>
+              <div className="cards mini-cards">
+                <div className="card"><p>Tracked Items</p><h2>{kidBuilderItems.length}</h2></div>
+                <div className="card"><p>Community Cost</p><h2>{money(packItForwardCost)}</h2></div>
+                <div className="card"><p>Cost / Pack</p><h2>{kidBuilderItems.length ? money(packItForwardCost / Math.max(1, kidBuilderItems.length)) : "$0.00"}</h2></div>
+              </div>
+              <div className="quick-actions">
+                <button type="button" onClick={() => openTidepoolCommunity("Events")}>Donation Post</button>
+                <button type="button" className="secondary-button" onClick={saveKidPackProjectWorkflow}>Save Pack Plan</button>
+                <button type="button" className="secondary-button" onClick={exportKidPackPlan}>Export Plan</button>
+              </div>
+              <div className="form kid-pack-builder-form">
+                <Field label="Project Name">
+                  <input value={kidProjectForm.name} onChange={(event) => updateKidProjectForm("name", event.target.value)} />
+                </Field>
+                <Field label="Budget">
+                  <input type="number" step="0.01" value={kidProjectForm.budget} onChange={(event) => updateKidProjectForm("budget", event.target.value)} />
+                </Field>
+                <Field label="Target Packs">
+                  <input type="number" min="1" value={kidProjectForm.targetPackCount} onChange={(event) => updateKidProjectForm("targetPackCount", event.target.value)} />
+                </Field>
+                <Field label="Event Date">
+                  <input type="date" value={kidProjectForm.eventDate} onChange={(event) => updateKidProjectForm("eventDate", event.target.value)} />
+                </Field>
+                <Field label="Notes">
+                  <input value={kidProjectForm.notes} onChange={(event) => updateKidProjectForm("notes", event.target.value)} placeholder="Donation goal, event prep, thank-you notes..." />
+                </Field>
+              </div>
+              <div className="form kid-pack-builder-form">
+                <Field label="Kid Pack Item">
+                  <input value={kidProjectDraftItem.itemName} onChange={(event) => updateKidProjectDraftItem("itemName", event.target.value)} placeholder="Prize pack item, sticker, pack, single..." />
+                </Field>
+                <Field label="Item Quantity">
+                  <input type="number" min="1" value={kidProjectDraftItem.quantity} onChange={(event) => updateKidProjectDraftItem("quantity", event.target.value)} />
+                </Field>
+                <Field label="Item Cost">
+                  <input type="number" step="0.01" value={kidProjectDraftItem.unitCost} onChange={(event) => updateKidProjectDraftItem("unitCost", event.target.value)} />
+                </Field>
+                <Field label="Item Value">
+                  <input type="number" step="0.01" value={kidProjectDraftItem.marketValue} onChange={(event) => updateKidProjectDraftItem("marketValue", event.target.value)} />
+                </Field>
+                <Field label="Item Note">
+                  <input value={kidProjectDraftItem.notes} onChange={(event) => updateKidProjectDraftItem("notes", event.target.value)} placeholder="Pack role, age group, or event note..." />
+                </Field>
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={addKidProjectDraftItem}>Add Kid Pack Item</button>
+                </div>
+              </div>
+              {kidBuilderItems.length ? (
+                <div className="home-list compact-home-list">
+                  {kidBuilderItems.slice(0, 5).map((item) => (
+                    <div className="home-list-row" key={item.id || item.itemName}>
+                      <span>
+                        <strong>{item.itemName || item.name}</strong>
+                        <small>Qty {item.quantity || 1} | {item.notes || "Kid Pack item"}</small>
+                      </span>
+                      <b>{money(Number(item.quantity || 1) * Number(item.unitCost || 0))}</b>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {phase2Data.kidCommunityProjects?.length ? (
+                <div className="home-list compact-home-list">
+                  {phase2Data.kidCommunityProjects.slice(0, 3).map((project) => (
+                    <div className="home-list-row" key={project.id}>
+                      <span>
+                        <strong>{project.name}</strong>
+                        <small>{project.targetPackCount || 0} packs | {phase2KidProjectItemCounts[project.id] || 0} items | {money(project.costPerPack || 0)} per pack</small>
+                      </span>
+                      <b>{project.status || "planning"}</b>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </section>
             ) : null}
 
@@ -15864,7 +16910,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <select value={dashboardPreset} onChange={(event) => updateDashboardPreset(event.target.value)}>
                       {DASHBOARD_PRESETS.map((preset) => (
                         <option key={preset} value={preset}>
-                          {preset === "parent" ? "Parent / Kid-Focused" : preset.charAt(0).toUpperCase() + preset.slice(1)}
+                          {dashboardPresetLabel(preset)}
                         </option>
                       ))}
                     </select>
@@ -16340,6 +17386,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <>
             {renderVaultHeader()}
 
+            {(vaultSubTab === "overview" || vaultSubTab === "collection") ? (
             <section id="vault-items-section" className="panel">
               <div className="compact-card-header">
                 <div>
@@ -16450,6 +17497,64 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 compact
               />
             </section>
+            ) : null}
+
+            {vaultSubTab === "sets" ? (
+              <section className="panel vault-sets-panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Set Completion</h2>
+                    <p>Pokemon set progress from your Vault items. Variants and master-set rules can deepen from here.</p>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => openVaultCatalogSearchFlow({ source: "vault-sets" })}>Search Set</button>
+                </div>
+                <div className="vault-set-grid">
+                  {vaultSetCompletionRows.length ? vaultSetCompletionRows.map((set) => (
+                    <article className="vault-set-card" key={set.id}>
+                      <span>{set.series || "Pokemon set"}</span>
+                      <h3>{set.name}</h3>
+                      <div className="vault-progress-track" aria-label={`${set.name} completion`}>
+                        <i style={{ width: `${set.percent}%` }} />
+                      </div>
+                      <p>{set.ownedCount} owned{set.totalCards ? ` of ${set.totalCards}` : ""}</p>
+                      <strong>{set.totalCards ? `${set.percent}% complete` : "Tracking started"}</strong>
+                    </article>
+                  )) : (
+                    <div className="empty-state small-empty-state">
+                      <h3>No set progress yet.</h3>
+                      <p>Add cards with set names and card numbers to start tracking master set completion.</p>
+                      <button type="button" onClick={openVaultQuickAddFlow}>Add Vault Item</button>
+                    </div>
+                  )}
+                </div>
+              </section>
+            ) : null}
+
+            {vaultSubTab === "portfolio" ? (
+              <section className="panel vault-portfolio-panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Portfolio</h2>
+                    <p>Collector value, cost basis, MSRP, duplicates, and trade/sell readiness stay separate from Forge business inventory.</p>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>Home Metrics</button>
+                </div>
+                <div className="vault-portfolio-grid">
+                  {vaultPortfolioStats.map((stat) => (
+                    <div className="card" key={stat.key}>
+                      <p>{stat.label}</p>
+                      <h2>{stat.value}</h2>
+                    </div>
+                  ))}
+                </div>
+                <div className="vault-portfolio-breakdown">
+                  <span>{activeVaultItems.filter((item) => /card/i.test(item.productType || item.category || "")).length} raw cards</span>
+                  <span>{activeVaultItems.filter((item) => /sealed|box|etb|tin|booster/i.test(`${item.productType || ""} ${item.name || ""}`)).length} sealed products</span>
+                  <span>{activeVaultItems.filter((item) => item.graded || item.grade || item.gradingCompany).length} graded/slab records</span>
+                  <span>{wishlistItems.length} wishlist items</span>
+                </div>
+              </section>
+            ) : null}
           </>
         )}
 
@@ -16627,8 +17732,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <h2>Recent Checks</h2>
                     <p>Recently viewed products and value checks from TideTradr.</p>
                   </div>
-                  <span className="status-badge">{tideTradrLookupProduct ? "1 recent" : "No recent checks"}</span>
+                  <span className="status-badge">{phase2RecentDeals.length ? `${phase2RecentDeals.length} deal checks` : (tideTradrLookupProduct ? "1 recent" : "No recent checks")}</span>
                 </div>
+                {phase2RecentDeals.length ? (
+                  <div className="home-list compact-home-list">
+                    {phase2RecentDeals.slice(0, 5).map((session) => (
+                      <div className="home-list-row" key={session.id}>
+                        <span>
+                          <strong>{session.title || "Saved deal check"}</strong>
+                          <small>{session.recommendation || "saved"} | score {Math.round(Number(session.dealScore || 0))}/100</small>
+                        </span>
+                        <b>{money(session.askingPrice)}</b>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 {tideTradrLookupProduct ? (
                   <div className="catalog-results-list">
                     <div className="catalog-result-card">
@@ -17426,7 +18544,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <p className="compact-subtitle">Beta/dev structure for future imports from Pokemon TCG API/Scrydex, TCGdex, TCGCSV, official Pokemon product data, and manual CSVs. No live keys are required.</p>
               <div className="cards mini-cards">
                 <div className="card"><p>Set Records</p><h2>{POKEMON_SETS.length}</h2></div>
-                <div className="card"><p>Catalog Rows</p><h2>{POKEMON_PRODUCTS.length}</h2></div>
+                <div className="card"><p>Catalog Rows</p><h2>{supabaseImportStatus.totalPokemonProducts ?? catalogProducts.length}</h2></div>
                 <div className="card"><p>Imported Cards</p><h2>{CATALOG_IMPORT_STATUS.cardsImported || 0}</h2></div>
                 <div className="card"><p>Imported Sealed</p><h2>{CATALOG_IMPORT_STATUS.sealedProductsImported || 0}</h2></div>
                 <div className="card"><p>UPC/SKU Links</p><h2>{catalogUpcCount}</h2></div>
@@ -18652,6 +19770,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "Unknown"} />
                       <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
                       <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Price Confidence" value={selectedCatalogDetailMarketInfo?.confidenceLevel} />
                       <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.updatedAt} />
                     </div>
                     {selectedCatalogDetailVariants.length ? (
@@ -18748,7 +19867,19 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     <DetailItem label="Source Product ID" value={selectedCatalogDetailProduct.externalProductId || selectedCatalogDetailProduct.tcgplayerProductId} />
                     <DetailItem label="Price Type" value={selectedCatalogDetailProduct.priceSubtype} />
                     <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailProduct)} />
+                    <DetailItem label="Market Sources" value={selectedCatalogDetailProduct.marketSources?.length ? `${selectedCatalogDetailProduct.marketSources.length} source${selectedCatalogDetailProduct.marketSources.length === 1 ? "" : "s"}` : ""} />
                   </div>
+                  {selectedCatalogDetailProduct.marketSources?.length ? (
+                    <div className="catalog-market-source-list">
+                      {selectedCatalogDetailProduct.marketSources.slice(0, 4).map((source) => (
+                        <div className="catalog-market-source-row" key={source.id || `${source.source}-${source.sourceItemId}-${source.priceType}`}>
+                          <strong>{source.source || "Market source"}</strong>
+                          <span>{[source.priceType, source.status, source.confidenceScore ? `Confidence ${Math.round(source.confidenceScore * 100)}%` : ""].filter(Boolean).join(" | ")}</span>
+                          <span>{source.marketPrice || source.midPrice || source.lowPrice || source.highPrice ? money(source.marketPrice || source.midPrice || source.lowPrice || source.highPrice) : "No current price"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {catalogSourceUrl(selectedCatalogDetailProduct) ? (
                     <a className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailProduct)} target="_blank" rel="noreferrer">Open Source</a>
                   ) : null}

@@ -1,7 +1,10 @@
 const assert = require("node:assert/strict");
 const { chromium } = require("@playwright/test");
 
-const APP_URL = process.env.APP_URL || "http://127.0.0.1:5200/";
+const rawAppUrl = process.env.APP_URL || "http://127.0.0.1:5200/";
+const appUrl = new URL(rawAppUrl);
+appUrl.searchParams.set("betaLocalMode", "true");
+const APP_URL = appUrl.toString();
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
