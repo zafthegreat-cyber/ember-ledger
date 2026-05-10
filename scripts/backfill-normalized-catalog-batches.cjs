@@ -1,13 +1,25 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
+const path = require('path');
 const { Client } = require('pg');
 
-try {
-  require('dotenv').config();
-  require('dotenv').config({ path: 'backend/.env' });
-} catch (_) {
-  // dotenv is optional for this operational script.
+const ROOT = path.resolve(__dirname, '..');
+const loadedEnvFiles = [];
+
+function loadEnvFile(fileName) {
+  try {
+    const filePath = path.join(ROOT, fileName);
+    if (!fs.existsSync(filePath)) return;
+    require('dotenv').config({ path: filePath, override: false, quiet: true });
+    loadedEnvFiles.push(fileName);
+  } catch (_) {
+    // dotenv is optional for this operational script.
+  }
 }
+
+loadEnvFile('.env.local');
+loadEnvFile('.env');
 
 const args = process.argv.slice(2);
 
@@ -24,11 +36,38 @@ const sectionName = readOption('section', 'all');
 const batchSize = Number.parseInt(readOption('batch-size', '250'), 10);
 const dryRun = args.includes('--dry-run');
 const maxBatches = Number.parseInt(readOption('max-batches', '0'), 10);
+const connectionSource = process.env.SUPABASE_DB_URL ? 'SUPABASE_DB_URL' : process.env.DATABASE_URL ? 'DATABASE_URL' : '';
 const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+const sslNoVerify = process.env.SUPABASE_DB_SSL_NO_VERIFY === 'true';
+
+console.log(`Loaded env files: ${loadedEnvFiles.length ? loadedEnvFiles.join(', ') : 'none'}`);
+console.log(`SUPABASE_DB_URL is ${process.env.SUPABASE_DB_URL ? 'set' : 'missing'}`);
+console.log(`DATABASE_URL is ${process.env.DATABASE_URL ? 'set' : 'missing'}`);
+console.log(`Active DB URL source: ${connectionSource || 'none'}`);
+console.log(`SUPABASE_DB_SSL_NO_VERIFY is ${sslNoVerify ? 'enabled' : 'disabled'}`);
+if (sslNoVerify) {
+  console.log('WARNING: SSL certificate verification is disabled for this local backfill run only.');
+}
 
 if (!connectionString) {
   console.error('Missing SUPABASE_DB_URL or DATABASE_URL. No connection was attempted.');
   process.exit(1);
+}
+
+function buildPgConfig() {
+  const parsedUrl = new URL(connectionString);
+  const strippedSslMode = parsedUrl.searchParams.has('sslmode');
+  parsedUrl.searchParams.delete('sslmode');
+  console.log(`sslmode stripped from backfill connection: ${strippedSslMode ? 'yes' : 'no'}`);
+  return {
+    connectionString: parsedUrl.toString(),
+    ssl: {
+      rejectUnauthorized: !sslNoVerify,
+    },
+    statement_timeout: 120000,
+    query_timeout: 120000,
+    application_name: 'ember-ledger-normalized-catalog-backfill',
+  };
 }
 
 if (!Number.isFinite(batchSize) || batchSize <= 0 || batchSize > 5000) {
@@ -665,8 +704,10 @@ async function runSection(client, section) {
 }
 
 (async () => {
-  const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
+  const client = new Client(buildPgConfig());
   await client.connect();
+  await client.query('select current_database()');
+  console.log('Connection preflight passed.');
 
   const requiredTables = ['product_catalog', 'product_identifiers', 'catalog_product_variants', 'tcg_card_details'];
   for (const tableName of requiredTables) {

@@ -370,6 +370,15 @@ const SCAN_DESTINATIONS = [
   { value: "pinned", label: "Pinned Market Watch" },
   { value: "scout_report", label: "Scout Report" },
 ];
+const RECEIPT_SCAN_STATUSES = ["draft_extracted", "needs_review", "verified", "submitted", "rejected", "duplicate_possible"];
+const RECEIPT_REVIEW_DESTINATIONS = [
+  { value: "vault", label: "Add to Vault" },
+  { value: "forge", label: "Add to Forge" },
+  { value: "personal_collection", label: "Personal Collection" },
+  { value: "business_inventory", label: "Business Inventory" },
+  { value: "ignore", label: "Ignore Item" },
+];
+const RECEIPT_ITEM_CONDITIONS = ["Sealed", "Opened", "Damaged", "Unknown"];
 const USER_TYPES = ["collector", "seller", "scout", "budget", "all_in_one"];
 const EXPENSE_CATEGORIES = [
   "Inventory/Product Cost",
@@ -1681,6 +1690,23 @@ export default function App() {
   const [scanDestination, setScanDestination] = useState("none");
   const [scanMessage, setScanMessage] = useState("");
   const [scanInput, setScanInput] = useState("");
+  const [receiptScanOpen, setReceiptScanOpen] = useState(false);
+  const [receiptScanStatus, setReceiptScanStatus] = useState("draft_extracted");
+  const [receiptScanMessage, setReceiptScanMessage] = useState("");
+  const [receiptScanDraft, setReceiptScanDraft] = useState(null);
+  const [receiptScanForm, setReceiptScanForm] = useState({
+    storeName: "",
+    storeLocation: "",
+    purchaseDate: "",
+    subtotal: "",
+    tax: "",
+    total: "",
+    transactionNumber: "",
+    rawText: "",
+    fileName: "",
+    filePreviewUrl: "",
+    receiptImageUrl: "",
+  });
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
@@ -5023,11 +5049,15 @@ export default function App() {
         setScanReview(null);
         setScanMatches([]);
         setScanInput("");
+        return;
+      }
+      if (receiptScanOpen) {
+        closeReceiptScanWorkflow();
       }
     }
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [quickAddMenuOpen, activeFlowModal, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showVaultAddForm, showInventoryScanner, vaultForm, scanReview]);
+  }, [quickAddMenuOpen, activeFlowModal, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showVaultAddForm, showInventoryScanner, receiptScanOpen, vaultForm, scanReview]);
 
   async function checkUser() {
     if (!isSupabaseConfigured || !supabase) return;
@@ -5463,6 +5493,46 @@ export default function App() {
     setQuickAddMenuOpen(false);
   }
 
+  function openReceiptScanWorkflow() {
+    setReceiptScanOpen(true);
+    setReceiptScanStatus("draft_extracted");
+    setReceiptScanMessage("");
+    setScanMode("receipt");
+    setShowInventoryScanner(false);
+  }
+
+  function closeReceiptScanWorkflow() {
+    setReceiptScanForm((current) => {
+      if (current.filePreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(current.filePreviewUrl);
+      if (current.receiptImageUrl?.startsWith("blob:") && current.receiptImageUrl !== current.filePreviewUrl) URL.revokeObjectURL(current.receiptImageUrl);
+      return current;
+    });
+    setReceiptScanOpen(false);
+    setReceiptScanMessage("");
+  }
+
+  function handleReceiptScanFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const supported = file.type.startsWith("image/") || file.type === "application/pdf";
+    if (!supported) {
+      setReceiptScanMessage("Upload an image. PDF support is staged for later.");
+      return;
+    }
+    setReceiptScanStatus("uploading");
+    const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+    setReceiptScanForm((current) => {
+      if (current.filePreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(current.filePreviewUrl);
+      return {
+        ...current,
+        fileName: file.name,
+        filePreviewUrl: previewUrl,
+        receiptImageUrl: previewUrl,
+      };
+    });
+    setReceiptScanMessage(file.type === "application/pdf" ? "PDF received. OCR support will process PDFs later; paste visible text for this beta review." : "Receipt image ready. Paste visible text or use the beta extractor.");
+  }
+
   function closeInventoryScanner() {
     setShowInventoryScanner(false);
     setScanReview(null);
@@ -5472,6 +5542,247 @@ export default function App() {
       if (current.imageUrl?.startsWith("blob:")) URL.revokeObjectURL(current.imageUrl);
       return { imageUrl: "", fileName: "", text: "", message: "" };
     });
+  }
+
+  function parseReceiptDraftLines(rawText = "") {
+    const lines = String(rawText || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    return lines
+      .filter((line) => !/^(subtotal|tax|total|visa|mastercard|cash|change|thank|auth|transaction|receipt)\b/i.test(line))
+      .map((line) => {
+        const priceMatch = line.match(/(.+?)\s+\$?(-?\d+(?:\.\d{2})?)$/);
+        const quantityMatch = line.match(/\b(?:qty|quantity)\s*[:x]?\s*(\d+(?:\.\d+)?)\b/i);
+        const rawName = priceMatch ? priceMatch[1] : line;
+        const quantity = quantityMatch ? Number(quantityMatch[1]) : 1;
+        const totalCost = priceMatch ? Number(priceMatch[2]) : 0;
+        return {
+          rawText: line,
+          name: rawName.replace(/\b(?:qty|quantity)\s*[:x]?\s*\d+(?:\.\d+)?\b/ig, "").trim(),
+          quantity: Math.max(1, quantity || 1),
+          unitCost: quantity ? totalCost / quantity : totalCost,
+          totalCost,
+        };
+      })
+      .filter((line) => line.name);
+  }
+
+  function buildReceiptReviewDraft() {
+    setReceiptScanStatus("reading_receipt");
+    setReceiptScanStatus("matching_products");
+    const rawText = receiptScanForm.rawText || "";
+    const parsedReceiptLines = parseReceiptDraftLines(rawText);
+    const fallbackLines = parsedReceiptLines.length ? parsedReceiptLines : [{ rawText: "Unmatched receipt item", name: "Unmatched receipt item", quantity: 1, unitCost: 0, totalCost: 0 }];
+    const items = fallbackLines.map((line) => {
+      const matches = getBestCatalogMatches(line.rawText || line.name, catalogProducts);
+      const best = matches[0];
+      const confidence = best?.confidencePercent || 0;
+      const needsReview = confidence < 80 || !best?.item;
+      return {
+        id: makeId("receipt-line"),
+        rawText: line.rawText,
+        matchedCatalogId: best?.item?.id || "",
+        suggestedMatchName: best?.item ? catalogTitle(best.item) : "",
+        matchConfidence: confidence,
+        quantity: line.quantity || 1,
+        unitCost: Number(line.unitCost || 0).toFixed(2),
+        totalCost: Number(line.totalCost || 0).toFixed(2),
+        destination: needsReview ? "ignore" : "forge",
+        condition: /box|etb|tin|booster|pack|sealed/i.test(line.name) ? "Sealed" : "Unknown",
+        ownerUserId: user?.id && user.id !== "local-beta" ? user.id : "",
+        notes: "",
+        status: needsReview ? "needs_review" : "draft_extracted",
+        verified: false,
+        possibleMatches: matches.slice(0, 5),
+      };
+    });
+    const itemTotal = items.reduce((sum, item) => sum + Number(item.totalCost || 0), 0);
+    const total = Number(receiptScanForm.total || itemTotal + Number(receiptScanForm.tax || 0) || 0);
+    const receiptHash = [receiptScanForm.storeName, receiptScanForm.purchaseDate, total, receiptScanForm.transactionNumber].join("|").toLowerCase();
+    const duplicatePossible = phase2Data.receiptRecords.some((receipt) =>
+      String(receipt.merchant || "").toLowerCase() === String(receiptScanForm.storeName || "").toLowerCase() &&
+      Math.abs(Number(receipt.total || 0) - total) < 0.01 &&
+      String(receipt.purchasedAt || "").slice(0, 10) === String(receiptScanForm.purchaseDate || "").slice(0, 10)
+    );
+    setReceiptScanDraft({
+      id: makeId("receipt-draft"),
+      storeName: receiptScanForm.storeName || "Unknown store",
+      storeLocation: receiptScanForm.storeLocation || "",
+      purchaseDate: receiptScanForm.purchaseDate || new Date().toISOString().slice(0, 10),
+      subtotal: Number(receiptScanForm.subtotal || Math.max(0, total - Number(receiptScanForm.tax || 0)) || 0),
+      tax: Number(receiptScanForm.tax || 0),
+      total,
+      receiptImageUrl: receiptScanForm.receiptImageUrl || receiptScanForm.filePreviewUrl || "",
+      receiptHash,
+      transactionNumber: receiptScanForm.transactionNumber || "",
+      status: duplicatePossible ? "duplicate_possible" : "draft_extracted",
+      items,
+      warnings: [],
+      createdAt: new Date().toISOString(),
+    });
+    setReceiptScanStatus("ready_for_review");
+    setReceiptScanMessage("Review Receipt. Verify Items before Submit Report.");
+  }
+
+  function updateReceiptDraft(field, value) {
+    setReceiptScanDraft((current) => current ? { ...current, [field]: value } : current);
+  }
+
+  function updateReceiptDraftItem(itemId, field, value) {
+    setReceiptScanDraft((current) => current ? {
+      ...current,
+      items: current.items.map((item) => item.id === itemId ? {
+        ...item,
+        [field]: value,
+        status: field === "verified" && value ? "verified" : field === "destination" && value === "ignore" ? "rejected" : item.status,
+      } : item),
+    } : current);
+  }
+
+  function selectReceiptItemCatalogMatch(itemId, productId) {
+    const product = catalogProducts.find((candidate) => String(candidate.id) === String(productId));
+    setReceiptScanDraft((current) => current ? {
+      ...current,
+      items: current.items.map((item) => item.id === itemId ? {
+        ...item,
+        matchedCatalogId: product?.id || "",
+        suggestedMatchName: product ? catalogTitle(product) : "",
+        matchConfidence: product ? Math.max(Number(item.matchConfidence || 0), 90) : 0,
+        status: product ? "needs_review" : item.status,
+      } : item),
+    } : current);
+  }
+
+  function bulkVerifyHighConfidenceReceiptItems() {
+    setReceiptScanDraft((current) => current ? {
+      ...current,
+      items: current.items.map((item) =>
+        item.matchConfidence >= 85 && item.matchedCatalogId && item.quantity && item.unitCost && item.destination !== "ignore"
+          ? { ...item, verified: true, status: "verified" }
+          : item
+      ),
+    } : current);
+  }
+
+  function receiptReviewWarnings(draft = receiptScanDraft) {
+    if (!draft) return [];
+    const warnings = [];
+    if (draft.status === "duplicate_possible") warnings.push("Duplicate receipt already uploaded may exist.");
+    const itemTotal = draft.items.reduce((sum, item) => sum + Number(item.totalCost || 0), 0);
+    if (Math.abs((itemTotal + Number(draft.tax || 0)) - Number(draft.total || 0)) > 1) warnings.push("Receipt total does not match item totals plus tax.");
+    draft.items.forEach((item, index) => {
+      if (item.destination !== "ignore" && !item.verified) warnings.push(`Item ${index + 1} must be verified before submit.`);
+      if (item.destination !== "ignore" && !item.matchedCatalogId) warnings.push(`Item ${index + 1} is marked for import without a catalog match.`);
+      if (Number(item.matchConfidence || 0) < 50 && item.destination !== "ignore") warnings.push(`Item ${index + 1} has a very low confidence match.`);
+      if (item.destination !== "ignore" && (!Number(item.quantity || 0) || !Number(item.unitCost || 0))) warnings.push(`Item ${index + 1} is missing quantity or cost.`);
+    });
+    return [...new Set(warnings)];
+  }
+
+  function receiptItemToInventoryRecord(item, receipt, destination) {
+    const product = catalogProducts.find((candidate) => String(candidate.id) === String(item.matchedCatalogId));
+    const workspace = workspaces.find((entry) => String(entry.id) === String(defaultWorkspaceIdForDestination(destination))) || activeWorkspace;
+    const isVault = destination === "vault" || destination === "personal_collection";
+    return applyWorkspaceToRecord({
+      ...blankItem,
+      id: makeId(isVault ? "receipt-vault" : "receipt-forge"),
+      name: product ? catalogTitle(product) : item.rawText,
+      itemName: product ? catalogTitle(product) : item.rawText,
+      destinationScope: [isVault ? "vault" : "forge"],
+      recordType: isVault ? "vault_item" : "forge_inventory",
+      businessInventory: !isVault,
+      quantity: Number(item.quantity || 1),
+      ownedQuantity: isVault ? Number(item.quantity || 1) : 0,
+      forgeQuantity: isVault ? 0 : Number(item.quantity || 1),
+      unitCost: Number(item.unitCost || 0),
+      salePrice: Number(product?.marketPrice || 0),
+      plannedSalePrice: Number(product?.marketPrice || 0),
+      category: product?.category || "Pokemon",
+      productType: product?.productType || "",
+      setName: product?.setName || product?.expansion || "",
+      expansion: product?.setName || product?.expansion || "",
+      barcode: product?.barcode || product?.upc || "",
+      catalogProductId: product?.id || "",
+      catalogProductName: product ? catalogTitle(product) : "",
+      marketPrice: Number(product?.marketPrice || 0),
+      msrpPrice: Number(product?.msrpPrice || 0),
+      condition: item.condition,
+      conditionName: item.condition === "Sealed" ? "Sealed" : item.condition || "Unknown",
+      sealedCondition: item.condition === "Sealed" ? "Sealed" : "",
+      status: isVault ? "Personal Collection" : "In Stock",
+      vaultStatus: isVault ? "personal_collection" : "",
+      receiptImage: receipt.receiptImageUrl || "",
+      receiptId: receipt.id,
+      sourceType: "Receipt scan",
+      notes: [item.notes, `Receipt ${receipt.transactionNumber || receipt.id}`, `Raw line: ${item.rawText}`].filter(Boolean).join(" | "),
+      purchaseDate: receipt.purchaseDate,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }, workspace);
+  }
+
+  async function submitReceiptReview() {
+    if (!receiptScanDraft) return;
+    const warnings = receiptReviewWarnings();
+    if (warnings.some((warning) => /must be verified|without a catalog match|missing quantity|very low confidence/i.test(warning))) {
+      setReceiptScanDraft((current) => ({ ...current, warnings }));
+      setReceiptScanMessage("Resolve required warnings before submitting.");
+      return;
+    }
+    setReceiptScanStatus("submitted");
+    const importableItems = receiptScanDraft.items.filter((item) => item.destination !== "ignore");
+    const ignoredItems = receiptScanDraft.items.filter((item) => item.destination === "ignore");
+    const receipt = {
+      id: receiptScanDraft.id,
+      merchant: receiptScanDraft.storeName,
+      purchasedAt: `${receiptScanDraft.purchaseDate}T12:00:00.000Z`,
+      total: receiptScanDraft.total,
+      tax: receiptScanDraft.tax,
+      category: "Receipt Scan",
+      imageUrl: receiptScanDraft.receiptImageUrl,
+      splitMode: "expense_only",
+      businessTotal: importableItems.filter((item) => ["forge", "business_inventory"].includes(item.destination)).reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
+      personalTotal: importableItems.filter((item) => ["vault", "personal_collection"].includes(item.destination)).reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
+      notes: `Receipt scan report. Store location: ${receiptScanDraft.storeLocation || "not visible"}. Transaction: ${receiptScanDraft.transactionNumber || "not visible"}.`,
+      rawOcrText: receiptScanForm.rawText,
+      lines: receiptScanDraft.items.map((item) => ({
+        id: item.id,
+        catalogItemId: item.matchedCatalogId,
+        productName: item.suggestedMatchName || item.rawText,
+        quantity: Number(item.quantity || 1),
+        unitPrice: Number(item.unitCost || 0),
+        lineTotal: Number(item.totalCost || 0),
+        destination: item.destination === "ignore" ? "expense_only" : item.destination,
+        matchedConfidence: item.verified ? "confirmed" : "needs_review",
+      })),
+      createdAt: receiptScanDraft.createdAt,
+    };
+    const createdItems = importableItems.map((item) => receiptItemToInventoryRecord(item, receiptScanDraft, item.destination));
+    setItems((current) => [...createdItems, ...current]);
+    const report = {
+      receiptId: receipt.id,
+      store: receiptScanDraft.storeName,
+      date: receiptScanDraft.purchaseDate,
+      totalSpent: receiptScanDraft.total,
+      itemsAdded: importableItems.length,
+      itemsIgnored: ignoredItems.length,
+      needsFutureReview: receiptScanDraft.items.filter((item) => item.status === "needs_review").length,
+      vaultValueAdded: createdItems.filter((item) => item.vaultStatus).reduce((sum, item) => sum + Number(item.marketValue || item.marketPrice || 0) * Number(item.quantity || 1), 0),
+      forgeInventoryCostAdded: createdItems.filter((item) => !item.vaultStatus).reduce((sum, item) => sum + Number(item.unitCost || 0) * Number(item.quantity || 1), 0),
+      estimatedMsrpTotal: createdItems.reduce((sum, item) => sum + Number(item.msrpPrice || 0) * Number(item.quantity || 1), 0),
+      estimatedMarketTotal: createdItems.reduce((sum, item) => sum + Number(item.marketPrice || 0) * Number(item.quantity || 1), 0),
+      submittedBy: user?.email || user?.id || "local beta",
+      status: "submitted",
+    };
+    const result = await saveReceiptRecord(phase2Context(), { ...receipt, report });
+    updatePhase2Status(result, "Receipt scan saved locally.");
+    setPhase2Data((current) => ({
+      ...current,
+      receiptReports: [report, ...(current.receiptReports || [])],
+    }));
+    setReceiptScanDraft((current) => current ? { ...current, status: "submitted", report } : current);
+    setReceiptScanMessage(`Receipt submitted. Added ${createdItems.length} item(s); ignored ${ignoredItems.length}.`);
   }
 
   function openPictureLookupFlow(defaultDestination = "none") {
@@ -14619,7 +14930,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }, [activeFlowModal?.id]);
 
   useEffect(() => {
-    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || feedbackDialog);
+    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || feedbackDialog);
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
@@ -14644,6 +14955,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         setScanReview(null);
         setScanMatches([]);
         setScanInput("");
+        return;
+      }
+      if (receiptScanOpen) {
+        event.preventDefault();
+        closeReceiptScanWorkflow();
         return;
       }
       if (listingReviewOpen) {
@@ -14693,7 +15009,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportDeleteTarget, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportDeleteTarget, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (!user) {
     return (
@@ -16123,9 +16439,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 ["upc", "Barcode / UPC"],
                 ["card", "Card"],
                 ["picture", "Look Up by Picture"],
+                ["receipt", "Scan Receipt"],
                 ["manual", "Manual"],
               ].map(([key, label]) => (
-                <button key={key} type="button" className={scanMode === key ? "primary" : ""} onClick={() => setScanMode(key)}>
+                <button key={key} type="button" className={scanMode === key ? "primary" : ""} onClick={() => key === "receipt" ? openReceiptScanWorkflow() : setScanMode(key)}>
                   {label}
                 </button>
               ))}
@@ -16261,6 +16578,262 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </span>
                   </button>
                 ))}
+              </div>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
+
+      {receiptScanOpen ? (
+        <div className="location-modal-backdrop receipt-scan-backdrop" role="presentation" onClick={closeReceiptScanWorkflow}>
+          <section className="scanner-review-modal receipt-scan-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-scan-title" onClick={(event) => event.stopPropagation()}>
+            <div className="compact-card-header">
+              <div>
+                <h2 id="receipt-scan-title">Scan Receipt</h2>
+                <p>{"Scan Receipt -> App reads receipt -> App suggests matches -> User verifies each item -> User chooses Vault or Forge -> User submits -> App creates report -> Items are added."}</p>
+              </div>
+              <div className="quick-actions">
+                <button type="button" className="secondary-button modal-close-icon" aria-label="Close receipt scan" onClick={closeReceiptScanWorkflow}>X</button>
+                <button type="button" className="ghost-button" onClick={closeReceiptScanWorkflow}>Close</button>
+              </div>
+            </div>
+
+            <div className="receipt-progress-steps" aria-label="Receipt scan progress">
+              {[
+                ["uploading", "Scan Receipt"],
+                ["reading_receipt", "App reads receipt"],
+                ["matching_products", "App suggests matches"],
+                ["ready_for_review", "Verify Items"],
+                ["submitted", "Submit Report"],
+              ].map(([status, label]) => (
+                <span key={status} className={receiptScanStatus === status ? "active" : receiptScanStatus === "submitted" ? "complete" : ""}>{label}</span>
+              ))}
+            </div>
+
+            <div className="receipt-workflow-sequence" aria-label="Receipt workflow sequence">
+              {[
+                "Scan Receipt",
+                "App reads receipt",
+                "App suggests matches",
+                "User verifies each item",
+                "User chooses Vault or Forge",
+                "User submits",
+                "App creates report",
+                "Items are added",
+              ].map((step) => <span key={step}>{step}</span>)}
+            </div>
+
+            <div className="receipt-scan-layout">
+              <div className="receipt-upload-panel">
+                <div className="quick-actions">
+                  <label className="secondary-button file-action-label">
+                    Take Photo
+                    <input type="file" accept="image/*" capture="environment" onChange={handleReceiptScanFile} />
+                  </label>
+                  <label className="secondary-button file-action-label">
+                    Upload Image
+                    <input type="file" accept="image/*" onChange={handleReceiptScanFile} />
+                  </label>
+                  <label className="secondary-button file-action-label">
+                    Upload PDF
+                    <input type="file" accept="application/pdf" onChange={handleReceiptScanFile} />
+                  </label>
+                </div>
+                {receiptScanForm.filePreviewUrl ? (
+                  <div className="picture-lookup-preview receipt-preview">
+                    <img src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
+                    <span>{receiptScanForm.fileName || "Receipt image"}</span>
+                  </div>
+                ) : receiptScanForm.fileName ? (
+                  <div className="small-empty-state">
+                    <strong>{receiptScanForm.fileName}</strong>
+                    <span>PDF parsing is staged for a later provider integration. Paste visible receipt text for this review.</span>
+                  </div>
+                ) : null}
+                <Field label="Receipt OCR / visible text">
+                  <textarea
+                    rows={7}
+                    value={receiptScanForm.rawText}
+                    onChange={(event) => setReceiptScanForm((current) => ({ ...current, rawText: event.target.value }))}
+                    placeholder={"Pokemon 151 Booster Bundle 2 55.98\nPokemon ETB 49.99\nSubtotal 105.97\nTax 6.36\nTotal 112.33"}
+                  />
+                </Field>
+              </div>
+
+              <div className="receipt-details-panel">
+                <div className="form-grid">
+                  <Field label="Store">
+                    <input value={receiptScanForm.storeName} onChange={(event) => setReceiptScanForm((current) => ({ ...current, storeName: event.target.value }))} placeholder="Target Greenbrier" />
+                  </Field>
+                  <Field label="Store location">
+                    <input value={receiptScanForm.storeLocation} onChange={(event) => setReceiptScanForm((current) => ({ ...current, storeLocation: event.target.value }))} placeholder="Chesapeake, VA" />
+                  </Field>
+                  <Field label="Purchase date">
+                    <input type="date" value={receiptScanForm.purchaseDate} onChange={(event) => setReceiptScanForm((current) => ({ ...current, purchaseDate: event.target.value }))} />
+                  </Field>
+                  <Field label="Transaction / barcode">
+                    <input value={receiptScanForm.transactionNumber} onChange={(event) => setReceiptScanForm((current) => ({ ...current, transactionNumber: event.target.value }))} placeholder="Visible receipt number" />
+                  </Field>
+                  <Field label="Subtotal">
+                    <input type="number" step="0.01" value={receiptScanForm.subtotal} onChange={(event) => setReceiptScanForm((current) => ({ ...current, subtotal: event.target.value }))} />
+                  </Field>
+                  <Field label="Tax / fees">
+                    <input type="number" step="0.01" value={receiptScanForm.tax} onChange={(event) => setReceiptScanForm((current) => ({ ...current, tax: event.target.value }))} />
+                  </Field>
+                  <Field label="Receipt total">
+                    <input type="number" step="0.01" value={receiptScanForm.total} onChange={(event) => setReceiptScanForm((current) => ({ ...current, total: event.target.value }))} />
+                  </Field>
+                </div>
+                <div className="quick-actions">
+                  <button type="button" onClick={buildReceiptReviewDraft}>Review Receipt</button>
+                  {receiptScanDraft ? <button type="button" className="secondary-button" onClick={bulkVerifyHighConfidenceReceiptItems}>Verify Items</button> : null}
+                </div>
+                {receiptScanMessage ? <p className="compact-subtitle">{receiptScanMessage}</p> : null}
+              </div>
+            </div>
+
+            {receiptScanDraft ? (
+              <div className="receipt-review-panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>{receiptScanDraft.storeName} review</h3>
+                    <p>{receiptScanDraft.purchaseDate} | {money(receiptScanDraft.total || 0)} total | {receiptScanDraft.items.length} extracted item(s)</p>
+                  </div>
+                  <span className={`status-badge ${receiptScanDraft.status === "duplicate_possible" ? "danger" : ""}`}>{receiptScanDraft.status}</span>
+                </div>
+
+                <div className="form-grid">
+                  <Field label="Verified store">
+                    <input value={receiptScanDraft.storeName} onChange={(event) => updateReceiptDraft("storeName", event.target.value)} />
+                  </Field>
+                  <Field label="Verified date">
+                    <input type="date" value={receiptScanDraft.purchaseDate} onChange={(event) => updateReceiptDraft("purchaseDate", event.target.value)} />
+                  </Field>
+                  <Field label="Verified total">
+                    <input type="number" step="0.01" value={receiptScanDraft.total} onChange={(event) => updateReceiptDraft("total", event.target.value)} />
+                  </Field>
+                  <Field label="Verified tax">
+                    <input type="number" step="0.01" value={receiptScanDraft.tax} onChange={(event) => updateReceiptDraft("tax", event.target.value)} />
+                  </Field>
+                </div>
+
+                {receiptReviewWarnings(receiptScanDraft).length ? (
+                  <div className="receipt-warning-list" role="alert">
+                    {receiptReviewWarnings(receiptScanDraft).map((warning) => <span key={warning}>{warning}</span>)}
+                  </div>
+                ) : (
+                  <p className="compact-subtitle">All required receipt checks are clear.</p>
+                )}
+
+                <div className="receipt-draft-list">
+                  {receiptScanDraft.items.map((item, index) => (
+                    <article className={`receipt-draft-card ${item.verified ? "verified" : ""}`} key={item.id}>
+                      <div className="compact-card-header">
+                        <div>
+                          <h4>Item {index + 1}</h4>
+                          <p>{item.rawText}</p>
+                        </div>
+                        <span className={`status-badge ${item.matchConfidence < 50 ? "danger" : ""}`}>{item.matchConfidence}% match</span>
+                      </div>
+                      <div className="catalog-detail-grid">
+                        <DetailItem label="Suggested match" value={item.suggestedMatchName || "Needs Review"} />
+                        <DetailItem label="Quantity" value={item.quantity || 1} />
+                        <DetailItem label="Unit cost" value={money(item.unitCost || 0)} />
+                        <DetailItem label="Line total" value={money(item.totalCost || 0)} />
+                      </div>
+                      {item.possibleMatches?.length ? (
+                        <Field label="Catalog match">
+                          <select value={item.matchedCatalogId || ""} onChange={(event) => selectReceiptItemCatalogMatch(item.id, event.target.value)}>
+                            <option value="">No catalog match</option>
+                            {item.possibleMatches.map((match) => (
+                              <option key={match.item.id} value={match.item.id}>
+                                {catalogTitle(match.item)} ({match.confidencePercent}%)
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      ) : (
+                        <Field label="Manual catalog search">
+                          <input
+                            value={item.suggestedMatchName || ""}
+                            onChange={(event) => updateReceiptDraftItem(item.id, "suggestedMatchName", event.target.value)}
+                            placeholder="Search catalog manually or save as unmatched"
+                          />
+                        </Field>
+                      )}
+                      <div className="form-grid">
+                        <Field label="Quantity">
+                          <input type="number" min="1" step="1" value={item.quantity} onChange={(event) => updateReceiptDraftItem(item.id, "quantity", event.target.value)} />
+                        </Field>
+                        <Field label="Unit cost">
+                          <input type="number" min="0" step="0.01" value={item.unitCost} onChange={(event) => updateReceiptDraftItem(item.id, "unitCost", event.target.value)} />
+                        </Field>
+                        <Field label="Total cost">
+                          <input type="number" min="0" step="0.01" value={item.totalCost} onChange={(event) => updateReceiptDraftItem(item.id, "totalCost", event.target.value)} />
+                        </Field>
+                        <Field label="Destination">
+                          <select value={item.destination} onChange={(event) => updateReceiptDraftItem(item.id, "destination", event.target.value)}>
+                            {RECEIPT_REVIEW_DESTINATIONS.map((destination) => <option key={destination.value} value={destination.value}>{destination.label}</option>)}
+                          </select>
+                        </Field>
+                        <Field label="Condition">
+                          <select value={item.condition} onChange={(event) => updateReceiptDraftItem(item.id, "condition", event.target.value)}>
+                            {RECEIPT_ITEM_CONDITIONS.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
+                          </select>
+                        </Field>
+                        <Field label="Purchaser / owner">
+                          <select value={item.ownerUserId || ""} onChange={(event) => updateReceiptDraftItem(item.id, "ownerUserId", event.target.value)}>
+                            <option value="">Unassigned</option>
+                            {purchaserOptions.map((owner) => <option key={owner.id || owner.name} value={owner.id || owner.name}>{owner.name || owner.label || owner.email}</option>)}
+                          </select>
+                        </Field>
+                      </div>
+                      <Field label="Notes">
+                        <textarea rows={2} value={item.notes} onChange={(event) => updateReceiptDraftItem(item.id, "notes", event.target.value)} placeholder="Condition, allocation, or matching notes" />
+                      </Field>
+                      <div className="quick-actions">
+                        <button type="button" className={item.verified ? "primary" : "secondary-button"} onClick={() => updateReceiptDraftItem(item.id, "verified", !item.verified)}>
+                          {item.verified ? "Verified" : "Verify Items"}
+                        </button>
+                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "vault")}>Add to Vault</button>
+                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "forge")}>Add to Forge</button>
+                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "ignore")}>Ignore Item</button>
+                        <button type="button" className="ghost-button" onClick={() => {
+                          const suggestion = submitSuggestion({
+                            suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+                            targetTable: "product_catalog",
+                            submittedData: {
+                              productName: item.rawText,
+                              source: "receipt_scan",
+                              receiptId: receiptScanDraft.id,
+                            },
+                            notes: `Pending catalog suggestion from receipt ${receiptScanDraft.transactionNumber || receiptScanDraft.id}.`,
+                          });
+                          updateReceiptDraftItem(item.id, "notes", [item.notes, suggestion.ok ? `Catalog suggestion ${suggestion.suggestion.id} created.` : "Similar catalog suggestion already exists."].filter(Boolean).join(" "));
+                        }}>Create catalog suggestion</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                {receiptScanDraft.report ? (
+                  <div className="receipt-report-summary">
+                    <h3>Receipt Report</h3>
+                    <div className="catalog-detail-grid">
+                      <DetailItem label="Items added" value={receiptScanDraft.report.itemsAdded} />
+                      <DetailItem label="Items ignored" value={receiptScanDraft.report.itemsIgnored} />
+                      <DetailItem label="Vault value added" value={money(receiptScanDraft.report.vaultValueAdded || 0)} />
+                      <DetailItem label="Forge cost added" value={money(receiptScanDraft.report.forgeInventoryCostAdded || 0)} />
+                      <DetailItem label="Estimated MSRP" value={money(receiptScanDraft.report.estimatedMsrpTotal || 0)} />
+                      <DetailItem label="Estimated market" value={money(receiptScanDraft.report.estimatedMarketTotal || 0)} />
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="location-modal-actions">
+                  <button type="button" onClick={submitReceiptReview} disabled={receiptScanDraft.status === "submitted"}>Submit Report</button>
+                  <button type="button" className="ghost-button" onClick={closeReceiptScanWorkflow}>Close</button>
+                </div>
               </div>
             ) : null}
           </section>
