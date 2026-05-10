@@ -113,39 +113,50 @@ const sections = [
   {
     name: 'sealed-type',
     countSql: `
+      with inferred as (
+        select
+          pc.id,
+          case
+            when lower(coalesce(pc.name, '')) like '%pokemon center%elite trainer box%' or lower(coalesce(pc.name, '')) like '%elite trainer box%pokemon center%' then 'pokemon_center_elite_trainer_box'
+            when lower(coalesce(pc.name, '')) like '%elite trainer box%' or lower(coalesce(pc.name, '')) like '% etb%' then 'elite_trainer_box'
+            when lower(coalesce(pc.name, '')) like '%sleeved booster%' then 'sleeved_booster_pack'
+            when lower(coalesce(pc.name, '')) like '%booster bundle%' then 'booster_bundle'
+            when lower(coalesce(pc.name, '')) like '%booster display%' or lower(coalesce(pc.name, '')) like '%display box%' or lower(coalesce(pc.name, '')) like '%booster box%' then 'booster_display_box'
+            when lower(coalesce(pc.name, '')) like '%booster pack%' then 'booster_pack'
+            when lower(coalesce(pc.name, '')) like '%build%battle stadium%' or lower(coalesce(pc.name, '')) like '%build and battle stadium%' then 'build_and_battle_stadium'
+            when lower(coalesce(pc.name, '')) like '%build%battle box%' or lower(coalesce(pc.name, '')) like '%build and battle box%' then 'build_and_battle_box'
+            when lower(coalesce(pc.name, '')) like '%premium collection%' or lower(coalesce(pc.name, '')) like '%ultra premium collection%' or lower(coalesce(pc.name, '')) like '%ultra-premium collection%' then 'premium_collection'
+            when lower(coalesce(pc.name, '')) like '%poster collection%' then 'poster_collection'
+            when lower(coalesce(pc.name, '')) like '%mini tin%' then 'mini_tin'
+            when lower(coalesce(pc.name, '')) like '% tin%' then 'tin'
+            when lower(coalesce(pc.name, '')) like '%blister%' or lower(coalesce(pc.name, '')) like '%checklane%' then 'blister_pack'
+            when lower(coalesce(pc.name, '')) like '%league battle deck%' then 'league_battle_deck'
+            when lower(coalesce(pc.name, '')) like '%battle deck%' then 'battle_deck'
+            when lower(coalesce(pc.name, '')) like '%starter deck%' or lower(coalesce(pc.name, '')) like '%theme deck%' then 'starter_deck'
+            when lower(coalesce(pc.name, '')) like '%collection%' then 'collection_box'
+            else null
+          end as inferred_sealed_product_type,
+          case
+            when lower(coalesce(pc.name, '')) like '%pokemon center%elite trainer box%' or lower(coalesce(pc.name, '')) like '%elite trainer box%pokemon center%' then true
+            else coalesce(pc.is_pokemon_center_exclusive, false)
+          end as inferred_is_pokemon_center_exclusive
+        from public.product_catalog pc
+        where pc.product_kind = 'sealed_product'
+      )
       select count(*)::int as count
-      from public.product_catalog
-      where product_kind = 'sealed_product'
-        and (sealed_product_type is null or sealed_product_type = 'other' or is_pokemon_center_exclusive is false)
-        and lower(coalesce(name, '')) like any (array[
-          '%pokemon center%elite trainer box%', '%elite trainer box%pokemon center%', '%elite trainer box%', '% etb%',
-          '%sleeved booster%', '%booster bundle%', '%booster display%', '%display box%', '%booster box%', '%booster pack%',
-          '%build%battle stadium%', '%build and battle stadium%', '%build%battle box%', '%build and battle box%',
-          '%premium collection%', '%ultra premium collection%', '%ultra-premium collection%', '%poster collection%',
-          '%mini tin%', '% tin%', '%blister%', '%checklane%', '%league battle deck%', '%battle deck%',
-          '%starter deck%', '%theme deck%', '%collection%'
-        ])
+      from public.product_catalog pc
+      join inferred on inferred.id = pc.id
+      where inferred.inferred_sealed_product_type is not null
+        and (
+          coalesce(nullif(pc.sealed_product_type, ''), 'unknown') is distinct from inferred.inferred_sealed_product_type
+          or coalesce(pc.is_pokemon_center_exclusive, false) is distinct from inferred.inferred_is_pokemon_center_exclusive
+        )
     `,
     runSql: `
-      with todo as (
-        select id
-        from public.product_catalog
-        where product_kind = 'sealed_product'
-          and (sealed_product_type is null or sealed_product_type = 'other' or is_pokemon_center_exclusive is false)
-          and lower(coalesce(name, '')) like any (array[
-            '%pokemon center%elite trainer box%', '%elite trainer box%pokemon center%', '%elite trainer box%', '% etb%',
-            '%sleeved booster%', '%booster bundle%', '%booster display%', '%display box%', '%booster box%', '%booster pack%',
-            '%build%battle stadium%', '%build and battle stadium%', '%build%battle box%', '%build and battle box%',
-            '%premium collection%', '%ultra premium collection%', '%ultra-premium collection%', '%poster collection%',
-            '%mini tin%', '% tin%', '%blister%', '%checklane%', '%league battle deck%', '%battle deck%',
-            '%starter deck%', '%theme deck%', '%collection%'
-          ])
-        order by id
-        limit $1
-      )
-      update public.product_catalog pc
-      set
-        sealed_product_type = case
+      with inferred as (
+        select
+          pc.id,
+          case
           when lower(coalesce(pc.name, '')) like '%pokemon center%elite trainer box%' or lower(coalesce(pc.name, '')) like '%elite trainer box%pokemon center%' then 'pokemon_center_elite_trainer_box'
           when lower(coalesce(pc.name, '')) like '%elite trainer box%' or lower(coalesce(pc.name, '')) like '% etb%' then 'elite_trainer_box'
           when lower(coalesce(pc.name, '')) like '%sleeved booster%' then 'sleeved_booster_pack'
@@ -163,12 +174,31 @@ const sections = [
           when lower(coalesce(pc.name, '')) like '%battle deck%' then 'battle_deck'
           when lower(coalesce(pc.name, '')) like '%starter deck%' or lower(coalesce(pc.name, '')) like '%theme deck%' then 'starter_deck'
           when lower(coalesce(pc.name, '')) like '%collection%' then 'collection_box'
-          else pc.sealed_product_type
-        end,
-        is_pokemon_center_exclusive = case
-          when lower(coalesce(pc.name, '')) like '%pokemon center%elite trainer box%' or lower(coalesce(pc.name, '')) like '%elite trainer box%pokemon center%' then true
-          else pc.is_pokemon_center_exclusive
-        end
+            else null
+          end as inferred_sealed_product_type,
+          case
+            when lower(coalesce(pc.name, '')) like '%pokemon center%elite trainer box%' or lower(coalesce(pc.name, '')) like '%elite trainer box%pokemon center%' then true
+            else coalesce(pc.is_pokemon_center_exclusive, false)
+          end as inferred_is_pokemon_center_exclusive
+        from public.product_catalog pc
+        where pc.product_kind = 'sealed_product'
+      ),
+      todo as (
+        select pc.id, inferred.inferred_sealed_product_type, inferred.inferred_is_pokemon_center_exclusive
+        from public.product_catalog pc
+        join inferred on inferred.id = pc.id
+        where inferred.inferred_sealed_product_type is not null
+          and (
+            coalesce(nullif(pc.sealed_product_type, ''), 'unknown') is distinct from inferred.inferred_sealed_product_type
+            or coalesce(pc.is_pokemon_center_exclusive, false) is distinct from inferred.inferred_is_pokemon_center_exclusive
+          )
+        order by pc.id
+        limit $1
+      )
+      update public.product_catalog pc
+      set
+        sealed_product_type = todo.inferred_sealed_product_type,
+        is_pokemon_center_exclusive = todo.inferred_is_pokemon_center_exclusive
       from todo
       where pc.id = todo.id
       returning pc.id
@@ -565,7 +595,11 @@ const sections = [
         pc.id,
         pc.name,
         pc.raw_source ->> 'supertype',
-        case when jsonb_typeof(pc.raw_source -> 'subtypes') = 'array' then pc.raw_source -> 'subtypes' else '[]'::jsonb end,
+        case
+          when jsonb_typeof(pc.raw_source -> 'subtypes') = 'array'
+            then array(select jsonb_array_elements_text(pc.raw_source -> 'subtypes'))
+          else null
+        end,
         case
           when jsonb_typeof(pc.raw_source -> 'subtypes') = 'array' then (
             select value
@@ -576,14 +610,28 @@ const sections = [
           else null
         end,
         pc.raw_source ->> 'evolvesFrom',
-        nullif(pc.raw_source ->> 'hp', '')::integer,
-        case when jsonb_typeof(pc.raw_source -> 'types') = 'array' then pc.raw_source -> 'types' else '[]'::jsonb end,
+        case
+          when (pc.raw_source ->> 'hp') ~ '^\\d+$' then (pc.raw_source ->> 'hp')::integer
+          else null
+        end,
+        case
+          when jsonb_typeof(pc.raw_source -> 'types') = 'array'
+            then array(select jsonb_array_elements_text(pc.raw_source -> 'types'))
+          else null
+        end,
         coalesce(pc.raw_source -> 'abilities', '[]'::jsonb),
         coalesce(pc.raw_source -> 'attacks', '[]'::jsonb),
         coalesce(pc.raw_source -> 'weaknesses', '[]'::jsonb),
         coalesce(pc.raw_source -> 'resistances', '[]'::jsonb),
-        coalesce(pc.raw_source -> 'retreatCost', '[]'::jsonb),
-        nullif(pc.raw_source ->> 'convertedRetreatCost', '')::integer,
+        case
+          when jsonb_typeof(pc.raw_source -> 'retreatCost') = 'array'
+            then array(select jsonb_array_elements_text(pc.raw_source -> 'retreatCost'))
+          else null
+        end,
+        case
+          when (pc.raw_source ->> 'convertedRetreatCost') ~ '^\\d+$' then (pc.raw_source ->> 'convertedRetreatCost')::integer
+          else null
+        end,
         pc.raw_source ->> 'rarity',
         pc.raw_source ->> 'artist',
         pc.raw_source ->> 'flavorText',
