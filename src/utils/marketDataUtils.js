@@ -23,7 +23,7 @@ export function estimateMarketConfidence(item = {}, priceData = {}) {
   if (priceData.source === "live") return "Live";
   if (priceData.source === "cached") return "Cached";
   if (priceData.source === "manual") return "Manual";
-  if (item.sourceType === "mock" || priceData.source === "mock") return "Mock";
+  if (item.sourceType === "mock" || priceData.source === "mock") return "Estimated";
   return priceData.confidence || "Beta";
 }
 

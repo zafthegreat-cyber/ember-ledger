@@ -38,7 +38,7 @@ export function getBestAvailableMarketPrice(item = {}, cache = { prices: [] }) {
   const fallbackMock = normalizeMarketPrice({
     catalogItemId: item.id,
     catalogType: item.catalogType || "sealed",
-    externalSource: "Mock / demo fallback",
+    externalSource: "Estimated fallback",
     marketPrice: Number(item.msrpPrice || item.msrp || 0),
     timestamp: item.createdAt || new Date().toISOString(),
     marketStatus: Number(item.msrpPrice || item.msrp || 0) > 0 ? MARKET_STATUS.MOCK : MARKET_STATUS.UNKNOWN,

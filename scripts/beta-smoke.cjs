@@ -43,6 +43,9 @@ async function main() {
     await page.evaluate(() => {
       localStorage.removeItem("et-tcg-beta-data");
       localStorage.removeItem("et-tcg-beta-scout");
+      localStorage.removeItem("et-tcg-beta-tidepool");
+      localStorage.removeItem("et-tcg-beta-suggestions");
+      localStorage.removeItem("et-tcg-beta-feedback");
     });
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.evaluate(() => {
@@ -68,7 +71,22 @@ async function main() {
         items: [],
         routes: [],
       }));
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify({
+        items: [],
+        expenses: [],
+        sales: [],
+        mileageTrips: [],
+        locationSettings: {
+          mode: "manual",
+          manualLocation: "23434",
+          selectedSavedLocation: "23434",
+          savedLocations: ["23434"],
+          trackingEnabled: false,
+          lastUpdated: new Date().toISOString(),
+        },
+      }));
     });
+    await page.reload({ waitUntil: "domcontentloaded" });
   }
 
   async function fillByLabel(scope, label, value) {
@@ -137,39 +155,57 @@ async function main() {
       await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
     }
     const reportForm = page.locator("form").filter({ has: page.locator('textarea[placeholder="What did you see?"]') }).first();
-    await reportForm.getByPlaceholder("Item name").fill("Smoke ETB");
+    await reportForm.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB");
+    await reportForm.getByPlaceholder("Qty or unknown").first().fill("2");
     await reportForm.getByPlaceholder("What did you see?").fill("Two ETBs on the shelf.");
     await reportForm.locator('input[type="date"]').fill("2026-05-08");
     await reportForm.locator('input[type="time"]').fill("10:30");
     await reportForm.locator('button[type="submit"]').click();
     await assertVisibleText("Smoke ETB");
 
-    const reportCard = page.locator(".scout-report-card").filter({ hasText: "Smoke ETB" }).first();
+    const reportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB" }).first();
     await reportCard.waitFor({ state: "visible", timeout: 10000 });
     await overflowAction(reportCard, "Edit");
-    const editReportPanel = page.locator("form").filter({ has: page.getByRole("heading", { name: "Edit Report" }) }).last();
-    await editReportPanel.getByPlaceholder("Item name").fill("Smoke ETB Edited");
+    const editReportPanel = page.locator("form").filter({ has: page.locator('textarea[placeholder="What did you see?"]') }).first();
+    await editReportPanel.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB Edited");
     await editReportPanel.getByPlaceholder("What did you see?").fill("Three ETBs after edit.");
-    await editReportPanel.getByRole("button", { name: "Save Report" }).click();
+    await editReportPanel.locator('button[type="submit"]').click();
     await assertVisibleText("Smoke ETB Edited");
 
-    const editedReportCard = page.locator(".scout-report-card").filter({ hasText: "Smoke ETB Edited" }).first();
+    const editedReportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB Edited" }).first();
     await editedReportCard.waitFor({ state: "visible", timeout: 10000 });
     await overflowAction(editedReportCard, "Delete");
-    await assert.equal(await page.locator(".scout-report-card").filter({ hasText: "Smoke ETB Edited" }).count(), 0);
+    await page.getByRole("button", { name: "Delete Report" }).click();
+    await assert.equal(await page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB Edited" }).count(), 0);
   });
 
   await step("Scout: add/edit/delete tracked item", async () => {
     await nav("Scout");
-    if (await page.getByRole("button", { name: /^Stores$/ }).count()) {
+    const storesAccordion = page.locator(".scout-accordion-header").filter({ hasText: "Stores" }).first();
+    if (await storesAccordion.count()) {
+      const expanded = await storesAccordion.getAttribute("aria-expanded");
+      if (expanded !== "true") {
+        await storesAccordion.click();
+      }
+    }
+    if (await page.getByRole("button", { name: /^Open Stores$/ }).count()) {
+      await page.getByRole("button", { name: /^Open Stores$/ }).first().click();
+    } else if (await page.getByRole("button", { name: /^Stores$/ }).count()) {
       await page.getByRole("button", { name: /^Stores$/ }).first().click();
     } else if (await page.getByRole("button", { name: /Nearby stores/i }).count()) {
       await page.getByRole("button", { name: /Nearby stores/i }).first().click();
     }
+    if (await page.getByRole("button", { name: /^Open Stores$/ }).count()) {
+      await page.getByRole("button", { name: /^Open Stores$/ }).first().click();
+    }
     if (await page.getByRole("dialog", { name: "Location Needed" }).count()) {
       await page.getByLabel("ZIP or city").fill("23434");
       await page.getByRole("button", { name: "Enter ZIP" }).click();
-      await page.getByRole("button", { name: /^Stores$|Nearby stores/i }).first().click();
+      if (await page.getByRole("button", { name: /^Open Stores$/ }).count()) {
+        await page.getByRole("button", { name: /^Open Stores$/ }).first().click();
+      } else {
+        await page.getByRole("button", { name: /^Stores$|Nearby stores/i }).first().click();
+      }
     }
     if (await page.getByRole("button", { name: "Back to Retailers" }).count()) {
       await page.getByRole("button", { name: "Back to Retailers" }).click();
@@ -189,10 +225,18 @@ async function main() {
     } else {
       await smokeStoreCard.click();
     }
-    if (await page.getByRole("button", { name: "Add Product Sighting" }).count()) {
-      await page.getByRole("button", { name: "Add Product Sighting" }).first().click();
-    }
     const trackedForm = page.locator("form").filter({ has: page.getByPlaceholder("Retailer item number") }).first();
+    if (!(await trackedForm.count())) {
+      const addSightings = page.getByRole("button", { name: "Add Product Sighting" });
+      const sightingCount = await addSightings.count();
+      for (let index = 0; index < sightingCount; index += 1) {
+        const button = addSightings.nth(index);
+        if (await button.isVisible().catch(() => false)) {
+          await button.click();
+          break;
+        }
+      }
+    }
     await trackedForm.getByPlaceholder("Category").fill("Pokemon");
     await trackedForm.getByPlaceholder("Item name").fill("Smoke Booster Bundle");
     await trackedForm.getByPlaceholder("Retailer item number").fill("BB-001");
@@ -261,6 +305,10 @@ async function main() {
     await assertVisibleText("Smoke Shared Target");
     await page.getByRole("button", { name: "Close" }).click();
 
+    await nav("Vault");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }).count(), 0);
+    await nav("Forge");
+
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }), "Edit");
     const editForm = page.locator("form.form").last();
     await fillByLabel(editForm, "Item Name", "Smoke Forge ETB Edited");
@@ -286,6 +334,10 @@ async function main() {
     await page.locator(".flow-modal").getByRole("button", { name: "Add Item" }).click();
     await assertVisibleText("Smoke Vault Binder");
 
+    await nav("Forge");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder" }).count(), 0);
+    await nav("Vault");
+
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder" }), "Edit");
     const editVaultForm = page.locator("form.vault-edit-form").last();
     await fillByLabel(editVaultForm, "Item Name", "Smoke Vault Binder Edited");
@@ -294,6 +346,33 @@ async function main() {
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder Edited" }), "Delete");
     await assert.equal(await page.getByText("Smoke Vault Binder Edited", { exact: false }).count(), 0);
+  });
+
+  await step("Vault: wishlist item stays out of Forge inventory", async () => {
+    await nav("Vault");
+    await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Add Wishlist Item/ }).click();
+    const wishlistForm = page.locator("form#multi-destination-add-form").first();
+    await fillByLabel(wishlistForm, "Item Name", "Smoke Wishlist Box");
+    await fillByLabel(wishlistForm, "Type / Category", "Collection Box");
+    await fillByLabel(wishlistForm, "Quantity Wanted", "1");
+    await fillByLabel(wishlistForm, "Target Price", "25");
+    await page.locator(".flow-modal").getByRole("button", { name: "Add Item" }).click();
+    await page.waitForTimeout(300);
+    const wishlistRecord = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.items || []).find((item) => item.name === "Smoke Wishlist Box" || item.itemName === "Smoke Wishlist Box") || null;
+    });
+    assert.ok(wishlistRecord, "Wishlist record should be written to beta storage");
+    assert.ok((wishlistRecord.destinationScope || []).includes("wishlist"), "Wishlist destination scope should be present");
+    assert.equal(Boolean(wishlistRecord.businessInventory), false);
+    await nav("Forge");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
+    await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.items = (data.items || []).filter((item) => item.name !== "Smoke Wishlist Box" && item.itemName !== "Smoke Wishlist Box");
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(data));
+    });
   });
 
   await step("Market: run TideTradr deal check", async () => {

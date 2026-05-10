@@ -23,7 +23,7 @@ export default function BackupExportImport({
           <input type="file" accept="application/json,.json" onChange={onImportFile} />
         </label>
         <button type="button" className="drawer-link drawer-danger-link" onClick={onClearDemoData}>
-          Clear Local Beta Data
+          Clear Private Beta Data
         </button>
       </div>
 
@@ -53,11 +53,11 @@ export default function BackupExportImport({
           </ul>
           <p className="compact-subtitle">
             Importing will update this device only. Choose merge to add backup records to your current data, or replace
-            to overwrite the current local beta data.
+            to overwrite the current private beta data.
           </p>
           <div className="backup-import-actions">
             <button type="button" onClick={() => onApplyImport("merge")}>Merge Backup</button>
-            <button type="button" className="secondary-button" onClick={() => onApplyImport("replace")}>Replace Local Data</button>
+            <button type="button" className="secondary-button" onClick={() => onApplyImport("replace")}>Replace Private Beta Data</button>
           </div>
         </div>
       ) : null}

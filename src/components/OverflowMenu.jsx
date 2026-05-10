@@ -23,11 +23,17 @@ export default function OverflowMenu({
       if (event.detail !== id) setOpen(false);
     }
 
+    function closeOnEscape(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
     document.addEventListener("pointerdown", closeOnOutsideClick);
+    window.addEventListener("keydown", closeOnEscape);
     window.addEventListener("overflow-menu-open", closeOtherMenus);
 
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick);
+      window.removeEventListener("keydown", closeOnEscape);
       window.removeEventListener("overflow-menu-open", closeOtherMenus);
     };
   }, [id]);
@@ -61,34 +67,37 @@ export default function OverflowMenu({
       </button>
 
       {open ? (
-        <div className="overflow-menu-list" role="menu">
-          {onEdit ? (
-            <button type="button" role="menuitem" onClick={() => runAction(onEdit)}>
-              {editLabel}
-            </button>
-          ) : null}
-          {actions.map((action) => (
-            <button
-              key={action.label}
-              type="button"
-              role="menuitem"
-              className={action.danger ? "overflow-menu-delete" : ""}
-              onClick={() => runAction(action.onClick)}
-            >
-              {action.label}
-            </button>
-          ))}
-          {onDelete ? (
-            <button
-              type="button"
-              role="menuitem"
-              className="overflow-menu-delete"
-              onClick={() => runAction(onDelete)}
-            >
-              {deleteLabel}
-            </button>
-          ) : null}
-        </div>
+        <>
+          <div className="overflow-menu-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />
+          <div className="overflow-menu-list" role="menu">
+            {onEdit ? (
+              <button type="button" role="menuitem" onClick={() => runAction(onEdit)}>
+                {editLabel}
+              </button>
+            ) : null}
+            {actions.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                role="menuitem"
+                className={action.danger ? "overflow-menu-delete" : ""}
+                onClick={() => runAction(action.onClick)}
+              >
+                {action.label}
+              </button>
+            ))}
+            {onDelete ? (
+              <button
+                type="button"
+                role="menuitem"
+                className="overflow-menu-delete"
+                onClick={() => runAction(onDelete)}
+              >
+                {deleteLabel}
+              </button>
+            ) : null}
+          </div>
+        </>
       ) : null}
     </div>
   );

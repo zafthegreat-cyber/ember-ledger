@@ -12,7 +12,7 @@ export const MARKET_STATUS_LABELS = {
   cached: "Cached",
   manual: "Manual",
   estimated: "Estimated",
-  mock: "Mock",
+  mock: "Estimated",
   unknown: "Unknown",
 };
 
@@ -61,10 +61,10 @@ export const MARKET_SOURCES = [
   },
   {
     key: "mock",
-    label: "Mock / Demo",
+    label: "Estimated fallback",
     itemTypes: ["card", "sealed"],
     status: "enabled",
-    notes: "Demo starter values. Never label these as live.",
+    notes: "Fallback values for incomplete beta data. Never label these as live.",
   },
 ];
 

@@ -33,6 +33,7 @@ export default function SmartCatalogSearchBox({
   inputClassName = "",
   closeSignal = 0,
   maxSuggestions = 5,
+  suggestionFilter = null,
   money = (amount) => `$${Number(amount || 0).toFixed(2)}`,
 }) {
   const [suggestions, setSuggestions] = useState([]);
@@ -75,7 +76,10 @@ export default function SmartCatalogSearchBox({
           mapRow: mapRowRef.current,
         });
         if (requestId.current !== currentRequestId) return;
-        const nextSuggestions = (result.suggestions || []).slice(0, maxSuggestions);
+        const filteredSuggestions = typeof suggestionFilter === "function"
+          ? (result.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
+          : (result.suggestions || []);
+        const nextSuggestions = filteredSuggestions.slice(0, maxSuggestions);
         setSuggestions(nextSuggestions);
         setOpen(true);
         setActiveIndex(nextSuggestions.length ? 0 : -1);
@@ -89,7 +93,7 @@ export default function SmartCatalogSearchBox({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [cleanedValue, dataFilter, isSupabaseConfigured, maxSuggestions, productGroup, supabase, value]);
+  }, [cleanedValue, dataFilter, isSupabaseConfigured, maxSuggestions, productGroup, supabase, suggestionFilter, value]);
 
   const groupedSuggestions = useMemo(() => {
     return suggestions.reduce((groups, suggestion, index) => {
