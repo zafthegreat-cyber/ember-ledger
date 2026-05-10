@@ -25,17 +25,14 @@ import { SUGGESTION_TYPES, submitSuggestion } from "../utils/suggestionReviewUti
 import { sanitizeScoutLocalData } from "../utils/betaDataCleanup";
 import { VIRGINIA_REGIONS } from "../data/storeGroups";
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
-import { BEST_BUY_ALERT_TYPES, BEST_BUY_MOCK_PRODUCTS, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
+import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import {
   cacheBestBuyStockResult,
-  checkBestBuyOnlineAvailability,
-  checkBestBuyStoreAvailability,
   createBestBuyStockAlert,
   createTidepoolReportFromBestBuyAvailability,
   generateNightlyBestBuyStockReport,
   normalizeBestBuyStockResult,
-  pullBestBuyStockData,
   saveBestBuyStockHistory,
   sendNightlyBestBuyStockReport,
   updateStoreStockFromBestBuy,
@@ -1937,9 +1934,8 @@ async function syncBestBuyStock(mode = "search") {
   }
 
   if (!pulled.length) {
-    pulled = mode === "sku" && bestBuyForm.sku
-      ? [checkBestBuyStoreAvailability(bestBuyForm.sku, zip, BEST_BUY_MOCK_PRODUCTS)]
-      : pullBestBuyStockData({ query: bestBuyForm.query || "pokemon", zip, products: BEST_BUY_MOCK_PRODUCTS, scoutStores: stores });
+    setBestBuyMessage("No Best Buy matches returned from the live backend. No sample stock rows were created.");
+    return;
   }
 
   let nextResults = bestBuyStockResults;
@@ -1972,7 +1968,7 @@ async function syncBestBuyStock(mode = "search") {
   saveTidepoolReports(nextTidepoolReports);
   setBestBuyMessage(liveSourceUsed
     ? `Best Buy API checked ${pulled.length} item(s). Official API data is still treated as availability intel until confirmed.`
-    : `Best Buy beta sync checked ${pulled.length} item(s). Add BESTBUY_API_KEY and a backend API URL to use the official live source.`);
+    : `Best Buy beta sync checked ${pulled.length} item(s). Live source did not report official API status.`);
   openWebsiteWhenDropDetected(dropToOpen);
 }
 

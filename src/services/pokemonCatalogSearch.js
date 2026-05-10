@@ -1,4 +1,4 @@
-import { applyCatalogDbSort, compareCatalogProducts } from "../utils/catalogSortUtils";
+import { compareCatalogProducts } from "../utils/catalogSortUtils";
 import {
   analyzeCatalogSearch,
   buildCatalogAliasSuggestions,
@@ -9,26 +9,6 @@ import {
 } from "../data/catalogSearchAliases.mjs";
 
 const TEXT_SEARCH_FIELDS = [
-  "name",
-  "set_name",
-  "expansion",
-  "official_expansion_name",
-  "expansion_display_name",
-  "expansion_series",
-  "product_type",
-  "sealed_product_type",
-  "product_kind",
-  "product_line",
-  "barcode",
-  "external_product_id",
-  "tcgplayer_product_id",
-  "identifier_search",
-  "variant_names",
-  "card_number",
-  "set_code",
-];
-
-const LEGACY_TEXT_SEARCH_FIELDS = [
   "name",
   "set_name",
   "expansion",
@@ -46,13 +26,39 @@ const EXACT_FIELDS = [
   "tcgplayer_product_id",
   "external_product_id",
   "card_number",
-  "name",
 ];
+
+const CATALOG_SELECT_FIELDS = [
+  "id",
+  "name",
+  "category",
+  "set_name",
+  "product_type",
+  "barcode",
+  "external_product_id",
+  "tcgplayer_product_id",
+  "market_price",
+  "low_price",
+  "mid_price",
+  "high_price",
+  "image_url",
+  "market_url",
+  "last_price_checked",
+  "set_code",
+  "expansion",
+  "product_line",
+  "card_number",
+  "rarity",
+  "msrp_price",
+  "is_sealed",
+].join(",");
 
 export const CATALOG_PAGE_SIZE = 50;
 export const CATALOG_RECOMMENDATION_LIMIT = 12;
 
 export const CATALOG_SEARCH_ALIASES = buildLegacyCatalogSearchAliases();
+
+const catalogRecommendationCache = new Map();
 
 export function cleanCatalogSearch(value) {
   return normalizeSearchQuery(value).slice(0, 140);
@@ -132,7 +138,7 @@ export function hasCatalogSearchCriteria({
   );
 }
 
-function applyFilters(query, filters = {}, useBrowseView = true) {
+function applyFilters(query, filters = {}) {
   const {
     productGroup = "All",
     productType = "All",
@@ -143,9 +149,8 @@ function applyFilters(query, filters = {}, useBrowseView = true) {
 
   let next = query.eq("category", "Pokemon");
 
-  if (productGroup === "Cards") next = useBrowseView ? next.eq("catalog_group", "Cards") : next.eq("product_type", "Card");
-  if (productGroup === "Sealed") next = useBrowseView ? next.eq("catalog_group", "Sealed") : next.eq("is_sealed", true);
-  if (productGroup === "Other" && useBrowseView) next = next.eq("catalog_group", "Other");
+  if (productGroup === "Cards") next = next.eq("is_sealed", false);
+  if (productGroup === "Sealed") next = next.eq("is_sealed", true);
   if (productType !== "All") next = next.eq("product_type", productType);
   if (setName !== "All") next = next.eq("set_name", setName);
   if (rarity !== "All") next = next.eq("rarity", rarity);
@@ -158,7 +163,9 @@ function applyFilters(query, filters = {}, useBrowseView = true) {
 
 function applyTextSearch(query, term, fields = TEXT_SEARCH_FIELDS) {
   if (term.length < 2) return query;
-  const like = `%${term}%`;
+  const safeTerm = String(term || "").replace(/[%,()]/g, " ").replace(/\s+/g, " ").trim();
+  if (safeTerm.length < 2) return query;
+  const like = `%${safeTerm}%`;
   return query.or(fields.map((field) => `${field}.ilike.${like}`).join(","));
 }
 
@@ -263,53 +270,79 @@ function buildStaticAliasSuggestions(input) {
   }));
 }
 
-async function runSearchAgainstSource({ supabase, sourceName, useBrowseView, query, barcode, mode, filters, sort, page, pageSize }) {
+export function getCatalogRecommendationCacheKey({
+  query = "",
+  productGroup = "All",
+  dataFilter = "All",
+  limit = CATALOG_RECOMMENDATION_LIMIT,
+} = {}) {
+  return JSON.stringify({
+    query: cleanCatalogSearch(query),
+    productGroup,
+    dataFilter,
+    limit,
+  });
+}
+
+export function getCachedCatalogRecommendations(options = {}) {
+  return catalogRecommendationCache.get(getCatalogRecommendationCacheKey(options)) || null;
+}
+
+function isExactIdentifierMode(mode, term) {
+  const normalized = normalizeCatalogQuery(term);
+  return mode === "barcode" || mode === "id" || /^\d{8,}$/.test(normalized);
+}
+
+function buildSearchTerms(term, mode) {
+  const cleaned = cleanCatalogSearch(term);
+  if (!cleaned) return [];
+  if (isExactIdentifierMode(mode, cleaned)) return [cleaned];
+  return [cleaned, ...expandCatalogAliases(cleaned)]
+    .filter(Boolean)
+    .filter((value, index, list) => list.indexOf(value) === index)
+    .slice(0, 4);
+}
+
+function applyDbSort(query, sortKey = "bestMatch") {
+  if (sortKey === "nameAsc") return query.order("name", { ascending: true, nullsFirst: false });
+  if (sortKey === "marketHigh") return query.order("market_price", { ascending: false, nullsFirst: false }).order("name", { ascending: true, nullsFirst: false });
+  if (sortKey === "marketLow") return query.order("market_price", { ascending: true, nullsFirst: false }).order("name", { ascending: true, nullsFirst: false });
+  if (sortKey === "setAsc" || sortKey === "cardNumber") return query.order("set_name", { ascending: true, nullsFirst: false }).order("card_number", { ascending: true, nullsFirst: false }).order("name", { ascending: true, nullsFirst: false });
+  return query.order("last_price_checked", { ascending: false, nullsFirst: false }).order("name", { ascending: true, nullsFirst: false });
+}
+
+async function runSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize }) {
   const cleanedQuery = cleanCatalogSearch(query);
   const cleanedBarcode = cleanCatalogSearch(barcode);
   const exactTerm = mode === "barcode" ? cleanedBarcode || cleanedQuery : cleanedQuery || cleanedBarcode;
   const analysis = analyzeCatalogSearch(exactTerm);
-  const expandedTerms = expandCatalogAliases(exactTerm);
-  const aliasAwareSearch = sort === "bestMatch" && analysis.hasStructuredAlias && exactTerm.length >= 2;
   const pageOffset = Math.max(0, (page - 1) * pageSize);
-  const exactRows = [];
-  let exactMiss = false;
-
-  if (exactTerm) {
-    let exactQuery = supabase
-      .from(sourceName)
-      .select("*")
-      .limit(pageSize);
-    exactQuery = applyFilters(exactQuery, filters, useBrowseView);
-    exactQuery = exactQuery.or(EXACT_FIELDS.map((field) => `${field}.eq.${exactTerm}`).join(","));
-    const { data, error } = await exactQuery;
-    if (error) throw error;
-    exactRows.push(...(data || []));
-    exactMiss = mode === "barcode" && exactRows.length === 0;
+  const exactIdMode = isExactIdentifierMode(mode, exactTerm);
+  const searchTerms = buildSearchTerms(cleanedQuery || cleanedBarcode, mode);
+  const candidateLimit = sort === "bestMatch" && searchTerms.length > 1
+    ? Math.min(Math.max(pageSize * Math.max(page, 1) * 3, 60), 180)
+    : pageSize;
+  const rangeStart = searchTerms.length > 1 ? 0 : pageOffset;
+  const rangeEnd = rangeStart + candidateLimit - 1;
+  let dbQuery = supabase
+    .from(sourceName)
+    .select(CATALOG_SELECT_FIELDS, { count: "estimated" });
+  dbQuery = applyFilters(dbQuery, filters);
+  if (exactIdMode && exactTerm) {
+    dbQuery = dbQuery.or(EXACT_FIELDS.map((field) => `${field}.eq.${exactTerm}`).join(","));
+  } else if (searchTerms.length) {
+    const orClauses = searchTerms.flatMap((term) =>
+      TEXT_SEARCH_FIELDS.map((field) => `${field}.ilike.%${String(term).replace(/[%,()]/g, " ").replace(/\s+/g, " ").trim()}%`)
+    );
+    dbQuery = dbQuery.or(orClauses.join(","));
   }
-
-  const broadRows = [];
-  let broadCount = 0;
-  const searchTerms = aliasAwareSearch
-    ? [exactTerm, ...expandedTerms].filter(Boolean).filter((term, index, terms) => terms.indexOf(term) === index).slice(0, 14)
-    : [cleanedQuery || cleanedBarcode].filter(Boolean);
-  const candidateLimit = aliasAwareSearch ? Math.min(Math.max(pageSize * Math.max(page, 1) * 4, 96), 360) : pageSize;
-
-  for (const term of searchTerms.length ? searchTerms : [""]) {
-    let broadQuery = supabase
-      .from(sourceName)
-      .select("*", { count: "exact" });
-    broadQuery = applyFilters(broadQuery, filters, useBrowseView);
-    broadQuery = applyTextSearch(broadQuery, term, useBrowseView ? TEXT_SEARCH_FIELDS : LEGACY_TEXT_SEARCH_FIELDS);
-    broadQuery = applyCatalogDbSort(broadQuery, sort === "bestMatch" ? "bestMatch" : sort, useBrowseView)
-      .range(aliasAwareSearch ? 0 : pageOffset, (aliasAwareSearch ? 0 : pageOffset) + candidateLimit - 1);
-    const { data, error, count } = await broadQuery;
-    if (error) throw error;
-    broadCount = Math.max(broadCount, count ?? 0);
-    broadRows.push(...(data || []));
-  }
+  dbQuery = applyDbSort(dbQuery, sort === "bestMatch" ? "recentlyChecked" : sort)
+    .range(rangeStart, rangeEnd);
+  const { data, error, count } = await dbQuery;
+  if (error) throw error;
 
   const rowsByKey = new Map();
-  for (const row of [...exactRows, ...broadRows]) {
+  for (const row of data || []) {
     const key = String(row.id || `${row.market_source || ""}-${row.external_product_id || row.tcgplayer_product_id || row.name}`).toLowerCase();
     if (!rowsByKey.has(key)) rowsByKey.set(key, row);
   }
@@ -323,14 +356,14 @@ async function runSearchAgainstSource({ supabase, sourceName, useBrowseView, que
       }
       return compareCatalogProducts(a, b, sort);
     })
-    .slice(aliasAwareSearch ? pageOffset : 0)
+    .slice(searchTerms.length > 1 ? pageOffset : 0)
     .slice(0, pageSize);
 
   return {
     rows,
-    count: aliasAwareSearch ? Math.max(rowsByKey.size, pageOffset + rows.length) : broadCount || rows.length,
-    exactCount: exactRows.length,
-    exactMiss,
+    count: searchTerms.length > 1 ? Math.max(rowsByKey.size, pageOffset + rows.length) : count || rows.length,
+    exactCount: exactIdMode ? rows.length : 0,
+    exactMiss: exactIdMode && rows.length === 0,
     aliasHints: analysis.didYouMean,
   };
 }
@@ -364,42 +397,18 @@ export async function searchPokemonCatalog({
     };
   }
 
-  try {
-    const result = await runSearchAgainstSource({
-      supabase,
-      sourceName: "pokemon_catalog_browse",
-      useBrowseView: true,
-      query,
-      barcode,
-      mode,
-      filters,
-      sort,
-      page,
-      pageSize,
-    });
-    return { ...result, page, pageSize, hasMore: page * pageSize < result.count, usedFallback: false };
-  } catch (error) {
-    const result = await runSearchAgainstSource({
-      supabase,
-      sourceName: "product_catalog",
-      useBrowseView: false,
-      query,
-      barcode,
-      mode,
-      filters: { ...filters, productGroup: filters.productGroup === "Other" ? "All" : filters.productGroup },
-      sort: sort === "bestMatch" ? "recentlyChecked" : sort,
-      page,
-      pageSize,
-    });
-    return {
-      ...result,
-      page,
-      pageSize,
-      hasMore: page * pageSize < result.count,
-      usedFallback: true,
-      fallbackReason: error.message,
-    };
-  }
+  const result = await runSearchAgainstSource({
+    supabase,
+    sourceName: "pokemon_catalog_browse",
+    query,
+    barcode,
+    mode,
+    filters,
+    sort,
+    page,
+    pageSize,
+  });
+  return { ...result, page, pageSize, hasMore: page * pageSize < result.count, usedFallback: false };
 }
 
 export async function getCatalogRecommendations({
@@ -414,47 +423,37 @@ export async function getCatalogRecommendations({
   const normalized = normalizeCatalogQuery(cleaned);
   const mode = detectCatalogSearchMode(cleaned);
 
-  if (!supabase || (!normalized || (normalized.length < 2 && !["barcode", "id", "cardNumber"].includes(mode)))) {
+  const exactIdentifier = isExactIdentifierMode(mode, cleaned);
+  if (!supabase || (!normalized || (normalized.length < 2 && !exactIdentifier))) {
     return {
       query: cleaned,
       mode,
       suggestions: [],
       usedFallback: false,
+      cached: false,
     };
   }
 
+  const cacheKey = getCatalogRecommendationCacheKey({ query: cleaned, productGroup, dataFilter, limit });
+  const cached = catalogRecommendationCache.get(cacheKey);
+  if (cached) return { ...cached, cached: true };
+
   const aliasSuggestions = buildStaticAliasSuggestions(cleaned);
   const expandedTerms = expandCatalogAliases(cleaned);
-  const searchTerms = [cleaned, ...expandedTerms].filter(Boolean).slice(0, 4);
-  const rowsByKey = new Map();
-  let usedFallback = false;
+  const result = await searchPokemonCatalog({
+    supabase,
+    query: cleaned,
+    barcode: exactIdentifier ? cleaned : "",
+    mode: mode === "id" ? "barcode" : mode,
+    productGroup,
+    dataFilter,
+    sort: "bestMatch",
+    page: 1,
+    pageSize: Math.max(10, limit * 2),
+    force: true,
+  });
 
-  for (const term of searchTerms) {
-    if (rowsByKey.size >= 20) break;
-    try {
-      const result = await searchPokemonCatalog({
-        supabase,
-        query: term,
-        barcode: ["barcode", "id", "cardNumber"].includes(mode) ? term : "",
-        mode: mode === "id" ? "barcode" : mode,
-        productGroup,
-        dataFilter,
-        sort: "bestMatch",
-        page: 1,
-        pageSize: 10,
-        force: true,
-      });
-      usedFallback = usedFallback || Boolean(result.usedFallback);
-      for (const row of result.rows || []) {
-        const key = String(row.id || row.external_product_id || row.tcgplayer_product_id || row.barcode || catalogRowTitle(row)).toLowerCase();
-        if (!rowsByKey.has(key)) rowsByKey.set(key, row);
-      }
-    } catch {
-      // Recommendation failures should not block the main search box.
-    }
-  }
-
-  const rows = [...rowsByKey.values()];
+  const rows = result.rows || [];
   const suggestions = [];
   const exactRows = rows.filter((row) =>
     rowMatchesExactId(row, cleaned) ||
@@ -537,10 +536,13 @@ export async function getCatalogRecommendations({
       product: suggestion.product && mapRow ? mapRow(suggestion.product) : suggestion.product,
     }));
 
-  return {
+  const payload = {
     query: cleaned,
     mode,
     suggestions: uniqueSuggestions,
-    usedFallback,
+    usedFallback: false,
+    cached: false,
   };
+  catalogRecommendationCache.set(cacheKey, payload);
+  return payload;
 }

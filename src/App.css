@@ -2751,6 +2751,12 @@ textarea.search-input {
   text-transform: uppercase;
 }
 
+.smart-catalog-suggestion-status.error {
+  color: #9f1239;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .smart-catalog-suggestion-section {
   display: grid;
   gap: 4px;

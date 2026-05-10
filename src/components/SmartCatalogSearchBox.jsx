@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { detectCatalogSearchMode, getCatalogRecommendations, normalizeCatalogQuery } from "../services/pokemonCatalogSearch";
+import {
+  detectCatalogSearchMode,
+  getCachedCatalogRecommendations,
+  getCatalogRecommendations,
+  normalizeCatalogQuery,
+} from "../services/pokemonCatalogSearch";
 
 function renderHighlighted(label, query) {
   const text = String(label || "");
@@ -39,6 +44,7 @@ export default function SmartCatalogSearchBox({
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const requestId = useRef(0);
   const mapRowRef = useRef(mapRow);
@@ -55,9 +61,11 @@ export default function SmartCatalogSearchBox({
 
   useEffect(() => {
     const mode = detectCatalogSearchMode(value);
-    if (!isSupabaseConfigured || !supabase || (!cleanedValue || (cleanedValue.length < 2 && !["barcode", "id", "cardNumber"].includes(mode)))) {
+    const exactIdentifier = ["barcode", "id"].includes(mode);
+    if (!isSupabaseConfigured || !supabase || (!cleanedValue || (cleanedValue.length < 2 && !exactIdentifier))) {
       setSuggestions([]);
       setLoading(false);
+      setErrorMessage("");
       setOpen(false);
       setActiveIndex(-1);
       return;
@@ -65,8 +73,30 @@ export default function SmartCatalogSearchBox({
 
     const currentRequestId = requestId.current + 1;
     requestId.current = currentRequestId;
-    setLoading(true);
+
+    const cached = getCachedCatalogRecommendations({
+      query: value,
+      productGroup,
+      dataFilter,
+      limit: maxSuggestions,
+    });
+    if (cached) {
+      const filteredSuggestions = typeof suggestionFilter === "function"
+        ? (cached.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
+        : (cached.suggestions || []);
+      const nextSuggestions = filteredSuggestions.slice(0, maxSuggestions);
+      setSuggestions(nextSuggestions);
+      setLoading(false);
+      setErrorMessage("");
+      setOpen(true);
+      setActiveIndex(nextSuggestions.length ? 0 : -1);
+      return;
+    }
+
     const timer = window.setTimeout(async () => {
+      if (requestId.current !== currentRequestId) return;
+      setLoading(true);
+      setErrorMessage("");
       try {
         const result = await getCatalogRecommendations({
           supabase,
@@ -74,6 +104,7 @@ export default function SmartCatalogSearchBox({
           productGroup,
           dataFilter,
           mapRow: mapRowRef.current,
+          limit: maxSuggestions,
         });
         if (requestId.current !== currentRequestId) return;
         const filteredSuggestions = typeof suggestionFilter === "function"
@@ -83,9 +114,12 @@ export default function SmartCatalogSearchBox({
         setSuggestions(nextSuggestions);
         setOpen(true);
         setActiveIndex(nextSuggestions.length ? 0 : -1);
-      } catch {
+        setErrorMessage("");
+      } catch (error) {
         if (requestId.current !== currentRequestId) return;
         setSuggestions([]);
+        setOpen(true);
+        setErrorMessage(error?.message || "Catalog search is unavailable. Try again.");
         setActiveIndex(-1);
       } finally {
         if (requestId.current === currentRequestId) setLoading(false);
@@ -159,9 +193,11 @@ export default function SmartCatalogSearchBox({
         aria-expanded={open && suggestions.length > 0}
         aria-autocomplete="list"
       />
-      {open && (suggestions.length > 0 || loading) ? (
+      {open && (suggestions.length > 0 || loading || errorMessage || cleanedValue.length >= 2) ? (
         <div className="smart-catalog-suggestions" role="listbox" onMouseDown={(event) => event.preventDefault()}>
           {loading ? <div className="smart-catalog-suggestion-status">Finding smart matches...</div> : null}
+          {!loading && errorMessage ? <div className="smart-catalog-suggestion-status error">{errorMessage}</div> : null}
+          {!loading && !errorMessage && suggestions.length === 0 ? <div className="smart-catalog-suggestion-status">No matches found.</div> : null}
           {Object.entries(groupedSuggestions).map(([section, items]) => (
             <div className="smart-catalog-suggestion-section" key={section}>
               <div className="smart-catalog-suggestion-heading">{section}</div>

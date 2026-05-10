@@ -1,4 +1,4 @@
-import { BEST_BUY_MOCK_PRODUCTS, BEST_BUY_SOURCE_STATUS } from "../data/bestBuyStockSeed";
+import { BEST_BUY_SOURCE_STATUS } from "../data/bestBuyStockSeed";
 
 const BEST_BUY_CACHE_TTL_MS = 1000 * 60 * 30;
 
@@ -33,7 +33,7 @@ function confidenceFromMatch(match) {
   return 62;
 }
 
-export function searchBestBuyProducts(query, products = BEST_BUY_MOCK_PRODUCTS) {
+export function searchBestBuyProducts(query, products = []) {
   const needle = normalizeText(query);
   if (!needle) return products;
   return products.filter((product) =>
@@ -41,16 +41,16 @@ export function searchBestBuyProducts(query, products = BEST_BUY_MOCK_PRODUCTS) 
   );
 }
 
-export function getBestBuyProductBySku(sku, products = BEST_BUY_MOCK_PRODUCTS) {
+export function getBestBuyProductBySku(sku, products = []) {
   return products.find((product) => String(product.bestBuySku || "").toLowerCase() === String(sku || "").toLowerCase()) || null;
 }
 
-export function checkBestBuyOnlineAvailability(sku, products = BEST_BUY_MOCK_PRODUCTS) {
+export function checkBestBuyOnlineAvailability(sku, products = []) {
   const product = getBestBuyProductBySku(sku, products);
   return product ? normalizeBestBuyStockResult(product) : normalizeBestBuyStockResult({ bestBuySku: sku, productName: "Unknown Best Buy item", sourceStatus: BEST_BUY_SOURCE_STATUS.UNKNOWN });
 }
 
-export function checkBestBuyStoreAvailability(sku, zipOrStoreId, products = BEST_BUY_MOCK_PRODUCTS) {
+export function checkBestBuyStoreAvailability(sku, zipOrStoreId, products = []) {
   const product = checkBestBuyOnlineAvailability(sku, products);
   return {
     ...product,
@@ -159,7 +159,7 @@ export function saveBestBuyStockHistory(history = [], result = {}, previous = {}
       changeType,
       previousStatus,
       currentStatus: normalized.stockStatus,
-      notes: normalized.sourceStatus === "mock" ? "Beta mock/cached Best Buy availability. Confirm before driving." : "",
+      notes: normalized.sourceStatus === BEST_BUY_SOURCE_STATUS.CACHED ? "Cached Best Buy availability. Confirm before driving." : "",
     },
     ...history,
   ];
@@ -252,7 +252,7 @@ export function createTidepoolReportFromBestBuyAvailability(result = {}) {
   };
 }
 
-export function pullBestBuyStockData({ query = "pokemon", zip = "", products = BEST_BUY_MOCK_PRODUCTS, catalogItems = [], scoutStores = [] } = {}) {
+export function pullBestBuyStockData({ query = "pokemon", zip = "", products = [], catalogItems = [], scoutStores = [] } = {}) {
   return searchBestBuyProducts(query, products).map((product) => {
     const result = normalizeBestBuyStockResult({ ...product, zipChecked: zip || product.zipChecked });
     const productMatch = matchBestBuyProductToTideTradrCatalog(result, catalogItems);
@@ -303,7 +303,7 @@ export function generateNightlyBestBuyStockReport({ results = [], history = [], 
     reportDate: checkedAt.slice(0, 10),
     zip: settings.zip || "",
     radiusMiles: settings.radiusMiles || 25,
-    sourceStatus: results.some((item) => item.sourceStatus === "live") ? "live" : results.some((item) => item.sourceStatus === "cached") ? "cached" : "mock",
+    sourceStatus: results.some((item) => item.sourceStatus === "live") ? "live" : results.some((item) => item.sourceStatus === "cached") ? "cached" : BEST_BUY_SOURCE_STATUS.UNKNOWN,
     inStock,
     pickup,
     watchlistMatches: results.filter((item) => item.matchedCatalogItemId),
