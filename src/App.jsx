@@ -13168,8 +13168,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderMultiDestinationAddFlowContent() {
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
-    const catalogMatchQuery = String(multiDestinationCatalogQuery || "").trim();
-    const catalogMatchResults = getCatalogPickerResults(catalogMatchQuery, 8);
     const destinationOptions = [
       {
         key: "vault",
@@ -13262,6 +13260,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       dataFilter="All"
                       placeholder="Search TideTradr by product, set, UPC, SKU, or shorthand..."
                       maxSuggestions={8}
+                      inlineResults
+                      emptyMessage="No TideTradr match found. Continue manual entry or suggest a missing product."
+                      renderEmptyActions={() => (
+                        <div className="catalog-selector-actions">
+                          <button type="button" className="secondary-button" onClick={() => setMultiDestinationCatalogQuery("")}>
+                            Continue manual entry
+                          </button>
+                          <button type="button" onClick={markMultiDestinationMissingCatalog}>
+                            Suggest Missing Product
+                          </button>
+                        </div>
+                      )}
                       money={money}
                     />
                   </Field>
@@ -13290,28 +13300,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </>
               )}
-              {!selectedCatalog ? (
-                <p className="compact-subtitle">No TideTradr match selected. Search above, continue manual entry, or suggest a missing product.</p>
-              ) : null}
-              {catalogMatchQuery && catalogMatchResults.length && (!selectedCatalog || multiDestinationMatchSearchOpen) ? (
-                <div className="catalog-selector-results">
-                  {catalogMatchResults.map((product) => renderCatalogPickerCard(product, selectMultiDestinationCatalogProduct))}
-                </div>
-              ) : null}
-              {catalogMatchQuery && !catalogMatchResults.length && !selectedCatalog ? (
-                <div className="small-empty-state catalog-selector-empty">
-                  <strong>No match found.</strong>
-                  <span>Continue manual entry or submit this item for TideTradr review.</span>
-                  <div className="catalog-selector-actions">
-                    <button type="button" className="secondary-button" onClick={() => setMultiDestinationCatalogQuery("")}>
-                      Continue manual entry
-                    </button>
-                    <button type="button" onClick={markMultiDestinationMissingCatalog}>
-                      Suggest to TideTradr
-                    </button>
-                  </div>
-                </div>
-              ) : null}
             </div>
             <Field label="Item Name">
               <input

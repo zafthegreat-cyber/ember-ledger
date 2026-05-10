@@ -104,6 +104,11 @@ export function makeSuggestion(input = {}) {
     reviewedAt: input.reviewedAt || "",
     confidence: input.confidence || input.confidenceScore || "user-submitted",
     confirmationOf: input.confirmationOf || "",
+    visibility: input.visibility || input.submittedData?.visibility || "",
+    adminReviewVisible: input.adminReviewVisible === false ? false : true,
+    admin_review_visible: input.admin_review_visible === false ? false : true,
+    adminVisibilityDisclosedAt: input.adminVisibilityDisclosedAt || input.admin_visibility_disclosed_at || now,
+    admin_visibility_disclosed_at: input.admin_visibility_disclosed_at || input.adminVisibilityDisclosedAt || now,
     createdAt: input.createdAt || now,
     updatedAt: input.updatedAt || now,
   };

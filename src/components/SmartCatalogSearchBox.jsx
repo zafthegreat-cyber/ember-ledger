@@ -39,6 +39,9 @@ export default function SmartCatalogSearchBox({
   closeSignal = 0,
   maxSuggestions = 5,
   suggestionFilter = null,
+  inlineResults = false,
+  emptyMessage = "No matches found.",
+  renderEmptyActions = null,
   money = (amount) => `$${Number(amount || 0).toFixed(2)}`,
 }) {
   const [suggestions, setSuggestions] = useState([]);
@@ -93,10 +96,14 @@ export default function SmartCatalogSearchBox({
       return;
     }
 
+    setSuggestions([]);
+    setLoading(true);
+    setErrorMessage("");
+    setOpen(true);
+    setActiveIndex(-1);
+
     const timer = window.setTimeout(async () => {
       if (requestId.current !== currentRequestId) return;
-      setLoading(true);
-      setErrorMessage("");
       try {
         const result = await getCatalogRecommendations({
           supabase,
@@ -182,7 +189,28 @@ export default function SmartCatalogSearchBox({
         className={inputClassName}
         value={value}
         onChange={(event) => {
-          onChange?.(event.target.value);
+          const nextValue = event.target.value;
+          const nextCleanedValue = normalizeCatalogQuery(nextValue);
+          const nextMode = detectCatalogSearchMode(nextValue);
+          const nextExactIdentifier = ["barcode", "id"].includes(nextMode);
+          const cached = getCachedCatalogRecommendations({
+            query: nextValue,
+            productGroup,
+            dataFilter,
+            limit: maxSuggestions,
+          });
+          const cachedSuggestions = cached?.suggestions || [];
+          setSuggestions([]);
+          setErrorMessage("");
+          setActiveIndex(-1);
+          if (cached) {
+            setSuggestions(cachedSuggestions.slice(0, maxSuggestions));
+            setLoading(false);
+            setActiveIndex(cachedSuggestions.length ? 0 : -1);
+          } else {
+            setLoading(Boolean(nextCleanedValue && (nextCleanedValue.length >= 2 || nextExactIdentifier)));
+          }
+          onChange?.(nextValue);
           setOpen(true);
         }}
         onKeyDown={handleKeyDown}
@@ -194,10 +222,19 @@ export default function SmartCatalogSearchBox({
         aria-autocomplete="list"
       />
       {open && (suggestions.length > 0 || loading || errorMessage || cleanedValue.length >= 2) ? (
-        <div className="smart-catalog-suggestions" role="listbox" onMouseDown={(event) => event.preventDefault()}>
+        <div
+          className={`smart-catalog-suggestions ${inlineResults ? "smart-catalog-suggestions--inline" : ""}`}
+          role="listbox"
+          onMouseDown={(event) => event.preventDefault()}
+        >
           {loading ? <div className="smart-catalog-suggestion-status">Finding smart matches...</div> : null}
           {!loading && errorMessage ? <div className="smart-catalog-suggestion-status error">{errorMessage}</div> : null}
-          {!loading && !errorMessage && suggestions.length === 0 ? <div className="smart-catalog-suggestion-status">No matches found.</div> : null}
+          {!loading && !errorMessage && suggestions.length === 0 ? (
+            <div className="smart-catalog-suggestion-status smart-catalog-empty-state">
+              <span>{emptyMessage}</span>
+              {typeof renderEmptyActions === "function" ? renderEmptyActions() : null}
+            </div>
+          ) : null}
           {Object.entries(groupedSuggestions).map(([section, items]) => (
             <div className="smart-catalog-suggestion-section" key={section}>
               <div className="smart-catalog-suggestion-heading">{section}</div>
@@ -211,7 +248,7 @@ export default function SmartCatalogSearchBox({
                   role="option"
                   aria-selected={suggestion.index === activeIndex}
                 >
-                  {suggestion.imageUrl ? <img src={suggestion.imageUrl} alt="" /> : <span className="smart-catalog-suggestion-thumb">{suggestion.badge || suggestion.type}</span>}
+                  {suggestion.imageUrl ? <img src={suggestion.imageUrl} alt="" /> : <span className="smart-catalog-suggestion-thumb">No image</span>}
                   <span className="smart-catalog-suggestion-copy">
                     <strong>{renderHighlighted(suggestion.label, value)}</strong>
                     <small>{suggestion.description || suggestion.searchValue}</small>

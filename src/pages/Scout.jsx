@@ -26,7 +26,7 @@ import { sanitizeScoutLocalData } from "../utils/betaDataCleanup";
 import { VIRGINIA_REGIONS } from "../data/storeGroups";
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
-import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
+import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import {
   cacheBestBuyStockResult,
   createBestBuyStockAlert,
@@ -926,6 +926,42 @@ function scoutSourceTypeLabel(value = "") {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function scoutVisibilityLabel(value = "") {
+  return SCOUT_VISIBILITY_COPY[value]?.label || scoutSourceTypeLabel(value);
+}
+
+function scoutVisibilityHelper(value = "") {
+  return SCOUT_VISIBILITY_COPY[value]?.helper || "";
+}
+
+function isScoutVisibilityPrivateFromUsers(record = {}) {
+  const visibility = String(record.visibility || record.visibility_level || record.submittedData?.visibility || "").toLowerCase();
+  return visibility === "private" || visibility === "shared_with_team";
+}
+
+function hasAdminReviewDisclosure(record = {}) {
+  return Boolean(
+    record.adminReviewVisible === true ||
+    record.admin_review_visible === true ||
+    record.submittedData?.adminReviewVisible === true ||
+    record.submitted_data?.admin_review_visible === true ||
+    record.adminVisibilityDisclosedAt ||
+    record.admin_visibility_disclosed_at ||
+    record.submittedData?.adminVisibilityDisclosedAt ||
+    record.submitted_data?.admin_visibility_disclosed_at
+  );
+}
+
+function addAdminReviewDisclosure(record = {}, disclosedAt = new Date().toISOString()) {
+  return {
+    ...record,
+    adminReviewVisible: true,
+    admin_review_visible: true,
+    adminVisibilityDisclosedAt: disclosedAt,
+    admin_visibility_disclosed_at: disclosedAt,
+  };
+}
+
 export default function Scout({
   targetSubTab = { tab: "overview", id: 0 },
   compact = false,
@@ -1368,12 +1404,17 @@ export default function Scout({
       source_type: "photo_report",
       confidence: "confirmed",
       visibility: "public_cleaned",
+      adminReviewVisible: true,
+      admin_review_visible: true,
+      adminVisibilityDisclosedAt: now.toISOString(),
+      admin_visibility_disclosed_at: now.toISOString(),
       evidence: [{
         type: "photo",
         url: imageUrl,
         transcript: "",
         submittedBy: "user",
         private: false,
+        adminReviewVisible: true,
       }],
     };
 
@@ -1762,11 +1803,17 @@ function saveLocalScout(next) {
 }
 
 function submitSharedDataSuggestion(input, setMessage) {
+  const disclosedAt = new Date().toISOString();
   const result = submitSuggestion({
     userId: LOCAL_SCOUT_USER_ID,
     displayName: "Local Scout",
     source: "scout",
+    adminReviewVisible: true,
+    admin_review_visible: true,
+    adminVisibilityDisclosedAt: disclosedAt,
+    admin_visibility_disclosed_at: disclosedAt,
     ...input,
+    submittedData: addAdminReviewDisclosure(input.submittedData || {}, disclosedAt),
   });
   if (!result.ok && result.reason === "duplicate") {
     setMessage?.("A similar suggestion is already under review.");
@@ -2593,6 +2640,7 @@ async function handleUpdateStore(e) {
         transcript: "",
         submittedBy: "user",
         private: reportForm.visibility !== "public_cleaned",
+        adminReviewVisible: true,
       })),
       note ? {
         type: "note",
@@ -2600,6 +2648,7 @@ async function handleUpdateStore(e) {
         transcript: note,
         submittedBy: "user",
         private: reportForm.visibility !== "public_cleaned",
+        adminReviewVisible: true,
       } : null,
     ].filter(Boolean);
 
@@ -2630,6 +2679,10 @@ async function handleUpdateStore(e) {
         source_type: reportForm.sourceType || (uniquePhotoUrls.length ? "photo_report" : "user_report"),
         confidence: reportForm.confidence || (uniquePhotoUrls.length ? "confirmed" : "possible"),
         visibility: reportForm.visibility || "public_cleaned",
+        adminReviewVisible: true,
+        admin_review_visible: true,
+        adminVisibilityDisclosedAt: nowParts.iso,
+        admin_visibility_disclosed_at: nowParts.iso,
         evidence,
         lat: reportForm.lat,
         lng: reportForm.lng,
@@ -2800,6 +2853,10 @@ async function handleUpdateStore(e) {
       source_type: "text_screenshot",
       confidence: tipImport.verified ? "confirmed" : "likely",
       visibility: "private",
+      adminReviewVisible: true,
+      admin_review_visible: true,
+      adminVisibilityDisclosedAt: nowParts.iso,
+      admin_visibility_disclosed_at: nowParts.iso,
       stockStatus: tipImport.stockStatus,
       stock_status: tipImport.stockStatus,
       quantitySeen: tipImport.quantitySeen,
@@ -2849,6 +2906,7 @@ async function handleUpdateStore(e) {
         transcript: tipImport.notes,
         submittedBy: "user",
         private: true,
+        adminReviewVisible: true,
       }],
       createdAt: new Date().toISOString(),
     };
@@ -2946,6 +3004,7 @@ async function handleUpdateStore(e) {
   }
 
   function previewIntelImport() {
+    const disclosedAt = new Date().toISOString();
     const rows = intelImportText
       .split(/\n+/)
       .map((line) => line.trim())
@@ -2966,12 +3025,17 @@ async function handleUpdateStore(e) {
           confidence: inferIntelConfidence(line, sourceType),
           sourceType,
           visibility: "private",
+          adminReviewVisible: true,
+          admin_review_visible: true,
+          adminVisibilityDisclosedAt: disclosedAt,
+          admin_visibility_disclosed_at: disclosedAt,
           evidence: [{
             type: sourceType === "called_store" ? "call" : "screenshot",
             url: "",
             transcript: line,
             submittedBy: "user",
             private: true,
+            adminReviewVisible: true,
           }],
           createdAt: new Date().toISOString(),
         };
@@ -2998,7 +3062,7 @@ async function handleUpdateStore(e) {
     setRestockPatterns(nextPatterns);
     setIntelImportPreview([]);
     setIntelImportText("");
-    setError("Restock intel saved privately for review.");
+    setError("Restock intel saved private from other users for admin review.");
   }
 
   async function handleCreateItem(e) {
@@ -3316,15 +3380,25 @@ async function handleUpdateStore(e) {
     setError("Favorite saved.");
   }
 
+  const visibleAllReports = useMemo(
+    () => allReports.filter((report) => canViewerSeeScoutReport(report)),
+    [allReports, adminMode]
+  );
+
+  const visibleReports = useMemo(
+    () => reports.filter((report) => canViewerSeeScoutReport(report)),
+    [reports, adminMode]
+  );
+
   const totals = useMemo(() => {
     const found = stores.filter((s) => s.status === "Found").length;
     return {
       stores: stores.length,
       found,
-      reports: reports.length,
+      reports: visibleReports.length,
       items: items.length,
     };
-  }, [stores, reports, items]);
+  }, [stores, visibleReports, items]);
 
   const directoryStats = useMemo(() => {
     const hamptonRoadsStores = stores.filter((store) => /hampton roads|757|williamsburg|peninsula/i.test(`${store.region || ""} ${store.city || ""}`)).length;
@@ -3344,17 +3418,24 @@ async function handleUpdateStore(e) {
   );
 
   const reportsByStore = useMemo(() => {
-    return allReports.reduce((acc, report) => {
+    return visibleAllReports.reduce((acc, report) => {
       const storeId = getReportStoreId(report);
       if (!storeId) return acc;
       acc[storeId] = [...(acc[storeId] || []), report];
       return acc;
     }, {});
-  }, [allReports]);
+  }, [visibleAllReports]);
 
   function isUserOwnedScoutReport(report = {}) {
     const owner = String(report.userId || report.user_id || report.reportedBy || report.reported_by || "");
     return !owner || owner.includes(LOCAL_SCOUT_USER_ID) || owner.includes("Zena") || owner.includes("Local Scout") || BETA_LOCAL_SCOUT;
+  }
+
+  function canViewerSeeScoutReport(report = {}) {
+    if (!isScoutVisibilityPrivateFromUsers(report)) return true;
+    if (isUserOwnedScoutReport(report)) return true;
+    if (adminMode && hasAdminReviewDisclosure(report)) return true;
+    return false;
   }
 
   function getReportStore(report = {}) {
@@ -3399,6 +3480,7 @@ async function handleUpdateStore(e) {
             {stockStatus ? <span>{stockStatus}</span> : null}
             {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
             {confidence ? <span>Confidence: {confidence}</span> : null}
+            {adminMode && report.visibility ? <span>{scoutVisibilityLabel(report.visibility)}</span> : null}
             <span>Submitted by {isUserOwnedScoutReport(report) ? "You" : report.displayName || report.reportedBy || report.reported_by || "Scout user"}</span>
           </div>
           <div className="scout-report-items">
@@ -3547,14 +3629,14 @@ async function handleUpdateStore(e) {
   }, [routeCandidates, routeForm.includedGroups, routeForm.lockedStoreIds, routeForm.maxDistance, routeForm.routeGoal]);
 
   const restockHistory = useMemo(() => {
-    return [...allReports]
+    return [...visibleAllReports]
       .sort((a, b) => {
         const aDate = `${getReportDate(a)}T${getReportTime(a) || "00:00"}`;
         const bDate = `${getReportDate(b)}T${getReportTime(b) || "00:00"}`;
         return new Date(bDate) - new Date(aDate);
       })
       .slice(0, 20);
-  }, [allReports]);
+  }, [visibleAllReports]);
 
   const enrichedTidepoolReports = useMemo(() => {
     return tidepoolReports
@@ -4167,7 +4249,7 @@ async function handleUpdateStore(e) {
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Step 4: Screenshot</h3>
                 <p style={styles.tiny}>
-                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting.
+                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting. Private from other users means only you and app admins can see it.
                 </p>
                 <div style={styles.formGrid}>
                   <input type="file" accept="image/*" onChange={handleTipScreenshotUpload} />
@@ -4210,7 +4292,7 @@ async function handleUpdateStore(e) {
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Import restock intel</h3>
                 <p style={styles.tiny}>
-                  Paste cleaned notes from screenshots, group chats, calls, or planner notes. Raw private details stay private by default.
+                  Paste cleaned notes from screenshots, group chats, calls, or planner notes. Imported intel is private from other users by default; only you and app admins can review it unless you later publish a cleaned report.
                 </p>
                 <textarea
                   style={styles.textarea}
@@ -4220,7 +4302,7 @@ async function handleUpdateStore(e) {
                 />
                 <div style={styles.row}>
                   <button type="button" style={styles.buttonSoft} onClick={previewIntelImport}>Preview Intel</button>
-                  <button type="button" style={styles.buttonPrimary} disabled={!intelImportPreview.length} onClick={() => saveIntelImportRows()}>Save all private</button>
+                  <button type="button" style={styles.buttonPrimary} disabled={!intelImportPreview.length} onClick={() => saveIntelImportRows()}>Save private from other users</button>
                 </div>
                 {intelImportPreview.length ? (
                   <div className="scout-intel-review-list">
@@ -4230,7 +4312,7 @@ async function handleUpdateStore(e) {
                         <strong>{index + 1}. {row.storeAlias}</strong>
                         <span>{scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
                         <p>{row.rawProductText || "No product phrase detected"}</p>
-                        <small>Visibility: private | Needs review before public sharing</small>
+                        <small>Visibility: Private from other users | Admin-reviewable before public sharing</small>
                       </div>
                     ))}
                   </div>
@@ -4481,16 +4563,19 @@ async function handleUpdateStore(e) {
                     onChange={(e) => setReportForm((current) => ({ ...current, visibility: e.target.value }))}
                   >
                     {SCOUT_VISIBILITY_LEVELS.map((visibility) => (
-                      <option key={visibility} value={visibility}>{scoutSourceTypeLabel(visibility)}</option>
+                      <option key={visibility} value={visibility}>{scoutVisibilityLabel(visibility)}</option>
                     ))}
                   </select>
+                  {scoutVisibilityHelper(reportForm.visibility) ? (
+                    <p style={styles.tiny}>{scoutVisibilityHelper(reportForm.visibility)}</p>
+                  ) : null}
                   <input
                     style={styles.input}
                     value={reportForm.imageUrl}
                     onChange={(e) => setReportForm((current) => ({ ...current, imageUrl: e.target.value }))}
                     placeholder="Photo, screenshot, or link/text proof"
                   />
-                  <p style={styles.tiny}>Text screenshots, names, phone numbers, and group chats stay private unless you choose a cleaned public report.</p>
+                  <p style={styles.tiny}>Text screenshots, names, phone numbers, and group chats are not shown to other users unless you choose a cleaned public report.</p>
                   <label style={styles.tiny}>
                     <input
                       type="checkbox"
@@ -4517,13 +4602,13 @@ async function handleUpdateStore(e) {
             {editingReportId ? (
               <p style={styles.tiny}>Editing mode is open in the report form above.</p>
             ) : null}
-            {reports.length === 0 ? (
+            {visibleReports.length === 0 ? (
               <div style={styles.calloutCard}>
                 <strong>No reports yet for this store.</strong>
                 <p style={{ margin: "6px 0 0", color: "#475569" }}>Be the first to add a sighting, empty shelf update, price, or limit.</p>
               </div>
             ) : (
-              reports.map((report) => renderCompactReportCard(report))
+              visibleReports.map((report) => renderCompactReportCard(report))
             )}
           </div>
         </div>
@@ -5164,13 +5249,13 @@ async function handleUpdateStore(e) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "16px" }}>
                   <div style={styles.card}>
                     <h2 style={styles.sectionTitle}>Recent Reports</h2>
-                    {reports.length === 0 ? (
+                    {visibleReports.length === 0 ? (
                       <div style={styles.calloutCard}>
                         <p style={{ ...styles.empty, padding: 0 }}>No store reports yet. Submit a report to help improve Scout predictions.</p>
                         <button type="button" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit First Report</button>
                       </div>
                     ) : (
-                      reports.slice(0, 6).map((report) => renderCompactReportCard(report, { compact: true }))
+                      visibleReports.slice(0, 6).map((report) => renderCompactReportCard(report, { compact: true }))
                     )}
                   </div>
 
@@ -5202,7 +5287,7 @@ async function handleUpdateStore(e) {
                   <div style={styles.card}>
                     <h2 style={styles.sectionTitle}>Store Intelligence</h2>
                     <div style={styles.intelligenceRow}><span>Reported restock days</span><strong>{selectedStore.restockDays || selectedStore.stockDays || "Unknown"}</strong></div>
-                    <div style={styles.intelligenceRow}><span>Common report days</span><strong>{getMostCommon(reports.map((report) => dayName(report.reportDate || report.report_date)))[0] || "Unknown"}</strong></div>
+                    <div style={styles.intelligenceRow}><span>Common report days</span><strong>{getMostCommon(visibleReports.map((report) => dayName(report.reportDate || report.report_date)))[0] || "Unknown"}</strong></div>
                     <div style={styles.intelligenceRow}><span>Truck days</span><strong>{selectedStore.truckDays || selectedStore.truckDay || "Unknown"}</strong></div>
                     <div style={styles.intelligenceRow}><span>Purchase limits</span><strong>{selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"}</strong></div>
                     <div style={{ ...styles.intelligenceRow, borderBottom: "none" }}><span>Last verified</span><strong>{selectedStore.lastVerifiedDate || selectedStore.lastVerified || "Unknown"}</strong></div>
@@ -5250,8 +5335,8 @@ async function handleUpdateStore(e) {
 
                 <div style={styles.card}>
                   <h2 style={styles.sectionTitle}>Store History</h2>
-                  {reports.length === 0 ? <p style={styles.empty}>No history yet. Reports, corrections, and restock confirmations will appear here.</p> : null}
-                  {reports.slice(0, 8).map((report) => renderCompactReportCard(report, { compact: true }))}
+                  {visibleReports.length === 0 ? <p style={styles.empty}>No history yet. Reports, corrections, and restock confirmations will appear here.</p> : null}
+                  {visibleReports.slice(0, 8).map((report) => renderCompactReportCard(report, { compact: true }))}
                 </div>
               </>
             ) : null}
@@ -5714,10 +5799,10 @@ async function handleUpdateStore(e) {
                       ))}
                     </div>
                     {editingReportId ? <p style={styles.tiny}>Editing mode is open in the report form above.</p> : null}
-                    {reports.length === 0 ? (
+                    {visibleReports.length === 0 ? (
                       <p style={styles.empty}>No store reports yet. Submit a report to help improve Scout predictions.</p>
                     ) : (
-                      reports.map((report) => renderCompactReportCard(report))
+                      visibleReports.map((report) => renderCompactReportCard(report))
                     )}
                   </div>
 
@@ -5897,8 +5982,8 @@ async function handleUpdateStore(e) {
                 </div>
                 <div style={{ ...styles.card, marginTop: "20px" }}>
                   <h2 style={styles.sectionTitle}>Store History</h2>
-                  {[...reports].slice(0, 8).map((report) => renderCompactReportCard(report, { compact: true }))}
-                  {reports.length === 0 ? <p style={styles.empty}>No history yet. Submit the first report for this store.</p> : null}
+                  {visibleReports.slice(0, 8).map((report) => renderCompactReportCard(report, { compact: true }))}
+                  {visibleReports.length === 0 ? <p style={styles.empty}>No history yet. Submit the first report for this store.</p> : null}
                 </div>
               </>
             ) : (

@@ -15,6 +15,21 @@ export const SCOUT_CONFIDENCE_LEVELS = ["confirmed", "likely", "possible", "rumo
 
 export const SCOUT_VISIBILITY_LEVELS = ["private", "shared_with_team", "public_cleaned"];
 
+export const SCOUT_VISIBILITY_COPY = {
+  private: {
+    label: "Private from other users",
+    helper: "Only you and app admins can see this. It will not be shown publicly or shared with other users.",
+  },
+  shared_with_team: {
+    label: "Shared with team",
+    helper: "People in your shared workspace and app admins can see this. It will not be shown publicly.",
+  },
+  public_cleaned: {
+    label: "Public",
+    helper: "Other users may see this report or guess.",
+  },
+};
+
 export const SCOUT_STORE_ALIASES = [
   { alias: "PA", likelyStore: "Princess Anne Target" },
   { alias: "NN", likelyArea: "Newport News" },

@@ -2741,6 +2741,18 @@ textarea.search-input {
   box-shadow: 0 24px 54px rgba(13, 24, 40, 0.18);
 }
 
+.smart-catalog-suggestions--inline {
+  position: static;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  z-index: 1;
+  max-height: min(340px, 46dvh);
+  margin-top: 8px;
+  box-shadow: none;
+}
+
 .smart-catalog-suggestion-status,
 .smart-catalog-suggestion-heading {
   padding: 4px 8px;
@@ -2749,6 +2761,18 @@ textarea.search-input {
   font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.smart-catalog-empty-state {
+  display: grid;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 800;
+}
+
+.smart-catalog-empty-state .catalog-selector-actions {
+  padding: 0;
 }
 
 .smart-catalog-suggestion-status.error {
@@ -2810,6 +2834,8 @@ button.smart-catalog-suggestion.active {
   line-height: 1.05;
   text-align: center;
   text-transform: uppercase;
+  word-break: normal;
+  overflow: hidden;
 }
 
 .smart-catalog-suggestion-copy {
@@ -2858,6 +2884,14 @@ button.smart-catalog-suggestion.active {
     top: auto;
     bottom: calc(76px + env(safe-area-inset-bottom));
     max-height: min(62dvh, 520px);
+  }
+
+  .smart-catalog-suggestions--inline {
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    max-height: min(320px, 42dvh);
   }
 
   .smart-catalog-suggestion,
