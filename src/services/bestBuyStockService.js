@@ -212,6 +212,10 @@ export function createBestBuyStockAlert(result = {}) {
     type: normalized.stockStatus === "Available for Pickup" ? "Best Buy product available for pickup near you" : "Best Buy product in stock online",
     title: normalized.productName,
     message: `${normalized.stockStatus} via Best Buy (${normalized.sourceStatus}). Last checked ${new Date(normalized.lastChecked).toLocaleString()}.`,
+    url: normalized.productUrl,
+    productUrl: normalized.productUrl,
+    bestBuySku: normalized.bestBuySku,
+    productName: normalized.productName,
     sourceStatus: normalized.sourceStatus,
     createdAt: nowIso(),
   };

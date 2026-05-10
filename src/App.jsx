@@ -1574,7 +1574,7 @@ export default function App() {
   const [tidepoolReactions, setTidepoolReactions] = useState([]);
   const [tidepoolPostForm, setTidepoolPostForm] = useState(BLANK_TIDEPOOL_POST_FORM);
   const [tidepoolCommentDrafts, setTidepoolCommentDrafts] = useState({});
-  const [scoutView, setScoutView] = useState("main");
+  const [scoutView, setScoutView] = useState("overview");
   const [whatDidISeeSeedProduct, setWhatDidISeeSeedProduct] = useState(null);
   const [scoutReportFilter, setScoutReportFilter] = useState("Latest");
   const [scoutReportSort, setScoutReportSort] = useState("Newest first");
@@ -2142,7 +2142,7 @@ export default function App() {
   function navigateMainTab(tab) {
     if (!confirmLeaveVaultWork()) return;
     if (tab.key === "scout") {
-      setScoutView("main");
+      setScoutView("overview");
       setScoutSubTabTarget({ tab: "overview", id: Date.now() });
     }
     if (tab.key === "tideTradr") {
@@ -5399,7 +5399,7 @@ export default function App() {
       return;
     }
     setScoutSubTabTarget({ tab: subTab, id: Date.now() });
-    setScoutView(subTab === "reports" ? "reports" : subTab === "alerts" ? "alerts" : subTab === "stores" ? "stores" : "main");
+    setScoutView(subTab === "reports" ? "reports" : subTab === "alerts" ? "alerts" : subTab === "stores" ? "stores" : "overview");
     setActiveTab("scout");
     setQuickAddMenuOpen(false);
   }
@@ -8058,11 +8058,38 @@ function renderScoutHeader() {
   const scoutRecentReportCount = (scoutSnapshot.reports || []).length || (scoutSnapshot.tidepoolReports || []).length;
   const scoutActiveAlertCount = (scoutSnapshot.bestBuyAlerts || []).length;
   const scoutTrustScore = scoutSnapshot.scoutProfile?.trustScore || 72;
+  const scoutTabs = [
+    { key: "overview", label: "Overview" },
+    { key: "reports", label: "Reports" },
+    { key: "stores", label: "Stores" },
+    { key: "alerts", label: "Alerts" },
+    { key: "predictions", label: "Predictions" },
+    { key: "myReports", label: "My Reports" },
+    scoutReviewVisible ? { key: "review", label: "Review" } : null,
+  ].filter(Boolean);
+
+  const changeScoutPage = (nextPage) => {
+    setScoutView(nextPage);
+    if (nextPage === "reports") {
+      setScoutReportFilter("Latest");
+      setScoutReportsPage(1);
+    }
+    if (nextPage === "stores") {
+      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+    }
+    if (nextPage === "alerts") {
+      setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+    }
+  };
+
   return (
     <PageHeader
       className={getHeaderCardClass("panel scout-summary-card")}
       title="Scout"
       subtitle="Store reports, restock sightings, and local tracking."
+      tabs={scoutTabs}
+      activeTab={activeScoutPage}
+      onTabChange={changeScoutPage}
       actions={(
         <>
         <button type="button" className="scout-submit-primary" onClick={() => {
@@ -9380,7 +9407,7 @@ function renderForgeHeader() {
           detail: scoutSnapshot.reports[0].storeName || scoutSnapshot.reports[0].chain || "Latest report",
           action: () => {
             setActiveTab("scout");
-            setScoutView("main");
+            setScoutView("overview");
             setScoutSubTabTarget({ tab: "reports", id: Date.now() });
           },
         }
@@ -9608,6 +9635,14 @@ function renderForgeHeader() {
     const bDate = `${b.reportDate || b.report_date || b.createdAt || ""}T${b.reportTime || b.report_time || "00:00"}`;
     return new Date(bDate) - new Date(aDate);
   });
+  const scoutNeedsReviewReports = scoutReportRows.filter((report) => {
+    const status = scoutReportStatusLabel(report);
+    return status === "Needs Review" || status === "Pending";
+  });
+  const scoutMyReports = scoutReportRows.filter(isCurrentUserScoutReport);
+  const scoutReviewVisible = canReviewSharedData;
+  const normalizedScoutView = scoutView === "main" || !scoutView ? "overview" : scoutView;
+  const activeScoutPage = normalizedScoutView === "review" && !scoutReviewVisible ? "overview" : normalizedScoutView;
   const pagedTidepoolPosts = getPagedItems(filteredTidepoolPosts, tidepoolPage, LONG_LIST_PAGE_SIZE);
   const pagedScoutReports = getPagedItems(filteredScoutReports, scoutReportsPage, LONG_LIST_PAGE_SIZE);
   const dealAskingPrice = Number(dealForm.askingPrice || 0);
@@ -10730,6 +10765,221 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           />
         </div>
       </article>
+    );
+  }
+
+  function renderScoutReportsPanel() {
+    return (
+      <section className="panel scout-subpage-panel" ref={scoutReportsRef} tabIndex={-1}>
+        <div className="compact-card-header">
+          <div>
+            <h2>Reports</h2>
+            <p>Recent restock sightings, photos, calls, and quick reports.</p>
+          </div>
+          <div className="summary-pill-row">
+            <span className="status-badge">{filteredScoutReports.length} shown</span>
+            <button type="button" onClick={() => openScoutSubmitFlow()}>Submit Report</button>
+          </div>
+        </div>
+        {renderScoutFilterControls()}
+        <div className="scout-report-card-grid">
+          {filteredScoutReports.length === 0 ? (
+            <div className="empty-state">
+              <h3>No Scout reports yet</h3>
+              <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
+            </div>
+          ) : null}
+          {pagedScoutReports.items.map((report) => renderScoutReportCard(report))}
+        </div>
+        <PaginationControls
+          label="Reports"
+          page={pagedScoutReports.page}
+          pageCount={pagedScoutReports.pageCount}
+          totalCount={pagedScoutReports.total}
+          pageSize={LONG_LIST_PAGE_SIZE}
+          onPageChange={(page) => {
+            setScoutReportsPage(page);
+            scrollToResultsTop(scoutReportsRef);
+          }}
+          compact
+        />
+      </section>
+    );
+  }
+
+  function renderScoutOverviewPanel() {
+    const latestReports = scoutReportRows.slice(0, 3);
+    const forecastRows = scoutStoreStockSnapshots.slice(0, 3);
+    const scoutStoreCount = scoutSnapshot.stores?.length || VIRGINIA_STORES_SEED.length;
+    return (
+      <section className="scout-dashboard-overview" aria-label="Scout overview">
+        <article className="panel scout-overview-card scout-overview-card--wide">
+          <div className="compact-card-header">
+            <div>
+              <h2>Latest Reports</h2>
+              <p>Newest local Scout activity.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => {
+              setScoutReportFilter("Latest");
+              setScoutReportsPage(1);
+              setScoutView("reports");
+            }}>View all reports</button>
+          </div>
+          <div className="scout-preview-list">
+            {latestReports.length ? latestReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
+              <div className="small-empty-state">
+                <strong>No reports yet</strong>
+                <span>Submit a quick store report after your next check.</span>
+              </div>
+            )}
+          </div>
+        </article>
+
+        <button type="button" className="panel scout-overview-link-card" onClick={() => {
+          setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+          setScoutView("alerts");
+        }}>
+          <span>Alerts</span>
+          <strong>{(scoutSnapshot.bestBuyAlerts || []).length} active</strong>
+          <small>Open Alerts</small>
+        </button>
+
+        <button type="button" className="panel scout-overview-link-card" onClick={() => {
+          setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+          setScoutView("stores");
+        }}>
+          <span>Stores</span>
+          <strong>{scoutStoreCount} nearby</strong>
+          <small>Open Stores</small>
+        </button>
+
+        <article className="panel scout-overview-card">
+          <div className="compact-card-header">
+            <div>
+              <h2>Restock Forecast</h2>
+              <p>Next likely windows only.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => setScoutView("predictions")}>Open Predictions</button>
+          </div>
+          <div className="scout-forecast-list">
+            {forecastRows.length ? forecastRows.map(({ pattern, latest, products }) => (
+              <div className="scout-forecast-row" key={`overview-${pattern.id}`}>
+                <strong>{pattern.nickname}</strong>
+                <span>{pattern.usualDays.join(" / ") || "This week"}{pattern.usualTimeWindow !== "Unknown" ? ` at ${pattern.usualTimeWindow}` : ""}</span>
+                <small>{latest?.confidence || pattern.computedConfidence} - {products}</small>
+              </div>
+            )) : (
+              <div className="small-empty-state">
+                <strong>No forecast yet</strong>
+                <span>Scout will build this as reports come in.</span>
+              </div>
+            )}
+          </div>
+        </article>
+      </section>
+    );
+  }
+
+  function renderScoutPredictionsPanel() {
+    return (
+      <section className="panel scout-subpage-panel">
+        <div className="compact-card-header">
+          <div>
+            <h2>Predictions</h2>
+            <p>Reported intel, guesses, calendar windows, and one-stop stock checks.</p>
+          </div>
+          <span className="status-badge">This week</span>
+        </div>
+        <div className="scout-intel-dashboard">
+          <div className="scout-intel-column">
+            <h3>Confirmed / Reported</h3>
+            {confirmedScoutIntel.slice(0, 6).map((row) => (
+              <div className="scout-intel-card" key={row.id}>
+                <strong>{row.storeAlias}</strong>
+                <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
+                <p>{row.productsMentioned?.join(", ") || row.sourceText || "Reported stock intel"}</p>
+              </div>
+            ))}
+          </div>
+          <div className="scout-intel-column">
+            <h3>Predictions / Guesses</h3>
+            {predictionScoutIntel.slice(0, 6).map((row) => (
+              <div className="scout-intel-card scout-intel-card--prediction" key={row.id}>
+                <strong>{row.storeAlias}</strong>
+                <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
+                <p>{row.pattern || row.sourceText || "Pattern candidate"}</p>
+              </div>
+            ))}
+          </div>
+          <div className="scout-intel-column scout-intel-column--wide">
+            <h3>Weekly Restock Calendar</h3>
+            {scoutPatternRows.slice(0, 8).map((pattern) => (
+              <div className="scout-intel-card" key={pattern.id}>
+                <strong>{pattern.usualDays.length ? pattern.usualDays.join(" / ") : "This week"} - {pattern.nickname}</strong>
+                <span>Expected: {pattern.usualTimeWindow || "Unknown"} | Confidence: {pattern.computedConfidence}</span>
+                <p>{pattern.productTypePattern}</p>
+              </div>
+            ))}
+          </div>
+          <div className="scout-intel-column scout-intel-column--wide">
+            <h3>One-stop Stock Checker</h3>
+            {scoutStoreStockSnapshots.slice(0, 8).map(({ pattern, latest, products, status }) => (
+              <div className="scout-intel-card" key={`stock-${pattern.id}`}>
+                <strong>{pattern.nickname}</strong>
+                <span>{status} | Confidence: {latest?.confidence || pattern.computedConfidence}</span>
+                <p>Products mentioned: {products}</p>
+                <small>Next predicted window: {pattern.usualDays.join(" / ") || "Unknown"} {pattern.usualTimeWindow !== "Unknown" ? `at ${pattern.usualTimeWindow}` : ""}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderScoutMyReportsPanel() {
+    return (
+      <section className="panel scout-subpage-panel">
+        <div className="compact-card-header">
+          <div>
+            <h2>My Reports</h2>
+            <p>Your submissions.</p>
+          </div>
+          <button type="button" onClick={() => openScoutSubmitFlow()}>Submit Report</button>
+        </div>
+        <div className="scout-report-card-grid">
+          {scoutMyReports.length ? scoutMyReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
+            <div className="small-empty-state">
+              <strong>You have not submitted a report yet.</strong>
+              <span>Use Submit Report when you check a store.</span>
+              <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow()}>Submit Report</button>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderScoutReviewPanel() {
+    if (!scoutReviewVisible) return renderScoutOverviewPanel();
+    return (
+      <section className="panel scout-subpage-panel">
+        <div className="compact-card-header">
+          <div>
+            <h2>Review</h2>
+            <p>Reports and Scout data that need admin review.</p>
+          </div>
+          <span className="status-badge">{scoutNeedsReviewReports.length} pending</span>
+        </div>
+        <div className="scout-report-card-grid">
+          {scoutNeedsReviewReports.length ? scoutNeedsReviewReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
+            <div className="small-empty-state">
+              <strong>No items need review.</strong>
+              <span>Pending Scout reports will appear here for reviewers.</span>
+            </div>
+          )}
+        </div>
+      </section>
     );
   }
 
@@ -14971,7 +15221,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </button>
                 <button type="button" className="home-today-tile" onClick={() => {
                   setActiveTab("scout");
-                  setScoutView("main");
+                  setScoutView("overview");
                 }}>
                   <span>Recent Reports</span>
                   <strong>{(scoutSnapshot.reports || []).length} recent report{(scoutSnapshot.reports || []).length === 1 ? "" : "s"}</strong>
@@ -16037,51 +16287,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <>
             {renderScoutHeader()}
 
-            {scoutView === "reports" ? (
-              <>
-                <section className="panel" ref={scoutReportsRef} tabIndex={-1}>
-                  <div className="compact-card-header">
-                    <div>
-                      <h2>Reports</h2>
-                      <p>Filter recent reports without leaving Scout.</p>
-                    </div>
-                    <div className="summary-pill-row">
-                      <span className="status-badge">{filteredScoutReports.length} shown</span>
-                      <button type="button" className="secondary-button" onClick={() => {
-                        setScoutView("main");
-                        setScoutSubTabTarget({ tab: "overview", id: Date.now() });
-                        loadScoutSnapshot();
-                      }}>Back to Scout</button>
-                      <button type="button" onClick={() => {
-                        openScoutSubmitFlow();
-                      }}>Submit Report</button>
-                    </div>
-                  </div>
-                  {renderScoutFilterControls()}
-                  <div className="inventory-list compact-inventory-list">
-                    {filteredScoutReports.length === 0 ? (
-                      <div className="empty-state">
-                        <h3>No Scout reports yet</h3>
-                        <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
-                      </div>
-                    ) : null}
-                    {pagedScoutReports.items.map((report) => renderScoutReportCard(report))}
-                  </div>
-                  <PaginationControls
-                    label="Reports"
-                    page={pagedScoutReports.page}
-                    pageCount={pagedScoutReports.pageCount}
-                    totalCount={pagedScoutReports.total}
-                    pageSize={LONG_LIST_PAGE_SIZE}
-                    onPageChange={(page) => {
-                      setScoutReportsPage(page);
-                      scrollToResultsTop(scoutReportsRef);
-                    }}
-                    compact
-                  />
-                </section>
-              </>
-            ) : scoutView === "submit" ? (
+            {normalizedScoutView === "submit" ? (
               <>
                 <section className="embedded-page">
               <Scout
@@ -16095,7 +16301,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               />
                 </section>
               </>
-            ) : scoutView === "alerts" ? (
+            ) : activeScoutPage === "reports" ? (
+              renderScoutReportsPanel()
+            ) : activeScoutPage === "alerts" ? (
               <>
                 <section className="embedded-page">
               <Scout
@@ -16110,7 +16318,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               />
                 </section>
               </>
-            ) : scoutView === "stores" ? (
+            ) : activeScoutPage === "stores" ? (
               <>
                 <section className="embedded-page">
               <Scout
@@ -16125,241 +16333,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               />
                 </section>
               </>
+            ) : activeScoutPage === "predictions" ? (
+              renderScoutPredictionsPanel()
+            ) : activeScoutPage === "myReports" ? (
+              renderScoutMyReportsPanel()
+            ) : activeScoutPage === "review" ? (
+              renderScoutReviewPanel()
             ) : (
-            <>
-            {false ? (
-            <section className={getHeaderCardClass("tab-summary panel")}>
-              <div>
-                <h2>Scout</h2>
-                <p>Find stores, submit reports, and check alerts near you.</p>
-              </div>
-              <QuickActionGrid
-                className="scout-main-actions"
-                ariaLabel="Scout quick actions"
-                actions={[
-                  {
-                    key: "scout-submit",
-                    title: "Submit Report",
-                    subtitle: "Restock or sighting",
-                    onClick: () => {
-                      openScoutSubmitFlow();
-                    },
-                  },
-                  {
-                    key: "scout-stores",
-                    title: "Stores",
-                    subtitle: `${scoutSnapshot.stores.length} nearby entries`,
-                    onClick: () => {
-                      if (!requestScoutLocation()) return;
-                      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
-                      setScoutView("stores");
-                    },
-                  },
-                  {
-                    key: "scout-reports",
-                    title: "Reports",
-                    subtitle: `${(scoutSnapshot.reports || []).length} recent`,
-                    onClick: () => {
-                      setScoutReportFilter("Latest");
-                      setScoutView("reports");
-                    },
-                  },
-                  {
-                    key: "scout-alerts",
-                    title: "Alerts",
-                    subtitle: `${(scoutSnapshot.bestBuyAlerts || []).length} active`,
-                    onClick: () => {
-                      setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-                      setScoutView("alerts");
-                    },
-                  },
-                  {
-                    key: "scout-score",
-                    title: "Scout Score",
-                    subtitle: `${scoutSnapshot.scoutProfile?.trustScore || 72} trust score`,
-                    onClick: () => setScoutScoreModalOpen(true),
-                  },
-                ]}
-              />
-              <div className="cards mini-cards">
-                <button type="button" className="card stat-button-card" onClick={() => {
-                  if (!requestScoutLocation()) return;
-                  setScoutSubTabTarget({ tab: "stores", id: Date.now() });
-                  setScoutView("stores");
-                }}><p>Nearby stores</p><h2>{scoutSnapshot.stores.length}</h2></button>
-                <button type="button" className="card stat-button-card" onClick={() => {
-                  setScoutReportFilter("Latest");
-                  setScoutView("reports");
-                }}><p>Recent reports</p><h2>{(scoutSnapshot.reports || []).length}</h2></button>
-                <button type="button" className="card stat-button-card" onClick={() => {
-                  setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-                  setScoutView("alerts");
-                }}><p>Active alerts</p><h2>{(scoutSnapshot.bestBuyAlerts || []).length}</h2></button>
-                <button type="button" className="card stat-button-card" onClick={() => {
-                  setScoutScoreModalOpen(true);
-                }}><p>Scout score</p><h2>{scoutSnapshot.scoutProfile?.trustScore || 72}</h2></button>
-              </div>
-            </section>
-            ) : null}
-
-            <div className="scout-accordion-stack">
-              {renderScoutAccordionSection({
-                id: "quickActions",
-                title: "Quick Actions",
-                summary: "Submit or suggest",
-                children: (
-                  <div className="scout-quick-action-grid">
-                    <button type="button" onClick={() => openScoutSubmitFlow()}>Submit Report</button>
-                    <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ action: "importIntel" })}>Import restock intel</button>
-                    <button type="button" className="secondary-button" onClick={() => {
-                      setScoutSubTabTarget({ tab: "stores", action: "missingStore", id: Date.now() });
-                      setScoutView("stores");
-                    }}>Add Store Suggestion</button>
-                  </div>
-                ),
-              })}
-
-              {renderScoutAccordionSection({
-                id: "reports",
-                title: "Reports",
-                summary: `${filteredScoutReports.length} shown`,
-                children: (
-                  <div ref={scoutReportsRef} tabIndex={-1}>
-                    {renderScoutFilterControls()}
-                    <div className="inventory-list compact-inventory-list">
-                      {filteredScoutReports.length === 0 ? (
-                        <div className="empty-state">
-                          <h3>No Scout reports yet</h3>
-                          <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
-                        </div>
-                      ) : null}
-                      {pagedScoutReports.items.map((report) => renderScoutReportCard(report))}
-                    </div>
-                    <PaginationControls
-                      label="Reports"
-                      page={pagedScoutReports.page}
-                      pageCount={pagedScoutReports.pageCount}
-                      totalCount={pagedScoutReports.total}
-                      pageSize={LONG_LIST_PAGE_SIZE}
-                      onPageChange={(page) => {
-                        setScoutReportsPage(page);
-                        scrollToResultsTop(scoutReportsRef);
-                      }}
-                      compact
-                    />
-                  </div>
-                ),
-              })}
-
-              {renderScoutAccordionSection({
-                id: "alerts",
-                title: "Alerts",
-                summary: `${(scoutSnapshot.bestBuyAlerts || []).length} active`,
-                children: (
-                  <div className="small-empty-state">
-                    <strong>{(scoutSnapshot.bestBuyAlerts || []).length ? "Active alerts available" : "0 active alerts"}</strong>
-                    <span>Open Alerts for watchlist, store, and source notifications.</span>
-                    <button type="button" className="secondary-button" onClick={() => {
-                      setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-                      setScoutView("alerts");
-                    }}>Open Alerts</button>
-                  </div>
-                ),
-              })}
-
-              {renderScoutAccordionSection({
-                id: "stores",
-                title: "Stores",
-                summary: "Nearby stores",
-                children: (
-                  <div className="small-empty-state">
-                    <strong>{scoutSnapshot.stores.length} stores available</strong>
-                    <span>Group stores by retailer, city, distance, or favorites.</span>
-                    <button type="button" className="secondary-button" onClick={() => {
-                      if (!requestScoutLocation()) return;
-                      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
-                      setScoutView("stores");
-                    }}>Open Stores</button>
-                  </div>
-                ),
-              })}
-
-              {renderScoutAccordionSection({
-                id: "predictions",
-                title: "Predictions",
-                summary: "This week",
-                children: (
-                  <div className="scout-intel-dashboard">
-                    <div className="scout-intel-column">
-                      <h3>Confirmed / Reported</h3>
-                      {confirmedScoutIntel.slice(0, 4).map((row) => (
-                        <div className="scout-intel-card" key={row.id}>
-                          <strong>{row.storeAlias}</strong>
-                          <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
-                          <p>{row.productsMentioned?.join(", ") || row.sourceText || "Reported stock intel"}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="scout-intel-column">
-                      <h3>Predictions / Guesses</h3>
-                      {predictionScoutIntel.slice(0, 4).map((row) => (
-                        <div className="scout-intel-card scout-intel-card--prediction" key={row.id}>
-                          <strong>{row.storeAlias}</strong>
-                          <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
-                          <p>{row.pattern || row.sourceText || "Pattern candidate"}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="scout-intel-column scout-intel-column--wide">
-                      <h3>Weekly Restock Calendar</h3>
-                      {scoutPatternRows.slice(0, 5).map((pattern) => (
-                        <div className="scout-intel-card" key={pattern.id}>
-                          <strong>{pattern.usualDays.length ? pattern.usualDays.join(" / ") : "This week"} - {pattern.nickname}</strong>
-                          <span>Expected: {pattern.usualTimeWindow || "Unknown"} | Confidence: {pattern.computedConfidence}</span>
-                          <p>{pattern.productTypePattern}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="scout-intel-column scout-intel-column--wide">
-                      <h3>One-stop Stock Checker</h3>
-                      {scoutStoreStockSnapshots.slice(0, 5).map(({ pattern, latest, products, status }) => (
-                        <div className="scout-intel-card" key={`stock-${pattern.id}`}>
-                          <strong>{pattern.nickname}</strong>
-                          <span>{status} | Confidence: {latest?.confidence || pattern.computedConfidence}</span>
-                          <p>Products mentioned: {products}</p>
-                          <small>Next predicted window: {pattern.usualDays.join(" / ") || "Unknown"} {pattern.usualTimeWindow !== "Unknown" ? `at ${pattern.usualTimeWindow}` : ""}</small>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ),
-              })}
-
-              {renderScoutAccordionSection({
-                id: "myReports",
-                title: "My Reports",
-                summary: "Your submissions",
-                children: (
-                  <div className="inventory-list compact-inventory-list">
-                    {filteredScoutReports.filter(isCurrentUserScoutReport).slice(0, 4).map((report) => renderScoutReportCard(report, { compact: true }))}
-                    {!filteredScoutReports.filter(isCurrentUserScoutReport).length ? <p className="compact-subtitle">You have not submitted a report yet.</p> : null}
-                  </div>
-                ),
-              })}
-
-              {renderScoutAccordionSection({
-                id: "needsReview",
-                title: "Needs Review",
-                summary: `${scoutReportRows.filter((report) => scoutReportStatusLabel(report) === "Needs Review" || scoutReportStatusLabel(report) === "Pending").length} pending`,
-                children: (
-                  <div className="inventory-list compact-inventory-list">
-                    {scoutReportRows.filter((report) => scoutReportStatusLabel(report) === "Needs Review" || scoutReportStatusLabel(report) === "Pending").slice(0, 4).map((report) => renderScoutReportCard(report, { compact: true }))}
-                    {!scoutReportRows.filter((report) => scoutReportStatusLabel(report) === "Needs Review" || scoutReportStatusLabel(report) === "Pending").length ? <p className="compact-subtitle">0 pending review items.</p> : null}
-                  </div>
-                ),
-              })}
-            </div>
-            </>
+              renderScoutOverviewPanel()
             )}
           </>
         )}

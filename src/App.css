@@ -12953,6 +12953,80 @@ button.home-metric-card small,
   letter-spacing: 0;
 }
 
+.scout-dashboard-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.scout-overview-card,
+.scout-overview-link-card,
+.scout-subpage-panel {
+  min-width: 0;
+}
+
+.scout-overview-card--wide {
+  grid-column: 1 / -1;
+}
+
+.scout-preview-list,
+.scout-forecast-list,
+.scout-report-card-grid {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scout-report-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+
+.scout-report-card-grid > .empty-state,
+.scout-report-card-grid > .small-empty-state {
+  grid-column: 1 / -1;
+}
+
+.scout-overview-link-card {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  color: var(--color-heading);
+  box-shadow: none;
+}
+
+.scout-overview-link-card span,
+.scout-overview-link-card small,
+.scout-forecast-row span,
+.scout-forecast-row small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.scout-overview-link-card strong {
+  font-size: 1rem;
+  color: var(--color-heading);
+}
+
+.scout-forecast-row {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  min-width: 0;
+}
+
+.scout-forecast-row strong {
+  color: var(--color-heading);
+  font-size: 0.9rem;
+}
+
 .scout-accordion-section {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 16px;
@@ -13495,10 +13569,11 @@ button.home-metric-card small,
   }
 
   .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid .scout-hero-nav-tile {
-    display: none;
+    display: grid;
   }
 
-  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid .scout-hero-stat-tile {
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid .scout-hero-stat-tile,
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid .scout-hero-nav-tile {
     min-height: 58px;
   }
 
@@ -13537,6 +13612,15 @@ button.home-metric-card small,
 
   .scout-intel-dashboard {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-dashboard-overview,
+  .scout-report-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-overview-link-card {
+    padding: 12px;
   }
 
   .scout-report-compact-card {

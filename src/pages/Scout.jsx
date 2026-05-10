@@ -41,6 +41,7 @@ import {
 
 const BETA_LOCAL_SCOUT = true;
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
+const AUTO_OPEN_DROP_WEBSITE_STORAGE_KEY = "autoOpenDropWebsite";
 const LOCAL_SCOUT_USER_ID = "local-beta-scout";
 
 const TIDEPOOL_REPORT_TYPES = [
@@ -163,9 +164,27 @@ function createDefaultAlertSettings() {
     favoriteStoresOnly: false,
     watchlistAlerts: true,
     onlineDropAlerts: false,
+    autoOpenDropWebsite: getAutoOpenDropWebsitePreference(),
     verifiedOnly: false,
     quietHours: false,
   };
+}
+
+function getAutoOpenDropWebsitePreference() {
+  try {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(AUTO_OPEN_DROP_WEBSITE_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function getDropWebsiteUrl(drop = {}) {
+  const url = drop.url || drop.productUrl || drop.product_url || drop.sourceUrl || drop.source_url || drop.link || "";
+  if (url) return url;
+  const sku = drop.bestBuySku || drop.best_buy_sku || drop.sku || "";
+  if (sku) return `https://www.bestbuy.com/site/searchpage.jsp?st=${encodeURIComponent(sku)}`;
+  return "https://www.bestbuy.com/";
 }
 
 function makeTidepoolReport(overrides = {}) {
@@ -1043,6 +1062,7 @@ export default function Scout({
   const [intelImportPreview, setIntelImportPreview] = useState([]);
   const [restockIntel, setRestockIntel] = useState([]);
   const [restockPatterns, setRestockPatterns] = useState([]);
+  const hasAutoOpenedDropRef = useRef(false);
 
   const [storeForm, setStoreForm] = useState({
     name: "",
@@ -1416,7 +1436,7 @@ export default function Scout({
       const savedBestBuyNightlyReports = saved.bestBuyNightlyReports || [];
       const savedBestBuyNightlySettings = { ...BEST_BUY_NIGHTLY_DEFAULTS, ...(saved.bestBuyNightlySettings || {}) };
       const savedScoutProfile = saved.scoutProfile || createDefaultScoutProfile();
-      const savedAlertSettings = saved.alertSettings || createDefaultAlertSettings();
+      const savedAlertSettings = { ...createDefaultAlertSettings(), ...(saved.alertSettings || {}) };
       const savedRestockIntel = saved.restockIntel?.length ? saved.restockIntel : SCOUT_HISTORICAL_INTEL_SEED;
       const savedRestockPatterns = saved.restockPatterns?.length ? saved.restockPatterns : buildScoutRestockPatterns(savedRestockIntel);
       if (!saved.stores?.length) {
@@ -1838,7 +1858,27 @@ function saveScoutProfile(nextProfile) {
 function updateAlertSetting(field, value) {
   const next = { ...alertSettings, [field]: value };
   setAlertSettings(next);
+  if (field === "autoOpenDropWebsite") {
+    try {
+      localStorage.setItem(AUTO_OPEN_DROP_WEBSITE_STORAGE_KEY, value ? "true" : "false");
+    } catch (error) {
+      console.warn("Unable to save auto-open drop preference", error);
+    }
+  }
   saveLocalScout({ alertSettings: next });
+}
+
+function openWebsiteWhenDropDetected(drop) {
+  if (!drop || !alertSettings.autoOpenDropWebsite) return;
+  if (hasAutoOpenedDropRef.current) return;
+  hasAutoOpenedDropRef.current = true;
+  const url = getDropWebsiteUrl(drop);
+  window.location.assign(url);
+}
+
+function openDropWebsiteFromUserAction(drop) {
+  const url = getDropWebsiteUrl(drop);
+  window.location.assign(url);
 }
 
 function updateBestBuySetting(field, value) {
@@ -1862,6 +1902,7 @@ function syncBestBuyStock(mode = "search") {
   let nextStoreStock = bestBuyStoreStock;
   let nextAlerts = bestBuyAlerts;
   let nextTidepoolReports = tidepoolReports;
+  let dropToOpen = null;
 
   pulled.forEach((rawResult) => {
     const previous = bestBuyStockResults.find((item) =>
@@ -1873,7 +1914,10 @@ function syncBestBuyStock(mode = "search") {
     nextHistory = saveBestBuyStockHistory(nextHistory, cachedResult, previous);
     nextStoreStock = updateStoreStockFromBestBuy(nextStoreStock, cachedResult, nextHistory);
     const alert = createBestBuyStockAlert(cachedResult);
-    if (alert) nextAlerts = [alert, ...nextAlerts].slice(0, 25);
+    if (alert) {
+      nextAlerts = [alert, ...nextAlerts].slice(0, 25);
+      if (!dropToOpen) dropToOpen = { ...cachedResult, ...alert };
+    }
     if (/available|in stock|limited|shipping/i.test(`${cachedResult.stockStatus} ${cachedResult.onlineAvailability} ${cachedResult.pickupAvailability}`)) {
       nextTidepoolReports = [createTidepoolReportFromBestBuyAvailability(cachedResult), ...nextTidepoolReports].slice(0, 80);
     }
@@ -1882,6 +1926,7 @@ function syncBestBuyStock(mode = "search") {
   saveBestBuyStock({ results: nextResults, history: nextHistory, storeStock: nextStoreStock, alerts: nextAlerts });
   saveTidepoolReports(nextTidepoolReports);
   setBestBuyMessage(`Best Buy beta sync checked ${pulled.length} item(s). Source is admin-only sample/cached until backend API credentials are configured.`);
+  openWebsiteWhenDropDetected(dropToOpen);
 }
 
 function addManualBestBuyStock() {
@@ -3610,6 +3655,7 @@ async function handleUpdateStore(e) {
     { key: "favoriteStoresOnly", label: "Favorite store alerts", description: "Prioritize reports from stores you care about." },
     { key: "watchlistAlerts", label: "Watchlist product alerts", description: "Notify when watched products appear in reports." },
     { key: "onlineDropAlerts", label: "Online drop alerts", description: "Include online drop and Best Buy source updates." },
+    { key: "autoOpenDropWebsite", label: "Auto-open website on drop", description: "When a detected drop has a product URL, redirect this tab once. Off by default." },
     { key: "verifiedOnly", label: "Verified-only alerts", description: "Only surface higher-confidence reports." },
     { key: "quietHours", label: "Quiet hours", description: "Pause non-urgent alerts during quiet time later." },
   ];
@@ -4478,7 +4524,13 @@ async function handleUpdateStore(e) {
                     </p>
                     <p style={styles.tiny}>Last updated: {alert.createdAt || "Local beta"}</p>
                     <div className="scout-alert-actions" style={styles.row}>
-                      <button type="button" style={styles.buttonSoft} onClick={() => setError("Alert detail view is coming later. Use Scout reports or Stores for details now.")}>View</button>
+                      <button type="button" style={styles.buttonSoft} onClick={() => {
+                        if (getDropWebsiteUrl(alert)) {
+                          openDropWebsiteFromUserAction(alert);
+                          return;
+                        }
+                        setError("Alert detail view is coming later. Use Scout reports or Stores for details now.");
+                      }}>View Website</button>
                       <button type="button" style={styles.buttonSoft} onClick={() => {
                         setDismissedAlertIds((current) => [...new Set([...current, alertId])]);
                         setError("Alert dismissed.");
