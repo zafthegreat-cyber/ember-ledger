@@ -107,6 +107,19 @@ async function main() {
     throw new Error(`No visible overflow menu found for ${actionLabel}`);
   }
 
+  async function clickFirstVisible(locator, label) {
+    const count = await locator.count();
+    for (let index = 0; index < count; index += 1) {
+      const candidate = locator.nth(index);
+      if (await candidate.isVisible().catch(() => false)) {
+        await candidate.click();
+        return true;
+      }
+    }
+    if (label) throw new Error(`No visible ${label} found`);
+    return false;
+  }
+
   await step("app opens and beta data resets", async () => {
     await resetBetaData();
     await assertVisibleText("E&T TCG");
@@ -189,36 +202,41 @@ async function main() {
       }
     }
     if (await page.getByRole("button", { name: /^Open Stores$/ }).count()) {
-      await page.getByRole("button", { name: /^Open Stores$/ }).first().click();
+      await clickFirstVisible(page.getByRole("button", { name: /^Open Stores$/ }), "Open Stores button");
     } else if (await page.getByRole("button", { name: /^Stores$/ }).count()) {
-      await page.getByRole("button", { name: /^Stores$/ }).first().click();
+      await clickFirstVisible(page.getByRole("button", { name: /^Stores$/ }), "Stores button");
     } else if (await page.getByRole("button", { name: /Nearby stores/i }).count()) {
-      await page.getByRole("button", { name: /Nearby stores/i }).first().click();
+      await clickFirstVisible(page.getByRole("button", { name: /Nearby stores/i }), "Nearby stores button");
     }
     if (await page.getByRole("button", { name: /^Open Stores$/ }).count()) {
-      await page.getByRole("button", { name: /^Open Stores$/ }).first().click();
+      await clickFirstVisible(page.getByRole("button", { name: /^Open Stores$/ }), "Open Stores button");
     }
     if (await page.getByRole("dialog", { name: "Location Needed" }).count()) {
       await page.getByLabel("ZIP or city").fill("23434");
       await page.getByRole("button", { name: "Enter ZIP" }).click();
       if (await page.getByRole("button", { name: /^Open Stores$/ }).count()) {
-        await page.getByRole("button", { name: /^Open Stores$/ }).first().click();
+        await clickFirstVisible(page.getByRole("button", { name: /^Open Stores$/ }), "Open Stores button");
       } else {
-        await page.getByRole("button", { name: /^Stores$|Nearby stores/i }).first().click();
+        await clickFirstVisible(page.getByRole("button", { name: /^Stores$|Nearby stores/i }), "Stores button");
       }
     }
     if (await page.getByRole("button", { name: "Back to Retailers" }).count()) {
       await page.getByRole("button", { name: "Back to Retailers" }).click();
     }
-    if (await page.getByRole("button", { name: /Target/i }).count()) {
-      await page.getByRole("button", { name: /Target/i }).first().click();
+    if (!(await page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).count())) {
+      await clickFirstVisible(page.getByRole("button", { name: /Target/i }), "Target retailer button");
     }
     const storeSearch = page.getByPlaceholder(/Search .*city, ZIP, nickname, or address|Search store, city, ZIP/i).first();
     if (await storeSearch.count()) {
       await storeSearch.fill("Smoke Shared Target");
     }
     const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first();
-    await smokeStoreCard.waitFor({ state: "visible", timeout: 10000 });
+    try {
+      await smokeStoreCard.waitFor({ state: "visible", timeout: 10000 });
+    } catch (error) {
+      const pageText = (await page.locator("body").innerText()).slice(0, 2000);
+      throw new Error(`Smoke Shared Target store card was not visible. Current Scout view: ${pageText}`);
+    }
     const openButton = smokeStoreCard.getByRole("button", { name: /Open Store|Open/i });
     if (await openButton.count()) {
       await openButton.click();
