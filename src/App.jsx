@@ -8,6 +8,7 @@ import OverflowMenu from "./components/OverflowMenu";
 import BackupExportImport from "./components/BackupExportImport";
 import MarketPriceHistoryPanel from "./components/MarketPriceHistoryPanel";
 import SmartCatalogSearchBox from "./components/SmartCatalogSearchBox";
+import LockedFeatureNotice from "./components/LockedFeatureNotice";
 import Scout from "./pages/Scout";
 import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/sharedPokemonCatalog";
 import {
@@ -59,6 +60,7 @@ import {
 import {
   loadLocalPhase2Data,
   loadPhase2Data,
+  normalizeReceiptDestination,
   parseReceiptText,
   classifyPhase2SyncError,
   saveAppPreferences,
@@ -258,6 +260,112 @@ const VAULT_FILTER_OPTIONS = [
   { value: "moved_to_forge", label: "Moved to Forge" },
   { value: "wishlist", label: "Wishlist / Held" },
   { value: "sold_archived", label: "Sold / Archived" },
+];
+const BATCH_INTAKE_MODES = {
+  TRANSFER: "transfer",
+  BULK_ADD: "bulk_add",
+};
+const IMPORT_SOURCE_GUIDES = [
+  {
+    value: "spreadsheet_csv",
+    label: "Spreadsheet / CSV",
+    mode: BATCH_INTAKE_MODES.TRANSFER,
+    instructions: "Export or save your sheet as a CSV. Upload it here. We'll match your items to the catalog before anything is added.",
+    bestFormat: "CSV with headers for item name, set, quantity, condition, price, notes, and UPC/SKU when available.",
+  },
+  {
+    value: "collection_app",
+    label: "Collectr or other collection app",
+    mode: BATCH_INTAKE_MODES.TRANSFER,
+    instructions: "Export your collection if your app supports CSV. Upload the file here. We'll match names, sets, quantities, and values where possible.",
+    bestFormat: "CSV export from the source app. Keep item name, set, condition, quantity, and value columns.",
+  },
+  {
+    value: "tcgplayer_pricecharting",
+    label: "TCGplayer / PriceCharting",
+    mode: BATCH_INTAKE_MODES.TRANSFER,
+    instructions: "Export your collection or inventory as a CSV if available. We'll try to match card names, set names, card numbers, quantities, conditions, and values.",
+    bestFormat: "CSV with card/product name, set, card number, quantity, condition, and value/cost columns.",
+  },
+  {
+    value: "seller_list",
+    label: "eBay / Whatnot / Facebook seller list",
+    mode: BATCH_INTAKE_MODES.TRANSFER,
+    instructions: "Paste or upload your seller list. We'll help convert it into Forge inventory or marketplace drafts after review.",
+    bestFormat: "One item per line or CSV with title, quantity, price, source, and notes.",
+  },
+  {
+    value: "notes_list",
+    label: "Notes app / copied list",
+    mode: BATCH_INTAKE_MODES.TRANSFER,
+    instructions: "Paste one item per line. Quantity formats like 2x, x2, or qty 2 are supported.",
+    bestFormat: "One item per line. Example: 2x Prismatic Evolutions ETB.",
+  },
+  {
+    value: "photo_reference",
+    label: "Photos or screenshots",
+    mode: BATCH_INTAKE_MODES.TRANSFER,
+    instructions: "Upload the image for reference and type the visible text. Full AI photo recognition is coming later, but for now we'll use the text you provide to suggest matches.",
+    bestFormat: "Image upload for reference plus typed visible text in the paste box.",
+  },
+  {
+    value: "no_tracker",
+    label: "No current tracker",
+    mode: BATCH_INTAKE_MODES.TRANSFER,
+    instructions: "Start with Bulk Add, scanner, or manual add to build your Vault or Forge inventory.",
+    bestFormat: "Use Bulk Add search, paste list, or manual rows.",
+  },
+  {
+    value: "bulk_search",
+    label: "Bulk Add: search catalog",
+    mode: BATCH_INTAKE_MODES.BULK_ADD,
+    instructions: "Search and add multiple catalog items to a temporary batch, then review destinations before saving.",
+    bestFormat: "Search by product/card name, set, UPC, SKU, or shorthand.",
+  },
+  {
+    value: "bulk_paste",
+    label: "Bulk Add: paste list",
+    mode: BATCH_INTAKE_MODES.BULK_ADD,
+    instructions: "Paste a buying, opening, or sorting list. We'll parse quantities and suggest catalog matches before saving.",
+    bestFormat: "One item per line. Quantity formats like 2x, x2, qty 2, or leading quantities are supported.",
+  },
+  {
+    value: "bulk_manual",
+    label: "Bulk Add: manual rows",
+    mode: BATCH_INTAKE_MODES.BULK_ADD,
+    instructions: "Add quick manual rows into a temporary batch, then review and save them together.",
+    bestFormat: "Use the manual row fields for item, quantity, destination, condition, cost, store, and notes.",
+  },
+];
+const IMPORT_FIELD_OPTIONS = [
+  { value: "itemName", label: "Item name", aliases: ["name", "item", "product", "title", "card"] },
+  { value: "setName", label: "Set", aliases: ["set", "collection", "expansion"] },
+  { value: "cardNumber", label: "Card number", aliases: ["number", "card #", "card no"] },
+  { value: "productType", label: "Product type", aliases: ["type", "category", "product type"] },
+  { value: "quantity", label: "Quantity", aliases: ["quantity", "qty", "count"] },
+  { value: "condition", label: "Condition", aliases: ["condition", "grade"] },
+  { value: "variant", label: "Variant", aliases: ["variant", "finish", "printing"] },
+  { value: "costPaid", label: "Purchase price / cost basis", aliases: ["cost", "paid", "purchase", "price", "cost basis"] },
+  { value: "marketValue", label: "Market value", aliases: ["market", "value"] },
+  { value: "location", label: "Location", aliases: ["location", "box", "binder"] },
+  { value: "store", label: "Store / source", aliases: ["store", "source", "vendor"] },
+  { value: "notes", label: "Notes", aliases: ["note", "notes", "memo"] },
+  { value: "purchaseDate", label: "Date purchased", aliases: ["date", "purchase date", "purchased"] },
+  { value: "upcSku", label: "UPC / SKU", aliases: ["upc", "sku", "barcode", "tcgplayer id", "external id"] },
+  { value: "msrp", label: "MSRP", aliases: ["msrp", "retail"] },
+];
+const IMPORT_DESTINATION_OPTIONS = [
+  { value: "Vault", label: "Vault" },
+  { value: "Forge", label: "Forge Inventory" },
+  { value: "Wishlist", label: "Wishlist" },
+  { value: "Both", label: "Vault + Forge" },
+  { value: "Skip", label: "Ignore / do not import" },
+];
+const IMPORT_CONDITION_OPTIONS = ["Unknown", "Sealed", "Opened", "Damaged", "Near Mint", "Lightly Played", "Moderately Played", "Heavily Played"];
+const IMPORT_DUPLICATE_ACTIONS = [
+  { value: "add_separate", label: "Add as separate item" },
+  { value: "increase_quantity", label: "Increase existing quantity" },
+  { value: "skip_duplicate", label: "Skip duplicate" },
 ];
 const ACTIVE_VAULT_STATUSES = new Set(["personal_collection", "at_home", "at_store", "listed", "trade_pile", "gift_donation", "held", "sealed", "ripped_opened", "ready_for_forge"]);
 const VAULT_STORAGE_LOCATIONS = ["", "Binder", "ETB", "Shelf", "Box", "Display case", "Closet", "Other"];
@@ -1728,6 +1836,7 @@ export default function App() {
   const [catalogMinValue, setCatalogMinValue] = useState("");
   const [catalogMaxValue, setCatalogMaxValue] = useState("");
   const supabaseCatalogRequestId = useRef(0);
+  const supabaseCatalogAbortRef = useRef(null);
   const catalogResultsRef = useRef(null);
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
@@ -1795,11 +1904,32 @@ export default function App() {
   const [locationPromptZip, setLocationPromptZip] = useState("");
   const [importAssistantOpen, setImportAssistantOpen] = useState(false);
   const [importAssistantContext, setImportAssistantContext] = useState("Forge");
-  const [importSourceType, setImportSourceType] = useState("text");
+  const [batchIntakeMode, setBatchIntakeMode] = useState(BATCH_INTAKE_MODES.TRANSFER);
+  const [importSourceType, setImportSourceType] = useState("spreadsheet_csv");
   const [importText, setImportText] = useState("");
   const [importLink, setImportLink] = useState("");
   const [importFileName, setImportFileName] = useState("");
   const [importRows, setImportRows] = useState([]);
+  const [importColumnHeaders, setImportColumnHeaders] = useState([]);
+  const [importColumnMapping, setImportColumnMapping] = useState({});
+  const [importBatchMessage, setImportBatchMessage] = useState("");
+  const [importLastBatchResult, setImportLastBatchResult] = useState(null);
+  const [importBulkApply, setImportBulkApply] = useState({
+    destination: "",
+    condition: "",
+    store: "",
+    purchaseDate: "",
+  });
+  const [importManualRow, setImportManualRow] = useState({
+    itemName: "",
+    quantity: "1",
+    destination: "Vault",
+    condition: "Unknown",
+    costPaid: "",
+    store: "",
+    notes: "",
+  });
+  const [importCatalogSearch, setImportCatalogSearch] = useState("");
   const [forgeImportForm, setForgeImportForm] = useState(FORGE_IMPORT_BLANK);
   const [backupImportPreview, setBackupImportPreview] = useState(null);
   const [backupImportMessage, setBackupImportMessage] = useState("");
@@ -1859,6 +1989,7 @@ export default function App() {
     pinHighValue: false,
     addToWatchlist: false,
     updateMarketValues: false,
+    duplicateAction: "add_separate",
   });
 
   const [editingItemId, setEditingItemId] = useState(null);
@@ -4042,16 +4173,34 @@ export default function App() {
     setMenuOpen(true);
   }
 
-  function openInventoryImportAssistant(context = "Forge") {
+  function openInventoryImportAssistant(context = "Vault", options = {}) {
+    const mode = options.mode || (options.sourceType?.startsWith?.("bulk_") ? BATCH_INTAKE_MODES.BULK_ADD : BATCH_INTAKE_MODES.TRANSFER);
+    const sourceType = options.sourceType || (mode === BATCH_INTAKE_MODES.BULK_ADD ? "bulk_paste" : "spreadsheet_csv");
     setImportAssistantContext(context);
+    setBatchIntakeMode(mode);
+    setImportSourceType(sourceType);
     setImportAssistantOpen(true);
-    if (context === "Vault") {
+    setImportBatchMessage("");
+    setImportLastBatchResult(null);
+    setImportBulkApply((current) => ({
+      ...current,
+      destination: context === "Forge" ? "Forge" : context === "Wishlist" ? "Wishlist" : context === "Mixed" ? "" : "Vault",
+    }));
+    if (options.resetRows) {
+      setImportRows([]);
+      setImportText("");
+      setImportFileName("");
+      setImportColumnHeaders([]);
+      setImportColumnMapping({});
+    }
+    if (context === "Forge") {
+      setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }));
+    }
+    if (context === "Vault" || context === "Wishlist") {
       setFeatureSectionsOpen((current) => ({ ...current, vault_add: true }));
       setActiveTab("vault");
-      return;
     }
-    setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }));
-    openFlowModal("addInventory", { size: "large", source: "edit" });
+    openFlowModal("batchIntake", { size: "large", source: options.source || "batch-intake" });
   }
 
   function parseCsvLine(line) {
@@ -4073,7 +4222,32 @@ export default function App() {
     return cells.map((cell) => cell.replace(/^"|"$/g, ""));
   }
 
-  function readImportCell(row, headers, aliases, fallbackIndex = -1) {
+  function getImportSourceGuide(sourceType = importSourceType) {
+    return IMPORT_SOURCE_GUIDES.find((guide) => guide.value === sourceType) || IMPORT_SOURCE_GUIDES[0];
+  }
+
+  function defaultImportDestination(context = importAssistantContext) {
+    if (context === "Forge") return "Forge";
+    if (context === "Wishlist") return "Wishlist";
+    return "Vault";
+  }
+
+  function inferImportColumnMapping(headers = []) {
+    return headers.reduce((mapping, header, index) => {
+      const normalizedHeader = String(header || "").toLowerCase().trim();
+      const match = IMPORT_FIELD_OPTIONS.find((field) => field.aliases.some((alias) => normalizedHeader.includes(alias)));
+      if (match && !Object.values(mapping).includes(match.value)) {
+        return { ...mapping, [index]: match.value };
+      }
+      return mapping;
+    }, {});
+  }
+
+  function readImportCell(row, headers, aliases, fallbackIndex = -1, mapping = importColumnMapping, fieldKey = "") {
+    if (fieldKey && mapping) {
+      const mappedIndex = Object.entries(mapping).find(([, value]) => value === fieldKey)?.[0];
+      if (mappedIndex !== undefined && row[Number(mappedIndex)] !== undefined) return row[Number(mappedIndex)] || "";
+    }
     const match = headers.findIndex((header) => aliases.some((alias) => header.includes(alias)));
     if (match >= 0) return row[match] || "";
     if (fallbackIndex >= 0) return row[fallbackIndex] || "";
@@ -4086,17 +4260,67 @@ export default function App() {
     return Number.isFinite(number) ? number : "";
   }
 
-  function findCatalogMatchForImport(name, setName = "") {
+  function normalizeImportQuantity(value) {
+    const number = Number(String(value || "").replace(/[^\d.]/g, ""));
+    return Number.isFinite(number) && number > 0 ? Math.max(1, Math.floor(number)) : 1;
+  }
+
+  function normalizeImportIdentifier(value) {
+    return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  function importConfidenceLabel(score) {
+    if (Number(score || 0) >= 85) return "High";
+    if (Number(score || 0) >= 60) return "Medium";
+    return "Low";
+  }
+
+  function findCatalogMatchForImport(name, setName = "", identifiers = {}) {
     const cleanName = String(name || "").trim().toLowerCase();
     const cleanSet = String(setName || "").trim().toLowerCase();
-    if (!cleanName) return { match: null, confidenceScore: 20, needsReview: true };
+    const identifier = normalizeImportIdentifier(identifiers.upcSku || identifiers.barcode || identifiers.sku || identifiers.externalId || identifiers.cardNumber);
+    if (!cleanName && !identifier) return { match: null, confidenceScore: 20, needsReview: true, alternateMatches: [] };
+
+    if (identifier) {
+      const exactIdentifier = catalogProducts.find((product) => {
+        const values = [
+          product.barcode,
+          product.upc,
+          product.sku,
+          product.externalProductId,
+          product.tcgplayerProductId,
+          product.pokemonTcgApiId,
+          ...(product.upcs || []),
+          ...(product.identifiers || []),
+        ].map(normalizeImportIdentifier).filter(Boolean);
+        return values.includes(identifier);
+      });
+      if (exactIdentifier) {
+        return { match: exactIdentifier, confidenceScore: 98, needsReview: false, alternateMatches: [exactIdentifier] };
+      }
+    }
 
     const exact = catalogProducts.find((product) => {
       const productName = String(product.name || product.productName || product.cardName || "").trim().toLowerCase();
       const productSet = String(product.setName || product.expansion || "").trim().toLowerCase();
       return productName === cleanName && (!cleanSet || productSet === cleanSet);
     });
-    if (exact) return { match: exact, confidenceScore: 94, needsReview: false };
+    if (exact) return { match: exact, confidenceScore: 94, needsReview: false, alternateMatches: [exact] };
+
+    const alternateMatches = getBestCatalogMatches([cleanName, cleanSet, identifiers.cardNumber, identifiers.productType].filter(Boolean).join(" "), catalogProducts)
+      .slice(0, 3)
+      .map((candidate) => candidate.product || candidate);
+    if (alternateMatches.length) {
+      const best = alternateMatches[0];
+      const bestTitle = String(best.name || best.productName || best.cardName || "").trim().toLowerCase();
+      const titleHit = cleanName && (bestTitle.includes(cleanName) || cleanName.includes(bestTitle));
+      return {
+        match: best,
+        confidenceScore: titleHit ? 78 : 62,
+        needsReview: true,
+        alternateMatches,
+      };
+    }
 
     const tokens = cleanName.split(/\s+/).filter((token) => token.length > 2);
     const fuzzy = catalogProducts.find((product) => {
@@ -4105,40 +4329,49 @@ export default function App() {
       const tokenHits = tokens.filter((token) => productName.includes(token)).length;
       return tokenHits >= Math.min(3, Math.max(1, tokens.length - 1)) && (!cleanSet || productSet.includes(cleanSet) || cleanSet.includes(productSet));
     });
-    if (fuzzy) return { match: fuzzy, confidenceScore: 70, needsReview: true };
+    if (fuzzy) return { match: fuzzy, confidenceScore: 70, needsReview: true, alternateMatches: [fuzzy] };
 
-    return { match: null, confidenceScore: 35, needsReview: true };
+    return { match: null, confidenceScore: 35, needsReview: true, alternateMatches: [] };
   }
 
   function makeImportRow(raw, sourceType, index) {
     const itemName = raw.itemName || raw.name || raw.productName || raw.originalText || `Imported item ${index + 1}`;
-    const matchResult = findCatalogMatchForImport(itemName, raw.setName);
+    const matchResult = findCatalogMatchForImport(itemName, raw.setName, raw);
     const matched = matchResult.match;
     const marketInfo = matched ? getTideTradrMarketInfo(matched) : {};
     const catalogType = raw.catalogType || matched?.catalogType || (raw.condition || raw.grade ? "card" : matched?.catalog_type || "unknown");
+    const destination = raw.destination || importBulkApply.destination || defaultImportDestination();
     return {
       importedItemId: makeId("import-row"),
       originalText: raw.originalText || itemName,
       matchedCatalogItemId: matched?.id || "",
       possibleMatchName: matched?.name || matched?.productName || matched?.cardName || "",
+      alternateMatches: matchResult.alternateMatches || [],
       itemName,
       catalogType,
       productType: raw.productType || matched?.productType || "",
       setName: raw.setName || matched?.setName || matched?.expansion || "",
-      quantity: Number(raw.quantity || 1),
+      cardNumber: raw.cardNumber || matched?.cardNumber || "",
+      quantity: normalizeImportQuantity(raw.quantity),
       costPaid: normalizeImportNumber(raw.costPaid),
       msrp: normalizeImportNumber(raw.msrp || matched?.msrpPrice || matched?.msrp || ""),
       marketValue: normalizeImportNumber(raw.marketValue || marketInfo.currentMarketValue || ""),
-      condition: raw.condition || matched?.condition || "",
+      condition: raw.condition || matched?.condition || "Unknown",
+      variant: raw.variant || matched?.variant || "",
       language: raw.language || matched?.language || "",
       graded: Boolean(raw.graded || matched?.graded),
       grade: raw.grade || matched?.grade || "",
-      location: raw.location || raw.source || "",
+      location: raw.location || raw.store || raw.source || "",
+      store: raw.store || raw.location || raw.source || "",
+      purchaseDate: raw.purchaseDate || "",
+      upcSku: raw.upcSku || raw.barcode || raw.sku || "",
       notes: raw.notes || "",
       confidenceScore: matchResult.confidenceScore,
+      confidenceLabel: importConfidenceLabel(matchResult.confidenceScore),
       needsReview: matchResult.needsReview,
       importStatus: "pending",
-      destination: importAssistantContext === "Vault" ? "Vault" : "Forge",
+      duplicateAction: importOptions.duplicateAction || "add_separate",
+      destination,
       sourceType,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -4202,6 +4435,12 @@ export default function App() {
   }
 
   function runImportParse() {
+    if (importSourceType === "no_tracker") {
+      setImportBatchMessage("No tracker selected. Use Bulk Add search, paste list, scanner, or manual add to build your first batch.");
+      setBatchIntakeMode(BATCH_INTAKE_MODES.BULK_ADD);
+      setImportSourceType("bulk_paste");
+      return;
+    }
     if (importSourceType === "link") {
       const row = makeImportRow({
         originalText: importLink,
@@ -4212,8 +4451,17 @@ export default function App() {
       setImportRows([row]);
       return;
     }
+    const lines = String(importText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (lines.length) {
+      const headers = parseCsvLine(lines[0]);
+      if (headers.some((cell) => /name|item|product|quantity|qty|cost|market|msrp|set|condition|upc|sku|barcode|note|date/i.test(cell))) {
+        setImportColumnHeaders(headers);
+        setImportColumnMapping((current) => Object.keys(current || {}).length ? current : inferImportColumnMapping(headers));
+      }
+    }
     const nextRows = parseImportText(importText, importSourceType);
     setImportRows(nextRows);
+    setImportBatchMessage(nextRows.length ? `${nextRows.length} row${nextRows.length === 1 ? "" : "s"} staged for review. Nothing has been saved.` : "No rows found to review.");
   }
 
   function handleImportFileUpload(event) {
@@ -4222,33 +4470,43 @@ export default function App() {
     setImportFileName(file.name);
     const extension = file.name.split(".").pop()?.toLowerCase();
     if (["png", "jpg", "jpeg", "webp", "gif"].includes(extension || "")) {
-      setImportSourceType("screenshot");
+      setImportSourceType("photo_reference");
       setImportRows([
         makeImportRow({
           originalText: file.name,
-          itemName: "Image inventory import",
-          notes: "Image/OCR import is coming soon. Manually transcribe the screenshot into pasted text for beta.",
-        }, "screenshot", 0),
+          itemName: "Image reference upload",
+          notes: "Image/OCR import is coming later. Type the visible text into the paste box for beta matching.",
+        }, "photo_reference", 0),
       ]);
+      setImportBatchMessage("Image uploaded as a reference only. Type visible text into the paste box, then review matches before saving.");
       return;
     }
     if (["xlsx", "xls", "pdf"].includes(extension || "")) {
-      setImportSourceType(extension === "pdf" ? "pdf" : "excel");
+      setImportSourceType("spreadsheet_csv");
       setImportRows([
         makeImportRow({
           originalText: file.name,
           itemName: `${extension?.toUpperCase()} import preview`,
           notes: "Spreadsheet/PDF parsing is limited in this beta build. Export as CSV or paste the list for automatic preview.",
-        }, extension === "pdf" ? "pdf" : "excel", 0),
+        }, extension === "pdf" ? "pdf_reference" : "spreadsheet_reference", 0),
       ]);
+      setImportBatchMessage(`${extension?.toUpperCase()} selected for reference. Export to CSV or paste visible rows for beta parsing.`);
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       const content = String(reader.result || "");
       setImportText(content);
-      setImportSourceType(extension === "csv" ? "csv" : "text");
-      setImportRows(parseImportText(content, extension === "csv" ? "csv" : "text"));
+      const sourceType = extension === "csv" ? "spreadsheet_csv" : "notes_list";
+      const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const headers = lines.length ? parseCsvLine(lines[0]) : [];
+      const hasHeaders = headers.some((cell) => /name|item|product|quantity|qty|cost|market|msrp|set|condition|upc|sku|barcode|note|date/i.test(cell));
+      setImportSourceType(sourceType);
+      setImportColumnHeaders(hasHeaders ? headers : []);
+      setImportColumnMapping(hasHeaders ? inferImportColumnMapping(headers) : {});
+      const rows = parseImportText(content, sourceType);
+      setImportRows(rows);
+      setImportBatchMessage(`${rows.length} row${rows.length === 1 ? "" : "s"} staged from ${file.name}. Review before saving.`);
     };
     reader.readAsText(file);
   }
@@ -4299,7 +4557,7 @@ export default function App() {
 
         const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
         const detectedColumns = lines.length ? parseCsvLine(lines[0]).filter(Boolean).slice(0, 16) : [];
-        const sourceType = extension === "csv" ? "csv" : "text";
+        const sourceType = extension === "csv" ? "spreadsheet_csv" : "seller_list";
         setForgeImportForm((current) => ({
           ...current,
           fileName: file.name,
@@ -4334,37 +4592,63 @@ export default function App() {
       return;
     }
 
-    const importType = forgeImportForm.importType;
-    if (importType === "Inventory" || importType === "Mixed/auto-detect") {
-      const nextItems = previewRows.map((row) => importedRowToItem({ ...row, destination: "Forge" }, "Forge"));
-      setItems((current) => [...nextItems, ...current]);
-      setActiveTab("inventory");
-      setForgeSubTab("overview");
-      setVaultToast(`Imported ${nextItems.length} Forge item${nextItems.length === 1 ? "" : "s"} from ${forgeImportForm.fileName}.`);
-      closeFlowModal({ force: true, reset: false });
-      setForgeImportForm(FORGE_IMPORT_BLANK);
-      return;
-    }
-
     setImportAssistantContext("Forge");
-    setImportRows(previewRows);
-    setVaultToast(`${importType} import preview saved for beta mapping.`);
+    setBatchIntakeMode(BATCH_INTAKE_MODES.TRANSFER);
+    setImportSourceType(forgeImportForm.sourceApp ? "seller_list" : "spreadsheet_csv");
+    setImportRows(previewRows.map((row) => ({ ...row, destination: "Forge", importStatus: "pending" })));
+    setImportBatchMessage(`${forgeImportForm.fileName} is staged for review. Nothing has been saved yet.`);
+    setVaultToast(`${forgeImportForm.fileName} staged for review before saving.`);
     closeFlowModal({ force: true, reset: false });
     setForgeImportForm(FORGE_IMPORT_BLANK);
+    setImportAssistantOpen(true);
+    openFlowModal("batchIntake", { size: "large", source: "forge-import-review" });
   }
 
   function updateImportRow(rowId, updates) {
     setImportRows((current) => current.map((row) => {
       if (row.importedItemId !== rowId) return row;
       const next = { ...row, ...updates, updatedAt: new Date().toISOString() };
-      if (Object.prototype.hasOwnProperty.call(updates, "itemName") || Object.prototype.hasOwnProperty.call(updates, "setName")) {
-        const matchResult = findCatalogMatchForImport(next.itemName, next.setName);
+      if (Object.prototype.hasOwnProperty.call(updates, "itemName") || Object.prototype.hasOwnProperty.call(updates, "setName") || Object.prototype.hasOwnProperty.call(updates, "upcSku") || Object.prototype.hasOwnProperty.call(updates, "cardNumber")) {
+        const matchResult = findCatalogMatchForImport(next.itemName, next.setName, next);
         next.matchedCatalogItemId = matchResult.match?.id || "";
-        next.possibleMatchName = matchResult.match?.name || "";
+        next.possibleMatchName = matchResult.match?.name || matchResult.match?.productName || matchResult.match?.cardName || "";
+        next.alternateMatches = matchResult.alternateMatches || [];
         next.confidenceScore = matchResult.confidenceScore;
+        next.confidenceLabel = importConfidenceLabel(matchResult.confidenceScore);
         next.needsReview = matchResult.needsReview;
       }
       return next;
+    }));
+  }
+
+  function selectImportRowCatalogMatch(rowId, productId) {
+    setImportRows((current) => current.map((row) => {
+      if (row.importedItemId !== rowId) return row;
+      if (!productId) {
+        return {
+          ...row,
+          matchedCatalogItemId: "",
+          possibleMatchName: "",
+          confidenceScore: 35,
+          confidenceLabel: "Low",
+          needsReview: true,
+          importStatus: "reviewed",
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      const product = catalogProducts.find((candidate) => String(candidate.id) === String(productId));
+      return {
+        ...row,
+        matchedCatalogItemId: productId,
+        possibleMatchName: product ? catalogTitle(product) : row.possibleMatchName,
+        productType: row.productType || product?.productType || "",
+        setName: row.setName || product?.setName || product?.expansion || "",
+        confidenceScore: Math.max(Number(row.confidenceScore || 0), 88),
+        confidenceLabel: "High",
+        needsReview: false,
+        importStatus: "reviewed",
+        updatedAt: new Date().toISOString(),
+      };
     }));
   }
 
@@ -4449,9 +4733,11 @@ export default function App() {
       msrpPrice: Number(row.msrp || matched?.msrpPrice || 0),
       expansion: row.setName || matched?.setName || "",
       productType: row.productType || matched?.productType || "",
+      variant: row.variant || "",
+      purchaseDate: row.purchaseDate || "",
       status,
-      vaultStatus: destination === "Vault" ? "personal_collection" : "",
-      actionNotes: destination === "Vault" ? "Imported collection item" : "Imported Forge item",
+      vaultStatus: normalizedDestination === "Vault" ? "personal_collection" : normalizedDestination === "Wishlist" ? "wishlist" : "",
+      actionNotes: normalizedDestination === "Vault" ? "Imported collection item" : normalizedDestination === "Wishlist" ? "Imported wishlist item" : "Imported Forge item",
       notes: [row.notes, `Imported from ${row.sourceType}. Original: ${row.originalText}`].filter(Boolean).join(" | "),
       createdAt: new Date().toISOString(),
       importStatus: "imported",
@@ -4459,17 +4745,72 @@ export default function App() {
     };
   }
 
+  function importDestinationScope(destination) {
+    if (destination === "Vault") return "vault";
+    if (destination === "Wishlist") return "wishlist";
+    return "forge";
+  }
+
+  function findImportDuplicate(row, destination) {
+    const scope = importDestinationScope(destination);
+    const normalizedName = normalizeSearchText(row.itemName);
+    const rowCatalogId = String(row.matchedCatalogItemId || "");
+    return items.find((item) => {
+      const scopes = item.destinationScope || [];
+      const scopeMatch = scope === "wishlist" ? item.isWishlist || scopes.includes("wishlist") : scopes.includes(scope);
+      if (!scopeMatch) return false;
+      if (rowCatalogId && String(item.catalogProductId || "") === rowCatalogId) return true;
+      return normalizedName && normalizeSearchText(item.name) === normalizedName;
+    }) || null;
+  }
+
+  function applyImportedQuantityIncrease(duplicate, row) {
+    setItems((current) => current.map((item) => {
+      if (item.id !== duplicate.id) return item;
+      return {
+        ...item,
+        quantity: Number(item.quantity || 0) + Number(row.quantity || 1),
+        notes: [item.notes, `Quantity increased from batch intake: ${row.originalText}`].filter(Boolean).join(" | "),
+        updatedAt: new Date().toISOString(),
+      };
+    }));
+  }
+
   function confirmInventoryImport() {
-    const rowsToImport = importRows.filter((row) => row.importStatus !== "skipped");
+    const rowsToImport = importRows.filter((row) => row.importStatus !== "skipped" && row.destination !== "Skip");
     if (rowsToImport.length === 0) return alert("No import rows selected.");
+    const unreviewedRows = rowsToImport.filter((row) => row.needsReview && row.importStatus !== "reviewed");
+    if (unreviewedRows.length) {
+      setImportBatchMessage(`${unreviewedRows.length} low-confidence or unmatched row${unreviewedRows.length === 1 ? "" : "s"} still need review before saving.`);
+      return;
+    }
     const nextItems = [];
+    const failures = [];
+    let skippedDuplicates = 0;
+    let quantityIncreases = 0;
     rowsToImport.forEach((row) => {
-      const destinations = row.destination === "Both" ? ["Forge", "Vault"] : [row.destination || "Forge"];
+      const destinations = row.destination === "Both" ? ["Forge", "Vault"] : [row.destination || defaultImportDestination()];
       destinations.forEach((destination) => {
-        nextItems.push(importedRowToItem(row, destination));
+        if (destination === "Skip") return;
+        try {
+          const duplicate = findImportDuplicate(row, destination);
+          const duplicateAction = row.duplicateAction || importOptions.duplicateAction || "add_separate";
+          if (duplicate && duplicateAction === "skip_duplicate") {
+            skippedDuplicates += 1;
+            return;
+          }
+          if (duplicate && duplicateAction === "increase_quantity") {
+            applyImportedQuantityIncrease(duplicate, row);
+            quantityIncreases += 1;
+            return;
+          }
+          nextItems.push(importedRowToItem(row, destination));
+        } catch (error) {
+          failures.push({ rowId: row.importedItemId, itemName: row.itemName, error: error.message || "Unknown import failure" });
+        }
       });
     });
-    setItems((current) => [...nextItems, ...current]);
+    if (nextItems.length) setItems((current) => [...nextItems, ...current]);
     if (importOptions.addToWatchlist || importOptions.pinHighValue) {
       rowsToImport.forEach((row) => {
         const marketValue = Number(row.marketValue || 0);
@@ -4478,55 +4819,208 @@ export default function App() {
         }
       });
     }
-    setImportRows((current) => current.map((row) => row.importStatus === "skipped" ? row : { ...row, importStatus: "imported", updatedAt: new Date().toISOString() }));
-    setImportAssistantOpen(false);
-    setActiveTab(importAssistantContext === "Vault" ? "vault" : "inventory");
+    setImportRows((current) => current.map((row) => row.importStatus === "skipped" || row.destination === "Skip" ? row : { ...row, importStatus: failures.some((failure) => failure.rowId === row.importedItemId) ? "failed" : "imported", updatedAt: new Date().toISOString() }));
+    const result = {
+      batchId: makeId("batch-intake"),
+      saved: nextItems.length,
+      skippedDuplicates,
+      quantityIncreases,
+      failures,
+      completedAt: new Date().toISOString(),
+    };
+    setImportLastBatchResult(result);
+    setImportBatchMessage(`${nextItems.length} item${nextItems.length === 1 ? "" : "s"} saved, ${quantityIncreases} duplicate quantit${quantityIncreases === 1 ? "y" : "ies"} increased, ${skippedDuplicates} duplicate${skippedDuplicates === 1 ? "" : "s"} skipped${failures.length ? `, ${failures.length} failed` : ""}.`);
+    if (!failures.length) {
+      const savedScopes = new Set(nextItems.flatMap((item) => item.destinationScope || []));
+      setImportAssistantOpen(false);
+      closeFlowModal({ force: true, reset: false });
+      setActiveTab(savedScopes.has("forge") ? "inventory" : "vault");
+    }
   }
+
+  function addManualImportRow(event) {
+    event?.preventDefault?.();
+    if (!String(importManualRow.itemName || "").trim()) {
+      setImportBatchMessage("Enter an item name before adding a manual row.");
+      return;
+    }
+    const row = makeImportRow({
+      ...importManualRow,
+      originalText: importManualRow.itemName,
+      source: importManualRow.store,
+    }, importSourceType || "bulk_manual", importRows.length);
+    setImportRows((current) => [...current, { ...row, importStatus: row.needsReview ? "pending" : "reviewed" }]);
+    setImportManualRow((current) => ({
+      ...current,
+      itemName: "",
+      quantity: "1",
+      costPaid: "",
+      notes: "",
+    }));
+    setImportBatchMessage("Manual row added to review. Nothing has been saved.");
+  }
+
+  function addCatalogProductToImportBatch(product, destination = importBulkApply.destination || defaultImportDestination()) {
+    if (!product) return;
+    const row = makeImportRow({
+      itemName: catalogTitle(product),
+      originalText: catalogTitle(product),
+      productType: catalogProductTypeLabel(product),
+      setName: catalogExpansionName(product),
+      marketValue: getTideTradrMarketInfo(product).currentMarketValue || "",
+      msrp: product.msrpPrice || product.msrp || "",
+      upcSku: product.barcode || product.upc || "",
+      destination,
+    }, "bulk_search", importRows.length);
+    setImportRows((current) => [
+      ...current,
+      {
+        ...row,
+        matchedCatalogItemId: product.id,
+        possibleMatchName: catalogTitle(product),
+        alternateMatches: [product],
+        confidenceScore: 98,
+        confidenceLabel: "High",
+        needsReview: false,
+        importStatus: "reviewed",
+      },
+    ]);
+    setImportBatchMessage(`${catalogTitle(product)} added to the review batch.`);
+  }
+
+  function applyImportBulkUpdates() {
+    const updates = {};
+    if (importBulkApply.destination) updates.destination = importBulkApply.destination;
+    if (importBulkApply.condition) updates.condition = importBulkApply.condition;
+    if (importBulkApply.store) {
+      updates.store = importBulkApply.store;
+      updates.location = importBulkApply.store;
+    }
+    if (importBulkApply.purchaseDate) updates.purchaseDate = importBulkApply.purchaseDate;
+    if (!Object.keys(updates).length) {
+      setImportBatchMessage("Choose a bulk value to apply first.");
+      return;
+    }
+    setImportRows((current) => current.map((row) => row.importStatus === "skipped" ? row : {
+      ...row,
+      ...updates,
+      importStatus: row.needsReview ? "reviewed" : row.importStatus,
+      updatedAt: new Date().toISOString(),
+    }));
+    setImportBatchMessage("Bulk values applied to review rows. Nothing has been saved yet.");
+  }
+
+  function removeImportRow(rowId) {
+    setImportRows((current) => current.filter((row) => row.importedItemId !== rowId));
+  }
+
+  const importCatalogSearchResults = useMemo(() => {
+    const query = String(importCatalogSearch || "").trim();
+    if (query.length < 2) return [];
+    return getBestCatalogMatches(query, catalogProducts)
+      .slice(0, 8)
+      .map((candidate) => candidate.product || candidate);
+  }, [importCatalogSearch, catalogProducts]);
 
   function renderInventoryImportAssistant() {
     if (!importAssistantOpen) return null;
+    const currentGuide = getImportSourceGuide();
+    const sourceOptions = IMPORT_SOURCE_GUIDES.filter((guide) => guide.mode === batchIntakeMode || guide.value === importSourceType);
+    const reviewableRows = importRows.filter((row) => row.importStatus !== "skipped" && row.destination !== "Skip");
+    const unresolvedRows = reviewableRows.filter((row) => row.needsReview && row.importStatus !== "reviewed");
+    const duplicateCount = reviewableRows.reduce((count, row) => {
+      const destinations = row.destination === "Both" ? ["Forge", "Vault"] : [row.destination || defaultImportDestination()];
+      return count + (destinations.some((destination) => destination !== "Skip" && findImportDuplicate(row, destination)) ? 1 : 0);
+    }, 0);
     return (
-      <section className="panel import-assistant-panel">
+      <section className="panel import-assistant-panel batch-intake-panel">
         <div className="compact-card-header">
           <div>
-            <h2>Inventory Import Assistant</h2>
-            <p>Upload, paste, or stage inventory for Forge and Vault. Nothing saves until you review and confirm.</p>
+            <h2>{batchIntakeMode === BATCH_INTAKE_MODES.BULK_ADD ? "Bulk Add Review" : "Import / Transfer Collection"}</h2>
+            <p>Input, parse, match, review, choose destination, then confirm. Nothing is saved until you approve the batch.</p>
           </div>
-          <button type="button" className="secondary-button" onClick={() => setImportAssistantOpen(false)}>Close Import</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
         </div>
 
-        <p className="compact-subtitle">Only import what you choose to upload or paste. Review all items before saving.</p>
+        <div className="quick-action-rail">
+          <button
+            type="button"
+            className={batchIntakeMode === BATCH_INTAKE_MODES.TRANSFER ? "primary" : "secondary-button"}
+            onClick={() => {
+              setBatchIntakeMode(BATCH_INTAKE_MODES.TRANSFER);
+              if (importSourceType.startsWith("bulk_")) setImportSourceType("spreadsheet_csv");
+            }}
+          >
+            Transfer Collection
+          </button>
+          <button
+            type="button"
+            className={batchIntakeMode === BATCH_INTAKE_MODES.BULK_ADD ? "primary" : "secondary-button"}
+            onClick={() => {
+              setBatchIntakeMode(BATCH_INTAKE_MODES.BULK_ADD);
+              if (!importSourceType.startsWith("bulk_")) setImportSourceType("bulk_paste");
+            }}
+          >
+            Bulk Add
+          </button>
+        </div>
 
         <div className="cards mini-cards">
-          <div className="card"><p>Source</p><h2>{importSourceType}</h2></div>
+          <div className="card"><p>Source</p><h2>{currentGuide.label}</h2></div>
           <div className="card"><p>Review Rows</p><h2>{importRows.length}</h2></div>
-          <div className="card"><p>Destination</p><h2>{importAssistantContext}</h2></div>
+          <div className="card"><p>Needs Review</p><h2>{unresolvedRows.length}</h2></div>
+          <div className="card"><p>Duplicate Warnings</p><h2>{duplicateCount}</h2></div>
         </div>
 
         <div className="form">
           <Field label="Import Source">
             <select value={importSourceType} onChange={(event) => setImportSourceType(event.target.value)}>
-              <option value="csv">Upload a CSV or spreadsheet</option>
-              <option value="text">Paste your inventory list</option>
-              <option value="screenshot">Upload a screenshot</option>
-              <option value="link">Paste inventory/collection link</option>
-              <option value="manual">Manual review before saving</option>
+              {sourceOptions.map((guide) => (
+                <option key={guide.value} value={guide.value}>{guide.label}</option>
+              ))}
             </select>
           </Field>
-          <Field label="Upload File">
-            <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,.pdf,image/*" onChange={handleImportFileUpload} />
-          </Field>
+          <div className="drawer-info-card">
+            <strong>{currentGuide.instructions}</strong>
+            <p className="compact-subtitle">Best format: {currentGuide.bestFormat}</p>
+          </div>
+          {importSourceType !== "no_tracker" ? (
+            <Field label="Upload File">
+              <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,.pdf,image/*" onChange={handleImportFileUpload} />
+            </Field>
+          ) : null}
           {importFileName ? <p className="compact-subtitle">Selected file: {importFileName}</p> : null}
-          <Field label="Paste Text / List">
+          {importColumnHeaders.length ? (
+            <details className="forge-import-mapping" open>
+              <summary>Column mapping</summary>
+              <div className="forge-import-columns">
+                {importColumnHeaders.map((header, index) => (
+                  <label key={`${header}-${index}`} className="mapping-column-row">
+                    <span>{header || `Column ${index + 1}`}</span>
+                    <select
+                      value={importColumnMapping[index] || ""}
+                      onChange={(event) => setImportColumnMapping((current) => ({ ...current, [index]: event.target.value }))}
+                    >
+                      <option value="">Ignore</option>
+                      {IMPORT_FIELD_OPTIONS.map((field) => <option key={field.value} value={field.value}>{field.label}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </details>
+          ) : null}
+          <Field label={importSourceType === "photo_reference" ? "Type visible text from photo/screenshot" : "Paste Text / List"}>
             <textarea
               value={importText}
               onChange={(event) => setImportText(event.target.value)}
-              placeholder={"Example:\nName,Quantity,Cost Paid,Market Value,MSRP,Product Type,Set,Condition,Notes\nPrismatic Evolutions ETB,2,59.99,90,49.99,Elite Trainer Box,Prismatic Evolutions,Sealed,Keep one"}
+              placeholder={"Example:\nName,Quantity,Cost Paid,Market Value,MSRP,Product Type,Set,Condition,Notes\nPrismatic Evolutions ETB,2,59.99,90,49.99,Elite Trainer Box,Prismatic Evolutions,Sealed,Keep one\n2x Surging Sparks Booster Bundle"}
             />
           </Field>
+          {batchIntakeMode === BATCH_INTAKE_MODES.TRANSFER ? (
           <Field label="Paste inventory/collection link">
             <input value={importLink} onChange={(event) => setImportLink(event.target.value)} placeholder="Google Sheets, Excel/OneDrive, TCGPlayer, PriceCharting, Collectr, eBay, Whatnot export link" />
           </Field>
+          ) : null}
           {importSourceType === "link" ? (
             <div className="empty-state">
               <h3>Link import beta</h3>
@@ -4537,12 +5031,89 @@ export default function App() {
         </div>
 
         <div className="quick-actions">
-          <button type="button" onClick={runImportParse}>Review Matches Before Saving</button>
+          <button type="button" onClick={runImportParse}>Parse and Review Matches</button>
           <button type="button" className="secondary-button" onClick={() => setImportRows([])}>Clear Review</button>
         </div>
 
+        <details className="forge-form-step forge-optional-details" open={batchIntakeMode === BATCH_INTAKE_MODES.BULK_ADD}>
+          <summary>Bulk Add: search and manual rows</summary>
+          <div className="form">
+            <Field label="Search catalog and add to batch">
+              <input value={importCatalogSearch} onChange={(event) => setImportCatalogSearch(event.target.value)} placeholder="Search TideTradr catalog..." />
+            </Field>
+            {importCatalogSearchResults.length ? (
+              <div className="catalog-picker-grid">
+                {importCatalogSearchResults.map((product) => (
+                  <button key={product.id || catalogTitle(product)} type="button" className="catalog-picker-card" onClick={() => addCatalogProductToImportBatch(product)}>
+                    <div className="catalog-thumb">
+                      {catalogImage(product) ? <img src={catalogImage(product)} alt="" /> : <div className="image-needed-placeholder"><span>No image</span></div>}
+                    </div>
+                    <span className="catalog-picker-copy">
+                      <strong>{catalogTitle(product)}</strong>
+                      <small>{catalogProductTypeLabel(product)}{catalogExpansionName(product) ? ` | ${catalogExpansionName(product)}` : ""}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <form className="form flow-form-grid" onSubmit={addManualImportRow}>
+              <Field label="Manual row item">
+                <input value={importManualRow.itemName} onChange={(event) => setImportManualRow((current) => ({ ...current, itemName: event.target.value }))} placeholder="Charizard ex or Prismatic Evolutions ETB" />
+              </Field>
+              <Field label="Quantity">
+                <input type="number" min="1" value={importManualRow.quantity} onChange={(event) => setImportManualRow((current) => ({ ...current, quantity: event.target.value }))} />
+              </Field>
+              <Field label="Destination">
+                <select value={importManualRow.destination} onChange={(event) => setImportManualRow((current) => ({ ...current, destination: event.target.value }))}>
+                  {IMPORT_DESTINATION_OPTIONS.filter((option) => option.value !== "Both").map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Condition">
+                <select value={importManualRow.condition} onChange={(event) => setImportManualRow((current) => ({ ...current, condition: event.target.value }))}>
+                  {IMPORT_CONDITION_OPTIONS.map((condition) => <option key={condition}>{condition}</option>)}
+                </select>
+              </Field>
+              <Field label="Cost">
+                <input type="number" step="0.01" value={importManualRow.costPaid} onChange={(event) => setImportManualRow((current) => ({ ...current, costPaid: event.target.value }))} />
+              </Field>
+              <Field label="Store/source">
+                <input value={importManualRow.store} onChange={(event) => setImportManualRow((current) => ({ ...current, store: event.target.value }))} />
+              </Field>
+              <Field label="Notes">
+                <input value={importManualRow.notes} onChange={(event) => setImportManualRow((current) => ({ ...current, notes: event.target.value }))} />
+              </Field>
+              <div className="flow-form-footer">
+                <button type="submit">Add Manual Row</button>
+              </div>
+            </form>
+          </div>
+        </details>
+
         <div className="settings-subsection">
-          <h3>Import Options</h3>
+          <h3>Review Controls</h3>
+          <div className="form import-review-grid">
+            <Field label="Apply destination to all">
+              <select value={importBulkApply.destination} onChange={(event) => setImportBulkApply((current) => ({ ...current, destination: event.target.value }))}>
+                <option value="">No bulk destination</option>
+                {IMPORT_DESTINATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Apply condition to all">
+              <select value={importBulkApply.condition} onChange={(event) => setImportBulkApply((current) => ({ ...current, condition: event.target.value }))}>
+                <option value="">No bulk condition</option>
+                {IMPORT_CONDITION_OPTIONS.map((condition) => <option key={condition}>{condition}</option>)}
+              </select>
+            </Field>
+            <Field label="Apply store/source to all">
+              <input value={importBulkApply.store} onChange={(event) => setImportBulkApply((current) => ({ ...current, store: event.target.value }))} placeholder="Target, Walmart, collection app..." />
+            </Field>
+            <Field label="Apply purchase date to all">
+              <input type="date" value={importBulkApply.purchaseDate} onChange={(event) => setImportBulkApply((current) => ({ ...current, purchaseDate: event.target.value }))} />
+            </Field>
+          </div>
+          <div className="quick-actions">
+            <button type="button" className="secondary-button" onClick={applyImportBulkUpdates}>Apply to Review Rows</button>
+          </div>
           <div className="toggle-list">
             <label className="toggle-row">
               <span>Pin imported high-value items to Home Market Watch</span>
@@ -4556,18 +5127,37 @@ export default function App() {
               <span>Update market values after import if possible</span>
               <input type="checkbox" checked={importOptions.updateMarketValues} onChange={(event) => setImportOptions((current) => ({ ...current, updateMarketValues: event.target.checked }))} />
             </label>
+            <label className="toggle-row">
+              <span>Default duplicate action</span>
+              <select value={importOptions.duplicateAction} onChange={(event) => setImportOptions((current) => ({ ...current, duplicateAction: event.target.value }))}>
+                {IMPORT_DUPLICATE_ACTIONS.map((action) => <option key={action.value} value={action.value}>{action.label}</option>)}
+              </select>
+            </label>
           </div>
         </div>
 
+        {importBatchMessage ? <p className="compact-subtitle">{importBatchMessage}</p> : null}
+        {importLastBatchResult?.failures?.length ? (
+          <div className="empty-state small-empty-state">
+            <h3>Partial save issue</h3>
+            {importLastBatchResult.failures.map((failure) => <p key={failure.rowId}>{failure.itemName}: {failure.error}</p>)}
+          </div>
+        ) : null}
+
         {importRows.length ? (
           <div className="inventory-list compact-inventory-list">
-            {importRows.map((row) => (
-              <div className="inventory-card compact-card" key={row.importedItemId}>
+            {importRows.map((row) => {
+              const rowDestinations = row.destination === "Both" ? ["Forge", "Vault"] : [row.destination || defaultImportDestination()];
+              const duplicate = rowDestinations.map((destination) => findImportDuplicate(row, destination)).find(Boolean);
+              return (
+              <div className={`inventory-card compact-card ${row.importStatus === "skipped" ? "is-muted" : ""}`} key={row.importedItemId}>
                 <div className="compact-card-header">
                   <div>
                     <h3>{row.itemName}</h3>
                     <p>{row.possibleMatchName ? `Match: ${row.possibleMatchName}` : "No catalog match yet"}</p>
-                    <small>{row.confidenceScore}% confidence | {row.needsReview ? "Needs Review" : "Good Match"} | {row.sourceType}</small>
+                    <small>{row.confidenceLabel || importConfidenceLabel(row.confidenceScore)} confidence ({row.confidenceScore}%) | {row.needsReview ? "Needs Review" : "Good Match"} | {row.sourceType}</small>
+                    <small>Original: {row.originalText}</small>
+                    {duplicate ? <small className="danger-text">Duplicate possible: {duplicate.name}</small> : null}
                   </div>
                   <span className="status-badge">{row.importStatus}</span>
                 </div>
@@ -4577,9 +5167,13 @@ export default function App() {
                   </Field>
                   <Field label="Destination">
                     <select value={row.destination} onChange={(event) => updateImportRow(row.importedItemId, { destination: event.target.value, importStatus: "reviewed" })}>
-                      <option value="Forge">Add to Forge inventory</option>
-                      <option value="Vault">Add to Vault collection</option>
-                      <option value="Both">Split between Forge and Vault</option>
+                      {IMPORT_DESTINATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Catalog Match">
+                    <select value={row.matchedCatalogItemId || ""} onChange={(event) => selectImportRowCatalogMatch(row.importedItemId, event.target.value)}>
+                      <option value="">No match / add manually</option>
+                      {(row.alternateMatches || []).map((product) => <option key={product.id} value={product.id}>{catalogTitle(product)}</option>)}
                     </select>
                   </Field>
                   <Field label="Quantity">
@@ -4598,7 +5192,26 @@ export default function App() {
                     <input value={row.setName} onChange={(event) => updateImportRow(row.importedItemId, { setName: event.target.value, importStatus: "reviewed" })} />
                   </Field>
                   <Field label="Condition">
-                    <input value={row.condition} onChange={(event) => updateImportRow(row.importedItemId, { condition: event.target.value, importStatus: "reviewed" })} />
+                    <select value={row.condition || "Unknown"} onChange={(event) => updateImportRow(row.importedItemId, { condition: event.target.value, importStatus: "reviewed" })}>
+                      {IMPORT_CONDITION_OPTIONS.map((condition) => <option key={condition}>{condition}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Variant">
+                    <input value={row.variant || ""} onChange={(event) => updateImportRow(row.importedItemId, { variant: event.target.value, importStatus: "reviewed" })} />
+                  </Field>
+                  <Field label="Store/source">
+                    <input value={row.store || row.location || ""} onChange={(event) => updateImportRow(row.importedItemId, { store: event.target.value, location: event.target.value, importStatus: "reviewed" })} />
+                  </Field>
+                  <Field label="Purchase date">
+                    <input type="date" value={row.purchaseDate || ""} onChange={(event) => updateImportRow(row.importedItemId, { purchaseDate: event.target.value, importStatus: "reviewed" })} />
+                  </Field>
+                  <Field label="UPC/SKU">
+                    <input value={row.upcSku || ""} onChange={(event) => updateImportRow(row.importedItemId, { upcSku: event.target.value, importStatus: "reviewed" })} />
+                  </Field>
+                  <Field label="Duplicate action">
+                    <select value={row.duplicateAction || importOptions.duplicateAction} onChange={(event) => updateImportRow(row.importedItemId, { duplicateAction: event.target.value, importStatus: "reviewed" })}>
+                      {IMPORT_DUPLICATE_ACTIONS.map((action) => <option key={action.value} value={action.value}>{action.label}</option>)}
+                    </select>
                   </Field>
                   <Field label="Notes">
                     <input value={row.notes} onChange={(event) => updateImportRow(row.importedItemId, { notes: event.target.value, importStatus: "reviewed" })} />
@@ -4607,21 +5220,22 @@ export default function App() {
                 <div className="quick-actions">
                   <button type="button" onClick={() => updateImportRow(row.importedItemId, { importStatus: "reviewed", needsReview: false })}>Mark Reviewed</button>
                   <button type="button" className="secondary-button" onClick={() => updateImportRow(row.importedItemId, { importStatus: "skipped" })}>Skip</button>
+                  <button type="button" className="secondary-button" onClick={() => removeImportRow(row.importedItemId)}>Remove</button>
                   <button type="button" className="secondary-button" onClick={() => createManualCatalogItemFromImport(row)}>Create Manual Catalog Item</button>
                 </div>
               </div>
-            ))}
+            );})}
           </div>
         ) : (
           <div className="empty-state">
-            <h3>Import examples</h3>
-            <p>Upload a CSV, paste your inventory list, upload a screenshot for manual review, or save a source link. CSV and pasted text are the beta priority.</p>
+            <h3>Start a batch</h3>
+            <p>Upload CSV, paste a list, search catalog items, or add manual rows. The batch stays temporary until you confirm.</p>
           </div>
         )}
 
         <div className="quick-actions">
           <button type="button" disabled={!importRows.length} onClick={confirmInventoryImport}>Confirm Import</button>
-          <button type="button" className="secondary-button" onClick={() => setImportAssistantOpen(false)}>Cancel</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Cancel</button>
         </div>
       </section>
     );
@@ -5584,6 +6198,10 @@ export default function App() {
   }
 
   function openReceiptScanWorkflow() {
+    if (!featureAllowed("receipt_scan_review")) {
+      openLockedFeatureNotice("receipt_scan_review");
+      return;
+    }
     setReceiptScanOpen(true);
     setReceiptScanStatus("draft_extracted");
     setReceiptScanMessage("");
@@ -5743,7 +6361,7 @@ export default function App() {
       items: current.items.map((item) => item.id === itemId ? {
         ...item,
         [field]: value,
-        status: field === "verified" && value ? "verified" : field === "destination" && value === "ignore" ? "rejected" : item.status,
+        status: field === "verified" && value ? "verified" : item.status,
       } : item),
     } : current);
   }
@@ -5780,28 +6398,42 @@ export default function App() {
     const itemTotal = draft.items.reduce((sum, item) => sum + Number(item.totalCost || 0), 0);
     if (Math.abs((itemTotal + Number(draft.tax || 0)) - Number(draft.total || 0)) > 1) warnings.push("Receipt total does not match item totals plus tax.");
     draft.items.forEach((item, index) => {
-      if (item.destination !== "ignore" && !item.verified) warnings.push(`Item ${index + 1} must be verified before submit.`);
-      if (item.destination !== "ignore" && !item.matchedCatalogId) warnings.push(`Item ${index + 1} is marked for import without a catalog match.`);
-      if (Number(item.matchConfidence || 0) < 50 && item.destination !== "ignore") warnings.push(`Item ${index + 1} has a very low confidence match.`);
-      if (item.destination !== "ignore" && (!Number(item.quantity || 0) || !Number(item.unitCost || 0))) warnings.push(`Item ${index + 1} is missing quantity or cost.`);
+      const destination = normalizeReceiptDestination(item.destination);
+      const createsInventory = ["vault", "forge", "wishlist"].includes(destination);
+      if (!item.verified) warnings.push(`Item ${index + 1} must be verified before submit.`);
+      if (createsInventory && !item.matchedCatalogId) warnings.push(`Item ${index + 1} is marked for ${RECEIPT_DESTINATION_LABELS[destination] || "inventory"} without a catalog match.`);
+      if (Number(item.matchConfidence || 0) < 50 && createsInventory) warnings.push(`Item ${index + 1} has a very low confidence match.`);
+      if (!Number(item.quantity || 0) || !Number(item.unitCost || 0)) warnings.push(`Item ${index + 1} is missing quantity or cost.`);
     });
     return [...new Set(warnings)];
   }
 
+  function receiptItemDbDestination(item = {}) {
+    return normalizeReceiptDestination(item.destination);
+  }
+
+  function receiptItemShouldCreateInventory(item = {}) {
+    const destination = receiptItemDbDestination(item);
+    return ["forge", "vault", "wishlist"].includes(destination);
+  }
+
   function receiptItemToInventoryRecord(item, receipt, destination) {
     const product = catalogProducts.find((candidate) => String(candidate.id) === String(item.matchedCatalogId));
-    const workspace = workspaces.find((entry) => String(entry.id) === String(defaultWorkspaceIdForDestination(destination))) || activeWorkspace;
-    const isVault = destination === "vault" || destination === "personal_collection";
+    const normalizedDestination = normalizeReceiptDestination(destination);
+    const workspace = workspaces.find((entry) => String(entry.id) === String(defaultWorkspaceIdForDestination(normalizedDestination))) || activeWorkspace;
+    const isWishlist = normalizedDestination === "wishlist";
+    const isVault = normalizedDestination === "vault" || isWishlist;
     return applyWorkspaceToRecord({
       ...blankItem,
-      id: makeId(isVault ? "receipt-vault" : "receipt-forge"),
+      id: makeId(isWishlist ? "receipt-wishlist" : isVault ? "receipt-vault" : "receipt-forge"),
       name: product ? catalogTitle(product) : item.rawText,
       itemName: product ? catalogTitle(product) : item.rawText,
-      destinationScope: [isVault ? "vault" : "forge"],
-      recordType: isVault ? "vault_item" : "forge_inventory",
+      destinationScope: [isWishlist ? "wishlist" : isVault ? "vault" : "forge"],
+      recordType: isWishlist ? "wishlist_item" : isVault ? "vault_item" : "forge_inventory",
       businessInventory: !isVault,
+      isWishlist,
       quantity: Number(item.quantity || 1),
-      ownedQuantity: isVault ? Number(item.quantity || 1) : 0,
+      ownedQuantity: isVault && !isWishlist ? Number(item.quantity || 1) : 0,
       forgeQuantity: isVault ? 0 : Number(item.quantity || 1),
       unitCost: Number(item.unitCost || 0),
       salePrice: Number(product?.marketPrice || 0),
@@ -5833,14 +6465,15 @@ export default function App() {
   async function submitReceiptReview() {
     if (!receiptScanDraft) return;
     const warnings = receiptReviewWarnings();
-    if (warnings.some((warning) => /must be verified|without a catalog match|missing quantity|very low confidence/i.test(warning))) {
+    if (warnings.some((warning) => /must be verified|without a catalog match|missing quantity/i.test(warning))) {
       setReceiptScanDraft((current) => ({ ...current, warnings }));
       setReceiptScanMessage("Resolve required warnings before submitting.");
       return;
     }
-    setReceiptScanStatus("submitted");
-    const importableItems = receiptScanDraft.items.filter((item) => item.destination !== "ignore");
-    const ignoredItems = receiptScanDraft.items.filter((item) => item.destination === "ignore");
+    setReceiptScanStatus("ready_for_review");
+    setReceiptScanMessage("Submitting verified receipt to Supabase.");
+    const importableItems = receiptScanDraft.items.filter(receiptItemShouldCreateInventory);
+    const expenseOnlyItems = receiptScanDraft.items.filter((item) => receiptItemDbDestination(item) === "expense_only");
     const receipt = {
       id: receiptScanDraft.id,
       merchant: receiptScanDraft.storeName,
@@ -5850,8 +6483,8 @@ export default function App() {
       category: "Receipt Scan",
       imageUrl: receiptScanDraft.receiptImageUrl,
       splitMode: "expense_only",
-      businessTotal: importableItems.filter((item) => ["forge", "business_inventory"].includes(item.destination)).reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
-      personalTotal: importableItems.filter((item) => ["vault", "personal_collection"].includes(item.destination)).reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
+      businessTotal: importableItems.filter((item) => receiptItemDbDestination(item) === "forge").reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
+      personalTotal: importableItems.filter((item) => receiptItemDbDestination(item) === "vault").reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
       notes: `Receipt scan report. Store location: ${receiptScanDraft.storeLocation || "not visible"}. Transaction: ${receiptScanDraft.transactionNumber || "not visible"}.`,
       rawOcrText: receiptScanForm.rawText,
       lines: receiptScanDraft.items.map((item) => ({
@@ -5861,20 +6494,30 @@ export default function App() {
         quantity: Number(item.quantity || 1),
         unitPrice: Number(item.unitCost || 0),
         lineTotal: Number(item.totalCost || 0),
-        destination: item.destination === "ignore" ? "expense_only" : item.destination,
+        destination: receiptItemDbDestination(item),
         matchedConfidence: item.verified ? "confirmed" : "needs_review",
       })),
       createdAt: receiptScanDraft.createdAt,
     };
-    const createdItems = importableItems.map((item) => receiptItemToInventoryRecord(item, receiptScanDraft, item.destination));
+    const result = await saveReceiptRecord(phase2Context(), { ...receipt });
+    updatePhase2Status(result, "Receipt scan saved locally.");
+    if (!BETA_LOCAL_MODE && result.source !== "supabase") {
+      setReceiptScanDraft((current) => current ? { ...current, warnings: [...warnings, "Receipt did not sync to Supabase. Review remains unsubmitted."] } : current);
+      setReceiptScanMessage(result.error?.message ? `Receipt sync failed: ${result.error.message}` : "Receipt sync failed. Review remains unsubmitted.");
+      return;
+    }
+
+    const savedReceiptId = result.data?.id || receipt.id;
+    const receiptReference = { ...receiptScanDraft, id: savedReceiptId };
+    const createdItems = importableItems.map((item) => receiptItemToInventoryRecord(item, receiptReference, receiptItemDbDestination(item)));
     setItems((current) => [...createdItems, ...current]);
     const report = {
-      receiptId: receipt.id,
+      receiptId: savedReceiptId,
       store: receiptScanDraft.storeName,
       date: receiptScanDraft.purchaseDate,
       totalSpent: receiptScanDraft.total,
       itemsAdded: importableItems.length,
-      itemsIgnored: ignoredItems.length,
+      itemsIgnored: expenseOnlyItems.length,
       needsFutureReview: receiptScanDraft.items.filter((item) => item.status === "needs_review").length,
       vaultValueAdded: createdItems.filter((item) => item.vaultStatus).reduce((sum, item) => sum + Number(item.marketValue || item.marketPrice || 0) * Number(item.quantity || 1), 0),
       forgeInventoryCostAdded: createdItems.filter((item) => !item.vaultStatus).reduce((sum, item) => sum + Number(item.unitCost || 0) * Number(item.quantity || 1), 0),
@@ -6299,6 +6942,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "addMileage") return Boolean(editingTripId) || formsDiffer(tripForm, blankTrip);
     if (type === "createListing") return formsDiffer(marketplaceForm, BLANK_MARKETPLACE_FORM);
     if (type === "forgeImport") return formsDiffer(forgeImportForm, FORGE_IMPORT_BLANK);
+    if (type === "batchIntake") return Boolean(importText.trim() || importRows.length || importFileName || importLink.trim());
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, BLANK_MULTI_DESTINATION_FORM);
     return false;
@@ -6328,6 +6972,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     if (type === "forgeImport") {
       setForgeImportForm(FORGE_IMPORT_BLANK);
+    }
+    if (type === "batchIntake") {
+      setImportAssistantOpen(false);
+      setImportText("");
+      setImportLink("");
+      setImportFileName("");
+      setImportRows([]);
+      setImportColumnHeaders([]);
+      setImportColumnMapping({});
+      setImportBatchMessage("");
+      setImportLastBatchResult(null);
     }
     if (type === "tidepoolCreatePost") {
       setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
@@ -6400,8 +7055,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openForgeImportFlow() {
-    setForgeImportForm(FORGE_IMPORT_BLANK);
-    openFlowModal("forgeImport", { size: "large", source: "forge" });
+    openInventoryImportAssistant("Forge", {
+      mode: BATCH_INTAKE_MODES.TRANSFER,
+      sourceType: "seller_list",
+      source: "forge-import",
+      resetRows: false,
+    });
   }
 
   function openVaultQuickAddFlow() {
@@ -6422,7 +7081,21 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function openVaultImportCollectionFlow() {
     setActiveTab("vault");
-    openFlowModal("vaultImportCollection", { size: "small", source: "vault" });
+    openInventoryImportAssistant("Vault", {
+      mode: BATCH_INTAKE_MODES.TRANSFER,
+      sourceType: "spreadsheet_csv",
+      source: "vault-import",
+      resetRows: false,
+    });
+  }
+
+  function openBulkAddFlow(context = "Mixed") {
+    openInventoryImportAssistant(context, {
+      mode: BATCH_INTAKE_MODES.BULK_ADD,
+      sourceType: "bulk_paste",
+      source: "bulk-add",
+      resetRows: false,
+    });
   }
 
   function openQuickFindFlow(options = {}) {
@@ -6486,6 +7159,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function openQuickAddAction(action) {
     setQuickAddMenuOpen(false);
     if (action === "multiDestination") return openProductAddFlow({ source: "quick-add" });
+    if (action === "bulkAdd") return openBulkAddFlow("Mixed");
     if (action === "card") return openProductAddFlow({ source: "quick-add-card", seed: { productType: "Individual Card" } });
     if (action === "sealed") return openProductAddFlow({ source: "quick-add-sealed", seed: { productType: "Sealed Product" } });
     if (action === "vaultItem") return openProductAddFlow({ source: "quick-add-vault", destinations: { vault: true } });
@@ -8435,6 +9109,10 @@ function selectTideTradrProduct(productId) {
 }
 
 function openDealFinderModal(productId = "") {
+  if (!featureAllowed("deal_finder")) {
+    openLockedFeatureNotice("deal_finder");
+    return;
+  }
   if (productId) selectTideTradrProduct(productId);
   const currentQuery = String(catalogSearch || "").trim();
   if (!productId && currentQuery) {
@@ -13869,6 +14547,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         size: "large",
       };
     }
+    if (activeFlowModal?.type === "batchIntake") {
+      return {
+        title: batchIntakeMode === BATCH_INTAKE_MODES.BULK_ADD ? "Bulk Add" : "Import / Transfer Collection",
+        description: "Parse, match, review, choose destinations, then confirm. Nothing saves before review.",
+        size: "large",
+      };
+    }
     if (activeFlowModal?.type === "vaultQuickAdd") {
       return {
         title: "Vault Quick Add",
@@ -14272,6 +14957,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderForgeQuickAddFlowContent() {
     const options = [
       { key: "inventory", title: "Add Inventory", helper: "Track a sellable item.", onClick: () => openProductAddFlow({ source: "forge-quick-add-inventory", destinations: { forge: true } }) },
+      { key: "bulk", title: "Bulk Add", helper: "Stage multiple Forge, Vault, or Wishlist items for review.", onClick: () => openBulkAddFlow("Forge") },
       { key: "sale", title: "Add Sale", helper: "Record revenue and profit.", onClick: () => openAddSaleFlow() },
       { key: "expense", title: "Add Expense", helper: "Receipts, fees, supplies.", onClick: () => openAddExpenseFlow() },
       { key: "mileage", title: "Add Mileage", helper: "Business trip tracking.", onClick: () => openAddMileageFlow() },
@@ -14323,8 +15009,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         helper: "Add an item with your own details.",
         onClick: () => runVaultQuickAction(() => openMultiDestinationAddFlow({
           source: "vault-manual",
-          seed: { destinations: { vault: true, wishlist: false, forge: false, tidetradr: false } },
+          seed: { destinations: { vault: false, wishlist: false, forge: false, tidetradr: false } },
         })),
+      },
+      {
+        key: "bulk-add",
+        title: "Bulk Add",
+        helper: "Paste, search, or enter multiple items before saving.",
+        onClick: () => runVaultQuickAction(() => openBulkAddFlow("Vault")),
       },
       {
         key: "collection-import",
@@ -14528,7 +15220,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => openMultiDestinationAddFlow({
             source: "vault-import-manual",
-            seed: { destinations: { vault: true, wishlist: false, forge: false, tidetradr: false } },
+            seed: { destinations: { vault: false, wishlist: false, forge: false, tidetradr: false } },
           })}>
             <strong>Manual Add</strong>
             <span>Add an item with your own details.</span>
@@ -15090,6 +15782,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderFlowModalContent() {
     if (activeFlowModal?.type === "forgeQuickAdd") return renderForgeQuickAddFlowContent();
     if (activeFlowModal?.type === "forgeImport") return renderForgeImportFlowContent();
+    if (activeFlowModal?.type === "batchIntake") return renderInventoryImportAssistant();
     if (activeFlowModal?.type === "vaultQuickAdd") return renderVaultQuickAddFlowContent();
     if (activeFlowModal?.type === "vaultCatalogSearch") return renderVaultCatalogSearchFlowContent();
     if (activeFlowModal?.type === "vaultScan") return renderVaultScanFlowContent();
@@ -15122,7 +15815,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }, [activeFlowModal?.id]);
 
   useEffect(() => {
-    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || feedbackDialog);
+    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || lockedFeatureKey || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || feedbackDialog);
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
@@ -15152,6 +15845,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       if (receiptScanOpen) {
         event.preventDefault();
         closeReceiptScanWorkflow();
+        return;
+      }
+      if (lockedFeatureKey) {
+        event.preventDefault();
+        setLockedFeatureKey("");
         return;
       }
       if (listingReviewOpen) {
@@ -15201,7 +15899,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportDeleteTarget, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, lockedFeatureKey, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportDeleteTarget, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (!user) {
     return (
@@ -15782,6 +16480,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     onApplyImport={applyBetaBackupImport}
                     onClearDemoData={resetBetaLocalData}
                   />
+                  <div className="drawer-info-card">
+                    <strong>Collection transfer and bulk add</strong>
+                    <p className="compact-subtitle">Bring in a CSV, copied list, seller list, or manually staged batch. Every row goes through review before anything is saved.</p>
+                    <div className="drawer-inline-actions">
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openInventoryImportAssistant("Vault", { mode: BATCH_INTAKE_MODES.TRANSFER, sourceType: "spreadsheet_csv", source: "data-menu-import" }))}>Import / Transfer Collection</button>
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openBulkAddFlow("Mixed"))}>Bulk Add Items</button>
+                    </div>
+                  </div>
                   {adminToolsVisible ? (
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>
                       Admin Review Queue
@@ -15882,7 +16588,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
             <div className="location-modal-actions modal-sticky-footer flow-modal-footer">
               <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
-                {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "scoutSubmit", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
+                {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "scoutSubmit", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
               </button>
               {activeFlowModal?.type === "multiDestinationAdd" ? (
                 <button type="submit" form="multi-destination-add-form">Add Item</button>
@@ -16880,6 +17586,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="quick-actions">
                   <button type="button" onClick={buildReceiptReviewDraft}>Review Receipt</button>
                   {receiptScanDraft ? <button type="button" className="secondary-button" onClick={bulkVerifyHighConfidenceReceiptItems}>Verify Items</button> : null}
+                  {QA_UNLOCK_PAID_FEATURES ? <button type="button" className="ghost-button" onClick={prefillQaReceiptScanDraft}>Fill QA Receipt Draft</button> : null}
                 </div>
                 {receiptScanMessage ? <p className="compact-subtitle">{receiptScanMessage}</p> : null}
               </div>
@@ -17074,6 +17781,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     setShowTopbarActions(true);
                     openMultiDestinationAddFlow({ source: "home" });
                   }}>+ Add</button>
+                  <button type="button" className="secondary-button" onClick={() => openBulkAddFlow("Mixed")}>Bulk Add</button>
+                  <button type="button" className="secondary-button" onClick={() => openInventoryImportAssistant("Vault", { mode: BATCH_INTAKE_MODES.TRANSFER, sourceType: "spreadsheet_csv", source: "home-import" })}>Import</button>
                   <button type="button" className="secondary-button" onClick={() => setSearchExpanded(true)}>Search</button>
                 </>
               )}
@@ -19894,7 +20603,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from TideTradr</button>
               </div>
             </div>
-            {importAssistantContext === "Forge" ? renderInventoryImportAssistant() : null}
+            {!activeFlowModal && importAssistantContext === "Forge" ? renderInventoryImportAssistant() : null}
             <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search Forge inventory..." />
             <details className="forge-purchaser-totals">
               <summary>Purchaser Totals</summary>
