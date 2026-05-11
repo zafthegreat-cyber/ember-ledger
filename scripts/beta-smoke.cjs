@@ -51,7 +51,20 @@ async function main() {
 
   async function nav(label) {
     await closeOpenModals();
-    await page.locator(".main-tabs button").filter({ hasText: new RegExp(`^${label}$`) }).click();
+    const tab = page.locator(".main-tabs button").filter({ hasText: new RegExp(`^${label}$`) });
+    if (await tab.count()) {
+      await tab.click();
+      return;
+    }
+    const topbarSection = page.locator(".topbar-section-select");
+    if (label === "TideTradr" && (await topbarSection.count())) {
+      await topbarSection.evaluate((select) => {
+        select.value = "tideTradr";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      return;
+    }
+    throw new Error(`No visible navigation target found for ${label}`);
   }
 
   async function resetBetaData() {

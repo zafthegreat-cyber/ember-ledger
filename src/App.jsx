@@ -211,6 +211,7 @@ const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
 const FEEDBACK_STORAGE_KEY = "et-tcg-beta-feedback";
+const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
@@ -219,6 +220,27 @@ const LONG_LIST_PAGE_SIZE = 12;
 const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const DEFAULT_PERSONAL_WORKSPACE_ID = "workspace-personal-local-beta";
+const DAILY_TIDE_ACTIONS = [
+  "checkin",
+  "store",
+  "market",
+  "wishlist",
+  "inventory",
+  "community",
+];
+const DAILY_TIDE_BADGES = [
+  { key: "first_scan", label: "First Scan" },
+  { key: "first_sale", label: "First Sale" },
+  { key: "vault_builder", label: "Vault Builder" },
+  { key: "forge_starter", label: "Forge Starter" },
+  { key: "scout_verified", label: "Scout Verified" },
+  { key: "deal_finder", label: "Deal Finder" },
+  { key: "restock_reporter", label: "Restock Reporter" },
+  { key: "market_watcher", label: "Market Watcher" },
+  { key: "tidepool_helper", label: "Tidepool Helper" },
+  { key: "set_completionist", label: "Set Completionist" },
+  { key: "budget_boss", label: "Budget Boss" },
+];
 const WORKSPACE_TYPES = [
   { value: "personal", label: "Personal", description: "Only your user account." },
   { value: "shared_collection", label: "Shared Collection", description: "A shared collection or household Vault." },
@@ -232,6 +254,43 @@ const WORKSPACE_ROLES = [
   { value: "editor", label: "Editor" },
   { value: "viewer", label: "Viewer" },
 ];
+
+function getLocalDateKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getYesterdayDateKey() {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return getLocalDateKey(date);
+}
+
+function normalizeDailyTideState(value = {}) {
+  const today = getLocalDateKey();
+  return {
+    date: today,
+    lastCheckInDate: value.lastCheckInDate || "",
+    checkInStreak: Number(value.checkInStreak || 0),
+    scoutReportStreak: Number(value.scoutReportStreak || 0),
+    scannerStreak: Number(value.scannerStreak || 0),
+    tidePoints: Number(value.tidePoints || 0),
+    badges: Array.isArray(value.badges) ? value.badges : [],
+    completedActions: value.date === today && value.completedActions && typeof value.completedActions === "object"
+      ? value.completedActions
+      : {},
+    lastCelebration: value.lastCelebration || "",
+  };
+}
+
+function loadDailyTideState() {
+  if (typeof localStorage === "undefined") return normalizeDailyTideState();
+  try {
+    return normalizeDailyTideState(JSON.parse(localStorage.getItem(DAILY_TIDE_STORAGE_KEY) || "{}"));
+  } catch {
+    return normalizeDailyTideState();
+  }
+}
+
 const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
 const STATUSES = ["In Stock", "Needs Photos", "Needs Market Check", "Ready to List", "Listed", "Sold", "Held", "Personal Collection", "Damaged"];
 const PLATFORMS = ["eBay", "Mercari", "Whatnot", "Facebook Marketplace", "In-Store", "Instagram", "TikTok Shop", "Other"];
@@ -411,6 +470,7 @@ const BLANK_MULTI_DESTINATION_FORM = {
   setName: "",
   variant: "",
   catalogProductId: "",
+  catalogVariantId: "",
   upcSku: "",
   msrpPrice: "",
   marketPrice: "",
@@ -1723,6 +1783,7 @@ export default function App() {
   const [dashboardPreset, setDashboardPreset] = useState("simple");
   const [dashboardLayout, setDashboardLayout] = useState(() => getDefaultDashboardLayoutForPreset("simple"));
   const [dashboardCardStyle, setDashboardCardStyle] = useState("comfortable");
+  const [dailyTide, setDailyTide] = useState(loadDailyTideState);
   const [cloudSyncPreference, setCloudSyncPreference] = useState("local");
   const [subscriptionProfile, setSubscriptionProfile] = useState({
     subscriptionPlan: PLAN_TYPES.FREE,
@@ -2123,10 +2184,11 @@ export default function App() {
 
   const mainTabs = [
     { key: "home", label: "Home", target: "dashboard" },
-    { key: "scout", label: "Scout", target: "scout" },
     { key: "vault", label: "Vault", target: "vault" },
-    { key: "tideTradr", label: "TideTradr", target: "market" },
     { key: "forge", label: "Forge", target: "inventory" },
+    { key: "tideTradr", label: "TideTradr", target: "market" },
+    { key: "scout", label: "Scout", target: "scout" },
+    { key: "tidepool", label: "Tidepool", target: "tidepool" },
   ];
 
   const navSections = [
@@ -2138,10 +2200,11 @@ export default function App() {
     },
     { title: "Main Tabs", items: [
       { key: "home", label: "Home", target: "dashboard" },
-      { key: "scout-main", label: "Scout", target: "scout" },
       { key: "vault", label: "Vault" },
-      { key: "tidetradr-main", label: "TideTradr", target: "market" },
       { key: "forge", label: "Forge", target: "inventory" },
+      { key: "tideTradr-main", label: "TideTradr", target: "market" },
+      { key: "scout-main", label: "Scout", target: "scout" },
+      { key: "tidepool-main", label: "Tidepool", target: "tidepool" },
     ] },
   ];
 
@@ -2157,7 +2220,7 @@ export default function App() {
     activeTab === "dashboard"
       ? "home"
       : activeTab === "tidepool"
-        ? ""
+        ? "tidepool"
       : activeTab === "adminReview" || activeTab === "mySuggestions"
         ? ""
       : activeTab === "vault" || activeTab === "scout"
@@ -2167,10 +2230,11 @@ export default function App() {
           : "forge";
   const mobileBottomTabs = [
     { key: "home", label: "Home", target: "dashboard" },
-    { key: "scout", label: "Scout", target: "scout" },
     { key: "vault", label: "Vault", target: "vault" },
-    { key: "tideTradr", label: "TideTradr", target: "market" },
     { key: "forge", label: "Forge", target: "inventory" },
+    { key: "tideTradr", label: "TideTradr", target: "market" },
+    { key: "scout", label: "Scout", target: "scout" },
+    { key: "tidepool", label: "Tidepool", target: "tidepool" },
   ];
   const topbarSectionOptions = [
     ...mainTabs,
@@ -2906,6 +2970,58 @@ export default function App() {
       console.warn("Unable to save beta feedback", error);
       setVaultToast("Could not submit right now. Please try again or export beta data.");
       return;
+    }
+    if (["catalog_data", "store_data", "market_data"].includes(feedbackDialog)) {
+      const suggestionMeta = {
+        catalog_data: {
+          suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
+          targetTable: "catalog_items",
+        },
+        store_data: {
+          suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
+          targetTable: "stores",
+        },
+        market_data: {
+          suggestionType: SUGGESTION_TYPES.CORRECT_MSRP,
+          targetTable: "product_market_price_current",
+        },
+      }[feedbackDialog];
+      const userInfo = getSuggestionUserInfo();
+      const result = submitSuggestion({
+        ...suggestionMeta,
+        ...userInfo,
+        submittedData: {
+          title: feedbackForm.whatHappened,
+          details: feedbackForm.steps,
+          page: feedbackForm.page,
+          category: feedbackDialog,
+          device: feedbackForm.metadata?.device,
+        },
+        notes: feedbackForm.steps || feedbackForm.whatHappened || "Data issue submitted from feedback dialog.",
+        source: "feedback-dialog",
+        visibility: "admin_review",
+      });
+      if (!result.ok && result.reason === "duplicate") {
+        setSuggestionConflict({
+          input: {
+            ...suggestionMeta,
+            ...userInfo,
+            submittedData: {
+              title: feedbackForm.whatHappened,
+              details: feedbackForm.steps,
+              page: feedbackForm.page,
+              category: feedbackDialog,
+              device: feedbackForm.metadata?.device,
+            },
+            notes: feedbackForm.steps || feedbackForm.whatHappened || "Data issue submitted from feedback dialog.",
+            source: "feedback-dialog",
+            visibility: "admin_review",
+          },
+          duplicate: result.duplicate,
+        });
+      } else {
+        setSuggestions(result.suggestions);
+      }
     }
     closeFeedbackDialog(true);
     setVaultToast(
@@ -4382,7 +4498,10 @@ export default function App() {
     const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
     if (lines.length === 0) return [];
     const firstLineCells = parseCsvLine(lines[0]);
-    const hasHeaders = firstLineCells.some((cell) => /name|item|product|quantity|qty|cost|market|msrp|set|condition|upc|sku|barcode|note|date/i.test(cell));
+    const headerCellPattern = /^(name|item|item name|product|product name|card|title|quantity|qty|count|cost|cost paid|paid|purchase price|price|market|market value|value|msrp|retail|set|set name|collection|expansion|condition|variant|finish|printing|upc|sku|barcode|external id|note|notes|date|purchase date|purchased|store|source|vendor|card number|card #|card no)$/i;
+    const hasHeaders = firstLineCells.length > 1
+      ? firstLineCells.some((cell) => headerCellPattern.test(cell.trim()))
+      : headerCellPattern.test(firstLineCells[0]?.trim() || "");
     const headers = hasHeaders ? firstLineCells.map((cell) => cell.toLowerCase().trim()) : [];
     const dataLines = hasHeaders ? lines.slice(1) : lines;
     const mapping = hasHeaders ? (Object.keys(importColumnMapping || {}).length ? importColumnMapping : inferImportColumnMapping(headers)) : {};
@@ -4745,6 +4864,77 @@ export default function App() {
     };
   }
 
+  function uuidOrNull(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "")) ? value : null;
+  }
+
+  function inventoryRecordToSupabaseRow(record = {}) {
+    return {
+      user_id: user?.id,
+      workspace_id: uuidOrNull(record.workspaceId || record.workspace_id || activeWorkspace?.id),
+      name: record.name || record.itemName || "",
+      buyer: record.buyer || record.purchaserName || "",
+      purchaser_id: uuidOrNull(record.purchaserId || record.purchaser_id),
+      purchaser_name: record.purchaserName || record.purchaser_name || record.buyer || "",
+      category: record.category || "Pokemon",
+      store: record.store || record.location || "",
+      quantity: Number(record.quantity || 1),
+      unit_cost: Number(record.unitCost || record.unit_cost || 0),
+      sale_price: Number(record.salePrice || record.plannedSalePrice || record.sale_price || 0),
+      receipt_image: record.receiptImage || record.receipt_image || "",
+      item_image: record.itemImage || record.item_image || "",
+      barcode: record.barcode || record.upc || "",
+      catalog_product_id: uuidOrNull(record.catalogProductId || record.catalog_product_id),
+      catalog_variant_id: uuidOrNull(record.catalogVariantId || record.catalog_variant_id),
+      catalog_product_name: record.catalogProductName || record.catalog_product_name || "",
+      external_product_source: record.externalProductSource || record.external_product_source || "TideTradr",
+      external_product_id: record.externalProductId || record.external_product_id || "",
+      tcgplayer_url: record.tideTradrUrl || record.tcgplayer_url || "",
+      market_price: Number(record.marketPrice || record.marketValue || 0),
+      low_price: Number(record.lowPrice || 0),
+      mid_price: Number(record.midPrice || 0),
+      high_price: Number(record.highPrice || 0),
+      msrp_price: Number(record.msrpPrice || record.msrp || 0),
+      set_code: record.setCode || "",
+      expansion: record.expansion || record.setName || "",
+      product_line: record.productLine || "",
+      product_type: record.productType || "",
+      pack_count: Number(record.packCount || 0),
+      last_price_checked: record.marketPrice || record.marketValue ? new Date().toISOString() : null,
+      status: record.status || "In Stock",
+      listing_platform: record.listingPlatform || "",
+      listing_url: record.listingUrl || "",
+      listed_price: Number(record.listedPrice || 0),
+      action_notes: record.actionNotes || record.notes || "",
+      condition_name: record.conditionName || record.condition || "Near Mint",
+      language: record.language || "English",
+      finish: record.finish || "",
+      printing: record.printing || "",
+    };
+  }
+
+  async function saveInventoryRecords(records = []) {
+    if (!records.length) return { saved: [], failures: [] };
+    if (BETA_LOCAL_MODE || !supabase || !user?.id) {
+      return { saved: records, failures: [] };
+    }
+    const saved = [];
+    const failures = [];
+    for (const record of records) {
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .insert(inventoryRecordToSupabaseRow(record))
+        .select()
+        .single();
+      if (error) {
+        failures.push({ rowId: record.id || record.itemId || record.name || "inventory-save", itemName: record.name || record.itemName || "Inventory item", error: error.message || "Could not save item" });
+      } else {
+        saved.push(mapItem(data));
+      }
+    }
+    return { saved, failures };
+  }
+
   function importDestinationScope(destination) {
     if (destination === "Vault") return "vault";
     if (destination === "Wishlist") return "wishlist";
@@ -4776,7 +4966,7 @@ export default function App() {
     }));
   }
 
-  function confirmInventoryImport() {
+  async function confirmInventoryImport() {
     const rowsToImport = importRows.filter((row) => row.importStatus !== "skipped" && row.destination !== "Skip");
     if (rowsToImport.length === 0) return alert("No import rows selected.");
     const unreviewedRows = rowsToImport.filter((row) => row.needsReview && row.importStatus !== "reviewed");
@@ -4810,7 +5000,13 @@ export default function App() {
         }
       });
     });
-    if (nextItems.length) setItems((current) => [...nextItems, ...current]);
+    let savedItems = nextItems;
+    if (nextItems.length) {
+      const saveResult = await saveInventoryRecords(nextItems);
+      savedItems = saveResult.saved;
+      failures.push(...saveResult.failures);
+      if (savedItems.length) setItems((current) => [...savedItems, ...current]);
+    }
     if (importOptions.addToWatchlist || importOptions.pinHighValue) {
       rowsToImport.forEach((row) => {
         const marketValue = Number(row.marketValue || 0);
@@ -4822,16 +5018,16 @@ export default function App() {
     setImportRows((current) => current.map((row) => row.importStatus === "skipped" || row.destination === "Skip" ? row : { ...row, importStatus: failures.some((failure) => failure.rowId === row.importedItemId) ? "failed" : "imported", updatedAt: new Date().toISOString() }));
     const result = {
       batchId: makeId("batch-intake"),
-      saved: nextItems.length,
+      saved: savedItems.length,
       skippedDuplicates,
       quantityIncreases,
       failures,
       completedAt: new Date().toISOString(),
     };
     setImportLastBatchResult(result);
-    setImportBatchMessage(`${nextItems.length} item${nextItems.length === 1 ? "" : "s"} saved, ${quantityIncreases} duplicate quantit${quantityIncreases === 1 ? "y" : "ies"} increased, ${skippedDuplicates} duplicate${skippedDuplicates === 1 ? "" : "s"} skipped${failures.length ? `, ${failures.length} failed` : ""}.`);
+    setImportBatchMessage(`${savedItems.length} item${savedItems.length === 1 ? "" : "s"} saved, ${quantityIncreases} duplicate quantit${quantityIncreases === 1 ? "y" : "ies"} increased, ${skippedDuplicates} duplicate${skippedDuplicates === 1 ? "" : "s"} skipped${failures.length ? `, ${failures.length} failed` : ""}.`);
     if (!failures.length) {
-      const savedScopes = new Set(nextItems.flatMap((item) => item.destinationScope || []));
+      const savedScopes = new Set(savedItems.flatMap((item) => item.destinationScope || itemDestinationScopes(item)));
       setImportAssistantOpen(false);
       closeFlowModal({ force: true, reset: false });
       setActiveTab(savedScopes.has("forge") ? "inventory" : "vault");
@@ -4919,7 +5115,7 @@ export default function App() {
     if (query.length < 2) return [];
     return getBestCatalogMatches(query, catalogProducts)
       .slice(0, 8)
-      .map((candidate) => candidate.product || candidate);
+      .map((candidate) => candidate.product || candidate.item || candidate);
   }, [importCatalogSearch, catalogProducts]);
 
   function renderInventoryImportAssistant() {
@@ -5603,6 +5799,11 @@ export default function App() {
   }, [marketPriceCache, localDataLoaded]);
 
   useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(DAILY_TIDE_STORAGE_KEY, JSON.stringify(normalizeDailyTideState(dailyTide)));
+  }, [dailyTide]);
+
+  useEffect(() => {
     if (!BETA_LOCAL_MODE || activeTab !== "dashboard") return;
     loadScoutSnapshot();
   }, [activeTab]);
@@ -6243,20 +6444,97 @@ export default function App() {
 
   function prefillQaReceiptScanDraft() {
     if (!QA_UNLOCK_PAID_FEATURES) return;
+    const now = new Date().toISOString();
+    const qaCatalogMatch = (name, fallbackId) => {
+      const product = catalogProducts.find((candidate) => normalizeSearchText(candidate.name || candidate.productName || candidate.cardName) === normalizeSearchText(name));
+      return {
+        id: product?.id || fallbackId,
+        name: product ? catalogTitle(product) : name,
+      };
+    };
+    const vaultMatch = qaCatalogMatch("QA Receipt Vault Item", "qa-receipt-vault-catalog");
+    const forgeMatch = qaCatalogMatch("QA Receipt Forge Item", "qa-receipt-forge-catalog");
     setReceiptScanForm((current) => ({
       ...current,
       storeName: "QA Receipt Merchant 2026-05-10",
       storeLocation: "QA Cloud Mode",
       purchaseDate: "2026-05-10",
-      subtotal: "11.35",
+      subtotal: "39.05",
       tax: "0.99",
-      total: "12.34",
+      total: "40.04",
       transactionNumber: `QA-${Date.now()}`,
-      rawText: "QA Receipt Line Item 11.35",
+      rawText: "QA Receipt Vault Item 11.35\nQA Receipt Forge Item 22.70\nQA Receipt Expense Item 5.00",
     }));
-    setReceiptScanDraft(null);
-    setReceiptScanStatus("draft_extracted");
-    setReceiptScanMessage("QA receipt draft filled. Click Review Receipt, verify the item, then Submit Report.");
+    setReceiptScanDraft({
+      id: makeId("receipt-draft"),
+      storeName: "QA Receipt Merchant 2026-05-10",
+      storeLocation: "QA Cloud Mode",
+      purchaseDate: "2026-05-10",
+      subtotal: 39.05,
+      tax: 0.99,
+      total: 40.04,
+      receiptImageUrl: "",
+      receiptHash: `qa-receipt-${Date.now()}`,
+      transactionNumber: `QA-${Date.now()}`,
+      status: "draft_extracted",
+      items: [
+        {
+          id: makeId("receipt-line"),
+          rawText: "QA Receipt Vault Item 11.35",
+          matchedCatalogId: vaultMatch.id,
+          suggestedMatchName: vaultMatch.name,
+          matchConfidence: 98,
+          quantity: 1,
+          unitCost: "11.35",
+          totalCost: "11.35",
+          destination: "vault",
+          condition: "Sealed",
+          ownerUserId: user?.id && user.id !== "local-beta" ? user.id : "",
+          notes: "QA-only receipt proof row.",
+          status: "draft_extracted",
+          verified: false,
+          possibleMatches: [],
+        },
+        {
+          id: makeId("receipt-line"),
+          rawText: "QA Receipt Forge Item 22.70",
+          matchedCatalogId: forgeMatch.id,
+          suggestedMatchName: forgeMatch.name,
+          matchConfidence: 98,
+          quantity: 1,
+          unitCost: "22.70",
+          totalCost: "22.70",
+          destination: "forge",
+          condition: "Sealed",
+          ownerUserId: user?.id && user.id !== "local-beta" ? user.id : "",
+          notes: "QA-only receipt proof row.",
+          status: "draft_extracted",
+          verified: false,
+          possibleMatches: [],
+        },
+        {
+          id: makeId("receipt-line"),
+          rawText: "QA Receipt Expense Item 5.00",
+          matchedCatalogId: "",
+          suggestedMatchName: "QA Receipt Expense Item",
+          matchConfidence: 65,
+          quantity: 1,
+          unitCost: "5.00",
+          totalCost: "5.00",
+          destination: "expense_only",
+          condition: "Unknown",
+          ownerUserId: "",
+          notes: "QA-only expense-only receipt row.",
+          status: "draft_extracted",
+          verified: false,
+          possibleMatches: [],
+        },
+      ],
+      warnings: [],
+      createdAt: now,
+    });
+    setReceiptScanStatus("ready_for_review");
+    setReceiptScanMessage("QA receipt review draft prepared. Verify each item, then Submit Report through the normal save path.");
   }
 
   function closeInventoryScanner() {
@@ -6426,8 +6704,8 @@ export default function App() {
     return applyWorkspaceToRecord({
       ...blankItem,
       id: makeId(isWishlist ? "receipt-wishlist" : isVault ? "receipt-vault" : "receipt-forge"),
-      name: product ? catalogTitle(product) : item.rawText,
-      itemName: product ? catalogTitle(product) : item.rawText,
+      name: product ? catalogTitle(product) : item.suggestedMatchName || item.rawText,
+      itemName: product ? catalogTitle(product) : item.suggestedMatchName || item.rawText,
       destinationScope: [isWishlist ? "wishlist" : isVault ? "vault" : "forge"],
       recordType: isWishlist ? "wishlist_item" : isVault ? "vault_item" : "forge_inventory",
       businessInventory: !isVault,
@@ -6443,8 +6721,8 @@ export default function App() {
       setName: product?.setName || product?.expansion || "",
       expansion: product?.setName || product?.expansion || "",
       barcode: product?.barcode || product?.upc || "",
-      catalogProductId: product?.id || "",
-      catalogProductName: product ? catalogTitle(product) : "",
+      catalogProductId: product?.id || item.matchedCatalogId || "",
+      catalogProductName: product ? catalogTitle(product) : item.suggestedMatchName || "",
       marketPrice: Number(product?.marketPrice || 0),
       msrpPrice: Number(product?.msrpPrice || 0),
       condition: item.condition,
@@ -6510,21 +6788,23 @@ export default function App() {
     const savedReceiptId = result.data?.id || receipt.id;
     const receiptReference = { ...receiptScanDraft, id: savedReceiptId };
     const createdItems = importableItems.map((item) => receiptItemToInventoryRecord(item, receiptReference, receiptItemDbDestination(item)));
-    setItems((current) => [...createdItems, ...current]);
+    const inventorySaveResult = await saveInventoryRecords(createdItems);
+    const savedInventoryItems = inventorySaveResult.saved;
+    if (savedInventoryItems.length) setItems((current) => [...savedInventoryItems, ...current]);
     const report = {
       receiptId: savedReceiptId,
       store: receiptScanDraft.storeName,
       date: receiptScanDraft.purchaseDate,
       totalSpent: receiptScanDraft.total,
-      itemsAdded: importableItems.length,
+      itemsAdded: savedInventoryItems.length,
       itemsIgnored: expenseOnlyItems.length,
       needsFutureReview: receiptScanDraft.items.filter((item) => item.status === "needs_review").length,
-      vaultValueAdded: createdItems.filter((item) => item.vaultStatus).reduce((sum, item) => sum + Number(item.marketValue || item.marketPrice || 0) * Number(item.quantity || 1), 0),
-      forgeInventoryCostAdded: createdItems.filter((item) => !item.vaultStatus).reduce((sum, item) => sum + Number(item.unitCost || 0) * Number(item.quantity || 1), 0),
-      estimatedMsrpTotal: createdItems.reduce((sum, item) => sum + Number(item.msrpPrice || 0) * Number(item.quantity || 1), 0),
-      estimatedMarketTotal: createdItems.reduce((sum, item) => sum + Number(item.marketPrice || 0) * Number(item.quantity || 1), 0),
+      vaultValueAdded: savedInventoryItems.filter((item) => item.vaultStatus || isVaultItemRecord(item)).reduce((sum, item) => sum + Number(item.marketValue || item.marketPrice || 0) * Number(item.quantity || 1), 0),
+      forgeInventoryCostAdded: savedInventoryItems.filter((item) => isForgeInventoryItem(item)).reduce((sum, item) => sum + Number(item.unitCost || 0) * Number(item.quantity || 1), 0),
+      estimatedMsrpTotal: savedInventoryItems.reduce((sum, item) => sum + Number(item.msrpPrice || 0) * Number(item.quantity || 1), 0),
+      estimatedMarketTotal: savedInventoryItems.reduce((sum, item) => sum + Number(item.marketPrice || 0) * Number(item.quantity || 1), 0),
       submittedBy: user?.email || user?.id || "local beta",
-      status: "submitted",
+      status: inventorySaveResult.failures.length ? "needs_review" : "submitted",
     };
     if (result.source === "supabase") {
       await retryPhase2Sync();
@@ -6533,11 +6813,22 @@ export default function App() {
       ...current,
       receiptReports: [report, ...(current.receiptReports || [])],
     }));
+    if (inventorySaveResult.failures.length) {
+      setReceiptScanStatus("ready_for_review");
+      setReceiptScanDraft((current) => current ? {
+        ...current,
+        status: "needs_review",
+        report,
+        warnings: [...warnings, `${inventorySaveResult.failures.length} destination item(s) failed to save.`],
+      } : current);
+      setReceiptScanMessage(`Receipt synced, but ${inventorySaveResult.failures.length} destination item(s) failed to save. Review remains open.`);
+      return;
+    }
     setReceiptScanStatus("submitted");
     setReceiptScanDraft((current) => current ? { ...current, status: "submitted", report } : current);
     setReceiptScanMessage(result.source === "supabase"
-      ? `Receipt submitted and cloud synced. Added ${createdItems.length} item(s); expense-only ${expenseOnlyItems.length}.`
-      : `Receipt saved locally. Added ${createdItems.length} item(s); expense-only ${expenseOnlyItems.length}.`
+      ? `Receipt submitted and cloud synced. Added ${savedInventoryItems.length} item(s); expense-only ${expenseOnlyItems.length}.`
+      : `Receipt saved locally. Added ${savedInventoryItems.length} item(s); expense-only ${expenseOnlyItems.length}.`
     );
   }
 
@@ -7098,6 +7389,15 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     });
   }
 
+  function openAddActionSheet(source = "topbar") {
+    openFlowModal("addActionSheet", { size: "small", source });
+  }
+
+  function runAddSheetAction(action) {
+    setActiveFlowModal(null);
+    window.setTimeout(() => openQuickAddAction(action), 0);
+  }
+
   function openQuickFindFlow(options = {}) {
     setQuickFindForm(BLANK_QUICK_FIND_FORM);
     if (options.source === "market") setActiveTab("market");
@@ -7158,6 +7458,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function openQuickAddAction(action) {
     setQuickAddMenuOpen(false);
+    if (action === "receipt") return openReceiptScanWorkflow();
     if (action === "multiDestination") return openProductAddFlow({ source: "quick-add" });
     if (action === "bulkAdd") return openBulkAddFlow("Mixed");
     if (action === "card") return openProductAddFlow({ source: "quick-add-card", seed: { productType: "Individual Card" } });
@@ -7339,6 +7640,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       productType: multiDestinationForm.productType || selectedCatalog?.productType || "",
       barcode: multiDestinationForm.upcSku || "",
       catalogProductId: selectedCatalog?.id || "",
+      catalogVariantId: multiDestinationForm.catalogVariantId || "",
       catalogProductName: selectedCatalog?.name || "",
       marketPrice: Number(multiDestinationForm.marketPrice || selectedCatalog?.marketPrice || selectedCatalog?.midPrice || 0),
       msrpPrice: Number(multiDestinationForm.msrpPrice || selectedCatalog?.msrpPrice || 0),
@@ -11060,7 +11362,10 @@ function renderForgeHeader() {
         ? "Cloud sync is enabled. Sign in with Supabase to save Phase 2 workflows."
         : "Cloud sync is enabled, but Supabase URL/key configuration is missing.";
   const localBetaAdminEnabled =
-    typeof window !== "undefined" && localStorage.getItem("et-tcg-local-admin") === "true";
+    BETA_LOCAL_MODE &&
+    typeof window !== "undefined" &&
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) &&
+    localStorage.getItem("et-tcg-local-admin") === "true";
   const adminToolsVisible = adminUser || localBetaAdminEnabled;
   const canReviewSharedData = adminToolsVisible;
   const adminReviewIdentityLabel = adminUser ? "Signed in as Admin" : "Private Beta Admin Review";
@@ -11170,6 +11475,41 @@ function renderForgeHeader() {
     const featureKey = dashboardSectionFeature(key);
     return isDashboardSectionEnabled(dashboardProfile, key) && (!featureKey || featureAllowed(featureKey));
   };
+
+  function completeDailyAction(actionKey, { badge = "", points = 8 } = {}) {
+    setDailyTide((current) => {
+      const today = getLocalDateKey();
+      const base = normalizeDailyTideState(current);
+      if (base.completedActions?.[actionKey]) return base;
+      const badges = new Set(base.badges || []);
+      if (badge) badges.add(badge);
+      const next = {
+        ...base,
+        date: today,
+        completedActions: {
+          ...(base.completedActions || {}),
+          [actionKey]: new Date().toISOString(),
+        },
+        tidePoints: Number(base.tidePoints || 0) + points,
+        badges: [...badges],
+        lastCelebration: actionKey,
+      };
+      if (actionKey === "checkin") {
+        next.checkInStreak = base.lastCheckInDate === getYesterdayDateKey()
+          ? Number(base.checkInStreak || 0) + 1
+          : base.lastCheckInDate === today
+            ? Number(base.checkInStreak || 1)
+            : 1;
+        next.lastCheckInDate = today;
+      }
+      if (actionKey === "store") next.scoutReportStreak = Math.max(1, Number(base.scoutReportStreak || 0) + 1);
+      if (actionKey === "scan") next.scannerStreak = Math.max(1, Number(base.scannerStreak || 0) + 1);
+      return next;
+    });
+    window.setTimeout(() => {
+      setDailyTide((current) => ({ ...current, lastCelebration: "" }));
+    }, 1800);
+  }
   const activeTabFeature = {
     sales: "sales_tracking",
     addSale: "sales_tracking",
@@ -11283,6 +11623,27 @@ function renderForgeHeader() {
   const recentMarketUpdates = [...workspaceWatchlist]
     .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
     .slice(0, 5);
+  const dailyTideToday = normalizeDailyTideState(dailyTide);
+  const dailyCompletedCount = DAILY_TIDE_ACTIONS.filter((key) => dailyTideToday.completedActions?.[key]).length;
+  const dailyCompletionPercent = Math.round((dailyCompletedCount / DAILY_TIDE_ACTIONS.length) * 100);
+  const bestScoutStore = scoutSnapshot.stores?.[0] || VIRGINIA_STORES_SEED[0] || {};
+  const bestMarketMover = recentMarketUpdates[0] || workspaceWatchlist[0] || null;
+  const bestWishlistItem = wishlistItems[0] || workspaceWatchlist[0] || null;
+  const suggestedHomeAction = !dailyTideToday.completedActions?.checkin
+    ? { key: "checkin", label: "Start Daily Tide", detail: "Check in and pick one thing to do.", onClick: () => completeDailyAction("checkin", { badge: "market_watcher", points: 5 }) }
+    : needsMarketCheckItems[0]
+      ? { key: "inventory", label: "Update Forge Price", detail: needsMarketCheckItems[0].name || "One item needs a market check.", onClick: () => { completeDailyAction("inventory", { badge: "forge_starter", points: 10 }); setActiveTab("inventory"); } }
+      : bestScoutStore?.name
+        ? { key: "store", label: "Check Best Store", detail: bestScoutStore.name, onClick: () => { completeDailyAction("store", { badge: "restock_reporter", points: 10 }); setActiveTab("scout"); } }
+        : { key: "vault", label: "Add First Vault Item", detail: "Scan or add a card/sealed product.", onClick: () => openQuickAddAction("vaultItem") };
+  const earnedBadges = new Set([
+    ...(dailyTideToday.badges || []),
+    activeVaultItems.length ? "vault_builder" : "",
+    forgeInventoryItems.length ? "forge_starter" : "",
+    workspaceSales.length ? "first_sale" : "",
+    scoutSnapshot.reports?.length ? "restock_reporter" : "",
+    workspaceWatchlist.length ? "market_watcher" : "",
+  ].filter(Boolean));
   const watchlistPreview = [...missingMarketPriceItems, ...needsMarketCheckItems]
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
     .slice(0, 5);
@@ -11925,7 +12286,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const matchesEra = catalogEraFilter === "All" || product.productLine === catalogEraFilter;
     const matchesYear = catalogYearFilter === "All" || String(product.releaseYear || "") === catalogYearFilter;
     const matchesRarity = catalogRarityFilter === "All" || product.rarity === catalogRarityFilter;
-    const matchesVariant = catalogVariantFilter === "All" || product.variant === catalogVariantFilter;
+    const matchesVariant =
+      catalogVariantFilter === "All" ||
+      getCatalogVariantOptions(product).some((variant) => variant.variantName === catalogVariantFilter);
     const matchesCondition = catalogConditionFilter === "All" || product.condition === catalogConditionFilter;
     const matchesGraded =
       catalogGradedFilter === "All" ||
@@ -11966,7 +12329,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const catalogEraOptions = ["All", ...new Set(catalogProducts.map((product) => product.productLine).filter(Boolean))].sort();
   const catalogYearOptions = ["All", ...new Set(catalogProducts.map((product) => String(product.releaseYear || "")).filter(Boolean))].sort();
   const catalogRarityOptions = ["All", ...new Set(catalogProducts.map((product) => product.rarity).filter(Boolean))].sort();
-  const catalogVariantOptions = ["All", ...new Set(catalogProducts.map((product) => product.variant).filter(Boolean))].sort();
+  const catalogVariantOptions = ["All", ...new Set(catalogProducts.flatMap((product) => getCatalogVariantOptions(product).map((variant) => variant.variantName)).filter(Boolean))].sort();
   const catalogConditionOptions = ["All", ...new Set(catalogProducts.map((product) => product.condition).filter(Boolean))].sort();
   const sealedCatalogCount = catalogProducts.filter((product) => product.catalogType !== "card").length;
   const cardCatalogCount = catalogProducts.filter((product) => product.catalogType === "card").length;
@@ -11985,26 +12348,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         ...(selectedCatalogDetailExtra?.product || {}),
         identifiers: selectedCatalogDetailExtra?.identifiers?.length ? selectedCatalogDetailExtra.identifiers : selectedCatalogDetailBaseProduct.identifiers || [],
         variants: selectedCatalogDetailExtra?.variants?.length ? selectedCatalogDetailExtra.variants : selectedCatalogDetailBaseProduct.variants || [],
+        groupedVariantProducts: selectedCatalogDetailBaseProduct.groupedVariantProducts || [],
+        groupedVariantCount: selectedCatalogDetailBaseProduct.groupedVariantCount || selectedCatalogDetailBaseProduct.groupedVariantProducts?.length || 0,
         cardDetails: selectedCatalogDetailExtra?.cardDetails || selectedCatalogDetailBaseProduct.cardDetails || null,
         marketSources: selectedCatalogDetailExtra?.marketSources || selectedCatalogDetailBaseProduct.marketSources || [],
         marketSummary: selectedCatalogDetailExtra?.marketSummary || selectedCatalogDetailBaseProduct.marketSummary || null,
       }
     : null;
-  const selectedCatalogDetailMarketInfo = selectedCatalogDetailProduct ? getTideTradrMarketInfo(selectedCatalogDetailProduct) : null;
   const selectedCatalogDetailVariants = selectedCatalogDetailProduct ? getCatalogVariantOptions(selectedCatalogDetailProduct) : [];
   const selectedCatalogDetailVariant =
     selectedCatalogDetailVariants.find((variant) => String(variant.id) === String(catalogVariantSelection[selectedCatalogDetailProduct?.id])) ||
     selectedCatalogDetailVariants.find((variant) => variant.isDefault) ||
     selectedCatalogDetailVariants[0] ||
     null;
+  const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct || selectedCatalogDetailProduct;
+  const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct ? getTideTradrMarketInfo(selectedCatalogDetailPricingProduct) : null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
-  const tideTradrCatalogResults = catalogSearchHasRun
+  const tideTradrCatalogRawResults = catalogSearchHasRun
     ? (catalogPagedResultSet.size
         ? catalogPagedResultIds
             .map((id) => filteredCatalogProducts.find((product) => String(product.id) === String(id)))
             .filter(Boolean)
         : filteredCatalogProducts)
     : [];
+  const tideTradrCatalogResults = buildCatalogParentCardResults(tideTradrCatalogRawResults);
   const tideTradrCatalogPageCount = supabaseCatalogStatus.totalCount
     ? Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))
     : null;
@@ -12030,6 +12397,143 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function catalogProductTypeLabel(product = {}) {
     if (product.catalogType === "card") return "Individual Card";
     return product.productType || product.sealedProductType || product.productKind || "Catalog product";
+  }
+
+  function getCatalogVariantDisplayName(product = {}, index = 0) {
+    const explicitVariant = Array.isArray(product.variants)
+      ? product.variants.find((variant) => variant.variantName || variant.variant_name)
+      : null;
+    const raw = [
+      explicitVariant?.variantName || explicitVariant?.variant_name,
+      product.variant,
+      product.priceSubtype,
+      product.variantNames,
+      product.finish,
+      product.printing,
+    ].filter(Boolean).join(" ");
+    const normalized = raw.toLowerCase();
+    if (normalized.includes("master ball")) return "Master Ball Reverse";
+    if (normalized.includes("poke ball") || normalized.includes("pokeball")) return "Poke Ball Reverse";
+    if (normalized.includes("cosmos")) return "Cosmos Holo";
+    if (normalized.includes("cracked ice")) return "Cracked Ice Holo";
+    if (normalized.includes("reverse")) return "Reverse Holo";
+    if (normalized.includes("holo")) return "Holo";
+    if (normalized.includes("1st edition") || normalized.includes("first edition")) return "1st Edition";
+    if (normalized.includes("unlimited")) return "Unlimited";
+    if (normalized.includes("promo stamp")) return "Promo Stamp";
+    if (normalized.includes("staff")) return "Staff";
+    if (normalized.includes("prerelease")) return "Prerelease";
+    if (normalized.includes("pokemon center") || normalized.includes("pokémon center")) return "Pokemon Center";
+    if (normalized.includes("normal") || normalized.includes("standard") || normalized.includes("regular")) return "Normal";
+    return String(raw || (index === 0 ? "Normal" : `Variant ${index + 1}`)).trim();
+  }
+
+  function inferCatalogVariantFinish(label = "") {
+    const normalized = String(label || "").toLowerCase();
+    if (normalized.includes("reverse")) return "Reverse Holo";
+    if (normalized.includes("holo")) return "Holo";
+    if (normalized.includes("normal")) return "Normal";
+    return "";
+  }
+
+  function inferCatalogVariantPrinting(label = "") {
+    const normalized = String(label || "").toLowerCase();
+    if (normalized.includes("1st edition")) return "1st Edition";
+    if (normalized.includes("unlimited")) return "Unlimited";
+    if (normalized.includes("promo")) return "Promo";
+    return "";
+  }
+
+  function getCatalogCardParentKey(product = {}) {
+    if (product.catalogType !== "card") return "";
+    const cardNumber = String(product.cardNumber || catalogCardDetails(product).cardNumber || "").trim().toLowerCase();
+    if (!cardNumber) return "";
+    const setKey = normalizeSearchText(product.expansionId || product.setCode || catalogExpansionName(product));
+    const nameKey = normalizeSearchText(product.cardName || product.pokemonName || product.name);
+    if (!setKey || !nameKey) return "";
+    return `${setKey}|${cardNumber}|${nameKey}`;
+  }
+
+  function catalogProductHasImage(product = {}) {
+    return Boolean(product.imageUrl || product.imageLarge || product.imageSmall || getCatalogImage(product));
+  }
+
+  function catalogVariantPreference(product = {}, index = 0) {
+    const label = getCatalogVariantDisplayName(product, index).toLowerCase();
+    const owned = items.some((item) => String(item.catalogProductId || "") === String(product.id));
+    const marketInfo = getTideTradrMarketInfo(product);
+    return [
+      owned ? 0 : 1,
+      label === "normal" || label.includes("holo") ? 0 : 1,
+      catalogProductHasImage(product) ? 0 : 1,
+      marketInfo.currentMarketValue > 0 ? 0 : 1,
+      index,
+    ];
+  }
+
+  function compareCatalogVariantPreference(a = {}, b = {}) {
+    const ap = catalogVariantPreference(a.product, a.index);
+    const bp = catalogVariantPreference(b.product, b.index);
+    for (let i = 0; i < ap.length; i += 1) {
+      if (ap[i] !== bp[i]) return ap[i] - bp[i];
+    }
+    return 0;
+  }
+
+  function buildCatalogParentCardResults(products = []) {
+    const results = [];
+    const groups = new Map();
+    products.forEach((product, index) => {
+      const parentKey = getCatalogCardParentKey(product);
+      if (!parentKey) {
+        results.push(product);
+        return;
+      }
+      if (!groups.has(parentKey)) {
+        groups.set(parentKey, { index: results.length, key: parentKey, products: [] });
+        results.push(null);
+      }
+      groups.get(parentKey).products.push({ product, index });
+    });
+
+    groups.forEach((group) => {
+      const byVariantName = new Map();
+      group.products.forEach((entry) => {
+        const label = getCatalogVariantDisplayName(entry.product, entry.index);
+        const key = normalizeSearchText(label) || `variant-${entry.index}`;
+        const existing = byVariantName.get(key);
+        if (!existing || compareCatalogVariantPreference(entry, existing) < 0) {
+          byVariantName.set(key, entry);
+        }
+      });
+      const variantProducts = [...byVariantName.values()]
+        .sort(compareCatalogVariantPreference)
+        .map((entry) => entry.product);
+      const representative = variantProducts[0] || group.products[0]?.product;
+      results[group.index] = {
+        ...representative,
+        parentCardId: group.key,
+        parentCardKey: group.key,
+        groupedVariantProducts: variantProducts,
+        groupedVariantCount: variantProducts.length,
+      };
+    });
+
+    return results.filter(Boolean);
+  }
+
+  function getCatalogOwnedCount(product = {}) {
+    const variantProducts = Array.isArray(product.groupedVariantProducts) && product.groupedVariantProducts.length
+      ? product.groupedVariantProducts
+      : [product];
+    const productIds = new Set(variantProducts.map((entry) => String(entry.id)).filter(Boolean));
+    const variantIds = new Set(getCatalogVariantOptions(product).map((variant) => String(variant.id)).filter(Boolean));
+    return items.reduce((total, item) => {
+      const productMatch = productIds.has(String(item.catalogProductId || ""));
+      const variantMatch = item.catalogVariantId && variantIds.has(String(item.catalogVariantId));
+      if (!productMatch && !variantMatch) return total;
+      return total + Math.max(1, Number(item.quantity || item.ownedQuantity || 1));
+    }, 0);
   }
 
   function getCatalogPickerResults(query, limit = 12) {
@@ -12102,6 +12606,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       setName: expansionName,
       variant: defaultVariant?.variantName || "",
       catalogProductId: product.id || "",
+      catalogVariantId: defaultVariant?.id || "",
       upcSku,
       msrpPrice: marketInfo.msrp || product.msrpPrice || "",
       marketPrice: marketInfo.currentMarketValue || product.marketPrice || product.midPrice || "",
@@ -12162,6 +12667,27 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function getCatalogVariantOptions(product = {}) {
+    const groupedVariantProducts = Array.isArray(product.groupedVariantProducts) ? product.groupedVariantProducts.filter(Boolean) : [];
+    if (groupedVariantProducts.length) {
+      return groupedVariantProducts.map((variantProduct, index) => {
+        const explicitVariant = Array.isArray(variantProduct.variants)
+          ? variantProduct.variants.find((variant) => variant.variantName || variant.variant_name)
+          : null;
+        const variantName = getCatalogVariantDisplayName(variantProduct, index);
+        return {
+          id: explicitVariant?.id || variantProduct.catalogVariantId || variantProduct.id || `${product.id}-grouped-variant-${index}`,
+          variantName,
+          printing: explicitVariant?.printing || inferCatalogVariantPrinting(variantName),
+          finish: explicitVariant?.finish || inferCatalogVariantFinish(variantName),
+          language: explicitVariant?.language || variantProduct.language || product.language || "English",
+          tcgplayerSkuId: explicitVariant?.tcgplayerSkuId || explicitVariant?.tcgplayer_sku_id || variantProduct.tcgplayerSkuId || "",
+          conditionName: explicitVariant?.conditionName || explicitVariant?.condition_name || "",
+          isDefault: String(variantProduct.id) === String(product.id) || index === 0,
+          sourceProduct: variantProduct,
+          sourceCatalogProductId: variantProduct.id || "",
+        };
+      });
+    }
     const explicit = Array.isArray(product.variants) ? product.variants.filter((variant) => variant.variantName || variant.variant_name) : [];
     if (explicit.length) return explicit.map((variant, index) => ({
       id: variant.id || `${product.id}-variant-${index}`,
@@ -12444,28 +12970,44 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setSelectedCatalogDetailId("");
   }
 
+  function getSelectedCatalogDetailActionProduct(product = selectedCatalogDetailProduct) {
+    const sourceProduct = selectedCatalogDetailVariant?.sourceProduct;
+    if (!product || !sourceProduct) return product;
+    return {
+      ...sourceProduct,
+      parentCardId: product.parentCardId || product.parentCardKey || product.id,
+      parentCatalogProductId: product.id,
+      groupedVariantProducts: product.groupedVariantProducts || [],
+      groupedVariantCount: product.groupedVariantCount || 0,
+    };
+  }
+
   function addCatalogDetailToVault(product = selectedCatalogDetailProduct) {
-    if (!product) return;
+    const actionProduct = getSelectedCatalogDetailActionProduct(product);
+    if (!actionProduct) return;
     openProductAddFlow({
-      product,
+      product: actionProduct,
       source: "catalog-detail-vault",
       destinations: { vault: true },
       seed: {
         variant: selectedCatalogDetailVariant?.variantName || "",
-        vault: { vaultStatus: product.catalogType === "sealed" ? "sealed" : "personal_collection" },
+        catalogVariantId: selectedCatalogDetailVariant?.id || "",
+        vault: { vaultStatus: actionProduct.catalogType === "sealed" ? "sealed" : "personal_collection" },
       },
     });
     closeCatalogDetail();
   }
 
   function addCatalogDetailToForge(product = selectedCatalogDetailProduct) {
-    if (!product) return;
+    const actionProduct = getSelectedCatalogDetailActionProduct(product);
+    if (!actionProduct) return;
     openProductAddFlow({
-      product,
+      product: actionProduct,
       source: "catalog-detail-forge",
       destinations: { forge: true },
       seed: {
         variant: selectedCatalogDetailVariant?.variantName || "",
+        catalogVariantId: selectedCatalogDetailVariant?.id || "",
         forge: { conditionName: selectedCatalogDetailCondition || "" },
       },
     });
@@ -12473,19 +13015,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function addCatalogDetailToScoutSighting(product = selectedCatalogDetailProduct) {
-    if (!product) return;
+    const actionProduct = getSelectedCatalogDetailActionProduct(product);
+    if (!actionProduct) return;
     closeCatalogDetail();
-    openWhatDidISee(product);
+    openWhatDidISee(actionProduct);
   }
 
   function addCatalogDetailToWatchlist(product = selectedCatalogDetailProduct) {
-    if (!product) return;
+    const actionProduct = getSelectedCatalogDetailActionProduct(product);
+    if (!actionProduct) return;
     openProductAddFlow({
-      product,
+      product: actionProduct,
       source: "catalog-detail-watchlist",
       destinations: { wishlist: true },
       seed: {
         variant: selectedCatalogDetailVariant?.variantName || "",
+        catalogVariantId: selectedCatalogDetailVariant?.id || "",
         wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, addToMarketWatch: true },
       },
     });
@@ -12493,8 +13038,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function checkCatalogDetailDeal(product = selectedCatalogDetailProduct) {
-    if (!product) return;
-    useCatalogProductInDeal(product.id);
+    const actionProduct = getSelectedCatalogDetailActionProduct(product);
+    if (!actionProduct) return;
+    useCatalogProductInDeal(actionProduct.id);
     closeCatalogDetail();
   }
 
@@ -12913,6 +13459,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderScoutOverviewPanel() {
     const latestReports = scoutReportRows.slice(0, 3);
     const forecastRows = scoutForecastPreviewRows.slice(0, 5);
+    const scoutRadarRows = (forecastRows.length ? forecastRows : (scoutSnapshot.stores || []).slice(0, 5).map((store, index) => ({
+      id: store.id || `store-${index}`,
+      storeName: store.nickname || store.name || "Watched store",
+      retailer: store.retailer || store.chain || "Retailer",
+      city: store.city || store.addressCity || "",
+      windowLabel: store.bestCheckWindow || store.restockWindow || "Check afternoon",
+      confidenceLabel: index === 0 ? "Heating Up" : "Watching",
+      confidenceKey: index === 0 ? "likely" : "possible",
+      updatedLabel: store.lastConfirmedReport || store.lastReport || "No confirmed report yet",
+      products: [],
+    }))).slice(0, 5);
+    const scoutRadarStatus = (row) => {
+      const text = `${row.confidenceLabel || ""} ${row.status || ""}`.toLowerCase();
+      if (text.includes("confirmed")) return "Confirmed Drop";
+      if (text.includes("hot")) return "Hot";
+      if (text.includes("likely") || text.includes("heating")) return "Heating Up";
+      if (text.includes("possible") || text.includes("watch")) return "Watching";
+      return "Cold";
+    };
     const forecastGroups = forecastRows.reduce((groups, row) => {
       const label = row.groupLabel || "Unknown window";
       const existing = groups.find((group) => group.label === label);
@@ -12922,6 +13487,44 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }, []);
     return (
       <section className="scout-dashboard-overview" aria-label="Scout overview">
+        <article className="panel scout-overview-card scout-overview-card--wide scout-drop-radar-panel">
+          <div className="compact-card-header">
+            <div>
+              <h2>Drop Radar</h2>
+              <p>Watched stores, confidence labels, and the next best check window.</p>
+            </div>
+            <button type="button" onClick={() => openScoutSubmitFlow()}>Report a Check</button>
+          </div>
+          <div className="scout-radar-grid">
+            {scoutRadarRows.map((row) => {
+              const status = scoutRadarStatus(row);
+              const mapQuery = encodeURIComponent([row.storeName, row.city].filter(Boolean).join(" "));
+              return (
+                <article className="scout-radar-card" key={`radar-${row.id}`}>
+                  <div className="scout-radar-top">
+                    <div>
+                      <strong>{row.storeName}</strong>
+                      <span>{row.retailer}{row.city ? ` - ${row.city}` : ""}</span>
+                    </div>
+                    <b className={`scout-radar-status scout-radar-status--${status.toLowerCase().replace(/\s+/g, "-")}`}>{status}</b>
+                  </div>
+                  <dl>
+                    <div><dt>Last confirmed</dt><dd>{row.updatedLabel || "No report yet"}</dd></div>
+                    <div><dt>Expected day</dt><dd>{row.windowLabel || "Unknown"}</dd></div>
+                    <div><dt>Best window</dt><dd>{row.windowLabel || "Check midday"}</dd></div>
+                    <div><dt>Drop confidence</dt><dd>{row.confidenceLabel || status}</dd></div>
+                  </dl>
+                  <div className="scout-radar-actions">
+                    <button type="button" className="secondary-button" onClick={() => { completeDailyAction("store", { badge: "restock_reporter", points: 10 }); setVaultToast(`${row.storeName} added to today's watch.`); }}>Watch</button>
+                    <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow()}>Report</button>
+                    <button type="button" className="secondary-button" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${mapQuery}`, "_blank", "noopener,noreferrer")}>Directions</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </article>
+
         <article className="panel scout-overview-card scout-overview-card--wide">
           <div className="compact-card-header">
             <div>
@@ -13328,6 +13931,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       setVaultToast("Users cannot approve their own shared data suggestions.");
       return;
     }
+    if (["reject", "merge", "duplicate"].includes(action)) {
+      const actionLabel = action === "reject" ? "reject this suggestion" : action === "merge" ? "merge this suggestion into shared data" : "mark this suggestion as a duplicate";
+      if (!window.confirm(`Confirm admin action: ${actionLabel}?`)) return;
+    }
     if (action === "approve") {
       applyApprovedSuggestion(suggestion, "Approved");
       return;
@@ -13379,6 +13986,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <p>{suggestion.displayName || "Beta User"} - {new Date(suggestion.createdAt).toLocaleString()}</p>
           </div>
           <span className={`status-badge suggestion-status-${String(suggestion.status).toLowerCase().replaceAll(" ", "-")}`}>{suggestion.status}</span>
+        </div>
+        <div className="admin-suggestion-meta">
+          <span>{REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)] || "Review"}</span>
+          <span>{suggestion.source || "user-submitted"}</span>
+          <span>{suggestion.visibility || "admin review"}</span>
+          {suggestion.adminReviewVisible === false || suggestion.admin_review_visible === false ? <span>Hidden from admin review</span> : <span>Admin-visible</span>}
         </div>
         <div className="suggestion-two-column">
           <div>
@@ -13591,6 +14204,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {supabaseImportStatus.loading ? "Refreshing..." : "Refresh Status"}
             </button>
           </div>
+          <div className="admin-command-grid">
+            <article className="admin-command-card">
+              <span>Review Queue</span>
+              <strong>{openCount} shared suggestions</strong>
+              <p>{listingReviewItems.length} marketplace listing{listingReviewItems.length === 1 ? "" : "s"} need review.</p>
+            </article>
+            <article className="admin-command-card">
+              <span>Catalog Health</span>
+              <strong>{supabaseImportStatus.totalPokemonProducts ?? "N/A"} products</strong>
+              <p>{supabaseImportStatus.productsMissingImages ?? "N/A"} missing images, {supabaseImportStatus.productsMissingMarketPrices ?? "N/A"} missing market prices.</p>
+            </article>
+            <article className="admin-command-card">
+              <span>Store Health</span>
+              <strong>{supabaseImportStatus.vaStores ?? "N/A"} VA stores</strong>
+              <p>Store corrections and restock-pattern suggestions route through review.</p>
+            </article>
+            <article className="admin-command-card">
+              <span>Data Import</span>
+              <strong>{supabaseImportStatus.loading ? "Refreshing" : "Ready"}</strong>
+              <p>Protected import and provider credentials stay server-side.</p>
+            </article>
+          </div>
+          <details className="admin-detail-panel">
+            <summary>Detailed import metrics</summary>
           <div className="cards mini-cards">
             <div className="card"><p>Total Pokemon Products</p><h2>{supabaseImportStatus.totalPokemonProducts ?? "N/A"}</h2></div>
             <div className="card"><p>Sealed Products</p><h2>{supabaseImportStatus.sealedProducts ?? "N/A"}</h2></div>
@@ -13605,6 +14242,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="card"><p>Products Missing Images</p><h2>{supabaseImportStatus.productsMissingImages ?? "N/A"}</h2></div>
             <div className="card"><p>Products Missing Market Price</p><h2>{supabaseImportStatus.productsMissingMarketPrices ?? "N/A"}</h2></div>
           </div>
+          </details>
           <p className="compact-subtitle">Market history import status is shown when the admin status table is available.</p>
           {supabaseImportStatus.errors.length ? (
             <div className="empty-state">
@@ -14554,6 +15192,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         size: "large",
       };
     }
+    if (activeFlowModal?.type === "addActionSheet") {
+      return {
+        title: "Add to Ember & Tide",
+        description: "Scan, add, report, or suggest an update. You choose the destination before anything is saved.",
+        size: "small",
+      };
+    }
     if (activeFlowModal?.type === "vaultQuickAdd") {
       return {
         title: "Vault Quick Add",
@@ -14653,6 +15298,38 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       };
     }
     return { title: "Add", description: "Create a new record.", size: activeFlowModal?.size || "medium" };
+  }
+
+  function renderAddActionSheetContent() {
+    const actions = [
+      { key: "receipt", title: "Scan Receipt", helper: "Review lines before saving.", action: "receipt" },
+      { key: "scan-product", title: "Scan Card/Product", helper: "Match first, then choose destination.", action: "scanProduct" },
+      { key: "card", title: "Add Card", helper: "Add a raw or graded card.", action: "card" },
+      { key: "sealed", title: "Add Sealed Product", helper: "ETB, box, tin, bundle, or blister.", action: "sealed" },
+      { key: "inventory", title: "Add Inventory", helper: "Send to Forge business inventory.", action: "inventory" },
+      { key: "sale", title: "Add Sale", helper: "Record sale and profit.", action: "sale" },
+      { key: "expense", title: "Add Expense", helper: "Track costs and receipts.", action: "expense" },
+      { key: "store-report", title: "Add Store Report", helper: "Log a restock or store check.", action: "storeReport" },
+      { key: "wishlist", title: "Add Wishlist Item", helper: "Track wants and target prices.", action: "wishlist" },
+      { key: "catalog-update", title: "Suggest Catalog Update", helper: "Send an admin-reviewed correction.", action: "suggestCatalogCorrection" },
+      { key: "store-update", title: "Suggest Store Update", helper: "Add or fix a store for review.", action: "storeSuggestion" },
+    ];
+    return (
+      <div className="add-action-sheet">
+        <div className="daily-tide-progress-card add-sheet-intro">
+          <strong>Input to review to destination to save</strong>
+          <p>Use this sheet for fast daily capture. Receipt, scanner, import, and bulk flows still require review before saving.</p>
+        </div>
+        <div className="add-action-grid">
+          {actions.map((entry) => (
+            <button key={entry.key} type="button" className="add-action-card" onClick={() => runAddSheetAction(entry.action)}>
+              <span>{entry.title}</span>
+              <small>{entry.helper}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   function renderAddInventoryFlowContent() {
@@ -15783,6 +16460,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (activeFlowModal?.type === "forgeQuickAdd") return renderForgeQuickAddFlowContent();
     if (activeFlowModal?.type === "forgeImport") return renderForgeImportFlowContent();
     if (activeFlowModal?.type === "batchIntake") return renderInventoryImportAssistant();
+    if (activeFlowModal?.type === "addActionSheet") return renderAddActionSheetContent();
     if (activeFlowModal?.type === "vaultQuickAdd") return renderVaultQuickAddFlowContent();
     if (activeFlowModal?.type === "vaultCatalogSearch") return renderVaultCatalogSearchFlowContent();
     if (activeFlowModal?.type === "vaultScan") return renderVaultScanFlowContent();
@@ -15987,32 +16665,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   >
     ☰ Menu
   </button>
-  <select
-    className="topbar-section-select"
-    aria-label="Switch app section"
-    value={topbarSectionValue}
-    onChange={(event) => navigateTopbarSection(event.target.value)}
-  >
-    {topbarSectionOptions.map((option) => (
-      <option key={option.key} value={option.key}>{option.label}</option>
-    ))}
-  </select>
-
-  <button
-    type="button"
-    className="topbar-market-link"
-    onClick={() => {
-      setQuickAddMenuOpen(false);
-      openTidepoolCommunity("Latest");
-    }}
-  >
-    Tidepool
-  </button>
   <button
     type="button"
     className="topbar-mobile-scan"
     onClick={() => {
       setQuickAddMenuOpen(false);
+      completeDailyAction("scan", { badge: "first_scan", points: 8 });
       beginScanProduct("none");
     }}
   >
@@ -16023,7 +16681,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     className="topbar-mobile-add"
     onClick={() => {
       setQuickAddMenuOpen(false);
-      openMultiDestinationAddFlow({ source: "topbar" });
+      openAddActionSheet("topbar");
     }}
   >
     Add
@@ -17773,13 +18431,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="dashboard-layout home-clean-layout">
             <PageHeader
               className={getHeaderCardClass("panel page-summary-card home-summary-card")}
-              title="Home"
-              subtitle="Your collection, business, and scouting overview."
+              title="Today's Tide"
+              subtitle="Your daily collecting, selling, and restock command center."
               actions={(
                 <>
                   <button type="button" onClick={() => {
                     setShowTopbarActions(true);
-                    openMultiDestinationAddFlow({ source: "home" });
+                    openAddActionSheet("home");
                   }}>+ Add</button>
                   <button type="button" className="secondary-button" onClick={() => openBulkAddFlow("Mixed")}>Bulk Add</button>
                   <button type="button" className="secondary-button" onClick={() => openInventoryImportAssistant("Vault", { mode: BATCH_INTAKE_MODES.TRANSFER, sourceType: "spreadsheet_csv", source: "home-import" })}>Import</button>
@@ -17822,6 +18480,82 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
               )}
             />
+
+            <section className="panel today-tide-command" aria-label="Today's Tide command center">
+              <div className="today-tide-hero">
+                <div>
+                  <p className="section-kicker">Daily Tide Check</p>
+                  <h2>{suggestedHomeAction.label}</h2>
+                  <p>{suggestedHomeAction.detail}</p>
+                </div>
+                <button type="button" onClick={suggestedHomeAction.onClick}>{suggestedHomeAction.label}</button>
+              </div>
+              <div className="today-tide-grid">
+                <button type="button" className="today-tide-card" onClick={() => setActiveTab("vault")}>
+                  <span>Collection Value</span>
+                  <strong>{money(vaultValue)}</strong>
+                  <small>{activeVaultItems.length || 0} Vault item{activeVaultItems.length === 1 ? "" : "s"}</small>
+                </button>
+                <button type="button" className="today-tide-card" onClick={() => setActiveTab("inventory")}>
+                  <span>Forge Value</span>
+                  <strong>{money(totalMarketValue)}</strong>
+                  <small>{needsMarketCheckItems.length} need price review</small>
+                </button>
+                <button type="button" className="today-tide-card" onClick={() => setActiveTab("scout")}>
+                  <span>Best Scout Opportunity</span>
+                  <strong>{bestScoutStore?.nickname || bestScoutStore?.name || "Add watched stores"}</strong>
+                  <small>{bestScoutStore?.retailer || "Scout"} {bestScoutStore?.city ? `- ${bestScoutStore.city}` : ""}</small>
+                </button>
+                <button type="button" className="today-tide-card" onClick={() => openQuickAddAction("wishlist")}>
+                  <span>Wishlist Alert</span>
+                  <strong>{bestWishlistItem?.name || bestWishlistItem?.productName || "Add a chase item"}</strong>
+                  <small>{bestWishlistItem ? money(bestWishlistItem.marketPrice || bestWishlistItem.marketValue || bestWishlistItem.targetPrice || 0) : "Track target prices"}</small>
+                </button>
+                <button type="button" className="today-tide-card" onClick={() => setActiveTab("market")}>
+                  <span>Market Mover</span>
+                  <strong>{bestMarketMover?.name || bestMarketMover?.productName || "No mover yet"}</strong>
+                  <small>{bestMarketMover ? money(bestMarketMover.marketPrice || bestMarketMover.marketValue || 0) : "Watch products to fill this"}</small>
+                </button>
+              </div>
+
+              <div className="daily-tide-panel">
+                <div className="daily-tide-progress-card">
+                  <div>
+                    <strong>{dailyCompletedCount}/{DAILY_TIDE_ACTIONS.length} complete</strong>
+                    <span>{dailyCompletionPercent}% daily progress</span>
+                  </div>
+                  <div className="daily-progress-track"><i style={{ width: `${dailyCompletionPercent}%` }} /></div>
+                </div>
+                <div className="daily-tide-actions">
+                  {[
+                    { key: "checkin", label: "Check in", helper: `${dailyTideToday.checkInStreak || 0} day streak`, badge: "market_watcher", points: 5 },
+                    { key: "store", label: "Scout store", helper: bestScoutStore?.name || "Pick a store", badge: "restock_reporter", points: 10 },
+                    { key: "market", label: "Check market", helper: bestMarketMover?.name || "Review watchlist", badge: "market_watcher", points: 8 },
+                    { key: "wishlist", label: "Wishlist", helper: bestWishlistItem?.name || "Add a chase", badge: "vault_builder", points: 8 },
+                    { key: "inventory", label: "Forge task", helper: needsMarketCheckItems[0]?.name || "Review inventory", badge: "forge_starter", points: 10 },
+                    { key: "community", label: "Tidepool", helper: "Share or review a report", badge: "tidepool_helper", points: 8 },
+                  ].map((action) => (
+                    <button
+                      key={action.key}
+                      type="button"
+                      className={dailyTideToday.completedActions?.[action.key] ? "daily-action-card is-complete" : "daily-action-card"}
+                      onClick={() => completeDailyAction(action.key, { badge: action.badge, points: action.points })}
+                    >
+                      <span>{dailyTideToday.completedActions?.[action.key] ? "Done" : "Do"}</span>
+                      <strong>{action.label}</strong>
+                      <small>{action.helper}</small>
+                    </button>
+                  ))}
+                </div>
+                <div className="daily-badge-strip" aria-label="Tide badges">
+                  <span>{dailyTideToday.tidePoints || 0} Tide Points</span>
+                  {DAILY_TIDE_BADGES.slice(0, 8).map((badge) => (
+                    <b key={badge.key} className={earnedBadges.has(badge.key) ? "badge-earned" : ""}>{badge.label}</b>
+                  ))}
+                </div>
+              </div>
+              {dailyTideToday.lastCelebration ? <div className="tide-celebration">Daily action complete. Tide Points added.</div> : null}
+            </section>
 
             {dashboardSectionState("tcg_os").enabled !== false ? renderTcgOperatingSystemPanel({ compact: true }) : null}
 
@@ -18899,8 +19633,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section id="vault-items-section" className="panel">
               <div className="compact-card-header">
                 <div>
-                  <h2>Vault Items</h2>
-                  <p>Filter, search, and sort personal collection records without turning Vault into sales inventory.</p>
+                  <h2>Collection Binder</h2>
+                  <p>Grid, list, binder, set completion, and value views for personal collection records.</p>
                 </div>
                 <div className="vault-toolbar">
                   <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search by name, set, UPC, SKU, or notes." />
@@ -18928,6 +19662,27 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ))}
                 </div>
               </details>
+              <div className="vault-view-strip" aria-label="Vault view choices">
+                {["Grid view", "List view", "Binder view", "Set completion", "Value view"].map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={label === "Set completion" && vaultSubTab === "sets" ? "active" : label === "Value view" && vaultSubTab === "portfolio" ? "active" : label === "Grid view" && vaultSubTab !== "sets" && vaultSubTab !== "portfolio" ? "active" : ""}
+                    onClick={() => {
+                      if (label === "Set completion") {
+                        if (!featureAllowed("set_completion")) return openLockedFeatureNotice("set_completion");
+                        setVaultSubTab("sets");
+                      } else if (label === "Value view") {
+                        if (!featureAllowed("portfolio_value")) return openLockedFeatureNotice("portfolio_value");
+                        setVaultSubTab("portfolio");
+                      }
+                      else setVaultSubTab("collection");
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <details className="vault-status-help">
                 <summary>Bulk edit later</summary>
                 <p>Select multiple items, move selected to Forge, change status, delete selected, and export selected are structured as future beta workflow controls.</p>
@@ -18963,10 +19718,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="inventory-list compact-inventory-list">
                 {vaultItems.length === 0 ? (
                   <div className="empty-state vault-empty-state">
-                    <h3>Your Vault is empty.</h3>
-                    <p>Add personal collection items, sealed products, or cards you want to hold.</p>
+                    <h3>Your Vault is ready.</h3>
+                    <p>Scan your first card or sealed product to start tracking your collection.</p>
                     <div className="quick-actions">
-                      <button type="button" onClick={openVaultQuickAddFlow}>Quick Add</button>
+                      <button type="button" onClick={() => beginScanProduct("none")}>Scan first item</button>
+                      <button type="button" className="secondary-button" onClick={openVaultQuickAddFlow}>Add manually</button>
                     </div>
                   </div>
                 ) : (
@@ -19574,9 +20330,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         const midPrice = Number(p.midPrice || p.marketPrice || 0);
                         const highPrice = Number(p.highPrice || 0);
                         const resultGroup = p.catalogType === "card" ? "Card" : p.catalogType === "sealed" ? "Sealed" : p.catalogGroup || "Other";
+                        const variantCount = getCatalogVariantOptions(p).length;
+                        const ownedCount = getCatalogOwnedCount(p);
                         return (
                           <div className="catalog-result-card" key={p.id}>
-                            <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p.id)}>
+                            <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p)}>
                               <div className="catalog-thumb">
                                 {catalogImage(p) ? (
                                   <>
@@ -19601,12 +20359,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                                 )}
                               </div>
                               <div>
-                                <span className="catalog-pill">{resultGroup}</span>
+                                <div className="catalog-result-meta-badges">
+                                  <span className="catalog-pill">{resultGroup}</span>
+                                  {p.catalogType === "card" ? (
+                                    <span className="catalog-pill catalog-pill-muted">{variantCount === 1 ? "1 variant" : `${variantCount} variants`}</span>
+                                  ) : null}
+                                  <span className={ownedCount ? "status-badge synced" : "status-badge"}>{ownedCount ? `Owned x${ownedCount}` : "Missing"}</span>
+                                </div>
                                 <h3>{catalogTitle(p)}</h3>
                                 <p className="catalog-result-detail-line">
                                   {p.productType || resultGroup} | {catalogExpansionName(p) || "Expansion unavailable"}
                                   {p.cardNumber ? ` | #${p.cardNumber}` : ""}
                                 </p>
+                                {p.catalogType === "card" && variantCount > 1 ? (
+                                  <p className="compact-subtitle catalog-result-variant-line">
+                                    Grouped card. Pick the exact version before adding: {getCatalogVariantOptions(p).slice(0, 4).map((variant) => variant.variantName).join(", ")}{variantCount > 4 ? "..." : ""}
+                                  </p>
+                                ) : null}
                                 {(p.barcode || p.sku || p.externalProductId || p.tcgplayerProductId) ? (
                                   <p className="compact-subtitle catalog-result-id-line">Barcode/SKU: {p.barcode || p.upc || p.sku || p.externalProductId || p.tcgplayerProductId}</p>
                                 ) : null}
@@ -20595,13 +21364,36 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           <section id="forge-inventory-section" className="panel forge-home-inventory-section">
             <div className="forge-toolbar">
               <div>
-                <h2>The Forge Inventory</h2>
-                <p>Search and manage business inventory. Full product details stay inside item detail.</p>
+                <h2>Business Command</h2>
+                <p>Inventory, sales, expenses, receipts, mileage, listings, and items needing review.</p>
               </div>
               <div className="summary-pill-row">
                 <button type="button" onClick={() => openProductAddFlow({ source: "forge-toolbar-inventory", destinations: { forge: true } })}>Add Inventory</button>
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from TideTradr</button>
               </div>
+            </div>
+            <div className="forge-daily-grid">
+              {[
+                { label: "Inventory Value", value: money(totalMarketValue), helper: `${forgeInventoryItems.length} active items` },
+                { label: "Planned Sales", value: money(totalPotentialSales), helper: `${readyToListItems.length} ready to list` },
+                { label: "Sales This Month", value: money(monthlySalesProfit), helper: `${totalItemsSold} sold overall` },
+                { label: "Profit", value: money(estimatedProfitAfterExpenses), helper: `${plannedRoiPercent.toFixed(1)}% planned ROI` },
+                { label: "Expenses", value: money(totalExpenses), helper: `${workspaceExpenses.length} records` },
+                { label: "Needs Review", value: needsMarketCheckItems.length + needsPhotosItems.length, helper: "Prices or photos missing" },
+              ].map((card) => (
+                <div className="forge-daily-card" key={card.label}>
+                  <span>{card.label}</span>
+                  <strong>{card.value}</strong>
+                  <small>{card.helper}</small>
+                </div>
+              ))}
+            </div>
+            <div className="quick-actions forge-action-strip">
+              <button type="button" onClick={() => openAddSaleFlow()}>Add Sale</button>
+              <button type="button" className="secondary-button" onClick={openReceiptScanWorkflow}>Scan Receipt</button>
+              <button type="button" className="secondary-button" onClick={() => openAddExpenseFlow()}>Add Expense</button>
+              <button type="button" className="secondary-button" onClick={openVaultMoveToForgeFlow}>Move from Vault</button>
+              <button type="button" className="secondary-button" onClick={() => setInventorySearch("Needs Market Check")}>Price Update</button>
             </div>
             {!activeFlowModal && importAssistantContext === "Forge" ? renderInventoryImportAssistant() : null}
             <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search Forge inventory..." />
@@ -21218,11 +22010,11 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <div className="catalog-detail-body">
                 <section className="catalog-detail-hero">
                   <div className="catalog-detail-media-panel">
-                    {catalogImage(selectedCatalogDetailProduct) ? (
+                    {catalogImage(selectedCatalogDetailPricingProduct) ? (
                       <>
                         <img
                           className="catalog-detail-image"
-                          src={catalogImage(selectedCatalogDetailProduct)}
+                          src={catalogImage(selectedCatalogDetailPricingProduct)}
                           alt={catalogTitle(selectedCatalogDetailProduct)}
                           onError={(event) => {
                             event.currentTarget.style.display = "none";
@@ -21241,8 +22033,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       </div>
                     )}
                     <div className="image-source-panel">
-                      <span>Image source: {getImageSourceLabel(selectedCatalogDetailProduct)}</span>
-                      {selectedCatalogDetailProduct.imageNeedsReview ? <strong>Image needs review</strong> : null}
+                      <span>Image source: {getImageSourceLabel(selectedCatalogDetailPricingProduct)}</span>
+                      {selectedCatalogDetailPricingProduct?.imageNeedsReview ? <strong>Image needs review</strong> : null}
                       <div className="quick-actions">
                         {adminUser ? (
                           <>
@@ -21275,12 +22067,12 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     <div className="catalog-detail-grid catalog-detail-core-grid">
                       <DetailItem label="Product Type" value={selectedCatalogDetailProduct.productType || selectedCatalogDetailProduct.catalogType} />
                       <DetailItem label="Set / Expansion" value={catalogExpansionName(selectedCatalogDetailProduct)} />
-                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market price missing"} />
+                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market price missing"} />
                       <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "Unknown"} />
-                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
-                      <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
+                      <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} />
                       <DetailItem label="Price Confidence" value={selectedCatalogDetailMarketInfo?.confidenceLevel} />
-                      <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.updatedAt} />
+                      <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.updatedAt} />
                     </div>
                     {selectedCatalogDetailVariants.length ? (
                       <div className="catalog-version-picker">
@@ -21359,28 +22151,28 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <DetailItem label="Selected Version" value={selectedCatalogDetailVariant?.variantName} />
                   <DetailItem label="Finish / Printing" value={[selectedCatalogDetailVariant?.finish, selectedCatalogDetailVariant?.printing].filter(Boolean).join(" | ")} />
                   <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "MSRP unavailable"} />
-                  <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market data unavailable"} />
-                  <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
-                  <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailProduct)} />
-                  <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.updatedAt} />
+                  <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market data unavailable"} />
+                  <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
+                  <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} />
+                  <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.updatedAt} />
                   <DetailItem label="Notes / Warnings" value={[
                     selectedCatalogDetailProduct.notes,
-                    !hasCatalogMarketPrice(selectedCatalogDetailProduct) ? "Market price missing" : "",
+                    !hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? "Market price missing" : "",
                     !hasCatalogUpcSku(selectedCatalogDetailProduct) ? "UPC/SKU missing" : "",
                   ].filter(Boolean).join(" | ")} />
                 </div>
                 <details className="catalog-source-details">
                   <summary>Source Details</summary>
                   <div className="catalog-detail-grid">
-                    <DetailItem label="Source Name" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName || selectedCatalogDetailProduct.marketSource || selectedCatalogDetailProduct.sourceType} />
-                    <DetailItem label="Source Product ID" value={selectedCatalogDetailProduct.externalProductId || selectedCatalogDetailProduct.tcgplayerProductId} />
-                    <DetailItem label="Price Type" value={selectedCatalogDetailProduct.priceSubtype} />
-                    <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailProduct)} />
-                    <DetailItem label="Market Sources" value={selectedCatalogDetailProduct.marketSources?.length ? `${selectedCatalogDetailProduct.marketSources.length} source${selectedCatalogDetailProduct.marketSources.length === 1 ? "" : "s"}` : ""} />
+                    <DetailItem label="Source Name" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName || selectedCatalogDetailPricingProduct?.marketSource || selectedCatalogDetailPricingProduct?.sourceType} />
+                    <DetailItem label="Source Product ID" value={selectedCatalogDetailPricingProduct?.externalProductId || selectedCatalogDetailPricingProduct?.tcgplayerProductId} />
+                    <DetailItem label="Price Type" value={selectedCatalogDetailPricingProduct?.priceSubtype || selectedCatalogDetailProduct.priceSubtype} />
+                    <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} />
+                    <DetailItem label="Market Sources" value={selectedCatalogDetailPricingProduct?.marketSources?.length ? `${selectedCatalogDetailPricingProduct.marketSources.length} source${selectedCatalogDetailPricingProduct.marketSources.length === 1 ? "" : "s"}` : ""} />
                   </div>
-                  {selectedCatalogDetailProduct.marketSources?.length ? (
+                  {selectedCatalogDetailPricingProduct?.marketSources?.length ? (
                     <div className="catalog-market-source-list">
-                      {selectedCatalogDetailProduct.marketSources.slice(0, 4).map((source) => (
+                      {selectedCatalogDetailPricingProduct.marketSources.slice(0, 4).map((source) => (
                         <div className="catalog-market-source-row" key={source.id || `${source.source}-${source.sourceItemId}-${source.priceType}`}>
                           <strong>{source.source || "Market source"}</strong>
                           <span>{[source.priceType, source.status, source.confidenceScore ? `Confidence ${Math.round(source.confidenceScore * 100)}%` : ""].filter(Boolean).join(" | ")}</span>
@@ -21389,8 +22181,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       ))}
                     </div>
                   ) : null}
-                  {catalogSourceUrl(selectedCatalogDetailProduct) ? (
-                    <a className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailProduct)} target="_blank" rel="noreferrer">Open Source</a>
+                  {catalogSourceUrl(selectedCatalogDetailPricingProduct) ? (
+                    <a className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailPricingProduct)} target="_blank" rel="noreferrer">Open Source</a>
                   ) : null}
                 </details>
                 <details className="catalog-source-details">
@@ -21418,16 +22210,16 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Flavor Text" value={catalogCardDetails(selectedCatalogDetailProduct).flavorText} />
                       <DetailItem label="Pokedex #" value={(catalogCardDetails(selectedCatalogDetailProduct).nationalPokedexNumbers || []).join(", ")} />
                       <DetailItem label="Variants" value={selectedCatalogDetailVariants.map((variant) => variant.variantName).join(", ")} />
-                      <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue)} />
-                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailProduct.lowPrice)} / ${money(selectedCatalogDetailProduct.midPrice)} / ${money(selectedCatalogDetailProduct.highPrice)}`} />
-                      <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).lastUpdated} />
-                      <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName} />
-                      <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailProduct).marketStatus] || "Unknown"} />
-                      <DetailItem label="Source Product ID" value={selectedCatalogDetailProduct.externalProductId || selectedCatalogDetailProduct.tcgplayerProductId} />
-                      <DetailItem label="Price Type" value={selectedCatalogDetailProduct.priceSubtype} />
-                      <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).needsReview ? "Yes" : "No"} />
-                      <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailProduct)} />
-                      <DetailItem label="Image Last Updated" value={selectedCatalogDetailProduct.imageLastUpdated || "Unknown"} />
+                      <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue)} />
+                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
+                      <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
+                      <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} />
+                      <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} />
+                      <DetailItem label="Source Product ID" value={selectedCatalogDetailPricingProduct?.externalProductId || selectedCatalogDetailPricingProduct?.tcgplayerProductId} />
+                      <DetailItem label="Price Type" value={selectedCatalogDetailPricingProduct?.priceSubtype || selectedCatalogDetailProduct.priceSubtype} />
+                      <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} />
+                      <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} />
+                      <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} />
                     </>
                   ) : (
                     <>
@@ -21446,30 +22238,30 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="TCGplayer Product ID" value={selectedCatalogDetailProduct.tcgplayerProductId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_PRODUCT_ID")?.value} />
                       <DetailItem label="TCGplayer SKU ID" value={selectedCatalogDetailVariant?.tcgplayerSkuId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_SKU_ID")?.value} />
                       <DetailItem label="Pokemon Center Exclusive" value={selectedCatalogDetailProduct.isPokemonCenterExclusive ? "Yes" : ""} />
-                      <DetailItem label="Price Type" value={selectedCatalogDetailProduct.priceSubtype} />
+                      <DetailItem label="Price Type" value={selectedCatalogDetailPricingProduct?.priceSubtype || selectedCatalogDetailProduct.priceSubtype} />
                       <DetailItem label="Retailer Exclusivity" value={selectedCatalogDetailProduct.retailerExclusive ? "Retailer exclusive" : "Not listed"} />
                       <DetailItem label="Retailer Name" value={selectedCatalogDetailProduct.retailerName} />
-                      <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).lastUpdated} />
-                      <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).sourceName} />
-                      <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailProduct).marketStatus] || "Unknown"} />
-                      <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailProduct).needsReview ? "Yes" : "No"} />
-                      <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailProduct)} />
-                      <DetailItem label="Image Last Updated" value={selectedCatalogDetailProduct.imageLastUpdated || "Unknown"} />
+                      <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
+                      <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} />
+                      <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} />
+                      <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} />
+                      <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} />
+                      <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} />
                     </>
                   )}
                   </div>
                 </details>
                 <div id="catalog-market-history">
                   <MarketPriceHistoryPanel
-                  catalogProductId={selectedCatalogDetailProduct.id}
-                  tcgplayerProductId={selectedCatalogDetailProduct.tcgplayerProductId}
-                  externalProductId={selectedCatalogDetailProduct.externalProductId}
+                  catalogProductId={selectedCatalogDetailPricingProduct?.id || selectedCatalogDetailProduct.id}
+                  tcgplayerProductId={selectedCatalogDetailPricingProduct?.tcgplayerProductId}
+                  externalProductId={selectedCatalogDetailPricingProduct?.externalProductId}
                   productName={catalogTitle(selectedCatalogDetailProduct)}
-                  currentMarketPrice={getTideTradrMarketInfo(selectedCatalogDetailProduct).currentMarketValue}
-                  currentLowPrice={selectedCatalogDetailProduct.lowPrice}
-                  currentMidPrice={selectedCatalogDetailProduct.midPrice}
-                  currentHighPrice={selectedCatalogDetailProduct.highPrice}
-                  lastPriceChecked={selectedCatalogDetailProduct.lastPriceChecked || selectedCatalogDetailProduct.marketLastUpdated}
+                  currentMarketPrice={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue}
+                  currentLowPrice={selectedCatalogDetailPricingProduct?.lowPrice}
+                  currentMidPrice={selectedCatalogDetailPricingProduct?.midPrice}
+                  currentHighPrice={selectedCatalogDetailPricingProduct?.highPrice}
+                  lastPriceChecked={selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.marketLastUpdated}
                   money={money}
                   />
                 </div>
@@ -21499,7 +22291,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             onClick={() => navigateMainTab(tab)}
           >
             <span aria-hidden="true">
-              {tab.key === "home" ? "H" : tab.key === "forge" ? "F" : tab.key === "vault" ? "V" : tab.key === "scout" ? "S" : "T"}
+              {tab.key === "home" ? "H" : tab.key === "forge" ? "F" : tab.key === "vault" ? "V" : tab.key === "scout" ? "S" : tab.key === "tideTradr" ? "TT" : "TP"}
             </span>
             <b>{tab.label}</b>
           </button>
