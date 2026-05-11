@@ -67,6 +67,42 @@ const TIDEPOOL_FILTERS = [
   "My Reports",
 ];
 
+const REPORT_TYPE_OPTIONS = [
+  { key: "in_stock", label: "In stock", reportType: "Store Restock Report", stockStatus: "in_stock", confidence: "possible", sourceType: "user_report" },
+  { key: "no_stock", label: "No stock", reportType: "Store Restock Report", stockStatus: "empty", confidence: "possible", sourceType: "user_report" },
+  { key: "restock_happening", label: "Restock happening", reportType: "Store Restock Report", stockStatus: "vendor_stocking", confidence: "likely", sourceType: "user_report" },
+  { key: "empty_shelves", label: "Empty shelves", reportType: "Store Restock Report", stockStatus: "empty", confidence: "possible", sourceType: "user_report" },
+  { key: "locked_up", label: "Product locked up", reportType: "Store Restock Report", stockStatus: "behind_counter", confidence: "possible", sourceType: "user_report" },
+  { key: "employee_shipment_day", label: "Employee said shipment day", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", confidence: "likely", sourceType: "employee_tip", needsReview: true },
+  { key: "guess_prediction", label: "Guess / prediction", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", confidence: "guess", sourceType: "manual_prediction", visibility: "private", needsReview: true },
+];
+
+const REPORT_RETAILER_OPTIONS = [
+  "Target",
+  "Walmart",
+  "Best Buy",
+  "Barnes & Noble",
+  "GameStop",
+  "Costco",
+  "Sam's Club",
+  "BJ's",
+  "Dollar General",
+  "Family Dollar",
+  "Dollar Tree",
+  "Five Below",
+  "Walgreens",
+  "CVS",
+  "Hobby Lobby",
+  "Other",
+];
+
+const REPORT_VISIBILITY_OPTIONS = [
+  { value: "public_cleaned", label: "Community Report", helper: "Share cleaned stock info with the community." },
+  { value: "shared_with_team", label: "Team Shared", helper: "Share with your workspace/team only." },
+  { value: "private", label: "Private note", helper: "Keep it private from other users." },
+  { value: "admin_only", label: "Admin Only", helper: "Keep it private and mark it for admin review." },
+];
+
 const TIDEPOOL_EVENT_TYPES = [
   "Kid-friendly Pokemon meetup",
   "Pack giveaway",
@@ -274,6 +310,120 @@ function getReportTime(report) {
 
 function getReportStoreId(report) {
   return report.storeId || report.store_id || "";
+}
+
+function getReportRetailer(store = {}) {
+  return store.chain || store.retailer || store.storeGroup || getStoreGroup(store) || "Other";
+}
+
+function normalizeReportRetailer(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "Other";
+  if (/barnes|b&n/.test(normalized)) return "Barnes & Noble";
+  if (/sam/.test(normalized)) return "Sam's Club";
+  if (/bj/.test(normalized)) return "BJ's";
+  const matched = REPORT_RETAILER_OPTIONS.find((retailer) => retailer.toLowerCase() === normalized);
+  if (matched) return matched;
+  return REPORT_RETAILER_OPTIONS.find((retailer) => normalized.includes(retailer.toLowerCase())) || "Other";
+}
+
+function storeMatchesReportRetailer(store = {}, retailer = "") {
+  const selected = normalizeReportRetailer(retailer);
+  const storeRetailer = normalizeReportRetailer(getReportRetailer(store));
+  if (selected === "Other") return storeRetailer === "Other";
+  return storeRetailer === selected;
+}
+
+function reportRetailerInitials(retailer = "") {
+  return String(retailer || "Store")
+    .replace(/&/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function getStoreDisplayName(store = {}) {
+  return store.nickname || store.name || store.storeName || store.store_name || "Unnamed store";
+}
+
+function getStoreZip(store = {}) {
+  const explicitZip = store.zip || store.postalCode || store.postal_code || "";
+  const addressZip = String(store.address || "").match(/\b\d{5}(?:-\d{4})?\b/)?.[0] || "";
+  return String(explicitZip || addressZip).slice(0, 5);
+}
+
+function getStoreRestockWindow(store = {}) {
+  const text = [
+    store.bestCheckWindow,
+    store.best_check_window,
+    store.expectedRestockWindow,
+    store.expected_restock_window,
+    store.restockWindow,
+    store.restock_window,
+    store.restockPattern,
+    store.restock_pattern,
+    store.notes,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const day = String(text).match(/\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/i)?.[0] || "";
+  const time = String(text).match(/\b(morning|afternoon|evening|night|open|noon|pm|am)\b/i)?.[0] || "";
+  return [day, time].filter(Boolean).join(" ") || "Unknown";
+}
+
+function getStoreReportTimestamp(report = {}) {
+  const rawDate = report.reportedAt || report.reported_at || report.submittedAt || report.submitted_at || report.createdAt || report.created_at || report.reportDate || report.report_date || "";
+  const rawTime = report.reportTime || report.report_time || "";
+  const parsed = rawDate
+    ? new Date(String(rawDate).includes("T") ? rawDate : `${String(rawDate).slice(0, 10)}T${rawTime || "00:00"}`)
+    : null;
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed.getTime() : 0;
+}
+
+function getStoreDistanceMiles(store = {}, location = {}, zip = "") {
+  const storeLat = Number(store.lat ?? store.latitude);
+  const storeLng = Number(store.lng ?? store.longitude);
+  const userLat = Number(location.lat);
+  const userLng = Number(location.lng);
+  const hasStoreCoordinates = store.lat !== undefined || store.latitude !== undefined || store.lng !== undefined || store.longitude !== undefined;
+  const hasUserCoordinates = location.lat !== null && location.lat !== undefined && location.lat !== "" && location.lng !== null && location.lng !== undefined && location.lng !== "";
+  if (hasStoreCoordinates && hasUserCoordinates && Number.isFinite(storeLat) && Number.isFinite(storeLng) && Number.isFinite(userLat) && Number.isFinite(userLng)) {
+    const toRad = (value) => (value * Math.PI) / 180;
+    const deltaLat = toRad(storeLat - userLat);
+    const deltaLng = toRad(storeLng - userLng);
+    const a =
+      Math.sin(deltaLat / 2) ** 2 +
+      Math.cos(toRad(userLat)) * Math.cos(toRad(storeLat)) * Math.sin(deltaLng / 2) ** 2;
+    return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+  const userZip = String(zip || "").replace(/\D/g, "").slice(0, 5);
+  const storeZip = getStoreZip(store);
+  if (userZip.length === 5 && storeZip.length === 5) {
+    if (userZip === storeZip) return 0.5;
+    return Math.min(999, Math.abs(Number(userZip) - Number(storeZip)) * 0.025 + 1);
+  }
+  return null;
+}
+
+function getStoreScoutStatus(store = {}, storeReports = []) {
+  const latestReport = [...storeReports].sort((a, b) => getStoreReportTimestamp(b) - getStoreReportTimestamp(a))[0] || {};
+  const latestStatus = String(latestReport.stockStatus || latestReport.stock_status || store.status || "").toLowerCase();
+  const latestType = String(latestReport.reportType || latestReport.report_type || "").toLowerCase();
+  const latestTime = getStoreReportTimestamp(latestReport);
+  const hoursOld = latestTime ? (Date.now() - latestTime) / 3600000 : Infinity;
+  if (latestStatus.includes("in_stock") || latestStatus.includes("vendor") || (latestReport.verified && hoursOld <= 18)) return "Confirmed Drop";
+  if (latestType.includes("restock") && latestReport.confidence === "likely") return "Hot";
+  if (hoursOld <= 24 || latestReport.confidence === "likely") return "Heating Up";
+  if (store.favorite || store.watched) return "Watching";
+  return "Cold";
+}
+
+function getStoreLastReportLabel(storeReports = []) {
+  const latestReport = [...storeReports].sort((a, b) => getStoreReportTimestamp(b) - getStoreReportTimestamp(a))[0];
+  return latestReport ? friendlyScoutTimestamp(latestReport) : "No reports yet";
 }
 
 function dayName(dateString) {
@@ -1232,6 +1382,11 @@ export default function Scout({
   const [reportProductSearch, setReportProductSearch] = useState("");
   const [reportProductSearchCloseSignal, setReportProductSearchCloseSignal] = useState(0);
   const [reportInputMethod, setReportInputMethod] = useState("Manual");
+  const [reportWizardStep, setReportWizardStep] = useState(1);
+  const [reportRetailer, setReportRetailer] = useState("");
+  const [reportStoreSearch, setReportStoreSearch] = useState("");
+  const [reportZip, setReportZip] = useState("");
+  const [reportLocationPromptOpen, setReportLocationPromptOpen] = useState(true);
   const [missingStoreModalOpen, setMissingStoreModalOpen] = useState(false);
   const [trackedProductsModalOpen, setTrackedProductsModalOpen] = useState(false);
   const [missingStoreForm, setMissingStoreForm] = useState({
@@ -1343,6 +1498,7 @@ export default function Scout({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         }));
+        setReportLocationPromptOpen(false);
       },
       () => {
         setError("Unable to get your location.");
@@ -1651,6 +1807,11 @@ export default function Scout({
     });
     setReportProductSearch("");
     setReportProductSearchCloseSignal((value) => value + 1);
+    setReportWizardStep(1);
+    setReportRetailer("");
+    setReportStoreSearch("");
+    setReportZip("");
+    setReportLocationPromptOpen(true);
   }
 
   function startEditingReport(report) {
@@ -1659,6 +1820,12 @@ export default function Scout({
     const productSnapshot = report.catalogProductSnapshot || report.catalog_product_snapshot || null;
     const itemName = report.itemName || report.item_name || report.manualItemName || "";
     const itemsSeen = normalizeReportItemsForForm(report);
+    const reportStoreId = getReportStoreId(report);
+    const reportStore = stores.find((store) => String(store.id) === String(reportStoreId));
+    if (reportStoreId) setSelectedStoreId(reportStoreId);
+    setReportRetailer(normalizeReportRetailer(getReportRetailer(reportStore || report)));
+    setReportStoreSearch("");
+    setReportWizardStep(5);
     setReportForm({
       reportType: report.reportType || report.report_type || "Restock sighting",
       itemName: itemName || itemsSeen[0]?.productName || "",
@@ -1724,6 +1891,33 @@ export default function Scout({
       manualItemEntry: true,
     });
     setReportProductSearchCloseSignal((value) => value + 1);
+  }
+
+  function selectReportTypeOption(option) {
+    setReportForm((current) => ({
+      ...current,
+      reportType: option.reportType,
+      stockStatus: option.stockStatus,
+      confidence: option.confidence || current.confidence,
+      sourceType: option.sourceType || current.sourceType,
+      visibility: option.visibility || current.visibility,
+      needsReview: Boolean(option.needsReview) || current.needsReview,
+    }));
+    setReportWizardStep((step) => Math.max(step, 2));
+  }
+
+  function selectReportRetailer(retailer) {
+    setReportRetailer(retailer);
+    setSelectedStoreId("");
+    setReportStoreSearch("");
+    setReportWizardStep(3);
+  }
+
+  function selectReportStore(store) {
+    if (!store?.id) return;
+    setSelectedStoreId(store.id);
+    setReportRetailer(normalizeReportRetailer(getReportRetailer(store)));
+    setReportWizardStep(4);
   }
 
   function updateReportItem(index, patch) {
@@ -2638,6 +2832,8 @@ async function handleUpdateStore(e) {
       ? reportForm.reportedAt || `${reportDate}T${reportTime}:00`
       : nowParts.iso;
     const storeForPayload = stores.find((store) => String(store.id) === String(activeStoreId)) || {};
+    const visibilityForPayload = reportForm.visibility === "admin_only" ? "private" : reportForm.visibility || "public_cleaned";
+    const adminOnlyReport = reportForm.visibility === "admin_only";
     const evidence = [
       ...(Array.isArray(reportForm.evidence) ? reportForm.evidence : []),
       ...uniquePhotoUrls.map((url) => ({
@@ -2645,7 +2841,7 @@ async function handleUpdateStore(e) {
         url,
         transcript: "",
         submittedBy: "user",
-        private: reportForm.visibility !== "public_cleaned",
+        private: visibilityForPayload !== "public_cleaned",
         adminReviewVisible: true,
       })),
       note ? {
@@ -2653,7 +2849,7 @@ async function handleUpdateStore(e) {
         url: "",
         transcript: note,
         submittedBy: "user",
-        private: reportForm.visibility !== "public_cleaned",
+        private: visibilityForPayload !== "public_cleaned",
         adminReviewVisible: true,
       } : null,
     ].filter(Boolean);
@@ -2684,7 +2880,11 @@ async function handleUpdateStore(e) {
         sourceType: reportForm.sourceType || (uniquePhotoUrls.length ? "photo_report" : "user_report"),
         source_type: reportForm.sourceType || (uniquePhotoUrls.length ? "photo_report" : "user_report"),
         confidence: reportForm.confidence || (uniquePhotoUrls.length ? "confirmed" : "possible"),
-        visibility: reportForm.visibility || "public_cleaned",
+        visibility: visibilityForPayload,
+        visibilitySelection: reportForm.visibility || visibilityForPayload,
+        visibility_selection: reportForm.visibility || visibilityForPayload,
+        adminOnly: adminOnlyReport,
+        admin_only: adminOnlyReport,
         adminReviewVisible: true,
         admin_review_visible: true,
         adminVisibilityDisclosedAt: nowParts.iso,
@@ -3354,6 +3554,9 @@ async function handleUpdateStore(e) {
   function openStoreReport(storeId, reportType = "Store Restock Report") {
     setSelectedStoreId(storeId);
     setScoutSubTab("reports");
+    const store = stores.find((candidate) => String(candidate.id) === String(storeId));
+    setReportRetailer(normalizeReportRetailer(getReportRetailer(store || {})));
+    setReportWizardStep(4);
     setReportForm((current) => ({
       ...current,
       reportType,
@@ -3447,6 +3650,84 @@ async function handleUpdateStore(e) {
       return acc;
     }, {});
   }, [visibleAllReports]);
+
+  const reportRetailerCards = useMemo(() => {
+    const counts = stores.reduce((acc, store) => {
+      const retailer = normalizeReportRetailer(getReportRetailer(store));
+      acc[retailer] = (acc[retailer] || 0) + 1;
+      return acc;
+    }, {});
+    return REPORT_RETAILER_OPTIONS.map((retailer) => ({
+      retailer,
+      count: counts[retailer] || 0,
+      selected: reportRetailer === retailer,
+    }));
+  }, [stores, reportRetailer]);
+
+  const reportSelectedRetailerStores = useMemo(() => {
+    if (!reportRetailer) return [];
+    const location = { lat: reportForm.lat, lng: reportForm.lng };
+    return stores
+      .filter((store) => storeMatchesReportRetailer(store, reportRetailer))
+      .filter((store) => !reportStoreSearch || storeMatchesSearch(store, reportStoreSearch))
+      .map((store) => {
+        const storeReports = reportsByStore[store.id] || [];
+        const lastReportAt = Math.max(0, ...storeReports.map(getStoreReportTimestamp));
+        const distance = getStoreDistanceMiles(store, location, reportZip);
+        return {
+          store,
+          storeReports,
+          lastReportAt,
+          distance,
+          status: getStoreScoutStatus(store, storeReports),
+          lastReportLabel: getStoreLastReportLabel(storeReports),
+          restockWindow: getStoreRestockWindow(store),
+        };
+      })
+      .sort((a, b) => {
+        const aDistance = Number.isFinite(a.distance) ? a.distance : Number.POSITIVE_INFINITY;
+        const bDistance = Number.isFinite(b.distance) ? b.distance : Number.POSITIVE_INFINITY;
+        if (aDistance !== bDistance) return aDistance - bDistance;
+        const aFavorite = a.store.favorite || a.store.watched ? 1 : 0;
+        const bFavorite = b.store.favorite || b.store.watched ? 1 : 0;
+        if (aFavorite !== bFavorite) return bFavorite - aFavorite;
+        if (a.lastReportAt !== b.lastReportAt) return b.lastReportAt - a.lastReportAt;
+        const cityCompare = String(a.store.city || "").localeCompare(String(b.store.city || ""));
+        if (cityCompare) return cityCompare;
+        return getStoreDisplayName(a.store).localeCompare(getStoreDisplayName(b.store));
+      });
+  }, [stores, reportRetailer, reportStoreSearch, reportsByStore, reportForm.lat, reportForm.lng, reportZip]);
+
+  const selectedReportTypeOption = useMemo(() => {
+    return REPORT_TYPE_OPTIONS.find((option) => (
+      option.reportType === reportForm.reportType &&
+      option.stockStatus === reportForm.stockStatus &&
+      option.sourceType === reportForm.sourceType
+    )) || REPORT_TYPE_OPTIONS.find((option) => (
+      option.reportType === reportForm.reportType &&
+      option.stockStatus === reportForm.stockStatus
+    )) || REPORT_TYPE_OPTIONS[0];
+  }, [reportForm.reportType, reportForm.stockStatus, reportForm.sourceType]);
+
+  const selectedReportStoreCard = useMemo(() => {
+    const store = stores.find((candidate) => String(candidate.id) === String(selectedStoreId));
+    if (!store) return null;
+    const storeReports = reportsByStore[store.id] || [];
+    return {
+      store,
+      storeReports,
+      distance: getStoreDistanceMiles(store, { lat: reportForm.lat, lng: reportForm.lng }, reportZip),
+      status: getStoreScoutStatus(store, storeReports),
+      lastReportLabel: getStoreLastReportLabel(storeReports),
+      restockWindow: getStoreRestockWindow(store),
+    };
+  }, [stores, selectedStoreId, reportsByStore, reportForm.lat, reportForm.lng, reportZip]);
+
+  const reportReviewItems = useMemo(() => (
+    normalizeReportItemsForForm(reportForm).filter((item) => (
+      item.productName || item.quantity || item.price || item.note || item.catalogProductSnapshot
+    ))
+  ), [reportForm]);
 
   function isUserOwnedScoutReport(report = {}) {
     const owner = String(report.userId || report.user_id || report.reportedBy || report.reported_by || "");
@@ -4347,199 +4628,292 @@ async function handleUpdateStore(e) {
                 <p style={styles.tiny}>Paste notes or a source link in the same report form. Automatic link reading comes later.</p>
               </div>
             ) : null}
-            <form onSubmit={handleCreateReport} style={styles.formGrid}>
-              <h3 style={{ margin: "8px 0 0" }}>Step 1: What type of report?</h3>
-              <select
-                style={styles.input}
-                value={reportForm.reportType}
-                onChange={(e) => setReportForm((current) => ({ ...current, reportType: e.target.value }))}
-              >
-                <option>Store Restock Report</option>
-                <option>Product Sighting / What Did I See</option>
-                <option>Store Correction</option>
-                <option>Purchase Limit Update</option>
-                <option>Restock Pattern Suggestion</option>
-              </select>
-              {reportForm.reportType === "Product Sighting / What Did I See" ? (
-                <p style={styles.tiny}>Use this when you saw products in store but do not need to submit a full restock report.</p>
-              ) : null}
-              <h3 style={{ margin: "8px 0 0" }}>Step 2: Where?</h3>
-              <select
-                style={styles.input}
-                value={selectedStoreId}
-                onChange={(e) => setSelectedStoreId(e.target.value)}
-              >
-                <option value="">Select store</option>
-                {reportStoreOptionGroups.map((group) => (
-                  <optgroup key={group.label} label={group.label}>
-                    {group.stores.map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.nickname || store.name} - {store.address || "No address"}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Suggest missing store</button>
-              <div className="scout-quick-report-panel">
-                <div>
-                  <h3>Quick report</h3>
-                  <p>Tap a stock status, add a note or photo, then submit. Product details are optional.</p>
-                </div>
-                <div className="scout-stock-status-grid" role="group" aria-label="Stock status">
-                  {SCOUT_STOCK_STATUS_OPTIONS.map((option) => (
+            <form onSubmit={handleCreateReport} className="scout-report-flow">
+              <div className="scout-report-stepper" aria-label="Store report steps">
+                {["What", "Retailer", "Store", "Details", "Review"].map((label, index) => {
+                  const stepNumber = index + 1;
+                  return (
                     <button
-                      key={option.value}
+                      key={label}
                       type="button"
-                      className={`scout-stock-status-button ${reportForm.stockStatus === option.value ? "selected" : ""}`}
-                      onClick={() => setReportForm((current) => ({
-                        ...current,
-                        stockStatus: option.value,
-                        reportType: option.reportType || current.reportType,
-                        needsReview: option.value === "unknown" ? true : current.needsReview,
-                      }))}
+                      className={`scout-report-step-pill ${reportWizardStep === stepNumber ? "active" : ""} ${reportWizardStep > stepNumber ? "complete" : ""}`}
+                      onClick={() => setReportWizardStep(stepNumber)}
                     >
-                      {option.label}
+                      <span>{stepNumber}</span>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <section className={`scout-report-step-card ${reportWizardStep === 1 ? "active" : ""}`}>
+                <div className="scout-report-step-header">
+                  <span>Step 1</span>
+                  <div>
+                    <h3>What did you see?</h3>
+                    <p>Choose the report type first. You can still add details before submitting.</p>
+                  </div>
+                </div>
+                <div className="scout-report-type-grid" role="group" aria-label="Report type">
+                  {REPORT_TYPE_OPTIONS.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={`scout-report-choice-card ${selectedReportTypeOption.key === option.key ? "selected" : ""}`}
+                      onClick={() => selectReportTypeOption(option)}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.reportType}</span>
                     </button>
                   ))}
                 </div>
-                <label className="scout-photo-first-button">
-                  <span>Add photo / scan shelf</span>
-                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoFirstReportUpload} />
-                </label>
-                {(reportPhoto?.preview || reportForm.imageUrl) ? (
-                  <div className="scout-photo-preview">
-                    <img src={reportPhoto?.preview || reportForm.imageUrl} alt="" />
-                    <div>
-                      <strong>Photo uploaded</strong>
-                      <span>Items not identified yet. Needs review.</span>
-                    </div>
+              </section>
+
+              <section className={`scout-report-step-card ${reportWizardStep === 2 ? "active" : ""}`}>
+                <div className="scout-report-step-header">
+                  <span>Step 2</span>
+                  <div>
+                    <h3>Choose retailer</h3>
+                    <p>Pick the retailer first so the next step only shows matching store locations.</p>
                   </div>
-                ) : null}
-              </div>
-              {reportForm.reportType === "Store Correction" ? (
-                <input
-                  style={styles.input}
-                  value={reportForm.itemName}
-                  onChange={(e) => setReportForm((current) => ({ ...current, itemName: e.target.value, manualItemEntry: true }))}
-                  placeholder="Store detail to correct"
-                />
-              ) : (
-                <details className="scout-report-optional-items" defaultOpen={Boolean(reportForm.itemsSeen?.some((item) => item.productName))}>
-                  <summary>Items seen - optional</summary>
-                  <p className="compact-subtitle">Add sealed products only when it is quick. Quantity and price can be blank.</p>
-                  <div className="scout-report-items-editor">
-                    {(reportForm.itemsSeen?.length ? reportForm.itemsSeen : [makeBlankReportItem()]).map((item, index) => {
-                      const product = item.catalogProductSnapshot;
-                      const productIdLine = product
-                        ? [product.upc || product.barcode, product.sku || product.externalProductId || product.tcgplayerProductId].filter(Boolean).join(" / ")
-                        : "";
-                      return (
-                        <div className="scout-report-item-editor" key={item.rowId || index}>
-                          <div className="scout-report-item-editor-header">
-                            <strong>Item {index + 1}</strong>
-                            {(reportForm.itemsSeen || []).length > 1 ? (
-                              <button type="button" className="secondary-button" onClick={() => removeReportItem(index)}>Remove</button>
-                            ) : null}
-                          </div>
-                          <label>
-                            Product / item seen
-                            <SmartCatalogSearchBox
-                              value={item.productName || ""}
-                              onChange={(value) => {
-                                if (index === 0) setReportProductSearch(value);
-                                updateReportItem(index, {
-                                  productName: value,
+                </div>
+                <div className="scout-report-retailer-grid">
+                  {reportRetailerCards.map((card) => (
+                    <button
+                      key={card.retailer}
+                      type="button"
+                      className={`scout-report-retailer-card ${card.selected ? "selected" : ""}`}
+                      onClick={() => selectReportRetailer(card.retailer)}
+                    >
+                      <span className="scout-report-retailer-icon">{reportRetailerInitials(card.retailer)}</span>
+                      <strong>{card.retailer}</strong>
+                      <small>{card.count ? `${card.count} store${card.count === 1 ? "" : "s"}` : "Suggest location"}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className={`scout-report-step-card ${reportWizardStep === 3 ? "active" : ""}`}>
+                <div className="scout-report-step-header">
+                  <span>Step 3</span>
+                  <div>
+                    <h3>Choose store location</h3>
+                    <p>{reportRetailer ? `Showing ${reportRetailer} stores only.` : "Choose a retailer first."}</p>
+                  </div>
+                </div>
+                {!reportRetailer ? (
+                  <div className="scout-report-empty-step">
+                    <strong>No retailer selected</strong>
+                    <p>Choose a retailer to narrow the store list.</p>
+                    <button type="button" style={styles.buttonSoft} onClick={() => setReportWizardStep(2)}>Choose retailer</button>
+                  </div>
+                ) : (
+                  <>
+                    {reportLocationPromptOpen && !reportForm.lat && !reportZip ? (
+                      <div className="scout-report-location-prompt">
+                        <div>
+                          <strong>Use location to show closest stores first?</strong>
+                          <p>Location is optional and only changes sorting. You can submit without it.</p>
+                        </div>
+                        <div className="scout-report-location-actions">
+                          <button type="button" style={styles.buttonSoft} onClick={handleGetLocation}>Open location settings</button>
+                          <button type="button" style={styles.buttonSoft} onClick={() => setReportLocationPromptOpen(false)}>Enter ZIP</button>
+                          <button type="button" style={styles.buttonSoft} onClick={() => setReportLocationPromptOpen(false)}>Not now</button>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="scout-report-store-tools">
+                      <input
+                        style={styles.input}
+                        value={reportStoreSearch}
+                        onChange={(event) => setReportStoreSearch(event.target.value)}
+                        placeholder={`Search ${reportRetailer} stores by city, nickname, or address`}
+                      />
+                      <input
+                        style={styles.input}
+                        inputMode="numeric"
+                        value={reportZip}
+                        onChange={(event) => setReportZip(event.target.value.replace(/[^\d]/g, "").slice(0, 5))}
+                        placeholder="ZIP optional"
+                      />
+                    </div>
+                    <div className="scout-report-store-list">
+                      {reportSelectedRetailerStores.length ? reportSelectedRetailerStores.map((entry) => {
+                        const store = entry.store;
+                        const selected = String(store.id) === String(selectedStoreId);
+                        return (
+                          <article key={store.id} className={`scout-report-store-card ${selected ? "selected" : ""}`}>
+                            <div className="scout-report-store-main">
+                              <div>
+                                <strong>{getStoreDisplayName(store)}</strong>
+                                <p>{store.city || "City not added"}{store.address ? ` | ${store.address}` : ""}</p>
+                              </div>
+                              <span className={`scout-store-temperature scout-store-temperature-${entry.status.toLowerCase().replace(/\s+/g, "-")}`}>{entry.status}</span>
+                            </div>
+                            <div className="scout-report-store-meta">
+                              {entry.distance !== null ? <span>{entry.distance.toFixed(entry.distance < 10 ? 1 : 0)} mi</span> : null}
+                              <span>Last report: {entry.lastReportLabel}</span>
+                              <span>Best window: {entry.restockWindow}</span>
+                              {store.favorite || store.watched ? <span>Watched</span> : null}
+                            </div>
+                            <div className="scout-report-store-actions">
+                              <button type="button" style={styles.buttonSoft} onClick={() => toggleStoreFavorite(store.id)}>{store.favorite || store.watched ? "Watching" : "Watch"}</button>
+                              <button type="button" style={styles.buttonPrimary} onClick={() => selectReportStore(store)}>Report here</button>
+                              {store.address ? (
+                                <a className="secondary-button" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store.address} ${store.city || ""}`)}`} target="_blank" rel="noreferrer">Directions</a>
+                              ) : null}
+                            </div>
+                          </article>
+                        );
+                      }) : (
+                        <div className="scout-report-empty-step">
+                          <strong>No {reportRetailer} stores match that search.</strong>
+                          <p>Suggest the missing store and an admin can review it for the universal list.</p>
+                          <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Suggest missing store</button>
+                        </div>
+                      )}
+                    </div>
+                    <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Suggest missing store</button>
+                  </>
+                )}
+              </section>
+
+              <section className={`scout-report-step-card ${reportWizardStep === 4 ? "active" : ""}`}>
+                <div className="scout-report-step-header">
+                  <span>Step 4</span>
+                  <div>
+                    <h3>Report products/items</h3>
+                    <p>{selectedReportStoreCard ? `Reporting at ${getStoreDisplayName(selectedReportStoreCard.store)}.` : "Choose a store before adding details."}</p>
+                  </div>
+                </div>
+                <div className="scout-quick-report-panel">
+                  <div>
+                    <h3>Shelf status</h3>
+                    <p>Add what was there, what was missing, or what the employee said.</p>
+                  </div>
+                  <div className="scout-stock-status-grid" role="group" aria-label="Stock status">
+                    {SCOUT_STOCK_STATUS_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`scout-stock-status-button ${reportForm.stockStatus === option.value ? "selected" : ""}`}
+                        onClick={() => setReportForm((current) => ({
+                          ...current,
+                          stockStatus: option.value,
+                          reportType: option.reportType || current.reportType,
+                          needsReview: option.value === "unknown" ? true : current.needsReview,
+                        }))}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="scout-photo-first-button">
+                    <span>Add photo / scan shelf</span>
+                    <input type="file" accept="image/*" capture="environment" onChange={handlePhotoFirstReportUpload} />
+                  </label>
+                  {(reportPhoto?.preview || reportForm.imageUrl) ? (
+                    <div className="scout-photo-preview">
+                      <img src={reportPhoto?.preview || reportForm.imageUrl} alt="" />
+                      <div>
+                        <strong>Photo uploaded</strong>
+                        <span>Items not identified yet. Needs review.</span>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                {reportForm.reportType === "Store Correction" ? (
+                  <input
+                    style={styles.input}
+                    value={reportForm.itemName}
+                    onChange={(e) => setReportForm((current) => ({ ...current, itemName: e.target.value, manualItemEntry: true }))}
+                    placeholder="Store detail to correct"
+                  />
+                ) : (
+                  <div className="scout-report-optional-items">
+                    <strong>Products/items seen</strong>
+                    <p className="compact-subtitle">Add product, quantity, shelf status, price, and notes when available.</p>
+                    <div className="scout-report-items-editor">
+                      {(reportForm.itemsSeen?.length ? reportForm.itemsSeen : [makeBlankReportItem()]).map((item, index) => {
+                        const product = item.catalogProductSnapshot;
+                        const productIdLine = product
+                          ? [product.upc || product.barcode, product.sku || product.externalProductId || product.tcgplayerProductId].filter(Boolean).join(" / ")
+                          : "";
+                        return (
+                          <div className="scout-report-item-editor" key={item.rowId || index}>
+                            <div className="scout-report-item-editor-header">
+                              <strong>Item {index + 1}</strong>
+                              {(reportForm.itemsSeen || []).length > 1 ? (
+                                <button type="button" className="secondary-button" onClick={() => removeReportItem(index)}>Remove</button>
+                              ) : null}
+                            </div>
+                            <label>
+                              Product / item seen
+                              <SmartCatalogSearchBox
+                                value={item.productName || ""}
+                                onChange={(value) => {
+                                  if (index === 0) setReportProductSearch(value);
+                                  updateReportItem(index, {
+                                    productName: value,
+                                    productId: "",
+                                    catalogProductSnapshot: null,
+                                    manualItemEntry: true,
+                                  });
+                                }}
+                                onSelectSuggestion={(suggestion) => selectReportCatalogProductForItem(index, suggestion)}
+                                supabase={supabase}
+                                isSupabaseConfigured={isSupabaseConfigured}
+                                mapRow={mapCatalogRow}
+                                placeholder="Search product, UPC, SKU"
+                                closeSignal={reportProductSearchCloseSignal}
+                                maxSuggestions={5}
+                                suggestionFilter={isSealedScoutCatalogProduct}
+                                money={money}
+                              />
+                            </label>
+                            {product ? (
+                              <div className="scout-selected-product-card scout-selected-product-card--small">
+                                {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">No image</span>}
+                                <div className="scout-selected-product-copy">
+                                  <strong>{scoutCatalogTitle(product)}</strong>
+                                  <small>
+                                    {product.productType || product.catalogType || "Sealed product"}
+                                    {(product.setName || product.expansion) ? ` | ${product.setName || product.expansion}` : ""}
+                                  </small>
+                                  {productIdLine ? <small>UPC/SKU: {productIdLine}</small> : null}
+                                  <small>Market: {money(scoutCatalogMarketValue(product))}</small>
+                                </div>
+                                <span className="status-badge">{scoutCatalogSourceLabel(product)}</span>
+                                <button type="button" className="secondary-button" onClick={() => updateReportItem(index, {
                                   productId: "",
                                   catalogProductSnapshot: null,
                                   manualItemEntry: true,
-                                });
-                              }}
-                              onSelectSuggestion={(suggestion) => selectReportCatalogProductForItem(index, suggestion)}
-                              supabase={supabase}
-                              isSupabaseConfigured={isSupabaseConfigured}
-                              mapRow={mapCatalogRow}
-                              placeholder="Search product, UPC, SKU"
-                              closeSignal={reportProductSearchCloseSignal}
-                              maxSuggestions={5}
-                              suggestionFilter={isSealedScoutCatalogProduct}
-                              money={money}
-                            />
-                          </label>
-                          {product ? (
-                            <div className="scout-selected-product-card scout-selected-product-card--small">
-                              {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">No image</span>}
-                              <div className="scout-selected-product-copy">
-                                <strong>{scoutCatalogTitle(product)}</strong>
-                                <small>
-                                  {product.productType || product.catalogType || "Sealed product"}
-                                  {(product.setName || product.expansion) ? ` | ${product.setName || product.expansion}` : ""}
-                                </small>
-                                {productIdLine ? <small>UPC/SKU: {productIdLine}</small> : null}
-                                <small>Market: {money(scoutCatalogMarketValue(product))}</small>
+                                })}>Clear match</button>
                               </div>
-                              <span className="status-badge">{scoutCatalogSourceLabel(product)}</span>
-                              <button type="button" className="secondary-button" onClick={() => updateReportItem(index, {
-                                productId: "",
-                                catalogProductSnapshot: null,
-                                manualItemEntry: true,
-                              })}>Clear match</button>
+                            ) : null}
+                            <div className="scout-report-item-fields">
+                              <input style={styles.input} value={item.quantity || ""} onChange={(e) => updateReportItem(index, { quantity: e.target.value })} placeholder="Qty or estimate" />
+                              <input style={styles.input} value={item.price || ""} onChange={(e) => updateReportItem(index, { price: e.target.value })} placeholder="Price" />
                             </div>
-                          ) : null}
-                          <div className="scout-report-item-fields">
-                            <input
-                              style={styles.input}
-                              value={item.quantity || ""}
-                              onChange={(e) => updateReportItem(index, { quantity: e.target.value })}
-                              placeholder="Qty or unknown"
-                            />
-                            <input
-                              style={styles.input}
-                              value={item.price || ""}
-                              onChange={(e) => updateReportItem(index, { price: e.target.value })}
-                              placeholder="Price"
-                            />
+                            <input style={styles.input} value={item.note || ""} onChange={(e) => updateReportItem(index, { note: e.target.value })} placeholder="Optional item note" />
                           </div>
-                          <input
-                            style={styles.input}
-                            value={item.note || ""}
-                            onChange={(e) => updateReportItem(index, { note: e.target.value })}
-                            placeholder="Optional item note"
-                          />
-                        </div>
-                      );
-                    })}
-                    <div className="scout-report-item-actions">
-                      <button type="button" style={styles.buttonSoft} onClick={addReportItem}>+ Add another item</button>
-                      <button type="button" style={styles.buttonSoft} onClick={enableManualReportItem}>Continue manual entry</button>
+                        );
+                      })}
+                      <div className="scout-report-item-actions">
+                        <button type="button" style={styles.buttonSoft} onClick={addReportItem}>+ Add another item</button>
+                        <button type="button" style={styles.buttonSoft} onClick={enableManualReportItem}>Continue manual entry</button>
+                      </div>
                     </div>
                   </div>
-                </details>
-              )}
-              <textarea
-                style={styles.textarea}
-                value={reportForm.note}
-                onChange={(e) => setReportForm((current) => ({ ...current, note: e.target.value }))}
-                placeholder="Quick note, limit, or shelf details"
-              />
-              <details className="scout-report-advanced-time">
-                <summary>Advanced: change report time</summary>
-                <div style={{ ...styles.formGrid, marginTop: "12px" }}>
-                  <label style={{ ...styles.tiny, display: "grid", gap: "6px" }}>
-                    Date seen
-                    <input
-                      style={styles.input}
-                      type="date"
-                      value={reportForm.reportDate}
-                      onChange={(e) => setReportForm((current) => ({
-                        ...current,
-                        reportDate: e.target.value,
-                        reportedAt: "",
-                        reportTimeManuallyEdited: true,
-                      }))}
-                    />
-                  </label>
-                  <label style={{ ...styles.tiny, display: "grid", gap: "6px" }}>
+                )}
+                <textarea
+                  style={styles.textarea}
+                  value={reportForm.note}
+                  onChange={(e) => setReportForm((current) => ({ ...current, note: e.target.value }))}
+                  placeholder="Notes, shelf status, employee quote, limit, or context"
+                />
+                <div className="scout-report-detail-grid">
+                  <label>
                     Time seen
                     <input
                       style={styles.input}
@@ -4553,76 +4927,108 @@ async function handleUpdateStore(e) {
                       }))}
                     />
                   </label>
-                  <p style={styles.tiny}>Default is now. Timezone: {reportForm.timezone || getScoutReportNowParts().timezone || "local time"}.</p>
+                  <label>
+                    Confidence
+                    <select
+                      style={styles.input}
+                      value={reportForm.confidence}
+                      onChange={(e) => setReportForm((current) => ({ ...current, confidence: e.target.value }))}
+                    >
+                      {SCOUT_CONFIDENCE_LEVELS.map((confidence) => (
+                        <option key={confidence} value={confidence}>{confidence[0].toUpperCase() + confidence.slice(1)}</option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
-              </details>
-              <details>
-                <summary>Proof / source / visibility</summary>
-                <div style={{ ...styles.formGrid, marginTop: "12px" }}>
-                  <input
-                    style={styles.input}
-                    value={reportForm.reportedBy}
-                    onChange={(e) => setReportForm((current) => ({ ...current, reportedBy: e.target.value }))}
-                    placeholder="Reported by"
-                  />
-                  <select
-                    style={styles.input}
-                    value={reportForm.sourceType}
-                    onChange={(e) => setReportForm((current) => ({ ...current, sourceType: e.target.value }))}
-                  >
-                    {SCOUT_SOURCE_TYPES.map((sourceType) => (
-                      <option key={sourceType} value={sourceType}>{scoutSourceTypeLabel(sourceType)}</option>
+                <div style={styles.row}>
+                  <button type="button" style={styles.buttonPrimary} disabled={!selectedStoreId} onClick={() => setReportWizardStep(5)}>Review report</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => setReportWizardStep(3)}>Change store</button>
+                </div>
+              </section>
+
+              <section className={`scout-report-step-card scout-report-review-card ${reportWizardStep === 5 ? "active" : ""}`}>
+                <div className="scout-report-step-header">
+                  <span>Step 5</span>
+                  <div>
+                    <h3>Review and submit</h3>
+                    <p>Nothing is shared until you submit this report.</p>
+                  </div>
+                </div>
+                <div className="scout-report-review-grid">
+                  <div>
+                    <span>Retailer</span>
+                    <strong>{reportRetailer || (selectedReportStoreCard ? normalizeReportRetailer(getReportRetailer(selectedReportStoreCard.store)) : "Not selected")}</strong>
+                  </div>
+                  <div>
+                    <span>Store location</span>
+                    <strong>{selectedReportStoreCard ? getStoreDisplayName(selectedReportStoreCard.store) : "Not selected"}</strong>
+                  </div>
+                  <div>
+                    <span>Report type</span>
+                    <strong>{selectedReportTypeOption.label}</strong>
+                  </div>
+                  <div>
+                    <span>Shelf status</span>
+                    <strong>{scoutStockStatusLabel(reportForm.stockStatus) || "Not added"}</strong>
+                  </div>
+                  <div>
+                    <span>Products/items</span>
+                    <strong>{reportReviewItems.length ? `${reportReviewItems.length} item${reportReviewItems.length === 1 ? "" : "s"}` : "No item details"}</strong>
+                  </div>
+                  <div>
+                    <span>Notes</span>
+                    <strong>{reportForm.note ? "Added" : "None"}</strong>
+                  </div>
+                </div>
+                {reportReviewItems.length ? (
+                  <div className="scout-report-review-items">
+                    {reportReviewItems.map((item, index) => (
+                      <p key={item.rowId || index}>{summarizeReportItem(item, money)}{item.note ? ` - ${item.note}` : ""}</p>
                     ))}
-                  </select>
-                  <select
-                    style={styles.input}
-                    value={reportForm.confidence}
-                    onChange={(e) => setReportForm((current) => ({ ...current, confidence: e.target.value }))}
-                  >
-                    {SCOUT_CONFIDENCE_LEVELS.map((confidence) => (
-                      <option key={confidence} value={confidence}>{confidence[0].toUpperCase() + confidence.slice(1)}</option>
-                    ))}
-                  </select>
+                  </div>
+                ) : null}
+                <label className="scout-report-visibility-field">
+                  Visibility
                   <select
                     style={styles.input}
                     value={reportForm.visibility}
                     onChange={(e) => setReportForm((current) => ({ ...current, visibility: e.target.value }))}
                   >
-                    {SCOUT_VISIBILITY_LEVELS.map((visibility) => (
-                      <option key={visibility} value={visibility}>{scoutVisibilityLabel(visibility)}</option>
+                    {REPORT_VISIBILITY_OPTIONS.map((visibility) => (
+                      <option key={visibility.value} value={visibility.value}>{visibility.label}</option>
                     ))}
                   </select>
-                  {scoutVisibilityHelper(reportForm.visibility) ? (
-                    <p style={styles.tiny}>{scoutVisibilityHelper(reportForm.visibility)}</p>
-                  ) : null}
-                  <input
-                    style={styles.input}
-                    value={reportForm.imageUrl}
-                    onChange={(e) => setReportForm((current) => ({ ...current, imageUrl: e.target.value }))}
-                    placeholder="Photo, screenshot, or link/text proof"
-                  />
-                  <p style={styles.tiny}>Text screenshots, names, phone numbers, and group chats are not shown to other users unless you choose a cleaned public report.</p>
-                  <label style={styles.tiny}>
-                    <input
-                      type="checkbox"
-                      checked={reportForm.verified}
-                      onChange={(e) => setReportForm((current) => ({ ...current, verified: e.target.checked }))}
-                    />{" "}
-                    Mark as verified by me
-                  </label>
+                  <small>{REPORT_VISIBILITY_OPTIONS.find((visibility) => visibility.value === reportForm.visibility)?.helper || scoutVisibilityHelper(reportForm.visibility)}</small>
+                </label>
+                <details>
+                  <summary>Proof / source / advanced details</summary>
+                  <div style={{ ...styles.formGrid, marginTop: "12px" }}>
+                    <input style={styles.input} value={reportForm.reportedBy} onChange={(e) => setReportForm((current) => ({ ...current, reportedBy: e.target.value }))} placeholder="Reported by" />
+                    <select style={styles.input} value={reportForm.sourceType} onChange={(e) => setReportForm((current) => ({ ...current, sourceType: e.target.value }))}>
+                      {SCOUT_SOURCE_TYPES.map((sourceType) => (
+                        <option key={sourceType} value={sourceType}>{scoutSourceTypeLabel(sourceType)}</option>
+                      ))}
+                    </select>
+                    <input style={styles.input} value={reportForm.imageUrl} onChange={(e) => setReportForm((current) => ({ ...current, imageUrl: e.target.value }))} placeholder="Photo, screenshot, or link/text proof" />
+                    <label style={styles.tiny}>
+                      <input type="checkbox" checked={reportForm.verified} onChange={(e) => setReportForm((current) => ({ ...current, verified: e.target.checked }))} />{" "}
+                      Mark as verified by me
+                    </label>
+                    <p style={styles.tiny}>Text screenshots, names, phone numbers, and group chats are not shown to other users unless you choose a cleaned public report.</p>
+                  </div>
+                </details>
+                <div style={styles.row}>
+                  <button type="submit" value="public" style={styles.buttonPrimary} disabled={!selectedStoreId}>{editingReportId ? "Save Report" : "Submit Report"}</button>
+                  <button type="button" style={styles.buttonSoft} disabled={!selectedStoreId} onClick={(event) => {
+                    if (event.currentTarget.form) {
+                      event.currentTarget.form.dataset.submitMode = "review";
+                      event.currentTarget.form.requestSubmit();
+                    }
+                  }}>Submit for Review</button>
+                  <button type="button" style={styles.buttonSoft} onClick={() => setReportWizardStep(4)}>Back to details</button>
+                  <button type="button" style={styles.buttonSoft} onClick={resetReportForm}>Cancel / Clear</button>
                 </div>
-              </details>
-              <div style={styles.row}>
-                <button type="submit" value="public" style={styles.buttonPrimary}>{editingReportId ? "Save Report" : "Submit Public Report"}</button>
-                <button type="button" style={styles.buttonSoft} onClick={(event) => {
-                  if (event.currentTarget.form) {
-                    event.currentTarget.form.dataset.submitMode = "review";
-                    event.currentTarget.form.requestSubmit();
-                  }
-                }}>Submit for Review</button>
-                <button type="button" style={styles.buttonSoft} onClick={resetReportForm}>Cancel / Clear</button>
-              </div>
-              <p style={styles.tiny}>Use review if you are unsure or missing details.</p>
+              </section>
             </form>
             <h2 style={{ ...styles.sectionTitle, marginTop: "24px" }}>Recent Store Reports</h2>
             {editingReportId ? (

@@ -313,35 +313,50 @@ async function main() {
   });
 
   await step("Scout: add/edit/delete restock report", async () => {
-    await nav("Scout");
-    const noteSelector = 'textarea[placeholder="Quick note, limit, or shelf details"], textarea[placeholder="What did you see?"]';
-    if (await page.locator(noteSelector).count() === 0) {
-      await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+    async function openReportWizard() {
+      await nav("Scout");
+      if (await page.locator("form.scout-report-flow").count() === 0) {
+        await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+      }
+      const form = page.locator("form.scout-report-flow").first();
+      await form.waitFor({ state: "visible", timeout: 10000 });
+      return form;
     }
-    const reportForm = page.locator("form").filter({ has: page.locator(noteSelector) }).first();
-    const optionalItems = reportForm.locator("details.scout-report-optional-items").first();
-    if (await optionalItems.count()) {
-      const open = await optionalItems.evaluate((node) => node.open);
-      if (!open) await optionalItems.locator("summary").click();
+
+    async function chooseSmokeTargetStore(form, reportType = "In stock") {
+      await form.getByRole("button", { name: new RegExp(reportType, "i") }).first().click();
+      await form.getByRole("button", { name: /Target/i }).first().click();
+      const storeSearch = form.getByPlaceholder(/Search Target stores/i).first();
+      if (await storeSearch.count()) {
+        await storeSearch.fill("Smoke Shared Target");
+      }
+      const smokeStoreCard = form.locator(".scout-report-store-card").filter({ hasText: "Smoke Shared Target" }).first();
+      if (await smokeStoreCard.count()) {
+        await smokeStoreCard.getByRole("button", { name: "Report here" }).click();
+      } else {
+        await form.getByRole("button", { name: "Report here" }).first().click();
+      }
     }
+
+    const noteSelector = 'textarea[placeholder="Notes, shelf status, employee quote, limit, or context"]';
+    const reportForm = await openReportWizard();
+    await chooseSmokeTargetStore(reportForm, "In stock");
     await reportForm.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB");
-    await reportForm.getByPlaceholder("Qty or unknown").first().fill("2");
+    await reportForm.getByPlaceholder("Qty or estimate").first().fill("2");
     await reportForm.locator(noteSelector).fill("Two ETBs on the shelf.");
-    await reportForm.locator('button[type="submit"]').click();
+    await reportForm.getByRole("button", { name: "Review report" }).click();
+    await reportForm.getByRole("button", { name: "Submit Report" }).click();
     await assertVisibleText("Smoke ETB");
 
     const reportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB" }).first();
     await reportCard.waitFor({ state: "visible", timeout: 10000 });
     await overflowAction(reportCard, "Edit");
-    const editReportPanel = page.locator("form").filter({ has: page.locator(noteSelector) }).first();
-    const editOptionalItems = editReportPanel.locator("details.scout-report-optional-items").first();
-    if (await editOptionalItems.count()) {
-      const editOpen = await editOptionalItems.evaluate((node) => node.open);
-      if (!editOpen) await editOptionalItems.locator("summary").click();
-    }
+    const editReportPanel = page.locator("form.scout-report-flow").first();
+    await editReportPanel.getByRole("button", { name: "Back to details" }).click();
     await editReportPanel.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB Edited");
     await editReportPanel.locator(noteSelector).fill("Three ETBs after edit.");
-    await editReportPanel.locator('button[type="submit"]').click();
+    await editReportPanel.getByRole("button", { name: "Review report" }).click();
+    await editReportPanel.getByRole("button", { name: "Save Report" }).click();
     await assertVisibleText("Smoke ETB Edited");
 
     const editedReportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB Edited" }).first();
@@ -350,13 +365,12 @@ async function main() {
     await page.getByRole("button", { name: "Delete Report" }).click();
     await assert.equal(await page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB Edited" }).count(), 0);
 
-    if (await page.locator(noteSelector).count() === 0) {
-      await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
-    }
-    const quickReportForm = page.locator("form").filter({ has: page.locator(noteSelector) }).first();
+    const quickReportForm = await openReportWizard();
+    await chooseSmokeTargetStore(quickReportForm, "In stock");
     await quickReportForm.getByRole("button", { name: "Low stock" }).click();
     await quickReportForm.locator(noteSelector).fill("Smoke quick report with limit 2 posted.");
-    await quickReportForm.locator('button[type="submit"]').click();
+    await quickReportForm.getByRole("button", { name: "Review report" }).click();
+    await quickReportForm.getByRole("button", { name: "Submit Report" }).click();
     await assertVisibleText("Low stock");
     await assertVisibleText("Smoke quick report with limit 2 posted.");
     const quickReportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke quick report with limit 2 posted." }).first();
@@ -468,8 +482,21 @@ async function main() {
     await screenshotPanel.getByPlaceholder("Source notes / group name").fill("757 Pokemon Finds");
     await screenshotPanel.getByPlaceholder("Notes from the screenshot").fill("Manual screenshot review save.");
     await screenshotPanel.getByRole("button", { name: "Copy to Report Review" }).click();
-    const reportForm = page.locator("form").filter({ has: page.locator('textarea[placeholder="Quick note, limit, or shelf details"], textarea[placeholder="What did you see?"]') }).first();
-    await reportForm.locator('button[type="submit"]').click();
+    const reportForm = page.locator("form.scout-report-flow").first();
+    await reportForm.getByRole("button", { name: /In stock/i }).first().click();
+    await reportForm.getByRole("button", { name: /Target/i }).first().click();
+    const storeSearch = reportForm.getByPlaceholder(/Search Target stores/i).first();
+    if (await storeSearch.count()) {
+      await storeSearch.fill("Smoke Shared Target");
+    }
+    const smokeStoreCard = reportForm.locator(".scout-report-store-card").filter({ hasText: "Smoke Shared Target" }).first();
+    if (await smokeStoreCard.count()) {
+      await smokeStoreCard.getByRole("button", { name: "Report here" }).click();
+    } else {
+      await reportForm.getByRole("button", { name: "Report here" }).first().click();
+    }
+    await reportForm.getByRole("button", { name: "Review report" }).click();
+    await reportForm.getByRole("button", { name: "Submit Report" }).click();
     await assertVisibleText("Smoke Screenshot ETB");
     await assertVisibleText("Manual screenshot review save.");
   });

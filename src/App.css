@@ -13885,6 +13885,347 @@ button.home-metric-card small,
   min-width: 0;
 }
 
+.scout-report-flow,
+.scout-report-step-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.scout-report-flow {
+  margin-top: 14px;
+}
+
+.scout-report-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.scout-report-step-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.scout-report-step-pill span {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--color-heading);
+  font-size: 0.72rem;
+}
+
+.scout-report-step-pill.active,
+.scout-report-step-pill.complete {
+  border-color: rgba(20, 184, 166, 0.22);
+  background: rgba(20, 184, 166, 0.1);
+  color: var(--color-secondary);
+}
+
+.scout-report-step-card {
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+}
+
+.scout-report-step-card:not(.active) {
+  display: none;
+}
+
+.scout-report-step-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.scout-report-step-header > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.12);
+  color: #9a3412;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.scout-report-step-header h3,
+.scout-report-step-header p {
+  margin: 0;
+}
+
+.scout-report-step-header h3 {
+  font-size: 1.02rem;
+  line-height: 1.2;
+}
+
+.scout-report-step-header p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.scout-report-type-grid,
+.scout-report-retailer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 9px;
+  min-width: 0;
+}
+
+.scout-report-choice-card,
+.scout-report-retailer-card,
+.scout-report-store-card,
+.scout-report-empty-step,
+.scout-report-location-prompt {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.scout-report-choice-card,
+.scout-report-retailer-card {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 5px;
+  min-height: 82px;
+  padding: 12px;
+  color: var(--color-heading);
+  text-align: left;
+  cursor: pointer;
+}
+
+.scout-report-choice-card strong,
+.scout-report-retailer-card strong {
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.scout-report-choice-card span,
+.scout-report-retailer-card small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.scout-report-choice-card.selected,
+.scout-report-retailer-card.selected,
+.scout-report-store-card.selected {
+  border-color: rgba(20, 184, 166, 0.45);
+  background: rgba(240, 253, 250, 0.88);
+  box-shadow: 0 14px 28px rgba(20, 184, 166, 0.12);
+}
+
+.scout-report-retailer-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(249, 115, 22, 0.16));
+  color: var(--color-heading);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.scout-report-location-prompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: rgba(239, 246, 255, 0.76);
+}
+
+.scout-report-location-prompt strong,
+.scout-report-location-prompt p {
+  margin: 0;
+}
+
+.scout-report-location-prompt p {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.scout-report-location-actions,
+.scout-report-store-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.scout-report-store-tools,
+.scout-report-detail-grid,
+.scout-report-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.scout-report-store-list {
+  display: grid;
+  gap: 10px;
+  max-height: min(52vh, 560px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.scout-report-store-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.scout-report-store-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.scout-report-store-main strong,
+.scout-report-store-main p {
+  margin: 0;
+}
+
+.scout-report-store-main p,
+.scout-report-store-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.scout-report-store-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.scout-report-store-meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.scout-store-temperature {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.scout-store-temperature-watching {
+  background: rgba(14, 165, 233, 0.12);
+  color: #075985;
+}
+
+.scout-store-temperature-heating-up,
+.scout-store-temperature-hot {
+  background: rgba(249, 115, 22, 0.13);
+  color: #9a3412;
+}
+
+.scout-store-temperature-confirmed-drop {
+  background: rgba(22, 163, 74, 0.14);
+  color: #166534;
+}
+
+.scout-report-empty-step {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  background: rgba(248, 250, 252, 0.86);
+}
+
+.scout-report-empty-step strong,
+.scout-report-empty-step p {
+  margin: 0;
+}
+
+.scout-report-empty-step p {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.scout-report-detail-grid label,
+.scout-report-visibility-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.scout-report-review-grid > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.scout-report-review-grid span,
+.scout-report-visibility-field small {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.scout-report-review-grid strong {
+  min-width: 0;
+  color: var(--color-heading);
+  font-size: 0.88rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.scout-report-review-items {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(240, 253, 250, 0.66);
+}
+
+.scout-report-review-items p {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.82rem;
+}
+
 .scout-quick-report-panel {
   display: grid;
   gap: 10px;
@@ -14312,6 +14653,63 @@ button.home-metric-card small,
 
   .scout-stock-status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scout-report-stepper {
+    grid-template-columns: repeat(5, max-content);
+    overflow-x: auto;
+    justify-content: start;
+    scroll-snap-type: x mandatory;
+  }
+
+  .scout-report-step-pill {
+    min-width: 92px;
+    scroll-snap-align: start;
+  }
+
+  .scout-report-type-grid,
+  .scout-report-retailer-grid,
+  .scout-report-store-tools,
+  .scout-report-detail-grid,
+  .scout-report-review-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-report-step-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .scout-report-step-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-report-location-prompt {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-report-location-actions,
+  .scout-report-store-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+
+  .scout-report-location-actions button,
+  .scout-report-store-actions button,
+  .scout-report-store-actions a {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .scout-report-store-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-report-store-list {
+    max-height: none;
+    overflow: visible;
   }
 
   .scout-photo-first-button {
