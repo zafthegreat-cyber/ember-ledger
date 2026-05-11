@@ -3,6 +3,7 @@ import {
   detectCatalogSearchMode,
   getCachedCatalogRecommendations,
   getCatalogRecommendations,
+  isCatalogSearchDebugEnabled,
   normalizeCatalogQuery,
 } from "../services/pokemonCatalogSearch";
 
@@ -48,10 +49,13 @@ export default function SmartCatalogSearchBox({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [lastTiming, setLastTiming] = useState(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const requestId = useRef(0);
+  const abortRef = useRef(null);
   const mapRowRef = useRef(mapRow);
   const cleanedValue = normalizeCatalogQuery(value);
+  const showTiming = isCatalogSearchDebugEnabled();
 
   useEffect(() => {
     mapRowRef.current = mapRow;
@@ -76,6 +80,9 @@ export default function SmartCatalogSearchBox({
 
     const currentRequestId = requestId.current + 1;
     requestId.current = currentRequestId;
+    abortRef.current?.abort?.();
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    abortRef.current = controller;
 
     const cached = getCachedCatalogRecommendations({
       query: value,
@@ -93,11 +100,11 @@ export default function SmartCatalogSearchBox({
       setErrorMessage("");
       setOpen(true);
       setActiveIndex(nextSuggestions.length ? 0 : -1);
-      return;
+      setLastTiming({ elapsedMs: cached.elapsedMs, sourceName: cached.sourceName, cacheState: "hit", searchPhase: cached.searchPhase });
     }
 
-    setSuggestions([]);
-    setLoading(true);
+    if (!cached) setSuggestions([]);
+    setLoading(!cached);
     setErrorMessage("");
     setOpen(true);
     setActiveIndex(-1);
@@ -112,6 +119,7 @@ export default function SmartCatalogSearchBox({
           dataFilter,
           mapRow: mapRowRef.current,
           limit: maxSuggestions,
+          signal: controller?.signal,
         });
         if (requestId.current !== currentRequestId) return;
         const filteredSuggestions = typeof suggestionFilter === "function"
@@ -122,8 +130,10 @@ export default function SmartCatalogSearchBox({
         setOpen(true);
         setActiveIndex(nextSuggestions.length ? 0 : -1);
         setErrorMessage("");
+        setLastTiming({ elapsedMs: result.elapsedMs, sourceName: result.sourceName, cacheState: result.cached ? "hit" : result.cacheState, searchPhase: result.searchPhase });
       } catch (error) {
         if (requestId.current !== currentRequestId) return;
+        if (error?.name === "AbortError") return;
         setSuggestions([]);
         setOpen(true);
         setErrorMessage(error?.message || "Catalog search is unavailable. Try again.");
@@ -133,7 +143,10 @@ export default function SmartCatalogSearchBox({
       }
     }, 300);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      controller?.abort?.();
+    };
   }, [cleanedValue, dataFilter, isSupabaseConfigured, maxSuggestions, productGroup, supabase, suggestionFilter, value]);
 
   const groupedSuggestions = useMemo(() => {
@@ -229,6 +242,9 @@ export default function SmartCatalogSearchBox({
         >
           {loading ? <div className="smart-catalog-suggestion-status">Finding smart matches...</div> : null}
           {!loading && errorMessage ? <div className="smart-catalog-suggestion-status error">{errorMessage}</div> : null}
+          {showTiming && !loading && !errorMessage && lastTiming?.elapsedMs ? (
+            <div className="smart-catalog-suggestion-status">Search completed in {lastTiming.elapsedMs}ms via {lastTiming.sourceName || "catalog"} ({lastTiming.cacheState || "miss"}).</div>
+          ) : null}
           {!loading && !errorMessage && suggestions.length === 0 ? (
             <div className="smart-catalog-suggestion-status smart-catalog-empty-state">
               <span>{emptyMessage}</span>

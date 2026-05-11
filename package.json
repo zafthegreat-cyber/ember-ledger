@@ -5,6 +5,7 @@
     "start": "vite preview",
     "preview": "vite preview",
     "smoke:beta": "node scripts/beta-smoke.cjs",
+    "smoke:catalog-search": "node --use-system-ca scripts/smoke-catalog-search.cjs",
     "verify:phase2-supabase": "node scripts/verify-phase2-supabase.cjs",
     "verify:phase2:supabase": "node scripts/verify-phase2-supabase.cjs",
     "backfill:normalized-catalog": "node scripts/backfill-normalized-catalog-batches.cjs",

@@ -49,7 +49,7 @@ import {
   updateSuggestionRecord,
 } from "./utils/suggestionReviewUtils";
 import { MARKET_PRICE_CACHE_KEY, loadPriceCache, savePriceCache, updateCachedMarketPrice } from "./services/priceCacheService";
-import { CATALOG_PAGE_SIZE, hasCatalogSearchCriteria, searchPokemonCatalog } from "./services/pokemonCatalogSearch";
+import { CATALOG_PAGE_SIZE, detectCatalogSearchMode, hasCatalogSearchCriteria, searchPokemonCatalog } from "./services/pokemonCatalogSearch";
 import {
   getBestAvailableMarketPrice,
   refreshCatalogMarketItems,
@@ -2950,6 +2950,9 @@ export default function App() {
 
     const requestId = supabaseCatalogRequestId.current + 1;
     supabaseCatalogRequestId.current = requestId;
+    supabaseCatalogAbortRef.current?.abort?.();
+    const searchController = typeof AbortController !== "undefined" ? new AbortController() : null;
+    supabaseCatalogAbortRef.current = searchController;
     const page = Math.max(1, Number(options.page || supabaseCatalogStatus.page || 1));
     const mode = options.mode || "general";
     const force = Boolean(options.forceSearch);
@@ -3020,9 +3023,11 @@ export default function App() {
         page,
         pageSize,
         force,
+        signal: searchController?.signal,
       });
     } catch (error) {
       if (requestId !== supabaseCatalogRequestId.current) return;
+      if (error?.name === "AbortError") return;
       setCatalogPagedResultIds([]);
       setSupabaseCatalogStatus({
         loading: false,
@@ -3154,6 +3159,36 @@ export default function App() {
       }));
     }
   }, [activeTab, tideTradrSubTab, catalogSearch, isSupabaseConfigured, supabase]);
+
+  useEffect(() => {
+    if (activeTab !== "market" || tideTradrSubTab !== "overview") return;
+    if (!catalogSearchHasRun) return;
+    const query = submittedCatalogSearch || catalogSearch;
+    const barcode = submittedCatalogBarcodeSearch || catalogBarcodeSearch;
+    const timer = window.setTimeout(() => {
+      loadImportedPokemonCatalog(query, {
+        page: 1,
+        pageSize: catalogPageSize,
+        mode: barcode ? "barcode" : "general",
+        barcode,
+        forceSearch: true,
+      });
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [
+    activeTab,
+    tideTradrSubTab,
+    catalogSearchHasRun,
+    submittedCatalogSearch,
+    submittedCatalogBarcodeSearch,
+    catalogKindFilter,
+    catalogTypeFilter,
+    catalogSetFilter,
+    catalogDataFilter,
+    catalogRarityFilter,
+    catalogSort,
+    catalogPageSize,
+  ]);
 
   useEffect(() => {
     let frameId = 0;
@@ -5868,17 +5903,59 @@ export default function App() {
     handleCatalogScanMatch(lookup);
   }
 
-  function handleCatalogScanMatch(value) {
-    if (!String(value || "").trim()) {
+  async function handleCatalogScanMatch(value) {
+    const lookupValue = String(value || "").trim();
+    if (!lookupValue) {
       setScanMessage("Scan a barcode or enter a product name before searching.");
       setScanReview(null);
       setScanMatches([]);
       return;
     }
-    setScanInput(value);
-    const matches = getBestCatalogMatches(value, catalogProducts);
+    setScanInput(lookupValue);
+
+    let matches = [];
+    const mode = detectCatalogSearchMode(lookupValue);
+    const exactIdentifier = ["barcode", "id"].includes(mode);
+    if (isSupabaseConfigured && supabase && lookupValue.length >= 2) {
+      setScanMessage("Searching TideTradr catalog...");
+      try {
+        const result = await searchPokemonCatalog({
+          supabase,
+          query: lookupValue,
+          barcode: exactIdentifier ? lookupValue : "",
+          mode: exactIdentifier ? "barcode" : mode,
+          page: 1,
+          pageSize: 8,
+          force: true,
+        });
+        matches = (result.rows || []).map((row, index) => {
+          const item = mapCatalog(row);
+          const exactMatch = exactIdentifier && [item.barcode, item.upc, item.sku, item.externalProductId, item.tcgplayerProductId]
+            .filter(Boolean)
+            .some((candidate) => String(candidate).toLowerCase() === lookupValue.toLowerCase());
+          return {
+            item,
+            score: exactMatch ? 1000 : Math.max(400, 850 - index * 40),
+            confidencePercent: exactMatch ? 98 : Math.max(72, 92 - index * 5),
+            explanation: exactMatch ? "Exact catalog identifier match" : `Fast ${result.sourceName || "catalog"} match`,
+            reason: result.searchPhase || result.searchMode || "catalog search",
+          };
+        });
+      } catch (error) {
+        setScanMessage(error?.message ? `Catalog lookup unavailable. Using local fallback: ${error.message}` : "Catalog lookup unavailable. Using local fallback.");
+      }
+    }
+
+    if (!matches.length) {
+      matches = getBestCatalogMatches(lookupValue, catalogProducts);
+    }
     setScanMatches(matches);
-    setScanReview(buildScanReview(value, matches, scanDestination));
+    setScanReview(buildScanReview(lookupValue, matches, scanDestination));
+    if (matches.length) {
+      setScanMessage(isSupabaseConfigured && supabase ? "Catalog match ready for review." : "Local catalog match ready for review.");
+    } else {
+      setScanMessage("No match found. Try a product name, set, UPC, SKU, or add manually.");
+    }
   }
 
   function confirmScanMatch(productId) {
@@ -7151,7 +7228,7 @@ function mapCatalog(row) {
   async function loadCatalog() {
     let result = await supabase
       .from("catalog_search_lightweight")
-      .select("id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,set_name,product_type,barcode,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,expansion,product_line,card_number,rarity,is_sealed,identifier_search,variant_names,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at")
+      .select("id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,set_name,product_type,barcode,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,expansion,product_line,card_number,rarity,is_sealed,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at")
       .order("last_verified_at", { ascending: false, nullsFirst: false })
       .order("name", { ascending: true })
       .limit(50);
@@ -11060,12 +11137,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const pagedForgeInventory = getPagedItems(sortedFilteredItems, forgeInventoryPage, LONG_LIST_PAGE_SIZE);
   const pagedMarketWatchItems = getPagedItems(workspaceWatchlist, marketWatchPage, LONG_LIST_PAGE_SIZE);
 
-  const filteredCatalogProducts = catalogProducts.filter((product) => {
+  const catalogPagedResultSet = new Set(catalogPagedResultIds.map((id) => String(id)));
+  const catalogProductsForFiltering = catalogSearchHasRun && catalogPagedResultSet.size
+    ? catalogPagedResultIds
+        .map((id) => catalogProducts.find((product) => String(product.id) === String(id)))
+        .filter(Boolean)
+    : catalogProducts;
+  const filteredCatalogProducts = catalogProductsForFiltering.filter((product) => {
     const search = (catalogSearchHasRun ? submittedCatalogSearch : "").toLowerCase();
+    const serverSearchResult = catalogSearchHasRun && product.sourceType === "supabase";
     const marketInfo = getTideTradrMarketInfo(product);
     const owned = items.some((item) => String(item.catalogProductId || "") === String(product.id));
     const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
-    const matchesSearch =
+    const matchesSearch = serverSearchResult ||
       String(product.name || "").toLowerCase().includes(search) ||
       String(product.productName || "").toLowerCase().includes(search) ||
       String(product.cardName || "").toLowerCase().includes(search) ||
@@ -11136,6 +11220,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       (catalogHistoryFilter === "Low volatility" && product.historyVolatility === "Low Volatility");
     const matchesDataFilter =
       catalogDataFilter === "All" ||
+      serverSearchResult ||
       (catalogDataFilter === "Has market price" && marketInfo.currentMarketValue > 0) ||
       (catalogDataFilter === "Missing price" && marketInfo.currentMarketValue <= 0) ||
       (catalogDataFilter === "Has image" && Boolean(catalogImage(product)));
@@ -11182,7 +11267,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     selectedCatalogDetailVariants[0] ||
     null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
-  const catalogPagedResultSet = new Set(catalogPagedResultIds.map((id) => String(id)));
   const tideTradrCatalogResults = catalogSearchHasRun
     ? (catalogPagedResultSet.size
         ? catalogPagedResultIds
@@ -11220,12 +11304,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function getCatalogPickerResults(query, limit = 12) {
     const cleanQuery = String(query || "").trim();
     if (!cleanQuery) return [];
+    const pickerProducts = catalogPagedResultSet.size
+      ? catalogPagedResultIds
+          .map((id) => catalogProducts.find((product) => String(product.id) === String(id)))
+          .filter(Boolean)
+      : catalogProducts.slice(0, Math.max(limit * 4, 50));
 
-    const scannedMatches = getBestCatalogMatches(cleanQuery, catalogProducts)
+    const scannedMatches = getBestCatalogMatches(cleanQuery, pickerProducts)
       .map((match) => ({ ...match.item, _matchReason: match.explanation || match.reason || "Best catalog match" }));
     const normalizedQuery = cleanQuery.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
-    const simpleMatches = catalogProducts
+    const simpleMatches = pickerProducts
       .map((product) => {
         const fields = [
           catalogTitle(product),
@@ -11734,6 +11823,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function clearCatalogSearch() {
     supabaseCatalogRequestId.current += 1;
+    supabaseCatalogAbortRef.current?.abort?.();
     closeCatalogSuggestions();
     setCatalogSearch("");
     setSubmittedCatalogSearch("");
@@ -14309,7 +14399,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 seed: {
                   itemName: vaultCatalogSearchQuery,
                   catalogSearchQuery: vaultCatalogSearchQuery,
-                  destinations: { vault: true, wishlist: false, forge: false, tidetradr: false },
+                  destinations: { vault: false, wishlist: false, forge: false, tidetradr: false },
                 },
               })}>
                 Continue manual entry

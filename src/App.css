@@ -3638,6 +3638,32 @@ button.overflow-menu-delete:hover {
   margin-top: 10px;
 }
 
+.catalog-market-source-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.catalog-market-source-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.catalog-market-source-row span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.catalog-market-source-row span:first-of-type {
+  grid-column: 1 / -1;
+}
+
 .catalog-source-details > a.secondary-button {
   margin-top: 10px;
 }
