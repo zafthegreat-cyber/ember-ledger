@@ -540,7 +540,7 @@ async function main() {
   await step("Receipt: draft/verify/submit expense-only report", async () => {
     await nav("Vault");
     await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
-    await page.locator(".flow-modal").getByRole("button", { name: /Scan to Vault/ }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Scan \/ Review Item|Scan to Vault/ }).click();
     await page.locator(".flow-modal").getByRole("button", { name: /Open Scanner/ }).click();
     await page.getByRole("button", { name: "Scan Receipt" }).click();
     const receiptModal = page.locator(".receipt-scan-modal").first();

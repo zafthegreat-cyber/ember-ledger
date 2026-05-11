@@ -529,9 +529,11 @@ const BLANK_QUICK_FIND_FORM = {
 };
 const SCAN_DESTINATIONS = [
   { value: "none", label: "Choose after review" },
-  { value: "vault", label: "The Vault" },
+  { value: "vault", label: "Vault" },
   { value: "forge", label: "Forge" },
-  { value: "wishlist", label: "Add to Wishlist" },
+  { value: "wishlist", label: "Wishlist" },
+  { value: "expense_only", label: "Expense only" },
+  { value: "ignore", label: "Ignore / do not save" },
   { value: "tidetradr", label: "TideTradr lookup" },
   { value: "deal_finder", label: "Deal Finder" },
   { value: "watchlist", label: "Watchlist" },
@@ -543,15 +545,46 @@ const RECEIPT_REVIEW_DESTINATIONS = [
   { value: "vault", label: "Vault" },
   { value: "forge", label: "Forge" },
   { value: "expense_only", label: "Expense Only" },
+  { value: "ignore", label: "Ignore / Do not import" },
   { value: "wishlist", label: "Wishlist" },
 ];
 const RECEIPT_DESTINATION_LABELS = {
   expense_only: "Expense only",
+  ignore: "Ignore",
   forge: "Forge",
   vault: "Vault",
   wishlist: "Wishlist",
 };
+const SCANNER_CORRECTION_REASONS = [
+  "Wrong item",
+  "Wrong variant",
+  "Wrong quantity",
+  "Wrong price",
+  "Wrong UPC/SKU",
+  "Wrong condition",
+  "Missing item",
+  "Missing image",
+];
 const RECEIPT_ITEM_CONDITIONS = ["Sealed", "Opened", "Damaged", "Unknown"];
+
+function scannerConfidenceLabel(confidence) {
+  const score = Number(confidence || 0);
+  if (score >= 85) return "High match";
+  if (score >= 60) return "Possible match";
+  return "Needs review";
+}
+
+function scannerConfidenceClass(confidence) {
+  const score = Number(confidence || 0);
+  if (score >= 85) return "high";
+  if (score >= 60) return "possible";
+  return "review";
+}
+
+function scannerDestinationLabel(destination) {
+  return SCAN_DESTINATIONS.find((entry) => entry.value === destination)?.label || destination || "Review";
+}
+
 const USER_TYPES = ["collector", "seller", "scout", "budget", "all_in_one"];
 const EXPENSE_CATEGORIES = [
   "Inventory/Product Cost",
@@ -2525,7 +2558,7 @@ export default function App() {
             <button type="button" className="secondary-button" onClick={() => { setMenuSectionsOpen({ settings: true }); setMenuOpen(true); }}>Notifications</button>
           </div>
         </div>
-        {phase2SyncStatus.source === "supabase" && (
+        {(
           phase2RecentDeals.length ||
           phase2RecentScannerIntakes.length ||
           phase2RecentReceipts.length ||
@@ -2546,9 +2579,9 @@ export default function App() {
               <button type="button" className="home-list-row" key={`scan-${session.id}`} onClick={() => openInventoryScanner("manual")}>
                 <span>
                   <strong>{session.extractedClues?.itemName || session.rawValue || "Saved scanner intake"}</strong>
-                  <small>Scanner Intake | {session.destination || "review"} | Cloud synced {session.createdAt ? new Date(session.createdAt).toLocaleDateString() : ""}</small>
+                  <small>Scanner Intake | {session.destination || "review"} | {phase2WorkflowSyncLabel} {session.createdAt ? new Date(session.createdAt).toLocaleDateString() : ""}</small>
                 </span>
-                <b>Synced</b>
+                <b>{phase2SyncStatus.source === "supabase" ? "Synced" : "Local"}</b>
               </button>
             ))}
             {phase2RecentReceipts.slice(0, 1).map((receipt) => (
@@ -2556,7 +2589,7 @@ export default function App() {
                 <span>
                   <strong>{receipt.merchant || "Saved receipt"}</strong>
                   <small>
-                    Receipt Draft | {receipt.purchasedAt ? new Date(receipt.purchasedAt).toLocaleDateString() : "No date"} | {phase2ReceiptLineItemCounts[receipt.id] || 0} lines | {phase2ReceiptDestinationSummaryText(receipt.id)} | Cloud synced
+                    Receipt Draft | {receipt.purchasedAt ? new Date(receipt.purchasedAt).toLocaleDateString() : "No date"} | {phase2ReceiptLineItemCounts[receipt.id] || 0} lines | {phase2ReceiptDestinationSummaryText(receipt.id)} | {phase2WorkflowSyncLabel}
                   </small>
                 </span>
                 <b>{money(receipt.total)}</b>
@@ -3612,6 +3645,9 @@ export default function App() {
   const phase2RecentDeals = phase2Data.dealFinderSessions || [];
   const phase2RecentScannerIntakes = phase2Data.scannerIntakeSessions || [];
   const phase2RecentReceipts = phase2Data.receiptRecords || [];
+  const phase2WorkflowSyncLabel = phase2SyncStatus.source === "supabase"
+    ? "Cloud synced"
+    : phase2SyncStatus.label || "Local only mode";
   const phase2ReceiptLineItemCounts = (phase2Data.receiptLineItems || []).reduce((acc, item) => {
     if (item.receiptId) acc[item.receiptId] = (acc[item.receiptId] || 0) + 1;
     return acc;
@@ -6932,115 +6968,6 @@ export default function App() {
     setScanReview(buildScanReview(scanReview?.rawValue || scanInput || match.item.name, [match, ...scanMatches.filter((candidate) => String(candidate.item.id) !== String(productId))], scanDestination));
   }
 
-  function scannedProductToItem(product, destination) {
-    const marketInfo = getTideTradrMarketInfo(product || {});
-    const defaultPurchaser = purchaserOptions[0] || { id: "", name: "Zena" };
-    const isVaultDestination = destination === "vault" || destination === "wishlist";
-    const workspaceId = defaultWorkspaceIdForDestination(destination === "wishlist" ? "wishlist" : destination === "forge" ? "forge" : "vault");
-    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
-    return applyWorkspaceToRecord({
-      ...blankItem,
-      id: makeId(isVaultDestination ? "scan-vault" : "scan-forge"),
-      itemName: product?.name || product?.productName || product?.cardName || scanReview?.itemName || "Scanned item",
-      name: product?.name || product?.productName || product?.cardName || scanReview?.itemName || "Scanned item",
-      destinationScope: [destination === "wishlist" ? "wishlist" : destination === "vault" ? "vault" : "forge"],
-      recordType: destination === "wishlist" ? "wishlist_item" : destination === "vault" ? "vault_item" : "forge_inventory",
-      businessInventory: destination === "forge",
-      isWishlist: destination === "wishlist",
-      buyer: defaultPurchaser.name,
-      purchaserId: defaultPurchaser.id,
-      purchaserName: defaultPurchaser.name,
-      category: product?.category || "Pokemon",
-      quantity: 1,
-      unitCost: 0,
-      salePrice: marketInfo.currentMarketValue || 0,
-      plannedSalePrice: marketInfo.currentMarketValue || 0,
-      itemImage: product ? getCatalogImage(product) : scanReview?.imageUrl || "",
-      itemImageSource: product?.imageSource || getDefaultImageSource(product || {}),
-      itemImageStatus: product?.imageStatus || getDefaultImageStatus(product || {}),
-      itemImageSourceUrl: product?.imageSourceUrl || product?.marketUrl || "",
-      itemImageLastUpdated: product?.imageLastUpdated || product?.lastUpdated || "",
-      itemImageNeedsReview: Boolean(product?.imageNeedsReview),
-      barcode: scanReview?.upc || product?.barcode || "",
-      upc: scanReview?.upc || product?.barcode || "",
-      sku: scanReview?.sku || product?.sku || "",
-      catalogProductId: product?.id || "",
-      tideTradrProductId: product?.id || "",
-      catalogProductName: product?.name || "",
-      externalProductId: product?.externalProductId || "",
-      tideTradrUrl: product?.marketUrl || "",
-      marketPrice: marketInfo.currentMarketValue || 0,
-      marketValue: marketInfo.currentMarketValue || 0,
-      lowPrice: product?.lowPrice || 0,
-      midPrice: product?.midPrice || marketInfo.currentMarketValue || 0,
-      highPrice: product?.highPrice || 0,
-      msrpPrice: marketInfo.msrp || product?.msrpPrice || 0,
-      msrp: marketInfo.msrp || product?.msrpPrice || 0,
-      setCode: product?.setCode || "",
-      expansion: product?.setName || product?.expansion || "",
-      setName: product?.setName || product?.expansion || "",
-      productLine: product?.productLine || product?.series || "",
-      productType: product?.catalogType === "card" ? "Individual Card" : product?.productType || "",
-      packCount: product?.packCount || 0,
-      status: isVaultDestination ? (destination === "wishlist" ? "Wishlist" : product?.catalogType === "sealed" ? "Sealed / Holding" : "Personal Collection") : "In Stock",
-      vaultStatus: isVaultDestination ? (destination === "wishlist" ? "wishlist" : product?.catalogType === "sealed" ? "sealed" : "personal_collection") : "",
-      source: "scanner",
-      sourceType: "Barcode scan",
-      sourceLocation: "scanner",
-      acquisitionType: "scanned",
-      storageLocation: "",
-      condition: product?.catalogType === "card" ? "Unknown" : "",
-      sealedCondition: product?.catalogType === "sealed" ? "Sealed" : "",
-      conditionNotes: "",
-      scanId: scanReview?.scanId || "",
-      notes: `Added from scanner review. Raw scan: ${scanReview?.rawValue || "manual"}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }, workspace);
-  }
-
-  function addScannedItemToCollection(destination) {
-    const product = catalogProducts.find((item) => String(item.id) === String(scanReview?.matchedCatalogItemId));
-    if (!product) {
-      setScanMessage("No catalog match found. Search TideTradr manually or submit the item for review.");
-      return;
-    }
-    const nextItem = scannedProductToItem(product, destination);
-    if (destination === "vault" || destination === "wishlist") {
-      const duplicate = findVaultDuplicate(nextItem);
-      if (duplicate) {
-        setVaultPotentialDuplicate({ candidate: nextItem, duplicate, fromScanner: true });
-        setShowInventoryScanner(false);
-        return;
-      }
-      createVaultItemRecord(nextItem);
-      setScanMessage(destination === "wishlist" ? "Scanned item added to Wishlist." : "Scanned item added to The Vault.");
-      setShowInventoryScanner(false);
-      setScanReview(null);
-      setScanMatches([]);
-      setScanInput("");
-      setActiveTab("vault");
-      setVaultToast("Item added to Vault.");
-      return;
-    }
-    const existing = product ? items.find((item) =>
-      String(item.catalogProductId || "") === String(product.id) &&
-      (destination === "vault" ? Boolean(item.vaultStatus) : !item.vaultStatus)
-    ) : null;
-    if (existing && window.confirm("This item already exists. Add quantity to the existing item instead of creating a new entry?")) {
-      setItems((current) => current.map((item) => item.id === existing.id ? { ...item, quantity: Number(item.quantity || 0) + 1, updatedAt: new Date().toISOString() } : item));
-    } else {
-      setItems((current) => [nextItem, ...current]);
-    }
-    setScanMessage(destination === "wishlist" ? "Scanned item added to Wishlist." : destination === "vault" ? "Scanned item added to The Vault." : "Scanned item added to Forge.");
-    setShowInventoryScanner(false);
-    setScanReview(null);
-    setScanMatches([]);
-    setScanInput("");
-    setActiveTab(destination === "vault" || destination === "wishlist" ? "vault" : "inventory");
-    if (destination === "vault" || destination === "wishlist") setVaultToast("Vault item saved.");
-  }
-
   async function persistScannerIntake(destinationOverride = "", status = "saved") {
     if (!scanReview) return null;
     const explicitDestination = typeof destinationOverride === "string" ? destinationOverride : "";
@@ -7050,6 +6977,8 @@ export default function App() {
       pinned: "wishlist",
       watchlist: "wishlist",
       scout_report: "store_report",
+      expense_only: "search_only",
+      ignore: "search_only",
     };
     const scanType = scanReview.scanType === "barcode" ? (scanReview.upc ? "upc" : "manual") : scanReview.scanType;
     const session = {
@@ -7069,6 +6998,7 @@ export default function App() {
         setName: scanReview.setName,
         upc: scanReview.upc,
         sku: scanReview.sku,
+        requestedDestination: destination,
       },
       possibleMatches: (scanReview.possibleMatches || []).slice(0, 5).map((match) => ({
         id: match.item?.id,
@@ -7086,6 +7016,38 @@ export default function App() {
     return result;
   }
 
+  function submitScannerCorrection(reason) {
+    if (!scanReview) return;
+    const hasCatalogMatch = Boolean(scanReview.matchedCatalogItemId);
+    submitUniversalSuggestion({
+      suggestionType: hasCatalogMatch ? SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT : SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+      targetTable: "product_catalog",
+      targetId: scanReview.matchedCatalogItemId || "",
+      submittedData: {
+        reason,
+        rawScan: scanReview.rawValue || scanInput || "",
+        itemName: scanReview.itemName,
+        setName: scanReview.setName,
+        productType: scanReview.productType || scanReview.catalogType,
+        upc: scanReview.upc,
+        sku: scanReview.sku,
+        source: "scanner_review",
+      },
+      currentDataSnapshot: {
+        matchedCatalogItemId: scanReview.matchedCatalogItemId,
+        matchConfidence: scanReview.matchConfidence,
+        possibleMatches: (scanReview.possibleMatches || []).slice(0, 3).map((match) => ({
+          id: match.item?.id,
+          name: match.item?.name || match.item?.productName || match.item?.cardName,
+          confidence: match.confidencePercent,
+        })),
+      },
+      notes: `Scanner correction: ${reason}. User must verify before save.`,
+      source: "user",
+    });
+    setScanMessage(`${reason} was sent for admin review. Choose another match, continue manual review, or cancel.`);
+  }
+
   async function confirmScannerDestination(destinationOverride = "") {
     const explicitDestination = typeof destinationOverride === "string" ? destinationOverride : "";
     const destination = explicitDestination || scanDestination || scanReview?.destination || "none";
@@ -7099,7 +7061,8 @@ export default function App() {
       return;
     }
     if (destination === "vault" || destination === "forge" || destination === "wishlist") {
-      const product = catalogProducts.find((item) => String(item.id) === String(productId));
+      const product = catalogProducts.find((item) => String(item.id) === String(productId))
+        || (scanReview?.possibleMatches || []).map((match) => match.item).find((item) => String(item?.id) === String(productId));
       if (!product) {
         setScanMessage("No verified catalog match yet. Search TideTradr, enter UPC/SKU manually, add manually, or suggest a missing product.");
         return;
@@ -7114,6 +7077,14 @@ export default function App() {
           catalogSearchQuery: scanReview?.rawValue || scanInput || catalogTitle(product),
         },
       });
+    }
+    if (destination === "expense_only" || destination === "ignore") {
+      await persistScannerIntake(destination, destination === "ignore" ? "discarded" : "confirmed");
+      closeInventoryScanner();
+      setVaultToast(destination === "ignore"
+        ? "Scanner result ignored. No Vault or Forge item was saved."
+        : "Scanner result saved as expense-only review. No Vault or Forge item was created.");
+      return;
     }
     if (destination === "tidetradr") {
       await persistScannerIntake(destination, "review");
@@ -15306,7 +15277,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       { key: "scan-product", title: "Scan Card/Product", helper: "Match first, then choose destination.", action: "scanProduct" },
       { key: "card", title: "Add Card", helper: "Add a raw or graded card.", action: "card" },
       { key: "sealed", title: "Add Sealed Product", helper: "ETB, box, tin, bundle, or blister.", action: "sealed" },
-      { key: "inventory", title: "Add Inventory", helper: "Send to Forge business inventory.", action: "inventory" },
+      { key: "inventory", title: "Add Inventory", helper: "Review, then send to Forge.", action: "inventory" },
       { key: "sale", title: "Add Sale", helper: "Record sale and profit.", action: "sale" },
       { key: "expense", title: "Add Expense", helper: "Track costs and receipts.", action: "expense" },
       { key: "store-report", title: "Add Store Report", helper: "Log a restock or store check.", action: "storeReport" },
@@ -15633,7 +15604,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderForgeQuickAddFlowContent() {
     const options = [
-      { key: "inventory", title: "Add Inventory", helper: "Track a sellable item.", onClick: () => openProductAddFlow({ source: "forge-quick-add-inventory", destinations: { forge: true } }) },
+      { key: "inventory", title: "Add Inventory", helper: "Review a matched item before saving to Forge.", onClick: () => openProductAddFlow({ source: "forge-quick-add-inventory", destinations: { forge: true } }) },
       { key: "bulk", title: "Bulk Add", helper: "Stage multiple Forge, Vault, or Wishlist items for review.", onClick: () => openBulkAddFlow("Forge") },
       { key: "sale", title: "Add Sale", helper: "Record revenue and profit.", onClick: () => openAddSaleFlow() },
       { key: "expense", title: "Add Expense", helper: "Receipts, fees, supplies.", onClick: () => openAddExpenseFlow() },
@@ -15670,8 +15641,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       },
       {
         key: "scan",
-        title: "Scan to Vault",
-        helper: "Scan a card, product, UPC, or barcode.",
+        title: "Scan / Review Item",
+        helper: "Scan first, verify the match, then choose Vault or another destination.",
         onClick: () => runVaultQuickAction(() => openVaultScanFlow()),
       },
       {
@@ -15992,6 +15963,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     };
     return (
       <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd}>
+        <div className="universal-review-banner">
+          <strong>Review before save</strong>
+          <span>Search and scanner matches are drafts here. Choose Vault, Forge, Wishlist, or TideTradr, then submit to save.</span>
+        </div>
         <section className="flow-form-section">
           <h3>Shared Item Details</h3>
           <div className="flow-form-grid">
@@ -18088,12 +18063,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
             {scanReview ? (
               <div className="scanner-review-card">
+                <div className="scanner-review-steps" aria-label="Scanner add flow">
+                  <span className="is-complete">1. Match</span>
+                  <span className="is-current">2. Review</span>
+                  <span>3. Destination</span>
+                  <span>4. Submit</span>
+                </div>
                 <div className="compact-card-header">
                   <div>
                     <h3>{scanReview.itemName}</h3>
                     <p>{scanReview.setName || "No set"} | {scanReview.productType || scanReview.catalogType}</p>
                   </div>
-                  <span className="status-badge">{scanReview.matchConfidence}% match</span>
+                  <span className={`scanner-confidence-badge is-${scannerConfidenceClass(scanReview.matchConfidence)}`}>
+                    {scannerConfidenceLabel(scanReview.matchConfidence)} | {scanReview.matchConfidence}%
+                  </span>
                 </div>
                 {scanReview.imageUrl ? <img className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
                 <div className="catalog-detail-grid">
@@ -18102,6 +18085,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <DetailItem label="MSRP" value={scanReview.msrp ? money(scanReview.msrp) : "Unknown" } />
                   <DetailItem label="Source" value={scanReview.sourceType || "unknown"} />
                 </div>
+                <div className="scanner-correction-panel">
+                  <strong>Need to correct the match?</strong>
+                  <p className="compact-subtitle">Corrections become admin-reviewed suggestions. Universal catalog data is not changed directly.</p>
+                  <div className="scanner-correction-grid">
+                    {SCANNER_CORRECTION_REASONS.map((reason) => (
+                      <button key={reason} type="button" className="secondary-button" onClick={() => submitScannerCorrection(reason)}>
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <Field label="Destination">
                   <select value={scanDestination} onChange={(event) => setScanDestination(event.target.value)}>
                     {SCAN_DESTINATIONS.map((destination) => (
@@ -18109,11 +18103,44 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     ))}
                   </select>
                 </Field>
+                <p className="compact-subtitle">
+                  {scanDestination === "vault" || scanDestination === "forge" || scanDestination === "wishlist"
+                    ? `Next: open the shared Add review screen for ${scannerDestinationLabel(scanDestination)}. You can edit quantity, condition, price, location, and notes before saving.`
+                    : scanDestination === "expense_only"
+                      ? "Expense-only saves the scanner review only. It does not create a Vault or Forge item."
+                      : scanDestination === "ignore"
+                        ? "Ignore records the review as rejected and does not save an item."
+                        : "Choose a destination before continuing. Nothing is saved automatically."}
+                </p>
                 {scanMessage ? <p className="compact-subtitle">{scanMessage}</p> : null}
                 <div className="quick-actions">
-                  <button type="button" onClick={() => { setScanDestination("vault"); confirmScannerDestination("vault"); }}>Review in Add Flow</button>
-                  <button type="button" className="secondary-button" onClick={() => { setScanDestination("forge"); confirmScannerDestination("forge"); }}>Review for Forge</button>
-                  <button type="button" className="secondary-button" onClick={confirmScannerDestination}>Confirm Destination</button>
+                  <button type="button" onClick={confirmScannerDestination}>
+                    {scanDestination === "none"
+                      ? "Choose Destination"
+                      : scanDestination === "expense_only"
+                        ? "Save Expense-only Review"
+                        : scanDestination === "ignore"
+                          ? "Ignore Result"
+                          : ["vault", "forge", "wishlist"].includes(scanDestination)
+                            ? `Review for ${scannerDestinationLabel(scanDestination)}`
+                            : "Continue"}
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => {
+                    const destinations = scanDestination === "vault" ? { vault: true } : scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : {};
+                    closeInventoryScanner();
+                    openProductAddFlow({
+                      source: "scanner-manual-review",
+                      seed: {
+                        itemName: scanReview.itemName || scanInput,
+                        productType: scanReview.productType || scanReview.catalogType,
+                        setName: scanReview.setName || "",
+                        upcSku: [scanReview.upc, scanReview.sku].filter(Boolean).join(" / "),
+                        marketPrice: scanReview.marketValue || "",
+                        msrpPrice: scanReview.msrp || "",
+                        destinations,
+                      },
+                    });
+                  }}>Add manually</button>
                   <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); closeInventoryScanner(); }}>Search TideTradr</button>
                   <button type="button" className="ghost-button" onClick={closeInventoryScanner}>Cancel</button>
                 </div>
@@ -18356,6 +18383,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "vault")}>Add to Vault</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "forge")}>Add to Forge</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "expense_only")}>Expense Only</button>
+                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "ignore")}>Ignore Item</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "wishlist")}>Wishlist</button>
                         <button type="button" className="ghost-button" onClick={() => {
                           const suggestion = submitSuggestion({
