@@ -372,12 +372,17 @@ const SCAN_DESTINATIONS = [
 ];
 const RECEIPT_SCAN_STATUSES = ["draft_extracted", "needs_review", "verified", "submitted", "rejected", "duplicate_possible"];
 const RECEIPT_REVIEW_DESTINATIONS = [
-  { value: "vault", label: "Add to Vault" },
-  { value: "forge", label: "Add to Forge" },
-  { value: "personal_collection", label: "Personal Collection" },
-  { value: "business_inventory", label: "Business Inventory" },
-  { value: "ignore", label: "Ignore Item" },
+  { value: "vault", label: "Vault" },
+  { value: "forge", label: "Forge" },
+  { value: "expense_only", label: "Expense Only" },
+  { value: "wishlist", label: "Wishlist" },
 ];
+const RECEIPT_DESTINATION_LABELS = {
+  expense_only: "Expense only",
+  forge: "Forge",
+  vault: "Vault",
+  wishlist: "Wishlist",
+};
 const RECEIPT_ITEM_CONDITIONS = ["Sealed", "Opened", "Damaged", "Unknown"];
 const USER_TYPES = ["collector", "seller", "scout", "budget", "all_in_one"];
 const EXPENSE_CATEGORIES = [
@@ -2363,7 +2368,9 @@ export default function App() {
               <button type="button" className="home-list-row" key={`receipt-${receipt.id}`} onClick={() => setActiveTab("inventory")}>
                 <span>
                   <strong>{receipt.merchant || "Saved receipt"}</strong>
-                  <small>Receipt Draft | {receipt.category || "expense"} | {phase2ReceiptLineItemCounts[receipt.id] || 0} lines</small>
+                  <small>
+                    Receipt Draft | {receipt.purchasedAt ? new Date(receipt.purchasedAt).toLocaleDateString() : "No date"} | {phase2ReceiptLineItemCounts[receipt.id] || 0} lines | {phase2ReceiptDestinationSummaryText(receipt.id)} | Cloud synced
+                  </small>
                 </span>
                 <b>{money(receipt.total)}</b>
               </button>
@@ -3321,6 +3328,19 @@ export default function App() {
     if (item.receiptId) acc[item.receiptId] = (acc[item.receiptId] || 0) + 1;
     return acc;
   }, {});
+  const phase2ReceiptDestinationSummaries = (phase2Data.receiptLineItems || []).reduce((acc, item) => {
+    if (!item.receiptId) return acc;
+    const destination = normalizeReceiptDestination(item.destination);
+    const label = RECEIPT_DESTINATION_LABELS[destination] || "Expense only";
+    acc[item.receiptId] = acc[item.receiptId] || {};
+    acc[item.receiptId][label] = (acc[item.receiptId][label] || 0) + 1;
+    return acc;
+  }, {});
+  const phase2ReceiptDestinationSummaryText = (receiptId) => {
+    const counts = phase2ReceiptDestinationSummaries[receiptId] || {};
+    const summary = Object.entries(counts).map(([label, count]) => `${label} ${count}`).join(", ");
+    return summary || "No destinations";
+  };
   const phase2RecentKidProjects = phase2Data.kidCommunityProjects || [];
   const phase2KidProjectItemCounts = (phase2Data.kidCommunityProjectItems || []).reduce((acc, item) => {
     if (item.projectId) acc[item.projectId] = (acc[item.projectId] || 0) + 1;
@@ -3608,11 +3628,12 @@ export default function App() {
   function isVaultItemRecord(item) {
     const scopes = itemDestinationScopes(item);
     if (scopes.includes("forge") && !scopes.includes("vault") && !scopes.includes("wishlist")) return false;
+    if (normalizeVaultStatus(item) === "moved_to_forge") return false;
     return Boolean(
       scopes.includes("vault") ||
       scopes.includes("wishlist") ||
       item?.vaultStatus ||
-      ["Personal Collection", "Held", "Wishlist", "Sealed", "Sealed / Holding", "Ripped / Opened", "Moved to Forge", "Traded"].includes(item?.status)
+      ["Personal Collection", "Held", "Wishlist", "Sealed", "Sealed / Holding", "Ripped / Opened", "Traded"].includes(item?.status)
     );
   }
 
@@ -3622,7 +3643,7 @@ export default function App() {
     if (scopes.includes("vault") || scopes.includes("wishlist") || isWishlistItemRecord(item) || isVaultItemRecord(item)) return false;
     if (item.businessInventory || item.business_inventory || item.recordType === "forge_inventory" || item.record_type === "forge_inventory") return true;
     const status = String(item.status || "").toLowerCase();
-    return ["in stock", "ready to list", "listed", "needs photos", "needs market check", "sold"].includes(status);
+    return ["in stock", "ready to list", "listed", "needs photos", "needs market check", "sold", "moved to forge"].includes(status);
   }
 
   function findVaultDuplicate(candidate, collection = items) {
@@ -5533,6 +5554,24 @@ export default function App() {
     setReceiptScanMessage(file.type === "application/pdf" ? "PDF received. OCR support will process PDFs later; paste visible text for this beta review." : "Receipt image ready. Paste visible text or use the beta extractor.");
   }
 
+  function prefillQaReceiptScanDraft() {
+    if (!QA_UNLOCK_PAID_FEATURES) return;
+    setReceiptScanForm((current) => ({
+      ...current,
+      storeName: "QA Receipt Merchant 2026-05-10",
+      storeLocation: "QA Cloud Mode",
+      purchaseDate: "2026-05-10",
+      subtotal: "11.35",
+      tax: "0.99",
+      total: "12.34",
+      transactionNumber: `QA-${Date.now()}`,
+      rawText: "QA Receipt Line Item 11.35",
+    }));
+    setReceiptScanDraft(null);
+    setReceiptScanStatus("draft_extracted");
+    setReceiptScanMessage("QA receipt draft filled. Click Review Receipt, verify the item, then Submit Report.");
+  }
+
   function closeInventoryScanner() {
     setShowInventoryScanner(false);
     setScanReview(null);
@@ -5588,7 +5627,7 @@ export default function App() {
         quantity: line.quantity || 1,
         unitCost: Number(line.unitCost || 0).toFixed(2),
         totalCost: Number(line.totalCost || 0).toFixed(2),
-        destination: needsReview ? "ignore" : "forge",
+        destination: "expense_only",
         condition: /box|etb|tin|booster|pack|sealed/i.test(line.name) ? "Sealed" : "Unknown",
         ownerUserId: user?.id && user.id !== "local-beta" ? user.id : "",
         notes: "",
@@ -5658,7 +5697,7 @@ export default function App() {
     setReceiptScanDraft((current) => current ? {
       ...current,
       items: current.items.map((item) =>
-        item.matchConfidence >= 85 && item.matchedCatalogId && item.quantity && item.unitCost && item.destination !== "ignore"
+        item.matchConfidence >= 85 && item.quantity && item.unitCost && (normalizeReceiptDestination(item.destination) === "expense_only" || item.matchedCatalogId)
           ? { ...item, verified: true, status: "verified" }
           : item
       ),
@@ -5710,8 +5749,8 @@ export default function App() {
       condition: item.condition,
       conditionName: item.condition === "Sealed" ? "Sealed" : item.condition || "Unknown",
       sealedCondition: item.condition === "Sealed" ? "Sealed" : "",
-      status: isVault ? "Personal Collection" : "In Stock",
-      vaultStatus: isVault ? "personal_collection" : "",
+      status: isWishlist ? "Wishlist" : isVault ? "Personal Collection" : "In Stock",
+      vaultStatus: isWishlist ? "wishlist" : isVault ? "personal_collection" : "",
       receiptImage: receipt.receiptImageUrl || "",
       receiptId: receipt.id,
       sourceType: "Receipt scan",
@@ -5775,14 +5814,19 @@ export default function App() {
       submittedBy: user?.email || user?.id || "local beta",
       status: "submitted",
     };
-    const result = await saveReceiptRecord(phase2Context(), { ...receipt, report });
-    updatePhase2Status(result, "Receipt scan saved locally.");
+    if (result.source === "supabase") {
+      await retryPhase2Sync();
+    }
     setPhase2Data((current) => ({
       ...current,
       receiptReports: [report, ...(current.receiptReports || [])],
     }));
+    setReceiptScanStatus("submitted");
     setReceiptScanDraft((current) => current ? { ...current, status: "submitted", report } : current);
-    setReceiptScanMessage(`Receipt submitted. Added ${createdItems.length} item(s); ignored ${ignoredItems.length}.`);
+    setReceiptScanMessage(result.source === "supabase"
+      ? `Receipt submitted and cloud synced. Added ${createdItems.length} item(s); expense-only ${expenseOnlyItems.length}.`
+      : `Receipt saved locally. Added ${createdItems.length} item(s); expense-only ${expenseOnlyItems.length}.`
+    );
   }
 
   function openPictureLookupFlow(defaultDestination = "none") {
@@ -6350,10 +6394,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (action === "pictureLookup") return openPictureLookupFlow("none");
     if (action === "scanVault") return openVaultScanFlow();
     if (action === "scanForge") {
-      return beginScanProduct("forge");
+      return beginScanProduct("none");
     }
-    if (action === "pictureLookupVault") return openPictureLookupFlow("vault");
-    if (action === "pictureLookupForge") return openPictureLookupFlow("forge");
+    if (action === "pictureLookupVault") return openPictureLookupFlow("none");
+    if (action === "pictureLookupForge") return openPictureLookupFlow("none");
     if (action === "inventory") return openProductAddFlow({ source: "quick-add-forge-inventory", destinations: { forge: true } });
     if (action === "sale") return openAddSaleFlow();
     if (action === "expense") return openAddExpenseFlow();
@@ -6447,7 +6491,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     openMultiDestinationAddForProduct(product, {
       source: "vault-catalog",
       seed: {
-        destinations: { vault: true, wishlist: false, forge: false, tidetradr: false },
+        destinations: { vault: false, wishlist: false, forge: false, tidetradr: false },
       },
     });
   }
@@ -10310,6 +10354,7 @@ function renderForgeHeader() {
     mileage_summary: "mileage",
     expenses_summary: "expenses",
     action_center: "seller_tools",
+    deal_checker: "deal_finder",
     purchaser_spending: "seller_tools",
     exports: "seller_tools",
   })[key];
@@ -13782,7 +13827,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <div className="flow-modal-stack">
         <div className="flow-modal-top-actions">
-          <button type="button" className="secondary-button" onClick={() => beginScanProduct("forge")}>
+          <button type="button" className="secondary-button" onClick={() => beginScanProduct("none")}>
             Scan Product
           </button>
         </div>
@@ -14123,7 +14168,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         key: "picture",
         title: "Look Up by Picture",
         helper: "Use a product/card photo without requiring a UPC.",
-        onClick: () => runVaultQuickAction(() => openPictureLookupFlow("vault")),
+        onClick: () => runVaultQuickAction(() => openPictureLookupFlow("none")),
       },
       {
         key: "add",
@@ -14305,14 +14350,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => {
             if (!closeFlowModal({ force: true, reset: false })) return;
-            beginScanProduct("vault");
+            beginScanProduct("none");
           }}>
             <strong>Open Scanner</strong>
             <span>Use the camera scanner when permissions are available.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => {
             if (!closeFlowModal({ force: true, reset: false })) return;
-            openPictureLookupFlow("vault");
+            openPictureLookupFlow("none");
           }}>
             <strong>Look Up by Picture</strong>
             <span>Upload a product/card photo and confirm a match.</span>
@@ -15123,7 +15168,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     className="topbar-mobile-scan"
     onClick={() => {
       setQuickAddMenuOpen(false);
-      beginScanProduct(activeTab === "vault" ? "vault" : activeTab === "inventory" ? "forge" : "none");
+      beginScanProduct("none");
     }}
   >
     Scan
@@ -16124,7 +16169,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <strong>Scan first, review second.</strong>
                   <span>Scanning opens a review screen before anything is saved to Vault or Forge.</span>
                 </div>
-                <button type="button" onClick={() => { if (closeVaultAddModal()) beginScanProduct("vault"); }}>Open Scan Review</button>
+                <button type="button" onClick={() => { if (closeVaultAddModal()) beginScanProduct("none"); }}>Open Scan Review</button>
               </div>
             ) : null}
 
@@ -16797,7 +16842,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         </button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "vault")}>Add to Vault</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "forge")}>Add to Forge</button>
-                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "ignore")}>Ignore Item</button>
+                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "expense_only")}>Expense Only</button>
+                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "wishlist")}>Wishlist</button>
                         <button type="button" className="ghost-button" onClick={() => {
                           const suggestion = submitSuggestion({
                             suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
@@ -19522,7 +19568,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         <h2>Add Forge Inventory</h2>
         <p>Build a sellable inventory record from catalog data, scan review, or manual entry.</p>
       </div>
-      <button type="button" className="secondary-button" onClick={() => beginScanProduct("forge")}>
+      <button type="button" className="secondary-button" onClick={() => beginScanProduct("none")}>
         Scan Product
       </button>
     </div>

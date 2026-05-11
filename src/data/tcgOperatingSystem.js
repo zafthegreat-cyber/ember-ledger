@@ -1,0 +1,148 @@
+export const TCG_OS_MODES = [
+  {
+    key: "vault",
+    title: "Vault",
+    verb: "Collect",
+    summary: "Collection portfolio, set progress, variants, locations, and personal value tracking.",
+    benchmark: "Collectr + TCG Collector + TCGplayer scanner",
+    accent: "Collection",
+    actions: ["Add Item", "Search Catalog", "Open Sets", "Portfolio"],
+    featureKeys: ["collection", "sets", "portfolio", "wishlist", "trade_sell_toggle"],
+  },
+  {
+    key: "forge",
+    title: "Forge",
+    verb: "Sell",
+    summary: "Business inventory, sales, expenses, mileage, listings, and profit/loss.",
+    benchmark: "DeckTradr + InventoryLab + QuickBooks/Expensify",
+    accent: "Business",
+    actions: ["Add Inventory", "Record Sale", "Add Expense", "Marketplace"],
+    featureKeys: ["inventory", "sales", "expenses", "mileage", "marketplace", "reports"],
+  },
+  {
+    key: "scout",
+    title: "Scout",
+    verb: "Find",
+    summary: "Local restock reports, store intelligence, predictions, alerts, and drop confidence.",
+    benchmark: "HotStock + Keepa + Waze-style reporting",
+    accent: "Restock",
+    actions: ["Submit Report", "Import Intel", "Open Predictions", "Alerts"],
+    featureKeys: ["reports", "stores", "predictions", "alerts", "calendar", "online_monitor"],
+  },
+  {
+    key: "tidepool",
+    title: "Tidepool",
+    verb: "Share",
+    summary: "Local finds, trades, ISO posts, donation coordination, deal checks, and community trust.",
+    benchmark: "Rare Candy + Whatnot + Discord/Facebook groups",
+    accent: "Community",
+    actions: ["Open Feed", "Create Post", "Donation Post", "Deal Check"],
+    featureKeys: ["feed", "trade", "sale", "iso", "donation", "moderation"],
+  },
+  {
+    key: "catalog",
+    title: "Catalog",
+    verb: "Know",
+    summary: "Lightweight search backed by deep detail pages, identifiers, variants, and market links.",
+    benchmark: "TCG Collector + TCGplayer + PriceCharting",
+    accent: "Data",
+    actions: ["Search Catalog", "Suggest Correction", "UPC/SKU Review", "Market Sources"],
+    featureKeys: ["light_search", "detail_pages", "identifiers", "variants", "market_links"],
+  },
+  {
+    key: "deal_finder",
+    title: "Deal Finder",
+    verb: "Decide",
+    summary: "Buy/maybe/skip logic from asking price, MSRP, market, fees, shipping, ROI, and risk.",
+    benchmark: "Scoutify + Keepa + PriceCharting",
+    accent: "Decision",
+    actions: ["Check Deal", "Paste Lot", "Photo Later", "Add Result"],
+    featureKeys: ["asking_price", "msrp_market", "fees", "roi", "risk", "recommendation"],
+  },
+  {
+    key: "scanner",
+    title: "Scanner",
+    verb: "Add Anything",
+    summary: "Universal intake for UPC/SKU, card, sealed product, slab, receipt, shelf, or screenshot.",
+    benchmark: "TCGplayer + DeckTradr + List Perfectly",
+    accent: "Intake",
+    actions: ["Scan", "Picture Lookup", "Manual Search", "Destination Picker"],
+    featureKeys: ["upc", "sku", "card_image", "sealed_image", "receipt", "destination_picker"],
+  },
+  {
+    key: "kid_community",
+    title: "Kid / Community",
+    verb: "Give",
+    summary: "Kid pack builder, donation tracking, cost-per-pack, event prep, and community pricing.",
+    benchmark: "Ember & Tide original",
+    accent: "Mission",
+    actions: ["Kid Pack Plan", "Donation Tracker", "Community Price", "Event Prep"],
+    featureKeys: ["pack_builder", "donations", "cost_per_pack", "community_price", "thank_you"],
+  },
+];
+
+export const DASHBOARD_PRESET_OPTIONS = [
+  { key: "collector", label: "Collector", description: "Vault value, wishlist, catalog, set progress, and portfolio view." },
+  { key: "seller", label: "Seller", description: "Forge inventory, sales, expenses, mileage, listings, and reports." },
+  { key: "budget_parent", label: "Budget Parent", description: "Spending, wishlist priority, kid/community budget, and deal checks." },
+  { key: "restock_scout", label: "Restock Scout", description: "Scout reports, store alerts, predictions, watchlist, and routes." },
+  { key: "full_business", label: "Full Business", description: "All collection, seller, Scout, market, and admin-ready operating views." },
+  { key: "simple", label: "Simple", description: "A compact beta-safe home view." },
+];
+
+export const ALERT_TYPE_OPTIONS = [
+  { key: "onlineRestock", label: "Online restock", description: "Authorized online stock signals and product monitor alerts." },
+  { key: "inStoreReport", label: "In-store report", description: "Fresh community or team store reports." },
+  { key: "storePrediction", label: "Store prediction", description: "Likely restock windows from patterns and guesses." },
+  { key: "priceDrop", label: "Price drop", description: "Watched product below target price." },
+  { key: "wishlistTarget", label: "Wishlist target", description: "Wishlist item near your target price or store." },
+  { key: "marketSpike", label: "Market spike", description: "Market value jumps or unusual movement." },
+  { key: "staleListing", label: "Stale listing", description: "Listings that need a refresh or price update." },
+  { key: "budgetWarning", label: "Budget warning", description: "Purchase or trip would push a budget over plan." },
+  { key: "dealFound", label: "Deal found", description: "Deal Finder spots a good buy/flip/community-price opportunity." },
+  { key: "newProductRelease", label: "New product release", description: "New catalog products or upcoming sealed releases." },
+  { key: "localTidepoolPost", label: "Local Tidepool post", description: "Nearby trade, ISO, donation, or deal-check posts." },
+];
+
+export const SCANNER_INTAKE_TYPES = [
+  { key: "upc", label: "UPC / barcode", status: "Active" },
+  { key: "sku", label: "SKU / retailer ID", status: "Active" },
+  { key: "card_image", label: "Card image", status: "Beta text/manual" },
+  { key: "sealed_image", label: "Sealed product image", status: "Beta picture lookup" },
+  { key: "slab_label", label: "Slab label", status: "Foundation" },
+  { key: "receipt", label: "Receipt", status: "Foundation" },
+  { key: "shelf_photo", label: "Shelf photo", status: "Scout photo report" },
+  { key: "marketplace_screenshot", label: "Marketplace screenshot", status: "Deal Finder foundation" },
+];
+
+export const DEAL_SCORE_BANDS = [
+  { min: 90, label: "Buy now", recommendation: "Buy", description: "Strong upside versus market after risk." },
+  { min: 75, label: "Good deal", recommendation: "Buy", description: "Good for resale or collection if condition checks out." },
+  { min: 60, label: "Fair", recommendation: "Maybe", description: "Worth considering for personal goals or bundles." },
+  { min: 40, label: "Personal only", recommendation: "Maybe", description: "Only buy if you want it or can price it for community/kids." },
+  { min: 0, label: "Skip", recommendation: "Pass", description: "Too close to market or too risky." },
+];
+
+export const UNIVERSAL_DATA_ENTITIES = [
+  "Catalog items",
+  "Product variants",
+  "UPCs / SKUs",
+  "Store list",
+  "Store nicknames",
+  "Store addresses",
+  "Retailers",
+  "Restock defaults",
+  "Market source mappings",
+  "Product corrections",
+];
+
+export const APP_STRUCTURE_LINKS = [
+  { key: "catalog", label: "Catalog", description: "Know products, variants, identifiers, and prices." },
+  { key: "deal_finder", label: "Deal Finder", description: "Decide if a purchase is worth it." },
+  { key: "tidepool", label: "Tidepool", description: "Share finds, trades, donations, and deal checks." },
+  { key: "wishlist", label: "Wishlist", description: "Track wants without mixing them into owned inventory." },
+  { key: "marketplace", label: "Marketplace", description: "Prepare listings and prevent double-selling." },
+  { key: "reports", label: "Reports", description: "Business, mileage, sales, and exports." },
+  { key: "settings", label: "Settings", description: "Workspace, dashboard, privacy, alerts, and access." },
+  { key: "admin", label: "Admin", description: "Review universal data suggestions and moderation queues." },
+];

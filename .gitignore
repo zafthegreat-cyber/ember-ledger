@@ -15,6 +15,9 @@ dist-ssr
 .env.local
 .env.*.local
 
+supabase/.temp/
+.local-parking/
+
 .vscode/*
 !.vscode/extensions.json
 .DS_Store

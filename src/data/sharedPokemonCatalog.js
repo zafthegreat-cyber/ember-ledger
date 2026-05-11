@@ -82,5 +82,3 @@ export const CATALOG_IMPORT_STATUS = {
   totalSealedProducts: 0,
   generatedAt: "",
 };
-
-export const SHARED_POKEMON_PRODUCTS = [];

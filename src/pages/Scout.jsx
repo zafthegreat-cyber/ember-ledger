@@ -2475,9 +2475,9 @@ function openInForge(item) {
     }
   }, [selectedStore]);
 
-  async function handleCreateStore(e) {
+async function handleCreateStore(e) {
   e.preventDefault();
-  if (BETA_LOCAL_SCOUT) {
+  if (BETA_LOCAL_SCOUT || !adminMode) {
     const newStore = normalizeStoreGroup({
       id: makeScoutId("store-review"),
       name: storeForm.name,
@@ -2540,24 +2540,30 @@ async function handleUpdateStore(e) {
   e.preventDefault();
   if (!selectedStoreId) return;
 
-  if (BETA_LOCAL_SCOUT) {
-    const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
-    const nextStores = (saved.stores || []).map((store) =>
-      store.id === selectedStoreId
-        ? normalizeStoreGroup({
-            ...store,
-            name: editStoreForm.name,
-            chain: editStoreForm.chain,
-            storeGroup: editStoreForm.storeGroup,
-            city: editStoreForm.city,
-            address: editStoreForm.address,
-            phone: editStoreForm.phone,
-          })
-        : store
-    );
-    saveLocalScout({ stores: nextStores });
-    setStores(nextStores);
+  if (BETA_LOCAL_SCOUT || !adminMode) {
+    const currentStore = stores.find((store) => String(store.id) === String(selectedStoreId));
+    const submittedData = normalizeStoreGroup({
+      ...(currentStore || {}),
+      id: selectedStoreId,
+      name: editStoreForm.name,
+      chain: editStoreForm.chain,
+      storeGroup: editStoreForm.storeGroup || getStoreGroup(editStoreForm),
+      city: editStoreForm.city,
+      address: editStoreForm.address,
+      phone: editStoreForm.phone,
+      reviewStatus: "pending",
+    });
+    const suggestion = submitSharedDataSuggestion({
+      suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
+      targetTable: "stores",
+      targetRecordId: selectedStoreId,
+      submittedData,
+      currentDataSnapshot: currentStore || null,
+      notes: "Submitted from Scout store edit form.",
+    }, setError);
+    if (!suggestion) return;
     setIsEditingStore(false);
+    setError("Store edit submitted for admin review. Universal store data was not changed.");
     return;
   }
 
@@ -3416,6 +3422,22 @@ async function handleUpdateStore(e) {
     () => Object.fromEntries(stores.map((store) => [store.id, store])),
     [stores]
   );
+
+  const reportStoreOptionGroups = useMemo(() => {
+    const groups = stores.reduce((acc, store) => {
+      const retailer = store.chain || store.retailer || getStoreGroup(store) || "Other";
+      const city = store.city || "No city";
+      const label = `${retailer} / ${city}`;
+      acc[label] = [...(acc[label] || []), store];
+      return acc;
+    }, {});
+    return Object.entries(groups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([label, groupStores]) => ({
+        label,
+        stores: sortStores(groupStores, "nickname"),
+      }));
+  }, [stores]);
 
   const reportsByStore = useMemo(() => {
     return visibleAllReports.reduce((acc, report) => {
@@ -4348,10 +4370,14 @@ async function handleUpdateStore(e) {
                 onChange={(e) => setSelectedStoreId(e.target.value)}
               >
                 <option value="">Select store</option>
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.nickname || store.name} - {store.city || "No city"}
-                  </option>
+                {reportStoreOptionGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.nickname || store.name} - {store.address || "No address"}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
               <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Suggest missing store</button>

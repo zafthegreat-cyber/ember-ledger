@@ -497,6 +497,30 @@ async function main() {
     await assertVisibleText("No Forge items found");
   });
 
+  await step("Receipt: draft/verify/submit expense-only report", async () => {
+    await nav("Vault");
+    await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Scan to Vault/ }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Open Scanner/ }).click();
+    await page.getByRole("button", { name: "Scan Receipt" }).click();
+    const receiptModal = page.locator(".receipt-scan-modal").first();
+    await fillByLabel(receiptModal, "Receipt OCR / visible text", "Smoke Receipt Pack 11.35");
+    await fillByLabel(receiptModal, "Store", "Smoke Receipt Target");
+    await fillByLabel(receiptModal, "Store location", "Smoke City, VA");
+    await fillByLabel(receiptModal, "Purchase date", "2026-05-10");
+    await fillByLabel(receiptModal, "Transaction / barcode", "SMOKE-RCPT-1");
+    await fillByLabel(receiptModal, "Subtotal", "11.35");
+    await fillByLabel(receiptModal, "Tax / fees", "0.99");
+    await fillByLabel(receiptModal, "Receipt total", "12.34");
+    await receiptModal.getByRole("button", { name: "Review Receipt" }).click();
+    await assertVisibleText("Smoke Receipt Target review");
+    await receiptModal.locator(".receipt-draft-card").first().getByRole("button", { name: "Verify Items" }).click();
+    await receiptModal.getByRole("button", { name: "Submit Report" }).click();
+    await assertVisibleText("Receipt saved locally");
+    await assertVisibleText("Receipt Report");
+    await receiptModal.getByRole("button", { name: "Close" }).first().click();
+  });
+
   await step("Vault: add/edit/delete Vault item", async () => {
     await nav("Vault");
     await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
@@ -504,6 +528,7 @@ async function main() {
     const vaultForm = page.locator("form#multi-destination-add-form").first();
     await fillByLabel(vaultForm, "Item Name", "Smoke Vault Binder");
     await fillByLabel(vaultForm, "Type / Category", "Binder");
+    await vaultForm.getByRole("checkbox", { name: /Add to Vault/ }).check();
     await fillByLabel(vaultForm, "Quantity for Vault", "1");
     await fillByLabel(vaultForm, "Collection Category", "Smoke Set");
     await fillByLabel(vaultForm, "Cost Basis", "20");

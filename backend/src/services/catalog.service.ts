@@ -1,8 +1,7 @@
-import { seedCatalog } from "../data/seedCatalog";
 import { CatalogItem } from "../types/catalog.types";
 import { createMemoryStore } from "./memoryStore";
 
-const catalogStore = createMemoryStore<CatalogItem>(seedCatalog);
+const catalogStore = createMemoryStore<CatalogItem>([]);
 
 export const catalogService = {
   list: (query?: string) => catalogStore.list(query),
@@ -19,4 +18,3 @@ export const catalogService = {
   update: (id: string, item: Partial<CatalogItem>) => catalogStore.update(id, item),
   remove: (id: string) => catalogStore.remove(id),
 };
-

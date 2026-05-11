@@ -18,6 +18,24 @@ const ALERT_KEY_TO_DB = {
 
 const ALERT_DB_TO_KEY = Object.fromEntries(Object.entries(ALERT_KEY_TO_DB).map(([key, value]) => [value, key]));
 
+const RECEIPT_DESTINATION_TO_DB = {
+  expense_only: "expense_only",
+  ignore: "expense_only",
+  ignored: "expense_only",
+  forge: "forge",
+  forge_inventory: "forge",
+  business_inventory: "forge",
+  vault: "vault",
+  vault_collection: "vault",
+  personal_collection: "vault",
+  wishlist: "wishlist",
+};
+
+export function normalizeReceiptDestination(destination) {
+  const key = String(destination || "").trim().toLowerCase();
+  return RECEIPT_DESTINATION_TO_DB[key] || "expense_only";
+}
+
 export function createEmptyPhase2Data() {
   return {
     appPreferences: null,
@@ -207,7 +225,7 @@ function mapReceiptLine(row = {}) {
     quantity: Number(row.quantity || 1),
     unitPrice: Number(row.unit_price || 0),
     lineTotal: Number(row.line_total || 0),
-    destination: row.destination || "expense_only",
+    destination: normalizeReceiptDestination(row.destination),
     matchedConfidence: row.matched_confidence || "needs_review",
     createdAt: row.created_at,
   };
@@ -644,11 +662,13 @@ export function parseReceiptText(rawText = "") {
 
 export async function saveReceiptRecord(ctx = {}, receipt = {}) {
   const now = new Date().toISOString();
-  const localReceipt = { ...receipt, updatedAt: now, createdAt: receipt.createdAt || now };
+  const receiptId = receipt.id || `receipt-${Math.random().toString(36).slice(2, 8)}`;
+  const localReceipt = { ...receipt, id: receiptId, updatedAt: now, createdAt: receipt.createdAt || now };
   const localLines = (receipt.lines || []).map((line) => ({
     ...line,
-    id: line.id || `${receipt.id}-line-${Math.random().toString(36).slice(2, 8)}`,
-    receiptId: receipt.id,
+    destination: normalizeReceiptDestination(line.destination),
+    id: line.id || `${receiptId}-line-${Math.random().toString(36).slice(2, 8)}`,
+    receiptId,
     createdAt: line.createdAt || now,
   }));
   const local = saveLocalPhase2Data((current) => ({
@@ -672,8 +692,8 @@ export async function saveReceiptRecord(ctx = {}, receipt = {}) {
     category: receipt.category || "",
     image_url: receipt.imageUrl || "",
     split_mode: receipt.splitMode || "expense_only",
-    business_total: Number(receipt.businessTotal || receipt.total || 0),
-    personal_total: Number(receipt.personalTotal || 0),
+    business_total: Number(receipt.businessTotal ?? 0),
+    personal_total: Number(receipt.personalTotal ?? 0),
     notes: receipt.notes || "",
     raw_ocr_text: receipt.rawOcrText || "",
     updated_at: now,
@@ -683,6 +703,7 @@ export async function saveReceiptRecord(ctx = {}, receipt = {}) {
   try {
     const { data, error } = await ctx.supabase.from("receipt_records").insert(row).select().single();
     if (error) throw error;
+    let receiptLines = [];
     if (receipt.lines?.length) {
       const lineRows = receipt.lines.map((line) => ({
         receipt_id: data.id,
@@ -691,13 +712,24 @@ export async function saveReceiptRecord(ctx = {}, receipt = {}) {
         quantity: Number(line.quantity || 1),
         unit_price: Number(line.unitPrice || 0),
         line_total: Number(line.lineTotal || 0),
-        destination: line.destination || "expense_only",
+        destination: normalizeReceiptDestination(line.destination),
         matched_confidence: line.matchedConfidence || "needs_review",
       }));
-      const { error: lineError } = await ctx.supabase.from("receipt_line_items").insert(lineRows);
+      const { data: lineData, error: lineError } = await ctx.supabase.from("receipt_line_items").insert(lineRows).select();
       if (lineError) throw lineError;
+      receiptLines = lineData || [];
     }
-    return { source: "supabase", data };
+    const mappedReceipt = mapReceipt(data);
+    const mappedLines = receiptLines.map(mapReceiptLine);
+    saveLocalPhase2Data((current) => ({
+      ...current,
+      receiptRecords: upsertLocal((current.receiptRecords || []).filter((entry) => entry.id !== receipt.id), mappedReceipt),
+      receiptLineItems: [
+        ...mappedLines,
+        ...(current.receiptLineItems || []).filter((line) => line.receiptId !== receipt.id && line.receiptId !== data.id),
+      ],
+    }));
+    return { source: "supabase", data: mappedReceipt, lines: mappedLines };
   } catch (error) {
     return { source: "local", data: local.receiptRecords[0], error };
   }

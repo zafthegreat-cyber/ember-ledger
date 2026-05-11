@@ -5869,6 +5869,139 @@ textarea {
   }
 }
 
+.receipt-scan-backdrop {
+  z-index: 2600;
+}
+
+.receipt-scan-modal {
+  width: min(1180px, calc(100vw - 32px));
+  max-height: min(90vh, 920px);
+  overflow: auto;
+}
+
+.receipt-progress-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.receipt-progress-steps span {
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.32));
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted-text, #64748b);
+  background: rgba(248, 250, 252, 0.86);
+}
+
+.receipt-progress-steps span.active,
+.receipt-progress-steps span.complete {
+  border-color: rgba(20, 184, 166, 0.5);
+  color: #0f766e;
+  background: rgba(240, 253, 250, 0.94);
+}
+
+.receipt-workflow-sequence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--muted-text, #64748b);
+}
+
+.receipt-workflow-sequence span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.receipt-workflow-sequence span:not(:last-child)::after {
+  content: "->";
+  color: #0f766e;
+}
+
+.receipt-scan-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(320px, 1.2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.receipt-upload-panel,
+.receipt-details-panel,
+.receipt-review-panel,
+.receipt-draft-card,
+.receipt-report-summary {
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.28));
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.receipt-review-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.receipt-warning-list {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  border-radius: 8px;
+  padding: 10px;
+  color: #92400e;
+  background: rgba(255, 251, 235, 0.92);
+  font-size: 0.88rem;
+}
+
+.receipt-draft-list {
+  display: grid;
+  gap: 12px;
+}
+
+.receipt-draft-card {
+  display: grid;
+  gap: 12px;
+}
+
+.receipt-draft-card.verified {
+  border-color: rgba(20, 184, 166, 0.48);
+  background: rgba(240, 253, 250, 0.58);
+}
+
+.modal-close-icon {
+  min-width: 40px;
+}
+
+.status-badge.danger {
+  border-color: rgba(220, 38, 38, 0.38);
+  color: #b91c1c;
+  background: rgba(254, 242, 242, 0.9);
+}
+
+@media (max-width: 760px) {
+  .receipt-scan-backdrop {
+    place-items: end center;
+    padding: 0;
+  }
+
+  .receipt-scan-modal {
+    width: 100vw;
+    max-height: 94dvh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .receipt-scan-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .receipt-progress-steps {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .workspace-settings-panel .drawer-info-card {
   gap: 10px;
 }
@@ -11379,6 +11512,199 @@ section.standard-page-header.tidetradr-summary-card .standard-page-header-body,
     min-width: 48px;
     min-height: 40px;
     padding-inline: 9px;
+  }
+}
+
+/* TCG operating system foundation */
+.tcg-os-panel,
+.kid-community-panel,
+.vault-sets-panel,
+.vault-portfolio-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.kid-pack-builder-form {
+  margin-top: 12px;
+}
+
+.phase2-sync-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--muted-text, #667085);
+}
+
+.phase2-sync-status strong {
+  color: var(--text, #17212b);
+}
+
+.phase2-sync-status .ghost-button {
+  min-height: 30px;
+  padding: 4px 10px;
+}
+
+.tcg-os-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tcg-os-card,
+.vault-set-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(var(--interactive-accent-rgb), 0.16);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--interactive-shadow-rest);
+}
+
+.tcg-os-card h3,
+.vault-set-card h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--text-section-title);
+  line-height: 1.15;
+}
+
+.tcg-os-card p,
+.tcg-os-card small,
+.vault-set-card p,
+.vault-set-card span {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-helper);
+  line-height: 1.35;
+}
+
+.tcg-os-verb {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--color-heading);
+  background: rgba(var(--interactive-accent-rgb), 0.1);
+  border: 1px solid rgba(var(--interactive-accent-rgb), 0.16);
+  font-size: var(--type-chip);
+  font-weight: 800;
+}
+
+.tcg-os-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tcg-os-actions button {
+  min-width: 0;
+  min-height: 38px;
+  padding-inline: 8px;
+  font-size: var(--type-chip);
+}
+
+.tcg-os-link-grid,
+.universal-data-chip-grid,
+.scanner-intake-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tcg-os-link-grid .drawer-link {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.tcg-os-link-grid small {
+  color: var(--color-text-muted);
+  font-size: var(--text-helper);
+  line-height: 1.3;
+}
+
+.universal-data-chip-grid span,
+.scanner-intake-chip {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  color: var(--color-heading);
+  background: var(--color-surface-elevated);
+  font-size: var(--type-chip);
+}
+
+.scanner-intake-chip small {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.vault-set-grid,
+.vault-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vault-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.vault-progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(var(--interactive-accent-rgb), 0.92), rgba(245, 158, 11, 0.9));
+}
+
+.vault-portfolio-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vault-portfolio-breakdown span {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-heading);
+  background: var(--color-surface);
+  font-size: var(--type-chip);
+  font-weight: 750;
+}
+
+@media (max-width: 980px) {
+  .tcg-os-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vault-set-grid,
+  .vault-portfolio-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tcg-os-grid,
+  .tcg-os-link-grid,
+  .universal-data-chip-grid,
+  .scanner-intake-grid,
+  .vault-set-grid,
+  .vault-portfolio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tcg-os-actions {
+    grid-template-columns: 1fr;
   }
 }
 
