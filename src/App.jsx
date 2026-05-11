@@ -71,16 +71,16 @@ import {
 } from "./services/phase2Persistence";
 import {
   FEATURE_LABELS,
-  FEATURE_TIERS,
   PAID_HOME_STATS,
+  PLAN_FEATURE_GROUPS,
   PLAN_TYPES,
   TIER_LABELS,
   USER_ROLES,
-  FEATURE_ACCESS,
-  getUpgradePrompt,
+  canUseFeature,
+  getLockedFeatures,
+  getUnlockedFeatures,
   getUserPlan,
   getUserTier,
-  hasPlanAccess,
   isAdminUser,
   isPaidUser,
 } from "./constants/plans";
@@ -1499,37 +1499,19 @@ function BarcodeScanner({ onScan, onClose }) {
   );
 }
 
-function UpgradeScreen({ featureKey, onBack, subscriptionsLive = false }) {
-  const featureLabel = FEATURE_LABELS[featureKey] || "This feature";
+function UpgradeScreen({ featureKey, onBack }) {
   return (
-    <section className="panel upgrade-panel">
-      <h2>Upgrade Required</h2>
-      <p>
-        {subscriptionsLive
-          ? getUpgradePrompt(featureKey)
-          : `${featureLabel} is planned for paid tiers. Paid plans are not active yet. This is a preview for beta planning.`}
-      </p>
-      <div className="quick-actions">
-        <button type="button" disabled>{subscriptionsLive ? "Upgrade to Paid" : "Upgrade Coming Soon"}</button>
-        {subscriptionsLive ? <button type="button" className="secondary-button" disabled>Manage Subscription</button> : null}
-        <button type="button" className="secondary-button" onClick={onBack}>Back to Home</button>
-      </div>
-    </section>
+    <LockedFeatureNotice
+      featureKey={featureKey}
+      onClose={onBack}
+      onRequestAccess={() => {}}
+    />
   );
 }
 
 function LockedFeatureCard({ featureKey, onUpgrade }) {
   return (
-    <div className="card locked-feature-card">
-      <p>{TIER_LABELS[FEATURE_TIERS[featureKey]] || "Premium"}</p>
-      <h2>{FEATURE_LABELS[featureKey] || "Locked Feature"}</h2>
-      <small>{getUpgradePrompt(featureKey)}</small>
-      {onUpgrade ? (
-        <button type="button" className="secondary-button" onClick={onUpgrade}>
-          Upgrade
-        </button>
-      ) : null}
-    </div>
+    <LockedFeatureNotice featureKey={featureKey} compact onRequestAccess={onUpgrade || (() => {})} />
   );
 }
 
@@ -1540,6 +1522,7 @@ export default function App() {
   const [showFullTopbar, setShowFullTopbar] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
+  const [lockedFeatureKey, setLockedFeatureKey] = useState("");
   const quickAddRef = useRef(null);
   const quickAddButtonRef = useRef(null);
   const quickAddMenuRef = useRef(null);
@@ -2237,8 +2220,14 @@ export default function App() {
     setSearchExpanded(false);
     if (modeKey === "vault") {
       setActiveTab("vault");
-      if (action === "Open Sets") setVaultSubTab("sets");
-      else if (action === "Portfolio") setVaultSubTab("portfolio");
+      if (action === "Open Sets") {
+        if (!featureAllowed("set_completion")) return openLockedFeatureNotice("set_completion");
+        setVaultSubTab("sets");
+      }
+      else if (action === "Portfolio") {
+        if (!featureAllowed("portfolio_value")) return openLockedFeatureNotice("portfolio_value");
+        setVaultSubTab("portfolio");
+      }
       else setVaultSubTab("collection");
       if (action === "Add Item") openVaultQuickAdd({ stayInContext: true });
       if (action === "Search Catalog") {
@@ -2257,7 +2246,10 @@ export default function App() {
     }
     if (modeKey === "scout") {
       setActiveTab("scout");
-      if (action === "Open Predictions") setScoutView("predictions");
+      if (action === "Open Predictions") {
+        if (!featureAllowed("restock_predictions")) return openLockedFeatureNotice("restock_predictions");
+        setScoutView("predictions");
+      }
       else if (action === "Alerts") setScoutView("alerts");
       else setScoutView("overview");
       setScoutSubTabTarget({ tab: action === "Alerts" ? "alerts" : "overview", id: Date.now() });
@@ -2712,6 +2704,20 @@ export default function App() {
   function runMenuAction(action) {
     action();
     setMenuOpen(false);
+  }
+
+  function openLockedFeatureNotice(featureKey) {
+    setLockedFeatureKey(featureKey);
+    setQuickAddMenuOpen(false);
+  }
+
+  function requestLockedFeatureAccess(featureKey) {
+    const label = FEATURE_LABELS[featureKey] || featureKey;
+    setLockedFeatureKey("");
+    openFeedbackDialog("feature", {
+      whatHappened: `Request beta access for ${label}.`,
+      metadata: { featureKey },
+    });
   }
 
   function openFeedbackDialog(type, defaults = {}) {
@@ -4003,7 +4009,11 @@ export default function App() {
     locationSettings.trackingEnabled
   );
 
-  function requestScoutLocation() {
+  function requestScoutLocation(reason = "") {
+    if (reason === "route-planner" && !featureAllowed("scout_route_planner")) {
+      openLockedFeatureNotice("scout_route_planner");
+      return false;
+    }
     if (hasScoutLocation) return true;
     setLocationPromptOpen(true);
     return false;
@@ -4139,32 +4149,45 @@ export default function App() {
     const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
     if (lines.length === 0) return [];
     const firstLineCells = parseCsvLine(lines[0]);
-    const hasHeaders = firstLineCells.some((cell) => /name|item|product|quantity|qty|cost|market|msrp|set/i.test(cell));
+    const hasHeaders = firstLineCells.some((cell) => /name|item|product|quantity|qty|cost|market|msrp|set|condition|upc|sku|barcode|note|date/i.test(cell));
     const headers = hasHeaders ? firstLineCells.map((cell) => cell.toLowerCase().trim()) : [];
     const dataLines = hasHeaders ? lines.slice(1) : lines;
+    const mapping = hasHeaders ? (Object.keys(importColumnMapping || {}).length ? importColumnMapping : inferImportColumnMapping(headers)) : {};
 
     return dataLines.map((line, index) => {
       const cells = line.includes(",") ? parseCsvLine(line) : line.split(/\t|\|/).map((cell) => cell.trim());
       if (headers.length) {
         return makeImportRow({
           originalText: line,
-          itemName: readImportCell(cells, headers, ["name", "item", "product", "card"], 0),
-          quantity: readImportCell(cells, headers, ["quantity", "qty", "count"], 1),
-          costPaid: readImportCell(cells, headers, ["cost", "paid", "purchase"], 2),
-          marketValue: readImportCell(cells, headers, ["market", "value"], 3),
-          msrp: readImportCell(cells, headers, ["msrp", "retail"], 4),
-          productType: readImportCell(cells, headers, ["type", "category"], 5),
-          setName: readImportCell(cells, headers, ["set", "collection", "expansion"], 6),
-          condition: readImportCell(cells, headers, ["condition"], 7),
-          notes: readImportCell(cells, headers, ["note"], 8),
+          itemName: readImportCell(cells, headers, ["name", "item", "product", "card", "title"], 0, mapping, "itemName"),
+          quantity: readImportCell(cells, headers, ["quantity", "qty", "count"], 1, mapping, "quantity"),
+          costPaid: readImportCell(cells, headers, ["cost", "paid", "purchase", "price"], 2, mapping, "costPaid"),
+          marketValue: readImportCell(cells, headers, ["market", "value"], 3, mapping, "marketValue"),
+          msrp: readImportCell(cells, headers, ["msrp", "retail"], 4, mapping, "msrp"),
+          productType: readImportCell(cells, headers, ["type", "category"], 5, mapping, "productType"),
+          setName: readImportCell(cells, headers, ["set", "collection", "expansion"], 6, mapping, "setName"),
+          condition: readImportCell(cells, headers, ["condition"], 7, mapping, "condition"),
+          variant: readImportCell(cells, headers, ["variant", "finish", "printing"], -1, mapping, "variant"),
+          notes: readImportCell(cells, headers, ["note"], 8, mapping, "notes"),
+          purchaseDate: readImportCell(cells, headers, ["date", "purchase date", "purchased"], -1, mapping, "purchaseDate"),
+          upcSku: readImportCell(cells, headers, ["upc", "sku", "barcode", "external"], -1, mapping, "upcSku"),
+          cardNumber: readImportCell(cells, headers, ["number", "card #", "card no"], -1, mapping, "cardNumber"),
+          store: readImportCell(cells, headers, ["store", "source", "vendor"], -1, mapping, "store"),
         }, sourceType, index);
       }
 
-      const quantityMatch = line.match(/\b(?:qty|quantity|x)\s*[:#-]?\s*(\d+)\b/i) || line.match(/\b(\d+)\s*x\b/i);
-      const prices = [...line.matchAll(/\$?\b(\d+(?:\.\d{1,2})?)\b/g)].map((match) => match[1]);
-      const cleanedName = line
+      const quantityMatch =
+        line.match(/\b(?:qty|quantity)\s*[:#-]?\s*(\d+)\b/i) ||
+        line.match(/\bx\s*[:#-]?\s*(\d+)\b/i) ||
+        line.match(/\b(\d+)\s*x\b/i) ||
+        line.match(/^\s*(\d+)\s+(?=\S)/i);
+      const lineWithoutQuantity = line
         .replace(/\b(?:qty|quantity|x)\s*[:#-]?\s*\d+\b/gi, "")
         .replace(/\b\d+\s*x\b/gi, "")
+        .replace(/^\s*\d+\s+(?=\S)/i, "")
+        .trim();
+      const prices = [...lineWithoutQuantity.matchAll(/\$\s*(\d+(?:\.\d{1,2})?)\b|\b(\d+\.\d{2})\b/g)].map((match) => match[1] || match[2]);
+      const cleanedName = lineWithoutQuantity
         .replace(/\$?\b\d+(?:\.\d{1,2})?\b/g, "")
         .replace(/[,|-]+/g, " ")
         .trim();
@@ -4390,20 +4413,21 @@ export default function App() {
   function importedRowToItem(row, destination) {
     const matched = catalogProducts.find((product) => String(product.id) === String(row.matchedCatalogItemId));
     const defaultPurchaser = purchasers.find((purchaser) => purchaser.active) || purchasers[0] || { id: "", name: "Unassigned" };
-    const status = destination === "Vault" ? "Personal Collection" : "In Stock";
+    const normalizedDestination = destination === "Wishlist" ? "Wishlist" : destination === "Vault" ? "Vault" : "Forge";
+    const status = normalizedDestination === "Vault" ? "Personal Collection" : normalizedDestination === "Wishlist" ? "Wishlist" : "In Stock";
     return {
       ...blankItem,
-      id: makeId(destination === "Vault" ? "vault-import" : "import"),
+      id: makeId(normalizedDestination === "Vault" ? "vault-import" : normalizedDestination === "Wishlist" ? "wishlist-import" : "import"),
       name: row.itemName,
-      destinationScope: [destination === "Vault" ? "vault" : "forge"],
-      recordType: destination === "Vault" ? "vault_item" : "forge_inventory",
-      businessInventory: destination !== "Vault",
-      isWishlist: false,
+      destinationScope: [normalizedDestination === "Vault" ? "vault" : normalizedDestination === "Wishlist" ? "wishlist" : "forge"],
+      recordType: normalizedDestination === "Vault" ? "vault_item" : normalizedDestination === "Wishlist" ? "wishlist_item" : "forge_inventory",
+      businessInventory: normalizedDestination === "Forge",
+      isWishlist: normalizedDestination === "Wishlist",
       buyer: defaultPurchaser.name,
       purchaserId: defaultPurchaser.id,
       purchaserName: defaultPurchaser.name,
       category: "Pokemon",
-      store: row.location || "",
+      store: row.store || row.location || "",
       quantity: Number(row.quantity || 1),
       unitCost: Number(row.costPaid || 0),
       salePrice: "",
@@ -5180,6 +5204,11 @@ export default function App() {
 
   function createWorkspace(event) {
     event?.preventDefault?.();
+    if (!featureAllowed("shared_workspace")) {
+      setWorkspaceMessage("Shared workspaces are part of Ultimate. Billing is coming soon.");
+      openLockedFeatureNotice("shared_workspace");
+      return;
+    }
     const name = String(workspaceForm.name || "").trim();
     if (!name) {
       setWorkspaceMessage("Enter a workspace name first.");
@@ -5216,6 +5245,11 @@ export default function App() {
 
   function sendWorkspaceInvite(event) {
     event?.preventDefault?.();
+    if (!featureAllowed("team_access")) {
+      setWorkspaceMessage("Team access is part of Ultimate. Billing is coming soon.");
+      openLockedFeatureNotice("team_access");
+      return;
+    }
     const email = String(workspaceInviteForm.email || "").trim().toLowerCase();
     const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceInviteForm.workspaceId));
     if (!email || !workspace) {
@@ -9004,6 +9038,10 @@ function renderScoutHeader() {
   ].filter(Boolean);
 
   const changeScoutPage = (nextPage) => {
+    if (nextPage === "predictions" && !featureAllowed("restock_predictions")) {
+      openLockedFeatureNotice("restock_predictions");
+      return;
+    }
     setScoutView(nextPage);
     if (nextPage === "reports") {
       setScoutReportFilter("Latest");
@@ -9171,6 +9209,14 @@ function renderVaultHeader() {
       ]}
       activeTab={activeVaultPage}
       onTabChange={(nextTab) => {
+        if (nextTab === "sets" && !featureAllowed("set_completion")) {
+          openLockedFeatureNotice("set_completion");
+          return;
+        }
+        if (nextTab === "portfolio" && !featureAllowed("portfolio_value")) {
+          openLockedFeatureNotice("portfolio_value");
+          return;
+        }
         setVaultSubTab(nextTab);
         if (nextTab === "collection") {
           setTimeout(() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
@@ -10318,6 +10364,14 @@ function renderForgeHeader() {
   const currentTier = getUserTier(planProfile);
   const paidUser = isPaidUser(planProfile);
   const adminUser = isAdminUser(planProfile);
+  const featureGateOptions = {
+    admin: adminUser,
+    betaTester: BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester,
+    qaUnlock: QA_UNLOCK_PAID_FEATURES,
+  };
+  const featureAllowed = (featureKey) => canUseFeature(planProfile, featureKey, featureGateOptions);
+  const unlockedFeatureKeys = getUnlockedFeatures(planProfile, featureGateOptions);
+  const lockedFeatureKeys = getLockedFeatures(planProfile, featureGateOptions);
   const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
   const accountStatusTitle = signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Private Beta Mode" : "Supabase Sign-In Required";
   const accountStatusDescription = signedInWithSupabase
@@ -10415,7 +10469,6 @@ function renderForgeHeader() {
       submit: "Submit Market Report",
     },
   }[feedbackDialog || "feedback"];
-  const featureAllowed = (featureKey) => QA_UNLOCK_PAID_FEATURES || hasPlanAccess(planProfile, featureKey);
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
   const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
   const visibleCoreHomeStats = visibleDashboardStats.filter((stat) => CORE_HOME_STAT_KEYS.includes(stat.key));
@@ -10440,12 +10493,12 @@ function renderForgeHeader() {
     return isDashboardSectionEnabled(dashboardProfile, key) && (!featureKey || featureAllowed(featureKey));
   };
   const activeTabFeature = {
-    sales: "seller_tools",
-    addSale: "seller_tools",
+    sales: "sales_tracking",
+    addSale: "sales_tracking",
     expenses: "expenses",
     vehicles: "mileage",
     mileage: "mileage",
-    reports: "seller_tools",
+    reports: "business_reports",
   }[activeTab];
   const activeTabLocked = Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
   const dashboardSectionStyle = (key) => ({ order: dashboardSectionState(key).order });
@@ -13160,6 +13213,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function exportCrossListingCSV(platform = "all") {
+    if (!featureAllowed("marketplace_exports")) {
+      openLockedFeatureNotice("marketplace_exports");
+      return;
+    }
     const listingsToExport = workspaceMarketplaceListings.length ? workspaceMarketplaceListings : marketplaceListings;
     const savedChannelRows = (phase2Data.marketplaceListingChannels || [])
       .filter((channel) => platform === "all" || channel.platform === platform)
@@ -15758,11 +15815,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {renderMenuPullDown("subscription", "Plans & Features", "Free vs paid features and beta planning", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
-                    <strong>Paid plans are not active yet.</strong>
-                    <p className="compact-subtitle">This is a preview for beta planning. Preview only. Plans are not active.</p>
+                    <strong>Billing coming soon.</strong>
+                    <p className="compact-subtitle">Current plan: {TIER_LABELS[currentTier] || currentPlan}. Paid gates are active for product behavior, but no payment processing or checkout is connected.</p>
                   </div>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Free vs Paid Feature Preview</button>
-                  <button type="button" className="drawer-link disabled-link" disabled>Upgrade Coming Soon</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Open Settings / Billing</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Request beta access</button>
+                  <button type="button" className="drawer-link disabled-link" disabled>Stripe Not Connected</button>
                 </div>
               ), "Plan")}
               {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", "Admin moderation, imports, suggestions, and shared data controls", (
@@ -16976,6 +17034,27 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
+      {lockedFeatureKey ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setLockedFeatureKey("")}>
+          <section className="location-modal flow-modal flow-modal-small" role="dialog" aria-modal="true" aria-labelledby="locked-feature-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="locked-feature-title">Feature Locked</h2>
+                <p>Paid billing is planned, not connected.</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close locked feature notice" onClick={() => setLockedFeatureKey("")}>
+                X
+              </button>
+            </div>
+            <LockedFeatureNotice
+              featureKey={lockedFeatureKey}
+              onClose={() => setLockedFeatureKey("")}
+              onRequestAccess={() => requestLockedFeatureAccess(lockedFeatureKey)}
+            />
+          </section>
+        </div>
+      ) : null}
+
       <main className={`main dashboard-card-style-${dashboardCardStyle}`}>
         {activeTabLocked ? (
           <UpgradeScreen featureKey={activeTabFeature} subscriptionsLive={SUBSCRIPTIONS_LIVE} onBack={() => setActiveTab("dashboard")} />
@@ -17571,23 +17650,35 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
 
               <div className="settings-subsection">
-                <h3>Plan & Access</h3>
-                <p>User type controls the app experience. Subscription plan controls what features are unlocked.</p>
+                <h3>Settings / Billing</h3>
+                <p>User type controls the app experience. Subscription plan controls what features are unlocked. Billing is coming soon; Stripe and checkout are not connected.</p>
                 <div className="cards mini-cards">
                   <div className="card"><p>Role</p><h2>{adminUser ? "Admin" : "User"}</h2></div>
                   <div className="card"><p>Current Tier</p><h2>{TIER_LABELS[currentTier] || currentPlan}</h2></div>
                   <div className="card"><p>Status</p><h2>{subscriptionProfile.subscriptionStatus || "active"}</h2></div>
-                  <div className="card"><p>Lifetime Access</p><h2>{subscriptionProfile.lifetimeAccess ? "Yes" : "No"}</h2></div>
+                  <div className="card"><p>Override</p><h2>{adminUser ? "Admin" : QA_UNLOCK_PAID_FEATURES ? "QA" : BETA_LOCAL_MODE ? "Beta" : "None"}</h2></div>
                 </div>
                 <div className="quick-actions">
-                  <button type="button" disabled>Upgrade to Paid</button>
-                  <button type="button" className="secondary-button" disabled>Manage Subscription</button>
+                  <button type="button" disabled>Billing Coming Soon</button>
+                  <button type="button" className="secondary-button" onClick={() => requestLockedFeatureAccess("seller_tools")}>Request beta access</button>
+                </div>
+                <div className="settings-groups plan-comparison-grid">
+                  {PLAN_FEATURE_GROUPS.map((plan) => (
+                    <div className="settings-group" key={plan.id}>
+                      <h4>{plan.label}</h4>
+                      <div className="toggle-list">
+                        {plan.features.map((featureKey) => (
+                          <p className="compact-subtitle" key={featureKey}>{FEATURE_LABELS[featureKey] || featureKey}</p>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <div className="settings-groups">
                   <div className="settings-group">
                     <h4>Unlocked</h4>
                     <div className="toggle-list">
-                      {Object.keys(FEATURE_ACCESS).filter((featureKey) => featureAllowed(featureKey)).map((featureKey) => (
+                      {unlockedFeatureKeys.map((featureKey) => (
                         <p className="compact-subtitle" key={featureKey}>{FEATURE_LABELS[featureKey] || featureKey}</p>
                       ))}
                     </div>
@@ -17595,14 +17686,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="settings-group">
                     <h4>Locked</h4>
                     <div className="toggle-list">
-                      {Object.keys(FEATURE_ACCESS).filter((featureKey) => !featureAllowed(featureKey)).map((featureKey) => (
-                        <p className="compact-subtitle" key={featureKey}>Lock {FEATURE_LABELS[featureKey] || featureKey}</p>
+                      {lockedFeatureKeys.map((featureKey) => (
+                        <p className="compact-subtitle" key={featureKey}>{FEATURE_LABELS[featureKey] || featureKey}</p>
                       ))}
                     </div>
                   </div>
                 </div>
                 <p className="compact-subtitle">
-                  {adminUser ? "Admin tools unlocked." : paidUser ? "Paid features unlocked." : "Free plan: advanced Scout, alerts, seller tools, mileage, expenses, and admin tools stay locked."}
+                  {adminUser ? "Admin override active." : QA_UNLOCK_PAID_FEATURES ? "Local QA paid-feature unlock active." : BETA_LOCAL_MODE ? "Private beta override active." : paidUser ? "Paid-tier features unlocked by profile." : "Free plan: paid tools show locked notices instead of checkout."}
                 </p>
                 <p className="compact-subtitle">
                   {currentUserProfile.source === "local-beta"
