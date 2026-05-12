@@ -165,18 +165,45 @@ async function main() {
     await scope.getByLabel(label, { exact: true }).fill(String(value));
   }
 
-  async function overflowAction(scope, actionLabel) {
+  async function openOverflowMenu(scope) {
     const candidates = scope.locator(".overflow-menu-button");
     const count = await candidates.count();
     for (let index = count - 1; index >= 0; index -= 1) {
       const button = candidates.nth(index);
       if (await button.isVisible().catch(() => false)) {
-        await button.click({ force: true });
-        await scope.getByRole("menuitem", { name: actionLabel }).click();
-        return;
+        await button.click();
+        const menu = page.locator(".overflow-menu-list").last();
+        await menu.waitFor({ state: "visible", timeout: 5000 });
+        return menu;
       }
     }
-    throw new Error(`No visible overflow menu found for ${actionLabel}`);
+    throw new Error("No visible overflow menu found");
+  }
+
+  async function overflowAction(scope, actionLabel) {
+    const menu = await openOverflowMenu(scope);
+    await menu.getByRole("menuitem", { name: actionLabel }).click();
+  }
+
+  async function assertOverflowActionHidden(scope, actionLabel) {
+    const menu = await openOverflowMenu(scope);
+    assert.equal(
+      await menu.getByRole("menuitem", { name: actionLabel }).count(),
+      0,
+      `${actionLabel} should not be visible in this overflow menu`
+    );
+    await page.keyboard.press("Escape");
+  }
+
+  async function closeScoutSubmitSuccess() {
+    const scoutSubmitModal = page.locator('.flow-modal[data-flow="scoutSubmit"]').first();
+    const doneButton = scoutSubmitModal.getByRole("button", { name: /^Done$/ }).first();
+    await doneButton.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+    if (await doneButton.isVisible().catch(() => false)) {
+      await doneButton.click({ force: true });
+      await scoutSubmitModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    }
+    await page.waitForTimeout(250);
   }
 
   async function clickFirstVisible(locator, label) {
@@ -312,7 +339,7 @@ async function main() {
     await assertVisibleText("Submit Report");
   });
 
-  await step("Scout: add/edit/delete restock report", async () => {
+  await step("Scout: add/edit restock report without user delete", async () => {
     async function openReportWizard() {
       await nav("Scout");
       if (await page.locator("form.scout-report-flow").count() === 0) {
@@ -338,6 +365,10 @@ async function main() {
       }
     }
 
+    async function closeReportSuccess() {
+      await closeScoutSubmitSuccess();
+    }
+
     const noteSelector = 'textarea[placeholder="Notes, shelf status, employee quote, limit, or context"]';
     const reportForm = await openReportWizard();
     await chooseSmokeTargetStore(reportForm, "In stock");
@@ -347,9 +378,11 @@ async function main() {
     await reportForm.getByRole("button", { name: "Review report" }).click();
     await reportForm.getByRole("button", { name: "Submit Report" }).click();
     await assertVisibleText("Smoke ETB");
+    await closeReportSuccess();
 
     const reportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB" }).first();
     await reportCard.waitFor({ state: "visible", timeout: 10000 });
+    await assertOverflowActionHidden(reportCard, "Delete");
     await overflowAction(reportCard, "Edit");
     const editReportPanel = page.locator("form.scout-report-flow").first();
     await editReportPanel.getByRole("button", { name: "Back to details" }).click();
@@ -358,12 +391,11 @@ async function main() {
     await editReportPanel.getByRole("button", { name: "Review report" }).click();
     await editReportPanel.getByRole("button", { name: "Save Report" }).click();
     await assertVisibleText("Smoke ETB Edited");
+    await closeReportSuccess();
 
     const editedReportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB Edited" }).first();
     await editedReportCard.waitFor({ state: "visible", timeout: 10000 });
-    await overflowAction(editedReportCard, "Delete");
-    await page.getByRole("button", { name: "Delete Report" }).click();
-    await assert.equal(await page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB Edited" }).count(), 0);
+    await assertOverflowActionHidden(editedReportCard, "Delete");
 
     const quickReportForm = await openReportWizard();
     await chooseSmokeTargetStore(quickReportForm, "In stock");
@@ -371,16 +403,24 @@ async function main() {
     await quickReportForm.locator(noteSelector).fill("Smoke quick report with limit 2 posted.");
     await quickReportForm.getByRole("button", { name: "Review report" }).click();
     await quickReportForm.getByRole("button", { name: "Submit Report" }).click();
-    await assertVisibleText("Low stock");
+    await closeReportSuccess();
+    const viewAllReports = page.getByRole("button", { name: "View all reports" }).first();
+    if (await viewAllReports.isVisible().catch(() => false)) {
+      await viewAllReports.click();
+    }
     await assertVisibleText("Smoke quick report with limit 2 posted.");
     const quickReportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke quick report with limit 2 posted." }).first();
     await quickReportCard.waitFor({ state: "visible", timeout: 10000 });
-    await overflowAction(quickReportCard, "Delete");
-    await page.getByRole("button", { name: "Delete Report" }).click();
+    await assertOverflowActionHidden(quickReportCard, "Delete");
   });
 
   await step("Scout: add/edit/delete tracked item", async () => {
     await nav("Scout");
+    const scoutStoresTab = page.locator(".standard-page-header-tabs").getByRole("button", { name: "Stores", exact: true }).first();
+    if (await scoutStoresTab.isVisible().catch(() => false)) {
+      await scoutStoresTab.click();
+      await page.waitForTimeout(250);
+    }
     const storesAccordion = page.locator(".scout-accordion-header").filter({ hasText: "Stores" }).first();
     if (await storesAccordion.count()) {
       const expanded = await storesAccordion.getAttribute("aria-expanded");
@@ -459,30 +499,10 @@ async function main() {
 
   await step("Scout: Screenshot upload/manual save", async () => {
     await nav("Scout");
-    if (await page.getByRole("heading", { name: /Screenshot/i }).count() === 0) {
-      await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
-      await page.getByRole("button", { name: "Screenshot" }).click();
-    }
-    const screenshotPanel = page.locator("div").filter({ has: page.getByRole("heading", { name: /Screenshot/i }) }).last();
-    const png = Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mP8z8BQDwAFgwJ/lw2nWQAAAABJRU5ErkJggg==",
-      "base64"
-    );
-
-    await screenshotPanel.locator('input[type="file"]').setInputFiles({
-      name: "facebook-tip.png",
-      mimeType: "image/png",
-      buffer: png,
-    });
-    await screenshotPanel.getByPlaceholder("Product name").fill("Smoke Screenshot ETB");
-    await screenshotPanel.locator('input[type="date"]').fill("2026-05-08");
-    await screenshotPanel.locator('input[type="time"]').fill("09:15");
-    await screenshotPanel.getByPlaceholder("Quantity seen").fill("4");
-    await screenshotPanel.getByPlaceholder("Price if visible").fill("49.99");
-    await screenshotPanel.getByPlaceholder("Source notes / group name").fill("757 Pokemon Finds");
-    await screenshotPanel.getByPlaceholder("Notes from the screenshot").fill("Manual screenshot review save.");
-    await screenshotPanel.getByRole("button", { name: "Copy to Report Review" }).click();
+    await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
     const reportForm = page.locator("form.scout-report-flow").first();
+    await reportForm.waitFor({ state: "visible", timeout: 10000 });
+    await reportForm.getByRole("button", { name: "Screenshot", exact: true }).click();
     await reportForm.getByRole("button", { name: /In stock/i }).first().click();
     await reportForm.getByRole("button", { name: /Target/i }).first().click();
     const storeSearch = reportForm.getByPlaceholder(/Search Target stores/i).first();
@@ -495,9 +515,28 @@ async function main() {
     } else {
       await reportForm.getByRole("button", { name: "Report here" }).first().click();
     }
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mP8z8BQDwAFgwJ/lw2nWQAAAABJRU5ErkJggg==",
+      "base64"
+    );
+
+    await reportForm.locator('input[type="file"]').setInputFiles({
+      name: "facebook-tip.png",
+      mimeType: "image/png",
+      buffer: png,
+    });
+    await reportForm.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke Screenshot ETB");
+    await reportForm.getByPlaceholder("Qty or estimate").first().fill("4");
+    await reportForm.getByPlaceholder("Optional").first().fill("49.99");
+    await reportForm.getByPlaceholder("Notes, shelf status, employee quote, limit, or context").fill("Manual screenshot review save.");
+    await reportForm.getByPlaceholder("Optional text/link from receipt, screenshot, post, or site").fill("757 Pokemon Finds");
     await reportForm.getByRole("button", { name: "Review report" }).click();
     await reportForm.getByRole("button", { name: "Submit Report" }).click();
-    await assertVisibleText("Smoke Screenshot ETB");
+    await closeScoutSubmitSuccess();
+    const viewAllReports = page.getByRole("button", { name: "View all reports" }).first();
+    if (await viewAllReports.isVisible().catch(() => false)) {
+      await viewAllReports.click();
+    }
     await assertVisibleText("Manual screenshot review save.");
   });
 
@@ -572,7 +611,6 @@ async function main() {
     await fillByLabel(vaultForm, "Quantity for Vault", "1");
     await fillByLabel(vaultForm, "Collection Category", "Smoke Set");
     await fillByLabel(vaultForm, "Cost Basis", "20");
-    await fillByLabel(vaultForm, "MSRP", "25");
     await fillByLabel(vaultForm, "Market Price", "30");
     await page.locator(".flow-modal").getByRole("button", { name: "Add Item" }).click();
     await assertVisibleText("Smoke Vault Binder");

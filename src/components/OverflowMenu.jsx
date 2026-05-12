@@ -54,7 +54,7 @@ export default function OverflowMenu({
   }
 
   return (
-    <div className="overflow-menu" ref={ref}>
+    <div className={`overflow-menu${open ? " open" : ""}`} ref={ref}>
       <button
         type="button"
         className="overflow-menu-button"

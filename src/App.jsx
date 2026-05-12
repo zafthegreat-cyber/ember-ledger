@@ -51,6 +51,7 @@ import {
 } from "./utils/suggestionReviewUtils";
 import { MARKET_PRICE_CACHE_KEY, loadPriceCache, savePriceCache, updateCachedMarketPrice } from "./services/priceCacheService";
 import { CATALOG_PAGE_SIZE, detectCatalogSearchMode, hasCatalogSearchCriteria, searchPokemonCatalog } from "./services/pokemonCatalogSearch";
+import { analyzeCatalogSearch } from "./data/catalogSearchAliases.mjs";
 import {
   getBestAvailableMarketPrice,
   refreshCatalogMarketItems,
@@ -87,6 +88,226 @@ import {
   isPaidUser,
 } from "./constants/plans";
 import { getCurrentUserProfile, makeFallbackUserProfile } from "./lib/userProfile";
+
+const NAV_ICON_SIZE = 20;
+
+function AppNavIcon({ kind, className = "" }) {
+  const iconClass = `app-nav-icon ${className}`.trim();
+  const common = {
+    width: NAV_ICON_SIZE,
+    height: NAV_ICON_SIZE,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    "aria-hidden": true,
+    className: iconClass,
+  };
+
+  switch (kind) {
+    case "home":
+      return (
+        <svg {...common}>
+          <path d="M3 12c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
+          <path d="M3 16c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
+          <path d="M3 8c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
+        </svg>
+      );
+    case "vault":
+      return (
+        <svg {...common}>
+          <path d="M3 5.5l9-3.8 9 3.8v6.6a7.5 7.5 0 0 1-18 0V5.5z" />
+          <path d="M9 12h6" />
+          <path d="M12 9v6" />
+        </svg>
+      );
+    case "forge":
+      return (
+        <svg {...common}>
+          <path d="M2 12h20" />
+          <path d="M5 12V7.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2V12" />
+          <path d="M7 20h2v-6" />
+          <path d="M15 20h2v-6" />
+          <path d="M12 22v-8" />
+          <path d="M12 12 21 16" />
+          <path d="M12 12 3 16" />
+          <path d="M8 12h8" />
+        </svg>
+      );
+    case "market":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16" />
+          <path d="M7 7v10a5 5 0 0 0 10 0V7" />
+          <path d="M9 12h6" />
+          <path d="M10 16h4" />
+          <path d="M12 8v6" />
+        </svg>
+      );
+    case "scout":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 4v4" />
+          <path d="M12 16v4" />
+          <path d="M4 12h4" />
+          <path d="M16 12h4" />
+          <path d="M7.1 7.1 12 12" />
+          <path d="M16.9 16.9 12 12" />
+          <path d="M16.9 7.1 12 12" />
+          <path d="M7.1 16.9 12 12" />
+        </svg>
+      );
+    case "pool":
+      return (
+        <svg {...common}>
+          <path d="M4 12h16" />
+          <path d="M8 8c0 2.4-2 2.5-2 5 0 2.5 2 2.6 2 5h8c0-2.4 2-2.5 2-5 0-2.5-2-2.6-2-5z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      );
+    case "plus":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v8" />
+          <path d="M8 12h8" />
+        </svg>
+      );
+    case "search":
+      return (
+        <svg {...common}>
+          <circle cx="11" cy="11" r="7" />
+          <path d="M16.65 16.65 21 21" />
+        </svg>
+      );
+    case "scan":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16" />
+          <path d="M4 17h16" />
+          <path d="M7 4v4" />
+          <path d="M17 16v4" />
+          <path d="M17 4v4" />
+          <path d="M7 16v4" />
+          <path d="M9 11h6" />
+          <path d="M12 8v6" />
+        </svg>
+      );
+    case "calendar":
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M7 2v4" />
+          <path d="M17 2v4" />
+          <path d="M3 9h18" />
+          <path d="M8 13h8" />
+          <path d="M8 17h6" />
+        </svg>
+      );
+    case "clipboard":
+      return (
+        <svg {...common}>
+          <rect x="8" y="3" width="8" height="18" rx="1" />
+          <path d="M9 3h6" />
+          <path d="M9 7h6" />
+          <path d="M10 11h4" />
+          <path d="M10 15h4" />
+          <path d="M10 19h4" />
+        </svg>
+      );
+    case "bell":
+      return (
+        <svg {...common}>
+          <path d="M6 18h12" />
+          <path d="M12 3a5 5 0 0 0-3.5 8.7V15l-1.5 2h10l-1.5-2v-3.3A5 5 0 0 0 12 3" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg {...common}>
+          <path d="M12 2v2" />
+          <path d="M12 20v2" />
+          <path d="M4.93 4.93l1.42 1.42" />
+          <path d="M17.66 17.66l1.42 1.42" />
+          <path d="M2 12h2" />
+          <path d="M20 12h2" />
+          <path d="M4.93 19.07l1.42-1.42" />
+          <path d="M17.66 6.34l1.42-1.42" />
+          <circle cx="12" cy="12" r="4" />
+          <path d="m9.5 9.5 5 5" />
+          <path d="m9.5 14.5 5-5" />
+        </svg>
+      );
+    case "account":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+      );
+    case "workspace":
+      return (
+        <svg {...common}>
+          <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z" />
+          <path d="M8 13h8" />
+        </svg>
+      );
+    case "tcg-os":
+      return (
+        <svg {...common}>
+          <rect x="4" y="4" width="6" height="6" rx="1.5" />
+          <rect x="14" y="4" width="6" height="6" rx="1.5" />
+          <rect x="4" y="14" width="6" height="6" rx="1.5" />
+          <path d="M16 15l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" />
+        </svg>
+      );
+    case "data":
+      return (
+        <svg {...common}>
+          <ellipse cx="12" cy="6" rx="7" ry="3" />
+          <path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" />
+          <path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
+          <path d="M12 10v8" />
+          <path d="m9 15 3 3 3-3" />
+        </svg>
+      );
+    case "help":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.5 9a2.8 2.8 0 0 1 5 1.8c0 2-2.5 2.2-2.5 4.2" />
+          <path d="M12 18h.01" />
+        </svg>
+      );
+    case "community":
+      return (
+        <svg {...common}>
+          <path d="M4 19v-4a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v4" />
+          <circle cx="9" cy="7" r="3" />
+          <circle cx="17" cy="8" r="2" />
+          <path d="M4 19h16" />
+        </svg>
+      );
+    case "plan":
+      return (
+        <svg {...common}>
+          <path d="M12 3l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.3 6.8 19l1-5.8-4.2-4.1 5.8-.8z" />
+        </svg>
+      );
+    case "admin":
+      return (
+        <svg {...common}>
+          <path d="M12 3l7 3v5c0 4.5-2.8 8.4-7 10-4.2-1.6-7-5.5-7-10V6z" />
+          <path d="m9 12 2 2 4-5" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
 
 function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
   const [headerMode, setHeaderMode] = useState("full");
@@ -214,6 +435,7 @@ const FEEDBACK_STORAGE_KEY = "et-tcg-beta-feedback";
 const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
+const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
 const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 const LONG_LIST_PAGE_SIZE = 12;
@@ -241,6 +463,100 @@ const DAILY_TIDE_BADGES = [
   { key: "set_completionist", label: "Set Completionist" },
   { key: "budget_boss", label: "Budget Boss" },
 ];
+const SCOUT_QUICK_PROOF_TYPES = [
+  { value: "stock_photo", label: "Stock photo" },
+  { value: "receipt", label: "Receipt" },
+  { value: "screenshot", label: "Screenshot" },
+  { value: "text_link", label: "Text/link" },
+  { value: "manual", label: "Manual" },
+];
+const SCOUT_QUICK_REPORT_TYPES = [
+  { value: "stock_on_shelf", label: "Stock on shelf", helper: "In stock", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "possible" },
+  { value: "no_stock", label: "No stock", helper: "Nothing found", reportType: "Store Restock Report", stockStatus: "empty", sourceType: "user_report", confidence: "possible" },
+  { value: "restock_happening_now", label: "Restock happening now", helper: "Vendor or staff stocking", reportType: "Store Restock Report", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "likely" },
+  { value: "employee_restock_coming", label: "Employee said restock coming", helper: "Needs review", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", sourceType: "employee_tip", confidence: "likely", needsReview: true },
+  { value: "truck_vendor_seen", label: "Truck/vendor seen", helper: "Possible restock", reportType: "Restock Pattern Suggestion", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "possible", needsReview: true },
+  { value: "shelf_tag_only", label: "Shelf tag only", helper: "No product seen", reportType: "Store Intel", stockStatus: "limit_posted", sourceType: "user_report", confidence: "possible" },
+  { value: "line_queue_seen", label: "Line/queue seen", helper: "Demand signal", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible", needsReview: true },
+  { value: "online_stock_changed", label: "Online stock changed", helper: "Website/app update", reportType: "Online Stock Intel", stockStatus: "unknown", sourceType: "text_screenshot", confidence: "possible", needsReview: true },
+  { value: "confirmed_purchase", label: "Confirmed purchase", helper: "Bought or saw checkout", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "likely" },
+  { value: "other_intel", label: "Other intel", helper: "Manual note", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible", needsReview: true },
+];
+const SCOUT_QUICK_RETAILER_OPTIONS = [
+  "Target",
+  "Walmart",
+  "Best Buy",
+  "Barnes & Noble",
+  "GameStop",
+  "Costco",
+  "Sam's Club",
+  "BJ's",
+  "Dollar General",
+  "Family Dollar",
+  "Dollar Tree",
+  "Five Below",
+  "Walgreens",
+  "CVS",
+  "Hobby Lobby",
+  "Other",
+];
+const SCOUT_QUICK_STOCK_LEFT_OPTIONS = [
+  { value: "not_sure", label: "Not sure" },
+  { value: "some_left", label: "Yes, some left" },
+  { value: "bought_last", label: "No, I bought the last one" },
+  { value: "few_left", label: "A few left", helper: "Low stock" },
+  { value: "plenty_left", label: "Plenty left" },
+];
+const SCOUT_QUICK_DATE_OPTIONS = [
+  { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "pick_date", label: "Pick date" },
+  { value: "day_only", label: "Day of week only" },
+  { value: "not_sure", label: "Not sure" },
+];
+const SCOUT_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WATCH_CALENDAR_VIEW_OPTIONS = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "Week" },
+  { value: "agenda", label: "Agenda" },
+];
+const WATCH_CALENDAR_LAYER_OPTIONS = [
+  { key: "localRestocks", label: "Local restocks" },
+  { key: "onlineRestocks", label: "Online restocks" },
+  { key: "pokemonReleases", label: "Pokémon releases" },
+  { key: "expansionReleases", label: "Expansion releases" },
+  { key: "retailDrops", label: "Retail drops" },
+  { key: "userGuesses", label: "User guesses" },
+  { key: "appPredictions", label: "App predictions" },
+  { key: "adminVerifiedOnly", label: "Admin verified only" },
+  { key: "highConfidenceOnly", label: "High confidence only" },
+  { key: "militaryStores", label: "Military stores" },
+];
+const WATCH_CALENDAR_DEFAULT_LAYERS = {
+  localRestocks: true,
+  onlineRestocks: true,
+  pokemonReleases: true,
+  expansionReleases: true,
+  retailDrops: true,
+  userGuesses: true,
+  appPredictions: true,
+  adminVerifiedOnly: false,
+  highConfidenceOnly: false,
+  militaryStores: false,
+};
+const WATCH_CALENDAR_AREAS = [
+  { value: "hampton_roads", label: "Hampton Roads / 757", cities: ["suffolk", "chesapeake", "virginia beach", "norfolk", "portsmouth", "newport news", "hampton"] },
+  { value: "suffolk", label: "Suffolk", cities: ["suffolk"] },
+  { value: "chesapeake", label: "Chesapeake", cities: ["chesapeake"] },
+  { value: "virginia_beach", label: "Virginia Beach", cities: ["virginia beach"] },
+  { value: "norfolk", label: "Norfolk", cities: ["norfolk"] },
+  { value: "portsmouth", label: "Portsmouth", cities: ["portsmouth"] },
+  { value: "newport_news", label: "Newport News", cities: ["newport news"] },
+  { value: "hampton", label: "Hampton", cities: ["hampton"] },
+  { value: "richmond", label: "Richmond", cities: ["richmond"] },
+  { value: "northern_virginia", label: "Northern Virginia", cities: ["alexandria", "arlington", "fairfax", "falls church", "manassas", "reston", "sterling", "woodbridge"] },
+  { value: "all_virginia", label: "All Virginia", cities: [] },
+];
 const WORKSPACE_TYPES = [
   { value: "personal", label: "Personal", description: "Only your user account." },
   { value: "shared_collection", label: "Shared Collection", description: "A shared collection or household Vault." },
@@ -255,14 +571,82 @@ const WORKSPACE_ROLES = [
   { value: "viewer", label: "Viewer" },
 ];
 
+function routeStateFromPath(pathname = "") {
+  const segments = String(pathname || "/").split("/").filter(Boolean);
+  const state = {};
+  const [section, subSection, detailId] = segments;
+
+  if (!section) return { activeTab: "dashboard" };
+  if (section === "scout") {
+    state.activeTab = "scout";
+    state.scoutView = subSection === "stores" ? "stores" : subSection === "reports" ? "reports" : subSection === "calendar" ? "alerts" : "overview";
+    if (subSection === "stores" && detailId) state.scoutStoreId = decodeURIComponent(detailId);
+    if (subSection === "reports" && detailId) state.scoutReportId = decodeURIComponent(detailId);
+    return state;
+  }
+  if (section === "tidetradr") {
+    state.activeTab = "market";
+    state.tideTradrSubTab = "overview";
+    if ((subSection === "card" || subSection === "product") && detailId) {
+      state.selectedCatalogDetailId = decodeURIComponent(detailId);
+    }
+    return state;
+  }
+  if (section === "forge") {
+    const forgeTabs = new Set(["expenses", "sales", "mileage", "reports"]);
+    state.activeTab = forgeTabs.has(subSection) ? subSection : "inventory";
+    state.forgeSubTab = subSection === "expenses" ? "expenses" : subSection === "sales" ? "sales" : subSection === "mileage" ? "mileage" : "overview";
+    return state;
+  }
+  if (section === "vault") return { activeTab: "vault", vaultSubTab: subSection === "cards" ? "collection" : subSection || "overview" };
+  if (section === "tidepool") return { activeTab: "tidepool", tidepoolPostId: subSection === "post" && detailId ? decodeURIComponent(detailId) : "" };
+  if (section === "settings") return { activeTab: "menu" };
+  return { activeTab: "dashboard" };
+}
+
+function loadInitialRouteState() {
+  if (typeof window === "undefined") return { activeTab: "dashboard" };
+  let saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(APP_ROUTE_STORAGE_KEY) || "{}");
+  } catch {
+    saved = {};
+  }
+  return {
+    ...saved,
+    ...routeStateFromPath(window.location.pathname),
+  };
+}
+
 function getLocalDateKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
+}
+
+function getLocalTimeKey(date = new Date()) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
 function getYesterdayDateKey() {
   const date = new Date();
   date.setDate(date.getDate() - 1);
   return getLocalDateKey(date);
+}
+
+function addLocalDays(dateKey = getLocalDateKey(), days = 0) {
+  const date = new Date(`${dateKey}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return getLocalDateKey(date);
+}
+
+function formatWatchCalendarDay(dateKey = "") {
+  const date = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "Unscheduled";
+  const today = getLocalDateKey();
+  if (dateKey === today) return "Today";
+  if (dateKey === addLocalDays(today, 1)) return "Tomorrow";
+  return date.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 }
 
 function normalizeDailyTideState(value = {}) {
@@ -930,6 +1314,267 @@ function searchTokens(value) {
   return normalizeSearchText(value).split(/\s+/).filter(Boolean);
 }
 
+const CATALOG_SEALED_COVERAGE_CATEGORIES = [
+  { label: "Elite Trainer Box", aliases: ["elite trainer box", " etb"] },
+  { label: "Pokemon Center Elite Trainer Box", aliases: ["pokemon center elite trainer box", "pc etb"] },
+  { label: "Booster Box", aliases: ["booster box", "booster display box"] },
+  { label: "Booster Bundle", aliases: ["booster bundle"] },
+  { label: "Sleeved Booster", aliases: ["sleeved booster", "sleeved booster pack"] },
+  { label: "Checklane Blister", aliases: ["checklane blister", "check lane blister"] },
+  { label: "3-Pack Blister", aliases: ["3 pack blister", "3-pack blister", "three pack blister"] },
+  { label: "Mini Tin", aliases: ["mini tin"] },
+  { label: "Tin", aliases: [" tin", "tins"] },
+  { label: "Collection Box", aliases: ["collection box", " ex box", " v box"] },
+  { label: "Premium Collection", aliases: ["premium collection"] },
+  { label: "Special Collection", aliases: ["special collection"] },
+  { label: "Ultra-Premium Collection", aliases: ["ultra premium collection", "ultra-premium collection", " upc"] },
+  { label: "Build & Battle Box", aliases: ["build and battle box", "build battle box", "build & battle box"] },
+  { label: "Build & Battle Stadium", aliases: ["build and battle stadium", "build battle stadium", "build & battle stadium"] },
+  { label: "Trainer Toolkit", aliases: ["trainer toolkit"] },
+  { label: "Deck / Battle Deck", aliases: ["battle deck", "league battle deck", "theme deck", "starter deck"] },
+  { label: "Retail Bundle", aliases: ["retail bundle"] },
+  { label: "Costco/Sam's/BJ's Bundle", aliases: ["costco", "sam's", "sams", "bj's", "bjs"] },
+  { label: "Display / Case", aliases: [" display", "case"] },
+  { label: "Other sealed product", aliases: ["sealed product"] },
+];
+
+const CATALOG_CORE_SEALED_COVERAGE_LABELS = [
+  "Elite Trainer Box",
+  "Booster Box",
+  "Booster Bundle",
+  "Sleeved Booster",
+  "3-Pack Blister",
+  "Mini Tin",
+  "Collection Box",
+];
+
+function catalogClassificationText(value = {}) {
+  const source = value || {};
+  return normalizeSearchText([
+    source.name,
+    source.productName,
+    source.product_name,
+    source.cardName,
+    source.card_name,
+    source.productType,
+    source.product_type,
+    source.sealedProductType,
+    source.sealed_product_type,
+    source.productKind,
+    source.product_kind,
+    source.cardSubtype,
+    source.card_subtype,
+    source.catalogItemType,
+    source.catalog_item_type,
+    source.priceSubtype,
+    source.price_subtype,
+    source.setName,
+    source.set_name,
+    source.expansion,
+    source.productLine,
+    source.product_line,
+    source.sourceUrl,
+    source.source_url,
+    source.marketUrl,
+    source.market_url,
+    source.identifierSearch,
+    source.identifier_search,
+    source.notes,
+  ].filter(Boolean).join(" "));
+}
+
+function isCatalogCodeCardLike(value = {}) {
+  const text = catalogClassificationText(value);
+  return (
+    /\bcode\s*card\b/.test(text) ||
+    /\bpokemon\s+tcg\s+(live|online)\b/.test(text) ||
+    /\bdigital\s+booster\s+pack\b/.test(text) ||
+    /\bpokemon\.com\/redeem\b/.test(text) ||
+    /\bonline\s+code\b/.test(text) ||
+    /\bbooster\s+pack\s+code\b/.test(text) ||
+    /\bredeem\b/.test(text) ||
+    /\bcode\s*[-:]/.test(text)
+  );
+}
+
+function isDigitalCodeCardLike(value = {}) {
+  const text = catalogClassificationText(value);
+  return /\bdigital\b|\bpokemon\s+tcg\s+(live|online)\b|\bonline\s+code\b|\bpokemon\.com\/redeem\b/.test(text);
+}
+
+function catalogCardDetailsForClassification(value = {}) {
+  return value.cardDetails || value.card_details || value.tcgCardDetails || value.tcg_card_details || {};
+}
+
+function catalogHasAnyValue(...values) {
+  return values.some((value) => {
+    if (Array.isArray(value)) return value.length > 0;
+    if (value && typeof value === "object") return Object.keys(value).length > 0;
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  });
+}
+
+function catalogSourceSuggestsSealed(value = {}) {
+  const source = value || {};
+  const typeText = normalizeSearchText([
+    source.catalogType,
+    source.catalog_type,
+    source.catalogGroup,
+    source.catalog_group,
+    source.productType,
+    source.product_type,
+    source.sealedProductType,
+    source.sealed_product_type,
+    source.productKind,
+    source.product_kind,
+    source.catalogItemType,
+    source.catalog_item_type,
+  ].filter(Boolean).join(" "));
+  const sealedFlag = source.isSealed ?? source.is_sealed;
+  return (
+    sealedFlag === true ||
+    sealedFlag === "true" ||
+    /\bsealed\b|\bbooster\s*(box|bundle|pack)?\b|\belite\s+trainer\b|\bcollection\s+box\b|\bpremium\s+collection\b|\bspecial\s+collection\b|\bultra[-\s]?premium\b|\bmini\s+tin\b|\btin\b|\bblister\b|\bbuild\s*&?\s*battle\b|\btrainer'?s?\s+toolkit\b|\bleague\s+battle\s+deck\b|\btheme\s+deck\b|\bstarter\s+deck\b/.test(typeText) ||
+    catalogNameSuggestsSealedProduct(source)
+  );
+}
+
+function catalogNameSuggestsSealedProduct(value = {}) {
+  const source = value || {};
+  const nameText = normalizeSearchText([
+    source.name,
+    source.productName,
+    source.product_name,
+    source.title,
+    source.displayName,
+    source.display_name,
+  ].filter(Boolean).join(" "));
+  return /\bbooster\s+(box|bundle|pack|display)\b|\belite\s+trainer\s+box\b|\bpokemon\s+center\s+elite\s+trainer\s+box\b|\bsleeved\s+booster\b|\bchecklane\s+blister\b|\b3[-\s]?pack\s+blister\b|\bmini\s+tin\b|\btin\b|\bcollection\s+box\b|\bpremium\s+collection\b|\bspecial\s+collection\b|\bultra[-\s]?premium\s+collection\b|\bbuild\s*&?\s*battle\s+(box|stadium)\b|\btrainer'?s?\s+toolkit\b|\bleague\s+battle\s+deck\b|\btheme\s+deck\b|\bstarter\s+deck\b|\bdisplay\s+case\b|\bretail\s+bundle\b/.test(nameText);
+}
+
+function catalogHasStrongCardIndicators(value = {}) {
+  const source = value || {};
+  const details = catalogCardDetailsForClassification(source);
+  const printedTotal = source.printedTotal || source.printed_total || details.printedTotal || details.printed_total;
+  const rarity = source.rarity || details.rarity;
+  const supertype = source.supertype || details.supertype;
+  const cardNumber = source.cardNumber || source.card_number || details.cardNumber || details.card_number || (
+    catalogHasAnyValue(printedTotal, rarity, supertype) ? source.number : ""
+  );
+  const cardTypeText = normalizeSearchText([
+    supertype,
+    source.cardSubtype,
+    source.card_subtype,
+    details.stage,
+    (details.subtypes || []).join(" "),
+    (details.types || []).join(" "),
+    source.productType,
+    source.product_type,
+    source.catalogItemType,
+    source.catalog_item_type,
+  ].filter(Boolean).join(" "));
+  const numberPatternText = normalizeSearchText([
+    cardNumber,
+    source.displayNumber,
+    source.display_number,
+    source.collectorNumber,
+    source.collector_number,
+    source.name,
+    source.cardName,
+    source.card_name,
+  ].filter(Boolean).join(" "));
+  const hasCardNumberPattern = /\b[a-z]{0,3}\d{1,4}[a-z]?\/[a-z]{0,3}\d{1,4}[a-z]?\b/.test(numberPatternText);
+  const hasCardSpecificArrays = [
+    details.subtypes,
+    details.types,
+    details.attacks,
+    details.abilities,
+    details.weaknesses,
+    details.resistances,
+    details.retreatCost,
+    details.retreat_cost,
+  ].some((entry) => Array.isArray(entry) ? entry.length > 0 : catalogHasAnyValue(entry));
+  const hasCardSpecificScalar = catalogHasAnyValue(
+    cardNumber,
+    printedTotal,
+    rarity,
+    supertype,
+    source.hp,
+    details.hp,
+    source.artist,
+    details.artist,
+    source.regulationMark,
+    source.regulation_mark,
+    details.regulationMark,
+    details.regulation_mark,
+    source.evolvesFrom,
+    source.evolves_from,
+    details.evolvesFrom,
+    details.evolves_from
+  );
+  const explicitCardType =
+    /\b(pokemon|pok[eé]mon|trainer|item|supporter|stadium|tool|energy)\b/.test(cardTypeText) &&
+    !/\bsealed\b|\bbooster\b|\bbox\b|\bbundle\b|\btin\b|\bcollection\b|\bpack\b|\bblister\b|\bdeck\b|\belite\s+trainer\s+box\b|\btrainer'?s?\s+toolkit\b|\bleague\s+battle\s+deck\b|\btheme\s+deck\b|\bstarter\s+deck\b/.test(cardTypeText);
+  const explicitKindText = normalizeSearchText([
+    source.catalogType,
+    source.catalog_type,
+    source.catalogGroup,
+    source.catalog_group,
+    source.productKind,
+    source.product_kind,
+    source.catalogItemType,
+    source.catalog_item_type,
+    source.productType,
+    source.product_type,
+  ].filter(Boolean).join(" "));
+  const sourceSaysCard =
+    !catalogNameSuggestsSealedProduct(source) && (
+      source.catalogType === "card" ||
+      source.catalog_type === "card" ||
+      /\bsingle[_\s-]?card\b|\bindividual\s+card\b|\bpromo\s+card\b/.test(explicitKindText) ||
+      (/\bcard\b/.test(explicitKindText) && !catalogSourceSuggestsSealed(source) && catalogHasAnyValue(cardNumber, printedTotal, rarity, supertype))
+    );
+  const cardVariantWithMetadata =
+    catalogHasAnyValue(source.finish, source.printing, source.variant, source.variantNames, source.variant_names, source.priceSubtype, source.price_subtype) &&
+    catalogHasAnyValue(cardNumber, printedTotal, rarity, supertype, source.setName, source.set_name, source.expansion);
+
+  return Boolean(
+    sourceSaysCard ||
+    hasCardNumberPattern ||
+    hasCardSpecificScalar ||
+    hasCardSpecificArrays ||
+    explicitCardType ||
+    cardVariantWithMetadata
+  );
+}
+
+function classifyCatalogItem(value = {}) {
+  if (!value) return "other";
+  if (isCatalogCodeCardLike(value)) return "code_card";
+  if (catalogHasStrongCardIndicators(value)) return "card";
+  if (catalogSourceSuggestsSealed(value)) return "sealed";
+  return "other";
+}
+
+function getCatalogDisplayKind(value = {}) {
+  if (!value) return "other";
+  const recomputedKind = classifyCatalogItem(value);
+  const storedKind = value.catalogDisplayKind || value.displayKind;
+  if (storedKind === "sealed" && (recomputedKind === "card" || recomputedKind === "code_card")) return recomputedKind;
+  if ((storedKind === "card" || storedKind === "code_card") && recomputedKind === "sealed") return recomputedKind;
+  return storedKind || recomputedKind;
+}
+
+function catalogHasClassificationConflict(value = {}) {
+  const displayKind = getCatalogDisplayKind(value);
+  return catalogSourceSuggestsSealed(value) && (displayKind === "card" || displayKind === "code_card");
+}
+
+// Classifier regression cases: Dratini, Dratini / Energy Symbol Pattern,
+// Fighting Gong, Iris's Fighting Spirit, Iron Bundle, Secret Box, and Ting-Lu
+// should resolve as card when card metadata is present; code-card terms resolve
+// as code_card; ETB/Booster Bundle/Mini Tin/Collection Box resolve as sealed.
+
 function aliasEntriesFromMap(map, type) {
   return Object.entries(map).flatMap(([canonical, aliases]) => [
     { canonical, alias: canonical, type },
@@ -1330,7 +1975,6 @@ function normalizeHomeStatsEnabled(savedStats, userType = "collector") {
     {}
   );
 }
-
 function isHomeStatEnabled(profile, statKey) {
   const userType = normalizeUserType(profile?.userType || profile?.user_type);
   const enabled = normalizeHomeStatsEnabled(profile?.homeStatsEnabled || profile?.home_stats_enabled, userType);
@@ -1717,7 +2361,10 @@ function LockedFeatureCard({ featureKey, onUpgrade }) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const initialRouteStateRef = useRef(null);
+  if (!initialRouteStateRef.current) initialRouteStateRef.current = loadInitialRouteState();
+  const initialRouteState = initialRouteStateRef.current;
+  const [activeTab, setActiveTab] = useState(initialRouteState.activeTab || "dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTopbarActions, setShowTopbarActions] = useState(true);
   const [showFullTopbar, setShowFullTopbar] = useState(true);
@@ -1747,10 +2394,14 @@ export default function App() {
   const [tidepoolReactions, setTidepoolReactions] = useState([]);
   const [tidepoolPostForm, setTidepoolPostForm] = useState(BLANK_TIDEPOOL_POST_FORM);
   const [tidepoolCommentDrafts, setTidepoolCommentDrafts] = useState({});
-  const [scoutView, setScoutView] = useState("overview");
+  const [scoutView, setScoutView] = useState(initialRouteState.scoutView || "overview");
   const [whatDidISeeSeedProduct, setWhatDidISeeSeedProduct] = useState(null);
-  const [scoutReportFilter, setScoutReportFilter] = useState("Latest");
-  const [scoutReportSort, setScoutReportSort] = useState("Newest first");
+  const [scoutReportFilter, setScoutReportFilter] = useState(initialRouteState.scoutReportFilter || "Latest");
+  const [scoutReportSort, setScoutReportSort] = useState(initialRouteState.scoutReportSort || "Newest first");
+  const [watchCalendarView, setWatchCalendarView] = useState("agenda");
+  const [watchCalendarArea, setWatchCalendarArea] = useState("hampton_roads");
+  const [watchCalendarLayers, setWatchCalendarLayers] = useState(WATCH_CALENDAR_DEFAULT_LAYERS);
+  const [selectedWatchCalendarEvent, setSelectedWatchCalendarEvent] = useState(null);
   const [scoutSectionsOpen, setScoutSectionsOpen] = useState({
     quickActions: true,
     reports: true,
@@ -1765,23 +2416,28 @@ export default function App() {
   const [selectedScoutReport, setSelectedScoutReport] = useState(null);
   const [scoutReportDeleteTarget, setScoutReportDeleteTarget] = useState(null);
   const scoutReportsRef = useRef(null);
-  const [homeSubTab, setHomeSubTab] = useState("overview");
-  const [forgeSubTab, setForgeSubTab] = useState("overview");
-  const [scoutSubTabTarget, setScoutSubTabTarget] = useState({ tab: "overview", id: 0 });
-  const [vaultSubTab, setVaultSubTab] = useState("overview");
-  const [vaultFilter, setVaultFilter] = useState("all");
-  const [vaultSearch, setVaultSearch] = useState("");
-  const [vaultSort, setVaultSort] = useState("newest");
+  const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
+  const [forgeSubTab, setForgeSubTab] = useState(initialRouteState.forgeSubTab || "overview");
+  const [scoutSubTabTarget, setScoutSubTabTarget] = useState({
+    tab: initialRouteState.scoutView || "overview",
+    storeId: initialRouteState.scoutStoreId || "",
+    reportId: initialRouteState.scoutReportId || "",
+    id: 0,
+  });
+  const [vaultSubTab, setVaultSubTab] = useState(initialRouteState.vaultSubTab || "overview");
+  const [vaultFilter, setVaultFilter] = useState(initialRouteState.vaultFilter || "all");
+  const [vaultSearch, setVaultSearch] = useState(initialRouteState.vaultSearch || "");
+  const [vaultSort, setVaultSort] = useState(initialRouteState.vaultSort || "newest");
   const [vaultPage, setVaultPage] = useState(1);
-  const [selectedVaultDetailId, setSelectedVaultDetailId] = useState("");
-  const [selectedForgeDetailId, setSelectedForgeDetailId] = useState("");
+  const [selectedVaultDetailId, setSelectedVaultDetailId] = useState(initialRouteState.selectedVaultDetailId || "");
+  const [selectedForgeDetailId, setSelectedForgeDetailId] = useState(initialRouteState.selectedForgeDetailId || "");
   const [vaultForgeTransfer, setVaultForgeTransfer] = useState(null);
   const [vaultDuplicateItem, setVaultDuplicateItem] = useState(null);
   const [vaultPotentialDuplicate, setVaultPotentialDuplicate] = useState(null);
   const [vaultSaving, setVaultSaving] = useState(false);
   const [vaultMoving, setVaultMoving] = useState(false);
   const [vaultToast, setVaultToast] = useState("");
-  const [tideTradrSubTab, setTideTradrSubTab] = useState("overview");
+  const [tideTradrSubTab, setTideTradrSubTab] = useState(initialRouteState.tideTradrSubTab || "overview");
   const [marketWatchPage, setMarketWatchPage] = useState(1);
   const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
     home_dashboard_cards: true,
@@ -1835,7 +2491,7 @@ export default function App() {
   const [workspaces, setWorkspaces] = useState(initialWorkspaceBundle.workspaces);
   const [workspaceMembers, setWorkspaceMembers] = useState(initialWorkspaceBundle.members);
   const [workspaceInvites, setWorkspaceInvites] = useState(initialWorkspaceBundle.invites);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState(initialWorkspaceBundle.activeWorkspaceId);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(initialRouteState.activeWorkspaceId || initialWorkspaceBundle.activeWorkspaceId);
   const [workspaceForm, setWorkspaceForm] = useState({ name: "", type: "shared_collection" });
   const [workspaceInviteForm, setWorkspaceInviteForm] = useState({
     email: "",
@@ -1851,7 +2507,7 @@ export default function App() {
   const [catalogPagedResultIds, setCatalogPagedResultIds] = useState([]);
   const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
   const [tideTradrLookupId, setTideTradrLookupId] = useState("");
-  const [selectedCatalogDetailId, setSelectedCatalogDetailId] = useState("");
+  const [selectedCatalogDetailId, setSelectedCatalogDetailId] = useState(initialRouteState.selectedCatalogDetailId || "");
   const [catalogDetailExtras, setCatalogDetailExtras] = useState({});
   const [catalogVariantSelection, setCatalogVariantSelection] = useState({});
   const [catalogConditionSelection, setCatalogConditionSelection] = useState({});
@@ -1902,14 +2558,14 @@ export default function App() {
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
   const [inventorySort, setInventorySort] = useState("newest");
   const [forgeInventoryPage, setForgeInventoryPage] = useState(1);
-  const [catalogSearch, setCatalogSearch] = useState("");
-  const [submittedCatalogSearch, setSubmittedCatalogSearch] = useState("");
+  const [catalogSearch, setCatalogSearch] = useState(initialRouteState.catalogSearch || "");
+  const [submittedCatalogSearch, setSubmittedCatalogSearch] = useState(initialRouteState.submittedCatalogSearch || "");
   const [catalogBarcodeSearch, setCatalogBarcodeSearch] = useState("");
   const [submittedCatalogBarcodeSearch, setSubmittedCatalogBarcodeSearch] = useState("");
-  const [catalogDataFilter, setCatalogDataFilter] = useState("All");
-  const [catalogKindFilter, setCatalogKindFilter] = useState("All");
-  const [catalogSetFilter, setCatalogSetFilter] = useState("All");
-  const [catalogTypeFilter, setCatalogTypeFilter] = useState("All");
+  const [catalogDataFilter, setCatalogDataFilter] = useState(initialRouteState.catalogDataFilter || "All");
+  const [catalogKindFilter, setCatalogKindFilter] = useState(initialRouteState.catalogKindFilter || "All");
+  const [catalogSetFilter, setCatalogSetFilter] = useState(initialRouteState.catalogSetFilter || "All");
+  const [catalogTypeFilter, setCatalogTypeFilter] = useState(initialRouteState.catalogTypeFilter || "All");
   const [catalogEraFilter, setCatalogEraFilter] = useState("All");
   const [catalogYearFilter, setCatalogYearFilter] = useState("All");
   const [catalogRarityFilter, setCatalogRarityFilter] = useState("All");
@@ -2078,6 +2734,9 @@ export default function App() {
     exactMatchCount: 0,
     exactBarcodeMiss: false,
     usedFallback: false,
+    alternateKinds: [],
+    alternateCount: 0,
+    coverageWarning: null,
   });
   const [importOptions, setImportOptions] = useState({
     pinHighValue: false,
@@ -2208,20 +2867,25 @@ export default function App() {
   const [activeFlowModal, setActiveFlowModal] = useState(null);
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
+  const [quickScoutReportForm, setQuickScoutReportForm] = useState(() => createQuickScoutReportDraft());
+  const [quickScoutReportStep, setQuickScoutReportStep] = useState("compose");
+  const [quickScoutReportMessage, setQuickScoutReportMessage] = useState("");
+  const [quickScoutReportSaved, setQuickScoutReportSaved] = useState(null);
   const [vaultCatalogSearchQuery, setVaultCatalogSearchQuery] = useState("");
   const [multiDestinationCatalogQuery, setMultiDestinationCatalogQuery] = useState("");
   const [multiDestinationMatchSearchOpen, setMultiDestinationMatchSearchOpen] = useState(true);
   const [pictureLookup, setPictureLookup] = useState({ imageUrl: "", fileName: "", text: "", message: "" });
   const flowModalRef = useRef(null);
   const flowModalOpenerRef = useRef(null);
+  const flowModalBaselineRef = useRef({});
 
   const mainTabs = [
-    { key: "home", label: "Home", target: "dashboard" },
-    { key: "vault", label: "Vault", target: "vault" },
-    { key: "forge", label: "Forge", target: "inventory" },
-    { key: "tideTradr", label: "TideTradr", target: "market" },
-    { key: "scout", label: "Scout", target: "scout" },
-    { key: "tidepool", label: "Tidepool", target: "tidepool" },
+    { key: "home", label: "Home", icon: "home", target: "dashboard" },
+    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
+    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
+    { key: "tideTradr", label: "TideTradr", icon: "market", mobileLabel: "Market", target: "market" },
+    { key: "scout", label: "Scout", icon: "scout", target: "scout" },
+    { key: "tidepool", label: "Tidepool", icon: "pool", mobileLabel: "Pool", target: "tidepool" },
   ];
 
   const navSections = [
@@ -2262,58 +2926,63 @@ export default function App() {
           ? "tideTradr"
           : "forge";
   const mobileBottomTabs = [
-    { key: "home", label: "Home", target: "dashboard" },
-    { key: "vault", label: "Vault", target: "vault" },
-    { key: "forge", label: "Forge", target: "inventory" },
-    { key: "tideTradr", label: "TideTradr", target: "market" },
-    { key: "scout", label: "Scout", target: "scout" },
-    { key: "tidepool", label: "Tidepool", target: "tidepool" },
+    { key: "home", label: "Home", icon: "home", target: "dashboard" },
+    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
+    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
+    { key: "tideTradr", label: "Market", icon: "market", target: "market" },
+    { key: "scout", label: "Scout", icon: "scout", target: "scout" },
+    { key: "tidepool", label: "Pool", icon: "pool", target: "tidepool" },
   ];
   const topbarSectionOptions = [
     ...mainTabs,
     { key: "settings", label: "Settings", target: "menu" },
   ];
   const topbarSectionValue = activeTab === "menu" ? "settings" : activeMainTab || "home";
+  const showAppMessage = (message) => {
+    setVaultToast(String(message || "Something went wrong."));
+    return false;
+  };
   const activeWorkspace = useMemo(
     () => workspaces.find((workspace) => String(workspace.id) === String(activeWorkspaceId)) || workspaces[0] || createDefaultWorkspaceBundle(user).workspaces[0],
     [workspaces, activeWorkspaceId, user]
   );
+  const currentWorkspaceUserId = user?.id || "local-beta";
+  const currentWorkspaceEmail = String(user?.email || "").toLowerCase();
+  const workspaceOwnerMatchesUser = (workspace = {}) =>
+    Boolean(currentWorkspaceUserId) &&
+    (String(workspace.ownerUserId || "") === String(currentWorkspaceUserId) || String(workspace.owner_user_id || "") === String(currentWorkspaceUserId));
+  const workspaceMemberFor = (workspaceId = activeWorkspace?.id) =>
+    workspaceMembers.find((member) =>
+      String(member.workspaceId || member.workspace_id) === String(workspaceId) &&
+      member.status === "active" &&
+      (
+        String(member.userId || member.user_id || "") === String(currentWorkspaceUserId) ||
+        (currentWorkspaceEmail && String(member.email || "").toLowerCase() === currentWorkspaceEmail)
+      )
+    );
   const activeWorkspaceMember = useMemo(
-    () => workspaceMembers.find((member) =>
-      String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id) &&
-      (String(member.userId || member.user_id) === String(user?.id || "local-beta") || String(member.email || "").toLowerCase() === String(user?.email || "").toLowerCase()) &&
-      member.status === "active"
-    ),
-    [workspaceMembers, activeWorkspace, user]
+    () => workspaceMemberFor(activeWorkspace?.id),
+    [workspaceMembers, activeWorkspace, currentWorkspaceUserId, currentWorkspaceEmail]
   );
-  const activeWorkspaceRole = activeWorkspaceMember?.role || (activeWorkspace?.ownerUserId === user?.id || activeWorkspace?.owner_user_id === user?.id ? "owner" : "viewer");
+  const activeWorkspaceRole = activeWorkspaceMember?.role || (workspaceOwnerMatchesUser(activeWorkspace) ? "owner" : "viewer");
   const canEditActiveWorkspace = workspaceCanEdit(activeWorkspaceRole);
   const canManageActiveWorkspace = workspaceCanManage(activeWorkspaceRole);
   const workspaceRoleForId = (workspaceId = activeWorkspace?.id) => {
     const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
-    const member = workspaceMembers.find((entry) =>
-      String(entry.workspaceId || entry.workspace_id) === String(workspace?.id) &&
-      entry.status === "active" &&
-      (String(entry.userId || entry.user_id) === String(user?.id || "local-beta") || String(entry.email || "").toLowerCase() === String(user?.email || "").toLowerCase())
-    );
+    const member = workspaceMemberFor(workspace?.id);
     if (member?.role) return member.role;
-    return workspace?.ownerUserId === user?.id || workspace?.owner_user_id === user?.id ? "owner" : "viewer";
+    return workspaceOwnerMatchesUser(workspace) ? "owner" : "viewer";
   };
   const canEditWorkspaceId = (workspaceId = activeWorkspace?.id) => workspaceCanEdit(workspaceRoleForId(workspaceId));
   const ensureWorkspaceEditor = (workspaceId = activeWorkspace?.id) => {
     if (canEditWorkspaceId(workspaceId)) return true;
-    alert("You do not have permission to edit this workspace.");
-    return false;
+    return showAppMessage("You do not have permission to edit this workspace.");
   };
   const workspaceSelectorOptions = useMemo(
     () => workspaces.filter((workspace) =>
-      workspaceMembers.some((member) =>
-        String(member.workspaceId || member.workspace_id) === String(workspace.id) &&
-        member.status === "active" &&
-        (String(member.userId || member.user_id) === String(user?.id || "local-beta") || String(member.email || "").toLowerCase() === String(user?.email || "").toLowerCase())
-      ) || workspace.ownerUserId === user?.id || workspace.owner_user_id === user?.id || BETA_LOCAL_MODE
+      workspaceMemberFor(workspace.id) || workspaceOwnerMatchesUser(workspace) || (BETA_LOCAL_MODE && currentWorkspaceUserId === "local-beta")
     ),
-    [workspaces, workspaceMembers, user]
+    [workspaces, workspaceMembers, currentWorkspaceUserId, currentWorkspaceEmail]
   );
   const destinationWorkspaceOptions = useMemo(() => {
     const visible = workspaceSelectorOptions.length ? workspaceSelectorOptions : workspaces;
@@ -2481,7 +3150,7 @@ export default function App() {
       else if (action === "Alerts") setScoutView("alerts");
       else setScoutView("overview");
       setScoutSubTabTarget({ tab: action === "Alerts" ? "alerts" : "overview", id: Date.now() });
-      if (action === "Submit Report") openScoutSubmitFlow();
+      if (action === "Submit Report") openScoutSubmitFlow({ source: "global-command" });
       if (action === "Import Intel") openScoutSubmitFlow({ action: "importIntel" });
       return;
     }
@@ -3077,12 +3746,15 @@ export default function App() {
     );
   }
 
-  function renderMenuPullDown(key, title, summary, children, icon = "+") {
+  function renderMenuPullDown(key, title, summary, children, icon = "plus") {
     const open = Boolean(menuSectionsOpen[key]);
+    const iconNode = typeof icon === "string"
+      ? <AppNavIcon kind={icon} className="drawer-section-svg" />
+      : icon;
     return (
       <div className={open ? "drawer-collapsible open" : "drawer-collapsible"} key={key}>
         <button type="button" className="drawer-collapsible-toggle" onClick={() => toggleMenuSection(key)}>
-          <span className="drawer-section-icon" aria-hidden="true">{icon}</span>
+          <span className="drawer-section-icon" aria-hidden="true">{iconNode}</span>
           <span className="drawer-section-copy">
             <strong>{title}</strong>
             <small>{summary}</small>
@@ -3274,6 +3946,9 @@ export default function App() {
         exactMatchCount: 0,
         exactBarcodeMiss: false,
         usedFallback: false,
+        alternateKinds: [],
+        alternateCount: 0,
+        coverageWarning: null,
       });
       return;
     }
@@ -3291,9 +3966,14 @@ export default function App() {
       exactMatchCount: 0,
       exactBarcodeMiss: false,
       usedFallback: false,
+      alternateKinds: [],
+      alternateCount: 0,
+      coverageWarning: null,
     });
 
     let result;
+    let alternateKinds = [];
+    let alternateCount = 0;
     try {
       result = await searchPokemonCatalog({
         supabase,
@@ -3327,12 +4007,48 @@ export default function App() {
         exactMatchCount: 0,
         exactBarcodeMiss: false,
         usedFallback: false,
+        alternateKinds: [],
+        alternateCount: 0,
+        coverageWarning: null,
       });
       return;
     }
     if (requestId !== supabaseCatalogRequestId.current) return;
 
     const importedProducts = (result.rows || []).map(mapCatalog);
+    if (!importedProducts.length && productGroup !== "All" && (cleanedSearch || barcode)) {
+      try {
+        const broadResult = await searchPokemonCatalog({
+          supabase,
+          query: searchTerm,
+          barcode,
+          mode,
+          productGroup: "All",
+          productType: catalogTypeFilter,
+          setName: catalogSetFilter,
+          dataFilter: catalogDataFilter,
+          rarity: catalogRarityFilter,
+          sort: catalogSort,
+          page: 1,
+          pageSize: Math.max(12, Math.min(pageSize, 30)),
+          force: true,
+          signal: searchController?.signal,
+        });
+        if (requestId !== supabaseCatalogRequestId.current) return;
+        const broadProducts = (broadResult.rows || []).map(mapCatalog);
+        const counts = broadProducts.reduce((summary, product) => {
+          const kind = isCatalogCardProduct(product) ? "card" : isCatalogSealedProduct(product) ? "sealed" : "other";
+          summary[kind] = (summary[kind] || 0) + 1;
+          return summary;
+        }, {});
+        alternateKinds = Object.entries(counts)
+          .filter(([, count]) => count > 0)
+          .map(([kind]) => kind);
+        alternateCount = broadProducts.length;
+      } catch (fallbackError) {
+        if (fallbackError?.name === "AbortError") return;
+      }
+    }
     setCatalogPagedResultIds(importedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
@@ -3351,6 +4067,13 @@ export default function App() {
     });
     setCatalogSearchHasRun(true);
     const totalCount = result.count ?? null;
+    const coverageWarning = buildCatalogSealedCoverageWarning({
+      query: cleanedSearch || searchTerm,
+      productGroup,
+      products: importedProducts,
+      totalCount,
+      result,
+    });
     const from = (page - 1) * pageSize;
     const loadedEnd = totalCount === null ? from + importedProducts.length : Math.min(from + importedProducts.length, totalCount);
     const missText = result.exactMiss ? " No exact barcode match found." : "";
@@ -3369,6 +4092,9 @@ export default function App() {
       exactMatchCount: result.exactCount || 0,
       exactBarcodeMiss: Boolean(result.exactMiss),
       usedFallback: Boolean(result.usedFallback),
+      alternateKinds,
+      alternateCount,
+      coverageWarning,
     });
   }
 
@@ -3442,6 +4168,9 @@ export default function App() {
         error: "",
         exactMatchCount: 0,
         exactBarcodeMiss: false,
+        alternateKinds: [],
+        alternateCount: 0,
+        coverageWarning: null,
       }));
     }
   }, [activeTab, tideTradrSubTab, catalogSearch, isSupabaseConfigured, supabase]);
@@ -3756,7 +4485,7 @@ export default function App() {
       ...(forge || {}),
     };
 
-    setMultiDestinationForm({
+    const nextForm = {
       ...BLANK_MULTI_DESTINATION_FORM,
       ...rest,
       destinations: nextDestinations,
@@ -3764,7 +4493,9 @@ export default function App() {
       wishlist: nextWishlist,
       forge: nextForge,
       tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, ...(tidetradr || {}) },
-    });
+    };
+    flowModalBaselineRef.current.multiDestinationAdd = nextForm;
+    setMultiDestinationForm(nextForm);
   };
   const updateMultiDestinationField = (field, value) => setMultiDestinationForm((current) => ({ ...current, [field]: value }));
   const updateMultiDestinationSection = (section, field, value) => setMultiDestinationForm((current) => ({
@@ -4737,7 +5468,7 @@ export default function App() {
     event?.preventDefault?.();
     const previewRows = forgeImportForm.previewRows || [];
     if (!forgeImportForm.fileName) {
-      alert("Choose a file to import first.");
+      showAppMessage("Choose a file to import first.");
       return;
     }
     if (!previewRows.length) {
@@ -5004,7 +5735,7 @@ export default function App() {
 
   async function confirmInventoryImport() {
     const rowsToImport = importRows.filter((row) => row.importStatus !== "skipped" && row.destination !== "Skip");
-    if (rowsToImport.length === 0) return alert("No import rows selected.");
+    if (rowsToImport.length === 0) return showAppMessage("No import rows selected.");
     const unreviewedRows = rowsToImport.filter((row) => row.needsReview && row.importStatus !== "reviewed");
     if (unreviewedRows.length) {
       setImportBatchMessage(`${unreviewedRows.length} low-confidence or unmatched row${unreviewedRows.length === 1 ? "" : "s"} still need review before saving.`);
@@ -5475,7 +6206,7 @@ export default function App() {
 
   function enableLocationTracking() {
     if (!navigator.geolocation) {
-      alert("Location is not available in this browser.");
+      showAppMessage("Location is not available in this browser.");
       return;
     }
 
@@ -5489,7 +6220,7 @@ export default function App() {
           lastUpdated: new Date().toISOString(),
         }));
       },
-      () => alert("Location permission was not granted.")
+      () => showAppMessage("Location permission was not granted.")
     );
   }
 
@@ -5736,6 +6467,80 @@ export default function App() {
       setMileageTrips([]);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (BETA_LOCAL_MODE || !user || user.id === "local-beta" || !isSupabaseConfigured || !supabase) return undefined;
+    let cancelled = false;
+
+    async function loadCloudWorkspaceState() {
+      const fallback = createDefaultWorkspaceBundle(user);
+      try {
+        const { data: workspaceRows, error: workspaceError } = await supabase
+          .from("workspaces")
+          .select("*")
+          .order("created_at", { ascending: true });
+        if (workspaceError) throw workspaceError;
+
+        let nextWorkspaces = (workspaceRows || []).map((workspace) => normalizeWorkspace(workspace, fallback.workspaces[0]));
+        let { data: memberRows, error: memberError } = await supabase
+          .from("workspace_memberships")
+          .select("*")
+          .order("created_at", { ascending: true });
+        if (memberError) throw memberError;
+        let nextMembers = (memberRows || []).map(normalizeWorkspaceMember);
+
+        if (!nextWorkspaces.length) {
+          const { data: createdWorkspace, error: createWorkspaceError } = await supabase
+            .from("workspaces")
+            .insert({ name: "My Personal Space", type: "personal", owner_user_id: user.id })
+            .select()
+            .single();
+          if (createWorkspaceError) throw createWorkspaceError;
+          nextWorkspaces = [normalizeWorkspace(createdWorkspace, fallback.workspaces[0])];
+
+          const { data: createdMember, error: createMemberError } = await supabase
+            .from("workspace_memberships")
+            .insert({
+              workspace_id: createdWorkspace.id,
+              user_id: user.id,
+              email: user.email || null,
+              role: "owner",
+              status: "active",
+              accepted_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+          if (!createMemberError && createdMember) nextMembers = [normalizeWorkspaceMember(createdMember)];
+        }
+
+        const personalWorkspace =
+          nextWorkspaces.find((workspace) => workspace.type === "personal" && workspaceOwnerMatchesUser(workspace)) ||
+          nextWorkspaces.find((workspace) => workspaceOwnerMatchesUser(workspace)) ||
+          nextWorkspaces[0];
+        const visibleIds = new Set(nextWorkspaces.map((workspace) => String(workspace.id)));
+
+        if (cancelled) return;
+        setWorkspaces(nextWorkspaces.length ? nextWorkspaces : fallback.workspaces);
+        setWorkspaceMembers(nextMembers.length ? nextMembers : fallback.members);
+        setActiveWorkspaceId((current) => visibleIds.has(String(current)) ? current : personalWorkspace?.id || fallback.activeWorkspaceId);
+        setWorkspaceInviteForm((current) => ({ ...current, workspaceId: personalWorkspace?.id || fallback.activeWorkspaceId }));
+      } catch (error) {
+        if (cancelled) return;
+        const fallbackForUser = createDefaultWorkspaceBundle(user);
+        setWorkspaces(fallbackForUser.workspaces);
+        setWorkspaceMembers(fallbackForUser.members);
+        setActiveWorkspaceId(fallbackForUser.activeWorkspaceId);
+        setWorkspaceInviteForm((current) => ({ ...current, workspaceId: fallbackForUser.activeWorkspaceId }));
+        setWorkspaceMessage("Cloud workspace metadata could not load. Saves will use your user-owned cloud rows when available.");
+        setVaultToast(`Workspace sync unavailable: ${error.message || "check workspace tables/RLS"}`);
+      }
+    }
+
+    loadCloudWorkspaceState();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.email]);
 
   useEffect(() => {
     if (!localDataLoaded) return undefined;
@@ -6006,9 +6811,9 @@ export default function App() {
     try {
       if (authMode === "signup") {
         const { data, error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
-        if (error) return alert(error.message);
+        if (error) return showAppMessage(error.message);
         if (!data.session) {
-          alert("Account created. Please check your email, confirm your account, then log in.");
+          showAppMessage("Account created. Please check your email, confirm your account, then log in.");
           setAuthMode("login");
           return;
         }
@@ -6016,7 +6821,7 @@ export default function App() {
         setUser(currentUserError ? data.user : currentUserData.user);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
-        if (error) return alert(error.message);
+        if (error) return showAppMessage(error.message);
         const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
         setUser(currentUserError ? data.user : currentUserData.user);
       }
@@ -6053,7 +6858,7 @@ export default function App() {
     setMarketWatchPage(1);
   }
 
-  function createWorkspace(event) {
+  async function createWorkspace(event) {
     event?.preventDefault?.();
     if (!featureAllowed("shared_workspace")) {
       setWorkspaceMessage("Shared workspaces are part of Ultimate. Billing is coming soon.");
@@ -6086,6 +6891,45 @@ export default function App() {
       createdAt: now,
       acceptedAt: now,
     });
+
+    if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
+      const { data: createdWorkspace, error: workspaceError } = await supabase
+        .from("workspaces")
+        .insert({ name: workspace.name, type: workspace.type, owner_user_id: user.id })
+        .select()
+        .single();
+      if (workspaceError) {
+        setWorkspaceMessage(`Could not create workspace: ${workspaceError.message}`);
+        setVaultToast("Workspace was not created.");
+        return;
+      }
+      const { data: createdMember, error: memberError } = await supabase
+        .from("workspace_memberships")
+        .insert({
+          workspace_id: createdWorkspace.id,
+          user_id: user.id,
+          email: user.email || null,
+          role: "owner",
+          status: "active",
+          accepted_at: now,
+        })
+        .select()
+        .single();
+      if (memberError) {
+        setWorkspaceMessage(`Workspace created, but owner role could not be saved: ${memberError.message}`);
+        setVaultToast("Workspace owner role needs admin review.");
+      }
+      const mappedWorkspace = normalizeWorkspace(createdWorkspace, workspace);
+      const mappedMember = createdMember ? normalizeWorkspaceMember(createdMember) : normalizeWorkspaceMember({ ...ownerMember, workspaceId: createdWorkspace.id });
+      setWorkspaces((current) => [mappedWorkspace, ...current.filter((entry) => String(entry.id) !== String(mappedWorkspace.id))]);
+      setWorkspaceMembers((current) => [mappedMember, ...current.filter((entry) => !(String(entry.workspaceId || entry.workspace_id) === String(mappedWorkspace.id) && String(entry.userId || entry.user_id) === String(user.id)))]);
+      setWorkspaceForm({ name: "", type: "shared_collection" });
+      setActiveWorkspaceId(mappedWorkspace.id);
+      setWorkspaceInviteForm((current) => ({ ...current, workspaceId: mappedWorkspace.id }));
+      setWorkspaceMessage(`${mappedWorkspace.name} created. Personal data was not moved or shared.`);
+      return;
+    }
+
     setWorkspaces((current) => [workspace, ...current]);
     setWorkspaceMembers((current) => [ownerMember, ...current]);
     setWorkspaceForm({ name: "", type: "shared_collection" });
@@ -6094,7 +6938,7 @@ export default function App() {
     setWorkspaceMessage(`${workspace.name} created. Personal data was not moved or shared.`);
   }
 
-  function sendWorkspaceInvite(event) {
+  async function sendWorkspaceInvite(event) {
     event?.preventDefault?.();
     if (!featureAllowed("team_access")) {
       setWorkspaceMessage("Team access is part of Ultimate. Billing is coming soon.");
@@ -6119,6 +6963,32 @@ export default function App() {
       invitedBy: user?.id || "local-beta",
       createdAt: now,
     });
+
+    if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
+      const { data: createdInvite, error: inviteError } = await supabase
+        .from("workspace_invites")
+        .insert({
+          workspace_id: workspace.id,
+          email,
+          role,
+          note: workspaceInviteForm.note,
+          status: "invited",
+          invited_by: user.id,
+        })
+        .select()
+        .single();
+      if (inviteError) {
+        setWorkspaceMessage(`Could not create invite: ${inviteError.message}`);
+        setVaultToast("Workspace invite was not sent.");
+        return;
+      }
+      const mappedInvite = normalizeWorkspaceInvite(createdInvite);
+      setWorkspaceInvites((current) => [mappedInvite, ...current.filter((entry) => !(entry.email === email && entry.workspaceId === workspace.id && entry.status === "invited"))]);
+      setWorkspaceInviteForm((current) => ({ ...current, email: "", note: "" }));
+      setWorkspaceMessage(`Invite created for ${email}. They get access after accepting with that email.`);
+      return;
+    }
+
     setWorkspaceInvites((current) => [invite, ...current.filter((entry) => !(entry.email === email && entry.workspaceId === workspace.id && entry.status === "invited"))]);
     setWorkspaceMembers((current) => {
       const existingIndex = current.findIndex((entry) =>
@@ -7105,7 +7975,7 @@ export default function App() {
     }
     if (destination === "scout_report") {
       await persistScannerIntake(destination, "review");
-      openScoutSubmitFlow();
+      openScoutSubmitFlow({ source: "scanner-result" });
     }
     if (destination === "scout_report" || destination === "tidetradr" || destination === "deal_finder" || destination === "watchlist" || destination === "pinned") {
       setShowInventoryScanner(false);
@@ -7205,8 +8075,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "createListing") return formsDiffer(marketplaceForm, BLANK_MARKETPLACE_FORM);
     if (type === "forgeImport") return formsDiffer(forgeImportForm, FORGE_IMPORT_BLANK);
     if (type === "batchIntake") return Boolean(importText.trim() || importRows.length || importFileName || importLink.trim());
+    if (type === "scoutSubmit") return quickScoutReportStep !== "submitted" && formsDiffer(quickScoutReportForm, flowModalBaselineRef.current.scoutSubmit || createQuickScoutReportDraft());
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
-    if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, BLANK_MULTI_DESTINATION_FORM);
+    if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
     return false;
   }
 
@@ -7248,6 +8119,14 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     if (type === "tidepoolCreatePost") {
       setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
+    }
+    if (type === "scoutSubmit") {
+      const draft = createQuickScoutReportDraft();
+      setQuickScoutReportForm(draft);
+      setQuickScoutReportStep("compose");
+      setQuickScoutReportMessage("");
+      setQuickScoutReportSaved(null);
+      flowModalBaselineRef.current.scoutSubmit = draft;
     }
     if (type === "quickFind") {
       setQuickFindForm(BLANK_QUICK_FIND_FORM);
@@ -7377,7 +8256,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function openMultiDestinationAddFlow(options = {}) {
     resetMultiDestinationForm(options.seed || {});
-    openFlowModal("multiDestinationAdd", { size: "large", source: options.source || "quick-add" });
+    openFlowModal("multiDestinationAdd", { size: "medium", source: options.source || "quick-add" });
   }
 
   function openMultiDestinationAddForProduct(product, options = {}) {
@@ -7387,7 +8266,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       ...current.filter((entry) => String(entry.id) !== String(product.id)),
     ]);
     resetMultiDestinationForm(buildMultiDestinationSeedFromProduct(product, options.seed || {}));
-    openFlowModal("multiDestinationAdd", { size: "large", source: options.source || "vault-catalog" });
+    openFlowModal("multiDestinationAdd", { size: "medium", source: options.source || "vault-catalog" });
   }
 
   function destinationDefaults(overrides = {}) {
@@ -7414,13 +8293,244 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     openFlowModal("vaultMoveToForge", { size: "medium", source: "vault" });
   }
 
+  function createQuickScoutReportDraft(overrides = {}) {
+    const now = new Date();
+    return {
+      reportType: "stock_on_shelf",
+      proofType: "manual",
+      storeId: "",
+      storeName: "",
+      retailer: "",
+      city: "",
+      address: "",
+      manualLocation: "",
+      storeSearch: "",
+      productName: "",
+      quantity: "",
+      price: "",
+      note: "",
+      proofText: "",
+      photoUrl: "",
+      stockLeft: "not_sure",
+      dateMode: "today",
+      reportDate: getLocalDateKey(now),
+      reportTime: getLocalTimeKey(now),
+      dayOfWeek: SCOUT_WEEKDAYS[now.getDay()],
+      visibility: "public_cleaned",
+      ...overrides,
+    };
+  }
+
+  function getScoutQuickStoreName(store = {}) {
+    return store.nickname || store.storeName || store.name || store.locationName || "Store location";
+  }
+
+  function getScoutQuickRetailer(store = {}) {
+    return store.retailer || store.chain || store.storeGroup || store.banner || "Retailer";
+  }
+
+  function getScoutQuickStores() {
+    const seen = new Set();
+    return [...(scoutSnapshot.stores || []), ...VIRGINIA_STORES_SEED]
+      .filter(Boolean)
+      .filter((store, index) => {
+        const key = String(store.id || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function findScoutQuickStore(storeLike = {}) {
+    const explicitId = storeLike.storeId || storeLike.id || "";
+    const storeName = getScoutQuickStoreName(storeLike).toLowerCase();
+    const retailer = getScoutQuickRetailer(storeLike).toLowerCase();
+    return getScoutQuickStores().find((store) => {
+      if (explicitId && String(store.id) === String(explicitId)) return true;
+      return getScoutQuickStoreName(store).toLowerCase() === storeName && getScoutQuickRetailer(store).toLowerCase() === retailer;
+    });
+  }
+
+  function buildQuickScoutStoreDraft(store = {}) {
+    if (!store || !Object.keys(store).length) return {};
+    return {
+      storeId: store.id || store.storeId || "",
+      storeName: getScoutQuickStoreName(store),
+      retailer: getScoutQuickRetailer(store),
+      city: store.city || store.addressCity || store.region || "",
+      address: store.address || store.streetAddress || "",
+      manualLocation: "",
+      storeSearch: "",
+    };
+  }
+
+  function updateQuickScoutReportForm(field, value) {
+    setQuickScoutReportMessage("");
+    setQuickScoutReportForm((current) => {
+      const next = { ...current, [field]: value };
+      if (field === "dateMode") {
+        if (value === "today") next.reportDate = getLocalDateKey();
+        if (value === "yesterday") next.reportDate = getYesterdayDateKey();
+      }
+      return next;
+    });
+  }
+
+  function selectQuickScoutReportStore(store = {}) {
+    setQuickScoutReportForm((current) => ({ ...current, ...buildQuickScoutStoreDraft(store) }));
+  }
+
+  function quickScoutReportTypeMeta(value = quickScoutReportForm.reportType) {
+    return SCOUT_QUICK_REPORT_TYPES.find((option) => option.value === value) || SCOUT_QUICK_REPORT_TYPES[0];
+  }
+
+  function quickScoutStockLeftLabel(value = quickScoutReportForm.stockLeft) {
+    const option = SCOUT_QUICK_STOCK_LEFT_OPTIONS.find((item) => item.value === value);
+    return option ? option.label : "Not sure";
+  }
+
+  function quickScoutProofLabel(value = quickScoutReportForm.proofType) {
+    const option = SCOUT_QUICK_PROOF_TYPES.find((item) => item.value === value);
+    return option ? option.label : "Manual";
+  }
+
+  function quickScoutDateLabel(form = quickScoutReportForm) {
+    if (form.dateMode === "not_sure") return "Not sure";
+    if (form.dateMode === "day_only") return form.dayOfWeek || "Day not selected";
+    const dateLabel = form.dateMode === "yesterday" ? getYesterdayDateKey() : form.reportDate || getLocalDateKey();
+    return `${dateLabel}${form.reportTime ? ` at ${form.reportTime}` : ""}`;
+  }
+
+  function quickScoutReportReady() {
+    return Boolean(quickScoutReportForm.reportType && (quickScoutReportForm.storeId || quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName.trim()));
+  }
+
+  function buildQuickScoutReportRecord() {
+    const type = quickScoutReportTypeMeta();
+    const knownStore = quickScoutReportForm.storeId ? findScoutQuickStore({ id: quickScoutReportForm.storeId }) : null;
+    const selectedStore = knownStore || quickScoutReportForm;
+    const timestampSourceDate = quickScoutReportForm.dateMode === "yesterday"
+      ? getYesterdayDateKey()
+      : quickScoutReportForm.dateMode === "pick_date" || quickScoutReportForm.dateMode === "today"
+        ? quickScoutReportForm.reportDate || getLocalDateKey()
+        : getLocalDateKey();
+    const reportedAt = new Date(`${timestampSourceDate}T${quickScoutReportForm.reportTime || getLocalTimeKey()}`).toISOString();
+    const productName = quickScoutReportForm.productName.trim();
+    const storeName = quickScoutReportForm.storeId
+      ? getScoutQuickStoreName(selectedStore)
+      : quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName || "Needs Store Review";
+    const retailer = quickScoutReportForm.storeId
+      ? getScoutQuickRetailer(selectedStore)
+      : quickScoutReportForm.retailer || "Manual";
+    const notes = [
+      quickScoutReportForm.note.trim(),
+      quickScoutReportForm.proofText.trim() ? `Proof/text: ${quickScoutReportForm.proofText.trim()}` : "",
+      quickScoutReportForm.manualLocation.trim() && !quickScoutReportForm.storeId ? `Manual location: ${quickScoutReportForm.manualLocation.trim()}` : "",
+      `Proof source: ${quickScoutProofLabel()}`,
+      `Stock left: ${quickScoutStockLeftLabel()}`,
+      quickScoutReportForm.dateMode === "day_only" ? `Day reported: ${quickScoutReportForm.dayOfWeek}` : "",
+      quickScoutReportForm.dateMode === "not_sure" ? "Date/time not sure" : "",
+    ].filter(Boolean).join(" | ");
+    const id = makeId("quick-scout-report");
+    return {
+      id,
+      reportId: id,
+      reportType: type.reportType,
+      quickReportType: type.value,
+      quickReportLabel: type.label,
+      stockStatus: type.stockStatus,
+      sourceType: type.sourceType,
+      confidence: type.confidence,
+      storeId: quickScoutReportForm.storeId,
+      storeName,
+      retailer,
+      chain: retailer,
+      city: selectedStore.city || quickScoutReportForm.city || "",
+      address: selectedStore.address || quickScoutReportForm.address || "",
+      manualLocation: quickScoutReportForm.manualLocation.trim(),
+      needsStoreReview: !quickScoutReportForm.storeId,
+      needsReview: Boolean(type.needsReview || !quickScoutReportForm.storeId),
+      verificationStatus: type.needsReview || !quickScoutReportForm.storeId ? "Needs Review" : "User Report",
+      verified: false,
+      visibility: quickScoutReportForm.visibility,
+      itemName: productName,
+      productName,
+      quantitySeen: quickScoutReportForm.quantity,
+      price: quickScoutReportForm.price,
+      itemsSeen: productName ? [{
+        productName,
+        quantity: quickScoutReportForm.quantity,
+        price: quickScoutReportForm.price,
+        note: quickScoutReportForm.note.trim(),
+      }] : [],
+      reportText: notes || type.label,
+      notes,
+      photoUrls: quickScoutReportForm.photoUrl ? [quickScoutReportForm.photoUrl] : [],
+      proofType: quickScoutReportForm.proofType,
+      stockLeft: quickScoutReportForm.stockLeft,
+      reportDate: timestampSourceDate,
+      reportTime: quickScoutReportForm.reportTime,
+      dayOfWeek: quickScoutReportForm.dayOfWeek,
+      reportedAt,
+      submittedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
+      displayName: currentUserProfile?.displayName || user?.email || "Local Scout",
+      sourceStatus: BETA_LOCAL_MODE ? "local_beta" : "local",
+    };
+  }
+
+  function submitQuickScoutReport(event) {
+    event?.preventDefault?.();
+    if (!quickScoutReportReady()) {
+      setQuickScoutReportMessage("Choose a report type and a store or manual location.");
+      return;
+    }
+    const report = buildQuickScoutReportRecord();
+    const scoutData = getSharedScoutData();
+    const nextReports = [report, ...(scoutData.reports || scoutSnapshot.reports || [])]
+      .filter((entry, index, list) => list.findIndex((candidate) => getScoutReportId(candidate) === getScoutReportId(entry)) === index);
+    saveSharedScoutData({ ...scoutData, reports: nextReports });
+    setQuickScoutReportSaved(report);
+    setQuickScoutReportStep("submitted");
+    setQuickScoutReportMessage("Report sent. You can add details now or later.");
+    setScoutReportFilter("Latest");
+    setScoutReportsPage(1);
+    completeDailyAction("store", { badge: "restock_reporter", points: 10 });
+    setVaultToast("Report sent. You can add details now or later.");
+    flowModalBaselineRef.current.scoutSubmit = quickScoutReportForm;
+  }
+
+  function openQuickScoutReportDetails() {
+    if (quickScoutReportSaved) setSelectedScoutReport(quickScoutReportSaved);
+    closeFlowModal({ force: true, reset: true });
+    setActiveTab("scout");
+    setScoutView("reports");
+  }
+
   function openScoutSubmitFlow(options = {}) {
+    const seededStore = options.store || findScoutQuickStore(options);
+    const seededReportType = SCOUT_QUICK_REPORT_TYPES.find((option) => option.value === options.reportType || option.reportType === options.reportType);
+    const draft = createQuickScoutReportDraft({
+      ...buildQuickScoutStoreDraft(seededStore || {}),
+      reportType: seededReportType?.value || (options.action === "addGuess" ? "employee_restock_coming" : "stock_on_shelf"),
+      proofType: options.proofType || (options.action === "importIntel" ? "text_link" : "manual"),
+      productName: options.productName || "",
+      proofText: options.proofText || "",
+      manualLocation: options.manualLocation || "",
+    });
+    setQuickScoutReportForm(draft);
+    setQuickScoutReportStep("compose");
+    setQuickScoutReportMessage("");
+    setQuickScoutReportSaved(null);
+    flowModalBaselineRef.current.scoutSubmit = draft;
     setScoutSubTabTarget({
       tab: "reports",
       id: Date.now(),
       ...options,
     });
-    openFlowModal("scoutSubmit", { size: "large", source: options.source });
+    openFlowModal("scoutSubmit", { size: "medium", source: options.source });
   }
 
   function openScoutGuessFlow() {
@@ -7461,7 +8571,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (action === "mileage") return openAddMileageFlow();
     if (action === "importFile") return openForgeImportFlow();
     if (action === "storeReport") {
-      return openScoutSubmitFlow();
+      return openScoutSubmitFlow({ source: "add-action-sheet" });
     }
     if (action === "store" || action === "storeSuggestion") {
       setScoutSubTabTarget({ tab: "stores", action: "missingStore", id: Date.now() });
@@ -7584,8 +8694,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const itemName = String(multiDestinationForm.itemName || "").trim();
     const destinations = multiDestinationForm.destinations || {};
     const selectedDestinationCount = Object.values(destinations).filter(Boolean).length;
-    if (!itemName) return alert("Enter an item name first.");
-    if (!selectedDestinationCount) return alert("Choose at least one destination.");
+    if (!itemName) return showAppMessage("Enter an item name first.");
+    if (!selectedDestinationCount) return showAppMessage("Choose at least one destination.");
 
     const now = new Date().toISOString();
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
@@ -7597,13 +8707,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     };
     const canWriteDestination = (destination) => {
       const workspace = destinationWorkspace(destination);
-      const member = workspaceMembers.find((entry) =>
-        String(entry.workspaceId || entry.workspace_id) === String(workspace?.id) &&
-        entry.status === "active" &&
-        (String(entry.userId || entry.user_id) === String(user?.id || "local-beta") || String(entry.email || "").toLowerCase() === String(user?.email || "").toLowerCase())
-      );
-      const role = member?.role || (workspace?.ownerUserId === user?.id || workspace?.owner_user_id === user?.id ? "owner" : activeWorkspaceRole);
-      return workspaceCanEdit(role);
+      return canEditWorkspaceId(workspace?.id);
     };
     const shared = {
       name: itemName,
@@ -7903,21 +9007,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
 function mapCatalog(row) {
   const productType = row.productType || row.product_type || "";
-  const productTypeText = String(productType).toLowerCase();
-  const isSealedValue = row.isSealed ?? row.is_sealed;
-  const isSealed =
-    isSealedValue === true ||
-    isSealedValue === "true" ||
-    productTypeText.includes("sealed") ||
-    productTypeText.includes("booster") ||
-    productTypeText.includes("elite trainer") ||
-    productTypeText.includes("collection") ||
-    productTypeText.includes("tin");
-  const catalogType =
-    row.catalogType ||
-    row.catalog_type ||
-    (isSealed ? "sealed" : productTypeText.includes("card") || row.card_number || row.rarity ? "card" : "sealed");
   const name = row.name || row.product_name || row.card_name || "";
+  const classificationProbe = { ...row, name, productType };
+  const catalogDisplayKind = classifyCatalogItem(classificationProbe);
+  const isCodeCard = catalogDisplayKind === "code_card";
+  const isDigitalCodeCard = isDigitalCodeCardLike(classificationProbe);
+  const isSealed = catalogDisplayKind === "sealed";
+  const catalogType =
+    catalogDisplayKind === "sealed" ? "sealed" :
+    catalogDisplayKind === "other" ? "other" :
+    "card";
+  const normalizedProductType = isCodeCard && !/code/i.test(productType)
+    ? (isDigitalCodeCard ? "Digital Code Card" : "Code Card")
+    : productType;
   const marketSource = row.marketSource || row.market_source || row.source || "TideTradr";
   const sourceUrl = row.sourceUrl || row.source_url || row.marketUrl || row.market_url || row.tcgplayerUrl || row.tcgplayer_url || "";
   const imageSmall = row.imageSmall || row.image_small || row.images?.small || "";
@@ -7986,6 +9088,8 @@ function mapCatalog(row) {
   return {
     id: row.id,
     catalogType,
+    catalogDisplayKind,
+    classificationConflict: catalogHasClassificationConflict(classificationProbe),
     name,
     productName: catalogType === "card" ? "" : row.productName || row.product_name || name,
     cardName: catalogType === "card" ? row.cardName || row.card_name || name : row.cardName || row.card_name || "",
@@ -7993,7 +9097,7 @@ function mapCatalog(row) {
     category: row.category || "Pokemon",
     setName: officialExpansionName || row.setName || row.set_name || row.source_group_name || row.expansion || "",
     legacySetName: row.setName || row.set_name || "",
-    productType,
+    productType: normalizedProductType,
     barcode: row.barcode || row.upc || "",
     upc: row.upc || row.barcode || "",
     sku: row.sku || "",
@@ -8046,7 +9150,11 @@ function mapCatalog(row) {
     releaseDate: row.releaseDate || row.release_date || expansionRecord?.releaseDate || expansionRecord?.release_date || "",
     productLine: row.productLine || row.product_line || "",
     packCount: Number(row.packCount ?? row.pack_count ?? 0),
-    productKind: row.productKind || row.product_kind || (catalogType === "card" ? "single_card" : isSealed ? "sealed_product" : "unknown"),
+    productKind: isCodeCard ? "code_card" : catalogDisplayKind === "card" ? "single_card" : row.productKind || row.product_kind || (isSealed ? "sealed_product" : "unknown"),
+    cardSubtype: isCodeCard ? "code_card" : row.cardSubtype || row.card_subtype || "",
+    isCodeCard,
+    isDigitalCodeCard,
+    isSealed,
     sealedProductType: row.sealedProductType || row.sealed_product_type || "",
     isPokemonCenterExclusive: Boolean(row.isPokemonCenterExclusive || row.is_pokemon_center_exclusive),
     contents: row.contents || {},
@@ -8202,7 +9310,7 @@ function mapCatalog(row) {
 
   async function loadInventory() {
     const { data, error } = await supabase.from("inventory_items").select("*").order("created_at", { ascending: false });
-    if (error) return alert("Could not load inventory: " + error.message);
+    if (error) return showAppMessage("Could not load inventory: " + error.message);
     setItems(data.map(mapItem));
   }
 
@@ -8221,38 +9329,38 @@ function mapCatalog(row) {
         .order("name", { ascending: true })
         .limit(50);
     }
-    if (result.error) return alert("Could not load catalog: " + result.error.message);
+    if (result.error) return showAppMessage("Could not load catalog: " + result.error.message);
     setCatalogProducts((result.data || []).map(mapCatalog));
   }
 
   async function loadExpenses() {
     const { data, error } = await supabase.from("business_expenses").select("*").order("created_at", { ascending: false });
-    if (error) return alert("Could not load expenses: " + error.message);
+    if (error) return showAppMessage("Could not load expenses: " + error.message);
     setExpenses(data.map(mapExpense));
   }
 
   async function loadSales() {
     const { data, error } = await supabase.from("sales_records").select("*").order("created_at", { ascending: false });
-    if (error) return alert("Could not load sales: " + error.message);
+    if (error) return showAppMessage("Could not load sales: " + error.message);
     setSales(data.map(mapSale));
   }
 
   async function loadVehicles() {
     const { data, error } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
-    if (error) return alert("Could not load vehicles: " + error.message);
+    if (error) return showAppMessage("Could not load vehicles: " + error.message);
     setVehicles(data.map(mapVehicle));
   }
 
   async function loadTrips() {
     const { data, error } = await supabase.from("mileage_trips").select("*").order("created_at", { ascending: false });
-    if (error) return alert("Could not load mileage trips: " + error.message);
+    if (error) return showAppMessage("Could not load mileage trips: " + error.message);
     setMileageTrips(data.map(mapTrip));
   }
 
   async function handleImageUpload(event, setter, folder = "misc") {
     const file = event.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) return alert("Please upload an image file.");
+    if (!file.type.startsWith("image/")) return showAppMessage("Please upload an image file.");
 
     if (BETA_LOCAL_MODE) {
       const reader = new FileReader();
@@ -8261,7 +9369,7 @@ function mapCatalog(row) {
       return;
     }
 
-    if (!user) return alert("Please log in before uploading images.");
+    if (!user) return showAppMessage("Please log in before uploading images.");
 
     const ext = file.name.split(".").pop();
     const filePath = `${user.id}/${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -8272,7 +9380,7 @@ function mapCatalog(row) {
       contentType: file.type,
     });
 
-    if (error) return alert("Could not upload image: " + error.message);
+    if (error) return showAppMessage("Could not upload image: " + error.message);
 
     const { data } = supabase.storage.from("receipts").getPublicUrl(filePath);
     setter(data.publicUrl);
@@ -8331,7 +9439,7 @@ function mapCatalog(row) {
   async function addItem(event) {
     event.preventDefault();
     if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
-    if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) return alert("Please fill out item name, quantity, and unit cost.");
+    if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) return showAppMessage("Please fill out item name, quantity, and unit cost.");
 
     if (BETA_LOCAL_MODE) {
       const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(itemForm.catalogProductId));
@@ -8415,7 +9523,7 @@ function mapCatalog(row) {
       return;
     }
 
-    if (!user) return alert("Please log in first.");
+    if (!user) return showAppMessage("Please log in first.");
 
     const existing = getMatchingItem(itemForm);
     if (existing && !editingItemId) {
@@ -8469,7 +9577,7 @@ function mapCatalog(row) {
         updated_at: new Date().toISOString(),
       };
       const { data, error } = await supabase.from("inventory_items").update(row).eq("id", existing.id).select().single();
-      if (error) return alert("Could not merge restock: " + error.message);
+      if (error) return showAppMessage("Could not merge restock: " + error.message);
       setItems(items.map((item) => (item.id === existing.id ? mapItem(data) : item)));
       setItemForm(blankItem);
       if (activeFlowModal?.type === "addInventory") {
@@ -8477,7 +9585,7 @@ function mapCatalog(row) {
       } else {
         setActiveTab("inventory");
       }
-      alert(`Restock merged into existing item: ${existing.name}`);
+      showAppMessage(`Restock merged into existing item: ${existing.name}`);
       return;
     }
 
@@ -8486,7 +9594,7 @@ function mapCatalog(row) {
 
     const row = {
       user_id: user.id,
-      workspace_id: activeWorkspace?.id || null,
+      workspace_id: uuidOrNull(activeWorkspace?.id),
       name: itemForm.name,
       buyer: purchaser.purchaserName,
       purchaser_id: purchaser.purchaserId || null,
@@ -8529,7 +9637,7 @@ function mapCatalog(row) {
     };
 
     const { data, error } = await supabase.from("inventory_items").insert(row).select().single();
-    if (error) return alert("Could not add item: " + error.message);
+    if (error) return showAppMessage("Could not add item: " + error.message);
 
     setItems([mapItem(data), ...items]);
     setItemForm(blankItem);
@@ -8562,7 +9670,7 @@ function mapCatalog(row) {
         return;
       }
     } else if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) {
-      return alert("Please fill out item name, quantity, and unit cost.");
+      return showAppMessage("Please fill out item name, quantity, and unit cost.");
     }
 
     if (BETA_LOCAL_MODE) {
@@ -8684,7 +9792,7 @@ function mapCatalog(row) {
     };
 
     const { data, error } = await supabase.from("inventory_items").update(row).eq("id", editingItemId).select().single();
-    if (error) return alert("Could not update item: " + error.message);
+    if (error) return showAppMessage("Could not update item: " + error.message);
 
     setItems(items.map((item) => (item.id === editingItemId ? mapItem(data) : item)));
     setEditingItemId(null);
@@ -8818,7 +9926,7 @@ function mapCatalog(row) {
     }
 
     const { error } = await supabase.from("inventory_items").delete().eq("id", id);
-    if (error) return alert("Could not delete item: " + error.message);
+    if (error) return showAppMessage("Could not delete item: " + error.message);
     setItems(items.filter((item) => item.id !== id));
     if (editingItemId === id) {
       setEditingItemId(null);
@@ -8852,7 +9960,7 @@ function mapCatalog(row) {
       .single();
 
     if (error) {
-      alert("Could not update status: " + error.message);
+      showAppMessage("Could not update status: " + error.message);
       return;
     }
 
@@ -9031,7 +10139,7 @@ function mapCatalog(row) {
   }
   async function addCatalogProduct(event) {
     event.preventDefault();
-    if (!catalogForm.name) return alert("Please enter a product name.");
+    if (!catalogForm.name) return showAppMessage("Please enter a product name.");
 
     if (BETA_LOCAL_MODE) {
       const now = new Date().toISOString();
@@ -9121,7 +10229,7 @@ function mapCatalog(row) {
       return;
     }
 
-    if (!user) return alert("Please log in first.");
+    if (!user) return showAppMessage("Please log in first.");
 
     const cardSortMeta = getCardSortMeta({ cardNumber: catalogForm.cardNumber });
     const row = {
@@ -9168,7 +10276,7 @@ function mapCatalog(row) {
       ? await supabase.from("product_catalog").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingCatalogId).select().single()
       : await supabase.from("product_catalog").insert(row).select().single();
 
-    if (error) return alert("Could not save catalog product: " + error.message);
+    if (error) return showAppMessage("Could not save catalog product: " + error.message);
 
     const mapped = mapCatalog(data);
     setCatalogProducts(editingCatalogId ? catalogProducts.map((p) => (p.id === editingCatalogId ? mapped : p)) : [mapped, ...catalogProducts]);
@@ -9254,7 +10362,7 @@ function mapCatalog(row) {
     }
 
     const { error } = await supabase.from("product_catalog").delete().eq("id", id);
-    if (error) return alert("Could not delete catalog product: " + error.message);
+    if (error) return showAppMessage("Could not delete catalog product: " + error.message);
     setCatalogProducts(catalogProducts.filter((product) => product.id !== id));
   }
 
@@ -9590,7 +10698,7 @@ function previewBulkCatalogImport() {
   );
 
   if (parsed.length === 0) {
-    alert("No valid items found. Each line should start with a product name.");
+    showAppMessage("No valid items found. Each line should start with a product name.");
     return;
   }
 
@@ -9617,7 +10725,7 @@ function handleBulkCatalogFileUpload(event) {
 
 async function importBulkCatalogProducts() {
   if (bulkImportPreview.length === 0) {
-    alert("Preview items before importing.");
+    showAppMessage("Preview items before importing.");
     return;
   }
 
@@ -9658,19 +10766,19 @@ async function importBulkCatalogProducts() {
       });
       setBulkImportText("");
       setBulkImportPreview([]);
-      alert(`Submitted ${imported.length} catalog product suggestion(s) for admin review.`);
+      showAppMessage(`Submitted ${imported.length} catalog product suggestion(s) for admin review.`);
       return;
     }
 
     setCatalogProducts([...imported, ...catalogProducts]);
     setBulkImportText("");
     setBulkImportPreview([]);
-    alert(`Imported ${imported.length} catalog products.`);
+    showAppMessage(`Imported ${imported.length} catalog products.`);
     return;
   }
 
   if (!user) {
-    alert("Please log in first.");
+    showAppMessage("Please log in first.");
     return;
   }
 
@@ -9712,7 +10820,7 @@ async function importBulkCatalogProducts() {
     .select();
 
   if (error) {
-    alert("Could not import catalog products: " + error.message);
+    showAppMessage("Could not import catalog products: " + error.message);
     return;
   }
 
@@ -9720,7 +10828,7 @@ async function importBulkCatalogProducts() {
   setBulkImportText("");
   setBulkImportPreview([]);
 
-  alert(`Imported ${data.length} catalog products.`);
+  showAppMessage(`Imported ${data.length} catalog products.`);
 }
 
 function buildDealFinderSessionRecord() {
@@ -9929,7 +11037,7 @@ function renderTideTradrHeader() {
         <SmartCatalogSearchBox
           value={catalogSearch}
           onChange={updateCatalogSearchInput}
-          onSearch={() => submitCatalogSearch()}
+          onSearch={submitCatalogSearch}
           onSelectSuggestion={selectCatalogRecommendation}
           supabase={supabase}
           isSupabaseConfigured={isSupabaseConfigured}
@@ -10017,7 +11125,7 @@ function renderScoutHeader() {
       actions={(
         <>
         <button type="button" className="scout-submit-primary" onClick={() => {
-          openScoutSubmitFlow();
+          openScoutSubmitFlow({ source: "scout-header" });
         }}>
           Submit Report
         </button>
@@ -10371,9 +11479,9 @@ function renderForgeHeader() {
 
   async function addExpense(event) {
     event.preventDefault();
-    if (!user) return alert("Please log in first.");
+    if (!user) return showAppMessage("Please log in first.");
     if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
-    if (!expenseForm.vendor || !expenseForm.amount) return alert("Please enter vendor and amount.");
+    if (!expenseForm.vendor || !expenseForm.amount) return showAppMessage("Please enter vendor and amount.");
 
     if (BETA_LOCAL_MODE || user.id === "local-beta") {
       const localId = editingExpenseId || makeId("expense");
@@ -10400,7 +11508,7 @@ function renderForgeHeader() {
 
     const row = {
       user_id: user.id,
-      workspace_id: activeWorkspace?.id || null,
+      workspace_id: uuidOrNull(activeWorkspace?.id),
       date: expenseForm.date || null,
       vendor: expenseForm.vendor,
       category: expenseForm.category,
@@ -10427,7 +11535,7 @@ function renderForgeHeader() {
       ? await supabase.from("business_expenses").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingExpenseId).select().single()
       : await supabase.from("business_expenses").insert(row).select().single();
 
-    if (error) return alert("Could not save expense: " + error.message);
+    if (error) return showAppMessage("Could not save expense: " + error.message);
 
     const mapped = mapExpense(data);
     void persistReceiptWorkflowFromExpense({ ...mapped, ...expenseForm, receiptPhoto: expenseForm.receiptImage });
@@ -10456,14 +11564,14 @@ function renderForgeHeader() {
       return;
     }
     const { error } = await supabase.from("business_expenses").delete().eq("id", id);
-    if (error) return alert("Could not delete expense: " + error.message);
+    if (error) return showAppMessage("Could not delete expense: " + error.message);
     setExpenses(expenses.filter((expense) => expense.id !== id));
   }
 
   async function addVehicle(event) {
     event.preventDefault();
-    if (!user) return alert("Please log in first.");
-    if (!vehicleForm.name || !vehicleForm.averageMpg) return alert("Please enter vehicle name and average MPG.");
+    if (!user) return showAppMessage("Please log in first.");
+    if (!vehicleForm.name || !vehicleForm.averageMpg) return showAppMessage("Please enter vehicle name and average MPG.");
 
     const row = {
       user_id: user.id,
@@ -10478,7 +11586,7 @@ function renderForgeHeader() {
       ? await supabase.from("vehicles").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingVehicleId).select().single()
       : await supabase.from("vehicles").insert(row).select().single();
 
-    if (error) return alert("Could not save vehicle: " + error.message);
+    if (error) return showAppMessage("Could not save vehicle: " + error.message);
 
     const mapped = mapVehicle(data);
     setVehicles(editingVehicleId ? vehicles.map((v) => (v.id === editingVehicleId ? mapped : v)) : [mapped, ...vehicles]);
@@ -10493,7 +11601,7 @@ function renderForgeHeader() {
 
   async function deleteVehicle(id) {
     const { error } = await supabase.from("vehicles").delete().eq("id", id);
-    if (error) return alert("Could not delete vehicle: " + error.message);
+    if (error) return showAppMessage("Could not delete vehicle: " + error.message);
     setVehicles(vehicles.filter((vehicle) => vehicle.id !== id));
   }
 
@@ -10511,17 +11619,17 @@ function renderForgeHeader() {
 
   async function addTrip(event) {
     event.preventDefault();
-    if (!user) return alert("Please log in first.");
+    if (!user) return showAppMessage("Please log in first.");
     if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
-    if (!tripForm.purpose || !tripForm.startMiles || !tripForm.endMiles) return alert("Please enter purpose, start miles, and end miles.");
-    if (!tripForm.gasPrice) return alert("Please enter gas price paid.");
+    if (!tripForm.purpose || !tripForm.startMiles || !tripForm.endMiles) return showAppMessage("Please enter purpose, start miles, and end miles.");
+    if (!tripForm.gasPrice) return showAppMessage("Please enter gas price paid.");
 
     const costs = calculateTripCosts(tripForm);
-    if (costs.businessMiles < 0) return alert("Ending mileage must be higher than starting mileage.");
+    if (costs.businessMiles < 0) return showAppMessage("Ending mileage must be higher than starting mileage.");
 
     const row = {
       user_id: user.id,
-      workspace_id: activeWorkspace?.id || null,
+      workspace_id: uuidOrNull(activeWorkspace?.id),
       vehicle_id: costs.vehicle?.id || null,
       vehicle_name: costs.vehicle?.name || "",
       purpose: tripForm.purpose,
@@ -10559,7 +11667,7 @@ function renderForgeHeader() {
       ? await supabase.from("mileage_trips").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingTripId).select().single()
       : await supabase.from("mileage_trips").insert(row).select().single();
 
-    if (error) return alert("Could not save mileage trip: " + error.message);
+    if (error) return showAppMessage("Could not save mileage trip: " + error.message);
 
     const mapped = mapTrip(data);
     setMileageTrips(editingTripId ? mileageTrips.map((t) => (t.id === editingTripId ? mapped : t)) : [mapped, ...mileageTrips]);
@@ -10587,21 +11695,21 @@ function renderForgeHeader() {
       return;
     }
     const { error } = await supabase.from("mileage_trips").delete().eq("id", id);
-    if (error) return alert("Could not delete trip: " + error.message);
+    if (error) return showAppMessage("Could not delete trip: " + error.message);
     setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
   }
 
   async function addSale(event) {
     event.preventDefault();
-    if (!user) return alert("Please log in first.");
-    if (!saleForm.itemId || !saleForm.quantitySold || !saleForm.finalSalePrice) return alert("Please choose item, quantity, and price.");
+    if (!user) return showAppMessage("Please log in first.");
+    if (!saleForm.itemId || !saleForm.quantitySold || !saleForm.finalSalePrice) return showAppMessage("Please choose item, quantity, and price.");
 
     const item = forgeInventoryItems.find((i) => String(i.id) === String(saleForm.itemId));
-    if (!item) return alert("Item not found.");
+    if (!item) return showAppMessage("Item not found.");
     if (!ensureWorkspaceEditor(item.workspaceId || item.workspace_id || activeWorkspace?.id)) return;
 
     const qty = Number(saleForm.quantitySold);
-    if (qty > item.quantity) return alert("You cannot sell more than you have.");
+    if (qty > item.quantity) return showAppMessage("You cannot sell more than you have.");
 
     const price = Number(saleForm.finalSalePrice);
     const shippingCharged = Number(saleForm.shippingCharged || 0);
@@ -10614,7 +11722,7 @@ function renderForgeHeader() {
 
     const row = {
       user_id: user.id,
-      workspace_id: item.workspaceId || activeWorkspace?.id || null,
+      workspace_id: uuidOrNull(item.workspaceId || item.workspace_id || activeWorkspace?.id),
       item_id: item.id,
       item_name: item.name,
       sku: item.sku,
@@ -10663,7 +11771,7 @@ function renderForgeHeader() {
       ? await supabase.from("sales_records").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingSaleId).select().single()
       : await supabase.from("sales_records").insert(row).select().single();
 
-    if (saleError) return alert("Could not save sale: " + saleError.message);
+    if (saleError) return showAppMessage("Could not save sale: " + saleError.message);
 
     if (!editingSaleId) {
       const { data: updatedItem, error: updateError } = await supabase
@@ -10674,7 +11782,7 @@ function renderForgeHeader() {
         .single();
 
       if (updateError) {
-        alert("Sale saved, but inventory quantity did not update: " + updateError.message);
+        showAppMessage("Sale saved, but inventory quantity did not update: " + updateError.message);
         await loadAllData();
         return;
       }
@@ -10712,12 +11820,12 @@ function renderForgeHeader() {
       return;
     }
     const { error } = await supabase.from("sales_records").delete().eq("id", id);
-    if (error) return alert("Could not delete sale: " + error.message);
+    if (error) return showAppMessage("Could not delete sale: " + error.message);
     setSales(sales.filter((sale) => sale.id !== id));
   }
 
   function downloadCSV(filename, rows) {
-    if (!rows.length) return alert("No data to export yet.");
+    if (!rows.length) return showAppMessage("No data to export yet.");
     const headers = Object.keys(rows[0]);
     const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => `"${String(row[h] ?? "").replaceAll('"', '""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -11905,6 +13013,51 @@ function renderForgeHeader() {
       .find((candidate) => candidate && !/no specific products|needs more reports/i.test(candidate)) || "";
   }
 
+  function isMilitaryWatchCalendarEvent(row = {}, store = {}) {
+    const text = [
+      row.storeName,
+      row.storeAlias,
+      row.nickname,
+      row.retailer,
+      row.chain,
+      store.name,
+      store.nickname,
+      store.retailer,
+      store.chain,
+      store.address,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return /nex|navy exchange|exchange|aafes|commissary|military|base|langley|oceana|norfolk naval/.test(text);
+  }
+
+  function watchCalendarEventLayerEnabled(event = {}) {
+    const layerKeys = event.layerKeys || [];
+    const hasEnabledLayer = layerKeys.some((key) => watchCalendarLayers[key]);
+    if (!hasEnabledLayer) return false;
+    if (event.isMilitary && !watchCalendarLayers.militaryStores) return false;
+    if (watchCalendarLayers.adminVerifiedOnly && !event.verified && event.confidenceKey !== "confirmed") return false;
+    if (watchCalendarLayers.highConfidenceOnly && !["confirmed", "likely"].includes(event.confidenceKey)) return false;
+    return true;
+  }
+
+  function watchCalendarAreaMatches(event = {}) {
+    if (event.locationType === "online" || event.locationType === "release") return true;
+    const area = WATCH_CALENDAR_AREAS.find((entry) => entry.value === watchCalendarArea) || WATCH_CALENDAR_AREAS[0];
+    if (!area || area.value === "all_virginia") return true;
+    const locationText = [event.city, event.region, event.address, event.title].filter(Boolean).join(" ").toLowerCase();
+    if (!locationText) return true;
+    return area.cities.some((city) => locationText.includes(city));
+  }
+
+  function toggleWatchCalendarLayer(layerKey) {
+    setWatchCalendarLayers((current) => ({ ...current, [layerKey]: !current[layerKey] }));
+  }
+
+  function openPokemonWatchCalendar() {
+    setActiveTab("scout");
+    setScoutView("alerts");
+    setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+  }
+
   function isCurrentUserScoutReport(report = {}) {
     const userIds = [currentUserProfile.userId, user?.id, "local-beta", "local-beta-scout"].filter(Boolean).map(String);
     return userIds.some((id) => String(report.userId || report.reportedBy || report.reported_by || "").includes(id));
@@ -12011,6 +13164,165 @@ function renderForgeHeader() {
     if (a.dayDistance !== b.dayDistance) return a.dayDistance - b.dayDistance;
     return String(a.storeName).localeCompare(String(b.storeName));
   });
+  const watchCalendarTodayKey = getLocalDateKey();
+  const watchCalendarWeekEndKey = addLocalDays(watchCalendarTodayKey, 7);
+  const releaseProductRows = catalogProducts
+    .filter((product) => {
+      const releaseDate = String(product.releaseDate || product.release_date || product.launchDate || product.launch_date || "").slice(0, 10);
+      return releaseDate && releaseDate >= watchCalendarTodayKey && releaseDate <= addLocalDays(watchCalendarTodayKey, 30);
+    })
+    .slice(0, 80);
+  const releaseEventsByKey = releaseProductRows.reduce((events, product) => {
+    const releaseDate = String(product.releaseDate || product.release_date || product.launchDate || product.launch_date || "").slice(0, 10);
+    const setName = product.setName || product.set_name || product.expansion || product.expansionName || product.productLine || "Pokemon release";
+    const key = `${releaseDate}-${setName}`;
+    if (!events[key]) {
+      events[key] = {
+        id: `release-${key}`,
+        dateKey: releaseDate,
+        title: setName,
+        subtitle: "Official release",
+        layerKeys: ["pokemonReleases", "expansionReleases"],
+        eventType: "release",
+        locationType: "release",
+        timeLabel: "Release day",
+        confidenceLabel: "Official data",
+        confidenceKey: "confirmed",
+        verified: true,
+        sortWeight: 4,
+      };
+    }
+    events[key].count = Number(events[key].count || 0) + 1;
+    return events;
+  }, {});
+  const watchCalendarSourceForecastRows = scoutSnapshot.restockPatterns?.length || scoutSnapshot.restockIntel?.length ? scoutForecastPreviewRows : [];
+  const watchCalendarForecastEvents = watchCalendarSourceForecastRows.map((row, index) => {
+    const dayDistance = Number.isFinite(row.dayDistance) ? Math.min(Math.max(row.dayDistance, 0), 7) : 7;
+    const sourceText = `${row.sourceType || ""} ${row.sourceLabel || ""} ${row.badges?.join(" ") || ""}`.toLowerCase();
+    const isOnline = /online|website|pokemon center|best buy/.test(sourceText) || /pokemon center/i.test(row.storeName || "");
+    const isGuess = /guess|prediction|planner|possible|rumor/.test(sourceText) || row.confidenceKey === "possible";
+    const matchedStore = !isOnline ? findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer }) : null;
+    return {
+      id: `forecast-${row.id || index}`,
+      dateKey: addLocalDays(watchCalendarTodayKey, dayDistance),
+      title: row.storeName || "Watch item",
+      subtitle: `${isOnline ? "Online watch" : "Local watch"} - ${row.confidenceLabel || "Possible"}`,
+      retailer: row.retailer || "",
+      city: matchedStore?.city || row.city || "",
+      region: matchedStore?.region || "",
+      address: matchedStore?.address || "",
+      store: matchedStore || null,
+      reportable: !isOnline,
+      layerKeys: [
+        isOnline ? "onlineRestocks" : "localRestocks",
+        isGuess ? "userGuesses" : "appPredictions",
+        row.confidenceKey === "confirmed" || row.confidenceKey === "likely" ? "retailDrops" : "",
+      ].filter(Boolean),
+      eventType: isOnline ? "online" : "local",
+      locationType: isOnline ? "online" : "store",
+      timeLabel: row.windowLabel || "Unknown time",
+      confidenceLabel: row.confidenceLabel || "Possible",
+      confidenceKey: row.confidenceKey || "possible",
+      sourceLabel: row.sourceLabel || "",
+      products: row.products || [],
+      reason: row.reason || "",
+      verified: row.confidenceKey === "confirmed" || /verified|confirmed/.test(sourceText),
+      isMilitary: isMilitaryWatchCalendarEvent(row, matchedStore),
+      sortWeight: isOnline ? 2 : 1,
+    };
+  });
+  const watchCalendarReportEvents = scoutReportRows
+    .map((report, index) => {
+      const store = getScoutReportStore(report);
+      const rawDate = String(report.reportDate || report.report_date || report.createdAt || report.created_at || report.reportedAt || report.reported_at || "").slice(0, 10);
+      const dateKey = rawDate || watchCalendarTodayKey;
+      if (dateKey < watchCalendarTodayKey || dateKey > watchCalendarWeekEndKey) return null;
+      const items = normalizeScoutReportItems(report);
+      const status = scoutReportStatusLabel(report);
+      const stockLabel = scoutStockStatusLabel(report.stockStatus || report.stock_status) || report.reportType || report.report_type || "Store report";
+      const confidenceKey = report.verified || /verified|confirmed/i.test(status) ? "confirmed" : scoutForecastConfidenceKey(report.confidence || report.matchConfidence || "possible");
+      return {
+        id: `report-${getScoutReportId(report) || index}`,
+        dateKey,
+        title: store.name || report.storeName || report.store_name || "Store report",
+        subtitle: `${stockLabel} - ${status}`,
+        retailer: store.chain || report.retailer || report.chain || "",
+        city: store.city || report.city || "",
+        region: store.region || report.region || "",
+        address: store.address || report.address || "",
+        store: report.storeId || report.store_id ? findScoutQuickStore({ id: report.storeId || report.store_id }) || store : store,
+        report,
+        reportable: true,
+        layerKeys: ["localRestocks", "retailDrops"],
+        eventType: "report",
+        locationType: "store",
+        timeLabel: report.reportTime || report.report_time || "Reported",
+        confidenceLabel: scoutForecastConfidenceLabel(confidenceKey),
+        confidenceKey,
+        sourceLabel: scoutSourceTypeLabel(report.sourceType || report.source_type || "user_report"),
+        products: items.map((item) => item.productName),
+        reason: report.notes || report.note || "",
+        verified: confidenceKey === "confirmed",
+        isMilitary: isMilitaryWatchCalendarEvent(report, store),
+        sortWeight: 0,
+      };
+    })
+    .filter(Boolean);
+  const watchCalendarOnlineEvents = [
+    ...(scoutSnapshot.bestBuyAlerts || []),
+    ...(scoutSnapshot.bestBuyStockResults || []),
+    ...(scoutSnapshot.bestBuyNightlyReports || []),
+  ].slice(0, 12).map((alert, index) => ({
+    id: `online-${alert.id || alert.sku || index}`,
+    dateKey: String(alert.date || alert.createdAt || alert.created_at || alert.checkedAt || alert.checked_at || watchCalendarTodayKey).slice(0, 10) || watchCalendarTodayKey,
+    title: alert.productName || alert.name || alert.sku || "Online stock watch",
+    subtitle: alert.retailer || "Online watch",
+    retailer: alert.retailer || "Online",
+    city: "",
+    layerKeys: ["onlineRestocks", "retailDrops"],
+    eventType: "online",
+    locationType: "online",
+    timeLabel: alert.time || alert.checkedTime || "Unknown time",
+    confidenceLabel: alert.inStock || alert.status === "in_stock" ? "Confirmed" : "Possible",
+    confidenceKey: alert.inStock || alert.status === "in_stock" ? "confirmed" : "possible",
+    sourceLabel: "Existing online watch data",
+    products: [alert.productName || alert.name || ""].filter(Boolean),
+    reason: alert.message || alert.status || "",
+    verified: Boolean(alert.inStock || alert.status === "in_stock"),
+    sortWeight: 3,
+  }));
+  const watchCalendarEvents = [
+    ...watchCalendarReportEvents,
+    ...watchCalendarForecastEvents,
+    ...watchCalendarOnlineEvents,
+    ...Object.values(releaseEventsByKey),
+  ].filter((event) => event.dateKey >= watchCalendarTodayKey && event.dateKey <= watchCalendarWeekEndKey);
+  const filteredWatchCalendarEvents = watchCalendarEvents
+    .filter((event) => watchCalendarEventLayerEnabled(event))
+    .filter((event) => watchCalendarAreaMatches(event))
+    .filter((event) => {
+      if (watchCalendarView === "today") return event.dateKey === watchCalendarTodayKey;
+      return event.dateKey >= watchCalendarTodayKey && event.dateKey <= watchCalendarWeekEndKey;
+    })
+    .sort((a, b) => {
+      if (a.dateKey !== b.dateKey) return a.dateKey.localeCompare(b.dateKey);
+      if (a.sortWeight !== b.sortWeight) return a.sortWeight - b.sortWeight;
+      return String(a.title).localeCompare(String(b.title));
+    });
+  const watchCalendarGroupedEvents = filteredWatchCalendarEvents.reduce((groups, event) => {
+    const existing = groups.find((group) => group.dateKey === event.dateKey);
+    if (existing) existing.events.push(event);
+    else groups.push({ dateKey: event.dateKey, label: formatWatchCalendarDay(event.dateKey), events: [event] });
+    return groups;
+  }, []);
+  const watchCalendarTodayEvents = watchCalendarEvents.filter((event) => event.dateKey === watchCalendarTodayKey && watchCalendarEventLayerEnabled(event) && watchCalendarAreaMatches(event));
+  const watchCalendarHomeCounts = {
+    local: watchCalendarTodayEvents.filter((event) => event.layerKeys.includes("localRestocks")).length,
+    online: watchCalendarTodayEvents.filter((event) => event.layerKeys.includes("onlineRestocks")).length,
+    releases: watchCalendarTodayEvents.filter((event) => event.layerKeys.includes("pokemonReleases") || event.layerKeys.includes("expansionReleases")).length,
+    week: watchCalendarEvents.filter((event) => watchCalendarEventLayerEnabled(event) && watchCalendarAreaMatches(event)).length,
+    upcomingReleases: Object.values(releaseEventsByKey).length,
+  };
   const filteredScoutReports = scoutReportRows.filter((report) => {
     if (scoutReportFilter === "Verified") return Boolean(report.verified || report.verificationStatus === "verified");
     if (scoutReportFilter === "My Reports") return isCurrentUserScoutReport(report);
@@ -12039,6 +13351,94 @@ function renderForgeHeader() {
   const scoutReviewVisible = canReviewSharedData;
   const normalizedScoutView = scoutView === "main" || !scoutView ? "overview" : scoutView;
   const activeScoutPage = normalizedScoutView === "review" && !scoutReviewVisible ? "overview" : normalizedScoutView;
+  function currentRoutePath() {
+    if (activeTab === "scout") {
+      if (activeScoutPage === "stores" && scoutSubTabTarget.storeId) return `/scout/stores/${encodeURIComponent(scoutSubTabTarget.storeId)}`;
+      if (activeScoutPage === "reports" && selectedScoutReport) return `/scout/reports/${encodeURIComponent(getScoutReportId(selectedScoutReport) || "selected")}`;
+      if (activeScoutPage === "alerts") return "/scout/calendar";
+      return "/scout";
+    }
+    if (activeTab === "market" || activeTab === "catalog") {
+      if (selectedCatalogDetailId) return `/tidetradr/product/${encodeURIComponent(selectedCatalogDetailId)}`;
+      return "/tidetradr/catalog";
+    }
+    if (activeTab === "expenses") return "/forge/expenses";
+    if (activeTab === "sales") return "/forge/sales";
+    if (activeTab === "mileage") return "/forge/mileage";
+    if (activeTab === "reports") return "/forge/reports";
+    if (activeTab === "inventory" || activeTab === "addInventory" || activeTab === "addSale") return "/forge";
+    if (activeTab === "vault") return "/vault/cards";
+    if (activeTab === "tidepool") return "/tidepool";
+    if (activeTab === "menu") return "/settings";
+    return "/";
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+    const routeState = {
+      activeTab,
+      activeWorkspaceId,
+      homeSubTab,
+      forgeSubTab,
+      scoutView: activeScoutPage,
+      scoutReportFilter,
+      scoutReportSort,
+      scoutStoreId: scoutSubTabTarget.storeId || "",
+      scoutReportId: scoutSubTabTarget.reportId || "",
+      vaultSubTab,
+      vaultFilter,
+      vaultSearch,
+      vaultSort,
+      selectedVaultDetailId,
+      selectedForgeDetailId,
+      tideTradrSubTab,
+      selectedCatalogDetailId,
+      catalogSearch,
+      submittedCatalogSearch,
+      catalogDataFilter,
+      catalogKindFilter,
+      catalogSetFilter,
+      catalogTypeFilter,
+    };
+    localStorage.setItem(APP_ROUTE_STORAGE_KEY, JSON.stringify(routeState));
+
+    const params = new URLSearchParams(window.location.search);
+    ["q", "vaultQ", "filter"].forEach((key) => params.delete(key));
+    if ((activeTab === "market" || activeTab === "catalog") && catalogSearch) params.set("q", catalogSearch);
+    if (activeTab === "vault" && vaultSearch) params.set("vaultQ", vaultSearch);
+    if (activeTab === "vault" && vaultFilter !== "all") params.set("filter", vaultFilter);
+    const nextPath = currentRoutePath();
+    const nextSearch = params.toString();
+    const nextUrl = `${nextPath}${nextSearch ? `?${nextSearch}` : ""}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (currentUrl !== nextUrl) {
+      window.history.replaceState({ emberTideRoute: true }, "", nextUrl);
+    }
+  }, [
+    activeTab,
+    activeWorkspaceId,
+    homeSubTab,
+    forgeSubTab,
+    activeScoutPage,
+    selectedScoutReport,
+    scoutReportFilter,
+    scoutReportSort,
+    scoutSubTabTarget,
+    vaultSubTab,
+    vaultFilter,
+    vaultSearch,
+    vaultSort,
+    selectedVaultDetailId,
+    selectedForgeDetailId,
+    tideTradrSubTab,
+    selectedCatalogDetailId,
+    catalogSearch,
+    submittedCatalogSearch,
+    catalogDataFilter,
+    catalogKindFilter,
+    catalogSetFilter,
+    catalogTypeFilter,
+  ]);
   const pagedTidepoolPosts = getPagedItems(filteredTidepoolPosts, tidepoolPage, LONG_LIST_PAGE_SIZE);
   const pagedScoutReports = getPagedItems(filteredScoutReports, scoutReportsPage, LONG_LIST_PAGE_SIZE);
   const dealAskingPrice = Number(dealForm.askingPrice || 0);
@@ -12235,18 +13635,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       String(product.releaseYear || "").toLowerCase().includes(search) ||
       String(product.barcode || "").toLowerCase().includes(search);
 
-    const productGroup = String(product.catalogGroup || "").toLowerCase();
-    const productTypeText = String(product.productType || "").toLowerCase();
-    const productIsSealed =
-      product.catalogType === "sealed" ||
-      productGroup === "sealed" ||
-      Boolean(product.isSealed) ||
-      /(sealed|booster|elite trainer|box|tin|collection|bundle|pack)/i.test(productTypeText);
-    const productIsCard =
-      product.catalogType === "card" ||
-      productGroup === "cards" ||
-      productTypeText.includes("card") ||
-      Boolean(product.cardNumber || product.rarity);
+    const productIsCard = isCatalogCardProduct(product);
+    const productIsSealed = isCatalogSealedProduct(product) && !productIsCard;
     const matchesKind =
       catalogKindFilter === "All" ||
       (catalogKindFilter === "card" && productIsCard) ||
@@ -12285,7 +13675,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       (catalogHistoryFilter === "Low volatility" && product.historyVolatility === "Low Volatility");
     const matchesDataFilter =
       catalogDataFilter === "All" ||
-      serverSearchResult ||
       (catalogDataFilter === "Has market price" && marketInfo.currentMarketValue > 0) ||
       (catalogDataFilter === "Missing price" && marketInfo.currentMarketValue <= 0) ||
       (catalogDataFilter === "Has image" && Boolean(catalogImage(product)));
@@ -12302,8 +13691,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const catalogRarityOptions = ["All", ...new Set(catalogProducts.map((product) => product.rarity).filter(Boolean))].sort();
   const catalogVariantOptions = ["All", ...new Set(catalogProducts.flatMap((product) => getCatalogVariantOptions(product).map((variant) => variant.variantName)).filter(Boolean))].sort();
   const catalogConditionOptions = ["All", ...new Set(catalogProducts.map((product) => product.condition).filter(Boolean))].sort();
-  const sealedCatalogCount = catalogProducts.filter((product) => product.catalogType !== "card").length;
-  const cardCatalogCount = catalogProducts.filter((product) => product.catalogType === "card").length;
+  const sealedCatalogCount = catalogProducts.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product)).length;
+  const cardCatalogCount = catalogProducts.filter((product) => isCatalogCardProduct(product)).length;
   const catalogDuplicateWarnings = flagCatalogDuplicates(catalogProducts);
   const catalogValidationWarnings = validateCatalogImport(catalogProducts);
   const catalogUpcCount = catalogProducts.filter((product) => product.upc || product.barcode).length + POKEMON_PRODUCT_UPCS.length;
@@ -12326,7 +13715,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         marketSummary: selectedCatalogDetailExtra?.marketSummary || selectedCatalogDetailBaseProduct.marketSummary || null,
       }
     : null;
-  const selectedCatalogDetailVariants = selectedCatalogDetailProduct ? getCatalogVariantOptions(selectedCatalogDetailProduct) : [];
+  const selectedCatalogDetailIsCard = isCatalogCardProduct(selectedCatalogDetailProduct);
+  const selectedCatalogDetailIsCodeCard = isCatalogCodeCardProduct(selectedCatalogDetailProduct);
+  const selectedCatalogDetailIsSealed = isCatalogSealedProduct(selectedCatalogDetailProduct) && !selectedCatalogDetailIsCard;
+  const selectedCatalogDetailVariants = selectedCatalogDetailProduct && selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? getCatalogVariantOptions(selectedCatalogDetailProduct) : [];
   const selectedCatalogDetailVariant =
     selectedCatalogDetailVariants.find((variant) => String(variant.id) === String(catalogVariantSelection[selectedCatalogDetailProduct?.id])) ||
     selectedCatalogDetailVariants.find((variant) => variant.isDefault) ||
@@ -12343,12 +13735,37 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         : filteredCatalogProducts)
     : [];
   const tideTradrCatalogResults = buildCatalogParentCardResults(tideTradrCatalogRawResults);
+  const tideTradrCatalogCardResults = tideTradrCatalogResults.filter((product) => isCatalogCardProduct(product));
+  const tideTradrCatalogSealedResults = tideTradrCatalogResults.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product));
+  const tideTradrCatalogOtherResults = tideTradrCatalogResults.filter((product) => !isCatalogCardProduct(product) && !isCatalogSealedProduct(product));
+  const tideTradrCatalogResultGroups = catalogKindFilter === "All"
+    ? [
+        { key: "cards", title: "Cards", items: tideTradrCatalogCardResults },
+        { key: "sealed", title: "Sealed Products", items: tideTradrCatalogSealedResults },
+        { key: "other", title: "Other Results", items: tideTradrCatalogOtherResults },
+      ].filter((group) => group.items.length)
+    : [{ key: catalogKindFilter, title: catalogKindFilter === "card" ? "Cards" : catalogKindFilter === "sealed" ? "Sealed Products" : "Other Results", items: tideTradrCatalogResults }];
   const tideTradrCatalogPageCount = supabaseCatalogStatus.totalCount
     ? Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))
     : null;
+  const activeCatalogFilterChips = [
+    catalogKindFilter !== "All" ? catalogKindFilter === "card" ? "Cards" : catalogKindFilter === "sealed" ? "Sealed" : "Other" : "",
+    catalogDataFilter !== "All" ? catalogDataFilter : "",
+    catalogSetFilter !== "All" ? `Set: ${catalogSetFilter}` : "",
+    catalogTypeFilter !== "All" ? `Type: ${catalogTypeFilter}` : "",
+    catalogRarityFilter !== "All" ? `Rarity: ${catalogRarityFilter}` : "",
+    catalogMinValue !== "" ? `Min: ${money(catalogMinValue)}` : "",
+    catalogMaxValue !== "" ? `Max: ${money(catalogMaxValue)}` : "",
+  ].filter(Boolean);
+  const catalogEmptyTerm = String(submittedCatalogSearch || catalogSearch || submittedCatalogBarcodeSearch || catalogBarcodeSearch || "").trim();
+  const catalogEmptyModeLabel = catalogKindFilter === "card" ? "cards/code cards" : catalogKindFilter === "sealed" ? "sealed products" : "products";
+  const catalogAlternateKindLabels = (supabaseCatalogStatus.alternateKinds || []).map((kind) =>
+    kind === "card" ? "Cards" : kind === "sealed" ? "Sealed" : "Other"
+  );
 
   function catalogTitle(product = {}) {
-    return product.catalogType === "card"
+    const kind = getCatalogDisplayKind(product);
+    return kind === "card" || kind === "code_card"
       ? product.cardName || product.name || "Unknown card"
       : product.productName || product.name || "Unknown product";
   }
@@ -12366,8 +13783,160 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function catalogProductTypeLabel(product = {}) {
-    if (product.catalogType === "card") return "Individual Card";
+    const kind = getCatalogDisplayKind(product);
+    if (kind === "code_card") return product.isDigitalCodeCard || isDigitalCodeCardLike(product) ? "Digital Code Card" : "Code Card";
+    if (kind === "card") return "Individual Card";
+    if (kind === "sealed") return product.productType || product.sealedProductType || product.productKind || "Sealed Product";
     return product.productType || product.sealedProductType || product.productKind || "Catalog product";
+  }
+
+  function isCatalogCodeCardProduct(product = {}) {
+    return getCatalogDisplayKind(product) === "code_card";
+  }
+
+  function getCatalogKindLabel(product = {}, { withName = false } = {}) {
+    const title = catalogTitle(product);
+    const label = isCatalogCodeCardProduct(product)
+      ? (product.isDigitalCodeCard || isDigitalCodeCardLike(product) ? "Digital Code Card" : "Code Card")
+      : isCatalogCardProduct(product)
+        ? "Card"
+        : isCatalogSealedProduct(product)
+          ? "Sealed Product"
+          : "Catalog Item";
+    return withName ? `${label} - ${title}` : label;
+  }
+
+  function shouldShowCatalogRepairLabels() {
+    return Boolean(adminToolsVisible);
+  }
+
+  function isCatalogCardProduct(product = {}) {
+    const kind = getCatalogDisplayKind(product);
+    return kind === "card" || kind === "code_card";
+  }
+
+  function isCatalogSealedProduct(product = {}) {
+    return getCatalogDisplayKind(product) === "sealed";
+  }
+
+  function catalogCoverageProductText(product = {}) {
+    return normalizeSearchText([
+      catalogTitle(product),
+      product.productName,
+      product.name,
+      product.productType,
+      product.sealedProductType,
+      product.productKind,
+      product.category,
+      catalogExpansionName(product),
+      product.setCode,
+      product.sku,
+      product.externalProductId,
+    ].filter(Boolean).join(" "));
+  }
+
+  function getCatalogSealedCoverageCategories(products = []) {
+    const found = new Set();
+    products.forEach((product) => {
+      const text = catalogCoverageProductText(product);
+      CATALOG_SEALED_COVERAGE_CATEGORIES.forEach((category) => {
+        if (category.aliases.some((alias) => text.includes(normalizeSearchText(alias)))) {
+          found.add(category.label);
+        }
+      });
+    });
+    return [...found];
+  }
+
+  function buildCatalogSealedCoverageWarning({ query = "", productGroup = "All", products = [], totalCount = null, result = null } = {}) {
+    if (productGroup !== "Sealed") return null;
+    const analysis = analyzeCatalogSearch(query);
+    const setMatch = analysis.setMatches?.[0];
+    if (!setMatch) return null;
+    const normalizedQuery = normalizeSearchText(query);
+    const matchedAlias = normalizeSearchText(setMatch.matchedAlias);
+    const canonicalSet = normalizeSearchText(setMatch.canonicalSetName);
+    const codeCardQuery = /\b(code card|online code|booster pack code|redeem|tcg live|tcg online|digital booster pack)\b/.test(normalizedQuery);
+    const confidentSetSearch = (
+      !codeCardQuery &&
+      matchedAlias !== "e card" &&
+      matchedAlias !== "ecard" &&
+      Number(setMatch.matchScore || 0) >= 90 &&
+      (
+        normalizedQuery === matchedAlias ||
+        normalizedQuery.includes(canonicalSet) ||
+        canonicalSet.includes(normalizedQuery) ||
+        searchTokens(normalizedQuery).includes(matchedAlias)
+      )
+    );
+    if (!confidentSetSearch) return null;
+    const sealedProducts = products.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product));
+    const sealedCount = Number.isFinite(Number(totalCount)) ? Number(totalCount) : sealedProducts.length;
+    const foundCategories = getCatalogSealedCoverageCategories(sealedProducts);
+    const missingLikelyCategories = CATALOG_CORE_SEALED_COVERAGE_LABELS
+      .filter((label) => !foundCategories.includes(label))
+      .slice(0, 4);
+    if (sealedCount > 3 && foundCategories.length >= 3) return null;
+    return {
+      setName: setMatch.canonicalSetName,
+      searchedAliases: [setMatch.matchedAlias, setMatch.setId, setMatch.ptcgoCode].filter(Boolean),
+      sealedCount,
+      resultCount: sealedProducts.length,
+      rawTotalCount: totalCount,
+      rawFetchedCount: result?.rawFetchedCount ?? result?.rows?.length ?? products.length,
+      sealedFetchRan: result?.productGroup === "Sealed" || productGroup === "Sealed",
+      foundCategories,
+      missingLikelyCategories,
+      expectedCategories: CATALOG_SEALED_COVERAGE_CATEGORIES.map((category) => category.label),
+      activeFilters: activeCatalogFilterChips,
+    };
+  }
+
+  function switchCatalogKindFilter(value) {
+    setCatalogKindFilter(value);
+    setSupabaseCatalogStatus((current) => ({
+      ...current,
+      page: 1,
+      totalCount: null,
+      hasMore: false,
+    }));
+  }
+
+  function suggestMissingCatalogProductFromSearch(context = {}) {
+    const setName = context.setName || (catalogSetFilter !== "All" ? catalogSetFilter : "");
+    const searchTerm = context.searchTerm || catalogEmptyTerm || submittedCatalogSearch || catalogSearch;
+    const suggestedProductType = context.suggestedProductType || context.missingLikelyCategories?.[0] || (catalogTypeFilter !== "All" ? catalogTypeFilter : "");
+    const notes = [
+      context.notes || "Suggested from coverage warning.",
+      context.missingLikelyCategories?.length ? `May be missing: ${context.missingLikelyCategories.join(", ")}.` : "",
+    ].filter(Boolean).join(" ");
+
+    if (adminUser) {
+      setActiveTab("catalog");
+      setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
+      setCatalogForm((current) => ({
+        ...current,
+        catalogType: "sealed",
+        setName: setName || current.setName,
+        expansion: setName || current.expansion,
+        productType: suggestedProductType || current.productType,
+        notes: [current.notes, notes].filter(Boolean).join(" | "),
+      }));
+      return;
+    }
+
+    submitUniversalSuggestion({
+      suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+      targetTable: "catalog_items",
+      submittedData: {
+        searchTerm,
+        productType: suggestedProductType || catalogTypeFilter,
+        setName,
+        missingLikelyCategories: context.missingLikelyCategories || [],
+      },
+      notes,
+      source: context.source || "tidetradr-coverage-warning",
+    });
   }
 
   function getCatalogVariantDisplayName(product = {}, index = 0) {
@@ -12416,7 +13985,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function getCatalogCardParentKey(product = {}) {
-    if (product.catalogType !== "card") return "";
+    if (!isCatalogCardProduct(product) || isCatalogCodeCardProduct(product)) return "";
     const cardNumber = String(product.cardNumber || catalogCardDetails(product).cardNumber || "").trim().toLowerCase();
     if (!cardNumber) return "";
     const setKey = normalizeSearchText(product.expansionId || product.setCode || catalogExpansionName(product));
@@ -12956,14 +14525,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function addCatalogDetailToVault(product = selectedCatalogDetailProduct) {
     const actionProduct = getSelectedCatalogDetailActionProduct(product);
     if (!actionProduct) return;
+    const actionProductIsCard = isCatalogCardProduct(actionProduct) && !isCatalogCodeCardProduct(actionProduct);
     openProductAddFlow({
       product: actionProduct,
       source: "catalog-detail-vault",
       destinations: { vault: true },
       seed: {
-        variant: selectedCatalogDetailVariant?.variantName || "",
-        catalogVariantId: selectedCatalogDetailVariant?.id || "",
-        vault: { vaultStatus: actionProduct.catalogType === "sealed" ? "sealed" : "personal_collection" },
+        variant: actionProductIsCard ? selectedCatalogDetailVariant?.variantName || "" : "",
+        catalogVariantId: actionProductIsCard ? selectedCatalogDetailVariant?.id || "" : "",
+        vault: { vaultStatus: isCatalogSealedProduct(actionProduct) ? "sealed" : "personal_collection" },
       },
     });
     closeCatalogDetail();
@@ -12972,14 +14542,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function addCatalogDetailToForge(product = selectedCatalogDetailProduct) {
     const actionProduct = getSelectedCatalogDetailActionProduct(product);
     if (!actionProduct) return;
+    const actionProductIsCard = isCatalogCardProduct(actionProduct) && !isCatalogCodeCardProduct(actionProduct);
     openProductAddFlow({
       product: actionProduct,
       source: "catalog-detail-forge",
       destinations: { forge: true },
       seed: {
-        variant: selectedCatalogDetailVariant?.variantName || "",
-        catalogVariantId: selectedCatalogDetailVariant?.id || "",
-        forge: { conditionName: selectedCatalogDetailCondition || "" },
+        variant: actionProductIsCard ? selectedCatalogDetailVariant?.variantName || "" : "",
+        catalogVariantId: actionProductIsCard ? selectedCatalogDetailVariant?.id || "" : "",
+        forge: actionProductIsCard ? { conditionName: selectedCatalogDetailCondition || "" } : {},
       },
     });
     closeCatalogDetail();
@@ -12995,13 +14566,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function addCatalogDetailToWatchlist(product = selectedCatalogDetailProduct) {
     const actionProduct = getSelectedCatalogDetailActionProduct(product);
     if (!actionProduct) return;
+    const actionProductIsCard = isCatalogCardProduct(actionProduct) && !isCatalogCodeCardProduct(actionProduct);
     openProductAddFlow({
       product: actionProduct,
       source: "catalog-detail-watchlist",
       destinations: { wishlist: true },
       seed: {
-        variant: selectedCatalogDetailVariant?.variantName || "",
-        catalogVariantId: selectedCatalogDetailVariant?.id || "",
+        variant: actionProductIsCard ? selectedCatalogDetailVariant?.variantName || "" : "",
+        catalogVariantId: actionProductIsCard ? selectedCatalogDetailVariant?.id || "" : "",
         wishlist: { ...BLANK_MULTI_DESTINATION_FORM.wishlist, addToMarketWatch: true },
       },
     });
@@ -13015,12 +14587,132 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     closeCatalogDetail();
   }
 
+  function markCatalogDetailOwned(product = selectedCatalogDetailProduct) {
+    if (!product) {
+      setVaultToast("Choose a catalog item before marking it owned.");
+      return;
+    }
+    addCatalogDetailToVault(product);
+  }
+
+  function markCatalogDetailMissing(product = selectedCatalogDetailProduct) {
+    if (!product) {
+      setVaultToast("Choose a catalog item before marking it missing.");
+      return;
+    }
+    addCatalogDetailToWatchlist(product);
+  }
+
+  function addCatalogDetailDuplicate(product = selectedCatalogDetailProduct) {
+    if (!product) {
+      setVaultToast("Choose a catalog item before adding a duplicate.");
+      return;
+    }
+    setVaultToast("Duplicate review opened. Confirm quantity and destination before saving.");
+    addCatalogDetailToVault(product);
+  }
+
+  function focusCatalogDetailVariantPicker() {
+    if (!selectedCatalogDetailIsCard || selectedCatalogDetailIsCodeCard) {
+      setVaultToast("Variant selection is only available for cards.");
+      return;
+    }
+    if (selectedCatalogDetailVariants.length <= 1) {
+      setVaultToast("No alternate variants are listed for this card yet.");
+      return;
+    }
+    document.querySelector(".catalog-version-picker")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setVaultToast("Choose a version, then use Add to Vault, Forge, or Wishlist.");
+  }
+
+  function focusCatalogDetailConditionEditor() {
+    if (!selectedCatalogDetailIsCard || selectedCatalogDetailIsCodeCard) {
+      setVaultToast("Condition editing is available when adding a card to Vault, Forge, or Wishlist.");
+      return;
+    }
+    document.querySelector(".catalog-version-picker select")?.focus?.();
+    setVaultToast("Choose condition here, then submit through the add review screen.");
+  }
+
   function addCatalogItemToForge(productId) {
     const product = typeof productId === "object"
       ? productId
       : catalogProducts.find((p) => String(p.id) === String(productId));
     if (!product) return;
     openProductAddFlow({ product, source: "catalog-forge", destinations: { forge: true } });
+  }
+
+  function renderTideTradrCatalogResultCard(product) {
+    const marketInfo = getTideTradrMarketInfo(product);
+    const isCard = isCatalogCardProduct(product);
+    const isCodeCard = isCatalogCodeCardProduct(product);
+    const isSealed = isCatalogSealedProduct(product) && !isCard;
+    const resultGroup = getCatalogKindLabel(product);
+    const variantCount = getCatalogVariantOptions(product).length;
+    const ownedCount = getCatalogOwnedCount(product);
+    const showRepairMeta = shouldShowCatalogRepairLabels();
+    const marketLabel = hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market: -";
+    return (
+      <div className="catalog-result-card" key={product.id}>
+        <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(product)}>
+          <div className="catalog-thumb">
+            {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
+            {catalogImage(product) ? (
+              <>
+                <img
+                  src={catalogImage(product)}
+                  alt=""
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                    event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                  }}
+                />
+                <div className="image-needed-placeholder" hidden>
+                  <strong>{catalogTitle(product)}</strong>
+                  <span>Image needed</span>
+                </div>
+              </>
+            ) : (
+              <div className="image-needed-placeholder">
+                <strong>{catalogTitle(product)}</strong>
+                <span>Image needed</span>
+              </div>
+            )}
+          </div>
+          <div>
+            {showRepairMeta ? (
+              <div className="catalog-result-meta-badges">
+                <span className="catalog-pill">{resultGroup}</span>
+                {isCard && !isCodeCard ? (
+                  <span className="catalog-pill catalog-pill-muted">{variantCount === 1 ? "1 variant" : `${variantCount} variants`}</span>
+                ) : null}
+                {catalogHasClassificationConflict(product) ? <span className="status-badge warning">Classification conflict</span> : null}
+                {!isCard && !isSealed ? <span className="status-badge warning">Needs classification review</span> : null}
+              </div>
+            ) : null}
+            <h3>{catalogTitle(product)}</h3>
+            <p className="catalog-result-price-line">{marketLabel}</p>
+            {showRepairMeta ? (
+              <>
+                <p className="catalog-result-detail-line">
+                  {catalogProductTypeLabel(product)} | {catalogExpansionName(product) || "Expansion unavailable"}
+                  {isCard && product.cardNumber ? ` | #${product.cardNumber}` : ""}
+                  {isSealed && marketInfo.msrp ? ` | MSRP ${money(marketInfo.msrp)}` : ""}
+                </p>
+                {(product.barcode || product.sku || product.externalProductId || product.tcgplayerProductId) ? (
+                  <p className="compact-subtitle catalog-result-id-line">Barcode/SKU: {product.barcode || product.upc || product.sku || product.externalProductId || product.tcgplayerProductId}</p>
+                ) : null}
+                <p className="compact-subtitle catalog-result-source-line">Source: {product.marketSource || product.sourceType || "Unknown"}{product.priceSubtype ? ` | ${product.priceSubtype}` : ""}</p>
+                {product.historySnapshotCount > 0 ? (
+                  <p className="compact-subtitle catalog-result-history-line">History available: {product.historySnapshotCount} snapshot{product.historySnapshotCount === 1 ? "" : "s"}</p>
+                ) : null}
+                <span className="status-badge">{MARKET_STATUS_LABELS[marketInfo.marketStatus] || "Unknown"}</span>
+              </>
+            ) : null}
+          </div>
+        </button>
+      </div>
+    );
   }
 
   function currentCatalogProductGroup() {
@@ -13066,6 +14758,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       error: "",
       exactMatchCount: 0,
       exactBarcodeMiss: false,
+      alternateKinds: [],
+      alternateCount: 0,
+      coverageWarning: null,
     }));
   }
 
@@ -13097,26 +14792,50 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       exactMatchCount: 0,
       exactBarcodeMiss: false,
       usedFallback: false,
+      alternateKinds: [],
+      alternateCount: 0,
+      coverageWarning: null,
     });
   }
 
-  function submitCatalogSearch(event) {
+  function submitCatalogSearch(eventOrValue) {
+    const event = typeof eventOrValue === "object" ? eventOrValue : null;
+    const overrideQuery = typeof eventOrValue === "string" ? eventOrValue : "";
     event?.preventDefault?.();
     closeCatalogSuggestions();
-    if (!canRunCatalogSearch(catalogSearch, catalogBarcodeSearch)) {
+    const nextQuery = String(overrideQuery || catalogSearch || "").trim();
+    const detectedMode = detectCatalogSearchMode(nextQuery || catalogBarcodeSearch);
+    const exactIdentifier = ["barcode", "id"].includes(detectedMode);
+    const nextBarcode = catalogBarcodeSearch || (exactIdentifier ? nextQuery : "");
+    if (!canRunCatalogSearch(nextQuery, nextBarcode)) {
       setCatalogSearchHasRun(false);
       setSupabaseCatalogStatus((current) => ({
         ...current,
         loading: false,
         message: "Search by at least 2 characters, enter a barcode, or choose a filter before searching.",
         error: "",
+        page: 1,
+        totalCount: null,
+        alternateKinds: [],
+        alternateCount: 0,
+        coverageWarning: null,
       }));
       return;
     }
-    const nextQuery = String(catalogSearch || "").trim();
+    setCatalogSearch(nextQuery);
     setSubmittedCatalogSearch(nextQuery);
-    setSubmittedCatalogBarcodeSearch(catalogBarcodeSearch);
-    loadImportedPokemonCatalog(nextQuery, { page: 1, mode: "general", barcode: catalogBarcodeSearch });
+    setSubmittedCatalogBarcodeSearch(nextBarcode);
+    setCatalogPagedResultIds([]);
+    setSupabaseCatalogStatus((current) => ({
+      ...current,
+      page: 1,
+      totalCount: null,
+      hasMore: false,
+      alternateKinds: [],
+      alternateCount: 0,
+      coverageWarning: null,
+    }));
+    loadImportedPokemonCatalog(nextQuery, { page: 1, mode: detectedMode === "id" ? "barcode" : detectedMode, barcode: nextBarcode, forceSearch: true });
   }
 
   function submitCatalogBarcodeSearch(event) {
@@ -13129,6 +14848,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         loading: false,
         message: "Enter or scan a barcode, SKU, TCGplayer product ID, external ID, or card number first.",
         error: "",
+        coverageWarning: null,
       }));
       return;
     }
@@ -13191,6 +14911,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         error: "",
         exactMatchCount: 0,
         exactBarcodeMiss: false,
+        alternateKinds: [],
+        alternateCount: 0,
+        coverageWarning: null,
       }));
       return;
     }
@@ -13231,10 +14954,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderCatalogMeta(product = {}) {
     const marketInfo = getTideTradrMarketInfo(product);
-  if (product.catalogType === "card") {
+    const isCard = isCatalogCardProduct(product);
+    const isCodeCard = isCatalogCodeCardProduct(product);
+  if (isCard && !isCodeCard) {
     return (
       <>
           <p>{catalogExpansionName(product) || "Expansion unavailable"} • #{product.cardNumber || "No number"} • {product.rarity || "No rarity"}</p>
+          <p>Market: {hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}</p>
+      </>
+    );
+  }
+  if (isCodeCard) {
+    return (
+      <>
+          <p>Code Card | {catalogExpansionName(product) || product.productLine || "Expansion unavailable"}</p>
           <p>Market: {hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}</p>
       </>
     );
@@ -13381,10 +15114,160 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               { label: "View", onClick: () => setSelectedScoutReport(report) },
               { label: "Edit", onClick: () => editScoutReport(report) },
             ]}
-            onDelete={() => setScoutReportDeleteTarget(report)}
+            onDelete={adminToolsVisible ? () => setScoutReportDeleteTarget(report) : undefined}
           />
         </div>
       </article>
+    );
+  }
+
+  function renderWatchCalendarEventRow(event) {
+    const products = event.products?.filter(Boolean) || [];
+    const reportStore = event.store || {
+      name: event.title,
+      retailer: event.retailer,
+      city: event.city,
+      address: event.address,
+    };
+    return (
+      <article className="watch-calendar-event-row" key={event.id}>
+        <button type="button" className="watch-calendar-event-main" onClick={() => setSelectedWatchCalendarEvent(event)}>
+          <span className={`watch-calendar-dot watch-calendar-dot--${event.confidenceKey || "possible"}`} aria-hidden="true" />
+          <span>
+            <strong>{event.title}</strong>
+            <small>
+              {event.subtitle}
+              {event.timeLabel ? ` - ${event.timeLabel}` : ""}
+              {event.city ? ` - ${event.city}` : ""}
+            </small>
+            {products.length ? <em>{products.slice(0, 3).join(", ")}</em> : null}
+          </span>
+        </button>
+        <div className="watch-calendar-event-meta">
+          <span>{event.confidenceLabel || "Possible"}</span>
+          {event.reportable ? (
+            <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "watch-calendar", store: reportStore })}>
+              Report
+            </button>
+          ) : null}
+        </div>
+      </article>
+    );
+  }
+
+  function renderPokemonWatchCalendarHomeModule() {
+    const todayPreview = watchCalendarTodayEvents.slice(0, 3);
+    return (
+      <section className="panel pokemon-watch-home" style={dashboardSectionStyle("restock_calendar")}>
+        <div className="compact-card-header">
+          <div>
+            <p className="section-kicker">Pokémon Watch Calendar</p>
+            <h2>Today&apos;s Watch</h2>
+            <p>Local checks, online watches, and release data in one compact view.</p>
+          </div>
+          <button type="button" onClick={openPokemonWatchCalendar}>View Calendar</button>
+        </div>
+        <div className="watch-calendar-home-metrics">
+          <button type="button" onClick={openPokemonWatchCalendar}>
+            <span>Today</span>
+            <strong>{watchCalendarHomeCounts.local} local restock watch{watchCalendarHomeCounts.local === 1 ? "" : "es"}</strong>
+            <small>{watchCalendarHomeCounts.online} online watch{watchCalendarHomeCounts.online === 1 ? "" : "es"} - {watchCalendarHomeCounts.releases} official release{watchCalendarHomeCounts.releases === 1 ? "" : "s"}</small>
+          </button>
+          <button type="button" onClick={openPokemonWatchCalendar}>
+            <span>This Week</span>
+            <strong>{watchCalendarHomeCounts.week} watch item{watchCalendarHomeCounts.week === 1 ? "" : "s"}</strong>
+            <small>{watchCalendarArea === "all_virginia" ? "All Virginia" : WATCH_CALENDAR_AREAS.find((area) => area.value === watchCalendarArea)?.label}</small>
+          </button>
+          <button type="button" onClick={openPokemonWatchCalendar}>
+            <span>Upcoming Releases</span>
+            <strong>{watchCalendarHomeCounts.upcomingReleases ? `${watchCalendarHomeCounts.upcomingReleases} release event${watchCalendarHomeCounts.upcomingReleases === 1 ? "" : "s"}` : "No release data loaded"}</strong>
+            <small>{watchCalendarHomeCounts.upcomingReleases ? "From loaded catalog release dates" : "Will appear when catalog rows include upcoming dates"}</small>
+          </button>
+        </div>
+        <div className="watch-calendar-compact-list">
+          {todayPreview.length ? todayPreview.map(renderWatchCalendarEventRow) : (
+            <div className="small-empty-state">
+              <strong>No watch items for today</strong>
+              <span>Submit a Quick Report or add Scout intel to build the calendar.</span>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderPokemonWatchCalendarPanel() {
+    return (
+      <section className="panel pokemon-watch-calendar-panel">
+        <div className="compact-card-header">
+          <div>
+            <p className="section-kicker">Pokémon Watch Calendar</p>
+            <h2>Today + Next 7 Days</h2>
+            <p>Focused local restock, online watch, release, guess, and prediction rows. Empty layers stay empty instead of inventing events.</p>
+          </div>
+          <button type="button" onClick={() => openScoutSubmitFlow({ source: "watch-calendar-header" })}>Quick Report</button>
+        </div>
+
+        <div className="watch-calendar-summary-grid">
+          <div>
+            <span>Today&apos;s Watch</span>
+            <strong>{watchCalendarHomeCounts.local} local / {watchCalendarHomeCounts.online} online</strong>
+          </div>
+          <div>
+            <span>This Week</span>
+            <strong>{watchCalendarHomeCounts.week} item{watchCalendarHomeCounts.week === 1 ? "" : "s"}</strong>
+          </div>
+          <div>
+            <span>Upcoming Releases</span>
+            <strong>{watchCalendarHomeCounts.upcomingReleases || 0}</strong>
+          </div>
+        </div>
+
+        <div className="watch-calendar-toolbar">
+          <div className="segmented-control">
+            {WATCH_CALENDAR_VIEW_OPTIONS.map((view) => (
+              <button key={view.value} type="button" className={watchCalendarView === view.value ? "active" : ""} onClick={() => setWatchCalendarView(view.value)}>
+                {view.label}
+              </button>
+            ))}
+          </div>
+          <label className="watch-calendar-area-select">
+            <span>Area</span>
+            <select value={watchCalendarArea} onChange={(event) => setWatchCalendarArea(event.target.value)}>
+              {WATCH_CALENDAR_AREAS.map((area) => <option key={area.value} value={area.value}>{area.label}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div className="watch-calendar-layer-strip" aria-label="Calendar layers">
+          {WATCH_CALENDAR_LAYER_OPTIONS.map((layer) => (
+            <label key={layer.key} className={watchCalendarLayers[layer.key] ? "watch-layer-chip active" : "watch-layer-chip"}>
+              <input type="checkbox" checked={Boolean(watchCalendarLayers[layer.key])} onChange={() => toggleWatchCalendarLayer(layer.key)} />
+              <span>{layer.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <div className="watch-calendar-agenda">
+          {watchCalendarGroupedEvents.length ? watchCalendarGroupedEvents.map((group) => (
+            <div className="watch-calendar-day-group" key={group.dateKey}>
+              <div className="watch-calendar-day-heading">
+                <strong>{group.label}</strong>
+                <span>{group.events.length} item{group.events.length === 1 ? "" : "s"}</span>
+              </div>
+              <div className="watch-calendar-compact-list">
+                {group.events.map(renderWatchCalendarEventRow)}
+              </div>
+            </div>
+          )) : (
+            <div className="empty-state">
+              <h3>No calendar items for this view</h3>
+              <p>Try another area, turn on more layers, or submit a Quick Report after a store check.</p>
+              <button type="button" onClick={() => openScoutSubmitFlow({ source: "watch-calendar-empty" })}>Submit Quick Report</button>
+            </div>
+          )}
+        </div>
+      </section>
     );
   }
 
@@ -13398,7 +15281,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <div className="summary-pill-row">
             <span className="status-badge">{filteredScoutReports.length} shown</span>
-            <button type="button" onClick={() => openScoutSubmitFlow()}>Submit Report</button>
+            <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-reports" })}>Submit Report</button>
           </div>
         </div>
         {renderScoutFilterControls()}
@@ -13432,6 +15315,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const forecastRows = scoutForecastPreviewRows.slice(0, 5);
     const scoutRadarRows = (forecastRows.length ? forecastRows : (scoutSnapshot.stores || []).slice(0, 5).map((store, index) => ({
       id: store.id || `store-${index}`,
+      storeId: store.id || "",
+      store,
       storeName: store.nickname || store.name || "Watched store",
       retailer: store.retailer || store.chain || "Retailer",
       city: store.city || store.addressCity || "",
@@ -13464,7 +15349,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <h2>Drop Radar</h2>
               <p>Watched stores, confidence labels, and the next best check window.</p>
             </div>
-            <button type="button" onClick={() => openScoutSubmitFlow()}>Report a Check</button>
+            <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-overview" })}>Report a Check</button>
           </div>
           <div className="scout-radar-grid">
             {scoutRadarRows.map((row) => {
@@ -13487,7 +15372,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </dl>
                   <div className="scout-radar-actions">
                     <button type="button" className="secondary-button" onClick={() => { completeDailyAction("store", { badge: "restock_reporter", points: 10 }); setVaultToast(`${row.storeName} added to today's watch.`); }}>Watch</button>
-                    <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow()}>Report</button>
+                    <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({
+                      source: "drop-radar",
+                      store: row.store || findScoutQuickStore({ storeId: row.storeId, storeName: row.storeName, retailer: row.retailer }) || {
+                        id: row.storeId,
+                        name: row.storeName,
+                        retailer: row.retailer,
+                        city: row.city,
+                      },
+                    })}>Report</button>
                     <button type="button" className="secondary-button" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${mapQuery}`, "_blank", "noopener,noreferrer")}>Directions</button>
                   </div>
                 </article>
@@ -13644,14 +15537,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <h2>My Reports</h2>
             <p>Your submissions.</p>
           </div>
-          <button type="button" onClick={() => openScoutSubmitFlow()}>Submit Report</button>
+          <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-my-reports" })}>Submit Report</button>
         </div>
         <div className="scout-report-card-grid">
           {scoutMyReports.length ? scoutMyReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
             <div className="small-empty-state">
               <strong>You have not submitted a report yet.</strong>
               <span>Use Submit Report when you check a store.</span>
-              <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow()}>Submit Report</button>
+              <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "scout-my-reports-empty" })}>Submit Report</button>
             </div>
           )}
         </div>
@@ -15207,9 +17100,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     if (activeFlowModal?.type === "multiDestinationAdd") {
       return {
-        title: "Add to Multiple Places",
-        description: "Send one item to Vault, Wishlist, Forge, and/or TideTradr with separate destination settings.",
-        size: "large",
+        title: "Review and Add",
+        description: "Verify the match, choose destination settings, then save.",
+        size: "medium",
       };
     }
     if (activeFlowModal?.type === "vaultMoveToForge") {
@@ -15263,9 +17156,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     if (activeFlowModal?.type === "scoutSubmit") {
       return {
-        title: "Submit Scout Report",
-        description: "Add a restock report, product sighting, correction, or store note while staying in context.",
-        size: "large",
+        title: "Quick Scout Report",
+        description: "Log what you saw, where, and proof source before Scout review.",
+        size: "medium",
       };
     }
     return { title: "Add", description: "Create a new record.", size: activeFlowModal?.size || "medium" };
@@ -15287,10 +17180,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     ];
     return (
       <div className="add-action-sheet">
-        <div className="daily-tide-progress-card add-sheet-intro">
-          <strong>Input to review to destination to save</strong>
-          <p>Use this sheet for fast daily capture. Receipt, scanner, import, and bulk flows still require review before saving.</p>
-        </div>
         <div className="add-action-grid">
           {actions.map((entry) => (
             <button key={entry.key} type="button" className="add-action-card" onClick={() => runAddSheetAction(entry.action)}>
@@ -15587,18 +17476,352 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderScoutSubmitFlowContent() {
+    const stores = getScoutQuickStores();
+    const currentType = quickScoutReportTypeMeta();
+    const selectedStore = quickScoutReportForm.storeId ? stores.find((store) => String(store.id) === String(quickScoutReportForm.storeId)) : null;
+    const selectedStoreContext = selectedStore || (quickScoutReportForm.storeName ? quickScoutReportForm : null);
+    const currentRetailer = quickScoutReportForm.retailer || (selectedStore ? getScoutQuickRetailer(selectedStore) : "");
+    const retailerOptions = [...new Set([
+      ...SCOUT_QUICK_RETAILER_OPTIONS,
+      ...stores.map(getScoutQuickRetailer).filter(Boolean),
+    ])];
+    const normalizedStoreSearch = quickScoutReportForm.storeSearch.trim().toLowerCase();
+    const filteredStores = stores
+      .filter((store) => {
+        const retailer = getScoutQuickRetailer(store);
+        if (currentRetailer && currentRetailer !== "Other" && retailer !== currentRetailer) return false;
+        if (!normalizedStoreSearch) return true;
+        return [
+          getScoutQuickStoreName(store),
+          retailer,
+          store.city,
+          store.address,
+          store.shoppingCenter,
+          store.nickname,
+        ].filter(Boolean).join(" ").toLowerCase().includes(normalizedStoreSearch);
+      })
+      .slice(0, 8);
+    const summaryRows = [
+      ["Report type", currentType.label],
+      ["Proof/source", quickScoutProofLabel()],
+      ["Store", selectedStoreContext ? getScoutQuickStoreName(selectedStoreContext) : quickScoutReportForm.manualLocation || "Needs Store Review"],
+      ["Product", quickScoutReportForm.productName || "Not specified"],
+      ["Quantity", quickScoutReportForm.quantity || "Not specified"],
+      ["Stock left", quickScoutStockLeftLabel()],
+      ["When", quickScoutDateLabel()],
+      ["Visibility", quickScoutReportForm.visibility.replace(/_/g, " ")],
+    ];
+
+    if (quickScoutReportStep === "submitted") {
+      return (
+        <section className="scout-quick-report-v2 scout-quick-report-sent">
+          <div className="scout-quick-report-success">
+            <span>Sent</span>
+            <h3>{quickScoutReportMessage || "Report sent. You can add details now or later."}</h3>
+            <p>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store"} now appears in Scout reports as a local beta record.</p>
+          </div>
+          <div className="quick-actions">
+            <button type="button" onClick={openQuickScoutReportDetails}>Add details</button>
+            <button type="button" className="secondary-button" onClick={() => closeFlowModal({ force: true, reset: true })}>Done</button>
+          </div>
+        </section>
+      );
+    }
+
     return (
-      <section className="embedded-page flow-embedded-page">
-        <Scout
-          targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }}
-          compact
-          adminMode={adminUser}
-          supabase={supabase}
-          isSupabaseConfigured={isSupabaseConfigured}
-          mapCatalogRow={mapCatalog}
-          money={money}
-        />
-      </section>
+      <form className="scout-report-flow scout-quick-report-v2" onSubmit={submitQuickScoutReport}>
+        {quickScoutReportMessage ? <div className="form-error">{quickScoutReportMessage}</div> : null}
+
+        {quickScoutReportStep === "review" ? (
+          <section className="scout-report-step-card active">
+            <div className="scout-report-step-header">
+              <span>Review</span>
+              <div>
+                <h3>Review and submit</h3>
+                <p>Nothing is shared until you submit this report.</p>
+              </div>
+            </div>
+            <div className="scout-report-review-grid">
+              {summaryRows.map(([label, value]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+            {quickScoutReportForm.note ? (
+              <div className="scout-report-review-items">
+                <p>{quickScoutReportForm.note}</p>
+              </div>
+            ) : null}
+            {!quickScoutReportForm.storeId ? (
+              <div className="scout-report-empty-step">
+                <strong>Needs Store Review</strong>
+                <p>This will save with the manual location text. Admin-reviewed universal store creation is still TODO.</p>
+              </div>
+            ) : null}
+            <div className="flow-form-footer">
+              <button type="button" className="secondary-button" onClick={() => setQuickScoutReportStep("compose")}>Back to details</button>
+              <button type="submit" disabled={!quickScoutReportReady()}>Submit Report</button>
+            </div>
+          </section>
+        ) : (
+          <>
+            <section className="scout-quick-section">
+              <div className="scout-report-step-header">
+                <span>What</span>
+                <div>
+                  <h3>What did you see?</h3>
+                  <p>Pick the closest signal. Product and photo are optional.</p>
+                </div>
+              </div>
+              <div className="scout-report-type-grid">
+                {SCOUT_QUICK_REPORT_TYPES.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-report-choice-card ${quickScoutReportForm.reportType === option.value ? "selected" : ""}`}
+                    onClick={() => updateQuickScoutReportForm("reportType", option.value)}
+                  >
+                    <strong>{option.label}</strong>
+                    <span>{option.helper}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="scout-quick-section">
+              <div className="scout-report-step-header">
+                <span>Proof</span>
+                <div>
+                  <h3>Proof/source type</h3>
+                  <p>Use the source that best describes your report.</p>
+                </div>
+              </div>
+              <div className="scout-stock-status-grid">
+                {SCOUT_QUICK_PROOF_TYPES.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-stock-status-button ${quickScoutReportForm.proofType === option.value ? "selected" : ""}`}
+                    onClick={() => updateQuickScoutReportForm("proofType", option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="scout-quick-section">
+              <div className="scout-report-step-header">
+                <span>Where</span>
+                <div>
+                  <h3>Store/location</h3>
+                  <p>{selectedStoreContext ? "Store is preselected. Change it if needed." : "Choose a known store or enter a manual location."}</p>
+                </div>
+              </div>
+              {selectedStoreContext ? (
+                <article className="scout-report-store-card selected">
+                  <div className="scout-report-store-main">
+                    <div>
+                      <strong>{getScoutQuickStoreName(selectedStoreContext)}</strong>
+                      <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
+                    </div>
+                    <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Selected" : "Context"}</span>
+                  </div>
+                  <div className="scout-report-store-actions">
+                    <button type="button" className="secondary-button" onClick={() => setQuickScoutReportForm((current) => ({ ...current, storeId: "", storeName: "", address: "" }))}>Change store</button>
+                  </div>
+                </article>
+              ) : (
+                <>
+                  <div className="scout-report-retailer-grid">
+                    {retailerOptions.map((retailer) => {
+                      const count = stores.filter((store) => getScoutQuickRetailer(store) === retailer).length;
+                      return (
+                        <button
+                          key={retailer}
+                          type="button"
+                          className={`scout-report-retailer-card ${currentRetailer === retailer ? "selected" : ""}`}
+                          onClick={() => setQuickScoutReportForm((current) => ({ ...current, retailer, storeSearch: "", storeId: "", storeName: "" }))}
+                        >
+                          <span className="scout-report-retailer-icon">{retailer.split(/\s+/).map((part) => part[0]).join("").slice(0, 3).toUpperCase()}</span>
+                          <strong>{retailer}</strong>
+                          <small>{count ? `${count} known location${count === 1 ? "" : "s"}` : "Use manual location"}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="scout-report-store-tools">
+                    <input
+                      value={quickScoutReportForm.storeSearch}
+                      onChange={(event) => updateQuickScoutReportForm("storeSearch", event.target.value)}
+                      placeholder={`Search ${currentRetailer || "known"} stores by city, nickname, or address`}
+                    />
+                    <input
+                      value={quickScoutReportForm.manualLocation}
+                      onChange={(event) => updateQuickScoutReportForm("manualLocation", event.target.value)}
+                      placeholder="Manual store/location if missing"
+                    />
+                  </div>
+                  <div className="scout-report-store-list">
+                    {filteredStores.length ? filteredStores.map((store) => (
+                      <article key={store.id || `${getScoutQuickStoreName(store)}-${store.city}`} className="scout-report-store-card">
+                        <div className="scout-report-store-main">
+                          <div>
+                            <strong>{getScoutQuickStoreName(store)}</strong>
+                            <p>{store.city || "City not added"}{store.address ? ` | ${store.address}` : ""}</p>
+                          </div>
+                          <span className="scout-store-temperature scout-store-temperature-watching">{store.favorite || store.watched ? "Watching" : "Known"}</span>
+                        </div>
+                        <div className="scout-report-store-meta">
+                          <span>{getScoutQuickRetailer(store)}</span>
+                          <span>Last report: {store.lastReport || store.lastReportDate || "Not logged"}</span>
+                          <span>Best window: {store.bestCheckWindow || store.restockWindow || "Unknown"}</span>
+                        </div>
+                        <div className="scout-report-store-actions">
+                          <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(store)}>Report here</button>
+                        </div>
+                      </article>
+                    )) : (
+                      <div className="scout-report-empty-step">
+                        <strong>No matching stores</strong>
+                        <p>Enter a manual location and this report will be labeled Needs Store Review.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className="scout-quick-section">
+              <div className="scout-report-step-header">
+                <span>Details</span>
+                <div>
+                  <h3>Optional details</h3>
+                  <p>Add product, quantity, notes, proof text, or a screenshot/photo.</p>
+                </div>
+              </div>
+              <div className="scout-report-detail-grid">
+                <label>
+                  Product seen
+                  <input value={quickScoutReportForm.productName} onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)} placeholder="Search product, UPC, SKU" />
+                </label>
+                <label>
+                  Quantity estimate
+                  <input value={quickScoutReportForm.quantity} onChange={(event) => updateQuickScoutReportForm("quantity", event.target.value)} placeholder="Qty or estimate" />
+                </label>
+                <label>
+                  Price
+                  <input inputMode="decimal" value={quickScoutReportForm.price} onChange={(event) => updateQuickScoutReportForm("price", event.target.value)} placeholder="Optional" />
+                </label>
+                <label>
+                  Photo/screenshot
+                  <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
+                </label>
+              </div>
+              {quickScoutReportForm.photoUrl ? (
+                <div className="scout-photo-preview">
+                  <img src={quickScoutReportForm.photoUrl} alt="" />
+                  <div>
+                    <strong>Image attached</strong>
+                    <span>Existing beta upload/local image path only.</span>
+                  </div>
+                </div>
+              ) : null}
+              <textarea
+                value={quickScoutReportForm.note}
+                onChange={(event) => updateQuickScoutReportForm("note", event.target.value)}
+                placeholder="Notes, shelf status, employee quote, limit, or context"
+              />
+              <input
+                value={quickScoutReportForm.proofText}
+                onChange={(event) => updateQuickScoutReportForm("proofText", event.target.value)}
+                placeholder="Optional text/link from receipt, screenshot, post, or site"
+              />
+              <div className="scout-stock-status-grid" role="group" aria-label="Stock left after purchase">
+                {SCOUT_QUICK_STOCK_LEFT_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-stock-status-button ${quickScoutReportForm.stockLeft === option.value ? "selected" : ""}`}
+                    aria-label={option.helper || option.label}
+                    onClick={() => updateQuickScoutReportForm("stockLeft", option.value)}
+                  >
+                    {option.label}{option.helper ? ` | ${option.helper}` : ""}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="scout-quick-section">
+              <div className="scout-report-step-header">
+                <span>When</span>
+                <div>
+                  <h3>Date/time</h3>
+                  <p>Defaults to now. Exact date is optional for rough intel.</p>
+                </div>
+              </div>
+              <div className="scout-stock-status-grid">
+                {SCOUT_QUICK_DATE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-stock-status-button ${quickScoutReportForm.dateMode === option.value ? "selected" : ""}`}
+                    onClick={() => updateQuickScoutReportForm("dateMode", option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {quickScoutReportForm.dateMode === "pick_date" || quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "yesterday" ? (
+                <div className="scout-report-detail-grid">
+                  <label>
+                    Date
+                    <input type="date" value={quickScoutReportForm.reportDate} onChange={(event) => updateQuickScoutReportForm("reportDate", event.target.value)} />
+                  </label>
+                  <label>
+                    Time
+                    <input type="time" value={quickScoutReportForm.reportTime} onChange={(event) => updateQuickScoutReportForm("reportTime", event.target.value)} />
+                  </label>
+                </div>
+              ) : null}
+              {quickScoutReportForm.dateMode === "day_only" ? (
+                <label className="scout-report-visibility-field">
+                  Day of week
+                  <select value={quickScoutReportForm.dayOfWeek} onChange={(event) => updateQuickScoutReportForm("dayOfWeek", event.target.value)}>
+                    {SCOUT_WEEKDAYS.map((day) => <option key={day}>{day}</option>)}
+                  </select>
+                </label>
+              ) : null}
+            </section>
+
+            <section className="scout-quick-section">
+              <div className="scout-report-step-header">
+                <span>Share</span>
+                <div>
+                  <h3>Visibility</h3>
+                  <p>Private data stays private unless you choose a community report.</p>
+                </div>
+              </div>
+              <label className="scout-report-visibility-field">
+                Visibility
+                <select value={quickScoutReportForm.visibility} onChange={(event) => updateQuickScoutReportForm("visibility", event.target.value)}>
+                  <option value="public_cleaned">Community Report</option>
+                  <option value="shared_with_team">Team Shared</option>
+                  <option value="private">Private note</option>
+                  <option value="admin_only">Admin Only</option>
+                </select>
+              </label>
+            </section>
+
+            <div className="flow-form-footer">
+              <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Cancel</button>
+              <button type="button" disabled={!quickScoutReportReady()} onClick={() => setQuickScoutReportStep("review")}>Review report</button>
+            </div>
+          </>
+        )}
+      </form>
     );
   }
 
@@ -15922,6 +18145,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderMultiDestinationAddFlowContent() {
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
+    const itemTypeText = [
+      multiDestinationForm.productType,
+      selectedCatalog?.productType,
+      selectedCatalog?.sealedProductType,
+      selectedCatalog?.productKind,
+      multiDestinationForm.itemName,
+    ].filter(Boolean).join(" ");
+    const addFlowIsCard = selectedCatalog
+      ? isCatalogCardProduct(selectedCatalog)
+      : /\b(card|single|graded|slab)\b/i.test(itemTypeText);
+    const addFlowIsSealed = selectedCatalog
+      ? isCatalogSealedProduct(selectedCatalog) && !addFlowIsCard
+      : /(sealed|booster|elite trainer|box|tin|collection|bundle|pack|blister|deck)/i.test(itemTypeText) && !addFlowIsCard;
     const destinationOptions = [
       {
         key: "vault",
@@ -16071,7 +18307,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <input
                 value={multiDestinationForm.productType}
                 onChange={(event) => updateMultiDestinationField("productType", event.target.value)}
-                placeholder="Elite Trainer Box, Single Card, Booster Bundle..."
+                placeholder={addFlowIsCard ? "Single Card, Graded Card..." : "Elite Trainer Box, Booster Bundle, Tin..."}
               />
             </Field>
             <Field label="Set / Expansion if known">
@@ -16081,13 +18317,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 placeholder="Prismatic Evolutions, 151, Surging Sparks..."
               />
             </Field>
-            <Field label="Variant if card">
-              <input
-                value={multiDestinationForm.variant}
-                onChange={(event) => updateMultiDestinationField("variant", event.target.value)}
-                placeholder="Normal, Holofoil, Reverse Holofoil, promo..."
-              />
-            </Field>
+            {addFlowIsCard ? (
+              <Field label="Variant">
+                <input
+                  value={multiDestinationForm.variant}
+                  onChange={(event) => updateMultiDestinationField("variant", event.target.value)}
+                  placeholder="Normal, Holofoil, Reverse Holofoil, promo..."
+                />
+              </Field>
+            ) : null}
             <Field label="UPC / SKU if known">
               <input
                 value={multiDestinationForm.upcSku}
@@ -16095,16 +18333,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 placeholder="UPC, retail SKU, or other identifier"
               />
             </Field>
-            <Field label="MSRP">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={multiDestinationForm.msrpPrice}
-                onChange={(event) => updateMultiDestinationField("msrpPrice", event.target.value)}
-                placeholder="0.00"
-              />
-            </Field>
+            {!addFlowIsCard ? (
+              <Field label={addFlowIsSealed ? "MSRP" : "Retail Price / MSRP"}>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={multiDestinationForm.msrpPrice}
+                  onChange={(event) => updateMultiDestinationField("msrpPrice", event.target.value)}
+                  placeholder="0.00"
+                />
+              </Field>
+            ) : null}
             <Field label="Market Price">
               <input
                 type="number"
@@ -16280,9 +18520,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </button>
                 )}
               </div>
-              <Field label="MSRP">
-                <input type="number" min="0" step="0.01" value={multiDestinationForm.tidetradr.msrpPrice} onChange={(event) => updateMultiDestinationSection("tidetradr", "msrpPrice", event.target.value)} placeholder="Optional" />
-              </Field>
+              {!addFlowIsCard ? (
+                <Field label="MSRP">
+                  <input type="number" min="0" step="0.01" value={multiDestinationForm.tidetradr.msrpPrice} onChange={(event) => updateMultiDestinationSection("tidetradr", "msrpPrice", event.target.value)} placeholder="Optional" />
+                </Field>
+              ) : null}
               <Field label="UPC">
                 <input value={multiDestinationForm.tidetradr.upc} onChange={(event) => updateMultiDestinationSection("tidetradr", "upc", event.target.value)} />
               </Field>
@@ -16468,7 +18710,41 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }, [activeFlowModal?.id]);
 
   useEffect(() => {
-    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || lockedFeatureKey || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || feedbackDialog);
+    if (!activeFlowModal || typeof window === "undefined") return undefined;
+    const modalId = activeFlowModal.id;
+    const currentState = window.history.state || {};
+    window.history.pushState({ ...currentState, emberTideFlowModal: modalId }, "", window.location.href);
+    const handlePopState = () => {
+      closeFlowModal({ force: true });
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (window.history.state?.emberTideFlowModal === modalId) {
+        const { emberTideFlowModal, ...rest } = window.history.state || {};
+        window.history.replaceState(rest, "", window.location.href);
+      }
+    };
+  }, [activeFlowModal?.id]);
+
+  useEffect(() => {
+    if (!selectedCatalogDetailId || typeof window === "undefined") return undefined;
+    const detailId = String(selectedCatalogDetailId);
+    const currentState = window.history.state || {};
+    if (currentState.emberTideCatalogDetail !== detailId) {
+      window.history.pushState({ ...currentState, emberTideCatalogDetail: detailId }, "", window.location.href);
+    }
+    const handlePopState = () => {
+      setSelectedCatalogDetailId("");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [selectedCatalogDetailId]);
+
+  useEffect(() => {
+    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || feedbackDialog);
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
@@ -16503,6 +18779,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       if (lockedFeatureKey) {
         event.preventDefault();
         setLockedFeatureKey("");
+        return;
+      }
+      if (selectedWatchCalendarEvent) {
+        event.preventDefault();
+        setSelectedWatchCalendarEvent(null);
         return;
       }
       if (listingReviewOpen) {
@@ -16552,7 +18833,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, lockedFeatureKey, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportDeleteTarget, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportDeleteTarget, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (!user) {
     return (
@@ -16638,7 +18919,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       setMenuOpen(true);
     }}
   >
-    ☰ Menu
+    <span className="action-icon" aria-hidden="true">
+      <AppNavIcon kind="settings" />
+    </span>
+    Menu
   </button>
   <button
     type="button"
@@ -16649,6 +18933,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       beginScanProduct("none");
     }}
   >
+    <span className="action-icon" aria-hidden="true">
+      <AppNavIcon kind="scan" />
+    </span>
     Scan
   </button>
   <button
@@ -16659,6 +18946,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       openAddActionSheet("topbar");
     }}
   >
+    <span className="action-icon" aria-hidden="true">
+      <AppNavIcon kind="plus" />
+    </span>
     Add
   </button>
 
@@ -16682,7 +18972,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         setSearchExpanded((current) => !current);
       }}
     >
-      {activeTab === "market" ? "Quick Find" : "Search"}
+      <span className="action-icon" aria-hidden="true">
+        <AppNavIcon kind="search" />
+      </span>
+      <span>{activeTab === "market" ? "Quick Find" : "Search"}</span>
     </button>
     <input
       value={appSearchQuery}
@@ -16746,7 +19039,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             className={activeMainTab === tab.key ? "main-tab active" : "main-tab"}
             onClick={() => navigateMainTab(tab)}
           >
-            {tab.label}
+            <span className="main-tab-icon" aria-hidden="true">
+              <AppNavIcon kind={tab.icon || "home"} />
+            </span>
+            <span>{tab.label}</span>
           </button>
         ))}
       </nav>
@@ -16821,7 +19117,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <button type="button" className="drawer-link drawer-danger-link" onClick={resetBetaLocalData}>Reset Private Beta Data</button>
                   </div>
                 </div>
-              ), "Acct")}
+              ), "account")}
               {renderMenuPullDown("workspace", "Workspace", "Switch spaces, invite members, and keep personal data separate", (
                 <div className="drawer-links workspace-settings-panel">
                   <div className="drawer-info-card">
@@ -16945,7 +19241,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ) : null}
                   {workspaceMessage ? <p className="compact-subtitle">{workspaceMessage}</p> : null}
                 </div>
-              ), "Work")}
+              ), "workspace")}
               {renderMenuPullDown("tcg_os", "TCG OS", "Jump to collect, sell, find, share, know, decide, scan, and give", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
@@ -16979,7 +19275,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </div>
                   </div>
                 </div>
-              ), "OS")}
+              ), "tcg-os")}
               {renderMenuPullDown("settings", "Settings", "Appearance, location, notifications, and dashboard display", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
@@ -17083,7 +19379,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </details>
                   </div>
                 </div>
-              ), "Gear")}
+              ), "settings")}
               {renderMenuPullDown("data", "Data & Backup", "Export, import, clear private beta data, and storage status", (
                 <>
                   <div className="drawer-info-card">
@@ -17127,7 +19423,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </button>
                   ) : null}
                 </>
-              ), "Data")}
+              ), "data")}
               {renderMenuPullDown("feedback", "Feedback / Help", "Send feedback, report bugs, and app help", (
                 <div className="drawer-links">
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Send Feedback</button>
@@ -17138,7 +19434,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("market_data"))}>Report Wrong Market Price</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("How to Use App guide is coming soon for beta testers."))}>How to Use App</button>
                 </div>
-              ), "Help")}
+              ), "help")}
               {renderMenuPullDown("community", "Community / Tidepool", "Tidepool, guidelines, and community rules", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
@@ -17150,7 +19446,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Community Rules are coming soon for beta."))}>Community Rules</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Discord Coming Soon</button>
                 </div>
-              ), "Chat")}
+              ), "community")}
               {renderMenuPullDown("subscription", "Plans & Features", "Free vs paid features and beta planning", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
@@ -17161,7 +19457,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Request beta access</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Stripe Not Connected</button>
                 </div>
-              ), "Plan")}
+              ), "plan")}
               {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", "Admin moderation, imports, suggestions, and shared data controls", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
@@ -17180,7 +19476,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Store Intelligence Suggestions"); setActiveTab("adminReview"); })}>Store Intelligence Suggestions</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Flagged / Duplicate Items"); setActiveTab("adminReview"); })}>Flagged / Duplicate Items</button>
                 </div>
-              ), "Admin") : null}
+              ), "admin") : null}
             </div>
             <div className="drawer-footer-card">
               <span>E&T TCG beta web app</span>
@@ -17436,7 +19732,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {renderScoutReportCard(selectedScoutReport)}
             <div className="location-modal-actions modal-sticky-footer">
               <button type="button" onClick={() => editScoutReport(selectedScoutReport)}>Edit</button>
-              <button type="button" className="delete-button" onClick={() => setScoutReportDeleteTarget(selectedScoutReport)}>Delete</button>
+              {adminToolsVisible ? <button type="button" className="delete-button" onClick={() => setScoutReportDeleteTarget(selectedScoutReport)}>Delete</button> : null}
               <button type="button" className="ghost-button" onClick={() => setSelectedScoutReport(null)}>Close</button>
             </div>
           </section>
@@ -18448,6 +20744,47 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
+      {selectedWatchCalendarEvent ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setSelectedWatchCalendarEvent(null)}>
+          <section className="location-modal flow-modal flow-modal-small watch-calendar-detail-modal" role="dialog" aria-modal="true" aria-labelledby="watch-calendar-detail-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <p className="section-kicker">{formatWatchCalendarDay(selectedWatchCalendarEvent.dateKey)}</p>
+                <h2 id="watch-calendar-detail-title">{selectedWatchCalendarEvent.title}</h2>
+                <p>{selectedWatchCalendarEvent.subtitle}</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close calendar detail" onClick={() => setSelectedWatchCalendarEvent(null)}>
+                X
+              </button>
+            </div>
+            <div className="catalog-detail-grid">
+              <DetailItem label="When" value={selectedWatchCalendarEvent.timeLabel || "Unknown"} />
+              <DetailItem label="Confidence" value={selectedWatchCalendarEvent.confidenceLabel || "Possible"} />
+              <DetailItem label="Retailer" value={selectedWatchCalendarEvent.retailer || "Not specified"} />
+              <DetailItem label="Area" value={[selectedWatchCalendarEvent.city, selectedWatchCalendarEvent.region].filter(Boolean).join(" / ") || "Not specified"} />
+              <DetailItem label="Source" value={selectedWatchCalendarEvent.sourceLabel || "Existing app data"} />
+              <DetailItem label="Products" value={selectedWatchCalendarEvent.products?.filter(Boolean).join(", ") || "Product not specified"} />
+            </div>
+            {selectedWatchCalendarEvent.reason ? <p className="compact-subtitle">{selectedWatchCalendarEvent.reason}</p> : null}
+            <div className="location-modal-actions modal-sticky-footer">
+              {selectedWatchCalendarEvent.reportable ? (
+                <button type="button" onClick={() => {
+                  const event = selectedWatchCalendarEvent;
+                  setSelectedWatchCalendarEvent(null);
+                  openScoutSubmitFlow({
+                    source: "watch-calendar-detail",
+                    store: event.store || { name: event.title, retailer: event.retailer, city: event.city, address: event.address },
+                  });
+                }}>
+                  Report
+                </button>
+              ) : null}
+              <button type="button" className="ghost-button" onClick={() => setSelectedWatchCalendarEvent(null)}>Close</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       <main className={`main dashboard-card-style-${dashboardCardStyle}`}>
         {activeTabLocked ? (
           <UpgradeScreen featureKey={activeTabFeature} subscriptionsLive={SUBSCRIPTIONS_LIVE} onBack={() => setActiveTab("dashboard")} />
@@ -18513,10 +20850,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="today-tide-hero">
                 <div>
                   <p className="section-kicker">Daily Tide Check</p>
-                  <h2>{suggestedHomeAction.label}</h2>
-                  <p>{suggestedHomeAction.detail}</p>
+                  <p className="today-tide-hero-description">Pick one quick task for today.</p>
                 </div>
-                <button type="button" onClick={suggestedHomeAction.onClick}>{suggestedHomeAction.label}</button>
+                <button type="button" onClick={suggestedHomeAction.onClick} aria-label={suggestedHomeAction.detail || "Start Daily Tide"}>
+                  Start Daily Tide
+                </button>
               </div>
               <div className="today-tide-grid">
                 <button type="button" className="today-tide-card" onClick={() => setActiveTab("vault")}>
@@ -18529,7 +20867,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <strong>{money(totalMarketValue)}</strong>
                   <small>{needsMarketCheckItems.length} need price review</small>
                 </button>
-                <button type="button" className="today-tide-card" onClick={() => setActiveTab("scout")}>
+                <button type="button" className="today-tide-card" onClick={() => openScoutSubmitFlow({ source: "home-todays-tide", store: bestScoutStore })}>
                   <span>Best Scout Opportunity</span>
                   <strong>{bestScoutStore?.nickname || bestScoutStore?.name || "Add watched stores"}</strong>
                   <small>{bestScoutStore?.retailer || "Scout"} {bestScoutStore?.city ? `- ${bestScoutStore.city}` : ""}</small>
@@ -18584,6 +20922,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
               {dailyTideToday.lastCelebration ? <div className="tide-celebration">Daily action complete. Tide Points added.</div> : null}
             </section>
+
+            {renderPokemonWatchCalendarHomeModule()}
 
             {dashboardSectionState("tcg_os").enabled !== false ? renderTcgOperatingSystemPanel({ compact: true }) : null}
 
@@ -18865,7 +21205,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               secondary: null,
               quickActions: [
                 { label: "Add Inventory", onClick: () => openProductAddFlow({ source: "home-quick-inventory", destinations: { forge: true } }) },
-                { label: "Add Report", onClick: () => openScoutSubmitFlow() },
+                { label: "Add Report", onClick: () => openScoutSubmitFlow({ source: "home-quick-action" }) },
                 { label: "Add Expense", onClick: () => openAddExpenseFlow() },
                 { label: "Search", onClick: () => setSearchExpanded(true) },
               ],
@@ -18917,7 +21257,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="quick-actions home-inline-actions">
                 <button type="button" onClick={() => openProductAddFlow({ source: "home-forge-item", destinations: { forge: true } })}>Add Forge Item</button>
                 <button type="button" onClick={() => {
-                  openScoutSubmitFlow();
+                  openScoutSubmitFlow({ source: "home-inline-action" });
                 }}>Submit Scout Report</button>
                 <button type="button" onClick={() => { setActiveTab("market"); openDealFinderModal(); }}>Check Deal</button>
                 <button type="button" onClick={() => setActiveTab("catalog")}>Search Catalog</button>
@@ -19475,16 +21815,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
               ) : null}
 
-              {dashboardSectionEnabled("restock_calendar") ? (
-              <div className="panel" style={dashboardSectionStyle("restock_calendar")}>
-                <h2>Upcoming Restocks</h2>
-                <div className="home-callout">
-                  <p>Prediction cards will come from Scout store history: usual truck days, stock days, last restock, and verified reports.</p>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>Review Stores</button>
-                </div>
-              </div>
-              ) : null}
-
               {dashboardSectionEnabled("watchlist") ? (
               <div className="panel" style={dashboardSectionStyle("watchlist")}>
                 <h2>Watchlist Preview</h2>
@@ -19866,26 +22196,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 isSupabaseConfigured={isSupabaseConfigured}
                 mapCatalogRow={mapCatalog}
                 money={money}
+                onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-embedded" })}
               />
                 </section>
               </>
             ) : activeScoutPage === "reports" ? (
               renderScoutReportsPanel()
             ) : activeScoutPage === "alerts" ? (
-              <>
-                <section className="embedded-page">
-              <Scout
-                targetSubTab={{ tab: "alerts", id: scoutSubTabTarget.id }}
-                compact
-                onLocationRequired={requestScoutLocation}
-                adminMode={adminUser}
-                supabase={supabase}
-                isSupabaseConfigured={isSupabaseConfigured}
-                mapCatalogRow={mapCatalog}
-                money={money}
-              />
-                </section>
-              </>
+              renderPokemonWatchCalendarPanel()
             ) : activeScoutPage === "stores" ? (
               <>
                 <section className="embedded-page">
@@ -19898,6 +22216,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 isSupabaseConfigured={isSupabaseConfigured}
                 mapCatalogRow={mapCatalog}
                 money={money}
+                onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-store-card" })}
               />
                 </section>
               </>
@@ -20068,7 +22387,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           )}
                         </div>
                         <div>
-                          <span className="catalog-pill">{tideTradrLookupProduct.catalogType === "card" ? "Card" : "Sealed"}</span>
+                          <span className="catalog-pill">{getCatalogKindLabel(tideTradrLookupProduct)}</span>
                           <h3>{catalogTitle(tideTradrLookupProduct)}</h3>
                           <p>{tideTradrLookupProduct.productType || "Product"} | {tideTradrLookupProduct.setName || tideTradrLookupProduct.expansion || "No set"}</p>
                           <p>Market: {money(getTideTradrMarketInfo(tideTradrLookupProduct).currentMarketValue)}</p>
@@ -20095,7 +22414,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <SmartCatalogSearchBox
                       value={catalogSearch}
                       onChange={updateCatalogSearchInput}
-                      onSearch={() => submitCatalogSearch()}
+                      onSearch={submitCatalogSearch}
                       onSelectSuggestion={selectCatalogRecommendation}
                       supabase={supabase}
                       isSupabaseConfigured={isSupabaseConfigured}
@@ -20238,22 +22557,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
                   {catalogSearchHasRun ? (
                   <div className="quick-action-rail">
-                    {[
-                      ["All", "All"],
-                      ["card", "Cards"],
-                      ["sealed", "Sealed"],
-                      ["other", "Other"],
-                    ].map(([value, label]) => (
+	                    {[
+	                      ["All", "All"],
+	                      ["card", "Cards"],
+	                      ["sealed", "Sealed"],
+	                    ].map(([value, label]) => (
                       <button
                         key={value}
                         type="button"
                         className={catalogKindFilter === value ? "primary" : ""}
-                        onClick={() => setCatalogKindFilter(value)}
+                        onClick={() => switchCatalogKindFilter(value)}
                       >
                         {label}
                       </button>
                     ))}
-                    {["Has market price", "Has image", "Missing price"].map((filter) => (
+	                    {["Has market price", "Has image", ...(adminUser ? ["Missing price"] : [])].map((filter) => (
                       <button
                         key={filter}
                         type="button"
@@ -20288,6 +22606,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                   ) : null}
 
+                  {catalogSearchHasRun && activeCatalogFilterChips.length ? (
+                    <div className="active-filter-chips" aria-label="Active catalog filters">
+                      <span>Active filters:</span>
+                      {activeCatalogFilterChips.map((filter) => (
+                        <span className="status-badge" key={filter}>{filter}</span>
+                      ))}
+                    </div>
+                  ) : null}
+
                   {catalogSearchHasRun && isFeatureSectionOpen("market_filters") ? (
                     <div className="filter-grid">
                       <Field label="Set / Expansion">
@@ -20310,7 +22637,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           <option>All</option>
                           <option>Has market price</option>
                           <option>Has image</option>
-                          <option>Missing price</option>
+	                          {adminUser ? <option>Missing price</option> : null}
                         </select>
                       </Field>
                     </div>
@@ -20322,6 +22649,53 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   {supabaseCatalogStatus.message ? <p className="compact-subtitle">{supabaseCatalogStatus.message}</p> : null}
                   {supabaseCatalogStatus.error ? <p className="compact-subtitle danger-text">{supabaseCatalogStatus.error}</p> : null}
                   {supabaseCatalogStatus.exactBarcodeMiss ? <p className="compact-subtitle">No exact barcode match found. Partial catalog matches may still appear below.</p> : null}
+                  {catalogSearchHasRun && !supabaseCatalogStatus.loading && supabaseCatalogStatus.coverageWarning ? (
+                    <div className="catalog-coverage-warning">
+                      <div>
+                        <strong>
+                          {supabaseCatalogStatus.coverageWarning.sealedCount > 0
+                            ? `Only ${supabaseCatalogStatus.coverageWarning.sealedCount} sealed product${supabaseCatalogStatus.coverageWarning.sealedCount === 1 ? "" : "s"} found for ${supabaseCatalogStatus.coverageWarning.setName}.`
+                            : `No sealed products from ${supabaseCatalogStatus.coverageWarning.setName} are in the catalog yet.`}
+                        </strong>
+                        <p>
+                          {supabaseCatalogStatus.coverageWarning.sealedCount > 0
+                            ? "More sealed products may be missing from the catalog."
+                            : "Cards may exist for this set, but sealed product coverage still needs review."}
+                        </p>
+                        {supabaseCatalogStatus.coverageWarning.missingLikelyCategories?.length ? (
+                          <p>May be missing: {supabaseCatalogStatus.coverageWarning.missingLikelyCategories.join(", ")}.</p>
+                        ) : null}
+                      </div>
+                      <div className="quick-actions">
+                        <button type="button" onClick={() => switchCatalogKindFilter("All")}>Search All</button>
+                        <button type="button" className="secondary-button" onClick={() => switchCatalogKindFilter("card")}>View Cards</button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => suggestMissingCatalogProductFromSearch({
+                            setName: supabaseCatalogStatus.coverageWarning.setName,
+                            searchTerm: catalogEmptyTerm || catalogSearch,
+                            missingLikelyCategories: supabaseCatalogStatus.coverageWarning.missingLikelyCategories,
+                            notes: "Suggested from coverage warning.",
+                            source: "tidetradr-sealed-coverage-warning",
+                          })}
+                        >
+                          {adminUser ? "Add Catalog Item" : "Suggest Missing Product"}
+                        </button>
+                      </div>
+                      {adminToolsVisible ? (
+                        <details className="catalog-coverage-diagnostics">
+                          <summary>Coverage diagnostics</summary>
+                          <p>Searched aliases: {supabaseCatalogStatus.coverageWarning.searchedAliases.join(", ") || "none"}</p>
+                          <p>Fetched rows: {supabaseCatalogStatus.coverageWarning.rawFetchedCount}; sealed results: {supabaseCatalogStatus.coverageWarning.resultCount}; estimated total: {supabaseCatalogStatus.coverageWarning.rawTotalCount ?? "unknown"}</p>
+                          <p>Found categories: {supabaseCatalogStatus.coverageWarning.foundCategories.join(", ") || "none"}</p>
+                          <p>Expected categories checked: {supabaseCatalogStatus.coverageWarning.expectedCategories.join(", ")}</p>
+                          <p>Sealed-specific fetch: {supabaseCatalogStatus.coverageWarning.sealedFetchRan ? "yes" : "no"}</p>
+                          <p>Active filters: {supabaseCatalogStatus.coverageWarning.activeFilters.join(", ") || "none"}</p>
+                        </details>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
                     <div className="small-empty-state tidetradr-search-prompt">
@@ -20345,86 +22719,65 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
                   {catalogSearchHasRun && !supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 ? (
                     <div className="empty-state">
-                      <h3>No matching products found</h3>
-                      <p>Try a different name, set, barcode, product type, or card number.</p>
+                      <h3>No {catalogEmptyModeLabel} found{catalogEmptyTerm ? ` for "${catalogEmptyTerm}"` : ""}</h3>
+                      <p>
+                        {catalogAlternateKindLabels.length
+                          ? `Matches exist in ${catalogAlternateKindLabels.join(" / ")}. Switch modes or clear active filters to see them.`
+                          : "Try a different name, set, barcode, product type, card number, or clear active filters."}
+                      </p>
+                      <div className="quick-actions">
+                        {catalogKindFilter !== "All" ? (
+                          <button type="button" onClick={() => switchCatalogKindFilter("All")}>Search All</button>
+                        ) : null}
+                        {catalogKindFilter !== "card" ? (
+                          <button type="button" className="secondary-button" onClick={() => switchCatalogKindFilter("card")}>Search Cards</button>
+                        ) : null}
+                        {catalogKindFilter !== "sealed" ? (
+                          <button type="button" className="secondary-button" onClick={() => switchCatalogKindFilter("sealed")}>Search Sealed</button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => {
+                            if (adminUser) {
+                              setActiveTab("catalog");
+                              setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
+                              return;
+                            }
+                            submitUniversalSuggestion({
+                              suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+                              targetTable: "catalog_items",
+                              submittedData: { searchTerm: catalogEmptyTerm || catalogSearch, productType: catalogTypeFilter, setName: catalogSetFilter },
+                              notes: "User suggested a missing catalog product from TideTradr empty search.",
+                              source: "tidetradr-empty-search",
+                            });
+                          }}
+                        >
+                          {adminUser ? "Add Catalog Item" : "Suggest Missing Product"}
+                        </button>
+                      </div>
                     </div>
                   ) : null}
+
+	                  {catalogSearchHasRun && tideTradrCatalogResults.length > 0 ? (
+	                    <div className="catalog-result-groups">
+	                      {tideTradrCatalogResultGroups.map((group) => (
+	                        <section className="catalog-result-group" key={group.key}>
+	                          {catalogKindFilter === "All" ? (
+	                            <div className="catalog-result-group-header">
+	                              <h3>{group.title}</h3>
+	                              <span className="status-badge">{group.items.length}</span>
+	                            </div>
+	                          ) : null}
+	                          <div className={`catalog-results-list catalog-results-${catalogViewMode}`}>
+	                            {group.items.map((product) => renderTideTradrCatalogResultCard(product))}
+	                          </div>
+	                        </section>
+	                      ))}
+	                    </div>
+	                  ) : null}
 
                   {catalogSearchHasRun && tideTradrCatalogResults.length > 0 ? (
-                    <div className={`catalog-results-list catalog-results-${catalogViewMode}`}>
-                      {tideTradrCatalogResults.map((p) => {
-                        const marketInfo = getTideTradrMarketInfo(p);
-                        const lowPrice = Number(p.lowPrice || 0);
-                        const midPrice = Number(p.midPrice || p.marketPrice || 0);
-                        const highPrice = Number(p.highPrice || 0);
-                        const resultGroup = p.catalogType === "card" ? "Card" : p.catalogType === "sealed" ? "Sealed" : p.catalogGroup || "Other";
-                        const variantCount = getCatalogVariantOptions(p).length;
-                        const ownedCount = getCatalogOwnedCount(p);
-                        return (
-                          <div className="catalog-result-card" key={p.id}>
-                            <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(p)}>
-                              <div className="catalog-thumb">
-                                {catalogImage(p) ? (
-                                  <>
-                                    <img
-                                      src={catalogImage(p)}
-                                      alt=""
-                                      onError={(event) => {
-                                        event.currentTarget.style.display = "none";
-                                        event.currentTarget.nextElementSibling?.removeAttribute("hidden");
-                                      }}
-                                    />
-                                    <div className="image-needed-placeholder" hidden>
-                                      <strong>{catalogTitle(p)}</strong>
-                                      <span>Image needed</span>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="image-needed-placeholder">
-                                    <strong>{catalogTitle(p)}</strong>
-                                    <span>Image needed</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <div className="catalog-result-meta-badges">
-                                  <span className="catalog-pill">{resultGroup}</span>
-                                  {p.catalogType === "card" ? (
-                                    <span className="catalog-pill catalog-pill-muted">{variantCount === 1 ? "1 variant" : `${variantCount} variants`}</span>
-                                  ) : null}
-                                  <span className={ownedCount ? "status-badge synced" : "status-badge"}>{ownedCount ? `Owned x${ownedCount}` : "Missing"}</span>
-                                </div>
-                                <h3>{catalogTitle(p)}</h3>
-                                <p className="catalog-result-detail-line">
-                                  {p.productType || resultGroup} | {catalogExpansionName(p) || "Expansion unavailable"}
-                                  {p.cardNumber ? ` | #${p.cardNumber}` : ""}
-                                </p>
-                                {p.catalogType === "card" && variantCount > 1 ? (
-                                  <p className="compact-subtitle catalog-result-variant-line">
-                                    Grouped card. Pick the exact version before adding: {getCatalogVariantOptions(p).slice(0, 4).map((variant) => variant.variantName).join(", ")}{variantCount > 4 ? "..." : ""}
-                                  </p>
-                                ) : null}
-                                {(p.barcode || p.sku || p.externalProductId || p.tcgplayerProductId) ? (
-                                  <p className="compact-subtitle catalog-result-id-line">Barcode/SKU: {p.barcode || p.upc || p.sku || p.externalProductId || p.tcgplayerProductId}</p>
-                                ) : null}
-                                <p className="catalog-result-price-line">
-                                  Market: {hasCatalogMarketPrice(p) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}
-                                  {p.catalogType !== "card" ? ` | MSRP: ${marketInfo.msrp ? money(marketInfo.msrp) : "MSRP unavailable"}` : ""}
-                                </p>
-                                <p className="compact-subtitle catalog-result-source-line">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
-                                {p.historySnapshotCount > 0 ? (
-                                  <p className="compact-subtitle catalog-result-history-line">History available: {p.historySnapshotCount} snapshot{p.historySnapshotCount === 1 ? "" : "s"}</p>
-                                ) : null}
-                                <span className="status-badge">{MARKET_STATUS_LABELS[marketInfo.marketStatus] || "Unknown"}</span>
-                              </div>
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-
-                  {catalogSearchHasRun ? (
                     <PaginationControls
                       label="Results"
                       page={supabaseCatalogStatus.page || 1}
@@ -21208,26 +23561,26 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                               }}
                             />
                             <span className="image-needed-placeholder" hidden>
-                              <strong>{p.catalogType === "card" ? "Card" : "Sealed"}</strong>
+                              <strong>{getCatalogKindLabel(p)}</strong>
                               <small>Image needed</small>
                             </span>
                           </>
                         ) : (
                           <span className="image-needed-placeholder">
-                            <strong>{p.catalogType === "card" ? "Card" : "Sealed"}</strong>
+                            <strong>{getCatalogKindLabel(p)}</strong>
                             <small>Image needed</small>
                           </span>
                         )}
                       </div>
                       <div>
-                        <span className="catalog-pill">{p.catalogType === "card" ? "Card" : "Sealed"}</span>
+                        <span className="catalog-pill">{getCatalogKindLabel(p)}</span>
                         <h3>{catalogTitle(p)}</h3>
                         {renderCatalogMeta(p)}
-                        <p className="image-source-line">
+                        {adminToolsVisible ? <p className="image-source-line">
                           Image: {getImageSourceLabel(p)}
                           {p.imageNeedsReview ? " • Needs review" : ""}
-                        </p>
-                        <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p>
+                        </p> : null}
+                        {adminToolsVisible ? <p className="compact-subtitle">Source: {p.marketSource || p.sourceType || "Unknown"}{p.priceSubtype ? ` | ${p.priceSubtype}` : ""}</p> : null}
                         {p.historySnapshotCount > 0 ? (
                           <p className="compact-subtitle">History available: {p.historySnapshotCount} snapshot{p.historySnapshotCount === 1 ? "" : "s"}</p>
                         ) : null}
@@ -22030,8 +24383,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <aside className="catalog-detail-drawer" aria-label="Catalog item details">
               <div className="drawer-header catalog-detail-header">
                 <div>
-                  <p>{selectedCatalogDetailProduct.catalogType === "card" ? "Individual Card" : "Sealed Product"}</p>
-                  <h3>{catalogTitle(selectedCatalogDetailProduct)}</h3>
+                  <p>{getCatalogKindLabel(selectedCatalogDetailProduct)}</p>
+                  <h3>{selectedCatalogDetailIsCodeCard ? getCatalogKindLabel(selectedCatalogDetailProduct, { withName: true }) : catalogTitle(selectedCatalogDetailProduct)}</h3>
                 </div>
                 <button type="button" className="drawer-close-button" aria-label="Close product detail" onClick={() => setSelectedCatalogDetailId("")}>X</button>
               </div>
@@ -22044,6 +24397,16 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                           className="catalog-detail-image"
                           src={catalogImage(selectedCatalogDetailPricingProduct)}
                           alt={catalogTitle(selectedCatalogDetailProduct)}
+                          role="button"
+                          tabIndex={0}
+                          title="Open larger image"
+                          onClick={() => window.open(catalogImage(selectedCatalogDetailPricingProduct), "_blank", "noopener,noreferrer")}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              window.open(catalogImage(selectedCatalogDetailPricingProduct), "_blank", "noopener,noreferrer");
+                            }
+                          }}
                           onError={(event) => {
                             event.currentTarget.style.display = "none";
                             event.currentTarget.nextElementSibling?.removeAttribute("hidden");
@@ -22061,8 +24424,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       </div>
                     )}
                     <div className="image-source-panel">
-                      <span>Image source: {getImageSourceLabel(selectedCatalogDetailPricingProduct)}</span>
-                      {selectedCatalogDetailPricingProduct?.imageNeedsReview ? <strong>Image needs review</strong> : null}
+                      {adminToolsVisible ? <span>Image source: {getImageSourceLabel(selectedCatalogDetailPricingProduct)}</span> : null}
+                      {adminToolsVisible && selectedCatalogDetailPricingProduct?.imageNeedsReview ? <strong>Image needs review</strong> : null}
                       <div className="quick-actions">
                         {adminUser ? (
                           <>
@@ -22085,24 +24448,24 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     </div>
                   </div>
                   <div className="catalog-detail-core-panel">
-                    <span className="catalog-pill">{selectedCatalogDetailProduct.catalogType === "card" ? "Card" : selectedCatalogDetailProduct.productType || "Product"}</span>
+                    <span className="catalog-pill">{getCatalogKindLabel(selectedCatalogDetailProduct)}</span>
                     {selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl ? (
                       <div className="catalog-expansion-banner">
                         <img src={selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl} alt="" />
                         <span>{catalogExpansionName(selectedCatalogDetailProduct)}</span>
                       </div>
                     ) : null}
-                    <div className="catalog-detail-grid catalog-detail-core-grid">
-                      <DetailItem label="Product Type" value={selectedCatalogDetailProduct.productType || selectedCatalogDetailProduct.catalogType} />
-                      <DetailItem label="Set / Expansion" value={catalogExpansionName(selectedCatalogDetailProduct)} />
-                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market price missing"} />
-                      <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "Unknown"} />
-                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
-                      <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} />
-                      <DetailItem label="Price Confidence" value={selectedCatalogDetailMarketInfo?.confidenceLevel} />
+	                    <div className="catalog-detail-grid catalog-detail-core-grid">
+	                      <DetailItem label="Product Type" value={catalogProductTypeLabel(selectedCatalogDetailProduct)} />
+	                      <DetailItem label="Set / Expansion" value={catalogExpansionName(selectedCatalogDetailProduct)} />
+	                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market price missing"} />
+	                      {selectedCatalogDetailIsSealed ? <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "Unknown"} /> : null}
+	                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
+	                      {adminToolsVisible ? <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
+	                      {adminToolsVisible ? <DetailItem label="Price Confidence" value={selectedCatalogDetailMarketInfo?.confidenceLevel} /> : null}
                       <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.updatedAt} />
                     </div>
-                    {selectedCatalogDetailVariants.length ? (
+                    {selectedCatalogDetailVariants.length && selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? (
                       <div className="catalog-version-picker">
                         <span>Version / Finish</span>
                         <div className="catalog-version-buttons">
@@ -22136,24 +24499,35 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     ) : null}
                   </div>
                 </section>
-                <div className="catalog-detail-action-group catalog-detail-primary-actions">
-                  <button type="button" onClick={() => addCatalogDetailToVault(selectedCatalogDetailProduct)}>Add to Vault</button>
-                  <button type="button" onClick={() => addCatalogDetailToForge(selectedCatalogDetailProduct)}>Add to Forge</button>
-                  <button type="button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Add to Watchlist</button>
-                  <button type="button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
-                  <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Scout Sighting</button>
-                </div>
-                <div className="catalog-detail-action-group catalog-detail-secondary-actions">
-                  <button type="button" className="secondary-button" onClick={scrollCatalogDetailToMarketHistory}>View Market History</button>
-                  <button type="button" className="secondary-button" onClick={() => suggestCatalogMissingPrice(selectedCatalogDetailProduct)}>Suggest Missing Price</button>
+	                <div className="catalog-detail-action-group catalog-detail-primary-actions">
+	                  <button type="button" onClick={() => addCatalogDetailToVault(selectedCatalogDetailProduct)}>Add to Vault</button>
+	                  <button type="button" onClick={() => addCatalogDetailToForge(selectedCatalogDetailProduct)}>Add to Forge</button>
+	                  <button type="button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Add to Wishlist</button>
+	                  <button type="button" onClick={() => markCatalogDetailOwned(selectedCatalogDetailProduct)}>Mark Owned</button>
+	                  <button type="button" onClick={() => markCatalogDetailMissing(selectedCatalogDetailProduct)}>Mark Missing</button>
+	                  <button type="button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
+	                  <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Scout Sighting</button>
+	                </div>
+	                <div className="catalog-detail-action-group catalog-detail-secondary-actions">
+	                  <button type="button" className="secondary-button" onClick={() => addCatalogDetailDuplicate(selectedCatalogDetailProduct)}>Add Duplicate</button>
+	                  <button type="button" className="secondary-button" onClick={focusCatalogDetailConditionEditor}>Edit Condition</button>
+	                  <button type="button" className="secondary-button" onClick={focusCatalogDetailVariantPicker}>Choose Variant</button>
+	                  <button type="button" className="secondary-button" onClick={scrollCatalogDetailToMarketHistory}>View Market History</button>
+	                  <button type="button" className="secondary-button" onClick={() => suggestCatalogMissingPrice(selectedCatalogDetailProduct)}>Suggest Missing Price</button>
                   <button type="button" className="secondary-button" onClick={() => suggestCatalogCorrection(selectedCatalogDetailProduct)}>Suggest Catalog Correction</button>
                   <button type="button" className="secondary-button" onClick={() => suggestCatalogWrongExpansion(selectedCatalogDetailProduct)}>Wrong Expansion?</button>
                   <button type="button" className="secondary-button" onClick={() => suggestCatalogWrongVersionPricing(selectedCatalogDetailProduct)}>Wrong Version/Pricing?</button>
                   <button type="button" className="secondary-button" onClick={() => copyCatalogProductIdentifiers(selectedCatalogDetailProduct)}>Copy UPC/SKU</button>
                   <button type="button" className="secondary-button" onClick={() => suggestCatalogUpcSku(selectedCatalogDetailProduct)}>Wrong UPC/SKU/MSRP?</button>
                 </div>
-                {(!hasCatalogMarketPrice(selectedCatalogDetailProduct) || !hasCatalogUpcSku(selectedCatalogDetailProduct)) ? (
+                {adminToolsVisible && (catalogHasClassificationConflict(selectedCatalogDetailProduct) || !hasCatalogMarketPrice(selectedCatalogDetailProduct) || !hasCatalogUpcSku(selectedCatalogDetailProduct)) ? (
                   <div className="catalog-detail-warning-list">
+                    {catalogHasClassificationConflict(selectedCatalogDetailProduct) ? (
+                      <div className="catalog-detail-warning">
+                        <strong>Classification conflict</strong>
+                        <span>Classification conflict: source says sealed, card metadata found.</span>
+                      </div>
+                    ) : null}
                     {!hasCatalogMarketPrice(selectedCatalogDetailProduct) ? (
                       <div className="catalog-detail-warning">
                         <strong>Market price missing</strong>
@@ -22170,26 +24544,28 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     ) : null}
                   </div>
                 ) : null}
-                <h3 className="catalog-detail-section-title">Details</h3>
-                <div className="catalog-detail-grid catalog-detail-overview-grid">
-                  <DetailItem label="Card Number" value={selectedCatalogDetailProduct.cardNumber ? `#${selectedCatalogDetailProduct.cardNumber}` : ""} />
-                  <DetailItem label="UPC / Barcode" value={getCatalogIdentifiers(selectedCatalogDetailProduct).filter((identifier) => ["UPC", "EAN", "GTIN"].includes(identifier.label)).map((identifier) => `${identifier.label}: ${identifier.value}`).join(" | ")} />
-                  <DetailItem label="SKU / External IDs" value={getCatalogIdentifiers(selectedCatalogDetailProduct).filter((identifier) => ["RETAILER_SKU", "BEST_BUY_SKU", "TARGET_TCIN", "WALMART_ITEM_ID", "WALMART_SKU", "GAMESTOP_SKU", "POKEMON_CENTER_SKU", "POKEMON_CENTER_ID", "OTHER"].includes(identifier.label)).map((identifier) => `${identifier.label}: ${identifier.value}`).join(" | ")} />
-                  <DetailItem label="TCGplayer ID" value={selectedCatalogDetailProduct.tcgplayerProductId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_PRODUCT_ID")?.value} />
-                  <DetailItem label="Selected Version" value={selectedCatalogDetailVariant?.variantName} />
-                  <DetailItem label="Finish / Printing" value={[selectedCatalogDetailVariant?.finish, selectedCatalogDetailVariant?.printing].filter(Boolean).join(" | ")} />
-                  <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "MSRP unavailable"} />
+	                <h3 className="catalog-detail-section-title">Details</h3>
+	                <div className="catalog-detail-grid catalog-detail-overview-grid">
+	                  {selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? <DetailItem label="Card Number" value={selectedCatalogDetailProduct.cardNumber ? `#${selectedCatalogDetailProduct.cardNumber}` : ""} /> : null}
+	                  {selectedCatalogDetailIsCodeCard ? <DetailItem label="Code Type" value={catalogProductTypeLabel(selectedCatalogDetailProduct)} /> : null}
+	                  {selectedCatalogDetailIsSealed ? <DetailItem label="UPC / Barcode" value={getCatalogIdentifiers(selectedCatalogDetailProduct).filter((identifier) => ["UPC", "EAN", "GTIN"].includes(identifier.label)).map((identifier) => `${identifier.label}: ${identifier.value}`).join(" | ")} /> : null}
+	                  {selectedCatalogDetailIsSealed ? <DetailItem label="SKU / External IDs" value={getCatalogIdentifiers(selectedCatalogDetailProduct).filter((identifier) => ["RETAILER_SKU", "BEST_BUY_SKU", "TARGET_TCIN", "WALMART_ITEM_ID", "WALMART_SKU", "GAMESTOP_SKU", "POKEMON_CENTER_SKU", "POKEMON_CENTER_ID", "OTHER"].includes(identifier.label)).map((identifier) => `${identifier.label}: ${identifier.value}`).join(" | ")} /> : null}
+	                  <DetailItem label="TCGplayer ID" value={selectedCatalogDetailProduct.tcgplayerProductId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_PRODUCT_ID")?.value} />
+	                  {selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? <DetailItem label="Selected Version" value={selectedCatalogDetailVariant?.variantName} /> : null}
+	                  {selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? <DetailItem label="Finish / Printing" value={[selectedCatalogDetailVariant?.finish, selectedCatalogDetailVariant?.printing].filter(Boolean).join(" | ")} /> : null}
+	                  {selectedCatalogDetailIsSealed ? <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "MSRP unavailable"} /> : null}
                   <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market data unavailable"} />
                   <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
-                  <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} />
+                  {selectedCatalogDetailIsCodeCard ? <DetailItem label="Source / Product" value={selectedCatalogDetailProduct.sourceGroupName || selectedCatalogDetailProduct.productLine || selectedCatalogDetailProduct.marketSource || selectedCatalogDetailProduct.sourceType} /> : null}
+                  {adminToolsVisible ? <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
                   <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.updatedAt} />
-                  <DetailItem label="Notes / Warnings" value={[
+                  {adminToolsVisible ? <DetailItem label="Notes / Warnings" value={[
                     selectedCatalogDetailProduct.notes,
                     !hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? "Market price missing" : "",
                     !hasCatalogUpcSku(selectedCatalogDetailProduct) ? "UPC/SKU missing" : "",
-                  ].filter(Boolean).join(" | ")} />
+                  ].filter(Boolean).join(" | ")} /> : null}
                 </div>
-                <details className="catalog-source-details">
+                {adminToolsVisible ? <details className="catalog-source-details">
                   <summary>Source Details</summary>
                   <div className="catalog-detail-grid">
                     <DetailItem label="Source Name" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName || selectedCatalogDetailPricingProduct?.marketSource || selectedCatalogDetailPricingProduct?.sourceType} />
@@ -22212,11 +24588,11 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   {catalogSourceUrl(selectedCatalogDetailPricingProduct) ? (
                     <a className="secondary-button" href={catalogSourceUrl(selectedCatalogDetailPricingProduct)} target="_blank" rel="noreferrer">Open Source</a>
                   ) : null}
-                </details>
+                </details> : null}
                 <details className="catalog-source-details">
                   <summary>Full Product Data</summary>
                   <div className="catalog-detail-grid">
-                  {selectedCatalogDetailProduct.catalogType === "card" ? (
+                  {selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? (
                     <>
                       <DetailItem label="Card Name" value={catalogTitle(selectedCatalogDetailProduct)} />
                       <DetailItem label="Set" value={catalogExpansionName(selectedCatalogDetailProduct)} />
@@ -22241,13 +24617,29 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue)} />
                       <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
-                      <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} />
-                      <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} />
+                      {adminToolsVisible ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
                       <DetailItem label="Source Product ID" value={selectedCatalogDetailPricingProduct?.externalProductId || selectedCatalogDetailPricingProduct?.tcgplayerProductId} />
                       <DetailItem label="Price Type" value={selectedCatalogDetailPricingProduct?.priceSubtype || selectedCatalogDetailProduct.priceSubtype} />
-                      <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} />
-                      <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} />
-                      <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} />
+                      {adminToolsVisible ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} /> : null}
+                    </>
+                  ) : selectedCatalogDetailIsCodeCard ? (
+                    <>
+                      <DetailItem label="Code Card Name" value={catalogTitle(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Type" value={catalogProductTypeLabel(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Set / Expansion" value={catalogExpansionName(selectedCatalogDetailProduct)} />
+                      <DetailItem label="Product Source" value={selectedCatalogDetailProduct.sourceGroupName || selectedCatalogDetailProduct.productLine || selectedCatalogDetailProduct.marketSource || selectedCatalogDetailProduct.sourceType} />
+                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue) : "Market data unavailable"} />
+                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
+                      <DetailItem label="TCGplayer Product ID" value={selectedCatalogDetailProduct.tcgplayerProductId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_PRODUCT_ID")?.value} />
+                      <DetailItem label="External ID" value={selectedCatalogDetailProduct.externalProductId} />
+                      <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
+                      {adminToolsVisible ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
                     </>
                   ) : (
                     <>
@@ -22270,11 +24662,11 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Retailer Exclusivity" value={selectedCatalogDetailProduct.retailerExclusive ? "Retailer exclusive" : "Not listed"} />
                       <DetailItem label="Retailer Name" value={selectedCatalogDetailProduct.retailerName} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
-                      <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} />
-                      <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} />
-                      <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} />
-                      <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} />
-                      <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} />
+                      {adminToolsVisible ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
+                      {adminToolsVisible ? <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} /> : null}
                     </>
                   )}
                   </div>
@@ -22318,8 +24710,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             aria-current={activeMainTab === tab.key ? "page" : undefined}
             onClick={() => navigateMainTab(tab)}
           >
-            <span aria-hidden="true">
-              {tab.key === "home" ? "H" : tab.key === "forge" ? "F" : tab.key === "vault" ? "V" : tab.key === "scout" ? "S" : tab.key === "tideTradr" ? "TT" : "TP"}
+            <span className="mobile-tab-icon" aria-hidden="true">
+              <AppNavIcon kind={tab.icon || "home"} />
             </span>
             <b>{tab.label}</b>
           </button>

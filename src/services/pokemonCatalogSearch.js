@@ -11,6 +11,7 @@ import {
 const TEXT_SEARCH_FIELDS = [
   "name",
   "set_name",
+  "expansion",
   "product_type",
   "product_line",
   "catalog_item_type",
@@ -145,6 +146,221 @@ export function normalizeCatalogQuery(input) {
   return normalizeSearchQuery(input);
 }
 
+const CODE_CARD_TEXT_TERMS = [
+  "code card",
+  "pokemon tcg live",
+  "pokemon tcg online",
+  "digital booster pack",
+  "pokemon.com/redeem",
+  "online code",
+  "booster pack code",
+  "redeem",
+];
+
+const CODE_CARD_DB_OR_CLAUSE = [
+  "name.ilike.%code card%",
+  "product_type.ilike.%code card%",
+  "product_line.ilike.%code card%",
+  "name.ilike.%pokemon tcg live%",
+  "product_type.ilike.%pokemon tcg live%",
+  "name.ilike.%pokemon tcg online%",
+  "product_type.ilike.%pokemon tcg online%",
+  "name.ilike.%digital booster pack%",
+  "product_type.ilike.%digital booster pack%",
+  "name.ilike.%pokemon.com/redeem%",
+  "name.ilike.%online code%",
+  "product_type.ilike.%online code%",
+  "name.ilike.%booster pack code%",
+  "product_type.ilike.%booster pack code%",
+].join(",");
+
+const SEALED_PRODUCT_DB_OR_CLAUSE = [
+  "is_sealed.eq.true",
+  "name.ilike.%sealed%",
+  "product_type.ilike.%sealed%",
+  "name.ilike.%elite trainer box%",
+  "product_type.ilike.%elite trainer box%",
+  "name.ilike.%pokemon center elite trainer box%",
+  "product_type.ilike.%pokemon center elite trainer box%",
+  "name.ilike.%booster box%",
+  "product_type.ilike.%booster box%",
+  "name.ilike.%booster bundle%",
+  "product_type.ilike.%booster bundle%",
+  "name.ilike.%booster pack%",
+  "product_type.ilike.%booster pack%",
+  "name.ilike.%sleeved booster%",
+  "product_type.ilike.%sleeved booster%",
+  "name.ilike.%blister%",
+  "product_type.ilike.%blister%",
+  "name.ilike.%mini tin%",
+  "product_type.ilike.%mini tin%",
+  "name.ilike.% tin%",
+  "product_type.ilike.% tin%",
+  "name.ilike.%collection box%",
+  "product_type.ilike.%collection box%",
+  "name.ilike.%premium collection%",
+  "product_type.ilike.%premium collection%",
+  "name.ilike.%special collection%",
+  "product_type.ilike.%special collection%",
+  "name.ilike.%ultra-premium collection%",
+  "name.ilike.%ultra premium collection%",
+  "product_type.ilike.%ultra premium collection%",
+  "name.ilike.%build & battle%",
+  "name.ilike.%build and battle%",
+  "product_type.ilike.%build and battle%",
+  "name.ilike.%trainer toolkit%",
+  "product_type.ilike.%trainer toolkit%",
+  "name.ilike.%battle deck%",
+  "product_type.ilike.%battle deck%",
+  "name.ilike.%retail bundle%",
+  "product_type.ilike.%retail bundle%",
+  "name.ilike.%costco%",
+  "name.ilike.%sam's%",
+  "name.ilike.%sams%",
+  "name.ilike.%bj's%",
+  "name.ilike.%case%",
+  "product_type.ilike.%case%",
+  "name.ilike.%display%",
+  "product_type.ilike.%display%",
+].join(",");
+
+function catalogClassificationText(value = {}) {
+  const source = value || {};
+  return normalizeCatalogQuery([
+    source.name,
+    source.productName,
+    source.product_name,
+    source.cardName,
+    source.card_name,
+    source.productType,
+    source.product_type,
+    source.catalogItemType,
+    source.catalog_item_type,
+    source.catalogType,
+    source.catalog_type,
+    source.productLine,
+    source.product_line,
+    source.setName,
+    source.set_name,
+    source.expansion,
+  ].filter(Boolean).join(" "));
+}
+
+function isCatalogCodeCardRow(row = {}) {
+  const text = catalogClassificationText(row);
+  if (!text) return false;
+  return CODE_CARD_TEXT_TERMS.some((term) => text.includes(term));
+}
+
+function isRowMarkedSealed(row = {}) {
+  return row.is_sealed === true || String(row.is_sealed || "").toLowerCase() === "true";
+}
+
+function rowHasAnyValue(...values) {
+  return values.some((value) => {
+    if (Array.isArray(value)) return value.length > 0;
+    if (value && typeof value === "object") return Object.keys(value).length > 0;
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  });
+}
+
+function rowSourceSuggestsSealed(row = {}) {
+  const typeText = normalizeCatalogQuery([
+    row.catalog_type,
+    row.catalogType,
+    row.catalog_group,
+    row.catalogGroup,
+    row.catalog_item_type,
+    row.catalogItemType,
+    row.product_type,
+    row.productType,
+    row.sealed_product_type,
+    row.sealedProductType,
+    row.product_kind,
+    row.productKind,
+  ].filter(Boolean).join(" "));
+  return (
+    isRowMarkedSealed(row) ||
+    /\bsealed\b|\bbooster\s*(box|bundle|pack)?\b|\belite\s+trainer\b|\bcollection\s+box\b|\bpremium\s+collection\b|\bspecial\s+collection\b|\bultra\s?premium\b|\bmini\s+tin\b|\btin\b|\bblister\b|\bbuild\s*&?\s*battle\b|\btrainer'?s?\s+toolkit\b|\bleague\s+battle\s+deck\b|\btheme\s+deck\b|\bstarter\s+deck\b/.test(typeText)
+  );
+}
+
+function rowHasStrongCardIndicators(row = {}) {
+  const details = row.card_details || row.cardDetails || row.tcg_card_details || row.tcgCardDetails || {};
+  const cardNumber = row.card_number || row.cardNumber || details.card_number || details.cardNumber;
+  const printedTotal = row.printed_total || row.printedTotal || details.printed_total || details.printedTotal;
+  const rarity = row.rarity || details.rarity;
+  const supertype = row.supertype || details.supertype;
+  const cardTypeText = normalizeCatalogQuery([
+    supertype,
+    row.card_subtype,
+    row.cardSubtype,
+    details.stage,
+    Array.isArray(details.subtypes) ? details.subtypes.join(" ") : details.subtypes,
+    Array.isArray(details.types) ? details.types.join(" ") : details.types,
+    row.catalog_item_type,
+    row.catalogItemType,
+    row.product_type,
+    row.productType,
+  ].filter(Boolean).join(" "));
+  const numberPatternText = normalizeCatalogQuery([
+    cardNumber,
+    row.display_number,
+    row.displayNumber,
+    row.collector_number,
+    row.collectorNumber,
+    row.name,
+    row.card_name,
+    row.cardName,
+  ].filter(Boolean).join(" "));
+  const explicitKindText = normalizeCatalogQuery([
+    row.catalog_type,
+    row.catalogType,
+    row.catalog_group,
+    row.catalogGroup,
+    row.catalog_item_type,
+    row.catalogItemType,
+    row.product_kind,
+    row.productKind,
+  ].filter(Boolean).join(" "));
+  const sourceSaysCard =
+    row.catalog_type === "card" ||
+    row.catalogType === "card" ||
+    /\bsingle\s?card\b|\bindividual\s+card\b|\bpromo\s+card\b/.test(explicitKindText) ||
+    (/\bcard\b/.test(explicitKindText) && rowHasAnyValue(cardNumber, printedTotal, rarity, supertype));
+  const explicitCardType =
+    /\b(pokemon|trainer|item|supporter|stadium|tool|energy)\b/.test(cardTypeText) &&
+    !/\bsealed\b|\bbooster\b|\bbox\b|\bbundle\b|\btin\b|\bcollection\b|\bpack\b|\bblister\b|\bdeck\b|\belite\s+trainer\s+box\b/.test(cardTypeText);
+
+  return Boolean(
+    sourceSaysCard ||
+    /\b[a-z]{0,3}\d{1,4}[a-z]?\/[a-z]{0,3}\d{1,4}[a-z]?\b/.test(numberPatternText) ||
+    rowHasAnyValue(cardNumber, printedTotal, rarity, supertype, row.hp, details.hp, row.artist, details.artist) ||
+    explicitCardType
+  );
+}
+
+function getCatalogSearchRowKind(row = {}) {
+  if (isCatalogCodeCardRow(row)) return "code_card";
+  if (rowHasStrongCardIndicators(row)) return "card";
+  if (rowSourceSuggestsSealed(row)) return "sealed";
+  return "other";
+}
+
+function rowMatchesProductGroup(row = {}, productGroup = "All") {
+  const kind = getCatalogSearchRowKind(row);
+  if (productGroup === "Cards") return kind === "card" || kind === "code_card";
+  if (productGroup === "Sealed") return kind === "sealed";
+  if (productGroup === "Other") return kind === "other";
+  return true;
+}
+
+function filterRowsByProductGroup(rows = [], filters = {}) {
+  const productGroup = filters.productGroup || "All";
+  if (productGroup === "All") return rows;
+  return rows.filter((row) => rowMatchesProductGroup(row, productGroup));
+}
+
 export function isCatalogSearchDebugEnabled() {
   return Boolean(
     import.meta.env?.DEV ||
@@ -255,14 +471,13 @@ function applyFilters(query, filters = {}) {
 
   let next = query.eq("category", "Pokemon");
 
-  if (productGroup === "Cards") next = next.eq("is_sealed", false);
-  if (productGroup === "Sealed") next = next.eq("is_sealed", true);
   if (productType !== "All") next = next.eq("product_type", productType);
   if (setName !== "All") next = next.eq("set_name", setName);
   if (rarity !== "All") next = next.eq("rarity", rarity);
   if (dataFilter === "Has market price") next = next.gt("market_price", 0);
   if (dataFilter === "Missing price") next = next.or("market_price.is.null,market_price.eq.0");
   if (dataFilter === "Has image") next = next.not("image_url", "is", null).neq("image_url", "");
+  if (productGroup === "Sealed") next = next.or(SEALED_PRODUCT_DB_OR_CLAUSE);
 
   return next;
 }
@@ -317,6 +532,14 @@ function catalogRowProductType(row = {}) {
   return row.sealed_product_type || row.product_type || row.catalog_group || "";
 }
 
+function catalogRowKindLabel(row = {}) {
+  const kind = getCatalogSearchRowKind(row);
+  if (kind === "code_card") return "Code Card";
+  if (kind === "card") return "Card";
+  if (kind === "sealed") return "Sealed Product";
+  return catalogRowProductType(row) || "Product";
+}
+
 function rowMatchesExactId(row = {}, term = "") {
   const cleaned = normalizeCatalogQuery(term);
   if (!cleaned) return "";
@@ -336,7 +559,7 @@ function rowMatchesCardNumber(row = {}, term = "") {
 function makeProductSuggestion(row, section, query, index = 0) {
   const title = catalogRowTitle(row);
   const setName = catalogRowSet(row);
-  const productType = catalogRowProductType(row);
+  const productType = catalogRowKindLabel(row);
   const marketPrice = catalogRowMarketPrice(row);
   const exactIdLabel = rowMatchesExactId(row, query);
   return {
@@ -483,7 +706,7 @@ function buildSearchTerms(term, mode) {
   return [cleaned, ...expandCatalogAliases(cleaned)]
     .filter(Boolean)
     .filter((value, index, list) => list.indexOf(value) === index)
-    .slice(0, 3);
+    .slice(0, 6);
 }
 
 function applyDbSort(query, sortKey = "bestMatch") {
@@ -570,11 +793,17 @@ async function runExactIdentifierSearch({ supabase, sourceName, query, barcode, 
   const identifierRows = identifierResult.error ? [] : identifierResult.data || [];
   const identifierMasterIds = identifierRows.map((row) => row.catalog_item_id);
   const identifierMatches = await runViewRowsByMasterIds({ supabase, sourceName, masterIds: identifierMasterIds, selectFields, pageSize, signal });
-  const rows = rankRows(dedupeRows([...(directResult.data || []), ...identifierMatches]), analysis, exactTerm, sort).slice(0, pageSize);
+  const rankedRows = rankRows(
+    filterRowsByProductGroup(dedupeRows([...(directResult.data || []), ...identifierMatches]), filters),
+    analysis,
+    exactTerm,
+    sort,
+  );
+  const rows = rankedRows.slice(0, pageSize);
 
   return {
     rows,
-    count: Math.max(directResult.count || 0, rows.length),
+    count: Math.max(rankedRows.length, rows.length),
     exactCount: rows.length,
     exactMiss: rows.length === 0,
     aliasHints: analysis.didYouMean,
@@ -589,9 +818,12 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   const analysis = analyzeCatalogSearch(exactTerm);
   const pageOffset = Math.max(0, (page - 1) * pageSize);
   const searchTerms = buildSearchTerms(cleanedQuery || cleanedBarcode, mode);
-  const candidateLimit = sort === "bestMatch" && searchTerms.length > 1
-    ? Math.min(Math.max(pageSize * Math.max(page, 1) * 3, 60), 180)
-    : pageSize;
+  const structuredSealedSetSearch = filters.productGroup === "Sealed" && (analysis.setMatches || []).length > 0;
+  const candidateLimit = structuredSealedSetSearch
+    ? Math.min(Math.max(pageSize * Math.max(page, 1) * 6, 120), 300)
+    : sort === "bestMatch" && searchTerms.length > 1
+      ? Math.min(Math.max(pageSize * Math.max(page, 1) * 3, 60), 180)
+      : pageSize;
   const rangeStart = searchTerms.length > 1 ? 0 : pageOffset;
   const rangeEnd = rangeStart + candidateLimit - 1;
   let dbQuery = supabase
@@ -611,14 +843,20 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   const { data, error, count } = await dbQuery;
   if (error) throw error;
 
-  const rankedRows = rankRows(dedupeRows(data || []), analysis, exactTerm, sort);
+  const rankedRows = rankRows(filterRowsByProductGroup(dedupeRows(data || []), filters), analysis, exactTerm, sort);
   const rows = rankedRows
     .slice(searchTerms.length > 1 ? pageOffset : 0)
     .slice(0, pageSize);
 
+  const filteredCount = filters.productGroup && filters.productGroup !== "All"
+    ? Math.max(rankedRows.length, pageOffset + rows.length)
+    : searchTerms.length > 1
+      ? Math.max(rankedRows.length, pageOffset + rows.length)
+      : count || rows.length;
+
   return {
     rows,
-    count: searchTerms.length > 1 ? Math.max(rankedRows.length, pageOffset + rows.length) : count || rows.length,
+    count: filteredCount,
     exactCount: 0,
     exactMiss: false,
     aliasHints: analysis.didYouMean,
