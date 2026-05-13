@@ -55,6 +55,19 @@ function buildPgConfig() {
 }
 
 const relationChecks = [
+  ["workspaces table", "public.workspaces"],
+  ["workspace memberships table", "public.workspace_memberships"],
+  ["profiles table", "public.profiles"],
+  ["inventory items table", "public.inventory_items"],
+  ["Vault inventory table", "public.user_inventory"],
+  ["business expenses table", "public.business_expenses"],
+  ["sales records table", "public.sales_records"],
+  ["mileage trips table", "public.mileage_trips"],
+  ["Scout reports table", "public.store_reports"],
+  ["marketplace listings table", "public.marketplace_listings"],
+  ["catalog suggestions table", "public.catalog_suggestions"],
+  ["store suggestions table", "public.store_suggestions"],
+  ["SKU suggestions table", "public.sku_suggestions"],
   ["master_catalog_items table", "public.master_catalog_items"],
   ["catalog_search_lightweight view", "public.catalog_search_lightweight"],
   ["catalog_item_details view", "public.catalog_item_details"],
@@ -89,6 +102,19 @@ const indexChecks = [
 ];
 
 const rlsChecks = [
+  "workspaces",
+  "workspace_memberships",
+  "profiles",
+  "inventory_items",
+  "user_inventory",
+  "business_expenses",
+  "sales_records",
+  "mileage_trips",
+  "store_reports",
+  "marketplace_listings",
+  "catalog_suggestions",
+  "store_suggestions",
+  "sku_suggestions",
   "master_catalog_items",
   "master_catalog_variants",
   "master_catalog_identifiers",
@@ -108,6 +134,23 @@ const rlsChecks = [
   "user_trust_profiles",
 ];
 
+const genericWorkspaceTables = [
+  "user_inventory",
+  "inventory_items",
+  "business_expenses",
+  "sales_records",
+  "mileage_trips",
+  "app_user_preferences",
+  "notification_preferences",
+  "deal_finder_sessions",
+  "scanner_intake_sessions",
+  "marketplace_listing_channels",
+  "receipt_records",
+  "kid_community_projects",
+];
+
+const suggestionTables = ["catalog_suggestions", "store_suggestions", "sku_suggestions"];
+
 const policyChecks = [
   ["master_catalog_items", "Public read master catalog items"],
   ["master_catalog_variants", "Public read master catalog variants"],
@@ -117,20 +160,189 @@ const policyChecks = [
   ["universal_data_suggestions", "Users create universal data suggestions"],
   ["universal_data_suggestions", "Users read own universal data suggestions"],
   ["universal_data_suggestions", "Admins manage universal data suggestions"],
-  ["app_user_preferences", "Users manage own app preferences"],
-  ["notification_preferences", "Users manage own notification preferences"],
-  ["deal_finder_sessions", "Users manage own deal sessions"],
-  ["deal_finder_items", "Users read own deal items"],
-  ["deal_finder_items", "Users write own deal items"],
-  ["scanner_intake_sessions", "Users manage own scanner sessions"],
-  ["marketplace_listing_channels", "Users manage own marketplace channels"],
-  ["receipt_records", "Users manage own receipts"],
-  ["receipt_line_items", "Users read receipt lines for own receipts"],
-  ["receipt_line_items", "Users write receipt lines for own receipts"],
-  ["kid_community_projects", "Users manage own community projects"],
-  ["kid_community_project_items", "Users read own community project items"],
-  ["kid_community_project_items", "Users write own community project items"],
+  ...suggestionTables.flatMap((tableName) => [
+    [tableName, `suggestions_insert_own_${tableName}`],
+    [tableName, `suggestions_read_own_or_admin_${tableName}`],
+    [tableName, `suggestions_update_own_unreviewed_${tableName}`],
+    [tableName, `suggestions_admin_manage_${tableName}`],
+  ]),
+  ...genericWorkspaceTables.flatMap((tableName) => [
+    [tableName, `workspace_read_strict_${tableName}`],
+    [tableName, `workspace_insert_strict_${tableName}`],
+    [tableName, `workspace_update_strict_${tableName}`],
+    [tableName, `workspace_delete_strict_${tableName}`],
+  ]),
+  ["store_reports", "store_reports_read_workspace_strict"],
+  ["store_reports", "store_reports_insert_own_or_workspace_editor"],
+  ["store_reports", "store_reports_update_details_workspace_strict"],
+  ["store_reports", "store_reports_user_status_rpc_update"],
+  ["store_reports", "store_reports_admin_delete"],
+  ["marketplace_listings", "marketplace_read_active_own_or_admin"],
+  ["marketplace_listings", "marketplace_workspace_read_nonpublic"],
+  ["marketplace_listings", "marketplace_users_create_draft_or_pending_workspace"],
+  ["marketplace_listings", "marketplace_users_update_own_nonpublic_workspace"],
+  ["marketplace_listings", "marketplace_users_delete_own_draft_workspace"],
+  ["receipt_line_items", "receipt_lines_read_workspace_strict"],
+  ["receipt_line_items", "receipt_lines_write_workspace_strict"],
+  ["deal_finder_items", "deal_items_read_workspace_strict"],
+  ["deal_finder_items", "deal_items_write_workspace_strict"],
+  ["kid_community_project_items", "kid_project_items_read_workspace_strict"],
+  ["kid_community_project_items", "kid_project_items_write_workspace_strict"],
   ["user_trust_profiles", "Users manage own trust profile"],
+];
+
+const functionChecks = [
+  ["workspace read helper", "public.can_read_workspace(uuid)"],
+  ["workspace edit helper", "public.can_edit_workspace(uuid)"],
+  ["admin helper", "public.is_admin()"],
+  ["admin/moderator helper", "public.is_admin_or_moderator()"],
+  ["store report moderation core RPC", "public.admin_set_store_report_moderation(uuid, text, text)"],
+  ["admin verify store report RPC", "public.admin_verify_store_report(uuid, text)"],
+  ["admin hide store report RPC", "public.admin_hide_store_report(uuid, text)"],
+  ["admin restore store report RPC", "public.admin_restore_store_report(uuid, text)"],
+  ["admin soft delete store report RPC", "public.admin_soft_delete_store_report(uuid, text)"],
+  ["admin disputed store report RPC", "public.admin_mark_report_disputed(uuid, text)"],
+  ["user store report status core RPC", "public.user_set_own_store_report_status(uuid, text)"],
+  ["user retract report RPC", "public.user_retract_own_report(uuid)"],
+  ["user mistaken report RPC", "public.user_mark_own_report_mistaken(uuid)"],
+  ["store report moderation guard function", "public.store_reports_guard_moderation_fields()"],
+];
+
+const functionDefinitionChecks = [
+  {
+    name: "can_read_workspace allows viewer reads",
+    signature: "public.can_read_workspace(uuid)",
+    includes: ["'viewer'", "'editor'", "'admin'", "'owner'"],
+  },
+  {
+    name: "can_edit_workspace allows owner/admin/editor only",
+    signature: "public.can_edit_workspace(uuid)",
+    includes: ["'editor'", "'admin'", "'owner'"],
+    excludes: ["'viewer'"],
+  },
+];
+
+const policyExpressionChecks = [
+  ...genericWorkspaceTables.flatMap((tableName) => [
+    {
+      tableName,
+      policyName: `workspace_read_strict_${tableName}`,
+      columnName: "qual",
+      includes: ["can_read_workspace(workspace_id)", "is_admin_or_moderator"],
+    },
+    {
+      tableName,
+      policyName: `workspace_insert_strict_${tableName}`,
+      columnName: "with_check",
+      includes: ["workspace_id is null", "can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
+    },
+    {
+      tableName,
+      policyName: `workspace_update_strict_${tableName}`,
+      columnName: "with_check",
+      includes: ["workspace_id is null", "not (exists", "can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
+    },
+    {
+      tableName,
+      policyName: `workspace_delete_strict_${tableName}`,
+      columnName: "qual",
+      includes: ["workspace_id is null", "not (exists", "can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
+    },
+  ]),
+  ...suggestionTables.flatMap((tableName) => [
+    {
+      tableName,
+      policyName: `suggestions_insert_own_${tableName}`,
+      columnName: "with_check",
+      includes: ["auth.uid()", "submitted", "admin_note is null", "reviewed_by is null", "reviewed_at is null"],
+    },
+    {
+      tableName,
+      policyName: `suggestions_admin_manage_${tableName}`,
+      columnName: "with_check",
+      includes: ["is_admin_or_moderator"],
+    },
+  ]),
+  {
+    tableName: "store_reports",
+    policyName: "store_reports_read_workspace_strict",
+    columnName: "qual",
+    includes: ["can_read_workspace(workspace_id)", "is_admin_or_moderator"],
+  },
+  {
+    tableName: "store_reports",
+    policyName: "store_reports_insert_own_or_workspace_editor",
+    columnName: "with_check",
+    includes: ["can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
+  },
+  {
+    tableName: "store_reports",
+    policyName: "store_reports_update_details_workspace_strict",
+    columnName: "with_check",
+    includes: ["workspace_id is null", "not (exists", "can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
+  },
+  {
+    tableName: "store_reports",
+    policyName: "store_reports_user_status_rpc_update",
+    columnName: "with_check",
+    includes: ["app.store_report_user_status_rpc", "retracted", "mistaken"],
+  },
+  {
+    tableName: "marketplace_listings",
+    policyName: "marketplace_read_active_own_or_admin",
+    columnName: "qual",
+    includes: ["active"],
+  },
+  {
+    tableName: "marketplace_listings",
+    policyName: "marketplace_users_create_draft_or_pending_workspace",
+    columnName: "with_check",
+    includes: ["draft", "pending review", "can_edit_workspace(workspace_id)"],
+    excludes: ["active"],
+  },
+  {
+    tableName: "marketplace_listings",
+    policyName: "marketplace_users_update_own_nonpublic_workspace",
+    columnName: "with_check",
+    includes: ["draft", "pending review", "sold", "traded", "archived", "can_edit_workspace(workspace_id)"],
+    excludes: ["active"],
+  },
+  {
+    tableName: "receipt_line_items",
+    policyName: "receipt_lines_read_workspace_strict",
+    columnName: "qual",
+    includes: ["receipt_records", "can_read_workspace(receipt.workspace_id)"],
+  },
+  {
+    tableName: "receipt_line_items",
+    policyName: "receipt_lines_write_workspace_strict",
+    columnName: "with_check",
+    includes: ["receipt_records", "can_edit_workspace(receipt.workspace_id)", "workspace_id is null"],
+  },
+  {
+    tableName: "deal_finder_items",
+    policyName: "deal_items_read_workspace_strict",
+    columnName: "qual",
+    includes: ["deal_finder_sessions", "can_read_workspace(session.workspace_id)"],
+  },
+  {
+    tableName: "deal_finder_items",
+    policyName: "deal_items_write_workspace_strict",
+    columnName: "with_check",
+    includes: ["deal_finder_sessions", "can_edit_workspace(session.workspace_id)", "workspace_id is null"],
+  },
+  {
+    tableName: "kid_community_project_items",
+    policyName: "kid_project_items_read_workspace_strict",
+    columnName: "qual",
+    includes: ["kid_community_projects", "can_read_workspace(project.workspace_id)"],
+  },
+  {
+    tableName: "kid_community_project_items",
+    policyName: "kid_project_items_write_workspace_strict",
+    columnName: "with_check",
+    includes: ["kid_community_projects", "can_edit_workspace(project.workspace_id)", "workspace_id is null"],
+  },
 ];
 
 const triggerChecks = [
@@ -140,6 +352,7 @@ const triggerChecks = [
   ["set_master_market_price_sources_updated_at", "master_market_price_sources"],
   ["set_master_market_summaries_updated_at", "master_market_summaries"],
   ["set_universal_data_suggestions_updated_at", "universal_data_suggestions"],
+  ["store_reports_guard_moderation_fields", "store_reports"],
 ];
 
 const migrationChecks = [
@@ -153,6 +366,10 @@ function record(name, ok, detail = "") {
   results.push({ name, ok, detail });
   const status = ok ? "PASS" : "FAIL";
   console.log(`${status} ${name}${detail ? ` - ${detail}` : ""}`);
+}
+
+function normalizeSql(sql = "") {
+  return String(sql).toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 async function runPostgresChecks() {
@@ -171,6 +388,31 @@ async function runPostgresChecks() {
 
     const { rows: functionRows } = await client.query("select to_regprocedure('public.set_updated_at()') is not null as ok");
     record("set_updated_at function", Boolean(functionRows[0]?.ok));
+
+    for (const [label, signature] of functionChecks) {
+      const { rows } = await client.query("select to_regprocedure($1) is not null as ok", [signature]);
+      record(`function ${label}`, Boolean(rows[0]?.ok), signature);
+    }
+
+    for (const check of functionDefinitionChecks) {
+      const { rows } = await client.query(
+        "select case when to_regprocedure($1) is null then null else pg_get_functiondef(to_regprocedure($1)) end as definition",
+        [check.signature]
+      );
+      const definition = normalizeSql(rows[0]?.definition || "");
+      const missing = (check.includes || []).filter((fragment) => !definition.includes(fragment.toLowerCase()));
+      const unexpected = (check.excludes || []).filter((fragment) => definition.includes(fragment.toLowerCase()));
+      record(
+        `function definition ${check.name}`,
+        definition && missing.length === 0 && unexpected.length === 0,
+        [
+          missing.length ? `missing: ${missing.join(", ")}` : "",
+          unexpected.length ? `unexpected: ${unexpected.join(", ")}` : "",
+        ]
+          .filter(Boolean)
+          .join("; ") || check.signature
+      );
+    }
 
     for (const indexName of indexChecks) {
       const { rows } = await client.query(
@@ -197,6 +439,26 @@ async function runPostgresChecks() {
         [tableName, policyName]
       );
       record(`policy ${tableName}: ${policyName}`, Boolean(rows[0]?.ok));
+    }
+
+    for (const check of policyExpressionChecks) {
+      const { rows } = await client.query(
+        "select qual, with_check from pg_policies where schemaname = 'public' and tablename = $1 and policyname = $2",
+        [check.tableName, check.policyName]
+      );
+      const expression = normalizeSql(rows[0]?.[check.columnName] || "");
+      const missing = (check.includes || []).filter((fragment) => !expression.includes(fragment.toLowerCase()));
+      const unexpected = (check.excludes || []).filter((fragment) => expression.includes(fragment.toLowerCase()));
+      record(
+        `policy expression ${check.tableName}: ${check.policyName}.${check.columnName}`,
+        expression && missing.length === 0 && unexpected.length === 0,
+        [
+          missing.length ? `missing: ${missing.join(", ")}` : "",
+          unexpected.length ? `unexpected: ${unexpected.join(", ")}` : "",
+        ]
+          .filter(Boolean)
+          .join("; ") || "hardened expression present"
+      );
     }
 
     for (const [triggerName, tableName] of triggerChecks) {
@@ -246,8 +508,21 @@ async function runRestChecks() {
   for (const tableName of rlsChecks) {
     record(`RLS enabled on ${tableName}`, false, "requires SUPABASE_DB_URL/DATABASE_URL for pg_catalog verification");
   }
+  for (const [label, signature] of functionChecks) {
+    record(`function ${label}`, false, `requires SUPABASE_DB_URL/DATABASE_URL for ${signature}`);
+  }
+  for (const check of functionDefinitionChecks) {
+    record(`function definition ${check.name}`, false, "requires SUPABASE_DB_URL/DATABASE_URL for function definition verification");
+  }
   for (const [tableName, policyName] of policyChecks) {
     record(`policy ${tableName}: ${policyName}`, false, "requires SUPABASE_DB_URL/DATABASE_URL for pg_policies verification");
+  }
+  for (const check of policyExpressionChecks) {
+    record(
+      `policy expression ${check.tableName}: ${check.policyName}.${check.columnName}`,
+      false,
+      "requires SUPABASE_DB_URL/DATABASE_URL for pg_policies verification"
+    );
   }
   for (const [triggerName] of triggerChecks) {
     record(`trigger ${triggerName}`, false, "requires SUPABASE_DB_URL/DATABASE_URL for pg_trigger verification");
