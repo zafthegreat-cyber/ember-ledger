@@ -577,6 +577,7 @@ function routeStateFromPath(pathname = "") {
   const [section, subSection, detailId] = segments;
 
   if (!section) return { activeTab: "dashboard" };
+  if (section === "reset-password") return { activeTab: "resetPassword" };
   if (section === "scout") {
     state.activeTab = "scout";
     state.scoutView = subSection === "stores" ? "stores" : subSection === "reports" ? "reports" : subSection === "calendar" ? "alerts" : "overview";
@@ -2489,6 +2490,16 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [authMessage, setAuthMessage] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [passwordResetEmail, setPasswordResetEmail] = useState("");
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
+  const [passwordResetError, setPasswordResetError] = useState("");
+  const [newPasswordForm, setNewPasswordForm] = useState({ password: "", confirm: "" });
+  const [newPasswordLoading, setNewPasswordLoading] = useState(false);
+  const [newPasswordMessage, setNewPasswordMessage] = useState("");
+  const [newPasswordError, setNewPasswordError] = useState("");
   const initialWorkspaceBundle = useMemo(() => createDefaultWorkspaceBundle({ id: "local-beta" }), []);
   const [workspaces, setWorkspaces] = useState(initialWorkspaceBundle.workspaces);
   const [workspaceMembers, setWorkspaceMembers] = useState(initialWorkspaceBundle.members);
@@ -6823,6 +6834,134 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [quickAddMenuOpen, activeFlowModal, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showVaultAddForm, showInventoryScanner, receiptScanOpen, vaultForm, scanReview]);
 
+  function getPasswordResetRedirectTo() {
+    if (typeof window === "undefined") return undefined;
+    return `${window.location.origin}/reset-password`;
+  }
+
+  function getAuthEmailRedirectTo() {
+    if (typeof window === "undefined") return undefined;
+    return window.location.origin;
+  }
+
+  function normalizeAuthErrorMessage(message = "") {
+    const text = String(message || "").trim();
+    if (!text) return "Sign-up is temporarily unavailable. Try again.";
+    if (/already registered|already exists|user already/i.test(text)) return "Email already registered. Try logging in.";
+    if (/password/i.test(text) && /(weak|short|least|minimum|6)/i.test(text)) return "Password must be at least 6 characters.";
+    if (/invalid.*email|email.*invalid/i.test(text)) return "Enter a valid email address.";
+    if (/signup|sign-up|signups|disabled|not allowed/i.test(text)) return "Sign-up is temporarily unavailable.";
+    return text;
+  }
+
+  function openPasswordResetRequest() {
+    setAuthMode("reset");
+    setPasswordResetEmail((current) => current || authEmail || user?.email || currentUserProfile?.email || "");
+    setAuthMessage("");
+    setAuthError("");
+    setPasswordResetMessage("");
+    setPasswordResetError("");
+  }
+
+  async function sendPasswordResetEmail(email) {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error("Supabase auth is not configured yet.");
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(String(email || "").trim(), {
+      redirectTo: getPasswordResetRedirectTo(),
+    });
+    if (error) throw error;
+  }
+
+  async function handlePasswordResetRequest(event, emailOverride = "") {
+    event?.preventDefault?.();
+    const email = String(emailOverride || passwordResetEmail || authEmail || user?.email || currentUserProfile?.email || "").trim();
+    setPasswordResetError("");
+    setPasswordResetMessage("");
+    if (!email) {
+      setPasswordResetError("Enter your account email.");
+      return;
+    }
+    setPasswordResetLoading(true);
+    try {
+      await sendPasswordResetEmail(email);
+      setPasswordResetMessage("If an account exists for that email, a reset link has been sent.");
+      setVaultToast("If an account exists for that email, a reset link has been sent.");
+    } catch (error) {
+      setPasswordResetError(error.message || "Could not send a reset link. Try again.");
+    } finally {
+      setPasswordResetLoading(false);
+    }
+  }
+
+  async function handleSignedInPasswordReset() {
+    const email = String(user?.email || currentUserProfile?.email || "").trim();
+    if (!email) {
+      setPasswordResetError("Your signed-in account does not have an email address available.");
+      setVaultToast("Your signed-in account does not have an email address available.");
+      return;
+    }
+    setPasswordResetEmail(email);
+    await handlePasswordResetRequest(null, email);
+  }
+
+  async function handleUpdatePassword(event) {
+    event.preventDefault();
+    const password = String(newPasswordForm.password || "");
+    const confirm = String(newPasswordForm.confirm || "");
+    setNewPasswordError("");
+    setNewPasswordMessage("");
+    if (!password) {
+      setNewPasswordError("Enter a new password.");
+      return;
+    }
+    if (password.length < 8) {
+      setNewPasswordError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setNewPasswordError("Passwords do not match.");
+      return;
+    }
+    if (!isSupabaseConfigured || !supabase) {
+      setNewPasswordError("Supabase auth is not configured yet.");
+      return;
+    }
+    setNewPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        setNewPasswordError(error.message || "Could not update password.");
+        return;
+      }
+      setNewPasswordForm({ password: "", confirm: "" });
+      setNewPasswordMessage("Password updated. You can now sign in.");
+      setVaultToast("Password updated. You can now sign in.");
+    } finally {
+      setNewPasswordLoading(false);
+    }
+  }
+
+  async function goToSignInAfterPasswordReset() {
+    setAuthMode("login");
+    setAuthPassword("");
+    setNewPasswordForm({ password: "", confirm: "" });
+    setNewPasswordError("");
+    setNewPasswordMessage("");
+    if (isSupabaseConfigured && supabase) {
+      await supabase.auth.signOut();
+    }
+    if (BETA_LOCAL_MODE) {
+      setUser({ id: "local-beta", email: "local beta mode" });
+      setActiveTab("menu");
+      setMenuOpen(true);
+      setMenuSectionsOpen((current) => ({ ...current, account: true }));
+    } else {
+      setUser(null);
+      setActiveTab("dashboard");
+    }
+  }
+
   async function checkUser() {
     if (!isSupabaseConfigured || !supabase) return;
     const { data, error } = await supabase.auth.getUser();
@@ -6832,29 +6971,71 @@ export default function App() {
   async function handleAuth(event) {
     event.preventDefault();
     if (!isSupabaseConfigured || !supabase) {
-      setVaultToast("Supabase login is not configured yet. Private beta mode is still available.");
+      const message = "Supabase login is not configured yet. Private beta mode is still available.";
+      setAuthError(message);
+      setVaultToast(message);
+      return;
+    }
+    const email = String(authEmail || "").trim();
+    const password = String(authPassword || "");
+    setAuthError("");
+    setAuthMessage("");
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAuthError("Enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      setAuthError("Enter your password.");
+      return;
+    }
+    if (authMode === "signup" && password.length < 6) {
+      setAuthError("Password must be at least 6 characters.");
       return;
     }
     setAuthLoading(true);
     try {
       if (authMode === "signup") {
-        const { data, error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
-        if (error) return showAppMessage(error.message);
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: getAuthEmailRedirectTo(),
+          },
+        });
+        if (error) {
+          const message = normalizeAuthErrorMessage(error.message);
+          setAuthError(message);
+          setVaultToast(message);
+          return;
+        }
         if (!data.session) {
-          showAppMessage("Account created. Please check your email, confirm your account, then log in.");
+          const message = "Please check your email to confirm your account.";
+          setAuthMessage(message);
+          setVaultToast(message);
           setAuthMode("login");
+          setAuthPassword("");
           return;
         }
         const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
         setUser(currentUserError ? data.user : currentUserData.user);
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
-        if (error) return showAppMessage(error.message);
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          const message = normalizeAuthErrorMessage(error.message);
+          setAuthError(message);
+          setVaultToast(message);
+          return;
+        }
         const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
         setUser(currentUserError ? data.user : currentUserData.user);
       }
       setAuthPassword("");
+      setAuthMessage(authMode === "signup" ? "Account created. You are signed in." : "Signed in.");
       setVaultToast("Signed in. Beta data remains saved on this device.");
+    } catch (error) {
+      const message = normalizeAuthErrorMessage(error.message);
+      setAuthError(message);
+      setVaultToast(message);
     } finally {
       setAuthLoading(false);
     }
@@ -13412,6 +13593,7 @@ function renderForgeHeader() {
   const normalizedScoutView = scoutView === "main" || !scoutView ? "overview" : scoutView;
   const activeScoutPage = normalizedScoutView === "review" && !scoutReviewVisible ? "overview" : normalizedScoutView;
   function currentRoutePath() {
+    if (activeTab === "resetPassword") return "/reset-password";
     if (activeTab === "scout") {
       if (activeScoutPage === "stores" && scoutSubTabTarget.storeId) return `/scout/stores/${encodeURIComponent(scoutSubTabTarget.storeId)}`;
       if (activeScoutPage === "reports" && selectedScoutReport) return `/scout/reports/${encodeURIComponent(getScoutReportId(selectedScoutReport) || "selected")}`;
@@ -19044,6 +19226,58 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return () => document.removeEventListener("keydown", handleModalKeyDown);
   }, [activeFlowModal, showInventoryScanner, receiptScanOpen, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportModerationTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
+  if (activeTab === "resetPassword") {
+    return (
+      <div className="app app-reset-password">
+        <header className="header app-shell-header app-shell-header--full">
+          <h1>E&amp;T TCG</h1>
+          <p>Reset your Ember &amp; Tide password.</p>
+        </header>
+        <main className="main auth-main">
+          <section className="panel auth-panel">
+            <h2>Update Password</h2>
+            <p className="compact-subtitle">Enter a new password for your account. Passwords are sent directly to Supabase Auth and are not stored by this app.</p>
+            <form onSubmit={handleUpdatePassword} className="form auth-form" noValidate>
+              <Field label="New password">
+                <input
+                  type="password"
+                  value={newPasswordForm.password}
+                  minLength={8}
+                  autoComplete="new-password"
+                  onChange={(event) => setNewPasswordForm((current) => ({ ...current, password: event.target.value }))}
+                />
+              </Field>
+              <Field label="Confirm new password">
+                <input
+                  type="password"
+                  value={newPasswordForm.confirm}
+                  minLength={8}
+                  autoComplete="new-password"
+                  onChange={(event) => setNewPasswordForm((current) => ({ ...current, confirm: event.target.value }))}
+                />
+              </Field>
+              {newPasswordError ? <p className="auth-status-message error" role="alert">{newPasswordError}</p> : null}
+              {newPasswordMessage ? <p className="auth-status-message success" role="status">{newPasswordMessage}</p> : null}
+              <button type="submit" disabled={newPasswordLoading || !isSupabaseConfigured}>
+                {newPasswordLoading ? "Updating..." : "Update password"}
+              </button>
+            </form>
+            {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase auth is not configured in this frontend.</p> : null}
+            <button type="button" className="secondary-button" onClick={goToSignInAfterPasswordReset}>
+              Go to sign in
+            </button>
+          </section>
+        </main>
+        {vaultToast ? (
+          <div className="vault-toast" role="status">
+            <span>{vaultToast}</span>
+            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
@@ -19065,17 +19299,69 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </header>
         <main className="main">
           <section className="panel">
-            <h2>{authMode === "login" ? "Log In" : "Create Account"}</h2>
-            <form onSubmit={handleAuth} className="form">
-              <Field label="Email"><input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} /></Field>
-              <Field label="Password"><input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} /></Field>
-              <button type="submit" disabled={authLoading}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
-            </form>
-            <button className="secondary-button" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}>
-              {authMode === "login" ? "Need an account? Sign up" : "Already have an account? Log in"}
-            </button>
+            {authMode === "reset" ? (
+              <>
+                <h2>Reset Password</h2>
+                <p className="compact-subtitle">Enter your account email and we&apos;ll send a password reset link.</p>
+                <form onSubmit={handlePasswordResetRequest} className="form auth-form" noValidate>
+                  <Field label="Email">
+                    <input
+                      type="email"
+                      value={passwordResetEmail}
+                      autoComplete="email"
+                      onChange={(event) => setPasswordResetEmail(event.target.value)}
+                    />
+                  </Field>
+                  {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
+                  {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
+                  <button type="submit" disabled={passwordResetLoading || !isSupabaseConfigured}>
+                    {passwordResetLoading ? "Sending..." : "Send reset link"}
+                  </button>
+                </form>
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    setPasswordResetError("");
+                    setPasswordResetMessage("");
+                    setAuthMode("login");
+                  }}
+                >
+                  Back to sign in
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>{authMode === "login" ? "Log In" : "Create Account"}</h2>
+                <form onSubmit={handleAuth} className="form" noValidate>
+                  <Field label="Email"><input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} /></Field>
+                  <Field label="Password"><input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} /></Field>
+                  {authError ? <p className="auth-status-message error" role="alert">{authError}</p> : null}
+                  {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
+                  {authMode === "login" ? (
+                    <button type="button" className="auth-text-button" onClick={openPasswordResetRequest}>Forgot password?</button>
+                  ) : null}
+                  <button type="submit" disabled={authLoading}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
+                </form>
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    setAuthError("");
+                    setAuthMessage("");
+                    setAuthMode(authMode === "login" ? "signup" : "login");
+                  }}
+                >
+                  {authMode === "login" ? "Need an account? Sign up" : "Already have an account? Log in"}
+                </button>
+              </>
+            )}
           </section>
         </main>
+        {vaultToast ? (
+          <div className="vault-toast" role="status">
+            <span>{vaultToast}</span>
+            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -19306,39 +19592,93 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     {adminUser ? <span className="status-badge">Admin</span> : null}
                   </div>
                   {!signedInWithSupabase ? (
-                    <form className="drawer-info-card" onSubmit={handleAuth}>
-                      <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
-                      <p className="compact-subtitle">Sign in for admin tools and future cloud sync. User-owned beta data stays local for now.</p>
-                      {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
-                      <input
-                        className="drawer-field"
-                        type="email"
-                        value={authEmail}
-                        onChange={(event) => setAuthEmail(event.target.value)}
-                        placeholder="Email"
-                        autoComplete="email"
-                      />
-                      <input
-                        className="drawer-field"
-                        type="password"
-                        value={authPassword}
-                        onChange={(event) => setAuthPassword(event.target.value)}
-                        placeholder="Password"
-                        autoComplete={authMode === "login" ? "current-password" : "new-password"}
-                      />
-                      <div className="drawer-inline-actions">
-                        <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>
-                          {authLoading ? "Working..." : authMode === "login" ? "Sign In" : "Create Account"}
-                        </button>
-                        <button type="button" className="drawer-link" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}>
+                    authMode === "reset" ? (
+                      <form className="drawer-info-card" onSubmit={handlePasswordResetRequest} noValidate>
+                        <strong>Reset password</strong>
+                        <p className="compact-subtitle">Enter your account email and we&apos;ll send a password reset link.</p>
+                        {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
+                        <input
+                          className="drawer-field"
+                          type="email"
+                          value={passwordResetEmail}
+                          onChange={(event) => setPasswordResetEmail(event.target.value)}
+                          placeholder="Email"
+                          autoComplete="email"
+                        />
+                        {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
+                        {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
+                        <div className="drawer-inline-actions">
+                          <button type="submit" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured}>
+                            {passwordResetLoading ? "Sending..." : "Send reset link"}
+                          </button>
+                          <button
+                            type="button"
+                            className="drawer-link"
+                            onClick={() => {
+                              setPasswordResetError("");
+                              setPasswordResetMessage("");
+                              setAuthMode("login");
+                            }}
+                          >
+                            Back to Sign In
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <form className="drawer-info-card" onSubmit={handleAuth} noValidate>
+                        <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
+                        <p className="compact-subtitle">Sign in for admin tools and future cloud sync. User-owned beta data stays local for now.</p>
+                        {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
+                        <input
+                          className="drawer-field"
+                          type="email"
+                          value={authEmail}
+                          onChange={(event) => setAuthEmail(event.target.value)}
+                          placeholder="Email"
+                          autoComplete="email"
+                        />
+                        <input
+                          className="drawer-field"
+                          type="password"
+                          value={authPassword}
+                          onChange={(event) => setAuthPassword(event.target.value)}
+                          placeholder="Password"
+                          autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                        />
+                        {authError ? <p className="auth-status-message error" role="alert">{authError}</p> : null}
+                        {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
+                        {authMode === "login" ? (
+                          <button type="button" className="auth-text-button drawer-auth-link" onClick={openPasswordResetRequest}>
+                            Forgot password?
+                          </button>
+                        ) : null}
+                        <div className="drawer-inline-actions">
+                          <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>
+                            {authLoading ? "Working..." : authMode === "login" ? "Sign In" : "Create Account"}
+                          </button>
+                        <button
+                          type="button"
+                          className="drawer-link"
+                          onClick={() => {
+                            setAuthError("");
+                            setAuthMessage("");
+                            setAuthMode(authMode === "login" ? "signup" : "login");
+                          }}
+                        >
                           {authMode === "login" ? "Create Account" : "Use Login"}
                         </button>
-                      </div>
-                    </form>
+                        </div>
+                      </form>
+                    )
                   ) : (
                     <div className="drawer-info-card">
                       <strong>{adminUser ? "Signed in as Admin" : "Signed in"}</strong>
                       <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase private beta records on this device.</p>
+                      {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
+                      {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
+                      <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>
+                        {passwordResetLoading ? "Sending..." : "Send Password Reset Email"}
+                      </button>
                       <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
                     </div>
                   )}
@@ -19526,6 +19866,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       ))}
                     </div>
                   </div>
+                  {signedInWithSupabase ? (
+                    <div className="drawer-info-card">
+                      <strong>Account Security</strong>
+                      <p className="compact-subtitle">Send a password reset email to your signed-in Supabase account.</p>
+                      {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
+                      {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
+                      <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>
+                        {passwordResetLoading ? "Sending..." : "Send Password Reset Email"}
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="drawer-info-card">
                     <strong>Location</strong>
                     <p className="compact-subtitle">Location is used for nearby Scout stores and alerts. Device location stays off unless you enable it.</p>

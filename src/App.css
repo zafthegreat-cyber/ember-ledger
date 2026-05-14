@@ -2510,6 +2510,64 @@ button.vault-add-tab.active {
   padding: 7px 10px;
 }
 
+.auth-main {
+  width: min(100%, 720px);
+  margin-inline: auto;
+}
+
+.auth-panel {
+  gap: 14px;
+}
+
+.auth-form {
+  gap: 12px;
+}
+
+.auth-text-button {
+  width: fit-content;
+  min-height: 34px;
+  padding: 0;
+  color: var(--color-tide);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  font-weight: 850;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.auth-text-button:hover,
+.auth-text-button:focus-visible {
+  color: var(--color-ember);
+  outline: none;
+}
+
+.drawer-auth-link {
+  margin-top: -4px;
+}
+
+.auth-status-message {
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.auth-status-message.success {
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid rgba(22, 101, 52, 0.18);
+}
+
+.auth-status-message.error {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid rgba(153, 27, 27, 0.18);
+}
+
 .vault-item-card {
   gap: 9px;
 }
