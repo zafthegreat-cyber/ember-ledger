@@ -424,7 +424,7 @@ function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
 
 const IRS_MILEAGE_RATE = 0.725;
 const runtimeParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-const BETA_LOCAL_MODE = runtimeParams?.get("betaLocalMode") === "true" || import.meta.env.VITE_BETA_LOCAL_MODE !== "false";
+const BETA_LOCAL_MODE = runtimeParams?.get("betaLocalMode") === "true" || import.meta.env.VITE_BETA_LOCAL_MODE === "true";
 const QA_UNLOCK_PAID_FEATURES = runtimeParams?.get("qaUnlockPaid") === "true" || import.meta.env.VITE_QA_UNLOCK_PAID_FEATURES === "true";
 const SUBSCRIPTIONS_LIVE = false;
 const FEATURE_GATES_ENABLED = true;
