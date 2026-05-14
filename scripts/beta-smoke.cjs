@@ -229,6 +229,25 @@ async function main() {
     await assertVisibleText("TideTradr");
   });
 
+  await step("Admin modes: regular preview and edit toggle stay gated", async () => {
+    const modeBar = page.locator(".admin-mode-control-bar").first();
+    if (!(await modeBar.isVisible().catch(() => false))) {
+      assert.equal(await page.locator(".admin-mode-control-bar").count(), 0, "regular users should not see the admin mode bar");
+      return;
+    }
+
+    await modeBar.getByRole("button", { name: "Regular" }).click();
+    await assertVisibleText("Regular preview active");
+    assert.equal(await page.locator(".admin-edit-mode-banner").count(), 0, "edit banner should be hidden in Regular Mode");
+
+    await modeBar.getByRole("button", { name: "Admin" }).click();
+    await assertVisibleText("Admin Mode active");
+    await modeBar.getByRole("button", { name: "On" }).click();
+    await assertVisibleText("Admin Edit Mode ON");
+    await modeBar.getByRole("button", { name: "Off" }).click();
+    await page.waitForFunction(() => !document.querySelector(".admin-edit-mode-banner"), null, { timeout: 5000 });
+  });
+
   await step("Workspace: personal and shared records stay separated", async () => {
     const personalWorkspaceData = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
@@ -564,7 +583,10 @@ async function main() {
 
     await nav("Vault");
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }).count(), 0);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
     await nav("Forge");
+    await assertVisibleText("Smoke Forge ETB");
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }), "Edit");
     const editForm = page.locator("form.form").last();
@@ -598,6 +620,16 @@ async function main() {
     await assertVisibleText("Receipt saved locally");
     await assertVisibleText("Receipt Report");
     await receiptModal.getByRole("button", { name: "Close" }).first().click();
+    await nav("Vault");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Receipt Pack" }).count(), 0);
+    await nav("Forge");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Receipt Pack" }).count(), 0);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
+    await nav("Vault");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Receipt Pack" }).count(), 0);
+    await nav("Forge");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Receipt Pack" }).count(), 0);
   });
 
   await step("Vault: add/edit/delete Vault item", async () => {
@@ -617,7 +649,10 @@ async function main() {
 
     await nav("Forge");
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder" }).count(), 0);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
     await nav("Vault");
+    await assertVisibleText("Smoke Vault Binder");
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder" }), "Edit");
     const editVaultForm = page.locator("form.vault-edit-form").last();
@@ -648,6 +683,18 @@ async function main() {
     assert.ok((wishlistRecord.destinationScope || []).includes("wishlist"), "Wishlist destination scope should be present");
     assert.equal(Boolean(wishlistRecord.businessInventory), false);
     assert.equal(wishlistRecord.workspaceId, "workspace-personal-local-beta");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
+    await page.getByRole("button", { name: "Wishlist", exact: true }).click();
+    await assertVisibleText("Smoke Wishlist Box");
+    await nav("Forge");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
+    await nav("Vault");
+    await page.getByRole("button", { name: "Collection", exact: true }).click();
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
+    await page.getByRole("button", { name: "Wishlist", exact: true }).click();
+    await assertVisibleText("Smoke Wishlist Box");
     await nav("Forge");
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
     await page.evaluate(() => {

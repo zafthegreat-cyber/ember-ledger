@@ -32,7 +32,7 @@ const RECEIPT_DESTINATION_TO_DB = {
 };
 
 export function normalizeReceiptDestination(destination) {
-  const key = String(destination || "").trim().toLowerCase();
+  const key = String(destination || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   return RECEIPT_DESTINATION_TO_DB[key] || "expense_only";
 }
 

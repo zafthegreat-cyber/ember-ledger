@@ -16730,6 +16730,115 @@ button:disabled,
 }
 
 /* Admin Edit Mode shell */
+.admin-mode-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: min(1120px, calc(100% - 24px));
+  margin: 8px auto 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(14, 165, 233, 0.24);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.96), rgba(255, 255, 255, 0.94));
+  color: #0f172a;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.admin-mode-control-bar.is-admin {
+  border-color: rgba(37, 99, 235, 0.32);
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(219, 234, 254, 0.86));
+}
+
+.admin-mode-control-bar.is-editing {
+  border-color: rgba(220, 38, 38, 0.42);
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.98), rgba(254, 226, 226, 0.9));
+  box-shadow: 0 16px 34px rgba(220, 38, 38, 0.16);
+}
+
+.admin-mode-control-summary {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-mode-control-summary strong {
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.admin-mode-control-summary small {
+  color: #475569;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.admin-mode-role-pill {
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-mode-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-mode-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.admin-mode-segment span {
+  padding: 0 8px;
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-mode-segment button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.admin-mode-segment button.active {
+  background: #0f172a;
+  color: #fff;
+}
+
+.admin-mode-segment button.danger,
+.admin-mode-segment button.active.danger {
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff;
+}
+
+.admin-mode-segment button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .admin-edit-toggle,
 button.admin-edit-toggle {
   display: inline-flex;
@@ -16809,6 +16918,26 @@ button.admin-edit-toggle.active {
 }
 
 @media (max-width: 760px) {
+  .admin-mode-control-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .admin-mode-controls {
+    justify-content: flex-start;
+  }
+
+  .admin-mode-segment {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-mode-segment button {
+    flex: 1 1 auto;
+  }
+
   .topbar .admin-edit-toggle {
     flex: 0 0 auto;
     min-width: auto;
@@ -16825,5 +16954,386 @@ button.admin-edit-toggle.active {
 
   .admin-edit-mode-banner small {
     line-height: 1.25;
+  }
+}
+
+/* Mobile beta cleanup: prevent skinny card columns from breaking words into letters. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+.app,
+.main,
+.panel,
+.card,
+.compact-card,
+.metric-card,
+.mini-card,
+.section-card,
+.today-tide-card,
+.daily-action-card,
+.home-today-tile,
+.home-metric-card,
+.watch-calendar-home-metrics > *,
+.watch-calendar-summary-grid > *,
+.forge-daily-card,
+.vault-overview-card,
+.forge-overview-card,
+.quick-action-card,
+.chip,
+.status-badge,
+.mobile-bottom-nav button,
+.standard-page-header,
+.standard-page-header-copy,
+.standard-page-header-actions {
+  min-width: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+span,
+small,
+strong,
+b,
+dt,
+dd,
+button,
+.button,
+.secondary-button,
+.drawer-link,
+.chip,
+.status-badge,
+.section-kicker,
+.metric-card p,
+.mini-cards .card p,
+.home-summary-card .card p,
+.vault-summary-grid .card p,
+.forge-summary-grid .card p,
+.today-tide-card span,
+.daily-action-card span,
+.forge-daily-card span,
+.watch-calendar-home-metrics span,
+.watch-calendar-summary-grid span,
+.vault-overview-title,
+.forge-overview-title,
+.quick-action-card span,
+.quick-action-card small {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: manual !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+}
+
+.section-kicker,
+.metric-card p,
+.mini-cards .card p,
+.home-summary-card .card p,
+.vault-summary-grid .card p,
+.forge-summary-grid .card p,
+.today-tide-card span,
+.daily-action-card span,
+.forge-daily-card span,
+.watch-calendar-home-metrics span,
+.watch-calendar-summary-grid span,
+.vault-overview-title,
+.forge-overview-title {
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.daily-badge-strip,
+.tidepool-filter-grid,
+.watch-calendar-layer-strip,
+.chip-row,
+.vault-view-strip {
+  min-width: 0;
+}
+
+.daily-badge-strip > *,
+.tidepool-filter-grid > *,
+.watch-calendar-layer-strip > *,
+.chip-row > *,
+.vault-view-strip > * {
+  white-space: nowrap;
+}
+
+.small-empty-state,
+.empty-state,
+.empty-state-card {
+  min-height: auto;
+}
+
+@media (max-width: 768px) {
+  .panel,
+  .compact-card,
+  .card,
+  .section-card,
+  .today-tide-command,
+  .pokemon-watch-home,
+  .pokemon-watch-calendar-panel,
+  .forge-home-inventory-section,
+  .tidepool-community {
+    padding: 12px;
+  }
+
+  .standard-page-header-main,
+  .page-dashboard-header-main,
+  .forge-toolbar,
+  .compact-card-header,
+  .tidepool-header-top {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: start;
+    gap: 10px;
+  }
+
+  .standard-page-header-actions,
+  .summary-pill-row,
+  .forge-action-strip,
+  .scout-main-actions,
+  .home-inline-actions {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)) !important;
+    width: 100%;
+    overflow: visible;
+    gap: 8px;
+  }
+
+  .standard-page-header-actions > *,
+  .summary-pill-row > *,
+  .forge-action-strip > *,
+  .home-inline-actions > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .standard-page-header .home-summary-stats,
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid,
+  .standard-page-header .tidetradr-shortcut-grid,
+  .standard-page-header .tidetradr-shortcut-grid.quick-action-card-grid,
+  .standard-page-header .vault-command-overview,
+  .standard-page-header .forge-command-overview,
+  .standard-page-header .tidepool-stat-grid,
+  .quick-action-card-grid,
+  .home-quick-action-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+    overflow: visible !important;
+    padding-bottom: 0;
+    scroll-snap-type: none;
+  }
+
+  .standard-page-header .home-summary-stats > *,
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid > *,
+  .standard-page-header .tidetradr-shortcut-grid > *,
+  .standard-page-header .vault-command-overview > *,
+  .standard-page-header .forge-command-overview > *,
+  .standard-page-header .tidepool-stat-grid > *,
+  .quick-action-card-grid > *,
+  .home-quick-action-grid > * {
+    width: auto !important;
+    flex: initial !important;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --bottom-nav-height: 62px;
+  }
+
+  .app {
+    padding-inline: max(10px, env(safe-area-inset-left));
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 18px);
+  }
+
+  .main,
+  .app-main {
+    gap: 10px;
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 54px);
+    overflow-x: clip;
+  }
+
+  .today-tide-grid,
+  .watch-calendar-home-metrics,
+  .watch-calendar-summary-grid,
+  .forge-daily-grid,
+  .home-today-grid,
+  .vault-summary-grid,
+  .forge-summary-grid,
+  .scout-score-grid,
+  .preview-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px;
+  }
+
+  .daily-tide-actions,
+  .daily-actions-grid,
+  .scout-report-type-grid,
+  .scout-report-retailer-grid,
+  .scout-report-card-grid,
+  .add-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+
+  .today-tide-card,
+  .daily-action-card,
+  .home-today-tile,
+  .watch-calendar-home-metrics button,
+  .watch-calendar-summary-grid > div,
+  .forge-daily-card,
+  .vault-overview-card,
+  .forge-overview-card,
+  button.quick-action-card {
+    min-height: auto !important;
+    padding: 10px !important;
+  }
+
+  .today-tide-card strong,
+  .daily-action-card strong,
+  .home-today-tile strong,
+  .watch-calendar-home-metrics strong,
+  .watch-calendar-summary-grid strong,
+  .forge-daily-card strong {
+    font-size: clamp(1rem, 4vw, 1.2rem);
+    line-height: 1.15;
+  }
+
+  .daily-badge-strip {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .daily-badge-strip span,
+  .daily-badge-strip b {
+    flex: 0 0 auto;
+    min-width: max-content;
+    padding: 7px 9px;
+    line-height: 1.15;
+  }
+
+  .tidepool-filter-grid,
+  .watch-calendar-layer-strip,
+  .chip-row,
+  .vault-view-strip,
+  .standard-page-header-tabs {
+    display: flex !important;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tidepool-filter-grid button,
+  .watch-calendar-layer-strip label,
+  .watch-calendar-layer-strip button,
+  .chip-row button,
+  .vault-view-strip button,
+  .standard-page-header-tabs button {
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+
+  .quick-actions button,
+  .quick-actions .secondary-button,
+  .standard-page-header-actions button,
+  .summary-pill-row button {
+    min-height: 42px;
+    padding: 8px 9px;
+    white-space: normal;
+  }
+
+  .mobile-bottom-nav {
+    min-height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+    gap: 2px;
+    padding:
+      5px
+      max(6px, env(safe-area-inset-right))
+      calc(5px + env(safe-area-inset-bottom))
+      max(6px, env(safe-area-inset-left));
+  }
+
+  .mobile-bottom-nav button {
+    min-height: 46px;
+    padding: 4px 1px;
+    border-radius: 12px;
+  }
+
+  .mobile-bottom-nav button span {
+    width: 21px;
+    height: 21px;
+  }
+
+  .mobile-bottom-nav button b {
+    font-size: clamp(0.6rem, 2.4vw, 0.7rem);
+    line-height: 1.05;
+  }
+
+  .back-to-top-button {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 18px);
+    width: 42px !important;
+    min-width: 42px;
+    max-width: 42px;
+    min-height: 42px;
+    padding: 0;
+  }
+
+  .back-to-top-button span {
+    font-size: 0.95rem;
+  }
+
+  .back-to-top-button b {
+    display: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .standard-page-header .home-summary-stats,
+  .standard-page-header.scout-summary-card .scout-main-actions.quick-action-card-grid,
+  .standard-page-header .tidetradr-shortcut-grid,
+  .standard-page-header .tidetradr-shortcut-grid.quick-action-card-grid,
+  .standard-page-header .vault-command-overview,
+  .standard-page-header .forge-command-overview,
+  .standard-page-header .tidepool-stat-grid,
+  .quick-action-card-grid,
+  .home-quick-action-grid,
+  .daily-tide-actions,
+  .daily-actions-grid,
+  .scout-report-type-grid,
+  .scout-report-retailer-grid,
+  .scout-report-card-grid,
+  .add-action-grid,
+  .quick-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .mobile-bottom-nav button b {
+    font-size: 0.58rem;
   }
 }

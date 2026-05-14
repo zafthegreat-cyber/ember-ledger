@@ -31,6 +31,7 @@ import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUti
 import {
   cleanupBrowserBetaStorage,
   emptyTidepoolData,
+  isDemoLikeRecord,
   sanitizeAppLocalData,
   sanitizeScoutLocalData,
   sanitizeTidepoolLocalData,
@@ -436,6 +437,7 @@ const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
+const ADMIN_MODE_STORAGE_PREFIX = "et-tcg-admin-mode";
 const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 const LONG_LIST_PAGE_SIZE = 12;
@@ -702,7 +704,7 @@ const VAULT_FILTER_OPTIONS = [
   { value: "personal_collection", label: "Personal Collection" },
   { value: "sealed", label: "Sealed / Holding" },
   { value: "moved_to_forge", label: "Moved to Forge" },
-  { value: "wishlist", label: "Wishlist / Held" },
+  { value: "wishlist", label: "Held" },
   { value: "sold_archived", label: "Sold / Archived" },
 ];
 const BATCH_INTAKE_MODES = {
@@ -2372,7 +2374,9 @@ export default function App() {
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
   const [lockedFeatureKey, setLockedFeatureKey] = useState("");
+  const [adminViewMode, setAdminViewMode] = useState("admin");
   const [adminEditMode, setAdminEditMode] = useState(false);
+  const [adminModeStorageReady, setAdminModeStorageReady] = useState(false);
   const [adminConfirmAction, setAdminConfirmAction] = useState(null);
   const quickAddRef = useRef(null);
   const quickAddButtonRef = useRef(null);
@@ -4613,16 +4617,19 @@ export default function App() {
     const raw = Array.isArray(value)
       ? value
       : typeof value === "string"
-        ? value.split(/[,\s|/]+/)
+        ? value.split(/[,|/]+/)
         : value && typeof value === "object"
           ? Object.entries(value).filter(([, enabled]) => Boolean(enabled)).map(([key]) => key)
           : [];
     return [...new Set(raw
       .map((entry) => String(entry || "").trim().toLowerCase())
+      .map((entry) => entry.replace(/[\s-]+/g, "_"))
       .map((entry) => (
         entry === "forge_inventory" || entry === "business_inventory" ? "forge" :
         entry === "vault_item" || entry === "vault_items" ? "vault" :
         entry === "wishlist_item" || entry === "wishlist_items" ? "wishlist" :
+        entry === "personal_collection" || entry === "vault_collection" ? "vault" :
+        entry === "expenseonly" || entry === "expense_only" || entry === "ignore" || entry === "ignored" ? "expense_only" :
         entry === "tidetradr_suggestion" || entry === "catalog_suggestion" ? "tidetradr" :
         entry
       ))
@@ -4646,16 +4653,32 @@ export default function App() {
     return itemDestinationScopes(item).includes(destination);
   }
 
+  function normalizeInventoryDestination(item = {}) {
+    const scopes = itemDestinationScopes(item);
+    const recordType = String(item.recordType || item.record_type || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    const status = String(item.status || "").trim().toLowerCase();
+    const actionNotes = String(item.actionNotes || item.action_notes || item.notes || "").trim().toLowerCase();
+    const vaultStatusRaw = item.vaultStatus ?? item.vault_status;
+    const hasVaultStatus = !isBlankLike(vaultStatusRaw);
+    const normalizedVault = hasVaultStatus ? normalizeVaultStatus({ vaultStatus: vaultStatusRaw, status: item.status, actionNotes: item.actionNotes }) : "";
+
+    if (scopes.includes("expense_only") || recordType === "expense_only" || status.includes("expense only")) return "expense_only";
+    if (scopes.includes("wishlist") || recordType === "wishlist_item" || item.isWishlist || item.is_wishlist || normalizedVault === "wishlist" || status === "wishlist") return "wishlist";
+    if (scopes.includes("vault") && !scopes.includes("forge")) return "vault";
+    if (scopes.includes("forge") && !scopes.includes("vault")) return "forge";
+    if (recordType === "vault_item") return "vault";
+    if (recordType === "forge_inventory") return "forge";
+    if (item.businessInventory || item.business_inventory || Number(item.forgeQuantity || item.forge_quantity || 0) > 0) return "forge";
+    if (hasVaultStatus && normalizedVault !== "moved_to_forge") return "vault";
+    if (["personal collection", "held", "sealed", "sealed / holding", "ripped / opened", "traded"].includes(status)) return "vault";
+    if (["in stock", "ready to list", "listed", "needs photos", "needs market check", "sold", "moved to forge"].includes(status)) return "forge";
+    if (actionNotes.includes("wishlist")) return "wishlist";
+    if (actionNotes.includes("personal collection") || actionNotes.includes("vault")) return "vault";
+    return "forge";
+  }
+
   function isWishlistItemRecord(item = {}) {
-    return Boolean(
-      itemHasDestination(item, "wishlist") ||
-      item.isWishlist ||
-      item.is_wishlist ||
-      item.recordType === "wishlist_item" ||
-      item.record_type === "wishlist_item" ||
-      item.vaultStatus === "wishlist" ||
-      String(item.status || "").toLowerCase() === "wishlist"
-    );
+    return normalizeInventoryDestination(item) === "wishlist";
   }
 
   function isBlankLike(value) {
@@ -4694,24 +4717,11 @@ export default function App() {
   }
 
   function isVaultItemRecord(item) {
-    const scopes = itemDestinationScopes(item);
-    if (scopes.includes("forge") && !scopes.includes("vault") && !scopes.includes("wishlist")) return false;
-    if (normalizeVaultStatus(item) === "moved_to_forge") return false;
-    return Boolean(
-      scopes.includes("vault") ||
-      scopes.includes("wishlist") ||
-      item?.vaultStatus ||
-      ["Personal Collection", "Held", "Wishlist", "Sealed", "Sealed / Holding", "Ripped / Opened", "Traded"].includes(item?.status)
-    );
+    return normalizeInventoryDestination(item) === "vault" && normalizeVaultStatus(item) !== "moved_to_forge";
   }
 
   function isForgeInventoryItem(item = {}) {
-    const scopes = itemDestinationScopes(item);
-    if (scopes.includes("forge")) return true;
-    if (scopes.includes("vault") || scopes.includes("wishlist") || isWishlistItemRecord(item) || isVaultItemRecord(item)) return false;
-    if (item.businessInventory || item.business_inventory || item.recordType === "forge_inventory" || item.record_type === "forge_inventory") return true;
-    const status = String(item.status || "").toLowerCase();
-    return ["in stock", "ready to list", "listed", "needs photos", "needs market check", "sold", "moved to forge"].includes(status);
+    return normalizeInventoryDestination(item) === "forge";
   }
 
   function findVaultDuplicate(candidate, collection = items) {
@@ -5726,8 +5736,10 @@ export default function App() {
     const normalizedName = normalizeSearchText(row.itemName);
     const rowCatalogId = String(row.matchedCatalogItemId || "");
     return items.find((item) => {
-      const scopes = item.destinationScope || [];
-      const scopeMatch = scope === "wishlist" ? item.isWishlist || scopes.includes("wishlist") : scopes.includes(scope);
+      const scopeMatch =
+        scope === "wishlist" ? isWishlistItemRecord(item) :
+        scope === "vault" ? isVaultItemRecord(item) :
+        isForgeInventoryItem(item);
       if (!scopeMatch) return false;
       if (rowCatalogId && String(item.catalogProductId || "") === rowCatalogId) return true;
       return normalizedName && normalizeSearchText(item.name) === normalizedName;
@@ -5807,7 +5819,7 @@ export default function App() {
     setImportLastBatchResult(result);
     setImportBatchMessage(`${savedItems.length} item${savedItems.length === 1 ? "" : "s"} saved, ${quantityIncreases} duplicate quantit${quantityIncreases === 1 ? "y" : "ies"} increased, ${skippedDuplicates} duplicate${skippedDuplicates === 1 ? "" : "s"} skipped${failures.length ? `, ${failures.length} failed` : ""}.`);
     if (!failures.length) {
-      const savedScopes = new Set(savedItems.flatMap((item) => item.destinationScope || itemDestinationScopes(item)));
+      const savedScopes = new Set(savedItems.map(normalizeInventoryDestination));
       setImportAssistantOpen(false);
       closeFlowModal({ force: true, reset: false });
       setActiveTab(savedScopes.has("forge") ? "inventory" : "vault");
@@ -7449,8 +7461,8 @@ export default function App() {
     setVaultPotentialDuplicate(null);
   }
 
-  function addVaultItem(event) {
-    event.preventDefault();
+  async function addVaultItem(event) {
+    event?.preventDefault?.();
     const validationMessage = validateVaultDraft(vaultForm);
     if (validationMessage) {
       setVaultToast(validationMessage);
@@ -7465,7 +7477,15 @@ export default function App() {
       setVaultSaving(false);
       return;
     }
-    finishVaultItemCreate(newItem, "Item added to Vault.");
+    const saveResult = await saveInventoryRecords([newItem]);
+    if (saveResult.failures?.length) {
+      setVaultSaving(false);
+      setVaultToast(saveResult.failures[0]?.error || "Could not save Vault item.");
+      return;
+    }
+    const savedItem = saveResult.saved?.[0] || newItem;
+    setVaultSaving(false);
+    finishVaultItemCreate(savedItem, "Item added to Vault.");
   }
 
   function toggleVaultFormSection(section) {
@@ -8910,6 +8930,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
     const successes = [];
     const failures = [];
+    const pendingInventoryCreates = [];
     const destinationWorkspace = (destination) => {
       const workspaceId = multiDestinationForm[destination]?.workspaceId || defaultWorkspaceIdForDestination(destination);
       return workspaces.find((workspace) => String(workspace.id) === String(workspaceId)) || activeWorkspace;
@@ -8961,8 +8982,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           language: "English",
           createdAt: now,
         }, vaultWorkspace);
-        setItems((current) => [vaultItem, ...current]);
-        successes.push(`Added to Vault (${vaultWorkspace?.name || "Workspace"})`);
+        pendingInventoryCreates.push({ record: vaultItem, successMessage: `Added to Vault (${vaultWorkspace?.name || "Workspace"})` });
       }
     } catch (error) {
       failures.push(`Vault failed: ${error.message || "Could not save"}`);
@@ -9003,8 +9023,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           language: "English",
           createdAt: now,
         }, wishlistWorkspace);
-        setItems((current) => [wishlistItem, ...current]);
-        successes.push(`Added to Wishlist (${wishlistWorkspace?.name || "Workspace"})`);
+        pendingInventoryCreates.push({ record: wishlistItem, successMessage: `Added to Wishlist (${wishlistWorkspace?.name || "Workspace"})` });
 
         if (multiDestinationForm.wishlist.addToMarketWatch && selectedCatalog?.id) {
           addProductToTideTradrWatchlist(selectedCatalog.id, false, wishlistWorkspace?.id);
@@ -9042,8 +9061,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           notes: [multiDestinationForm.forge.notes, multiDestinationForm.notes].filter(Boolean).join(" "),
           createdAt: now,
         }, forgeWorkspace);
-        setItems((current) => [forgeItem, ...current]);
-        successes.push(`Added to Forge inventory (${forgeWorkspace?.name || "Workspace"})`);
+        pendingInventoryCreates.push({ record: forgeItem, successMessage: `Added to Forge inventory (${forgeWorkspace?.name || "Workspace"})` });
       }
     } catch (error) {
       failures.push(`Forge failed: ${error.message || "Could not save"}`);
@@ -9055,7 +9073,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         if (existingProductId) {
           addProductToTideTradrWatchlist(existingProductId, false, activeWorkspace?.id);
           successes.push("Added to Watchlist");
-        } else if (adminUser) {
+        } else if (adminToolsVisible) {
           const catalogProduct = {
             id: makeId("catalog"),
             name: itemName,
@@ -9122,6 +9140,22 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       }
     } catch (error) {
       failures.push(`TideTradr failed: ${error.message || "Could not save"}`);
+    }
+
+    if (pendingInventoryCreates.length) {
+      const saveResult = await saveInventoryRecords(pendingInventoryCreates.map((entry) => entry.record));
+      const savedInventoryItems = saveResult.saved || [];
+      if (savedInventoryItems.length) {
+        setItems((current) => [...savedInventoryItems, ...current]);
+        if (savedInventoryItems.length === pendingInventoryCreates.length) {
+          successes.push(...pendingInventoryCreates.map((entry) => entry.successMessage));
+        } else {
+          successes.push(`Saved ${savedInventoryItems.length} destination item${savedInventoryItems.length === 1 ? "" : "s"}.`);
+        }
+      }
+      if (saveResult.failures?.length) {
+        failures.push(...saveResult.failures.map((failure) => `${failure.itemName || "Inventory item"} failed: ${failure.error || "Could not save"}`));
+      }
     }
 
     const uniqueSuccesses = [...new Set(successes)];
@@ -9520,7 +9554,7 @@ function mapCatalog(row) {
   async function loadInventory() {
     const { data, error } = await supabase.from("inventory_items").select("*").order("created_at", { ascending: false });
     if (error) return showAppMessage("Could not load inventory: " + error.message);
-    setItems(data.map(mapItem));
+    setItems((data || []).filter((row) => !isDemoLikeRecord(row)).map(mapItem).filter((item) => !isDemoLikeRecord(item)));
   }
 
   async function loadCatalog() {
@@ -10417,7 +10451,7 @@ function mapCatalog(row) {
         lastUpdated: now,
       };
 
-      if (!adminUser) {
+      if (!adminToolsVisible) {
         submitUniversalSuggestion({
           suggestionType: editingCatalogId ? SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT : SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
           targetTable: "catalog_items",
@@ -10552,7 +10586,7 @@ function mapCatalog(row) {
 }
 
   async function deleteCatalogProduct(id) {
-    if (!adminUser) {
+    if (!adminToolsVisible) {
       const product = catalogProducts.find((item) => String(item.id) === String(id));
       submitUniversalSuggestion({
         suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
@@ -10963,7 +10997,7 @@ async function importBulkCatalogProducts() {
       createdAt: new Date().toISOString(),
     }));
 
-    if (!adminUser) {
+    if (!adminToolsVisible) {
       imported.forEach((product) => {
         submitUniversalSuggestion({
           suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
@@ -11293,14 +11327,12 @@ function renderTideTradrHeader() {
 function renderScoutHeader() {
   const scoutStoreCount = scoutSnapshot.stores?.length || VIRGINIA_STORES_SEED.length;
   const scoutRecentReportCount = (scoutSnapshot.reports || []).length || (scoutSnapshot.tidepoolReports || []).length;
-  const scoutActiveAlertCount = (scoutSnapshot.bestBuyAlerts || []).length;
   const scoutTrustScore = scoutSnapshot.scoutProfile?.trustScore || 72;
   const scoutTabs = [
     { key: "overview", label: "Overview" },
     { key: "reports", label: "Reports" },
     { key: "stores", label: "Stores" },
-    { key: "alerts", label: "Alerts" },
-    { key: "predictions", label: "Predictions" },
+    { key: "predictions", label: "Forecast" },
     { key: "myReports", label: "My Reports" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
   ].filter(Boolean);
@@ -11368,16 +11400,6 @@ function renderScoutHeader() {
             },
           },
           {
-            key: "scout-alerts",
-            title: "Alerts",
-            subtitle: `${scoutActiveAlertCount} active`,
-            className: "scout-hero-stat-tile",
-            onClick: () => {
-              setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-              setScoutView("alerts");
-            },
-          },
-          {
             key: "scout-score",
             title: "Scout Score",
             subtitle: `${scoutTrustScore} trust score`,
@@ -11393,7 +11415,7 @@ function renderScoutHeader() {
 function renderVaultHeader() {
   const personalCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "personal_collection").length;
   const sealedHoldingCount = vaultItems.filter((item) => ["sealed", "held"].includes(normalizeVaultStatus(item))).length;
-  const wishlistHeldCount = vaultItems.filter((item) => ["wishlist", "held"].includes(normalizeVaultStatus(item))).length;
+  const wishlistHeldCount = wishlistItems.length;
   const movedToForgeCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "moved_to_forge").length;
   const activeVaultPage = vaultSubTab === "overview" ? "collection" : vaultSubTab;
 
@@ -11439,11 +11461,14 @@ function renderVaultHeader() {
     },
     {
       key: "wishlist",
-      title: "Wishlist / Held",
+      title: "Wishlist",
       value: wishlistHeldCount,
-      helper: "Saved wants and future buys.",
-      active: vaultFilter === "wishlist",
-      onClick: () => openVaultItems("wishlist"),
+      helper: "Wanted items only.",
+      active: activeVaultPage === "wishlist",
+      onClick: () => {
+        setVaultSubTab("wishlist");
+        setActiveTab("vault");
+      },
     },
   ];
 
@@ -11472,6 +11497,7 @@ function renderVaultHeader() {
       )}
       tabs={[
         { key: "collection", label: "Collection" },
+        { key: "wishlist", label: "Wishlist" },
         { key: "sets", label: "Sets" },
         { key: "portfolio", label: "Portfolio" },
       ]}
@@ -12496,6 +12522,7 @@ function renderForgeHeader() {
   const monthlySpending = monthlyItemSpending + monthlyExpenses;
   const monthlyProfitLoss = monthlySalesProfit - monthlyExpenses;
   const vaultItems = useMemo(() => workspaceItems.filter(isVaultItemRecord), [workspaceItems]);
+  const wishlistItems = useMemo(() => workspaceItems.filter(isWishlistItemRecord), [workspaceItems]);
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const vaultCatalogSearchTerm = String(vaultForm.tideTradrSearch || vaultForm.name || "").trim().toLowerCase();
   const vaultSuggestedCatalogItems = useMemo(() => catalogProducts
@@ -12535,7 +12562,6 @@ function renderForgeHeader() {
     0
   ), [activeVaultItems]);
   const homeStatsProfile = { userType, homeStatsEnabled };
-  const wishlistItems = vaultItems.filter((item) => normalizeVaultStatus(item) === "wishlist");
   const wishlistValue = wishlistItems.reduce(
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || item.targetPrice || 0),
     0
@@ -12657,14 +12683,75 @@ function renderForgeHeader() {
       planProfile?.isModerator ||
       planProfile?.is_moderator
     );
+  const normalizedActualRole = explicitAdminRole === "super-admin" ? "super_admin" : explicitAdminRole;
+  const actualAdminRole =
+    ["admin", "super_admin", "moderator"].includes(normalizedActualRole) ? normalizedActualRole :
+    adminUser ? "admin" :
+    moderatorUser ? "moderator" :
+    normalizedActualRole || "user";
+  const actualAdminUser = adminUser || moderatorUser;
+  const adminModeUserKey = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "anonymous");
+  const adminModeStorageKey = `${ADMIN_MODE_STORAGE_PREFIX}:${adminModeUserKey}`;
+  const adminModeLoaded = !actualAdminUser || adminModeStorageReady;
+  const adminViewingAsAdmin = actualAdminUser && adminModeLoaded && adminViewMode === "admin";
+  const displayedAdminViewMode = adminViewingAsAdmin ? "admin" : "regular";
+  const regularPreviewPlanProfile = actualAdminUser && !adminViewingAsAdmin
+    ? {
+        ...planProfile,
+        role: USER_ROLES.USER,
+        appRole: USER_ROLES.USER,
+        app_role: USER_ROLES.USER,
+        adminRole: "",
+        admin_role: "",
+        userRole: USER_ROLES.USER,
+        user_role: USER_ROLES.USER,
+        isAdmin: false,
+        is_admin: false,
+        isModerator: false,
+        is_moderator: false,
+        tier: planProfile?.tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.tier,
+        featureTier: planProfile?.featureTier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.featureTier,
+        subscriptionPlan: planProfile?.subscriptionPlan === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.subscriptionPlan,
+        app_metadata: {
+          ...(planProfile?.app_metadata || {}),
+          role: USER_ROLES.USER,
+          user_role: USER_ROLES.USER,
+          is_admin: false,
+          isAdmin: false,
+          tier: planProfile?.app_metadata?.tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.app_metadata?.tier,
+          feature_tier: planProfile?.app_metadata?.feature_tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.app_metadata?.feature_tier,
+          subscription_plan: planProfile?.app_metadata?.subscription_plan === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.app_metadata?.subscription_plan,
+        },
+        raw_app_meta_data: {
+          ...(planProfile?.raw_app_meta_data || {}),
+          role: USER_ROLES.USER,
+          user_role: USER_ROLES.USER,
+          is_admin: false,
+          isAdmin: false,
+          tier: planProfile?.raw_app_meta_data?.tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.raw_app_meta_data?.tier,
+          feature_tier: planProfile?.raw_app_meta_data?.feature_tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.raw_app_meta_data?.feature_tier,
+          subscription_plan: planProfile?.raw_app_meta_data?.subscription_plan === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.raw_app_meta_data?.subscription_plan,
+        },
+        rawAppMetaData: {
+          ...(planProfile?.rawAppMetaData || {}),
+          role: USER_ROLES.USER,
+          user_role: USER_ROLES.USER,
+          is_admin: false,
+          isAdmin: false,
+          tier: planProfile?.rawAppMetaData?.tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.rawAppMetaData?.tier,
+          feature_tier: planProfile?.rawAppMetaData?.feature_tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.rawAppMetaData?.feature_tier,
+          subscription_plan: planProfile?.rawAppMetaData?.subscription_plan === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.rawAppMetaData?.subscription_plan,
+        },
+      }
+    : planProfile;
   const featureGateOptions = {
-    admin: adminUser,
-    betaTester: BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester,
+    admin: adminViewingAsAdmin && adminUser,
+    betaTester: !actualAdminUser && (BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester),
     qaUnlock: QA_UNLOCK_PAID_FEATURES,
   };
-  const featureAllowed = (featureKey) => canUseFeature(planProfile, featureKey, featureGateOptions);
-  const unlockedFeatureKeys = getUnlockedFeatures(planProfile, featureGateOptions);
-  const lockedFeatureKeys = getLockedFeatures(planProfile, featureGateOptions);
+  const featureAllowed = (featureKey) => canUseFeature(regularPreviewPlanProfile, featureKey, featureGateOptions);
+  const unlockedFeatureKeys = getUnlockedFeatures(regularPreviewPlanProfile, featureGateOptions);
+  const lockedFeatureKeys = getLockedFeatures(regularPreviewPlanProfile, featureGateOptions);
   const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
   const accountStatusTitle = signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Private Beta Mode" : "Supabase Sign-In Required";
   const accountStatusDescription = signedInWithSupabase
@@ -12674,24 +12761,56 @@ function renderForgeHeader() {
       : isSupabaseConfigured
         ? "Cloud sync is enabled. Sign in with Supabase to save Phase 2 workflows."
         : "Cloud sync is enabled, but Supabase URL/key configuration is missing.";
-  const localBetaAdminEnabled =
-    BETA_LOCAL_MODE &&
-    typeof window !== "undefined" &&
-    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) &&
-    localStorage.getItem("et-tcg-local-admin") === "true";
-  const adminToolsVisible = adminUser || moderatorUser || localBetaAdminEnabled;
-  const adminEditModeAvailable = adminToolsVisible;
+  const adminToolsVisible = adminViewingAsAdmin;
+  const adminEditModeAvailable = adminViewingAsAdmin;
   const adminEditModeActive = adminEditModeAvailable && adminEditMode;
   const canReviewSharedData = adminEditModeActive;
-  const adminReviewIdentityLabel = adminUser || moderatorUser ? "Signed in as Admin / Moderator" : "Private Beta Admin Review";
-  const adminReviewIdentityDetail = adminUser || moderatorUser
-    ? "Your profile has admin or moderator review access. Shared-data writes remain protected by server-side database rules."
-    : "Enabled by private beta admin mode. Normal users submit suggestions for review instead of directly changing shared data.";
+  const adminReviewIdentityLabel = "Signed in as Admin / Moderator";
+  const adminReviewIdentityDetail = "Your actual profile has admin or moderator review access. View Mode only changes frontend display; protected writes remain guarded by server-side database rules.";
+  const setAdminModeView = (nextMode) => {
+    const normalized = nextMode === "regular" ? "regular" : "admin";
+    setAdminViewMode(normalized);
+    if (normalized !== "admin") setAdminEditMode(false);
+  };
   useEffect(() => {
     if (!adminEditModeAvailable && adminEditMode) {
       setAdminEditMode(false);
     }
   }, [adminEditModeAvailable, adminEditMode]);
+  useEffect(() => {
+    setAdminModeStorageReady(false);
+    if (!actualAdminUser) {
+      setAdminViewMode("regular");
+      setAdminEditMode(false);
+      return;
+    }
+    let saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(adminModeStorageKey) || "{}");
+    } catch {
+      saved = {};
+    }
+    const savedViewMode = saved.viewMode === "regular" ? "regular" : "admin";
+    setAdminViewMode(savedViewMode);
+    setAdminEditMode(savedViewMode === "admin" && saved.editMode === true);
+    setAdminModeStorageReady(true);
+  }, [actualAdminUser, adminModeStorageKey]);
+  useEffect(() => {
+    if (!actualAdminUser || !adminModeStorageReady) return;
+    try {
+      localStorage.setItem(adminModeStorageKey, JSON.stringify({
+        viewMode: adminViewMode === "regular" ? "regular" : "admin",
+        editMode: adminViewMode === "admin" && adminEditMode,
+      }));
+    } catch {
+      // Local storage can be unavailable in locked-down browsers; mode controls still work for the session.
+    }
+  }, [actualAdminUser, adminModeStorageReady, adminModeStorageKey, adminViewMode, adminEditMode]);
+  useEffect(() => {
+    if (!adminToolsVisible && activeTab === "adminReview") {
+      setActiveTab("dashboard");
+    }
+  }, [adminToolsVisible, activeTab]);
   const notificationPreferenceRows = [
     ...ALERT_TYPE_OPTIONS.map((option) => ({
       key: option.key,
@@ -12967,7 +13086,6 @@ function renderForgeHeader() {
   const watchlistPreview = [...missingMarketPriceItems, ...needsMarketCheckItems]
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
     .slice(0, 5);
-  const activeHomeAlertCount = (scoutSnapshot.bestBuyAlerts || []).length + needsPhotosItems.length + needsMarketCheckItems.length;
   const pinnedMarketWatchItems = workspaceWatchlist.filter((item) => item.pinned || item.isPinned).slice(0, 3);
   const homeRecentActivity = [
     recentPurchases[0]
@@ -13348,15 +13466,6 @@ function renderForgeHeader() {
   const scoutPatternRows = scoutSnapshot.restockPatterns?.length ? scoutSnapshot.restockPatterns : buildScoutRestockPatterns(scoutIntelRows);
   const confirmedScoutIntel = scoutIntelRows.filter((row) => ["confirmed", "likely"].includes(row.confidence));
   const predictionScoutIntel = scoutIntelRows.filter((row) => ["guess", "possible", "rumor"].includes(row.confidence) || /guess|prediction|planner/i.test(row.sourceType || ""));
-  const scoutStoreStockSnapshots = scoutPatternRows.slice(0, 6).map((pattern) => {
-    const latest = scoutIntelRows.find((row) => row.storeAlias === pattern.storeAlias);
-    return {
-      pattern,
-      latest,
-      products: latest?.productsMentioned?.length ? latest.productsMentioned.join(", ") : latest?.rawProductText || "No specific products",
-      status: latest?.confidence === "confirmed" || latest?.confidence === "likely" ? "Reported stocked" : "Unknown",
-    };
-  });
   const scoutForecastPreviewRows = scoutPatternRows.map((pattern) => {
     const relatedIntel = scoutIntelRows
       .filter((row) => {
@@ -15861,52 +15970,56 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <section className="panel scout-subpage-panel">
         <div className="compact-card-header">
           <div>
-            <h2>Predictions</h2>
-            <p>Reported intel, guesses, calendar windows, and one-stop stock checks.</p>
+            <h2>Forecast</h2>
+            <p>Confirmed reports, user guesses, and expected restock windows.</p>
           </div>
           <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
         </div>
         <div className="scout-intel-dashboard">
           <div className="scout-intel-column">
-            <h3>Confirmed / Reported</h3>
-            {confirmedScoutIntel.slice(0, 6).map((row) => (
+            <h3>Reports</h3>
+            {confirmedScoutIntel.length ? confirmedScoutIntel.slice(0, 6).map((row) => (
               <div className="scout-intel-card" key={row.id}>
                 <strong>{row.storeAlias}</strong>
                 <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
                 <p>{row.productsMentioned?.join(", ") || row.sourceText || "Reported stock intel"}</p>
               </div>
-            ))}
+            )) : (
+              <div className="small-empty-state">
+                <strong>No confirmed reports yet.</strong>
+                <span>Submit a store report to start building this view.</span>
+              </div>
+            )}
           </div>
           <div className="scout-intel-column">
-            <h3>Predictions / Guesses</h3>
-            {predictionScoutIntel.slice(0, 6).map((row) => (
+            <h3>Guesses / Planner</h3>
+            {predictionScoutIntel.length ? predictionScoutIntel.slice(0, 6).map((row) => (
               <div className="scout-intel-card scout-intel-card--prediction" key={row.id}>
                 <strong>{row.storeAlias}</strong>
                 <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
                 <p>{row.pattern || row.sourceText || "Pattern candidate"}</p>
               </div>
-            ))}
+            )) : (
+              <div className="small-empty-state">
+                <strong>No guesses saved yet.</strong>
+                <span>Add a guess when you hear a likely restock day or window.</span>
+              </div>
+            )}
           </div>
           <div className="scout-intel-column scout-intel-column--wide">
-            <h3>Weekly Restock Calendar</h3>
-            {scoutPatternRows.slice(0, 8).map((pattern) => (
+            <h3>Forecast Windows</h3>
+            {scoutPatternRows.length ? scoutPatternRows.slice(0, 8).map((pattern) => (
               <div className="scout-intel-card" key={pattern.id}>
                 <strong>{pattern.usualDays.length ? pattern.usualDays.join(" / ") : "This week"} - {pattern.nickname}</strong>
                 <span>Expected: {pattern.usualTimeWindow || "Unknown"} | Confidence: {pattern.computedConfidence}</span>
                 <p>{pattern.productTypePattern}</p>
               </div>
-            ))}
-          </div>
-          <div className="scout-intel-column scout-intel-column--wide">
-            <h3>One-stop Stock Checker</h3>
-            {scoutStoreStockSnapshots.slice(0, 8).map(({ pattern, latest, products, status }) => (
-              <div className="scout-intel-card" key={`stock-${pattern.id}`}>
-                <strong>{pattern.nickname}</strong>
-                <span>{status} | Confidence: {latest?.confidence || pattern.computedConfidence}</span>
-                <p>Products mentioned: {products}</p>
-                <small>Next predicted window: {pattern.usualDays.join(" / ") || "Unknown"} {pattern.usualTimeWindow !== "Unknown" ? `at ${pattern.usualTimeWindow}` : ""}</small>
+            )) : (
+              <div className="small-empty-state">
+                <strong>No forecast windows yet.</strong>
+                <span>Reports and guesses will build a useful forecast over time.</span>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -16921,7 +17034,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <button type="button" onClick={() => setSelectedListingId(listing.id)}>View</button>
           <button type="button" className="secondary-button" onClick={() => toggleSavedListing(listing.id)}>{marketplaceSavedIds.includes(listing.id) ? "Saved" : "Save"}</button>
           <button type="button" className="secondary-button" onClick={() => setListingReportTarget(listing)}>Report</button>
-          {listing.sellerUserId === (currentUserProfile.userId || user?.id) || adminUser ? (
+          {listing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible ? (
             <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { status: "Sold" })}>Mark Sold</button>
           ) : null}
           {adminMode ? (
@@ -17219,16 +17332,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => toggleSavedListing(selectedListing.id)}>Save Listing</button>
               <button type="button" className="secondary-button" disabled>Make Offer Later</button>
               <button type="button" className="secondary-button" onClick={() => setListingReportTarget(selectedListing)}>Report</button>
-              {selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminUser ? (
+              {selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible ? (
               <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(selectedListing.id, { status: "Sold" })}>Mark Sold</button>
               ) : null}
-              {selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminUser ? (
+              {selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible ? (
                 <>
                   <button type="button" className="secondary-button" onClick={() => editMarketplaceListing(selectedListing)}>Edit Listing</button>
                   <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(selectedListing.id, { status: "Archived" })}>Archive</button>
                 </>
               ) : null}
-              {adminUser ? (
+              {adminToolsVisible ? (
                 <>
                   <button type="button" className="secondary-button" onClick={() => approveMarketplaceListing(selectedListing.id)}>Approve</button>
                   <button type="button" className="secondary-button" onClick={() => rejectMarketplaceListing(selectedListing.id)}>Remove</button>
@@ -19367,7 +19480,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   return (
-    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
+    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -19419,22 +19532,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     </span>
     Menu
   </button>
-  {adminEditModeAvailable ? (
-    <button
-      type="button"
-      className={adminEditModeActive ? "admin-edit-toggle active" : "admin-edit-toggle"}
-      aria-pressed={adminEditModeActive}
-      onClick={() => {
-        setQuickAddMenuOpen(false);
-        setAdminEditMode((current) => !current);
-      }}
-    >
-      <span className="action-icon" aria-hidden="true">
-        <AppNavIcon kind="admin" />
-      </span>
-      {adminEditModeActive ? "Edit Mode" : "View Mode"}
-    </button>
-  ) : null}
   <button
     type="button"
     className="topbar-mobile-scan"
@@ -19542,6 +19639,61 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   </div>
 </div>
 
+      {actualAdminUser ? (
+        <section className={`admin-mode-control-bar${adminViewingAsAdmin ? " is-admin" : " is-regular"}${adminEditModeActive ? " is-editing" : ""}`} aria-label="Admin display controls">
+          <div className="admin-mode-control-summary">
+            <span className="admin-mode-role-pill">Actual role: {actualAdminRole}</span>
+            <strong>{adminViewingAsAdmin ? "Admin Mode active" : "Regular preview active"}</strong>
+            <small>
+              {adminViewingAsAdmin
+                ? "Admin dashboards and moderation tools are visible. Backend checks still use your actual role."
+                : "Admin-only UI is hidden so you can QA the normal user experience."}
+            </small>
+          </div>
+          <div className="admin-mode-controls">
+            <div className="admin-mode-segment" aria-label="Viewing mode">
+              <span>Viewing as</span>
+              <button
+                type="button"
+                className={displayedAdminViewMode === "regular" ? "active" : ""}
+                aria-pressed={displayedAdminViewMode === "regular"}
+                onClick={() => setAdminModeView("regular")}
+              >
+                Regular
+              </button>
+              <button
+                type="button"
+                className={displayedAdminViewMode === "admin" ? "active" : ""}
+                aria-pressed={displayedAdminViewMode === "admin"}
+                onClick={() => setAdminModeView("admin")}
+              >
+                Admin
+              </button>
+            </div>
+            <div className="admin-mode-segment admin-edit-segment" aria-label="Edit mode">
+              <span>Edit Mode</span>
+              <button
+                type="button"
+                className={!adminEditModeActive ? "active" : ""}
+                aria-pressed={!adminEditModeActive}
+                onClick={() => setAdminEditMode(false)}
+              >
+                Off
+              </button>
+              <button
+                type="button"
+                className={adminEditModeActive ? "active danger" : ""}
+                aria-pressed={adminEditModeActive}
+                disabled={!adminViewingAsAdmin}
+                onClick={() => setAdminEditMode(true)}
+              >
+                On
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {adminEditModeActive ? (
         <div className="admin-edit-mode-banner" role="status">
           <span>Admin Edit Mode ON</span>
@@ -19585,11 +19737,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <dl className="drawer-status-list">
                       <div><dt>App Version</dt><dd>E&T TCG beta web app</dd></div>
                       <div><dt>Account</dt><dd>{signedInWithSupabase ? "Supabase" : "Private beta"}</dd></div>
-                      <div><dt>Role</dt><dd>{adminUser ? "Admin" : "User"}</dd></div>
+                      <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
                       <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
                       <div><dt>Data</dt><dd>{cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
                     </dl>
-                    {adminUser ? <span className="status-badge">Admin</span> : null}
+                    {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
                   </div>
                   {!signedInWithSupabase ? (
                     authMode === "reset" ? (
@@ -19672,7 +19824,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     )
                   ) : (
                     <div className="drawer-info-card">
-                      <strong>{adminUser ? "Signed in as Admin" : "Signed in"}</strong>
+                      <strong>{actualAdminUser ? "Signed in with admin role" : "Signed in"}</strong>
                       <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase private beta records on this device.</p>
                       {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
                       {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
@@ -20044,15 +20196,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", "Admin moderation, imports, suggestions, and shared data controls", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
-                    <strong>{adminUser || moderatorUser ? "Admin Tools" : "Private Beta Admin Tools"}</strong>
-                    <p className="compact-subtitle">{adminUser || moderatorUser ? "Admin tools for moderation, imports, suggestions, and shared data controls." : "Private beta admin mode is enabled for testing review queues."} Protected credentials stay server-side.</p>
+                    <strong>Admin Tools</strong>
+                    <p className="compact-subtitle">Admin tools for moderation, imports, suggestions, and shared data controls. Protected credentials stay server-side.</p>
                   </div>
                   <div className="drawer-info-card admin-edit-mode-card">
-                    <strong>Admin Edit Mode</strong>
-                    <p className="compact-subtitle">Keep normal browsing clean. Turn this on only when reviewing, moderating, or repairing data.</p>
+                    <strong>Admin Display Controls</strong>
+                    <p className="compact-subtitle">Use the header control bar to switch Regular/Admin viewing and Edit Mode without changing your actual role.</p>
                     <div className="drawer-inline-actions">
-                      <button type="button" className={!adminEditModeActive ? "drawer-link active" : "drawer-link"} onClick={() => setAdminEditMode(false)}>View Mode</button>
-                      <button type="button" className={adminEditModeActive ? "drawer-link active" : "drawer-link"} onClick={() => setAdminEditMode(true)}>Edit Mode</button>
+                      <button type="button" className={adminViewMode === "regular" ? "drawer-link active" : "drawer-link"} onClick={() => setAdminModeView("regular")}>Regular Mode</button>
+                      <button type="button" className={adminViewMode === "admin" ? "drawer-link active" : "drawer-link"} onClick={() => setAdminModeView("admin")}>Admin Mode</button>
+                      <button type="button" className={!adminEditModeActive ? "drawer-link active" : "drawer-link"} onClick={() => setAdminEditMode(false)}>Edit Off</button>
+                      <button type="button" className={adminEditModeActive ? "drawer-link active" : "drawer-link"} disabled={!adminViewingAsAdmin} onClick={() => setAdminEditMode(true)}>Edit On</button>
                     </div>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Open Admin Dashboard</button>
@@ -21429,7 +21583,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         ) : null}
         {!activeTabLocked && activeTab === "tidepool" && renderTidepoolCommunity()}
         {!activeTabLocked && activeTab === "mySuggestions" && renderMySuggestionsPage()}
-        {!activeTabLocked && activeTab === "adminReview" && renderAdminReviewPage()}
+        {!activeTabLocked && activeTab === "adminReview" && adminToolsVisible && renderAdminReviewPage()}
         {!activeTabLocked && activeTab === "dashboard" && (
           <div className="dashboard-layout home-clean-layout">
             <PageHeader
@@ -21468,16 +21622,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 }}>
                   <p>Market Updates</p>
                   <h2>{recentMarketUpdates.length}</h2>
-                </button>
-                ) : null}
-                {scoutSnapshot.alertSettings?.showHomeActiveAlerts !== false ? (
-                <button type="button" className="home-metric-card" onClick={() => {
-                  setActiveTab("scout");
-                  setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-                  setScoutView("alerts");
-                }}>
-                  <p>Active Alerts</p>
-                  <h2>{activeHomeAlertCount}</h2>
                 </button>
                 ) : null}
               </div>
@@ -22039,13 +22183,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="panel" style={dashboardSectionStyle(dashboardSectionEnabled("wishlist") ? "wishlist" : "people_wishlists")}>
                   <h2>{dashboardSectionEnabled("people_wishlists") ? "Wishlists by Person" : "Wishlist"}</h2>
                   <div className="home-list">
-                    {vaultItems.filter((item) => String(item.actionNotes || "").toLowerCase().includes("wish")).slice(0, 5).map((item) => (
-                      <button type="button" className="home-list-row" key={item.id} onClick={() => setActiveTab("vault")}>
+                    {wishlistItems.slice(0, 5).map((item) => (
+                      <button type="button" className="home-list-row" key={item.id} onClick={() => { setActiveTab("vault"); setVaultSubTab("wishlist"); }}>
                         <span><strong>{item.name}</strong><small>{item.productType || "Vault item"}</small></span>
                         <b>{money(item.marketPrice)}</b>
                       </button>
                     ))}
-                    {vaultItems.filter((item) => String(item.actionNotes || "").toLowerCase().includes("wish")).length === 0 ? <p>No wishlist items yet.</p> : null}
+                    {wishlistItems.length === 0 ? <p>No wishlist items yet.</p> : null}
                   </div>
                 </div>
               ) : null}
@@ -22102,10 +22246,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <h3>Settings / Billing</h3>
                 <p>User type controls the app experience. Subscription plan controls what features are unlocked. Billing is coming soon; Stripe and checkout are not connected.</p>
                 <div className="cards mini-cards">
-                  <div className="card"><p>Role</p><h2>{adminUser ? "Admin" : "User"}</h2></div>
+                  <div className="card"><p>Role</p><h2>{actualAdminUser ? actualAdminRole : "user"}</h2></div>
                   <div className="card"><p>Current Tier</p><h2>{TIER_LABELS[currentTier] || currentPlan}</h2></div>
                   <div className="card"><p>Status</p><h2>{subscriptionProfile.subscriptionStatus || "active"}</h2></div>
-                  <div className="card"><p>Override</p><h2>{adminUser ? "Admin" : QA_UNLOCK_PAID_FEATURES ? "QA" : BETA_LOCAL_MODE ? "Beta" : "None"}</h2></div>
+                  <div className="card"><p>Override</p><h2>{adminViewingAsAdmin ? "Admin Mode" : QA_UNLOCK_PAID_FEATURES ? "QA" : BETA_LOCAL_MODE ? "Beta" : "None"}</h2></div>
                 </div>
                 <div className="quick-actions">
                   <button type="button" disabled>Billing Coming Soon</button>
@@ -22142,7 +22286,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </div>
                 <p className="compact-subtitle">
-                  {adminUser ? "Admin override active." : QA_UNLOCK_PAID_FEATURES ? "Local QA paid-feature unlock active." : BETA_LOCAL_MODE ? "Private beta override active." : paidUser ? "Paid-tier features unlocked by profile." : "Free plan: paid tools show locked notices instead of checkout."}
+                  {adminViewingAsAdmin ? "Admin Mode is active for this admin session." : actualAdminUser ? "Regular preview is active; admin tools are hidden." : QA_UNLOCK_PAID_FEATURES ? "Local QA paid-feature unlock active." : BETA_LOCAL_MODE ? "Private beta override active." : paidUser ? "Paid-tier features unlocked by profile." : "Free plan: paid tools show locked notices instead of checkout."}
                 </p>
                 <p className="compact-subtitle">
                   {currentUserProfile.source === "local-beta"
@@ -22491,16 +22635,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
               ) : null}
 
-              {dashboardSectionEnabled("alerts") ? (
-              <div className="panel" style={dashboardSectionStyle("alerts")}>
-                <h2>Alerts Preview</h2>
-                <div className="home-alerts">
-                  <span>{needsPhotosItems.length} need photos</span>
-                  <span>{needsMarketCheckItems.length} need market checks</span>
-                  <span>{readyToListItems.length} ready to list</span>
-                </div>
-              </div>
-              ) : null}
             </section>
             {dashboardSectionEnabled("action_center") ? (
             <section className="panel dashboard-section" style={dashboardSectionStyle("action_center")}>
@@ -22758,6 +22892,75 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 compact
               />
             </section>
+            ) : null}
+
+            {vaultSubTab === "wishlist" ? (
+              <section id="wishlist-items-section" className="panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Wishlist</h2>
+                    <p>Wanted items stay separate from owned Vault records and Forge business inventory.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => openProductAddFlow({ source: "vault-wishlist", destinations: { wishlist: true } })}
+                  >
+                    Add Wishlist Item
+                  </button>
+                </div>
+                <div className="inventory-list compact-inventory-list">
+                  {wishlistItems.length === 0 ? (
+                    <div className="empty-state vault-empty-state">
+                      <h3>No wishlist items yet.</h3>
+                      <p>Add wants here without counting them as owned collection or sellable inventory.</p>
+                    </div>
+                  ) : (
+                    wishlistItems.map((item) => (
+                      <article className="inventory-card compact-card vault-item-card" key={item.id}>
+                        <div className="compact-card-header">
+                          <div className="compact-title-block">
+                            <h3>{item.name}</h3>
+                            <p className="compact-subtitle">Wanted Qty {item.quantityWanted || item.quantity || 1}</p>
+                          </div>
+                          <span className={statusClass("Wishlist")}>Wishlist</span>
+                        </div>
+                        {item.itemImage ? (
+                          <div className="compact-image-wrap vault-image-wrap">
+                            <img src={item.itemImage} alt={item.name} />
+                          </div>
+                        ) : null}
+                        <div className="vault-card-facts">
+                          <p><strong>Target:</strong> {money(item.targetPrice || item.marketPrice || 0)}</p>
+                          <p><strong>Type:</strong> {item.productType || "Not listed"}</p>
+                          <p><strong>Notes:</strong> {item.wishlistNotes || item.actionNotes || item.notes || "No notes"}</p>
+                        </div>
+                        <div className="compact-actions vault-card-actions">
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => openProductAddFlow({
+                              source: "wishlist-owned-copy",
+                              destinations: { vault: true },
+                              seed: {
+                                itemName: item.name,
+                                category: item.category || "Pokemon",
+                                productType: item.productType || "",
+                                setName: item.setName || item.expansion || "",
+                                catalogProductId: item.catalogProductId || "",
+                                marketPrice: item.marketPrice || "",
+                                msrpPrice: item.msrpPrice || "",
+                              },
+                            })}
+                          >
+                            Add Owned Copy
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </section>
             ) : null}
 
             {vaultSubTab === "sets" ? (
@@ -23275,7 +23478,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           <option>All</option>
                           <option>Has market price</option>
                           <option>Has image</option>
-	                          {adminUser ? <option>Missing price</option> : null}
+	                          {adminEditModeActive ? <option>Missing price</option> : null}
                         </select>
                       </Field>
                     </div>
@@ -23467,7 +23670,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </section>
                   ) : null}
 
-                  {false && adminUser ? (
+                  {false && adminToolsVisible ? (
                   <CollapsibleFeatureSection title="Market Sources / Admin" summary="Admin-only source, sync, manual value, and market to-do tools" open={isFeatureSectionOpen("market_sources")} onToggle={() => toggleFeatureSection("market_sources")}>
                     <div className="small-empty-state admin-only-note">
                       <strong>Admin only.</strong>
@@ -23835,7 +24038,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="card"><p>Watchlist</p><h2>{workspaceWatchlist.length}</h2></div>
               </div>
             </section>
-            {adminUser ? (
+            {adminToolsVisible ? (
             <section className="panel">
               <h2>Catalog Admin / Data Tools</h2>
               <p className="compact-subtitle">Beta/dev structure for future imports from Pokemon TCG API/Scrydex, TCGdex, TCGCSV, official Pokemon product data, and manual CSVs. No live keys are required.</p>
@@ -23870,8 +24073,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             </section>
             )}
-          <CollapsibleFeatureSection title={adminUser ? "Manual Catalog Item" : "Catalog Suggestions"} summary={adminUser ? "Add or edit missing sealed products and individual cards locally" : "Suggest missing products, UPC/SKU links, and corrections for admin review"} open={isFeatureSectionOpen("catalog_manual")} onToggle={() => toggleFeatureSection("catalog_manual")}>
-          {adminUser ? (
+          <CollapsibleFeatureSection title={adminToolsVisible ? "Manual Catalog Item" : "Catalog Suggestions"} summary={adminToolsVisible ? "Add or edit missing sealed products and individual cards locally" : "Suggest missing products, UPC/SKU links, and corrections for admin review"} open={isFeatureSectionOpen("catalog_manual")} onToggle={() => toggleFeatureSection("catalog_manual")}>
+          {adminToolsVisible ? (
           <>
           <SmartAddCatalog onUseProduct={useSmartCatalogProduct} />
           <section className="panel">
@@ -23938,7 +24141,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             </div>
           )}
             <section className="panel">
-              <h2>{adminUser ? (editingCatalogId ? "Edit Catalog Product" : "Add Product Catalog Item") : (editingCatalogId ? "Suggest Product Correction" : "Suggest Missing Product")}</h2>
+              <h2>{adminToolsVisible ? (editingCatalogId ? "Edit Catalog Product" : "Add Product Catalog Item") : (editingCatalogId ? "Suggest Product Correction" : "Suggest Missing Product")}</h2>
               <button type="button" className="secondary-button" onClick={() => setShowCatalogScanner(true)}>Open Catalog Scanner</button>
               {showCatalogScanner && <BarcodeScanner onScan={(code) => { updateCatalogForm("barcode", code); setShowCatalogScanner(false); }} onClose={() => setShowCatalogScanner(false)} />}
               <form onSubmit={addCatalogProduct} className="form">
@@ -24079,7 +24282,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <Field label="Mid Price"><input type="number" step="0.01" value={catalogForm.midPrice} onChange={(e) => updateCatalogForm("midPrice", e.target.value)} /></Field>
                 <Field label="High Price"><input type="number" step="0.01" value={catalogForm.highPrice} onChange={(e) => updateCatalogForm("highPrice", e.target.value)} /></Field>
                 <Field label="Notes"><input value={catalogForm.notes} onChange={(e) => updateCatalogForm("notes", e.target.value)} /></Field>
-                <button type="submit">{adminUser ? (editingCatalogId ? "Save Catalog Product" : "Add Catalog Product") : "Submit for Review"}</button>
+                <button type="submit">{adminToolsVisible ? (editingCatalogId ? "Save Catalog Product" : "Add Catalog Product") : "Submit for Review"}</button>
                 {editingCatalogId && <button type="button" className="secondary-button" onClick={() => { setEditingCatalogId(null); setCatalogForm(blankCatalog); }}>Cancel Edit</button>}
               </form>
             </section>
