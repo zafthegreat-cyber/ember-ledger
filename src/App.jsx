@@ -2371,6 +2371,8 @@ export default function App() {
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
   const [lockedFeatureKey, setLockedFeatureKey] = useState("");
+  const [adminEditMode, setAdminEditMode] = useState(false);
+  const [adminConfirmAction, setAdminConfirmAction] = useState(null);
   const quickAddRef = useRef(null);
   const quickAddButtonRef = useRef(null);
   const quickAddMenuRef = useRef(null);
@@ -2414,7 +2416,7 @@ export default function App() {
   const [scoutReportsPage, setScoutReportsPage] = useState(1);
   const [scoutScoreModalOpen, setScoutScoreModalOpen] = useState(false);
   const [selectedScoutReport, setSelectedScoutReport] = useState(null);
-  const [scoutReportDeleteTarget, setScoutReportDeleteTarget] = useState(null);
+  const [scoutReportModerationTarget, setScoutReportModerationTarget] = useState(null);
   const scoutReportsRef = useRef(null);
   const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
   const [forgeSubTab, setForgeSubTab] = useState(initialRouteState.forgeSubTab || "overview");
@@ -6321,6 +6323,32 @@ export default function App() {
         post.postId === postId ? { ...post, ...updates, updatedAt: new Date().toISOString() } : post
       ),
     });
+  }
+
+  function requestAdminActionConfirmation({ title, message, confirmLabel = "Confirm", danger = false, onConfirm }) {
+    setAdminConfirmAction({ title, message, confirmLabel, danger, onConfirm });
+  }
+
+  function runTidepoolAdminPostAction(post, label, updates, options = {}) {
+    if (!adminEditModeActive) {
+      setVaultToast("Turn on Admin Edit Mode to moderate Tidepool posts.");
+      return;
+    }
+    const execute = () => {
+      updateTidepoolPost(post.postId, updates);
+      setVaultToast(`${label} applied to Tidepool post.`);
+    };
+    if (options.confirm) {
+      requestAdminActionConfirmation({
+        title: `${label} Tidepool post?`,
+        message: options.message || "This changes the post moderation state for beta users.",
+        confirmLabel: label,
+        danger: Boolean(options.danger),
+        onConfirm: execute,
+      });
+      return;
+    }
+    execute();
   }
 
   function addTidepoolReaction(postId, reactionType) {
@@ -12423,6 +12451,31 @@ function renderForgeHeader() {
   const currentTier = getUserTier(planProfile);
   const paidUser = isPaidUser(planProfile);
   const adminUser = isAdminUser(planProfile);
+  const explicitAdminRole = String(
+    currentUserProfile?.role ||
+    currentUserProfile?.appRole ||
+    currentUserProfile?.app_role ||
+    currentUserProfile?.adminRole ||
+    currentUserProfile?.admin_role ||
+    planProfile?.role ||
+    planProfile?.appRole ||
+    planProfile?.app_role ||
+    planProfile?.adminRole ||
+    planProfile?.admin_role ||
+    ""
+  ).toLowerCase();
+  const moderatorUser =
+    ["admin", "super_admin", "super-admin", "moderator"].includes(explicitAdminRole) ||
+    Boolean(
+      currentUserProfile?.isAdmin ||
+      currentUserProfile?.is_admin ||
+      currentUserProfile?.isModerator ||
+      currentUserProfile?.is_moderator ||
+      planProfile?.isAdmin ||
+      planProfile?.is_admin ||
+      planProfile?.isModerator ||
+      planProfile?.is_moderator
+    );
   const featureGateOptions = {
     admin: adminUser,
     betaTester: BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester,
@@ -12445,12 +12498,19 @@ function renderForgeHeader() {
     typeof window !== "undefined" &&
     ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) &&
     localStorage.getItem("et-tcg-local-admin") === "true";
-  const adminToolsVisible = adminUser || localBetaAdminEnabled;
-  const canReviewSharedData = adminToolsVisible;
-  const adminReviewIdentityLabel = adminUser ? "Signed in as Admin" : "Private Beta Admin Review";
-  const adminReviewIdentityDetail = adminUser
-    ? "Your profile has admin review access. Shared-data writes remain protected by server-side database rules."
+  const adminToolsVisible = adminUser || moderatorUser || localBetaAdminEnabled;
+  const adminEditModeAvailable = adminToolsVisible;
+  const adminEditModeActive = adminEditModeAvailable && adminEditMode;
+  const canReviewSharedData = adminEditModeActive;
+  const adminReviewIdentityLabel = adminUser || moderatorUser ? "Signed in as Admin / Moderator" : "Private Beta Admin Review";
+  const adminReviewIdentityDetail = adminUser || moderatorUser
+    ? "Your profile has admin or moderator review access. Shared-data writes remain protected by server-side database rules."
     : "Enabled by private beta admin mode. Normal users submit suggestions for review instead of directly changing shared data.";
+  useEffect(() => {
+    if (!adminEditModeAvailable && adminEditMode) {
+      setAdminEditMode(false);
+    }
+  }, [adminEditModeAvailable, adminEditMode]);
   const notificationPreferenceRows = [
     ...ALERT_TYPE_OPTIONS.map((option) => ({
       key: option.key,
@@ -13080,13 +13140,13 @@ function renderForgeHeader() {
     commentCount: tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed").length,
     reactionCount: tidepoolReactions.filter((reaction) => reaction.postId === post.postId).length,
   }));
-  const visibleTidepoolFilters = TIDEPOOL_FEED_FILTERS.filter((filter) => filter !== "Needs Review" || adminToolsVisible);
+  const visibleTidepoolFilters = TIDEPOOL_FEED_FILTERS.filter((filter) => filter !== "Needs Review" || adminEditModeActive);
   const filteredTidepoolPosts = tidepoolPostsWithCounts
     .filter((post) => {
       if (post.status === "removed") return false;
-      if (!adminToolsVisible && ["mock", "demo", "test"].includes(String(post.sourceType || "").toLowerCase())) return false;
-      if (post.status === "hidden" && (!adminToolsVisible || tidepoolFilter !== "Needs Review")) return false;
-      if (tidepoolFilter === "Needs Review" && !adminToolsVisible) return false;
+      if (!adminEditModeActive && ["mock", "demo", "test"].includes(String(post.sourceType || "").toLowerCase())) return false;
+      if (post.status === "hidden" && (!adminEditModeActive || tidepoolFilter !== "Needs Review")) return false;
+      if (tidepoolFilter === "Needs Review" && !adminEditModeActive) return false;
       if (tidepoolFilter === "Verified") return post.verificationStatus === "verified";
       if (tidepoolFilter === "Questions") return post.postType === "Question";
       if (tidepoolFilter === "Events") return post.postType === "Event";
@@ -13807,7 +13867,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function shouldShowCatalogRepairLabels() {
-    return Boolean(adminToolsVisible);
+    return Boolean(adminEditModeActive);
   }
 
   function isCatalogCardProduct(product = {}) {
@@ -13911,7 +13971,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       context.missingLikelyCategories?.length ? `May be missing: ${context.missingLikelyCategories.join(", ")}.` : "",
     ].filter(Boolean).join(" ");
 
-    if (adminUser) {
+    if (adminEditModeActive) {
       setActiveTab("catalog");
       setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
       setCatalogForm((current) => ({
@@ -14997,16 +15057,137 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setScoutSectionsOpen((current) => ({ ...current, [key]: !current[key] }));
   }
 
-  function deleteScoutReport(report) {
+  const SCOUT_ADMIN_MODERATION_ACTIONS = {
+    verify: {
+      label: "Verify",
+      rpc: "admin_verify_store_report",
+      status: "verified",
+      message: "Scout report verified.",
+    },
+    hide: {
+      label: "Hide",
+      rpc: "admin_hide_store_report",
+      status: "hidden",
+      message: "Scout report hidden.",
+      risky: true,
+    },
+    restore: {
+      label: "Restore",
+      rpc: "admin_restore_store_report",
+      status: "unverified",
+      message: "Scout report restored.",
+    },
+    disputed: {
+      label: "Mark Disputed",
+      rpc: "admin_mark_report_disputed",
+      status: "disputed",
+      message: "Scout report marked disputed.",
+      risky: true,
+    },
+    softDelete: {
+      label: "Soft Delete",
+      rpc: "admin_soft_delete_store_report",
+      status: "admin_removed",
+      message: "Scout report soft deleted.",
+      risky: true,
+    },
+  };
+
+  function getScoutAdminModerationAction(actionKey) {
+    return SCOUT_ADMIN_MODERATION_ACTIONS[actionKey] || null;
+  }
+
+  function updateScoutReportModerationLocally(report, actionKey) {
+    const action = getScoutAdminModerationAction(actionKey);
     const reportId = getScoutReportId(report);
-    if (!reportId) return;
+    if (!action || !reportId) return;
+    const now = new Date().toISOString();
     const scoutData = getSharedScoutData();
-    const nextReports = (scoutData.reports || scoutSnapshot.reports || []).filter((candidate) => getScoutReportId(candidate) !== reportId);
+    const baseReports = scoutData.reports || scoutSnapshot.reports || [];
+    const nextReports = baseReports.map((candidate) => {
+      if (String(getScoutReportId(candidate)) !== String(reportId)) return candidate;
+      const hidden = action.status === "hidden";
+      const adminRemoved = action.status === "admin_removed";
+      const restored = action.status === "unverified";
+      return {
+        ...candidate,
+        verificationStatus: action.status,
+        verification_status: action.status,
+        moderationStatus: action.status,
+        moderation_status: action.status,
+        status: adminRemoved ? "removed" : hidden ? "hidden" : restored ? "active" : candidate.status,
+        hidden: hidden ? true : restored ? false : candidate.hidden || false,
+        adminRemoved: adminRemoved ? true : restored ? false : candidate.adminRemoved || false,
+        admin_removed: adminRemoved ? true : restored ? false : candidate.admin_removed || false,
+        adminNotes: `Admin Edit Mode: ${action.label}`,
+        admin_notes: `Admin Edit Mode: ${action.label}`,
+        adminUpdatedAt: now,
+        admin_updated_at: now,
+        updatedAt: now,
+        updated_at: now,
+      };
+    });
     saveSharedScoutData({ ...scoutData, reports: nextReports });
-    setScoutReportDeleteTarget(null);
-    setSelectedScoutReport(null);
-    setScoutReportsPage(1);
-    setVaultToast("Scout report deleted.");
+    setSelectedScoutReport((current) => {
+      if (!current || String(getScoutReportId(current)) !== String(reportId)) return current;
+      return nextReports.find((candidate) => String(getScoutReportId(candidate)) === String(reportId)) || current;
+    });
+  }
+
+  async function runScoutReportAdminModeration(report, actionKey) {
+    const action = getScoutAdminModerationAction(actionKey);
+    const reportId = getScoutReportId(report);
+    if (!adminEditModeActive) {
+      setVaultToast("Admin Edit Mode is required for moderation actions.");
+      return;
+    }
+    if (!action || !reportId) {
+      setVaultToast("This moderation action is not available for this report.");
+      return;
+    }
+
+    const syncedReportId = uuidOrNull(reportId);
+    if (isSupabaseConfigured && supabase && syncedReportId) {
+      const { error } = await supabase.rpc(action.rpc, {
+        p_report_id: syncedReportId,
+        p_admin_note: `Admin Edit Mode: ${action.label}`,
+      });
+      if (error) {
+        setVaultToast(`${action.label} failed: ${error.message}`);
+        return;
+      }
+      updateScoutReportModerationLocally(report, actionKey);
+      setVaultToast(`${action.message} Supabase RPC completed.`);
+      return;
+    }
+
+    updateScoutReportModerationLocally(report, actionKey);
+    setVaultToast(`${action.message} Local beta report updated; Supabase RPC requires a synced report ID.`);
+  }
+
+  function queueScoutReportAdminModeration(report, actionKey) {
+    const action = getScoutAdminModerationAction(actionKey);
+    if (!action) {
+      setVaultToast("That admin action is not available yet.");
+      return;
+    }
+    if (!adminEditModeActive) {
+      setVaultToast("Turn on Admin Edit Mode to moderate reports.");
+      return;
+    }
+    setScoutReportModerationTarget({ report, actionKey });
+  }
+
+  function getScoutReportAdminActions(report) {
+    if (!adminEditModeActive) return [];
+    return [
+      { label: "Verify", onClick: () => queueScoutReportAdminModeration(report, "verify") },
+      { label: "Hide", onClick: () => queueScoutReportAdminModeration(report, "hide") },
+      { label: "Restore", onClick: () => queueScoutReportAdminModeration(report, "restore") },
+      { label: "Mark Disputed", onClick: () => queueScoutReportAdminModeration(report, "disputed") },
+      { label: "Soft Delete", danger: true, onClick: () => queueScoutReportAdminModeration(report, "softDelete") },
+      { label: "View Audit", onClick: () => setVaultToast("Audit details are not available in this beta UI yet.") },
+    ];
   }
 
   function editScoutReport(report) {
@@ -15113,8 +15294,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             actions={[
               { label: "View", onClick: () => setSelectedScoutReport(report) },
               { label: "Edit", onClick: () => editScoutReport(report) },
+              ...getScoutReportAdminActions(report),
             ]}
-            onDelete={adminToolsVisible ? () => setScoutReportDeleteTarget(report) : undefined}
           />
         </div>
       </article>
@@ -15363,6 +15544,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <span>{row.retailer}{row.city ? ` - ${row.city}` : ""}</span>
                     </div>
                     <b className={`scout-radar-status scout-radar-status--${status.toLowerCase().replace(/\s+/g, "-")}`}>{status}</b>
+                    {adminEditModeActive ? (
+                      <OverflowMenu
+                        buttonLabel="Admin"
+                        actions={[
+                          { label: "Edit Store", onClick: () => setVaultToast("Store editing will use the admin store approval flow in a later pass.") },
+                          { label: "View Details", onClick: () => setVaultToast("Store audit details are not available in this beta UI yet.") },
+                          { label: "Mark Disputed", onClick: () => setVaultToast("Drop Radar dispute moderation is not wired for this card yet.") },
+                        ]}
+                      />
+                    ) : null}
                   </div>
                   <dl>
                     <div><dt>Last confirmed</dt><dd>{row.updatedLabel || "No report yet"}</dd></div>
@@ -15437,6 +15628,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <span className={`status-badge scout-confidence-badge scout-confidence-badge--${row.confidenceKey}`}>
                           {row.confidenceLabel}
                         </span>
+                        {adminEditModeActive ? (
+                          <OverflowMenu
+                            buttonLabel="Admin"
+                            actions={[
+                              { label: "Edit Prediction", onClick: () => setVaultToast("Prediction editing will use admin prediction tools in a later pass.") },
+                              { label: "Verify", onClick: () => setVaultToast("Prediction verify is not wired to backend persistence yet.") },
+                              { label: "Hide", onClick: () => setVaultToast("Prediction hide is not wired to backend persistence yet.") },
+                              { label: "View Audit", onClick: () => setVaultToast("Prediction audit details are not available in this beta UI yet.") },
+                            ]}
+                          />
+                        ) : null}
                       </div>
                       <div className="scout-forecast-meta">
                         <span>Expected: {row.windowLabel}</span>
@@ -16945,17 +17147,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       {post.flagged ? <span className="status-badge needs-review">Needs Review</span> : null}
                       {post.sourceType !== "user" ? <span className={statusClass(sourceBadge)}>{sourceBadge}</span> : null}
                     </div>
-                    {adminToolsVisible ? (
-                      <details className="tidepool-moderation-menu">
-                        <summary>Moderation</summary>
-                        <div>
-                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { verificationStatus: "verified", sourceType: "admin" })}>Verify Post</button>
-                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { verificationStatus: "disputed" })}>Mark Disputed</button>
-                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { status: "hidden" })}>Hide Post</button>
-                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { status: "removed" })}>Remove Post</button>
-                          <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { commentsLocked: true })}>Lock Comments</button>
-                        </div>
-                      </details>
+                    {adminEditModeActive ? (
+                      <OverflowMenu
+                        buttonLabel="Admin"
+                        actions={[
+                          { label: "Verify", onClick: () => runTidepoolAdminPostAction(post, "Verify", { verificationStatus: "verified", sourceType: "admin" }) },
+                          { label: "Mark Disputed", onClick: () => runTidepoolAdminPostAction(post, "Mark Disputed", { verificationStatus: "disputed" }, { confirm: true }) },
+                          { label: "Hide", onClick: () => runTidepoolAdminPostAction(post, "Hide", { status: "hidden" }, { confirm: true, danger: true }) },
+                          { label: "Restore", onClick: () => runTidepoolAdminPostAction(post, "Restore", { status: "active", verificationStatus: post.verificationStatus === "disputed" ? "pending" : post.verificationStatus }) },
+                          { label: "Soft Delete", danger: true, onClick: () => runTidepoolAdminPostAction(post, "Soft Delete", { status: "removed" }, { confirm: true, danger: true, message: "This hides the post from normal feed views without hard-deleting beta data." }) },
+                          { label: "Lock Comments", onClick: () => runTidepoolAdminPostAction(post, "Lock Comments", { commentsLocked: true }, { confirm: true }) },
+                          { label: "View Audit", onClick: () => setVaultToast("Tidepool audit details are not available in this beta UI yet.") },
+                        ]}
+                      />
                     ) : null}
                   </div>
                   <div className="tidepool-post-copy">
@@ -18744,7 +18948,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }, [selectedCatalogDetailId]);
 
   useEffect(() => {
-    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || feedbackDialog);
+    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || selectedScoutReport || scoutReportModerationTarget || adminConfirmAction || feedbackDialog);
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
@@ -18816,14 +19020,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         setScoutScoreModalOpen(false);
         return;
       }
+      if (scoutReportModerationTarget) {
+        event.preventDefault();
+        setScoutReportModerationTarget(null);
+        return;
+      }
       if (selectedScoutReport) {
         event.preventDefault();
         setSelectedScoutReport(null);
         return;
       }
-      if (scoutReportDeleteTarget) {
+      if (adminConfirmAction) {
         event.preventDefault();
-        setScoutReportDeleteTarget(null);
+        setAdminConfirmAction(null);
         return;
       }
       if (feedbackDialog) {
@@ -18833,7 +19042,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportDeleteTarget, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportModerationTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (!user) {
     return (
@@ -18872,7 +19081,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   return (
-    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}`}>
+    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -18924,6 +19133,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     </span>
     Menu
   </button>
+  {adminEditModeAvailable ? (
+    <button
+      type="button"
+      className={adminEditModeActive ? "admin-edit-toggle active" : "admin-edit-toggle"}
+      aria-pressed={adminEditModeActive}
+      onClick={() => {
+        setQuickAddMenuOpen(false);
+        setAdminEditMode((current) => !current);
+      }}
+    >
+      <span className="action-icon" aria-hidden="true">
+        <AppNavIcon kind="admin" />
+      </span>
+      {adminEditModeActive ? "Edit Mode" : "View Mode"}
+    </button>
+  ) : null}
   <button
     type="button"
     className="topbar-mobile-scan"
@@ -19030,6 +19255,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     ) : null}
   </div>
 </div>
+
+      {adminEditModeActive ? (
+        <div className="admin-edit-mode-banner" role="status">
+          <span>Admin Edit Mode ON</span>
+          <small>Moderation and repair controls are visible only to admins/reviewers.</small>
+        </div>
+      ) : null}
 
       <nav className="main-tabs app-main-tabs" aria-label="E&T TCG main tabs">
         {mainTabs.map((tab) => (
@@ -19461,18 +19693,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {adminToolsVisible ? renderMenuPullDown("admin", "Admin Tools", "Admin moderation, imports, suggestions, and shared data controls", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
-                    <strong>{adminUser ? "Admin Tools" : "Private Beta Admin Tools"}</strong>
-                    <p className="compact-subtitle">{adminUser ? "Admin tools for moderation, imports, suggestions, and shared data controls." : "Private beta admin mode is enabled for testing review queues."} Protected credentials stay server-side.</p>
+                    <strong>{adminUser || moderatorUser ? "Admin Tools" : "Private Beta Admin Tools"}</strong>
+                    <p className="compact-subtitle">{adminUser || moderatorUser ? "Admin tools for moderation, imports, suggestions, and shared data controls." : "Private beta admin mode is enabled for testing review queues."} Protected credentials stay server-side.</p>
+                  </div>
+                  <div className="drawer-info-card admin-edit-mode-card">
+                    <strong>Admin Edit Mode</strong>
+                    <p className="compact-subtitle">Keep normal browsing clean. Turn this on only when reviewing, moderating, or repairing data.</p>
+                    <div className="drawer-inline-actions">
+                      <button type="button" className={!adminEditModeActive ? "drawer-link active" : "drawer-link"} onClick={() => setAdminEditMode(false)}>View Mode</button>
+                      <button type="button" className={adminEditModeActive ? "drawer-link active" : "drawer-link"} onClick={() => setAdminEditMode(true)}>Edit Mode</button>
+                    </div>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Open Admin Dashboard</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("All"); setActiveTab("adminReview"); })}>Import Status & Review Queue</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Needs Review"))}>Tidepool Moderation</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminEditMode(true); openTidepoolCommunity("Needs Review"); })}>Tidepool Moderation</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Market Source Controls"); setActiveTab("adminReview"); })}>Market Source Controls</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Marketplace Listings"); setActiveTab("adminReview"); })}>Marketplace Listing Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Store Suggestions"); setActiveTab("adminReview"); })}>Store Correction Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Catalog Suggestions"); setActiveTab("adminReview"); })}>Catalog Correction Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("SKU / UPC Suggestions"); setActiveTab("adminReview"); })}>Best Buy SKU Review</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); })}>Scout Report Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminEditMode(true); setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); })}>Scout Report Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Store Intelligence Suggestions"); setActiveTab("adminReview"); })}>Store Intelligence Suggestions</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Flagged / Duplicate Items"); setActiveTab("adminReview"); })}>Flagged / Duplicate Items</button>
                 </div>
@@ -19732,26 +19972,73 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {renderScoutReportCard(selectedScoutReport)}
             <div className="location-modal-actions modal-sticky-footer">
               <button type="button" onClick={() => editScoutReport(selectedScoutReport)}>Edit</button>
-              {adminToolsVisible ? <button type="button" className="delete-button" onClick={() => setScoutReportDeleteTarget(selectedScoutReport)}>Delete</button> : null}
+              {adminEditModeActive ? (
+                <OverflowMenu
+                  buttonLabel="Admin"
+                  actions={getScoutReportAdminActions(selectedScoutReport)}
+                />
+              ) : null}
               <button type="button" className="ghost-button" onClick={() => setSelectedScoutReport(null)}>Close</button>
             </div>
           </section>
         </div>
       ) : null}
 
-      {scoutReportDeleteTarget ? (
-        <div className="location-modal-backdrop" role="presentation" onClick={() => setScoutReportDeleteTarget(null)}>
-          <section className="location-modal scout-delete-confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-delete-title" onClick={(event) => event.stopPropagation()}>
+      {scoutReportModerationTarget ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setScoutReportModerationTarget(null)}>
+          <section className="location-modal scout-admin-confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-admin-confirm-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header">
               <div>
-                <h2 id="scout-delete-title">Delete Scout report?</h2>
-                <p>This will delete {normalizeScoutReportItems(scoutReportDeleteTarget)[0]?.productName || "this report"} from your private beta Scout data.</p>
+                <h2 id="scout-admin-confirm-title">{getScoutAdminModerationAction(scoutReportModerationTarget.actionKey)?.label || "Moderate report"}?</h2>
+                <p>This uses the approved admin moderation RPC for cloud-synced reports. Local beta reports are marked locally only.</p>
               </div>
-              <button type="button" className="modal-close-button" aria-label="Close delete confirmation" onClick={() => setScoutReportDeleteTarget(null)}>X</button>
+              <button type="button" className="modal-close-button" aria-label="Close moderation confirmation" onClick={() => setScoutReportModerationTarget(null)}>X</button>
+            </div>
+            <div className="drawer-info-card">
+              <strong>{getScoutReportStore(scoutReportModerationTarget.report).name || scoutReportModerationTarget.report?.storeName || "Scout report"}</strong>
+              <p className="compact-subtitle">{normalizeScoutReportItems(scoutReportModerationTarget.report)[0]?.productName || scoutReportModerationTarget.report?.note || "No product details added."}</p>
             </div>
             <div className="location-modal-actions modal-sticky-footer">
-              <button type="button" className="delete-button" onClick={() => deleteScoutReport(scoutReportDeleteTarget)}>Delete</button>
-              <button type="button" className="ghost-button" onClick={() => setScoutReportDeleteTarget(null)}>Cancel</button>
+              <button
+                type="button"
+                className={getScoutAdminModerationAction(scoutReportModerationTarget.actionKey)?.risky ? "delete-button" : ""}
+                onClick={() => {
+                  const target = scoutReportModerationTarget;
+                  setScoutReportModerationTarget(null);
+                  runScoutReportAdminModeration(target.report, target.actionKey);
+                }}
+              >
+                {getScoutAdminModerationAction(scoutReportModerationTarget.actionKey)?.label || "Confirm"}
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setScoutReportModerationTarget(null)}>Cancel</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {adminConfirmAction ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setAdminConfirmAction(null)}>
+          <section className="location-modal admin-action-confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="admin-action-confirm-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="admin-action-confirm-title">{adminConfirmAction.title || "Confirm admin action"}</h2>
+                <p>{adminConfirmAction.message || "This admin action changes moderation state."}</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close admin confirmation" onClick={() => setAdminConfirmAction(null)}>X</button>
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button
+                type="button"
+                className={adminConfirmAction.danger ? "delete-button" : ""}
+                onClick={() => {
+                  const action = adminConfirmAction;
+                  setAdminConfirmAction(null);
+                  action.onConfirm?.();
+                }}
+              >
+                {adminConfirmAction.confirmLabel || "Confirm"}
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setAdminConfirmAction(null)}>Cancel</button>
             </div>
           </section>
         </div>
@@ -22191,7 +22478,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <Scout
                 targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }}
                 compact
-                adminMode={adminUser}
+                adminMode={adminEditModeActive}
                 supabase={supabase}
                 isSupabaseConfigured={isSupabaseConfigured}
                 mapCatalogRow={mapCatalog}
@@ -22211,7 +22498,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }}
                 compact
                 onLocationRequired={requestScoutLocation}
-                adminMode={adminUser}
+                adminMode={adminEditModeActive}
                 supabase={supabase}
                 isSupabaseConfigured={isSupabaseConfigured}
                 mapCatalogRow={mapCatalog}
@@ -22571,7 +22858,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         {label}
                       </button>
                     ))}
-	                    {["Has market price", "Has image", ...(adminUser ? ["Missing price"] : [])].map((filter) => (
+	                    {["Has market price", "Has image", ...(adminEditModeActive ? ["Missing price"] : [])].map((filter) => (
                       <button
                         key={filter}
                         type="button"
@@ -22587,7 +22874,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       type="button"
                       className="secondary-button"
                       onClick={() => {
-                        if (adminUser) {
+                        if (adminEditModeActive) {
                           setActiveTab("catalog");
                           setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
                           return;
@@ -22601,7 +22888,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         });
                       }}
                     >
-                      {adminUser ? "Add Catalog Item" : "Suggest Missing Product"}
+                      {adminEditModeActive ? "Add Catalog Item" : "Suggest Missing Product"}
                     </button>
                   </div>
                   ) : null}
@@ -22680,10 +22967,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                             source: "tidetradr-sealed-coverage-warning",
                           })}
                         >
-                          {adminUser ? "Add Catalog Item" : "Suggest Missing Product"}
+                          {adminEditModeActive ? "Add Catalog Item" : "Suggest Missing Product"}
                         </button>
                       </div>
-                      {adminToolsVisible ? (
+                      {adminEditModeActive ? (
                         <details className="catalog-coverage-diagnostics">
                           <summary>Coverage diagnostics</summary>
                           <p>Searched aliases: {supabaseCatalogStatus.coverageWarning.searchedAliases.join(", ") || "none"}</p>
@@ -22739,7 +23026,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           type="button"
                           className="secondary-button"
                           onClick={() => {
-                            if (adminUser) {
+                            if (adminEditModeActive) {
                               setActiveTab("catalog");
                               setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
                               return;
@@ -22753,7 +23040,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                             });
                           }}
                         >
-                          {adminUser ? "Add Catalog Item" : "Suggest Missing Product"}
+                          {adminEditModeActive ? "Add Catalog Item" : "Suggest Missing Product"}
                         </button>
                       </div>
                     </div>
@@ -24424,10 +24711,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       </div>
                     )}
                     <div className="image-source-panel">
-                      {adminToolsVisible ? <span>Image source: {getImageSourceLabel(selectedCatalogDetailPricingProduct)}</span> : null}
-                      {adminToolsVisible && selectedCatalogDetailPricingProduct?.imageNeedsReview ? <strong>Image needs review</strong> : null}
+                      {shouldShowCatalogRepairLabels() ? <span>Image source: {getImageSourceLabel(selectedCatalogDetailPricingProduct)}</span> : null}
+                      {shouldShowCatalogRepairLabels() && selectedCatalogDetailPricingProduct?.imageNeedsReview ? <strong>Image needs review</strong> : null}
                       <div className="quick-actions">
-                        {adminUser ? (
+                        {shouldShowCatalogRepairLabels() ? (
                           <>
                             <button type="button" className="secondary-button" onClick={() => updateCatalogImageMeta(selectedCatalogDetailProduct.id, { imageNeedsReview: false, imageStatus: selectedCatalogDetailProduct.imageStatus || "manual" })}>Mark Correct</button>
                             <button type="button" className="secondary-button" onClick={() => updateCatalogImageMeta(selectedCatalogDetailProduct.id, { imageNeedsReview: true })}>Mark Incorrect</button>
@@ -24461,8 +24748,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 	                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market price missing"} />
 	                      {selectedCatalogDetailIsSealed ? <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "Unknown"} /> : null}
 	                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
-	                      {adminToolsVisible ? <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
-	                      {adminToolsVisible ? <DetailItem label="Price Confidence" value={selectedCatalogDetailMarketInfo?.confidenceLevel} /> : null}
+	                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
+	                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Price Confidence" value={selectedCatalogDetailMarketInfo?.confidenceLevel} /> : null}
                       <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.updatedAt} />
                     </div>
                     {selectedCatalogDetailVariants.length && selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? (
@@ -24520,7 +24807,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <button type="button" className="secondary-button" onClick={() => copyCatalogProductIdentifiers(selectedCatalogDetailProduct)}>Copy UPC/SKU</button>
                   <button type="button" className="secondary-button" onClick={() => suggestCatalogUpcSku(selectedCatalogDetailProduct)}>Wrong UPC/SKU/MSRP?</button>
                 </div>
-                {adminToolsVisible && (catalogHasClassificationConflict(selectedCatalogDetailProduct) || !hasCatalogMarketPrice(selectedCatalogDetailProduct) || !hasCatalogUpcSku(selectedCatalogDetailProduct)) ? (
+                {shouldShowCatalogRepairLabels() && (catalogHasClassificationConflict(selectedCatalogDetailProduct) || !hasCatalogMarketPrice(selectedCatalogDetailProduct) || !hasCatalogUpcSku(selectedCatalogDetailProduct)) ? (
                   <div className="catalog-detail-warning-list">
                     {catalogHasClassificationConflict(selectedCatalogDetailProduct) ? (
                       <div className="catalog-detail-warning">
@@ -24557,15 +24844,15 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market data unavailable"} />
                   <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
                   {selectedCatalogDetailIsCodeCard ? <DetailItem label="Source / Product" value={selectedCatalogDetailProduct.sourceGroupName || selectedCatalogDetailProduct.productLine || selectedCatalogDetailProduct.marketSource || selectedCatalogDetailProduct.sourceType} /> : null}
-                  {adminToolsVisible ? <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
+                  {shouldShowCatalogRepairLabels() ? <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
                   <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.updatedAt} />
-                  {adminToolsVisible ? <DetailItem label="Notes / Warnings" value={[
+                  {shouldShowCatalogRepairLabels() ? <DetailItem label="Notes / Warnings" value={[
                     selectedCatalogDetailProduct.notes,
                     !hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? "Market price missing" : "",
                     !hasCatalogUpcSku(selectedCatalogDetailProduct) ? "UPC/SKU missing" : "",
                   ].filter(Boolean).join(" | ")} /> : null}
                 </div>
-                {adminToolsVisible ? <details className="catalog-source-details">
+                {shouldShowCatalogRepairLabels() ? <details className="catalog-source-details">
                   <summary>Source Details</summary>
                   <div className="catalog-detail-grid">
                     <DetailItem label="Source Name" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName || selectedCatalogDetailPricingProduct?.marketSource || selectedCatalogDetailPricingProduct?.sourceType} />
@@ -24617,13 +24904,13 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Market Price" value={money(getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue)} />
                       <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
-                      {adminToolsVisible ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
                       <DetailItem label="Source Product ID" value={selectedCatalogDetailPricingProduct?.externalProductId || selectedCatalogDetailPricingProduct?.tcgplayerProductId} />
                       <DetailItem label="Price Type" value={selectedCatalogDetailPricingProduct?.priceSubtype || selectedCatalogDetailProduct.priceSubtype} />
-                      {adminToolsVisible ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} /> : null}
                     </>
                   ) : selectedCatalogDetailIsCodeCard ? (
                     <>
@@ -24636,10 +24923,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="TCGplayer Product ID" value={selectedCatalogDetailProduct.tcgplayerProductId || getCatalogIdentifiers(selectedCatalogDetailProduct).find((identifier) => identifier.label === "TCGPLAYER_PRODUCT_ID")?.value} />
                       <DetailItem label="External ID" value={selectedCatalogDetailProduct.externalProductId} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
-                      {adminToolsVisible ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
                     </>
                   ) : (
                     <>
@@ -24662,11 +24949,11 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <DetailItem label="Retailer Exclusivity" value={selectedCatalogDetailProduct.retailerExclusive ? "Retailer exclusive" : "Not listed"} />
                       <DetailItem label="Retailer Name" value={selectedCatalogDetailProduct.retailerName} />
                       <DetailItem label="Last Price Update" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).lastUpdated} />
-                      {adminToolsVisible ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
-                      {adminToolsVisible ? <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Source" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).sourceName} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Market Status" value={MARKET_STATUS_LABELS[getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).marketStatus] || "Unknown"} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Needs Review" value={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).needsReview ? "Yes" : "No"} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Image Source" value={getImageSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
+                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Image Last Updated" value={selectedCatalogDetailPricingProduct?.imageLastUpdated || "Unknown"} /> : null}
                     </>
                   )}
                   </div>

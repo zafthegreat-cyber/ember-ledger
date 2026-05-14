@@ -16670,3 +16670,102 @@ button:disabled,
     grid-template-columns: 1fr;
   }
 }
+
+/* Admin Edit Mode shell */
+.admin-edit-toggle,
+button.admin-edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 251, 235, 0.9);
+  color: #7c2d12;
+  font-size: 0.82rem;
+  font-weight: 900;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.admin-edit-toggle.active,
+button.admin-edit-toggle.active {
+  border-color: rgba(234, 88, 12, 0.42);
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(234, 88, 12, 0.22);
+}
+
+.admin-edit-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px auto 0;
+  padding: 8px 12px;
+  width: min(1120px, calc(100% - 24px));
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.96), rgba(255, 237, 213, 0.9));
+  color: #7c2d12;
+  box-shadow: 0 12px 26px rgba(120, 53, 15, 0.1);
+}
+
+.admin-edit-mode-banner span {
+  font-weight: 950;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-edit-mode-banner small {
+  color: #9a3412;
+  font-weight: 800;
+}
+
+.admin-edit-mode-card .drawer-inline-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-edit-mode .catalog-results-grid .catalog-result-meta-badges {
+  display: flex !important;
+}
+
+.admin-edit-mode .catalog-results-grid .catalog-result-detail-line,
+.admin-edit-mode .catalog-results-grid .catalog-result-id-line,
+.admin-edit-mode .catalog-results-grid .catalog-result-source-line,
+.admin-edit-mode .catalog-results-grid .catalog-result-history-line {
+  display: block;
+}
+
+.scout-radar-top .overflow-menu,
+.scout-forecast-card-top .overflow-menu,
+.tidepool-post-top .overflow-menu {
+  margin-left: auto;
+}
+
+.scout-admin-confirm-sheet,
+.admin-action-confirm-sheet {
+  max-height: min(82dvh, 620px);
+}
+
+@media (max-width: 760px) {
+  .topbar .admin-edit-toggle {
+    flex: 0 0 auto;
+    min-width: auto;
+    padding-inline: 10px;
+  }
+
+  .admin-edit-mode-banner {
+    align-items: flex-start;
+    justify-content: flex-start;
+    border-radius: 16px;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .admin-edit-mode-banner small {
+    line-height: 1.25;
+  }
+}
