@@ -324,8 +324,12 @@ async function main() {
   async function assertVisibleText(text) {
     try {
       await page.waitForFunction(
-        (expectedText) => document.body && document.body.innerText.toLowerCase().includes(String(expectedText).toLowerCase()),
-        text,
+        (expected) => {
+          const bodyText = document.body?.innerText || "";
+          if (expected?.pattern) return new RegExp(expected.pattern, expected.flags || "").test(bodyText);
+          return bodyText.toLowerCase().includes(String(expected.value).toLowerCase());
+        },
+        text instanceof RegExp ? { pattern: text.source, flags: text.flags } : { value: text },
         { timeout: 7000 }
       );
     } catch (error) {
@@ -333,6 +337,15 @@ async function main() {
       error.message = `${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
       throw error;
     }
+  }
+
+  async function assertNotVisibleText(text) {
+    const bodyText = await page.locator("body").innerText().catch(() => "");
+    assert.equal(
+      bodyText.toLowerCase().includes(String(text).toLowerCase()),
+      false,
+      `${text} should not be visible`
+    );
   }
 
   await step("Scout: shared store directory loads", async () => {
@@ -719,9 +732,10 @@ async function main() {
 
   await step("Home: totals update", async () => {
     await nav("Home");
-    await assertVisibleText("Collection Value");
-    await assertVisibleText("$0.00");
-    await assertVisibleText("Recent Activity");
+    await assertVisibleText("Daily Tide Check");
+    await assertVisibleText(/Start Daily Tide|Next:|Daily Tide Complete/);
+    await assertNotVisibleText("Today / Overview");
+    await assertNotVisibleText("Recent Activity");
   });
 
   await browser.close();

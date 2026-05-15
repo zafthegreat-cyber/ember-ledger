@@ -532,14 +532,49 @@ const LONG_LIST_PAGE_SIZE = 12;
 const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const DEFAULT_PERSONAL_WORKSPACE_ID = "workspace-personal-local-beta";
-const DAILY_TIDE_ACTIONS = [
-  "checkin",
-  "store",
-  "market",
-  "wishlist",
-  "inventory",
-  "community",
+const DAILY_TIDE_TASKS = [
+  {
+    key: "scout",
+    label: "Scout",
+    title: "Check Scout",
+    helper: "Review nearby reports or submit a quick update.",
+    actionLabel: "Open Scout",
+    tab: "scout",
+    badge: "restock_reporter",
+    points: 10,
+  },
+  {
+    key: "vault",
+    label: "Vault",
+    title: "Check Vault",
+    helper: "Review your collection, wishlist, or recent adds.",
+    actionLabel: "Open Vault",
+    tab: "vault",
+    badge: "vault_builder",
+    points: 10,
+  },
+  {
+    key: "market",
+    label: "Market",
+    title: "Check Market",
+    helper: "Compare fair listings and review market values.",
+    actionLabel: "Open Market",
+    tab: "market",
+    badge: "market_watcher",
+    points: 10,
+  },
+  {
+    key: "forge",
+    label: "Forge",
+    title: "Check Forge",
+    helper: "Plan, build, or review your collector tools.",
+    actionLabel: "Open Forge",
+    tab: "inventory",
+    badge: "forge_starter",
+    points: 10,
+  },
 ];
+const DAILY_TIDE_ACTIONS = DAILY_TIDE_TASKS.map((task) => task.key);
 const DAILY_TIDE_BADGES = [
   { key: "first_scan", label: "First Scan" },
   { key: "first_sale", label: "First Sale" },
@@ -2697,6 +2732,7 @@ export default function App() {
   const [dashboardLayout, setDashboardLayout] = useState(() => getDefaultDashboardLayoutForPreset("simple"));
   const [dashboardCardStyle, setDashboardCardStyle] = useState("comfortable");
   const [dailyTide, setDailyTide] = useState(loadDailyTideState);
+  const [dailyTideModalTask, setDailyTideModalTask] = useState("");
   const [cloudSyncPreference, setCloudSyncPreference] = useState("local");
   const [subscriptionProfile, setSubscriptionProfile] = useState({
     subscriptionPlan: PLAN_TYPES.FREE,
@@ -10258,6 +10294,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function openQuickAddAction(action) {
     setQuickAddMenuOpen(false);
+    if (action === "tcgCommand") return openFlowModal("tcgCommandCenter", { size: "large", source: "quick-add" });
     if (action === "receipt") return openReceiptScanWorkflow();
     if (action === "multiDestination") return openProductAddFlow({ source: "quick-add" });
     if (action === "bulkAdd") return openBulkAddFlow("Mixed");
@@ -14381,9 +14418,9 @@ function renderForgeHeader() {
   ];
   const menuDashboardSectionRows = [
     { key: "tcg_os", label: "TCG OS Command Center" },
-    { key: "home_stats", label: "Today / Overview" },
+    { key: "home_stats", label: "Home Metrics" },
     { key: "action_center", label: "Beta Tester Path" },
-    { key: "recent_inventory", label: "Recent Activity" },
+    { key: "recent_inventory", label: "Latest Items" },
     { key: "purchaser_spending", label: "Recent Purchases" },
     { key: "watchlist", label: "Market Watch" },
     { key: "store_reports", label: "Recent Reports" },
@@ -14505,6 +14542,41 @@ function renderForgeHeader() {
     }, 1800);
     return true;
   }
+
+  function startDailyTideFlow() {
+    if (blockGuestSave()) return false;
+    const today = getLocalDateKey();
+    setDailyTide((current) => {
+      const base = normalizeDailyTideState(current);
+      if (base.lastCheckInDate === today) return base;
+      return {
+        ...base,
+        date: today,
+        lastCheckInDate: today,
+        checkInStreak: base.lastCheckInDate === getYesterdayDateKey()
+          ? Number(base.checkInStreak || 0) + 1
+          : 1,
+      };
+    });
+    const nextTask = DAILY_TIDE_TASKS.find((task) => !dailyTideToday.completedActions?.[task.key]) || DAILY_TIDE_TASKS[0];
+    setDailyTideModalTask(nextTask.key);
+    return true;
+  }
+
+  function markDailyTideTaskDone(taskKey) {
+    const task = DAILY_TIDE_TASKS.find((entry) => entry.key === taskKey);
+    if (!task) return;
+    completeDailyAction(task.key, { badge: task.badge, points: task.points });
+    setDailyTideModalTask("");
+  }
+
+  function openDailyTideTaskDestination(taskKey) {
+    const task = DAILY_TIDE_TASKS.find((entry) => entry.key === taskKey);
+    if (!task) return;
+    setDailyTideModalTask("");
+    if (task.key === "market") setTideTradrSubTab("overview");
+    setActiveTab(task.tab);
+  }
   const activeTabFeature = {
     sales: "sales_tracking",
     addSale: "sales_tracking",
@@ -14621,16 +14693,18 @@ function renderForgeHeader() {
   const dailyTideToday = normalizeDailyTideState(dailyTide);
   const dailyCompletedCount = DAILY_TIDE_ACTIONS.filter((key) => dailyTideToday.completedActions?.[key]).length;
   const dailyCompletionPercent = Math.round((dailyCompletedCount / DAILY_TIDE_ACTIONS.length) * 100);
+  const dailyTideStartedToday = dailyTideToday.lastCheckInDate === getLocalDateKey();
+  const nextDailyTideTask = DAILY_TIDE_TASKS.find((task) => !dailyTideToday.completedActions?.[task.key]) || null;
+  const activeDailyTideTask = DAILY_TIDE_TASKS.find((task) => task.key === dailyTideModalTask) || nextDailyTideTask;
+  const dailyTideComplete = dailyCompletedCount >= DAILY_TIDE_ACTIONS.length;
   const bestScoutStore = scoutSnapshot.stores?.[0] || VIRGINIA_STORES_SEED[0] || {};
   const bestMarketMover = recentMarketUpdates[0] || workspaceWatchlist[0] || null;
   const bestWishlistItem = wishlistItems[0] || workspaceWatchlist[0] || null;
-  const suggestedHomeAction = !dailyTideToday.completedActions?.checkin
-    ? { key: "checkin", label: "Start Daily Tide", detail: "Check in and pick one thing to do.", onClick: () => completeDailyAction("checkin", { badge: "market_watcher", points: 5 }) }
-    : needsMarketCheckItems[0]
-      ? { key: "inventory", label: "Update Forge Price", detail: needsMarketCheckItems[0].name || "One item needs a market check.", onClick: () => { completeDailyAction("inventory", { badge: "forge_starter", points: 10 }); setActiveTab("inventory"); } }
-      : bestScoutStore?.name
-        ? { key: "store", label: "Check Best Store", detail: bestScoutStore.name, onClick: () => { completeDailyAction("store", { badge: "restock_reporter", points: 10 }); setActiveTab("scout"); } }
-        : { key: "vault", label: "Add First Vault Item", detail: "Scan or add a card/sealed product.", onClick: () => openQuickAddAction("vaultItem") };
+  const suggestedHomeAction = dailyTideComplete
+    ? { key: "complete", label: "Daily Tide Complete ✓", detail: "Today's Tide is ready.", onClick: () => setDailyTideModalTask("") }
+    : !dailyTideStartedToday
+      ? { key: "start", label: "Start Daily Tide", detail: "Begin your daily Scout, Vault, Market, Forge loop.", onClick: startDailyTideFlow }
+      : { key: nextDailyTideTask?.key || "start", label: `Next: ${nextDailyTideTask?.label || "Daily Tide"}`, detail: nextDailyTideTask?.helper || "Keep your daily loop moving.", onClick: () => setDailyTideModalTask(nextDailyTideTask?.key || DAILY_TIDE_TASKS[0].key) };
   const earnedBadges = new Set([
     ...(dailyTideToday.badges || []),
     activeVaultItems.length ? "vault_builder" : "",
@@ -18832,8 +18906,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ))}
             </div>
             <div className="quick-actions">
-              <button type="button" onClick={() => setOnboardingStep(2)}>Get started</button>
-              <button type="button" className="secondary-button" onClick={completeOnboarding}>Skip for now</button>
+              <button type="button" onClick={() => setOnboardingStep(2)}>Start Walkthrough</button>
+              <button type="button" className="secondary-button" onClick={completeOnboarding}>Skip</button>
             </div>
           </>
         ) : onboardingStep === 2 ? (
@@ -20847,11 +20921,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         size: "medium",
       };
     }
+    if (activeFlowModal?.type === "tcgCommandCenter") {
+      return {
+        title: "TCG Command Center",
+        description: "Open the full collector hub when you want deeper tools, setup, and operating-system shortcuts.",
+        size: "large",
+      };
+    }
     return { title: "Add", description: "Create a new record.", size: activeFlowModal?.size || "medium" };
   }
 
   function renderAddActionSheetContent() {
     const actions = [
+      { key: "tcg-command", title: "Open TCG Command Center", helper: "Jump to the collector command hub.", action: "tcgCommand" },
       { key: "receipt", title: "Scan Receipt", helper: "Review lines before saving.", action: "receipt" },
       { key: "scan-product", title: "Scan Card/Product", helper: "Match first, then choose destination.", action: "scanProduct" },
       { key: "card", title: "Add Card", helper: "Add a raw or graded card.", action: "card" },
@@ -22431,6 +22513,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (activeFlowModal?.type === "forgeImport") return renderForgeImportFlowContent();
     if (activeFlowModal?.type === "batchIntake") return renderInventoryImportAssistant();
     if (activeFlowModal?.type === "addActionSheet") return renderAddActionSheetContent();
+    if (activeFlowModal?.type === "tcgCommandCenter") return renderTcgOperatingSystemPanel({ compact: false });
     if (activeFlowModal?.type === "vaultQuickAdd") return renderVaultQuickAddFlowContent();
     if (activeFlowModal?.type === "vaultCatalogSearch") return renderVaultCatalogSearchFlowContent();
     if (activeFlowModal?.type === "vaultScan") return renderVaultScanFlowContent();
@@ -22974,33 +23057,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <AppNavIcon kind="settings" />
     </span>
     Menu
-  </button>
-  <button
-    type="button"
-    className="topbar-mobile-scan"
-    onClick={() => {
-      setQuickAddMenuOpen(false);
-      completeDailyAction("scan", { badge: "first_scan", points: 8 });
-      beginScanProduct("none");
-    }}
-  >
-    <span className="action-icon" aria-hidden="true">
-      <AppNavIcon kind="scan" />
-    </span>
-    Scan
-  </button>
-  <button
-    type="button"
-    className="topbar-mobile-add"
-    onClick={() => {
-      setQuickAddMenuOpen(false);
-      openAddActionSheet("topbar");
-    }}
-  >
-    <span className="action-icon" aria-hidden="true">
-      <AppNavIcon kind="plus" />
-    </span>
-    Add
   </button>
   {renderNotificationCenter()}
 
@@ -23773,7 +23829,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("store_data"))}>Report Bad Store Data</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("market_data"))}>Report Wrong Market Price</button>
                   {adminToolsVisible ? <button type="button" className="drawer-link" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button> : null}
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("How to Use App guide is coming soon for beta testers."))}>How to Use App</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>App Guide / Replay Onboarding</button>
                 </div>
               ), "help")}
               {renderMenuPullDown("beta_foundations", "Beta Foundations", "Kids Program, trust pages, notifications, membership, and launch links", (
@@ -23862,6 +23918,44 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           </aside>
         </>
+      ) : null}
+
+      {dailyTideModalTask && activeDailyTideTask ? (
+        <div className="location-modal-backdrop daily-tide-modal-backdrop" role="presentation" onClick={() => setDailyTideModalTask("")}>
+          <section
+            className="location-modal daily-tide-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="daily-tide-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-title-row">
+              <div>
+                <p className="section-kicker">Daily Tide</p>
+                <h2 id="daily-tide-modal-title">{activeDailyTideTask.title}</h2>
+                <p>{activeDailyTideTask.helper}</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close Daily Tide" onClick={() => setDailyTideModalTask("")}>
+                X
+              </button>
+            </div>
+            <div className="daily-tide-modal-body">
+              <span className="status-badge">{activeDailyTideTask.label}</span>
+              <p>Mark this step done when you are finished, or open the section if you want to take action now.</p>
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" onClick={() => openDailyTideTaskDestination(activeDailyTideTask.key)}>
+                {activeDailyTideTask.actionLabel}
+              </button>
+              <button type="button" className="secondary-button" onClick={() => markDailyTideTaskDone(activeDailyTideTask.key)}>
+                Mark Done
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setDailyTideModalTask("")}>
+                Close
+              </button>
+            </div>
+          </section>
+        </div>
       ) : null}
 
       {activeFlowModal ? (
@@ -25347,167 +25441,41 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="dashboard-layout home-clean-layout">
             <PageHeader
               className={getHeaderCardClass("panel page-summary-card home-summary-card")}
-              title="Today's Tide"
-              subtitle="Your daily collecting, selling, and restock command center."
+              title="Home"
+              subtitle="Your Ember & Tide base for quick actions and the daily collecting loop."
               actions={(
-                <>
-                  <button type="button" onClick={() => {
-                    setShowTopbarActions(true);
-                    openAddActionSheet("home");
-                  }}>+ Add</button>
-                  <button type="button" className="secondary-button" onClick={() => openBulkAddFlow("Mixed")}>Bulk Add</button>
-                  <button type="button" className="secondary-button" onClick={() => openInventoryImportAssistant("Vault", { mode: BATCH_INTAKE_MODES.TRANSFER, sourceType: "spreadsheet_csv", source: "home-import" })}>Import</button>
-                  <button type="button" className="secondary-button" onClick={() => setSearchExpanded(true)}>Search</button>
-                </>
-              )}
-              summary={(
-                <div className="home-summary-stats" aria-label="Home metrics">
-                {homeStatsEnabled.collection_value !== false ? (
-                <button type="button" className="home-metric-card" onClick={() => setActiveTab("vault")}>
-                  <p>Collection Value</p>
-                  <h2>{money(vaultValue)}</h2>
-                </button>
-                ) : null}
-                {homeStatsEnabled.monthly_spending !== false ? (
-                <button type="button" className="home-metric-card" onClick={() => setActiveTab("reports")}>
-                  <p>Monthly Spending</p>
-                  <h2>{money(monthlySpending)}</h2>
-                </button>
-                ) : null}
-                {scoutSnapshot.alertSettings?.showHomeMarketUpdates !== false ? (
-                <button type="button" className="home-metric-card" onClick={() => {
-                  setActiveTab("market");
-                  setTideTradrSubTab("watch");
-                }}>
-                  <p>Market Updates</p>
-                  <h2>{recentMarketUpdates.length}</h2>
-                </button>
-                ) : null}
-              </div>
+                <button type="button" onClick={() => openAddActionSheet("home")}>Quick Add</button>
               )}
             />
 
-            {renderOnboardingPanel()}
+            {!betaReadinessData.onboarding?.completedAt ? renderOnboardingPanel() : null}
 
             <section className="panel today-tide-command" aria-label="Today's Tide command center">
               <div className="today-tide-hero">
                 <div>
                   <p className="section-kicker">Daily Tide Check</p>
-                  <p className="today-tide-hero-description">Pick one quick task for today.</p>
+                  <h2>{suggestedHomeAction.label}</h2>
+                  <p className="today-tide-hero-description">{suggestedHomeAction.detail}</p>
                 </div>
-                <button type="button" onClick={suggestedHomeAction.onClick} aria-label={suggestedHomeAction.detail || "Start Daily Tide"}>
-                  Start Daily Tide
+                <button
+                  type="button"
+                  className={dailyTideComplete ? "daily-tide-main-button is-complete" : "daily-tide-main-button"}
+                  onClick={suggestedHomeAction.onClick}
+                  aria-label={suggestedHomeAction.detail || suggestedHomeAction.label}
+                  disabled={dailyTideComplete}
+                >
+                  {suggestedHomeAction.label}
                 </button>
               </div>
-              <div className="today-tide-grid">
-                <button type="button" className="today-tide-card" onClick={() => setActiveTab("vault")}>
-                  <span>Collection Value</span>
-                  <strong>{money(vaultValue)}</strong>
-                  <small>{activeVaultItems.length || 0} Vault item{activeVaultItems.length === 1 ? "" : "s"}</small>
-                </button>
-                <button type="button" className="today-tide-card" onClick={() => setActiveTab("inventory")}>
-                  <span>Forge Value</span>
-                  <strong>{money(totalMarketValue)}</strong>
-                  <small>{needsMarketCheckItems.length} need price review</small>
-                </button>
-                <button type="button" className="today-tide-card" onClick={() => openScoutSubmitFlow({ source: "home-todays-tide", store: bestScoutStore })}>
-                  <span>Best Scout Opportunity</span>
-                  <strong>{bestScoutStore?.nickname || bestScoutStore?.name || "Add watched stores"}</strong>
-                  <small>{bestScoutStore?.retailer || "Scout"} {bestScoutStore?.city ? `- ${bestScoutStore.city}` : ""}</small>
-                </button>
-                <button type="button" className="today-tide-card" onClick={() => openQuickAddAction("wishlist")}>
-                  <span>Wishlist Alert</span>
-                  <strong>{bestWishlistItem?.name || bestWishlistItem?.productName || "Add a chase item"}</strong>
-                  <small>{bestWishlistItem ? money(bestWishlistItem.marketPrice || bestWishlistItem.marketValue || bestWishlistItem.targetPrice || 0) : "Track target prices"}</small>
-                </button>
-                <button type="button" className="today-tide-card" onClick={() => setActiveTab("market")}>
-                  <span>Market Mover</span>
-                  <strong>{bestMarketMover?.name || bestMarketMover?.productName || "No mover yet"}</strong>
-                  <small>{bestMarketMover ? money(bestMarketMover.marketPrice || bestMarketMover.marketValue || 0) : "Watch products to fill this"}</small>
-                </button>
-              </div>
-
-              <div className="daily-tide-panel">
-                <div className="daily-tide-progress-card">
-                  <div>
-                    <strong>{dailyCompletedCount}/{DAILY_TIDE_ACTIONS.length} complete</strong>
-                    <span>{dailyCompletionPercent}% daily progress</span>
-                  </div>
-                  <div className="daily-progress-track"><i style={{ width: `${dailyCompletionPercent}%` }} /></div>
-                </div>
-                <div className="daily-tide-actions">
-                  {[
-                    { key: "checkin", label: "Check in", helper: `${dailyTideToday.checkInStreak || 0} day streak`, badge: "market_watcher", points: 5 },
-                    { key: "store", label: "Scout store", helper: bestScoutStore?.name || "Pick a store", badge: "restock_reporter", points: 10 },
-                    { key: "market", label: "Check market", helper: bestMarketMover?.name || "Review watchlist", badge: "market_watcher", points: 8 },
-                    { key: "wishlist", label: "Wishlist", helper: bestWishlistItem?.name || "Add a chase", badge: "vault_builder", points: 8 },
-                    { key: "inventory", label: "Forge task", helper: needsMarketCheckItems[0]?.name || "Review inventory", badge: "forge_starter", points: 10 },
-                    { key: "community", label: "Tidepool", helper: "Share or review a report", badge: "tidepool_helper", points: 8 },
-                  ].map((action) => (
-                    <button
-                      key={action.key}
-                      type="button"
-                      className={dailyTideToday.completedActions?.[action.key] ? "daily-action-card is-complete" : "daily-action-card"}
-                      onClick={() => completeDailyAction(action.key, { badge: action.badge, points: action.points })}
-                    >
-                      <span>{dailyTideToday.completedActions?.[action.key] ? "Done" : "Do"}</span>
-                      <strong>{action.label}</strong>
-                      <small>{action.helper}</small>
-                    </button>
-                  ))}
-                </div>
-                <div className="daily-badge-strip" aria-label="Tide badges">
-                  <span>{dailyTideToday.tidePoints || 0} Tide Points</span>
-                  {DAILY_TIDE_BADGES.slice(0, 8).map((badge) => (
-                    <b key={badge.key} className={earnedBadges.has(badge.key) ? "badge-earned" : ""}>{badge.label}</b>
-                  ))}
-                </div>
+              <div className="daily-tide-compact-status">
+                <span>{dailyCompletedCount}/{DAILY_TIDE_ACTIONS.length} today</span>
+                <div className="daily-progress-track"><i style={{ width: `${dailyCompletionPercent}%` }} /></div>
+                <small>{dailyTideComplete ? "Today's Tide is ready." : "Task order: Scout, Vault, Market, Forge."}</small>
               </div>
               {dailyTideToday.lastCelebration ? <div className="tide-celebration">Daily action complete. Tide Points added.</div> : null}
             </section>
 
             {renderPokemonWatchCalendarHomeModule()}
-
-            {dashboardSectionState("tcg_os").enabled !== false ? renderTcgOperatingSystemPanel({ compact: true }) : null}
-
-            {dashboardSectionState("home_stats").enabled !== false ? (
-            <section className="panel home-today-panel">
-              <div className="compact-card-header">
-                <div>
-                  <h2>Today / Overview</h2>
-                  <p>The few things worth checking first.</p>
-                </div>
-              </div>
-              <div className="home-today-grid">
-                <button type="button" className="home-today-tile" onClick={() => {
-                  if (activeVaultItems[0]?.id) setSelectedVaultDetailId(activeVaultItems[0].id);
-                  setActiveTab("vault");
-                }}>
-                  <span>Active Item</span>
-                  <strong>{activeVaultItems.length} active item{activeVaultItems.length === 1 ? "" : "s"}</strong>
-                  <small>{money(vaultValue)} collection value</small>
-                </button>
-                <button type="button" className="home-today-tile" onClick={() => setActiveTab("inventory")}>
-                  <span>Inventory Item</span>
-                  <strong>{forgeInventoryItems.length} inventory item{forgeInventoryItems.length === 1 ? "" : "s"}</strong>
-                  <small>{money(totalMarketValue)} market value</small>
-                </button>
-                <button type="button" className="home-today-tile" onClick={() => {
-                  setActiveTab("scout");
-                  setScoutView("overview");
-                }}>
-                  <span>Recent Reports</span>
-                  <strong>{(scoutSnapshot.reports || []).length} recent report{(scoutSnapshot.reports || []).length === 1 ? "" : "s"}</strong>
-                  <small>{scoutSnapshot.stores.length} stores available</small>
-                </button>
-                <button type="button" className="home-today-tile" onClick={() => setActiveTab("market")}>
-                  <span>Wishlist Item</span>
-                  <strong>{workspaceWatchlist.length} watchlist item{workspaceWatchlist.length === 1 ? "" : "s"}</strong>
-                  <small>{missingMarketPriceItems.length} missing prices</small>
-                </button>
-              </div>
-            </section>
-            ) : null}
 
             {dashboardSectionState("action_center").enabled !== false ? (
             <section className="panel beta-path-panel">
@@ -25614,35 +25582,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ))}
                 </div>
               ) : null}
-            </section>
-            ) : null}
-
-            {dashboardSectionState("recent_inventory").enabled !== false ? (
-            <section className="panel">
-              <div className="compact-card-header">
-                <div>
-                  <h2>Recent Activity</h2>
-                  <p>Latest Scout, Vault, TideTradr, and Forge updates.</p>
-                </div>
-              </div>
-              <div className="home-list compact-home-list">
-                {homeRecentActivity.length === 0 ? (
-                  <div className="empty-state small-empty-state">
-                    <h3>No recent activity yet.</h3>
-                    <p>Add inventory, submit a report, or pin a market item to start building your daily view.</p>
-                  </div>
-                ) : (
-                  homeRecentActivity.map((activity) => (
-                    <button type="button" className="home-list-row home-timeline-row" key={activity.id} onClick={activity.action}>
-                      <span className="activity-source-badge">{activity.label}</span>
-                      <span>
-                        <strong>{activity.title}</strong>
-                        <small>{activity.detail}</small>
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
             </section>
             ) : null}
 
@@ -25765,7 +25704,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {homeSubTab === "overview" ? (
               <>
             <CollapsibleFeatureSection
-                title="Today / Overview"
+                title="Home Metrics"
                 summary="The few Home numbers that matter most right now"
                 open={isFeatureSectionOpen("home_dashboard_cards")}
                 onToggle={() => toggleFeatureSection("home_dashboard_cards")}
@@ -25822,7 +25761,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <section className="panel dashboard-section">
                 <div className="compact-card-header">
                   <div>
-                    <h2>Recent Activity</h2>
+                    <h2>Latest Items</h2>
                     <p>Latest Scout, Vault, TideTradr, and Forge updates.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>View All</button>

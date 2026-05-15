@@ -18045,3 +18045,64 @@ button,
     width: auto;
   }
 }
+
+.daily-tide-main-button {
+  min-width: 168px;
+  border-radius: 999px;
+  box-shadow: 0 14px 30px rgba(255, 90, 47, 0.22);
+}
+
+.daily-tide-main-button.is-complete {
+  background: linear-gradient(135deg, #1ca66a, #0e9fb5);
+  cursor: default;
+  opacity: 1;
+}
+
+.daily-tide-compact-status {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(12, 38, 56, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 250, 242, 0.82);
+  color: var(--text-primary, #0c2638);
+}
+
+.daily-tide-compact-status span {
+  font-weight: 800;
+}
+
+.daily-tide-compact-status small {
+  color: var(--text-muted, #426174);
+}
+
+.daily-tide-modal {
+  max-width: 440px;
+}
+
+.daily-tide-modal-body {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+
+.daily-tide-modal-body p {
+  margin: 0;
+  color: var(--text-muted, #426174);
+}
+
+@media (max-width: 520px) {
+  .today-tide-hero {
+    align-items: stretch;
+  }
+
+  .daily-tide-main-button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .daily-tide-modal {
+    width: min(100% - 24px, 440px);
+  }
+}
