@@ -55,9 +55,9 @@ export const SCOUT_STORE_ALIASES = [
 ];
 
 export const SCOUT_HISTORICAL_INTEL_SEED = [
-  { storeAlias: "College Drive Walmart", retailer: "Walmart", pattern: "Thursday", confidence: "possible", sourceType: "user_correction" },
-  { storeAlias: "Franklin Walmart", retailer: "Walmart", pattern: "Wednesday", confidence: "possible", sourceType: "user_correction" },
-  { storeAlias: "Suffolk Walmart", retailer: "Walmart", pattern: "Wednesday", confidence: "possible", sourceType: "user_correction" },
+  { storeAlias: "College Drive Walmart", retailer: "Walmart", pattern: "Thursday", confidence: "guess", sourceType: "planner_guess", sourceText: "User pattern note only; not a confirmed restock fact." },
+  { storeAlias: "Franklin Walmart", retailer: "Walmart", pattern: "Wednesday", confidence: "guess", sourceType: "planner_guess", sourceText: "User pattern note only; not a confirmed restock fact." },
+  { storeAlias: "Suffolk Walmart", retailer: "Walmart", pattern: "Wednesday", confidence: "guess", sourceType: "planner_guess", sourceText: "User pattern note only; not a confirmed restock fact." },
   { storeAlias: "Chesapeake Square Target", retailer: "Target", sourceText: "Only 5 pin collections, everything else was perfect order.", productsMentioned: ["pin collections", "perfect order"], confidence: "likely", sourceType: "text_screenshot" },
   { storeAlias: "Chesapeake Square Target", retailer: "Target", sourceText: "Target Chesapeake Square just hit, all perfect order. ETBs, 3 pack blisters and singles.", productsMentioned: ["ETBs", "3 pack blisters", "singles"], confidence: "likely", sourceType: "text_screenshot" },
   { storeAlias: "Chesapeake Square Target", retailer: "Target", sourceText: "They had 40 bundles, 30 ex boxes, 3 pack blisters.", productsMentioned: ["bundles", "ex boxes", "3 pack blisters"], quantityText: "40 bundles, 30 ex boxes", confidence: "likely", sourceType: "text_screenshot" },

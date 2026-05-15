@@ -10,11 +10,18 @@ import {
 
 const TEXT_SEARCH_FIELDS = [
   "name",
+  "product_name",
   "set_name",
+  "series",
   "expansion",
   "product_type",
   "product_line",
   "catalog_item_type",
+  "upc",
+  "sku",
+  "identifier_search",
+  "retailer_skus_search",
+  "variant_names",
   "card_number",
   "set_code",
 ];
@@ -33,6 +40,15 @@ const LEGACY_TEXT_SEARCH_FIELDS = [
 ];
 
 const EXACT_FIELDS = [
+  "barcode",
+  "upc",
+  "sku",
+  "tcgplayer_product_id",
+  "external_product_id",
+  "card_number",
+];
+
+const LEGACY_EXACT_FIELDS = [
   "barcode",
   "tcgplayer_product_id",
   "external_product_id",
@@ -62,12 +78,16 @@ const CATALOG_SELECT_FIELDS = [
   "id",
   "master_catalog_item_id",
   "name",
+  "product_name",
   "category",
   "catalog_item_type",
   "catalog_type",
   "set_name",
+  "series",
   "product_type",
   "barcode",
+  "upc",
+  "sku",
   "external_product_id",
   "tcgplayer_product_id",
   "market_price",
@@ -78,12 +98,24 @@ const CATALOG_SELECT_FIELDS = [
   "market_url",
   "last_price_checked",
   "set_code",
+  "release_date",
   "expansion",
   "product_line",
+  "retailer_skus",
+  "contents",
+  "related_cards",
   "card_number",
   "rarity",
   "msrp_price",
   "is_sealed",
+  "variant_count",
+  "variant_names",
+  "default_variant_id",
+  "source",
+  "source_url",
+  "admin_review_status",
+  "is_verified",
+  "duplicate_of",
   "price_confidence",
   "market_source_count",
   "data_confidence_score",
@@ -495,17 +527,19 @@ function exactPriority(product = {}, term = "") {
   if (!cleaned) return 999;
   const values = {
     barcode: product.barcode || product.upc,
+    sku: product.sku,
     tcgplayer: product.tcgplayerProductId || product.tcgplayer_product_id,
     external: product.externalProductId || product.external_product_id,
     card: product.cardNumber || product.card_number,
     name: product.name || product.productName || product.product_name || product.cardName || product.card_name,
   };
   if (String(values.barcode || "").toLowerCase() === cleaned) return 1;
-  if (String(values.tcgplayer || "").toLowerCase() === cleaned) return 2;
-  if (String(values.external || "").toLowerCase() === cleaned) return 3;
+  if (String(values.sku || "").toLowerCase() === cleaned) return 2;
+  if (String(values.tcgplayer || "").toLowerCase() === cleaned) return 3;
+  if (String(values.external || "").toLowerCase() === cleaned) return 4;
   if (String(product.identifier_search || "").toLowerCase().includes(cleaned)) return 3;
-  if (String(values.card || "").toLowerCase() === cleaned) return 4;
-  if (String(values.name || "").toLowerCase() === cleaned) return 5;
+  if (String(values.card || "").toLowerCase() === cleaned) return 5;
+  if (String(values.name || "").toLowerCase() === cleaned) return 6;
   if (String(values.name || "").toLowerCase().includes(cleaned)) return 6;
   if (String(product.official_expansion_name || product.expansion_display_name || product.setName || product.set_name || product.expansion || "").toLowerCase().includes(cleaned)) return 7;
   if (String(product.sealed_product_type || product.productType || product.product_type || "").toLowerCase().includes(cleaned)) return 8;
@@ -544,6 +578,7 @@ function rowMatchesExactId(row = {}, term = "") {
   const cleaned = normalizeCatalogQuery(term);
   if (!cleaned) return "";
   if (normalizeCatalogQuery(row.barcode || row.upc) === cleaned) return "Barcode";
+  if (normalizeCatalogQuery(row.sku) === cleaned) return "SKU";
   if (normalizeCatalogQuery(row.tcgplayer_product_id || row.tcgplayerProductId) === cleaned) return "TCGplayer ID";
   if (normalizeCatalogQuery(row.external_product_id || row.externalProductId) === cleaned) return "External ID";
   if (normalizeCatalogQuery(row.identifier_search).includes(cleaned)) return "Identifier";
@@ -571,10 +606,10 @@ function makeProductSuggestion(row, section, query, index = 0) {
       productType,
       setName,
       row.card_number ? `#${row.card_number}` : "",
-      exactIdLabel ? `${exactIdLabel}: ${row.barcode || row.tcgplayer_product_id || row.external_product_id}` : "",
+      exactIdLabel ? `${exactIdLabel}: ${row.barcode || row.upc || row.sku || row.tcgplayer_product_id || row.external_product_id}` : "",
     ].filter(Boolean).join(" | "),
     badge: exactIdLabel || (row.card_number && rowMatchesCardNumber(row, query) ? "Card #" : productType || "Product"),
-    searchValue: exactIdLabel ? String(row.barcode || row.tcgplayer_product_id || row.external_product_id || title) : title,
+    searchValue: exactIdLabel ? String(row.barcode || row.upc || row.sku || row.tcgplayer_product_id || row.external_product_id || title) : title,
     mode: exactIdLabel ? "barcode" : rowMatchesCardNumber(row, query) ? "cardNumber" : "general",
     product: row,
     imageUrl: catalogRowImage(row),
@@ -706,7 +741,7 @@ function buildSearchTerms(term, mode) {
   return [cleaned, ...expandCatalogAliases(cleaned)]
     .filter(Boolean)
     .filter((value, index, list) => list.indexOf(value) === index)
-    .slice(0, 6);
+    .slice(0, 4);
 }
 
 function applyDbSort(query, sortKey = "bestMatch") {
@@ -864,27 +899,71 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   };
 }
 
+async function runFastCatalogRpcSearch({ supabase, query, barcode, mode, filters, sort, page, pageSize, signal }) {
+  const cleanedQuery = cleanCatalogSearch(query);
+  const cleanedBarcode = cleanCatalogSearch(barcode);
+  const exactTerm = mode === "barcode" ? cleanedBarcode || cleanedQuery : cleanedQuery || cleanedBarcode;
+  if (page !== 1 || sort !== "bestMatch") return null;
+  if (filters.productType !== "All" || filters.setName !== "All" || filters.dataFilter !== "All" || filters.rarity !== "All") return null;
+  if (isExactIdentifierMode(mode, exactTerm)) return null;
+  if ((cleanedQuery || cleanedBarcode).length < 2) return null;
+
+  let rpcQuery = supabase.rpc("search_catalog_fast", {
+    search_text: cleanedQuery || cleanedBarcode,
+    product_group: filters.productGroup || "All",
+    max_results: pageSize,
+  });
+  rpcQuery = withAbortSignal(rpcQuery, signal);
+  const { data, error } = await rpcQuery;
+  if (error) {
+    if (/search_catalog_fast|function .* does not exist|schema cache/i.test(error.message || "")) return null;
+    throw error;
+  }
+
+  const rows = dedupeRows(data || []).slice(0, pageSize);
+  return {
+    rows,
+    count: rows.length,
+    exactCount: 0,
+    exactMiss: false,
+    aliasHints: analyzeCatalogSearch(exactTerm).didYouMean,
+    phase: "rpc",
+  };
+}
+
 async function runSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields = CATALOG_SELECT_FIELDS, textFields = TEXT_SEARCH_FIELDS, exactFields = EXACT_FIELDS, signal }) {
   const exactTerm = mode === "barcode" ? cleanCatalogSearch(barcode) || cleanCatalogSearch(query) : cleanCatalogSearch(query) || cleanCatalogSearch(barcode);
   if (isExactIdentifierMode(mode, exactTerm)) {
-    return runExactIdentifierSearch({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, exactFields, signal });
+    const exactResult = await runExactIdentifierSearch({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, exactFields, signal });
+    if (exactResult.rows.length) return exactResult;
+    const fallbackResult = await runTextSearchAgainstSource({
+      supabase,
+      sourceName,
+      query: exactTerm,
+      barcode: "",
+      mode: "general",
+      filters,
+      sort,
+      page,
+      pageSize,
+      selectFields,
+      textFields,
+      matchMode: "fuzzy",
+      signal,
+    });
+    return {
+      ...fallbackResult,
+      exactMiss: true,
+      phase: "exact+catalog-fallback",
+    };
   }
 
-  if (page > 1) {
-    return runTextSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, textFields, matchMode: "fuzzy", signal });
+  if (sourceName === "catalog_search_lightweight") {
+    const rpcResult = await runFastCatalogRpcSearch({ supabase, query, barcode, mode, filters, sort, page, pageSize, signal });
+    if (rpcResult) return rpcResult;
   }
 
-  const prefixResult = await runTextSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, textFields, matchMode: "prefix", signal });
-  if (prefixResult.rows.length >= Math.min(pageSize, 8)) return prefixResult;
-
-  const fuzzyResult = await runTextSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, textFields, matchMode: "fuzzy", signal });
-  const rows = rankRows(dedupeRows([...prefixResult.rows, ...fuzzyResult.rows]), analyzeCatalogSearch(exactTerm), exactTerm, sort).slice(0, pageSize);
-  return {
-    ...fuzzyResult,
-    rows,
-    count: Math.max(fuzzyResult.count || 0, rows.length),
-    phase: prefixResult.rows.length ? "prefix+fuzzy" : "fuzzy",
-  };
+  return runTextSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, textFields, matchMode: "fuzzy", signal });
 }
 
 export async function searchPokemonCatalog({
@@ -994,6 +1073,7 @@ export async function searchPokemonCatalog({
       signal,
       selectFields: LEGACY_CATALOG_SELECT_FIELDS,
       textFields: LEGACY_TEXT_SEARCH_FIELDS,
+      exactFields: LEGACY_EXACT_FIELDS,
     });
     const payload = {
       ...result,

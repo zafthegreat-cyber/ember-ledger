@@ -42,15 +42,37 @@ export function getAdminAccessFromAuthMetadata(user = null) {
 
 export function makeFallbackUserProfile(user = null) {
   const email = user?.email || "";
+  const metadata = user?.user_metadata || user?.raw_user_meta_data || {};
+  const firstName = metadata.first_name || metadata.firstName || "";
+  const lastName = metadata.last_name || metadata.lastName || "";
+  const fullName = metadata.full_name || metadata.fullName || [firstName, lastName].filter(Boolean).join(" ");
   const metadataAccess = getAdminAccessFromAuthMetadata(user);
   const admin = metadataAccess.admin || isAdminEmail(email) || (isLocalhost() && LOCAL_DEV_ADMIN);
   const now = new Date().toISOString();
   return {
     userId: user?.id || "local-beta",
     email: email || "local beta mode",
-    displayName: email ? email.split("@")[0] : "Local Beta",
+    firstName,
+    lastName,
+    fullName,
+    displayName: fullName || metadata.display_name || metadata.displayName || (email ? email.split("@")[0] : "Local Beta"),
     userRole: admin ? USER_ROLES.ADMIN : USER_ROLES.USER,
     tier: admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE,
+    planTier: metadata.plan_tier || metadata.planTier || (admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE),
+    trialTier: metadata.trial_tier || metadata.trialTier || "",
+    trialStartedAt: metadata.trial_started_at || metadata.trialStartedAt || "",
+    trialExpiresAt: metadata.trial_expires_at || metadata.trialExpiresAt || "",
+    subscriptionStatus: metadata.subscription_status || metadata.subscriptionStatus || "none",
+    subscriptionProvider: metadata.subscription_provider || metadata.subscriptionProvider || "",
+    subscriptionProviderId: metadata.subscription_provider_id || metadata.subscriptionProviderId || "",
+    preferredRegion: metadata.preferred_region || metadata.preferredRegion || "Hampton Roads / 757",
+    betaAccessStatus: metadata.beta_access_status || metadata.betaAccessStatus || "approved",
+    termsAcceptedAt: metadata.terms_accepted_at || metadata.termsAcceptedAt || "",
+    privacyAcceptedAt: metadata.privacy_accepted_at || metadata.privacyAcceptedAt || "",
+    betaAcknowledgedAt: metadata.beta_acknowledged_at || metadata.betaAcknowledgedAt || "",
+    onboardingCompletedAt: "",
+    onboardingPreferences: [],
+    firstLoginSeen: false,
     isAdmin: admin,
     createdAt: now,
     updatedAt: now,
@@ -72,12 +94,35 @@ export function mapProfileRow(row = {}, user = null) {
   const admin = metadataAccess.admin || allowlisted;
   const userRole = admin ? USER_ROLES.ADMIN : normalizeUserRole(row.user_role || row.userRole);
   const tier = admin ? PLAN_TYPES.FOUNDER : normalizeTier(row.tier);
+  const firstName = row.first_name || row.firstName || "";
+  const lastName = row.last_name || row.lastName || "";
+  const fullName = row.full_name || row.fullName || [firstName, lastName].filter(Boolean).join(" ");
   return {
     userId: row.id || row.userId || user?.id || "",
     email,
-    displayName: row.display_name || row.displayName || email.split("@")[0] || "User",
+    firstName,
+    lastName,
+    fullName,
+    displayName: row.display_name || row.displayName || fullName || email.split("@")[0] || "User",
     userRole,
     tier,
+    planTier: row.plan_tier || row.planTier || row.tier || PLAN_TYPES.FREE,
+    trialTier: row.trial_tier || row.trialTier || "",
+    trialStartedAt: row.trial_started_at || row.trialStartedAt || "",
+    trialExpiresAt: row.trial_expires_at || row.trialExpiresAt || "",
+    subscriptionStatus: row.subscription_status || row.subscriptionStatus || "none",
+    subscriptionProvider: row.subscription_provider || row.subscriptionProvider || "",
+    subscriptionProviderId: row.subscription_provider_id || row.subscriptionProviderId || "",
+    preferredRegion: row.preferred_region || row.preferredRegion || "Hampton Roads / 757",
+    betaAccessStatus: row.beta_access_status || row.betaAccessStatus || "approved",
+    betaAccessRequestedAt: row.beta_access_requested_at || row.betaAccessRequestedAt || "",
+    betaAccessApprovedAt: row.beta_access_approved_at || row.betaAccessApprovedAt || "",
+    termsAcceptedAt: row.terms_accepted_at || row.termsAcceptedAt || "",
+    privacyAcceptedAt: row.privacy_accepted_at || row.privacyAcceptedAt || "",
+    betaAcknowledgedAt: row.beta_acknowledged_at || row.betaAcknowledgedAt || "",
+    onboardingCompletedAt: row.onboarding_completed_at || row.onboardingCompletedAt || "",
+    onboardingPreferences: row.onboarding_preferences || row.onboardingPreferences || [],
+    firstLoginSeen: Boolean(row.first_login_seen || row.firstLoginSeen),
     isAdmin: userRole === USER_ROLES.ADMIN,
     createdAt: row.created_at || row.createdAt || "",
     updatedAt: row.updated_at || row.updatedAt || "",
@@ -99,12 +144,27 @@ export async function createUserProfileIfMissing(user = null) {
   if (user?.id === "local-beta") return makeFallbackUserProfile(user);
   if (!user || !isSupabaseConfigured || !supabase) return makeFallbackUserProfile(user);
   const now = new Date().toISOString();
+  const metadata = user.user_metadata || {};
+  const firstName = metadata.first_name || metadata.firstName || "";
+  const lastName = metadata.last_name || metadata.lastName || "";
+  const fullName = metadata.full_name || metadata.fullName || [firstName, lastName].filter(Boolean).join(" ");
   const row = {
     id: user.id,
     email: user.email || "",
-    display_name: user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
+    first_name: firstName,
+    last_name: lastName,
+    full_name: fullName,
+    display_name: metadata.display_name || metadata.displayName || fullName || user.email?.split("@")[0] || "User",
+    preferred_region: metadata.preferred_region || metadata.preferredRegion || "Hampton Roads / 757",
     user_role: USER_ROLES.USER,
     tier: PLAN_TYPES.FREE,
+    plan_tier: PLAN_TYPES.FREE,
+    subscription_status: "none",
+    beta_access_status: metadata.beta_access_status || metadata.betaAccessStatus || "approved",
+    terms_accepted_at: metadata.terms_accepted_at || metadata.termsAcceptedAt || null,
+    privacy_accepted_at: metadata.privacy_accepted_at || metadata.privacyAcceptedAt || null,
+    beta_acknowledged_at: metadata.beta_acknowledged_at || metadata.betaAcknowledgedAt || null,
+    consent_text: metadata.consent_text || metadata.consentText || null,
     last_login_at: now,
     updated_at: now,
   };

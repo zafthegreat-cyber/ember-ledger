@@ -6,28 +6,44 @@ const rootDir = path.resolve(__dirname, "..");
 const seedDir = path.join(rootDir, "seeds", "stores");
 const dryRun = process.argv.includes("--dry-run");
 
-const requiredFields = ["chain", "name", "address", "city"];
+const requiredFields = ["retailer", "name", "address", "city"];
 
 function env(name) {
   return process.env[name] || "";
 }
 
 function normalizeStore(store, defaults, fileName) {
+  const retailer = store.retailer || store.chain || "";
+  const name = store.store_name || store.storeName || store.name || "";
+  const zipCode = store.zip_code || store.zipCode || store.zip || null;
   const normalized = {
-    chain: store.chain || store.retailer || "",
-    name: store.name || store.storeName || "",
+    country: store.country || defaults.country || "United States",
+    retailer,
+    chain: retailer,
+    store_name: name,
+    name,
     nickname: store.nickname || null,
     address: store.address || "",
     city: store.city || "",
-    state: store.state || defaults.state || "VA",
-    zip: store.zip || null,
+    state: store.state || defaults.state || "Virginia",
+    zip: zipCode,
+    zip_code: zipCode,
     region: store.region || defaults.region || null,
     county: store.county || null,
     phone: store.phone || null,
+    store_number: store.store_number || store.storeNumber || null,
+    retailer_store_id: store.retailer_store_id || store.retailerStoreId || null,
     website: store.website || null,
     sells_pokemon: store.sells_pokemon !== false && store.carriesPokemon !== "false" && store.carriesPokemonLikely !== "false",
+    active: store.active === undefined ? true : !["false", "0", "no"].includes(String(store.active).toLowerCase()),
+    pokemon_stock_likelihood: store.pokemon_stock_likelihood || store.pokemonStockLikelihood || store.pokemonConfidence || null,
     store_type: store.store_type || store.storeType || store.storeGroup || null,
     notes: store.notes || null,
+    source: store.source || defaults.source || fileName,
+    source_url: store.source_url || store.sourceUrl || defaults.source_url || defaults.sourceUrl || null,
+    last_verified_at: store.last_verified_at || store.lastVerifiedAt || null,
+    verified_by: store.verified_by || store.verifiedBy || null,
+    confidence: store.confidence || null,
     latitude: store.latitude ?? null,
     longitude: store.longitude ?? null,
   };
@@ -100,12 +116,14 @@ async function readSeedFiles() {
 }
 
 async function upsertStore(supabase, store) {
-  const { data: existing, error: lookupError } = await supabase
-    .from("stores")
-    .select("id")
-    .eq("chain", store.chain)
-    .eq("address", store.address)
-    .maybeSingle();
+  let lookup = supabase.from("stores").select("id");
+  if (store.retailer_store_id) {
+    lookup = lookup.eq("retailer_store_id", store.retailer_store_id).eq("retailer", store.retailer);
+  } else {
+    lookup = lookup.eq("chain", store.chain).eq("address", store.address);
+  }
+
+  const { data: existing, error: lookupError } = await lookup.maybeSingle();
 
   if (lookupError) throw lookupError;
 

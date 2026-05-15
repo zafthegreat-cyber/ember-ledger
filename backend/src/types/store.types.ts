@@ -1,14 +1,29 @@
 export type Store = {
   id: string;
   name: string;
+  country?: string;
+  retailer?: string;
+  storeName?: string;
   chain?: string;
   nickname?: string;
   address?: string;
   city?: string;
   state?: string;
   zip?: string;
+  zipCode?: string;
   region?: string;
   phone?: string;
+  storeNumber?: string;
+  retailerStoreId?: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  active?: boolean;
+  pokemonStockLikelihood?: string;
+  source?: string;
+  sourceUrl?: string;
+  lastVerifiedAt?: string;
+  verifiedBy?: string;
+  confidence?: string;
   website?: string;
   storeType?: string;
   notes?: string;
@@ -51,4 +66,3 @@ export type ScoutAlert = {
   createdAt: string;
   updatedAt: string;
 };
-

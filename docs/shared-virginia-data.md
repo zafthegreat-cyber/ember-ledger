@@ -1,6 +1,6 @@
 # Shared Virginia Store Directory and Pokemon Catalog
 
-These files set up shared, non-user-specific data for Scout / E&T TCG.
+These files set up shared, non-user-specific data for Scout / Ember & Tide.
 
 ## Migration
 
@@ -10,9 +10,17 @@ Run this in the Supabase SQL editor or with your preferred Postgres migration ru
 supabase/migrations/002_shared_virginia_catalog.sql
 ```
 
+For the statewide store directory metadata fields, review and apply this later through the approved migration process:
+
+```sql
+supabase/migrations/20260514120000_statewide_virginia_store_directory.sql
+```
+
 It creates or updates:
 
 - `stores`
+- `store_regions`
+- `store_user_watchlist`
 - `pokemon_products`
 - `user_inventory`
 - `store_reports`
@@ -20,6 +28,8 @@ It creates or updates:
 It also enables RLS:
 
 - Logged-in users can read shared `stores`.
+- Logged-in users can read active `store_regions`.
+- Users can manage only their own `store_user_watchlist` rows.
 - Logged-in users can read shared `pokemon_products`.
 - Users can read/write only their own `user_inventory`.
 - Logged-in users can create and read community `store_reports`.
@@ -38,7 +48,43 @@ The seed is safe to run more than once. It uses the unique product key:
 product_name + set_name + product_type
 ```
 
-## Virginia Store Seed
+## Virginia Store Directory
+
+The Store Directory scope is statewide Virginia. Hampton Roads / 757 remains the default/home region for Zena, but users should be able to browse, search, watch, favorite, guess, and submit Scout reports for any Virginia store.
+
+Hierarchy:
+
+- Country: United States
+- State: Virginia
+- Region
+- City
+- Retailer
+- Store location
+
+Required directory fields:
+
+- `country`
+- `state`
+- `region`
+- `city`
+- `retailer`
+- `store_name`
+- `nickname`
+- `address`
+- `zip_code`
+- `phone`
+- `store_number`
+- `retailer_store_id`
+- `latitude`
+- `longitude`
+- `active`
+- `pokemon_stock_likelihood`
+- `notes`
+- `source`
+- `source_url`
+- `last_verified_at`
+- `verified_by`
+- `confidence`
 
 Virginia stores are imported in regional batches. Fill these files over time with verified public store rows:
 
@@ -50,7 +96,10 @@ Virginia stores are imported in regional batches. Fill these files over time wit
 - `seeds/stores/virginia-roanoke.json`
 - `seeds/stores/virginia-lynchburg.json`
 - `seeds/stores/virginia-shenandoah.json`
+- `seeds/stores/virginia-eastern-shore.json`
+- `seeds/stores/virginia-southside.json`
 - `seeds/stores/virginia-southwest.json`
+- `seeds/stores/virginia-other.json`
 
 Validate the batch files without touching Supabase:
 
@@ -58,7 +107,7 @@ Validate the batch files without touching Supabase:
 npm run seed:stores:virginia:dry
 ```
 
-Import all region files:
+Import all region files after the statewide store directory migration is approved/applied:
 
 ```bash
 npm run seed:stores:virginia
@@ -84,7 +133,7 @@ The importer accepts both regional JSON files and CSV files in `seeds/stores/`.
 Do not add a store row unless its address is verified from a stable public source, such as an official store locator. The importer upsert key is:
 
 ```txt
-chain + address
+retailer_store_id + retailer, falling back to chain + address
 ```
 
 Target regions:
@@ -92,38 +141,55 @@ Target regions:
 - Hampton Roads / 757
 - Richmond / Central Virginia
 - Northern Virginia
-- Fredericksburg / Stafford / Spotsylvania
+- Fredericksburg
 - Charlottesville / Albemarle
-- Roanoke / New River Valley
+- Roanoke / Southwest Virginia
 - Lynchburg
 - Shenandoah Valley
-- Williamsburg / Peninsula
+- Eastern Shore
 - Southside Virginia
-- Southwest Virginia
+- Other Virginia
 
 Target chains:
 
 - Walmart
-- Walmart Neighborhood Market
 - Target
 - Best Buy
-- Barnes & Noble
-- GameStop
-- Five Below
-- Costco
-- Sam's Club
-- BJ's Wholesale Club
 - Dollar General
 - Family Dollar
 - Dollar Tree
+- Five Below
+- Barnes & Noble
+- GameStop
+- Costco
+- Sam's Club
+- BJ's
+- Kohl's
+- Michaels
+- Hobby Lobby
+- DICK'S Sporting Goods
 - Walgreens
 - CVS
-- Kohl's
-- DICK'S Sporting Goods
-- Hobby Lobby
-- Books-A-Million
-- Local card/game shops
-- NEX / MCX / Exchange locations where publicly listed and applicable
+- Local card shops
+- Local game stores
+- Toy stores
+- Bookstores
+- Other Pokemon-carrying retailers
+
+Known Hampton Roads pattern notes are stored only as user guesses/pattern notes, not confirmed restock facts:
+
+- College Drive Walmart: Thursday
+- Franklin Walmart: Wednesday
+- Suffolk Walmart: Wednesday
+
+Admin Review Center queues:
+
+- Missing store suggestions
+- Duplicate store reports
+- Nickname corrections
+- Wrong city/region corrections
+- Closed store reports
+- Pokemon stock likelihood suggestions
 
 ## TideTradr Catalog Import
 

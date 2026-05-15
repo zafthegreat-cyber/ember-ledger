@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#2a2522" />
-    <title>E&T TCG Offline</title>
+    <meta name="theme-color" content="#04111f" />
+    <title>Ember & Tide Offline</title>
     <style>
       :root {
-        color: #162033;
-        background: #fff7ef;
+        color: #f8fafc;
+        background: #04111f;
         font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
@@ -19,18 +19,24 @@
         place-items: center;
         padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
         background:
-          radial-gradient(circle at top left, rgba(180, 87, 53, 0.18), transparent 20rem),
-          radial-gradient(circle at bottom right, rgba(31, 111, 139, 0.18), transparent 22rem),
-          #fff7ef;
+          radial-gradient(circle at top left, rgba(255, 106, 19, 0.28), transparent 20rem),
+          radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.2), transparent 22rem),
+          linear-gradient(135deg, #061426, #04111f 58%, #020814);
       }
 
       main {
         width: min(460px, 100%);
         padding: 22px;
-        border: 1px solid rgba(22, 32, 51, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.18);
         border-radius: 22px;
-        background: rgba(255, 255, 255, 0.92);
+        background: rgba(8, 34, 58, 0.86);
         box-shadow: 0 20px 45px rgba(13, 24, 40, 0.12);
+      }
+
+      img {
+        width: 82px;
+        height: 82px;
+        margin-bottom: 10px;
       }
 
       h1 {
@@ -40,7 +46,7 @@
 
       p {
         margin: 0 0 14px;
-        color: #657286;
+        color: rgba(248, 250, 252, 0.74);
         line-height: 1.45;
       }
 
@@ -51,7 +57,7 @@
         justify-content: center;
         padding: 0 16px;
         border-radius: 999px;
-        background: #1f6f8b;
+        background: #ff6a13;
         color: #fff;
         font-weight: 800;
         text-decoration: none;
@@ -60,9 +66,10 @@
   </head>
   <body>
     <main>
-      <h1>E&T TCG is offline</h1>
+      <img src="/icon-192.png" alt="" />
+      <h1>Ember & Tide is offline</h1>
       <p>Your beta app shell is available, but this page could not be loaded from the network. Reconnect and try again. Local beta data saved in your browser should still be there when the app opens.</p>
-      <a href="/">Try opening E&T TCG</a>
+      <a href="/">Try opening Ember & Tide</a>
     </main>
   </body>
 </html>

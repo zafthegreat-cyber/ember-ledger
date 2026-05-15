@@ -2,22 +2,83 @@
 <html lang="en">
   <head>
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0f172a" />
-    <meta name="background-color" content="#fbf6ef" />
-    <meta name="description" content="E&T TCG is a mobile-first beta app for Pokemon collectors, Scout reports, TideTradr catalog lookup, Vault collection tracking, and The Forge inventory tools." />
-    <meta name="application-name" content="E&T TCG" />
+    <meta name="theme-color" content="#04111f" />
+    <meta name="background-color" content="#04111f" />
+    <meta name="description" content="Pokémon collecting, inventory, Scout reports, and kid-friendly community access." />
+    <meta name="application-name" content="Ember & Tide" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="E&T TCG" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-title" content="Ember & Tide" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>E&T TCG</title>
+    <title>Ember & Tide</title>
+    <style>
+      html,
+      body {
+        background: #04111f;
+      }
+
+      .app-startup-screen {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        color: #f8fafc;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(255, 106, 19, 0.28), transparent 18rem),
+          radial-gradient(circle at 82% 10%, rgba(56, 189, 248, 0.22), transparent 20rem),
+          linear-gradient(135deg, #061426, #04111f 58%, #020814);
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        text-align: center;
+      }
+
+      .app-startup-card {
+        display: grid;
+        justify-items: center;
+        gap: 12px;
+      }
+
+      .app-startup-card img {
+        width: 112px;
+        height: 112px;
+      }
+
+      .app-startup-card strong {
+        font-size: clamp(2rem, 8vw, 3.5rem);
+        line-height: 1;
+      }
+
+      .app-startup-card span {
+        color: #ff6a13;
+        font-weight: 900;
+        letter-spacing: 0;
+      }
+
+      .app-startup-card p {
+        margin: 0;
+        color: rgba(248, 250, 252, 0.78);
+        font-size: 1rem;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-startup-screen" aria-label="Loading Ember & Tide">
+        <div class="app-startup-card">
+          <img src="/icon-192.png" alt="" />
+          <strong>Ember & Tide</strong>
+          <span>Track. Trade. Thrive.</span>
+          <p>Built for collectors. Powered by community.</p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

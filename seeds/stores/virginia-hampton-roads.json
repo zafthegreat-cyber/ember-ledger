@@ -1,6 +1,6 @@
 {
   "region": "Hampton Roads / 757",
-  "state": "VA",
+  "state": "Virginia",
   "instructions": "Seed only stable public store locations. Do not add fake restock information. Restock days, truck days, and purchase limits stay Unknown until user reports or verified sources update them.",
   "stores": [
     {

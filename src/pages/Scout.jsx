@@ -18,12 +18,12 @@ import {
 import SmartCatalogSearchBox from "../components/SmartCatalogSearchBox";
 import OverflowMenu from "../components/OverflowMenu";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
-import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedStore, parseStoreCsv } from "../utils/storeImportUtils";
+import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion, parseStoreCsv } from "../utils/storeImportUtils";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
 import { buildSuggestedRoute, confidenceLabel, explainRouteChoice, numericDistance } from "../utils/routeUtils";
 import { SUGGESTION_TYPES, submitSuggestion } from "../utils/suggestionReviewUtils";
 import { sanitizeScoutLocalData } from "../utils/betaDataCleanup";
-import { VIRGINIA_REGIONS } from "../data/storeGroups";
+import { DEFAULT_VIRGINIA_REGION, POKEMON_STOCK_LIKELIHOOD_OPTIONS, VIRGINIA_REGIONS, VIRGINIA_RETAILERS, VIRGINIA_STORE_STATE } from "../data/storeGroups";
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
@@ -74,7 +74,7 @@ const REPORT_TYPE_OPTIONS = [
   { key: "empty_shelves", label: "Empty shelves", reportType: "Store Restock Report", stockStatus: "empty", confidence: "possible", sourceType: "user_report" },
   { key: "locked_up", label: "Product locked up", reportType: "Store Restock Report", stockStatus: "behind_counter", confidence: "possible", sourceType: "user_report" },
   { key: "employee_shipment_day", label: "Employee said shipment day", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", confidence: "likely", sourceType: "employee_tip", needsReview: true },
-  { key: "guess_prediction", label: "Guess / prediction", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", confidence: "guess", sourceType: "manual_prediction", visibility: "private", needsReview: true },
+  { key: "guess_prediction", label: "Guess / prediction", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", confidence: "guess", sourceType: "manual_prediction", visibility: "private_from_map", needsReview: true },
 ];
 
 const REPORT_RETAILER_OPTIONS = [
@@ -97,10 +97,9 @@ const REPORT_RETAILER_OPTIONS = [
 ];
 
 const REPORT_VISIBILITY_OPTIONS = [
-  { value: "public_cleaned", label: "Community Report", helper: "Share cleaned stock info with the community." },
-  { value: "shared_with_team", label: "Team Shared", helper: "Share with your workspace/team only." },
-  { value: "private", label: "Private note", helper: "Keep it private from other users." },
-  { value: "admin_only", label: "Admin Only", helper: "Keep it private and mark it for admin review." },
+  { value: "public", label: "Public", helper: "Other users may see this report or guess." },
+  { value: "private_from_map", label: "Private from public map", helper: "Private from public map means other users will not see this report publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring." },
+  { value: "admin_only", label: "Admin review only", helper: "Only you and Ember & Tide admins can review this report." },
 ];
 
 const TIDEPOOL_EVENT_TYPES = [
@@ -173,6 +172,48 @@ function makeScoutId(prefix) {
 }
 
 const STATEWIDE_SEED_STORES = VIRGINIA_STORES_SEED;
+const STORE_STATE_OPTIONS = ["All", VIRGINIA_STORE_STATE];
+const STORE_REVIEW_QUEUE_LABELS = [
+  "Missing store suggestions",
+  "Duplicate store reports",
+  "Nickname corrections",
+  "Wrong city/region corrections",
+  "Closed store reports",
+  "Pokemon stock likelihood suggestions",
+];
+
+function createBlankStoreForm() {
+  return {
+    country: "United States",
+    state: VIRGINIA_STORE_STATE,
+    region: DEFAULT_VIRGINIA_REGION,
+    name: "",
+    storeName: "",
+    nickname: "",
+    chain: "",
+    retailer: "",
+    storeGroup: "",
+    city: "",
+    address: "",
+    zip: "",
+    zipCode: "",
+    phone: "",
+    storeNumber: "",
+    retailerStoreId: "",
+    latitude: "",
+    longitude: "",
+    active: true,
+    pokemonStockLikelihood: "unknown",
+    source: "",
+    sourceUrl: "",
+    lastVerifiedAt: "",
+    verifiedBy: "",
+    confidence: "unverified",
+    mergedIntoStoreId: "",
+    merged_into_store_id: "",
+    notes: "",
+  };
+}
 
 function createDefaultScoutProfile() {
   return {
@@ -1077,16 +1118,22 @@ function scoutSourceTypeLabel(value = "") {
 }
 
 function scoutVisibilityLabel(value = "") {
+  if (value === "public") return "Public";
+  if (value === "private_from_map") return "Private from public map";
+  if (value === "admin_only") return "Admin review only";
   return SCOUT_VISIBILITY_COPY[value]?.label || scoutSourceTypeLabel(value);
 }
 
 function scoutVisibilityHelper(value = "") {
+  if (value === "public") return "Other users may see this report or guess.";
+  if (value === "private_from_map") return "Private from public map means other users will not see this report publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring.";
+  if (value === "admin_only") return "Only you and Ember & Tide admins can review this report.";
   return SCOUT_VISIBILITY_COPY[value]?.helper || "";
 }
 
 function isScoutVisibilityPrivateFromUsers(record = {}) {
   const visibility = String(record.visibility || record.visibility_level || record.submittedData?.visibility || "").toLowerCase();
-  return visibility === "private" || visibility === "shared_with_team";
+  return visibility === "private" || visibility === "shared_with_team" || visibility === "private_from_map" || visibility === "admin_only";
 }
 
 function hasAdminReviewDisclosure(record = {}) {
@@ -1126,8 +1173,9 @@ export default function Scout({
   const [stores, setStores] = useState([]);
   const [scoutSubTab, setScoutSubTab] = useState("overview");
   const [selectedStoreId, setSelectedStoreId] = useState("");
+  const [selectedState, setSelectedState] = useState(VIRGINIA_STORE_STATE);
   const [selectedChain, setSelectedChain] = useState("All");
-  const [selectedRegion, setSelectedRegion] = useState("All");
+  const [selectedRegion, setSelectedRegion] = useState(DEFAULT_VIRGINIA_REGION);
   const [selectedCity, setSelectedCity] = useState("All");
   const [selectedStoreType, setSelectedStoreType] = useState("All");
   const [selectedCounty, setSelectedCounty] = useState("All");
@@ -1250,14 +1298,7 @@ export default function Scout({
   const [restockPatterns, setRestockPatterns] = useState([]);
   const hasAutoOpenedDropRef = useRef(false);
 
-  const [storeForm, setStoreForm] = useState({
-    name: "",
-    chain: "",
-    storeGroup: "",
-    city: "",
-    address: "",
-    phone: "",
-  });
+  const [storeForm, setStoreForm] = useState(createBlankStoreForm);
   const targetSubTabKey = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.tab;
   const targetSubTabId = typeof targetSubTab === "string" ? targetSubTab : targetSubTab?.id;
   const targetSubTabAction = typeof targetSubTab === "string" ? "" : targetSubTab?.action;
@@ -1339,16 +1380,9 @@ export default function Scout({
 
   useEffect(() => {
     setStorePage(1);
-  }, [selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
+  }, [selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
 
-  const [editStoreForm, setEditStoreForm] = useState({
-    name: "",
-    chain: "",
-    storeGroup: "",
-    city: "",
-    address: "",
-    phone: "",
-  });
+  const [editStoreForm, setEditStoreForm] = useState(createBlankStoreForm);
 
   const [reportForm, setReportForm] = useState({
     reportType: "Store Restock Report",
@@ -1367,7 +1401,7 @@ export default function Scout({
     stockStatus: "",
     sourceType: "user_report",
     confidence: "possible",
-    visibility: "public_cleaned",
+    visibility: "public",
     evidence: [],
     lat: null,
     lng: null,
@@ -1395,6 +1429,7 @@ export default function Scout({
     retailer: "",
     address: "",
     city: "",
+    region: DEFAULT_VIRGINIA_REGION,
     zip: "",
     notes: "",
   });
@@ -1560,7 +1595,7 @@ export default function Scout({
       sourceType: "photo_report",
       source_type: "photo_report",
       confidence: "confirmed",
-      visibility: "public_cleaned",
+      visibility: "public",
       adminReviewVisible: true,
       admin_review_visible: true,
       adminVisibilityDisclosedAt: now.toISOString(),
@@ -1793,7 +1828,7 @@ export default function Scout({
       stockStatus: "",
       sourceType: "user_report",
       confidence: "possible",
-      visibility: "public_cleaned",
+      visibility: "public",
       evidence: [],
       lat: null,
       lng: null,
@@ -1844,7 +1879,7 @@ export default function Scout({
       stockStatus: report.stockStatus || report.stock_status || "",
       sourceType: report.sourceType || report.source_type || "user_report",
       confidence: report.confidence || "possible",
-      visibility: report.visibility || "public_cleaned",
+      visibility: report.visibility || "public",
       evidence: Array.isArray(report.evidence) ? report.evidence : [],
       lat: report.lat || null,
       lng: report.lng || null,
@@ -2019,7 +2054,7 @@ function submitSharedDataSuggestion(input, setMessage) {
 }
 
 function previewStatewideStoreImport() {
-  const rows = parseStoreCsv(storeImportText).map((row) => normalizeImportedStore(row, { state: "VA", source: "manual-csv" }));
+  const rows = parseStoreCsv(storeImportText).map((row) => normalizeImportedStore(row, { state: VIRGINIA_STORE_STATE, source: "manual-csv" }));
   setStoreImportPreview(rows);
 }
 
@@ -2050,14 +2085,16 @@ function submitMissingStoreForReview(event) {
     storeGroup: missingStoreForm.retailer || "Other",
     address: missingStoreForm.address,
     city: missingStoreForm.city,
-    state: "VA",
+    state: VIRGINIA_STORE_STATE,
+    region: missingStoreForm.region || DEFAULT_VIRGINIA_REGION,
     zip: missingStoreForm.zip,
     notes: missingStoreForm.notes,
     source: "user-review",
     sourceType: "manual",
     lastUpdated: now,
     lastVerified: "Needs review",
-    pokemonConfidence: "Unknown",
+    pokemonConfidence: "unknown",
+    pokemonStockLikelihood: "unknown",
     carriesPokemonLikely: false,
     isActive: false,
     userAdded: true,
@@ -2070,7 +2107,7 @@ function submitMissingStoreForReview(event) {
     notes: missingStoreForm.notes || "Submitted from Scout missing store flow.",
   }, setError);
   if (!suggestion) return;
-  setMissingStoreForm({ name: "", retailer: "", address: "", city: "", zip: "", notes: "" });
+  setMissingStoreForm({ name: "", retailer: "", address: "", city: "", region: DEFAULT_VIRGINIA_REGION, zip: "", notes: "" });
   setMissingStoreModalOpen(false);
   setError("Missing store submitted for admin review. It will not appear publicly until approved.");
 }
@@ -2660,35 +2697,116 @@ function openInForge(item) {
   useEffect(() => {
     if (selectedStore) {
       setEditStoreForm({
+        ...createBlankStoreForm(),
+        country: selectedStore.country || "United States",
+        state: normalizeStateLabel(selectedStore.state || VIRGINIA_STORE_STATE),
+        region: normalizeVirginiaRegion(selectedStore.region || DEFAULT_VIRGINIA_REGION),
         name: selectedStore.name || "",
+        storeName: selectedStore.storeName || selectedStore.store_name || selectedStore.name || "",
+        nickname: selectedStore.nickname || "",
         chain: selectedStore.chain || "",
+        retailer: selectedStore.retailer || selectedStore.chain || "",
         storeGroup: selectedStore.storeGroup || getStoreGroup(selectedStore),
         city: selectedStore.city || "",
         address: selectedStore.address || "",
+        zip: selectedStore.zip || selectedStore.zipCode || selectedStore.zip_code || "",
+        zipCode: selectedStore.zipCode || selectedStore.zip_code || selectedStore.zip || "",
         phone: selectedStore.phone || "",
+        storeNumber: selectedStore.storeNumber || selectedStore.store_number || "",
+        retailerStoreId: selectedStore.retailerStoreId || selectedStore.retailer_store_id || "",
+        latitude: selectedStore.latitude || selectedStore.lat || "",
+        longitude: selectedStore.longitude || selectedStore.lng || "",
+        active: selectedStore.active ?? selectedStore.isActive ?? true,
+        pokemonStockLikelihood: selectedStore.pokemonStockLikelihood || selectedStore.pokemon_stock_likelihood || "unknown",
+        source: selectedStore.source || "",
+        sourceUrl: selectedStore.sourceUrl || selectedStore.source_url || "",
+        lastVerifiedAt: selectedStore.lastVerifiedAt || selectedStore.last_verified_at || selectedStore.lastVerified || "",
+        verifiedBy: selectedStore.verifiedBy || selectedStore.verified_by || "",
+        confidence: selectedStore.confidence || "unverified",
+        mergedIntoStoreId: selectedStore.mergedIntoStoreId || selectedStore.merged_into_store_id || "",
+        merged_into_store_id: selectedStore.merged_into_store_id || selectedStore.mergedIntoStoreId || "",
+        notes: selectedStore.notes || "",
       });
     }
   }, [selectedStore]);
 
+function buildStorePayloadFromForm(form = {}, overrides = {}) {
+  const retailer = normalizeImportedStore({
+    ...form,
+    retailer: form.retailer || form.chain,
+    chain: form.chain || form.retailer,
+    store_name: form.storeName || form.name,
+    zip_code: form.zipCode || form.zip,
+    source_url: form.sourceUrl,
+    retailer_store_id: form.retailerStoreId,
+    store_number: form.storeNumber,
+    pokemon_stock_likelihood: form.pokemonStockLikelihood,
+    last_verified_at: form.lastVerifiedAt,
+    verified_by: form.verifiedBy,
+    active: form.active,
+    ...overrides,
+  }, {
+    country: "United States",
+    state: VIRGINIA_STORE_STATE,
+    region: DEFAULT_VIRGINIA_REGION,
+    source: "manual-admin",
+  });
+  return {
+    ...retailer,
+    ...overrides,
+    country: retailer.country || "United States",
+    state: normalizeStateLabel(retailer.state || VIRGINIA_STORE_STATE),
+    region: normalizeVirginiaRegion(retailer.region || DEFAULT_VIRGINIA_REGION),
+    name: retailer.name || retailer.storeName,
+    storeName: retailer.storeName || retailer.name,
+    chain: retailer.chain || retailer.retailer,
+    retailer: retailer.retailer || retailer.chain,
+    zip: retailer.zip || retailer.zipCode,
+    zipCode: retailer.zipCode || retailer.zip,
+    active: retailer.active ?? retailer.isActive ?? true,
+    mergedIntoStoreId: form.mergedIntoStoreId || form.merged_into_store_id || overrides.mergedIntoStoreId || overrides.merged_into_store_id || "",
+    merged_into_store_id: form.merged_into_store_id || form.mergedIntoStoreId || overrides.merged_into_store_id || overrides.mergedIntoStoreId || null,
+  };
+}
+
 async function handleCreateStore(e) {
   e.preventDefault();
-  if (BETA_LOCAL_SCOUT || !adminMode) {
+  const storePayload = buildStorePayloadFromForm(storeForm, {
+    createdAt: new Date().toISOString(),
+    reviewStatus: adminMode && !BETA_LOCAL_SCOUT ? "approved" : "pending",
+  });
+  if (BETA_LOCAL_SCOUT && adminMode) {
     const newStore = normalizeStoreGroup({
-      id: makeScoutId("store-review"),
-      name: storeForm.name,
-      chain: storeForm.chain,
-      storeGroup: storeForm.storeGroup,
-      city: storeForm.city,
-      address: storeForm.address,
-      phone: storeForm.phone,
-      type: "Big Box",
-      status: "Unknown",
+      ...storePayload,
+      id: makeScoutId("store"),
+      status: storePayload.status || "Unknown",
       stockDays: [],
       truckDays: [],
       priority: false,
-      createdAt: new Date().toISOString(),
-      reviewStatus: "pending",
+      isActive: storePayload.active ?? true,
+      active: storePayload.active ?? true,
+      reviewStatus: "approved",
+    });
+    const nextStores = dedupeStoresByChainAddress([...stores, newStore]);
+    saveLocalScout({ stores: nextStores });
+    setStores(nextStores);
+    setSelectedStoreId(newStore.id);
+    setStoreDirectoryView("detail");
+    setStoreForm(createBlankStoreForm());
+    setError("Store added to the local admin directory. Apply the statewide store migration/import before using this for production data.");
+    return;
+  }
+
+  if (!adminMode) {
+    const newStore = normalizeStoreGroup({
+      ...storePayload,
+      id: makeScoutId("store-review"),
+      status: "Needs Review",
+      stockDays: [],
+      truckDays: [],
+      priority: false,
       isActive: false,
+      active: false,
     });
     const suggestion = submitSharedDataSuggestion({
       suggestionType: SUGGESTION_TYPES.ADD_MISSING_STORE,
@@ -2697,33 +2815,22 @@ async function handleCreateStore(e) {
       notes: "Submitted from Scout store form.",
     }, setError);
     if (!suggestion) return;
-    setStoreForm({ name: "", chain: "", storeGroup: "", city: "", address: "", phone: "" });
+    setStoreForm(createBlankStoreForm());
     setError("Store submitted for admin review. It will not appear publicly until approved.");
     return;
   }
 
   try {
     await createStore({
-      name: storeForm.name,
-      chain: storeForm.chain,
-      storeGroup: storeForm.storeGroup || getStoreGroup(storeForm),
-      city: storeForm.city,
-      address: storeForm.address,
-      phone: storeForm.phone,
-      type: "Big Box",
+      ...storePayload,
+      storeGroup: storePayload.storeGroup || getStoreGroup(storePayload),
+      type: storePayload.storeType || storePayload.type || "Retail",
       stockDays: [],
       truckDays: [],
       priority: false,
     });
 
-    setStoreForm({
-      name: "",
-      chain: "",
-      storeGroup: "",
-      city: "",
-      address: "",
-      phone: "",
-    });
+    setStoreForm(createBlankStoreForm());
 
     await loadStores();
   } catch (err) {
@@ -2735,19 +2842,29 @@ async function handleUpdateStore(e) {
   e.preventDefault();
   if (!selectedStoreId) return;
 
-  if (BETA_LOCAL_SCOUT || !adminMode) {
-    const currentStore = stores.find((store) => String(store.id) === String(selectedStoreId));
-    const submittedData = normalizeStoreGroup({
-      ...(currentStore || {}),
+  if (BETA_LOCAL_SCOUT && adminMode) {
+    const submittedData = normalizeStoreGroup(buildStorePayloadFromForm(editStoreForm, {
       id: selectedStoreId,
-      name: editStoreForm.name,
-      chain: editStoreForm.chain,
-      storeGroup: editStoreForm.storeGroup || getStoreGroup(editStoreForm),
-      city: editStoreForm.city,
-      address: editStoreForm.address,
-      phone: editStoreForm.phone,
+      updatedAt: new Date().toISOString(),
+      userEdited: true,
+    }));
+    const nextStores = stores.map((store) => String(store.id) === String(selectedStoreId) ? { ...store, ...submittedData } : store);
+    saveLocalScout({ stores: nextStores });
+    setStores(nextStores);
+    setIsEditingStore(false);
+    setError("Store metadata updated locally for admin review.");
+    return;
+  }
+
+  if (!adminMode) {
+    const currentStore = stores.find((store) => String(store.id) === String(selectedStoreId));
+    const submittedData = normalizeStoreGroup(buildStorePayloadFromForm({
+      ...(currentStore || {}),
+      ...editStoreForm,
+    }, {
+      id: selectedStoreId,
       reviewStatus: "pending",
-    });
+    }));
     const suggestion = submitSharedDataSuggestion({
       suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
       targetTable: "stores",
@@ -2763,14 +2880,7 @@ async function handleUpdateStore(e) {
   }
 
   try {
-    await updateStore(selectedStoreId, {
-      name: editStoreForm.name,
-      chain: editStoreForm.chain,
-      storeGroup: editStoreForm.storeGroup || getStoreGroup(editStoreForm),
-      city: editStoreForm.city,
-      address: editStoreForm.address,
-      phone: editStoreForm.phone,
-    });
+    await updateStore(selectedStoreId, buildStorePayloadFromForm(editStoreForm));
 
     setIsEditingStore(false);
     await loadStores();
@@ -2833,7 +2943,7 @@ async function handleUpdateStore(e) {
       ? reportForm.reportedAt || `${reportDate}T${reportTime}:00`
       : nowParts.iso;
     const storeForPayload = stores.find((store) => String(store.id) === String(activeStoreId)) || {};
-    const visibilityForPayload = reportForm.visibility === "admin_only" ? "private" : reportForm.visibility || "public_cleaned";
+    const visibilityForPayload = reportForm.visibility || "public";
     const adminOnlyReport = reportForm.visibility === "admin_only";
     const evidence = [
       ...(Array.isArray(reportForm.evidence) ? reportForm.evidence : []),
@@ -2842,7 +2952,7 @@ async function handleUpdateStore(e) {
         url,
         transcript: "",
         submittedBy: "user",
-        private: visibilityForPayload !== "public_cleaned",
+        private: visibilityForPayload !== "public",
         adminReviewVisible: true,
       })),
       note ? {
@@ -2850,7 +2960,7 @@ async function handleUpdateStore(e) {
         url: "",
         transcript: note,
         submittedBy: "user",
-        private: visibilityForPayload !== "public_cleaned",
+        private: visibilityForPayload !== "public",
         adminReviewVisible: true,
       } : null,
     ].filter(Boolean);
@@ -3269,7 +3379,7 @@ async function handleUpdateStore(e) {
     setRestockPatterns(nextPatterns);
     setIntelImportPreview([]);
     setIntelImportText("");
-    setError("Restock intel saved private from other users for admin review.");
+    setError("Restock intel saved private from public map for admin review.");
   }
 
   async function handleCreateItem(e) {
@@ -3414,7 +3524,7 @@ async function handleUpdateStore(e) {
   }
 
   const chainOptions = useMemo(() => {
-    const chains = Array.from(new Set(stores.map((s) => s.chain).filter(Boolean)));
+    const chains = Array.from(new Set([...VIRGINIA_RETAILERS, ...stores.map((s) => s.chain || s.retailer).filter(Boolean)]));
     return ["All", ...chains.sort()];
   }, [stores]);
 
@@ -3450,12 +3560,24 @@ async function handleUpdateStore(e) {
   }, [stores]);
 
   const nearbyFavoriteStores = useMemo(() => {
-    return sortStores(stores.filter((store) => store.favorite || store.distanceFromUser || store.distance || store.lastReportDate), "distance").slice(0, 3);
+    return sortStores(stores.filter((store) =>
+      store.favorite ||
+      store.watched ||
+      store.distanceFromUser ||
+      store.distance ||
+      store.lastReportDate ||
+      store.region === DEFAULT_VIRGINIA_REGION
+    ), "distance").slice(0, 3);
   }, [stores]);
 
   const regionOptions = useMemo(() => {
-    const regions = Array.from(new Set(stores.map((s) => s.region).filter(Boolean)));
-    return ["All", ...regions.sort()];
+    const regions = Array.from(new Set([...VIRGINIA_REGIONS, ...stores.map((s) => normalizeVirginiaRegion(s.region)).filter(Boolean)]));
+    return ["All", ...regions.filter((region) => region !== "All")];
+  }, [stores]);
+
+  const stateOptions = useMemo(() => {
+    const states = Array.from(new Set([...STORE_STATE_OPTIONS, ...stores.map((s) => normalizeStateLabel(s.state)).filter(Boolean)]));
+    return states;
   }, [stores]);
 
   const cityOptions = useMemo(() => {
@@ -3469,7 +3591,7 @@ async function handleUpdateStore(e) {
   }, [stores]);
 
   const confidenceOptions = useMemo(() => {
-    const confidence = Array.from(new Set(stores.map((s) => s.pokemonConfidence).filter(Boolean)));
+    const confidence = Array.from(new Set(stores.map((s) => s.pokemonStockLikelihood || s.pokemon_stock_likelihood || s.pokemonConfidence).filter(Boolean)));
     return ["All", ...confidence.sort()];
   }, [stores]);
 
@@ -3483,22 +3605,26 @@ async function handleUpdateStore(e) {
     return sortStores(stores.filter((store) => {
       const storeType = store.storeType || store.store_type || store.type || "";
       const matchesSearch = storeMatchesSearch(store, storeSearch);
-      const matchesChain = selectedChain === "All" || store.chain === selectedChain;
-      const matchesRegion = selectedRegion === "All" || store.region === selectedRegion;
+      const storeState = normalizeStateLabel(store.state);
+      const storeRegion = normalizeVirginiaRegion(store.region);
+      const matchesState = selectedState === "All" || storeState === selectedState;
+      const matchesChain = selectedChain === "All" || store.chain === selectedChain || store.retailer === selectedChain;
+      const matchesRegion = selectedRegion === "All" || storeRegion === selectedRegion;
       const matchesCity = selectedCity === "All" || store.city === selectedCity;
       const matchesType = selectedStoreType === "All" || storeType === selectedStoreType;
       const matchesCounty = selectedCounty === "All" || store.county === selectedCounty;
-      const matchesConfidence = selectedConfidence === "All" || store.pokemonConfidence === selectedConfidence;
+      const storeLikelihood = store.pokemonStockLikelihood || store.pokemon_stock_likelihood || store.pokemonConfidence;
+      const matchesConfidence = selectedConfidence === "All" || storeLikelihood === selectedConfidence;
       const quickMatch =
         storeQuickFilter === "all" ||
         (storeQuickFilter === "default" && (store.favorite || store.carriesPokemonLikely || store.tidepoolScore || store.restockConfidence || store.lastReportDate)) ||
         (storeQuickFilter === "favorites" && store.favorite) ||
         (storeQuickFilter === "recent" && String(store.lastReportDate || "").slice(0, 10) === today) ||
-        (storeQuickFilter === "highConfidence" && ["high", "medium/high"].includes(String(store.pokemonConfidence || "").toLowerCase())) ||
+        (storeQuickFilter === "highConfidence" && ["high", "medium/high"].includes(String(storeLikelihood || "").toLowerCase())) ||
         (storeQuickFilter === "strictLimits" && store.strictLimits);
-      return matchesSearch && matchesChain && matchesRegion && matchesCity && matchesType && matchesCounty && matchesConfidence && quickMatch;
+      return matchesSearch && matchesState && matchesChain && matchesRegion && matchesCity && matchesType && matchesCounty && matchesConfidence && quickMatch;
     }), storeSort);
-  }, [stores, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
+  }, [stores, selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
 
   const groupedFilteredStores = useMemo(() => {
     const groups = filteredStores.reduce((acc, store) => {
@@ -3540,6 +3666,7 @@ async function handleUpdateStore(e) {
     setStoreSearch("");
     setSelectedCity("All");
     setSelectedRegion("All");
+    setSelectedState(VIRGINIA_STORE_STATE);
     setSelectedStoreType("All");
     setSelectedCounty("All");
     setSelectedConfidence("All");
@@ -3572,6 +3699,8 @@ async function handleUpdateStore(e) {
     setSelectedStoreId("");
     setSelectedChain("All");
     setStoreSearch("");
+    setSelectedRegion(DEFAULT_VIRGINIA_REGION);
+    setSelectedState(VIRGINIA_STORE_STATE);
     setStoreDirectoryView("landing");
   }
 
@@ -3584,7 +3713,7 @@ async function handleUpdateStore(e) {
     if (!storeId) return;
     const nextStores = stores.map((store) =>
       store.id === storeId
-        ? { ...store, favorite: !store.favorite, lastUpdated: new Date().toISOString() }
+        ? { ...store, favorite: !store.favorite, watched: !store.favorite, lastUpdated: new Date().toISOString() }
         : store
     );
     if (BETA_LOCAL_SCOUT) {
@@ -3615,12 +3744,13 @@ async function handleUpdateStore(e) {
   }, [stores, visibleReports, items]);
 
   const directoryStats = useMemo(() => {
-    const hamptonRoadsStores = stores.filter((store) => /hampton roads|757|williamsburg|peninsula/i.test(`${store.region || ""} ${store.city || ""}`)).length;
+    const hamptonRoadsStores = stores.filter((store) => normalizeVirginiaRegion(store.region) === DEFAULT_VIRGINIA_REGION).length;
     const chains = new Set(stores.map((store) => store.chain || store.storeGroup || store.name).filter(Boolean));
     const militaryStores = stores.filter((store) => /nex|mcx|exchange|commissary|military|base|px|bx/i.test(`${store.chain || ""} ${store.name || ""} ${store.notes || ""}`)).length;
     return {
       totalStores: stores.length,
       hamptonRoadsStores,
+      virginiaRegions: new Set(stores.map((store) => normalizeVirginiaRegion(store.region)).filter(Boolean)).size,
       retailChains: chains.size,
       militaryStores,
     };
@@ -4137,6 +4267,9 @@ async function handleUpdateStore(e) {
                 <input style={styles.input} value={missingStoreForm.city} onChange={(event) => setMissingStoreForm((current) => ({ ...current, city: event.target.value }))} placeholder="City" />
                 <input style={styles.input} value={missingStoreForm.zip} onChange={(event) => setMissingStoreForm((current) => ({ ...current, zip: event.target.value }))} placeholder="ZIP" />
               </div>
+              <select style={styles.input} value={missingStoreForm.region} onChange={(event) => setMissingStoreForm((current) => ({ ...current, region: event.target.value }))}>
+                {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+              </select>
               <textarea style={styles.textarea} value={missingStoreForm.notes} onChange={(event) => setMissingStoreForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" />
               <div style={styles.row}>
                 <button type="submit" style={styles.buttonPrimary}>Submit for Review</button>
@@ -4214,14 +4347,23 @@ async function handleUpdateStore(e) {
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Virginia Scout Directory</h2>
           <p style={styles.empty}>
-            Scout is ready for statewide Virginia coverage. Hampton Roads has starter store rows now; other regions are import-ready batches that should be filled from official store directories or manual CSVs.
+            Scout is ready for statewide Virginia coverage. Hampton Roads / 757 remains the default home region, and every Virginia region can be imported, searched, watched, reported, and reviewed.
           </p>
           <div style={styles.statsRow}>
             <Metric label="Total Stores" value={directoryStats.totalStores} />
-            <Metric label="Hampton Roads Stores" value={directoryStats.hamptonRoadsStores} />
+            <Metric label="Virginia Regions" value={`${directoryStats.virginiaRegions}/${VIRGINIA_REGIONS.length}`} />
+            <Metric label="Home Region Stores" value={directoryStats.hamptonRoadsStores} />
             <Metric label="Retail Chains" value={directoryStats.retailChains} />
             <Metric label="Military/Exchange Stores" value={directoryStats.militaryStores} />
           </div>
+          {adminMode ? (
+            <div style={styles.calloutCard}>
+              <strong>Admin Review Center queues</strong>
+              <div style={{ ...styles.row, marginTop: "8px" }}>
+                {STORE_REVIEW_QUEUE_LABELS.map((label) => <span key={label} style={styles.badge}>{label}</span>)}
+              </div>
+            </div>
+          ) : null}
           <div style={styles.row}>
             {VIRGINIA_STORE_SEED_STATUS.map((batch) => (
               <span key={batch.source} style={styles.badge}>{batch.region}: {batch.count}</span>
@@ -4557,7 +4699,7 @@ async function handleUpdateStore(e) {
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Step 4: Screenshot</h3>
                 <p style={styles.tiny}>
-                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting. Private from other users means only you and app admins can see it.
+                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting. Private from public map means other users will not see it publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring.
                 </p>
                 <div style={styles.formGrid}>
                   <input type="file" accept="image/*" onChange={handleTipScreenshotUpload} />
@@ -4600,7 +4742,7 @@ async function handleUpdateStore(e) {
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Import restock intel</h3>
                 <p style={styles.tiny}>
-                  Paste cleaned notes from screenshots, group chats, calls, or planner notes. Imported intel is private from other users by default; only you and app admins can review it unless you later publish a cleaned report.
+                  Paste cleaned notes from screenshots, group chats, calls, or planner notes. Imported intel is private from the public map by default; admins may review it for moderation, accuracy, and prediction scoring unless you later publish a cleaned report.
                 </p>
                 <textarea
                   style={styles.textarea}
@@ -4610,7 +4752,7 @@ async function handleUpdateStore(e) {
                 />
                 <div style={styles.row}>
                   <button type="button" style={styles.buttonSoft} onClick={previewIntelImport}>Preview Intel</button>
-                  <button type="button" style={styles.buttonPrimary} disabled={!intelImportPreview.length} onClick={() => saveIntelImportRows()}>Save private from other users</button>
+                  <button type="button" style={styles.buttonPrimary} disabled={!intelImportPreview.length} onClick={() => saveIntelImportRows()}>Save private from public map</button>
                 </div>
                 {intelImportPreview.length ? (
                   <div className="scout-intel-review-list">
@@ -4620,7 +4762,7 @@ async function handleUpdateStore(e) {
                         <strong>{index + 1}. {row.storeAlias}</strong>
                         <span>{scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
                         <p>{row.rawProductText || "No product phrase detected"}</p>
-                        <small>Visibility: Private from other users | Admin-reviewable before public sharing</small>
+                        <small>Visibility: Private from public map | Admin-reviewable before public sharing</small>
                       </div>
                     ))}
                   </div>
@@ -5398,8 +5540,8 @@ async function handleUpdateStore(e) {
             {storeDirectoryView === "landing" ? (
               <>
                 <div style={styles.card}>
-                  <h2 style={styles.sectionTitle}>Stores</h2>
-                  <p style={styles.empty}>Search nearby stores, pick a retailer, then open the exact location you want.</p>
+                  <h2 style={styles.sectionTitle}>Virginia Store Directory</h2>
+                  <p style={styles.empty}>Search statewide Virginia stores, pick a retailer, then open the exact location you want. Hampton Roads / 757 is the default home view.</p>
                   <input
                     style={styles.input}
                     value={storeSearch}
@@ -5411,15 +5553,51 @@ async function handleUpdateStore(e) {
                       if (!onLocationRequired("nearby-stores")) return;
                       setStoreQuickFilter("default");
                       setSelectedChain("All");
+                      setSelectedState(VIRGINIA_STORE_STATE);
+                      setSelectedRegion(DEFAULT_VIRGINIA_REGION);
                       setStoreDirectoryView("retailer");
-                    }}>Nearby</button>
+                    }}>Home Region</button>
                     <button type="button" style={storeQuickFilter === "favorites" ? styles.buttonPrimary : styles.buttonSoft} onClick={() => {
                       setStoreQuickFilter("favorites");
                       setSelectedChain("All");
                       setStoreDirectoryView("retailer");
                     }}>Favorites</button>
+                    <button type="button" style={styles.buttonSoft} onClick={() => {
+                      setStoreQuickFilter("all");
+                      setSelectedState(VIRGINIA_STORE_STATE);
+                      setSelectedRegion("All");
+                      setSelectedChain("All");
+                      setStoreDirectoryView("retailer");
+                    }}>Browse All Virginia</button>
                     <button type="button" style={styles.buttonSoft} onClick={() => setMissingStoreModalOpen(true)}>Submit Missing Store</button>
                   </div>
+                  {adminMode ? (
+                    <details style={{ marginTop: "12px" }}>
+                      <summary style={{ ...styles.buttonSoft, cursor: "pointer", display: "inline-block" }}>Admin Add Virginia Store</summary>
+                      <form onSubmit={handleCreateStore} style={{ ...styles.formGrid, marginTop: "12px" }}>
+                        <input style={styles.input} value={storeForm.name} onChange={(e) => setStoreForm((current) => ({ ...current, name: e.target.value, storeName: e.target.value }))} placeholder="Store name" />
+                        <input style={styles.input} value={storeForm.nickname} onChange={(e) => setStoreForm((current) => ({ ...current, nickname: e.target.value }))} placeholder="Nickname" />
+                        <select style={styles.input} value={storeForm.chain || storeForm.retailer} onChange={(e) => setStoreForm((current) => ({ ...current, chain: e.target.value, retailer: e.target.value }))}>
+                          <option value="">Retailer</option>
+                          {VIRGINIA_RETAILERS.map((retailer) => <option key={retailer} value={retailer}>{retailer}</option>)}
+                        </select>
+                        <select style={styles.input} value={storeForm.region} onChange={(e) => setStoreForm((current) => ({ ...current, region: e.target.value }))}>
+                          {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+                        </select>
+                        <input style={styles.input} value={storeForm.city} onChange={(e) => setStoreForm((current) => ({ ...current, city: e.target.value }))} placeholder="City" />
+                        <input style={styles.input} value={storeForm.address} onChange={(e) => setStoreForm((current) => ({ ...current, address: e.target.value }))} placeholder="Address" />
+                        <input style={styles.input} value={storeForm.zipCode || storeForm.zip} onChange={(e) => setStoreForm((current) => ({ ...current, zip: e.target.value, zipCode: e.target.value }))} placeholder="ZIP code" />
+                        <input style={styles.input} value={storeForm.phone} onChange={(e) => setStoreForm((current) => ({ ...current, phone: e.target.value }))} placeholder="Phone optional" />
+                        <input style={styles.input} value={storeForm.storeNumber} onChange={(e) => setStoreForm((current) => ({ ...current, storeNumber: e.target.value }))} placeholder="Store number" />
+                        <input style={styles.input} value={storeForm.retailerStoreId} onChange={(e) => setStoreForm((current) => ({ ...current, retailerStoreId: e.target.value }))} placeholder="Retailer store ID" />
+                        <select style={styles.input} value={storeForm.pokemonStockLikelihood} onChange={(e) => setStoreForm((current) => ({ ...current, pokemonStockLikelihood: e.target.value }))}>
+                          {POKEMON_STOCK_LIKELIHOOD_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                        <textarea style={styles.textarea} value={storeForm.notes} onChange={(e) => setStoreForm((current) => ({ ...current, notes: e.target.value }))} placeholder="Admin notes or source context" />
+                        <button type="submit" style={styles.buttonPrimary}>Add Store</button>
+                      </form>
+                    </details>
+                  ) : null}
                 </div>
 
                 {nearbyFavoriteStores.length ? (
@@ -5434,7 +5612,8 @@ async function handleUpdateStore(e) {
                             <div className="scout-store-row" style={styles.storeRow}>
                               <div>
                                 <strong>{store.nickname || store.name}</strong>
-                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.city || "Unknown area"} | {store.address || "No address"}</p>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.chain || store.retailer || "Retailer"} | {store.city || "Unknown area"} | {normalizeVirginiaRegion(store.region || "") || "Virginia"}</p>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.address || "No address"}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{storeReports.length} report{storeReports.length === 1 ? "" : "s"} | Last updated: {formatStoreDate(store.lastUpdated || store.lastVerified || store.lastReportDate)}</p>
                                 <div style={{ ...styles.row, marginTop: "8px" }}>
                                   {statusBadges.map((badge) => <span key={badge} style={styles.badge}>{badge}</span>)}
@@ -5504,6 +5683,9 @@ async function handleUpdateStore(e) {
                     </div>
                     {storeMoreFiltersOpen ? (
                       <div style={styles.formGrid}>
+                        <select style={styles.input} value={selectedState} onChange={(e) => setSelectedState(e.target.value)}>
+                          {stateOptions.map((state) => <option key={state} value={state}>{state === "All" ? "All states" : state}</option>)}
+                        </select>
                         <select style={styles.input} value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
                           {cityOptions.map((city) => <option key={city} value={city}>{city === "All" ? "All cities" : city}</option>)}
                         </select>
@@ -5612,7 +5794,8 @@ async function handleUpdateStore(e) {
                             <div className="scout-store-row" style={styles.storeRow}>
                               <div>
                                 <strong>{store.nickname || store.name}</strong>
-                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.city || "Unknown area"} | {store.address || "No address"}</p>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.chain || store.retailer || "Retailer"} | {store.city || "Unknown area"} | {normalizeVirginiaRegion(store.region || "") || "Virginia"}</p>
+                                <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.address || "No address"}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{storeReports.length} report{storeReports.length === 1 ? "" : "s"} | Last updated: {formatStoreDate(store.lastUpdated || store.lastVerified || store.lastReportDate)}</p>
                                 <div style={{ ...styles.row, marginTop: "8px" }}>
                                   {statusBadges.map((badge) => <span key={badge} style={styles.badge}>{badge}</span>)}
@@ -5650,21 +5833,21 @@ async function handleUpdateStore(e) {
                     <div>
                       <h2 style={{ ...styles.sectionTitle, marginBottom: "6px" }}>{selectedStore.nickname || selectedStore.name}</h2>
                       {selectedStore.nickname ? <p style={{ margin: "0 0 6px 0", color: "#475569" }}>{selectedStore.name}</p> : null}
-                      <p style={{ margin: "0 0 6px 0", color: "#334155", fontWeight: 800 }}>{selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)} | {selectedStore.city || "Unknown area"}</p>
+                      <p style={{ margin: "0 0 6px 0", color: "#334155", fontWeight: 800 }}>{selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)} | {selectedStore.city || "Unknown area"} | {normalizeVirginiaRegion(selectedStore.region || "") || VIRGINIA_STORE_STATE}</p>
                       <p style={{ margin: 0, color: "#475569" }}>{selectedStore.address || "No address"}</p>
-                      <p style={{ margin: "4px 0 0 0", color: "#475569" }}>{selectedStore.city || "No city"} {selectedStore.phone ? `| ${selectedStore.phone}` : ""}</p>
+                      <p style={{ margin: "4px 0 0 0", color: "#475569" }}>{normalizeStateLabel(selectedStore.state || VIRGINIA_STORE_STATE)} {selectedStore.zipCode || selectedStore.zip ? `${selectedStore.zipCode || selectedStore.zip}` : ""} {selectedStore.phone ? `| ${selectedStore.phone}` : ""}</p>
                     </div>
-                    <span style={styles.badge}>{selectedStore.favorite ? "Favorite" : "Shared directory store"}</span>
+                    <span style={styles.badge}>{selectedStore.favorite || selectedStore.watched ? "Watching" : "Shared Virginia store"}</span>
                   </div>
                   <div style={styles.statsRow}>
                     <Metric label="Restock likelihood" value={selectedStore.restockConfidence || (selectedStore.carriesPokemon || selectedStore.carriesPokemonLikely || selectedStore.carriesTCG ? "Likely" : "Unknown")} />
-                    <Metric label="Confidence" value={selectedStore.pokemonConfidenceLevel || selectedStore.pokemonConfidence || "Unknown"} />
+                    <Metric label="Pokemon likelihood" value={selectedStore.pokemonStockLikelihood || selectedStore.pokemon_stock_likelihood || selectedStore.pokemonConfidenceLevel || selectedStore.pokemonConfidence || "Unknown"} />
                     <Metric label="Last restock" value={selectedStore.lastRestock || selectedStore.lastReportedStockDate || selectedStore.lastReportDate || reports[0]?.reportDate || "Unknown"} />
-                    <Metric label="Purchase limits" value={selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"} />
+                    <Metric label="Store ID" value={selectedStore.retailerStoreId || selectedStore.retailer_store_id || selectedStore.storeNumber || selectedStore.store_number || "Unknown"} />
                   </div>
                   <div style={styles.row}>
                     <button type="button" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit Report</button>
-                    <button type="button" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite ? "Unfavorite" : "Favorite"}</button>
+                    <button type="button" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite || selectedStore.watched ? "Unwatch" : "Watch / Favorite"}</button>
                     <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                       suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
                       targetTable: "stores",
@@ -5681,6 +5864,45 @@ async function handleUpdateStore(e) {
                       setStoreDirectoryView("retailer");
                     }}>Back to Retailer</button>
                   </div>
+                  {adminMode ? (
+                    <details style={{ marginTop: "12px" }} open={isEditingStore}>
+                      <summary style={{ ...styles.buttonSoft, cursor: "pointer", display: "inline-block" }} onClick={() => setIsEditingStore((current) => !current)}>Admin Edit Store Metadata</summary>
+                      <form onSubmit={handleUpdateStore} style={{ ...styles.formGrid, marginTop: "12px" }}>
+                        <input style={styles.input} value={editStoreForm.name} onChange={(e) => setEditStoreForm((current) => ({ ...current, name: e.target.value, storeName: e.target.value }))} placeholder="Store name" />
+                        <input style={styles.input} value={editStoreForm.nickname} onChange={(e) => setEditStoreForm((current) => ({ ...current, nickname: e.target.value }))} placeholder="Nickname" />
+                        <select style={styles.input} value={editStoreForm.chain || editStoreForm.retailer} onChange={(e) => setEditStoreForm((current) => ({ ...current, chain: e.target.value, retailer: e.target.value }))}>
+                          <option value="">Retailer</option>
+                          {VIRGINIA_RETAILERS.map((retailer) => <option key={retailer} value={retailer}>{retailer}</option>)}
+                        </select>
+                        <select style={styles.input} value={editStoreForm.region} onChange={(e) => setEditStoreForm((current) => ({ ...current, region: e.target.value }))}>
+                          {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+                        </select>
+                        <input style={styles.input} value={editStoreForm.city} onChange={(e) => setEditStoreForm((current) => ({ ...current, city: e.target.value }))} placeholder="City" />
+                        <input style={styles.input} value={editStoreForm.address} onChange={(e) => setEditStoreForm((current) => ({ ...current, address: e.target.value }))} placeholder="Address" />
+                        <input style={styles.input} value={editStoreForm.zipCode || editStoreForm.zip} onChange={(e) => setEditStoreForm((current) => ({ ...current, zip: e.target.value, zipCode: e.target.value }))} placeholder="ZIP code" />
+                        <input style={styles.input} value={editStoreForm.phone} onChange={(e) => setEditStoreForm((current) => ({ ...current, phone: e.target.value }))} placeholder="Phone optional" />
+                        <input style={styles.input} value={editStoreForm.storeNumber} onChange={(e) => setEditStoreForm((current) => ({ ...current, storeNumber: e.target.value }))} placeholder="Store number" />
+                        <input style={styles.input} value={editStoreForm.retailerStoreId} onChange={(e) => setEditStoreForm((current) => ({ ...current, retailerStoreId: e.target.value }))} placeholder="Retailer store ID" />
+                        <select style={styles.input} value={editStoreForm.pokemonStockLikelihood} onChange={(e) => setEditStoreForm((current) => ({ ...current, pokemonStockLikelihood: e.target.value }))}>
+                          {POKEMON_STOCK_LIKELIHOOD_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                        <select style={styles.input} value={String(editStoreForm.active ?? true)} onChange={(e) => setEditStoreForm((current) => ({ ...current, active: e.target.value === "true" }))}>
+                          <option value="true">Active</option>
+                          <option value="false">Inactive / closed</option>
+                        </select>
+                        <input style={styles.input} value={editStoreForm.source} onChange={(e) => setEditStoreForm((current) => ({ ...current, source: e.target.value }))} placeholder="Source" />
+                        <input style={styles.input} value={editStoreForm.sourceUrl} onChange={(e) => setEditStoreForm((current) => ({ ...current, sourceUrl: e.target.value }))} placeholder="Source URL" />
+                        <select style={styles.input} value={editStoreForm.mergedIntoStoreId || ""} onChange={(e) => setEditStoreForm((current) => ({ ...current, mergedIntoStoreId: e.target.value, merged_into_store_id: e.target.value || null }))}>
+                          <option value="">Not merged</option>
+                          {stores.filter((store) => String(store.id) !== String(selectedStoreId)).map((store) => (
+                            <option key={store.id} value={store.id}>Merge into: {store.nickname || store.name}</option>
+                          ))}
+                        </select>
+                        <textarea style={styles.textarea} value={editStoreForm.notes} onChange={(e) => setEditStoreForm((current) => ({ ...current, notes: e.target.value }))} placeholder="Notes" />
+                        <button type="submit" style={styles.buttonPrimary}>Save Store Metadata</button>
+                      </form>
+                    </details>
+                  ) : null}
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "16px" }}>
@@ -5767,6 +5989,25 @@ async function handleUpdateStore(e) {
                       currentDataSnapshot: selectedStore,
                       notes: "User flagged possible duplicate store.",
                     }, setError)}>Flag Duplicate</button>
+                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      suggestionType: SUGGESTION_TYPES.REPORT_CLOSED_STORE,
+                      targetTable: "stores",
+                      targetRecordId: selectedStore.id,
+                      submittedData: { storeName: selectedStore.name, address: selectedStore.address, city: selectedStore.city, active: false },
+                      currentDataSnapshot: selectedStore,
+                      notes: "User reported this store may be closed.",
+                    }, setError)}>Report Closed Store</button>
+                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      suggestionType: SUGGESTION_TYPES.SUGGEST_POKEMON_STOCK_LIKELIHOOD,
+                      targetTable: "stores",
+                      targetRecordId: selectedStore.id,
+                      submittedData: {
+                        storeName: selectedStore.name,
+                        currentLikelihood: selectedStore.pokemonStockLikelihood || selectedStore.pokemon_stock_likelihood || selectedStore.pokemonConfidence || "unknown",
+                      },
+                      currentDataSnapshot: selectedStore,
+                      notes: "User suggested Pokemon stock likelihood review.",
+                    }, setError)}>Suggest Stock Likelihood</button>
                   </div>
                 </div>
 
@@ -6132,16 +6373,16 @@ async function handleUpdateStore(e) {
             </div>
           </div>
 
-          {false ? <div style={styles.card}>
+          {adminMode ? <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Statewide Store CSV Import</h2>
             <p style={styles.tiny}>
-              Paste official-directory or manually verified Virginia store rows. Import dedupes by chain + address + ZIP and does not invent restock data.
+              Paste official-directory or manually verified Virginia store rows. Import dedupes by retailer store ID, falling back to chain + address + ZIP, and does not invent restock data.
             </p>
             <textarea
               style={styles.textarea}
               value={storeImportText}
               onChange={(event) => setStoreImportText(event.target.value)}
-              placeholder="name,nickname,chain,storeGroup,address,city,state,zip,phone,latitude,longitude,region,county,source,sourceUrl,carriesPokemonLikely,pokemonConfidence,notes"
+              placeholder="retailer,store_name,nickname,address,city,state,zip_code,region,phone,store_number,retailer_store_id,latitude,longitude,source,source_url,notes"
             />
             <div style={styles.row}>
               <button type="button" style={styles.buttonSoft} onClick={previewStatewideStoreImport}>Preview Store Import</button>

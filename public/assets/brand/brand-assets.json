@@ -1,0 +1,29 @@
+{
+  "appIcon": {
+    "source": "/assets/brand/ember-tide-icon-source.svg",
+    "mark": "/assets/brand/ember-tide-mark.svg",
+    "rule": "Use the simplified flame/wave mark only. No text in app icons."
+  },
+  "promoHero": {
+    "source": "/assets/brand/ember-tide-promo-hero.svg",
+    "png": "/assets/brand/ember-tide-promo-hero.png",
+    "alt": "Ember & Tide app preview showing Scout, Vault, Forge, and AI Assistant dashboard.",
+    "note": "Replace with the final compressed promo mockup when the production artwork file is available."
+  },
+  "slots": {
+    "socialSquare": "/assets/brand/social-square.svg",
+    "storyReel": "/assets/brand/story-reel.svg",
+    "flyer": "/assets/brand/flyer-template.svg",
+    "linkBioHeader": "/assets/brand/link-bio-header.svg",
+    "linkBioHeaderPng": "/assets/brand/link-bio-header.png",
+    "pwaInstallPromo": "/assets/brand/pwa-install-promo.svg",
+    "pwaInstallPromoPng": "/assets/brand/pwa-install-promo.png"
+  },
+  "colors": {
+    "emberOrange": "#ff6a13",
+    "tideBlue": "#38bdf8",
+    "deepNavy": "#04111f"
+  },
+  "tagline": "Track. Trade. Thrive.",
+  "secondaryTagline": "Built for collectors. Powered by community."
+}

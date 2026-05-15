@@ -17,6 +17,10 @@ export const SUGGESTION_TYPES = {
   ADD_MISSING_STORE: "add_missing_store",
   EDIT_STORE_DETAILS: "edit_store_details",
   FLAG_DUPLICATE_STORE: "flag_duplicate_store",
+  REPORT_CLOSED_STORE: "report_closed_store",
+  SUGGEST_STORE_NICKNAME: "suggest_store_nickname",
+  SUGGEST_STORE_REGION_CORRECTION: "suggest_store_region_correction",
+  SUGGEST_POKEMON_STOCK_LIKELIHOOD: "suggest_pokemon_stock_likelihood",
   ADD_MISSING_CATALOG_PRODUCT: "add_missing_catalog_product",
   CORRECT_CATALOG_PRODUCT: "correct_catalog_product",
   ADD_UPC_SKU: "add_upc_sku",
@@ -32,6 +36,10 @@ export const SUGGESTION_TYPE_LABELS = {
   [SUGGESTION_TYPES.ADD_MISSING_STORE]: "Suggest Missing Store",
   [SUGGESTION_TYPES.EDIT_STORE_DETAILS]: "Suggest Store Correction",
   [SUGGESTION_TYPES.FLAG_DUPLICATE_STORE]: "Flag Duplicate Store",
+  [SUGGESTION_TYPES.REPORT_CLOSED_STORE]: "Report Closed Store",
+  [SUGGESTION_TYPES.SUGGEST_STORE_NICKNAME]: "Suggest Store Nickname",
+  [SUGGESTION_TYPES.SUGGEST_STORE_REGION_CORRECTION]: "Suggest City / Region Correction",
+  [SUGGESTION_TYPES.SUGGEST_POKEMON_STOCK_LIKELIHOOD]: "Suggest Pokemon Stock Likelihood",
   [SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT]: "Suggest Missing Product",
   [SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT]: "Suggest Product Correction",
   [SUGGESTION_TYPES.ADD_UPC_SKU]: "Suggest UPC / SKU",
@@ -44,13 +52,13 @@ export const SUGGESTION_TYPE_LABELS = {
 };
 
 export const REVIEW_SECTION_LABELS = {
-  store: "Store Suggestions",
+  store: "Missing Store / Store Corrections",
   catalog: "Catalog Suggestions",
   sku: "SKU / UPC Suggestions",
   bestBuy: "Best Buy Product Suggestions",
   reports: "Scout Report Review",
   intelligence: "Store Intelligence Suggestions",
-  flagged: "Flagged / Duplicate Items",
+  flagged: "Duplicate / Closed Store Reports",
 };
 
 function safeParse(value, fallback) {
@@ -191,13 +199,13 @@ export function appendAdminReviewLog(entry = {}) {
 
 export function getSuggestionReviewSection(suggestion = {}) {
   const type = suggestion.suggestionType;
-  if ([SUGGESTION_TYPES.ADD_MISSING_STORE, SUGGESTION_TYPES.EDIT_STORE_DETAILS].includes(type)) return "store";
+  if ([SUGGESTION_TYPES.ADD_MISSING_STORE, SUGGESTION_TYPES.EDIT_STORE_DETAILS, SUGGESTION_TYPES.SUGGEST_STORE_NICKNAME, SUGGESTION_TYPES.SUGGEST_STORE_REGION_CORRECTION].includes(type)) return "store";
   if ([SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT, SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT, SUGGESTION_TYPES.CORRECT_MSRP, SUGGESTION_TYPES.CORRECT_PRODUCT_METADATA].includes(type)) return "catalog";
   if (type === SUGGESTION_TYPES.ADD_UPC_SKU) return "sku";
   if (type === SUGGESTION_TYPES.ADD_BEST_BUY_SKU) return "bestBuy";
   if (type === SUGGESTION_TYPES.SCOUT_REPORT_REVIEW) return "reports";
-  if ([SUGGESTION_TYPES.SUGGEST_RESTOCK_PATTERN, SUGGESTION_TYPES.SUGGEST_PURCHASE_LIMIT].includes(type)) return "intelligence";
-  if ([SUGGESTION_TYPES.FLAG_DUPLICATE_STORE].includes(type)) return "flagged";
+  if ([SUGGESTION_TYPES.SUGGEST_RESTOCK_PATTERN, SUGGESTION_TYPES.SUGGEST_PURCHASE_LIMIT, SUGGESTION_TYPES.SUGGEST_POKEMON_STOCK_LIKELIHOOD].includes(type)) return "intelligence";
+  if ([SUGGESTION_TYPES.FLAG_DUPLICATE_STORE, SUGGESTION_TYPES.REPORT_CLOSED_STORE].includes(type)) return "flagged";
   return "flagged";
 }
 

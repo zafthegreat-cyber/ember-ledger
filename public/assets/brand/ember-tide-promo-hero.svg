@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024" role="img" aria-label="Ember & Tide app preview showing Scout, Vault, Forge, and AI Assistant dashboard.">
+  <defs>
+    <radialGradient id="warm" cx="0" cy=".1" r=".55"><stop stop-color="#ff8a1f"/><stop offset="1" stop-color="#ff8a1f" stop-opacity="0"/></radialGradient>
+    <radialGradient id="cool" cx=".85" cy=".1" r=".55"><stop stop-color="#0ea5e9" stop-opacity=".78"/><stop offset="1" stop-color="#0ea5e9" stop-opacity="0"/></radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061426"/><stop offset=".6" stop-color="#03101f"/><stop offset="1" stop-color="#020814"/></linearGradient>
+    <linearGradient id="phone" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071d33"/><stop offset="1" stop-color="#020817"/></linearGradient>
+  </defs>
+  <rect width="1536" height="1024" fill="url(#bg)"/>
+  <rect width="1536" height="1024" fill="url(#warm)" opacity=".8"/>
+  <rect width="1536" height="1024" fill="url(#cool)" opacity=".8"/>
+  <g transform="translate(190 86) rotate(-4)">
+    <rect width="420" height="810" rx="64" fill="#020817" stroke="#5d7288" stroke-width="6"/>
+    <rect x="24" y="28" width="372" height="754" rx="42" fill="url(#phone)"/>
+    <rect x="136" y="38" width="150" height="26" rx="13" fill="#020817"/>
+    <text x="70" y="116" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">Ember</text>
+    <text x="172" y="116" fill="#38bdf8" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">&amp;Tide</text>
+    <rect x="44" y="156" width="332" height="150" rx="16" fill="#0c233a" stroke="#173c5c"/>
+    <text x="66" y="198" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="800">Scout Report Near You</text>
+    <text x="66" y="238" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="20">Local restock signal</text>
+    <text x="266" y="238" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">In Stock</text>
+    <rect x="44" y="330" width="332" height="126" rx="16" fill="#0c233a" stroke="#173c5c"/>
+    <text x="66" y="372" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Your Vault</text>
+    <text x="66" y="418" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="900">$2,543.21</text>
+    <path d="M242 420c24-16 36-4 50-18 22-22 43 11 69-14" fill="none" stroke="#ff6a13" stroke-width="5"/>
+    <rect x="44" y="480" width="332" height="118" rx="16" fill="#0c233a" stroke="#173c5c"/>
+    <text x="66" y="522" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Your Forge</text>
+    <text x="74" y="570" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="18">Active listings</text>
+    <text x="238" y="570" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="900">+$412</text>
+    <rect x="44" y="622" width="332" height="92" rx="16" fill="#0c233a" stroke="#173c5c"/>
+    <text x="118" y="662" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="900">AI Assistant</text>
+    <text x="118" y="694" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="18">Drafts. Summaries. Review.</text>
+  </g>
+  <g transform="translate(800 150)">
+
+<svg x="-20" y="-80" width="220" height="220" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="26%" cy="18%" r="82%">
+      <stop offset="0" stop-color="#0c2b47"/>
+      <stop offset=".56" stop-color="#08223a"/>
+      <stop offset="1" stop-color="#04111f"/>
+    </radialGradient>
+    <linearGradient id="emberGrad" x1="160" y1="52" x2="308" y2="318" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff9a1f"/>
+      <stop offset=".45" stop-color="#ff6a13"/>
+      <stop offset="1" stop-color="#f0440b"/>
+    </linearGradient>
+    <linearGradient id="tideGrad" x1="108" y1="300" x2="386" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset=".7" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#0369a1"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000814" flood-opacity=".42"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(46 50) scale(1.1122448979591837)" filter="url(#softShadow)">
+    <path fill="url(#emberGrad)" d="M223 28c-40 43-36 82-31 107-26-22-42-49-40-82-59 54-86 112-78 171 10 76 76 124 158 126 78 2 143-42 158-113 10-47-4-89-44-129 3 32-8 56-31 72 3-49-21-96-92-152Z"/>
+    <path fill="#ffb34f" opacity=".95" d="M210 146c-24 27-26 55-13 83-22-12-35-29-38-52-31 31-41 62-31 93 13 39 55 61 104 57 45-4 80-31 86-70 4-25-5-49-29-73-1 21-12 38-31 50 2-35-12-63-48-88Z"/>
+    <path fill="url(#tideGrad)" d="M55 279c50 42 105 58 162 45 57-14 101-55 162-55-47 79-118 122-202 112-58-7-101-39-122-102Z"/>
+    <path fill="#04111f" opacity=".88" d="M82 285c62 25 113 24 154-2 29-19 62-32 103-30-47 23-80 52-127 61-43 9-87-.2-130-29Z"/>
+    <path fill="#04111f" opacity=".78" d="M118 329c47 15 89 12 127-9 22-12 48-20 77-19-35 24-72 42-116 45-32 2-61-4-88-17Z"/>
+    <path fill="#38bdf8" opacity=".72" d="M77 258c64 23 120 18 168-15 41-28 83-38 129-28-54 6-94 35-135 59-48 29-102 23-162-16Z"/>
+  </g>
+</svg>
+    <text x="210" y="78" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="90" font-weight="950">Ember</text>
+    <text x="210" y="174" fill="#38bdf8" font-family="Inter, Arial, sans-serif" font-size="82" font-weight="850">&amp; Tide</text>
+    <text x="0" y="290" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="600">Track. Trade. Thrive.</text>
+    <text x="120" y="420" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Built for collectors.</text>
+    <text x="120" y="468" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="34">Powered by community.</text>
+  </g>
+</svg>

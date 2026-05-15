@@ -60,6 +60,7 @@ import {
   refreshWatchlistMarketItems,
 } from "./services/marketDataService";
 import {
+  createEmptyPhase2Data,
   loadLocalPhase2Data,
   loadPhase2Data,
   normalizeReceiptDestination,
@@ -70,9 +71,86 @@ import {
   saveKidCommunityProject,
   saveMarketplaceListingChannels,
   saveNotificationPreference,
+  saveAiAssistEvent,
   saveReceiptRecord,
   saveScannerIntakeSession,
 } from "./services/phase2Persistence";
+import {
+  AI_FEATURE_AREAS,
+  AI_FORECAST_DISCLAIMER,
+  AI_PRICE_DISCLAIMER,
+  AI_REVIEW_DISCLAIMER,
+  AI_UPLOAD_WARNING,
+  aiConfidenceLabel,
+  classifyScoutReportNote,
+  buildAiCatalogMatchSummary,
+  buildAiReceiptDraftSummary,
+  buildMissingProductPrefill,
+  detectPhotoLookupClues,
+  draftMarketingCopy,
+  draftMarketplaceListingCopy,
+  draftNotificationCopy,
+  draftRoadmapOrChangelog,
+  draftTrustCopy,
+  expandCatalogSearchQuery,
+  explainForecastSignal,
+  explainSaleProfit,
+  explainVariantHelp,
+  structureGuessFromNote,
+  summarizeAdminReviewQueue,
+  summarizeBetaReadiness,
+  summarizeBusinessReport,
+  summarizeFeedbackItems,
+  summarizeForgeRecords,
+  summarizeKidsApplication,
+  summarizeScoutSignals,
+  summarizeStoreHistory,
+  summarizeVaultCollection,
+  suggestExpenseCategory,
+  suggestFeedbackSeverity,
+  suggestItemDetailsFromText,
+  suggestOnboardingNextStep,
+} from "./services/aiAssistService";
+import {
+  BETA_EMPTY_STATES,
+  AUTH_COPY_REVIEW,
+  BETA_ACCESS_MODES,
+  BETA_ACCESS_STATUSES,
+  BETA_FEEDBACK_TYPES,
+  BETA_LAUNCH_STATES,
+  BETA_MODE_COPY,
+  BETA_READINESS_SECTIONS,
+  BETA_REF_CODES,
+  BETA_REVIEW_SECTIONS,
+  BETA_TOOLTIPS,
+  BRAND_LEGAL_NOTICE,
+  DATA_REQUEST_TYPES,
+  DEFAULT_NOTIFICATION_SETTINGS,
+  FOR_PARENTS_COPY,
+  KIDS_PROGRAM_ACCESS_OPTIONS,
+  KIDS_PROGRAM_ANTI_RESALE_COPY,
+  KIDS_PROGRAM_COPY,
+  KNOWN_LIMITATIONS,
+  PRODUCTION_APP_URL,
+  PRODUCTION_CONFIG_AUDIT,
+  POKEMON_AFFILIATION_NOTICE,
+  SIGNUP_NAME_HELPER,
+  SIGNUP_BETA_ACK_TEXT,
+  SIGNUP_TERMS_TEXT,
+  SPONSOR_PARTNERSHIP_TYPES,
+  SUPPORT_EMAIL,
+  TRUST_PAGE_CONTENT,
+  UPLOAD_SAFETY_WARNING,
+  canAccessBetaFeature,
+  createEmptyBetaReadinessData,
+  getEffectivePlan,
+  getFeatureLimit,
+  isTrialActive,
+  loadBetaReadinessData,
+  normalizePersonName,
+  saveBetaReadinessData,
+  validateSignupFullName,
+} from "./services/betaReadinessService";
 import {
   FEATURE_LABELS,
   PAID_HOME_STATS,
@@ -89,6 +167,13 @@ import {
   isPaidUser,
 } from "./constants/plans";
 import { getCurrentUserProfile, makeFallbackUserProfile } from "./lib/userProfile";
+
+const BRAND_ASSETS = {
+  mark: "/icon-192.png",
+  promoHero: "/assets/brand/ember-tide-promo-hero.png",
+  linkBioHeader: "/assets/brand/link-bio-header.png",
+  pwaInstallPromo: "/assets/brand/pwa-install-promo.png",
+};
 
 const NAV_ICON_SIZE = 20;
 
@@ -438,6 +523,8 @@ const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
 const ADMIN_MODE_STORAGE_PREFIX = "et-tcg-admin-mode";
+const PRIVATE_UPLOAD_BUCKET = "receipt-images";
+const PRIVATE_UPLOAD_SIGNED_URL_SECONDS = 60 * 60 * 24 * 7;
 const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 const LONG_LIST_PAGE_SIZE = 12;
@@ -477,6 +564,7 @@ const SCOUT_QUICK_REPORT_TYPES = [
   { value: "no_stock", label: "No stock", helper: "Nothing found", reportType: "Store Restock Report", stockStatus: "empty", sourceType: "user_report", confidence: "possible" },
   { value: "restock_happening_now", label: "Restock happening now", helper: "Vendor or staff stocking", reportType: "Store Restock Report", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "likely" },
   { value: "employee_restock_coming", label: "Employee said restock coming", helper: "Needs review", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", sourceType: "employee_tip", confidence: "likely", needsReview: true },
+  { value: "restock_guess", label: "Restock guess / pattern", helper: "Personal prediction", reportType: "Store Guess", stockStatus: "unknown", sourceType: "manual_prediction", confidence: "guess", isGuess: true },
   { value: "truck_vendor_seen", label: "Truck/vendor seen", helper: "Possible restock", reportType: "Restock Pattern Suggestion", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "possible", needsReview: true },
   { value: "shelf_tag_only", label: "Shelf tag only", helper: "No product seen", reportType: "Store Intel", stockStatus: "limit_posted", sourceType: "user_report", confidence: "possible" },
   { value: "line_queue_seen", label: "Line/queue seen", helper: "Demand signal", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible", needsReview: true },
@@ -517,6 +605,20 @@ const SCOUT_QUICK_DATE_OPTIONS = [
   { value: "not_sure", label: "Not sure" },
 ];
 const SCOUT_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const SCOUT_REPORT_VISIBILITY_OPTIONS = [
+  { value: "public", label: "Public", helper: "Other users may see this report or guess." },
+  {
+    value: "private_from_map",
+    label: "Private from public map",
+    helper: "Private from public map means other users will not see this report publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring.",
+  },
+  { value: "admin_only", label: "Admin review only", helper: "Only you and Ember & Tide admins can review this report." },
+];
+const SCOUT_GUESS_VISIBILITY_OPTIONS = [
+  { value: "private", label: "Private", helper: "Only you can see this guess in your planner." },
+  { value: "shared", label: "Shared", helper: "People in your shared workspace can use this guess." },
+  { value: "public", label: "Public", helper: "Other users may see this guess as a planner note, not confirmed stock." },
+];
 const WATCH_CALENDAR_VIEW_OPTIONS = [
   { value: "today", label: "Today" },
   { value: "week", label: "Week" },
@@ -548,28 +650,31 @@ const WATCH_CALENDAR_DEFAULT_LAYERS = {
 };
 const WATCH_CALENDAR_AREAS = [
   { value: "hampton_roads", label: "Hampton Roads / 757", cities: ["suffolk", "chesapeake", "virginia beach", "norfolk", "portsmouth", "newport news", "hampton"] },
-  { value: "suffolk", label: "Suffolk", cities: ["suffolk"] },
-  { value: "chesapeake", label: "Chesapeake", cities: ["chesapeake"] },
-  { value: "virginia_beach", label: "Virginia Beach", cities: ["virginia beach"] },
-  { value: "norfolk", label: "Norfolk", cities: ["norfolk"] },
-  { value: "portsmouth", label: "Portsmouth", cities: ["portsmouth"] },
-  { value: "newport_news", label: "Newport News", cities: ["newport news"] },
-  { value: "hampton", label: "Hampton", cities: ["hampton"] },
-  { value: "richmond", label: "Richmond", cities: ["richmond"] },
-  { value: "northern_virginia", label: "Northern Virginia", cities: ["alexandria", "arlington", "fairfax", "falls church", "manassas", "reston", "sterling", "woodbridge"] },
+  { value: "richmond_central_virginia", label: "Richmond / Central Virginia", cities: ["richmond", "henrico", "midlothian", "chesterfield", "mechanicsville", "glen allen"] },
+  { value: "northern_virginia", label: "Northern Virginia", cities: ["alexandria", "arlington", "fairfax", "falls church", "manassas", "reston", "sterling", "woodbridge", "ashburn", "leesburg"] },
+  { value: "fredericksburg", label: "Fredericksburg", cities: ["fredericksburg", "stafford", "spotsylvania"] },
+  { value: "charlottesville_albemarle", label: "Charlottesville / Albemarle", cities: ["charlottesville", "albemarle", "waynesboro", "staunton"] },
+  { value: "roanoke_southwest_virginia", label: "Roanoke / Southwest Virginia", cities: ["roanoke", "salem", "blacksburg", "christiansburg", "bristol", "abingdon"] },
+  { value: "lynchburg", label: "Lynchburg", cities: ["lynchburg", "forest", "bedford"] },
+  { value: "shenandoah_valley", label: "Shenandoah Valley", cities: ["winchester", "front royal", "harrisonburg", "woodstock"] },
+  { value: "eastern_shore", label: "Eastern Shore", cities: ["exmore", "onley", "chincoteague", "cape charles"] },
+  { value: "southside_virginia", label: "Southside Virginia", cities: ["danville", "farmville", "martinsville", "south boston", "south hill"] },
+  { value: "other_virginia", label: "Other Virginia", cities: [] },
   { value: "all_virginia", label: "All Virginia", cities: [] },
 ];
 const WORKSPACE_TYPES = [
   { value: "personal", label: "Personal", description: "Only your user account." },
-  { value: "shared_collection", label: "Shared Collection", description: "A shared collection or household Vault." },
   { value: "business", label: "Business", description: "Shared Forge inventory, sales, expenses, mileage, and reports." },
+  { value: "personal_shared", label: "Personal Shared", description: "A partner or household collection space." },
   { value: "family", label: "Family", description: "Family collection space." },
-  { value: "team", label: "Team", description: "Small team workspace." },
+  { value: "card_shop_partner", label: "Card Shop Partner", description: "Partner workspace for future shop/vendor access." },
+  { value: "shared_collection", label: "Shared Collection", description: "Legacy shared collection space." },
+  { value: "team", label: "Team", description: "Legacy small team workspace." },
 ];
 const WORKSPACE_ROLES = [
   { value: "owner", label: "Owner" },
   { value: "admin", label: "Admin" },
-  { value: "editor", label: "Editor" },
+  { value: "contributor", label: "Contributor" },
   { value: "viewer", label: "Viewer" },
 ];
 
@@ -603,6 +708,12 @@ function routeStateFromPath(pathname = "") {
   }
   if (section === "vault") return { activeTab: "vault", vaultSubTab: subSection === "cards" ? "collection" : subSection || "overview" };
   if (section === "tidepool") return { activeTab: "tidepool", tidepoolPostId: subSection === "post" && detailId ? decodeURIComponent(detailId) : "" };
+  if (section === "links") return { activeTab: "links" };
+  if (section === "whats-new" || section === "changelog") return { activeTab: "whatsNew" };
+  if (section === "known-limitations") return { activeTab: "knownLimitations" };
+  if (section === "kids-program") return { activeTab: "kidsProgram" };
+  if (section === "partner" || section === "sponsor") return { activeTab: "sponsor" };
+  if (section === "privacy" || section === "terms" || section === "trust") return { activeTab: "trust" };
   if (section === "settings") return { activeTab: "menu" };
   return { activeTab: "dashboard" };
 }
@@ -629,6 +740,22 @@ function getLocalTimeKey(date = new Date()) {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+function createEmptyScoutSnapshot() {
+  return {
+    stores: [],
+    reports: [],
+    tidepoolReports: [],
+    bestBuyAlerts: [],
+    restockIntel: [],
+    restockPatterns: [],
+    storeGuesses: [],
+    forecastWindows: [],
+    intelImportReviews: [],
+    scoutProfile: {},
+    alertSettings: {},
+  };
 }
 
 function getYesterdayDateKey() {
@@ -932,7 +1059,6 @@ const RECEIPT_REVIEW_DESTINATIONS = [
   { value: "vault", label: "Vault" },
   { value: "forge", label: "Forge" },
   { value: "expense_only", label: "Expense Only" },
-  { value: "ignore", label: "Ignore / Do not import" },
   { value: "wishlist", label: "Wishlist" },
 ];
 const RECEIPT_DESTINATION_LABELS = {
@@ -942,6 +1068,35 @@ const RECEIPT_DESTINATION_LABELS = {
   vault: "Vault",
   wishlist: "Wishlist",
 };
+const ADD_DESTINATION_ALIASES = {
+  personal_collection: "vault",
+  vault_collection: "vault",
+  vault_item: "vault",
+  vault_items: "vault",
+  business_inventory: "forge",
+  forge_inventory: "forge",
+  forge_item: "forge",
+  forge_items: "forge",
+  wishlist_item: "wishlist",
+  wishlist_items: "wishlist",
+  expenseonly: "expense_only",
+  expense_only: "expense_only",
+  expense: "expense_only",
+  ignored: "ignore",
+};
+const ADD_DESTINATION_VALUES = new Set([
+  "none",
+  "vault",
+  "forge",
+  "wishlist",
+  "expense_only",
+  "ignore",
+  "tidetradr",
+  "deal_finder",
+  "watchlist",
+  "pinned",
+  "scout_report",
+]);
 const SCANNER_CORRECTION_REASONS = [
   "Wrong item",
   "Wrong variant",
@@ -969,7 +1124,16 @@ function scannerConfidenceClass(confidence) {
 }
 
 function scannerDestinationLabel(destination) {
-  return SCAN_DESTINATIONS.find((entry) => entry.value === destination)?.label || destination || "Review";
+  const normalizedDestination = normalizeAddDestinationValue(destination, "none", { allowIgnore: true });
+  return SCAN_DESTINATIONS.find((entry) => entry.value === normalizedDestination)?.label || normalizedDestination || "Review";
+}
+
+function normalizeAddDestinationValue(destination, fallback = "none", options = {}) {
+  const key = String(destination || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const normalized = ADD_DESTINATION_ALIASES[key] || key;
+  if (normalized === "ignore" && !options.allowIgnore) return "expense_only";
+  if (ADD_DESTINATION_VALUES.has(normalized)) return normalized;
+  return fallback;
 }
 
 const USER_TYPES = ["collector", "seller", "scout", "budget", "all_in_one"];
@@ -1766,7 +1930,16 @@ function workspaceTypeLabel(type = "personal") {
 }
 
 function workspaceRoleLabel(role = "viewer") {
-  return WORKSPACE_ROLES.find((option) => option.value === role)?.label || "Viewer";
+  const normalizedRole = role === "editor" ? "contributor" : role;
+  return WORKSPACE_ROLES.find((option) => option.value === normalizedRole)?.label || "Viewer";
+}
+
+function normalizeWorkspaceRoleValue(role = "viewer", fallback = "viewer") {
+  const normalizedRole = role === "editor" ? "contributor" : role;
+  const normalizedFallback = fallback === "editor" ? "contributor" : fallback;
+  return ["owner", "admin", "contributor", "viewer"].includes(normalizedRole)
+    ? normalizedRole
+    : (["owner", "admin", "contributor", "viewer"].includes(normalizedFallback) ? normalizedFallback : "viewer");
 }
 
 function createDefaultWorkspaceBundle(user = {}) {
@@ -1781,6 +1954,8 @@ function createDefaultWorkspaceBundle(user = {}) {
         type: "personal",
         ownerUserId: userId,
         owner_user_id: userId,
+        createdBy: userId,
+        created_by: userId,
         createdAt: now,
         updatedAt: now,
       },
@@ -1812,6 +1987,8 @@ function normalizeWorkspace(record = {}, fallback = {}) {
     type: record.type || fallback.type || "personal",
     ownerUserId: record.ownerUserId || record.owner_user_id || fallback.ownerUserId || fallback.owner_user_id || "local-beta",
     owner_user_id: record.owner_user_id || record.ownerUserId || fallback.owner_user_id || fallback.ownerUserId || "local-beta",
+    createdBy: record.createdBy || record.created_by || record.ownerUserId || record.owner_user_id || fallback.createdBy || fallback.created_by || fallback.ownerUserId || fallback.owner_user_id || "local-beta",
+    created_by: record.created_by || record.createdBy || record.owner_user_id || record.ownerUserId || fallback.created_by || fallback.createdBy || fallback.owner_user_id || fallback.ownerUserId || "local-beta",
     createdAt: record.createdAt || record.created_at || fallback.createdAt || now,
     updatedAt: record.updatedAt || record.updated_at || fallback.updatedAt || now,
   };
@@ -1820,7 +1997,7 @@ function normalizeWorkspace(record = {}, fallback = {}) {
 function normalizeWorkspaceMember(member = {}, fallback = {}) {
   const workspaceId = member.workspaceId || member.workspace_id || fallback.workspaceId || fallback.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID;
   const userId = member.userId || member.user_id || fallback.userId || fallback.user_id || "local-beta";
-  const role = ["owner", "admin", "editor", "viewer"].includes(member.role) ? member.role : fallback.role || "viewer";
+  const role = normalizeWorkspaceRoleValue(member.role, fallback.role);
   const status = ["invited", "active", "removed"].includes(member.status) ? member.status : fallback.status || "active";
   const now = new Date().toISOString();
   return {
@@ -1842,12 +2019,13 @@ function normalizeWorkspaceInvite(invite = {}) {
   const now = new Date().toISOString();
   const workspaceId = invite.workspaceId || invite.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID;
   const email = String(invite.email || "").trim().toLowerCase();
+  const role = normalizeWorkspaceRoleValue(invite.role, "viewer");
   return {
     id: invite.id || makeId("invite"),
     workspaceId,
     workspace_id: workspaceId,
     email,
-    role: ["admin", "editor", "viewer"].includes(invite.role) ? invite.role : "viewer",
+    role: role === "owner" ? "viewer" : role,
     status: ["invited", "active", "removed"].includes(invite.status) ? invite.status : "invited",
     note: invite.note || "",
     invitedBy: invite.invitedBy || invite.invited_by || "",
@@ -1906,6 +2084,10 @@ function applyWorkspaceToRecord(record = {}, workspace = {}) {
   };
 }
 
+function defaultVisibilityForWorkspace(workspace = {}) {
+  return workspace?.type === "personal" ? "private" : "shared_workspace";
+}
+
 function migrateRecordsToWorkspace(records = [], workspaceId = DEFAULT_PERSONAL_WORKSPACE_ID, workspaces = []) {
   const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || { id: workspaceId, name: "My Personal Space", type: "personal" };
   return Array.isArray(records)
@@ -1914,11 +2096,13 @@ function migrateRecordsToWorkspace(records = [], workspaceId = DEFAULT_PERSONAL_
 }
 
 function workspaceCanEdit(role = "viewer") {
-  return ["owner", "admin", "editor"].includes(role);
+  const normalizedRole = normalizeWorkspaceRoleValue(role);
+  return ["owner", "admin", "contributor"].includes(normalizedRole);
 }
 
 function workspaceCanManage(role = "viewer") {
-  return ["owner", "admin"].includes(role);
+  const normalizedRole = normalizeWorkspaceRoleValue(role);
+  return ["owner", "admin"].includes(normalizedRole);
 }
 
 function createDefaultPurchasers() {
@@ -2391,6 +2575,34 @@ export default function App() {
     screenshotName: "",
     metadata: {},
   });
+  const [betaReadinessData, setBetaReadinessData] = useState(() => loadBetaReadinessData());
+  const [kidsProgramForm, setKidsProgramForm] = useState({
+    parentName: "",
+    email: "",
+    zipCode: "",
+    childFirstName: "",
+    childAgeRange: "",
+    favoritePokemon: "",
+    collectingInterest: "",
+    reason: "",
+    requestedAccess: [],
+    agreesNoResale: false,
+    consentContact: false,
+  });
+  const [sponsorForm, setSponsorForm] = useState({
+    name: "",
+    businessName: "",
+    email: "",
+    phone: "",
+    websiteUrl: "",
+    city: "",
+    partnershipTypes: [],
+    message: "",
+    consent: false,
+  });
+  const [onboardingStep, setOnboardingStep] = useState(1);
+  const [onboardingChoices, setOnboardingChoices] = useState([]);
+  const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const [userSearchAliases, setUserSearchAliases] = useState([]);
   const [aliasDraft, setAliasDraft] = useState({ alias: "", canonical: "", type: "personal" });
   const [tidepoolOpen, setTidepoolOpen] = useState(false);
@@ -2474,6 +2686,7 @@ export default function App() {
   const [showTreasure, setShowTreasure] = useState(false);
 
   const [user, setUser] = useState(BETA_LOCAL_MODE ? { id: "local-beta", email: "local beta mode" } : null);
+  const [guestPreview, setGuestPreview] = useState(false);
   const [userType, setUserType] = useState("collector");
   const [homeStatsEnabled, setHomeStatsEnabled] = useState(() => getDefaultHomeStatsForUserType("collector"));
   const [dashboardPreset, setDashboardPreset] = useState("simple");
@@ -2493,6 +2706,10 @@ export default function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authFirstName, setAuthFirstName] = useState("");
+  const [authLastName, setAuthLastName] = useState("");
+  const [authTermsAccepted, setAuthTermsAccepted] = useState(false);
+  const [authBetaAcknowledged, setAuthBetaAcknowledged] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
@@ -2504,12 +2721,27 @@ export default function App() {
   const [newPasswordLoading, setNewPasswordLoading] = useState(false);
   const [newPasswordMessage, setNewPasswordMessage] = useState("");
   const [newPasswordError, setNewPasswordError] = useState("");
+  const [profileForm, setProfileForm] = useState({
+    firstName: "",
+    lastName: "",
+    displayName: "",
+    preferredRegion: "Hampton Roads / 757",
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [dataRequestForm, setDataRequestForm] = useState({
+    requestType: "data_export",
+    email: "",
+    message: "",
+  });
+  const [userManagementSearch, setUserManagementSearch] = useState("");
+  const [aiAssistReview, setAiAssistReview] = useState(null);
   const initialWorkspaceBundle = useMemo(() => createDefaultWorkspaceBundle({ id: "local-beta" }), []);
   const [workspaces, setWorkspaces] = useState(initialWorkspaceBundle.workspaces);
   const [workspaceMembers, setWorkspaceMembers] = useState(initialWorkspaceBundle.members);
   const [workspaceInvites, setWorkspaceInvites] = useState(initialWorkspaceBundle.invites);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(initialRouteState.activeWorkspaceId || initialWorkspaceBundle.activeWorkspaceId);
-  const [workspaceForm, setWorkspaceForm] = useState({ name: "", type: "shared_collection" });
+  const guestPreviewActive = guestPreview && !user && !BETA_LOCAL_MODE;
+  const [workspaceForm, setWorkspaceForm] = useState({ name: "", type: "business" });
   const [workspaceInviteForm, setWorkspaceInviteForm] = useState({
     email: "",
     workspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
@@ -2551,6 +2783,7 @@ export default function App() {
   const [scanMatches, setScanMatches] = useState([]);
   const [scanReview, setScanReview] = useState(null);
   const [scanDestination, setScanDestination] = useState("none");
+  const [scanSearchState, setScanSearchState] = useState("idle");
   const [scanMessage, setScanMessage] = useState("");
   const [scanInput, setScanInput] = useState("");
   const [receiptScanOpen, setReceiptScanOpen] = useState(false);
@@ -2563,12 +2796,15 @@ export default function App() {
     purchaseDate: "",
     subtotal: "",
     tax: "",
+    discounts: "",
     total: "",
+    paymentMethod: "",
     transactionNumber: "",
     rawText: "",
     fileName: "",
     filePreviewUrl: "",
     receiptImageUrl: "",
+    source: "manual",
   });
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
@@ -2608,17 +2844,7 @@ export default function App() {
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
-  const [scoutSnapshot, setScoutSnapshot] = useState({
-    stores: [],
-    reports: [],
-    tidepoolReports: [],
-    bestBuyAlerts: [],
-    restockIntel: [],
-    restockPatterns: [],
-    intelImportReviews: [],
-    scoutProfile: {},
-    alertSettings: {},
-  });
+  const [scoutSnapshot, setScoutSnapshot] = useState(createEmptyScoutSnapshot);
   const [dealForm, setDealForm] = useState({
     productId: "",
     title: "",
@@ -2922,6 +3148,16 @@ export default function App() {
     ] },
   ];
 
+  const activeBetaPageLabels = {
+    kidsProgram: "Kids Program",
+    sponsor: "Sponsor Interest",
+    trust: "Trust Pages",
+    links: "Links",
+    whatsNew: "What's New",
+    knownLimitations: "Known Limitations",
+    membership: "Membership",
+    betaReadiness: "Beta Readiness",
+  };
   const activeTabLabel =
     activeTab === "tidepool"
       ? "Tidepool"
@@ -2929,13 +3165,15 @@ export default function App() {
         ? "Admin Review"
       : activeTab === "mySuggestions"
         ? "My Suggestions"
+      : activeBetaPageLabels[activeTab]
+        ? activeBetaPageLabels[activeTab]
       : navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Dashboard";
   const activeMainTab =
     activeTab === "dashboard"
       ? "home"
       : activeTab === "tidepool"
         ? "tidepool"
-      : activeTab === "adminReview" || activeTab === "mySuggestions"
+      : activeTab === "adminReview" || activeTab === "mySuggestions" || activeBetaPageLabels[activeTab]
         ? ""
       : activeTab === "vault" || activeTab === "scout"
         ? activeTab
@@ -2958,6 +3196,11 @@ export default function App() {
   const showAppMessage = (message) => {
     setVaultToast(String(message || "Something went wrong."));
     return false;
+  };
+  const blockGuestSave = () => {
+    if (!guestPreviewActive) return false;
+    setVaultToast("Create a free account to save this.");
+    return true;
   };
   const activeWorkspace = useMemo(
     () => workspaces.find((workspace) => String(workspace.id) === String(activeWorkspaceId)) || workspaces[0] || createDefaultWorkspaceBundle(user).workspaces[0],
@@ -3003,8 +3246,8 @@ export default function App() {
   );
   const destinationWorkspaceOptions = useMemo(() => {
     const visible = workspaceSelectorOptions.length ? workspaceSelectorOptions : workspaces;
-    const personalish = visible.filter((workspace) => ["personal", "shared_collection", "family", "team"].includes(workspace.type));
-    const business = visible.filter((workspace) => ["business", "team"].includes(workspace.type));
+    const personalish = visible.filter((workspace) => ["personal", "personal_shared", "shared_collection", "family", "team"].includes(workspace.type));
+    const business = visible.filter((workspace) => ["business", "card_shop_partner", "team"].includes(workspace.type));
     return {
       vault: personalish.length ? personalish : visible,
       wishlist: personalish.length ? personalish : visible,
@@ -3643,7 +3886,7 @@ export default function App() {
       steps: defaults.steps || "",
       screenshotName: "",
       metadata: {
-        appVersion: "E&T TCG beta web app",
+        appVersion: "Ember & Tide beta web app",
         route: activeTab,
         feedbackCategory: type,
         ...(defaults.metadata || {}),
@@ -3674,6 +3917,80 @@ export default function App() {
     return true;
   }
 
+  function updateBetaReadinessData(updater) {
+    const next = saveBetaReadinessData(updater);
+    setBetaReadinessData(next);
+    return next;
+  }
+
+  function addAuditLog(action, entityType, entityId, metadata = {}) {
+    updateBetaReadinessData((current) => ({
+      ...current,
+      auditLogs: [
+        {
+          id: makeId("audit"),
+          actorUserId: user?.id || null,
+          workspaceId: activeWorkspace?.id || null,
+          action,
+          entityType,
+          entityId,
+          metadata,
+          createdAt: new Date().toISOString(),
+        },
+        ...(current.auditLogs || []),
+      ].slice(0, 250),
+    }));
+  }
+
+  function logAppError(action, error, metadata = {}, severity = "normal") {
+    const safeMetadata = {
+      page: activeTab,
+      ...(metadata || {}),
+    };
+    delete safeMetadata.password;
+    delete safeMetadata.token;
+    delete safeMetadata.receiptImage;
+    delete safeMetadata.childFirstName;
+    const entry = {
+      id: makeId("app-error"),
+      userId: user?.id || null,
+      workspaceId: activeWorkspace?.id || null,
+      page: activeTabLabel,
+      action,
+      errorMessage: error?.message || String(error || "Unknown error"),
+      errorCode: error?.code || "",
+      severity,
+      metadata: safeMetadata,
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+      createdAt: new Date().toISOString(),
+    };
+    updateBetaReadinessData((current) => ({
+      ...current,
+      appErrorLogs: [entry, ...(current.appErrorLogs || [])].slice(0, 200),
+    }));
+    return entry;
+  }
+
+  function addBetaNotification({ type = "account_notice", title, message, actionUrl = "" }) {
+    updateBetaReadinessData((current) => ({
+      ...current,
+      notifications: [
+        {
+          id: makeId("notification"),
+          userId: user?.id || "local-beta",
+          workspaceId: activeWorkspace?.id || "",
+          type,
+          channel: "in_app",
+          title,
+          message,
+          actionUrl,
+          createdAt: new Date().toISOString(),
+        },
+        ...(current.notifications || []),
+      ].slice(0, 50),
+    }));
+  }
+
   function submitFeedbackDialog(event) {
     event.preventDefault();
     const payload = {
@@ -3687,9 +4004,32 @@ export default function App() {
       localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify([payload, ...(Array.isArray(existing) ? existing : [])]));
     } catch (error) {
       console.warn("Unable to save beta feedback", error);
+      logAppError("beta_feedback_submit", error, { feedbackType: feedbackDialog }, "normal");
       setVaultToast("Could not submit right now. Please try again or export beta data.");
       return;
     }
+    updateBetaReadinessData((current) => ({
+      ...current,
+      betaFeedback: [
+        {
+          id: payload.id,
+          userId: user?.id || null,
+          workspaceId: activeWorkspace?.id || null,
+          feedbackType: feedbackDialogCopy?.title || feedbackDialog || "Feedback",
+          page: payload.page || activeTabLabel,
+          title: payload.whatHappened || "Beta feedback",
+          description: payload.steps || payload.whatHappened || "No details provided.",
+          severity: feedbackDialog === "bug" ? "normal" : "normal",
+          status: "new",
+          screenshotUrl: payload.screenshotName || "",
+          deviceInfo: payload.metadata || {},
+          browserInfo: typeof navigator !== "undefined" ? navigator.userAgent : "",
+          appVersion: "Ember & Tide beta web app",
+          createdAt: payload.createdAt,
+        },
+        ...(current.betaFeedback || []),
+      ],
+    }));
     if (["catalog_data", "store_data", "market_data"].includes(feedbackDialog)) {
       const suggestionMeta = {
         catalog_data: {
@@ -3761,6 +4101,365 @@ export default function App() {
         ? "Cloud sync preference saved. User-owned beta data still stays local until sign-in sync is connected."
         : "Private beta storage preference saved."
     );
+  }
+
+  function accountEmail() {
+    return String(user?.email || authEmail || currentUserProfile?.email || "").trim();
+  }
+
+  function betaAccessMode() {
+    return betaReadinessData.readiness?.betaAccessMode || "open_beta";
+  }
+
+  function userBetaAccessStatus(profile = currentUserProfile) {
+    if (betaAccessMode() === "open_beta") return "approved";
+    const profileStatus = profile?.betaAccessStatus || profile?.beta_access_status;
+    const localStatus = (betaReadinessData.betaAccessUsers || []).find((entry) => {
+      const email = String(entry.email || "").toLowerCase();
+      return String(entry.userId || "") === String(user?.id || "") || (accountEmail() && email === accountEmail().toLowerCase());
+    })?.status;
+    return profileStatus || localStatus || "pending";
+  }
+
+  function betaAccessAllowed(profile = currentUserProfile) {
+    return betaAccessMode() === "open_beta" || userBetaAccessStatus(profile) === "approved" || actualAdminUser;
+  }
+
+  async function saveProfileSettings(event) {
+    event.preventDefault();
+    const firstName = normalizePersonName(profileForm.firstName);
+    const lastName = normalizePersonName(profileForm.lastName);
+    const validationError = validateSignupFullName(firstName, lastName);
+    if (validationError) {
+      setVaultToast(validationError);
+      return;
+    }
+    const fullName = `${firstName} ${lastName}`.trim();
+    const displayName = normalizePersonName(profileForm.displayName || fullName);
+    const preferredRegion = String(profileForm.preferredRegion || "Hampton Roads / 757").trim();
+    setProfileSaving(true);
+    try {
+      const nextProfile = {
+        ...currentUserProfile,
+        firstName,
+        lastName,
+        fullName,
+        displayName,
+        preferredRegion,
+        preferred_region: preferredRegion,
+        updatedAt: new Date().toISOString(),
+      };
+      if (signedInWithSupabase && isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from("profiles").upsert(
+          {
+            id: user.id,
+            email: user.email || currentUserProfile.email || "",
+            first_name: firstName,
+            last_name: lastName,
+            full_name: fullName,
+            display_name: displayName,
+            preferred_region: preferredRegion,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
+        if (error) throw error;
+      }
+      setCurrentUserProfile(nextProfile);
+      setVaultToast("Profile updated.");
+    } catch (error) {
+      logAppError("profile_update", error, {}, "normal");
+      setVaultToast(`Profile update failed: ${error.message || "try again"}`);
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  function submitDataRequest(event) {
+    event.preventDefault();
+    const email = String(dataRequestForm.email || accountEmail()).trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setVaultToast("Enter a valid email for the privacy request.");
+      return;
+    }
+    const request = {
+      id: makeId("data-request"),
+      userId: user?.id || null,
+      workspaceId: activeWorkspace?.id || null,
+      email,
+      requestType: dataRequestForm.requestType,
+      message: String(dataRequestForm.message || "").trim(),
+      status: "new",
+      createdAt: new Date().toISOString(),
+    };
+    updateBetaReadinessData((current) => ({
+      ...current,
+      dataRequests: [request, ...(current.dataRequests || [])],
+    }));
+    setDataRequestForm({ requestType: "data_export", email, message: "" });
+    setVaultToast("Privacy request submitted for admin review.");
+  }
+
+  function updateDataRequestStatus(requestId, status) {
+    if (!adminToolsVisible) return;
+    updateBetaReadinessData((current) => ({
+      ...current,
+      dataRequests: (current.dataRequests || []).map((entry) =>
+        entry.id === requestId ? { ...entry, status, reviewedBy: user?.id || "admin", reviewedAt: new Date().toISOString() } : entry
+      ),
+    }));
+    addAuditLog("data_request_status_update", "data_request", requestId, { status });
+  }
+
+  function updateBetaAccessMode(mode) {
+    if (!adminToolsVisible || !BETA_ACCESS_MODES.includes(mode)) return;
+    updateBetaReadinessData((current) => ({
+      ...current,
+      readiness: { ...(current.readiness || {}), betaAccessMode: mode },
+    }));
+  }
+
+  function setUserAdminNote(targetUserId, note) {
+    if (!adminToolsVisible) return;
+    updateBetaReadinessData((current) => {
+      const existing = current.userAdminNotes || [];
+      const next = existing.filter((entry) => String(entry.userId) !== String(targetUserId));
+      return {
+        ...current,
+        userAdminNotes: [
+          { id: makeId("user-note"), userId: targetUserId, note, createdBy: user?.id || "admin", createdAt: new Date().toISOString() },
+          ...next,
+        ],
+      };
+    });
+  }
+
+  function updateBetaAccessUser(targetUser, status) {
+    if (!adminToolsVisible || !BETA_ACCESS_STATUSES.includes(status)) return;
+    const now = new Date().toISOString();
+    updateBetaReadinessData((current) => {
+      const existing = current.betaAccessUsers || [];
+      const rest = existing.filter((entry) => String(entry.userId || entry.email) !== String(targetUser.userId || targetUser.email));
+      return {
+        ...current,
+        betaAccessUsers: [
+          {
+            userId: targetUser.userId || "",
+            email: targetUser.email || "",
+            fullName: targetUser.fullName || targetUser.displayName || "",
+            status,
+            updatedAt: now,
+            approvedAt: status === "approved" ? now : "",
+            approvedBy: status === "approved" ? user?.id || "admin" : "",
+          },
+          ...rest,
+        ],
+      };
+    });
+    addAuditLog("beta_access_update", "profile", targetUser.userId || null, { email: targetUser.email, status });
+  }
+
+  function toggleArrayValue(values = [], value) {
+    return values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value];
+  }
+
+  function updateKidsProgramField(field, value) {
+    setKidsProgramForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function submitKidsProgramApplication(event) {
+    event.preventDefault();
+    if (guestPreviewActive || !user) {
+      setVaultToast("Create a free account to apply for Kids Program access.");
+      return;
+    }
+    const parentName = String(kidsProgramForm.parentName || currentUserProfile?.fullName || currentUserProfile?.displayName || "").trim();
+    const email = String(kidsProgramForm.email || accountEmail()).trim();
+    if (!parentName || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setVaultToast("Parent/guardian name and a valid email are required.");
+      return;
+    }
+    if (!kidsProgramForm.agreesNoResale || !kidsProgramForm.consentContact) {
+      setVaultToast("Please agree to Kids Program rules and contact consent before applying.");
+      return;
+    }
+    const now = new Date().toISOString();
+    const application = {
+      id: makeId("kids-program"),
+      userId: user?.id || "",
+      parentName,
+      email,
+      childFirstName: String(kidsProgramForm.childFirstName || "").trim(),
+      childAgeRange: String(kidsProgramForm.childAgeRange || "").trim(),
+      zipCode: String(kidsProgramForm.zipCode || "").trim(),
+      favoritePokemon: String(kidsProgramForm.favoritePokemon || "").trim(),
+      collectingInterest: String(kidsProgramForm.collectingInterest || "").trim(),
+      reason: String(kidsProgramForm.reason || "").trim(),
+      requestedAccess: kidsProgramForm.requestedAccess,
+      agreesNoResale: true,
+      consentText: "I agree Ember & Tide may contact me about Kids Program opportunities.",
+      status: "pending_review",
+      createdAt: now,
+      updatedAt: now,
+    };
+    updateBetaReadinessData((current) => ({
+      ...current,
+      kidsApplications: [
+        application,
+        ...(current.kidsApplications || []).filter((entry) => {
+          const entryUser = String(entry.userId || entry.user_id || "");
+          const entryEmail = String(entry.email || "").toLowerCase();
+          return entryUser !== String(user?.id || "") && entryEmail !== email.toLowerCase();
+        }),
+      ],
+    }));
+    addBetaNotification({
+      type: "kids_program_update",
+      title: "Kids Program application received",
+      message: "Your application is pending review.",
+      actionUrl: "/kids-program",
+    });
+    setVaultToast("Kids Program application submitted for review.");
+  }
+
+  function updateKidsProgramApplicationStatus(applicationId, status) {
+    if (!adminToolsVisible) return;
+    const now = new Date().toISOString();
+    updateBetaReadinessData((current) => ({
+      ...current,
+      kidsApplications: (current.kidsApplications || []).map((entry) =>
+        entry.id === applicationId
+          ? {
+              ...entry,
+              status,
+              reviewedBy: user?.id || "admin",
+              reviewedAt: now,
+              updatedAt: now,
+            }
+          : entry
+      ),
+    }));
+    addAuditLog("kids_program_status_update", "kids_program_application", applicationId, { status });
+    setVaultToast(`Kids Program application marked ${status}.`);
+  }
+
+  function updateSponsorForm(field, value) {
+    setSponsorForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function submitSponsorInterest(event) {
+    event.preventDefault();
+    const name = String(sponsorForm.name || "").trim();
+    const email = String(sponsorForm.email || "").trim();
+    if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setVaultToast("Name and a valid email are required.");
+      return;
+    }
+    if (!sponsorForm.consent) {
+      setVaultToast("Please confirm contact consent before submitting.");
+      return;
+    }
+    const record = {
+      id: makeId("sponsor"),
+      name,
+      businessName: String(sponsorForm.businessName || "").trim(),
+      email,
+      phone: String(sponsorForm.phone || "").trim(),
+      websiteUrl: String(sponsorForm.websiteUrl || "").trim(),
+      city: String(sponsorForm.city || "").trim(),
+      partnershipTypes: sponsorForm.partnershipTypes,
+      message: String(sponsorForm.message || "").trim(),
+      consentText: "I agree Ember & Tide may contact me about partnership opportunities.",
+      status: "new",
+      createdAt: new Date().toISOString(),
+    };
+    updateBetaReadinessData((current) => ({
+      ...current,
+      sponsorInterest: [record, ...(current.sponsorInterest || [])],
+    }));
+    setSponsorForm({
+      name: "",
+      businessName: "",
+      email: "",
+      phone: "",
+      websiteUrl: "",
+      city: "",
+      partnershipTypes: [],
+      message: "",
+      consent: false,
+    });
+    setVaultToast("Thank you - we'll reach out soon.");
+  }
+
+  function updateSponsorStatus(recordId, status) {
+    if (!adminToolsVisible) return;
+    updateBetaReadinessData((current) => ({
+      ...current,
+      sponsorInterest: (current.sponsorInterest || []).map((entry) =>
+        entry.id === recordId
+          ? { ...entry, status, reviewedBy: user?.id || "admin", reviewedAt: new Date().toISOString() }
+          : entry
+      ),
+    }));
+    addAuditLog("sponsor_interest_status_update", "sponsor_interest", recordId, { status });
+  }
+
+  function updateNotificationPreference(key, value) {
+    if (guestPreviewActive || !user) {
+      setVaultToast("Create a free account to save alert preferences.");
+      return;
+    }
+    updateBetaReadinessData((current) => ({
+      ...current,
+      notificationPreferences: {
+        ...DEFAULT_NOTIFICATION_SETTINGS,
+        ...(current.notificationPreferences || {}),
+        [key]: value,
+      },
+    }));
+  }
+
+  function markNotificationRead(notificationId) {
+    updateBetaReadinessData((current) => ({
+      ...current,
+      notifications: (current.notifications || []).map((entry) =>
+        entry.id === notificationId ? { ...entry, readAt: entry.readAt || new Date().toISOString() } : entry
+      ),
+    }));
+  }
+
+  function dismissNotification(notificationId) {
+    updateBetaReadinessData((current) => ({
+      ...current,
+      notifications: (current.notifications || []).map((entry) =>
+        entry.id === notificationId ? { ...entry, dismissedAt: new Date().toISOString() } : entry
+      ),
+    }));
+  }
+
+  function completeOnboarding() {
+    const now = new Date().toISOString();
+    updateBetaReadinessData((current) => ({
+      ...current,
+      onboarding: {
+        ...(current.onboarding || {}),
+        completedAt: now,
+        firstLoginSeen: true,
+        preferences: onboardingChoices,
+      },
+    }));
+    setVaultToast("Onboarding saved. You can restart it from Settings.");
+  }
+
+  function restartOnboarding() {
+    setOnboardingStep(1);
+    setOnboardingChoices([]);
+    updateBetaReadinessData((current) => ({
+      ...current,
+      onboarding: { ...(current.onboarding || {}), completedAt: "", firstLoginSeen: false, preferences: [] },
+    }));
+    setActiveTab("dashboard");
+    setVaultToast("Onboarding restarted.");
   }
 
   function renderMenuPullDown(key, title, summary, children, icon = "plus") {
@@ -3855,7 +4554,7 @@ export default function App() {
     );
     nextStatus.vaStores = await countQuery(
       "Virginia stores",
-      supabase.from("pokemon_retail_stores").select("id", { count: "exact", head: true }).eq("state", "VA")
+      supabase.from("stores").select("id", { count: "exact", head: true }).in("state", ["Virginia", "VA"])
     );
     const missingImageNulls = await countQuery(
       "Products missing image_url nulls",
@@ -4033,39 +4732,6 @@ export default function App() {
     if (requestId !== supabaseCatalogRequestId.current) return;
 
     const importedProducts = (result.rows || []).map(mapCatalog);
-    if (!importedProducts.length && productGroup !== "All" && (cleanedSearch || barcode)) {
-      try {
-        const broadResult = await searchPokemonCatalog({
-          supabase,
-          query: searchTerm,
-          barcode,
-          mode,
-          productGroup: "All",
-          productType: catalogTypeFilter,
-          setName: catalogSetFilter,
-          dataFilter: catalogDataFilter,
-          rarity: catalogRarityFilter,
-          sort: catalogSort,
-          page: 1,
-          pageSize: Math.max(12, Math.min(pageSize, 30)),
-          force: true,
-          signal: searchController?.signal,
-        });
-        if (requestId !== supabaseCatalogRequestId.current) return;
-        const broadProducts = (broadResult.rows || []).map(mapCatalog);
-        const counts = broadProducts.reduce((summary, product) => {
-          const kind = isCatalogCardProduct(product) ? "card" : isCatalogSealedProduct(product) ? "sealed" : "other";
-          summary[kind] = (summary[kind] || 0) + 1;
-          return summary;
-        }, {});
-        alternateKinds = Object.entries(counts)
-          .filter(([, count]) => count > 0)
-          .map(([kind]) => kind);
-        alternateCount = broadProducts.length;
-      } catch (fallbackError) {
-        if (fallbackError?.name === "AbortError") return;
-      }
-    }
     setCatalogPagedResultIds(importedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
@@ -4116,6 +4782,7 @@ export default function App() {
   }
 
   function submitUniversalSuggestion(input, options = {}) {
+    if (blockGuestSave()) return null;
     const userInfo = getSuggestionUserInfo();
     const result = submitSuggestion({ ...input, ...userInfo }, options);
     if (!result.ok && result.reason === "duplicate") {
@@ -4133,6 +4800,7 @@ export default function App() {
 
   function resolveSuggestionConflict(action) {
     if (!suggestionConflict) return;
+    if (blockGuestSave()) return;
     if (action === "cancel") {
       setSuggestionConflict(null);
       return;
@@ -4391,6 +5059,7 @@ export default function App() {
   const phase2RecentDeals = phase2Data.dealFinderSessions || [];
   const phase2RecentScannerIntakes = phase2Data.scannerIntakeSessions || [];
   const phase2RecentReceipts = phase2Data.receiptRecords || [];
+  const phase2RecentAiAssistEvents = phase2Data.aiAssistEvents || [];
   const phase2WorkflowSyncLabel = phase2SyncStatus.source === "supabase"
     ? "Cloud synced"
     : phase2SyncStatus.label || "Local only mode";
@@ -4455,6 +5124,114 @@ export default function App() {
       message: error ? classified.message : `Local only mode. ${fallbackMessage}`,
     });
   };
+  async function logAiAssistEvent(featureArea, payload = {}) {
+    const sanitizeAiLogText = (value = "") => String(value || "")
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email redacted]")
+      .replace(/\b(?:\d[ -]*?){13,19}\b/g, "[number redacted]")
+      .replace(/\b(?:password|token|secret|authorization)\s*[:=]\s*\S+/gi, "[sensitive redacted]")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 360);
+    const event = {
+      id: makeId("ai-assist"),
+      featureArea,
+      inputSummary: sanitizeAiLogText(payload.inputSummary || ""),
+      outputSummary: sanitizeAiLogText(payload.outputSummary || ""),
+      confidenceScore: payload.confidenceScore == null ? null : Number(payload.confidenceScore),
+      status: payload.status || "suggested",
+      accepted: payload.accepted ?? null,
+      relatedEntityType: payload.relatedEntityType || "",
+      relatedEntityId: payload.relatedEntityId || "",
+      createdAt: new Date().toISOString(),
+    };
+    setPhase2Data((current) => ({
+      ...current,
+      aiAssistEvents: [event, ...(current.aiAssistEvents || [])].slice(0, 50),
+    }));
+    const result = await saveAiAssistEvent(phase2Context(), event);
+    updatePhase2Status(result, "AI suggestion logged locally.");
+    return result;
+  }
+  function getLocalFeedbackRecords() {
+    if (typeof localStorage === "undefined") return [];
+    try {
+      const rows = JSON.parse(localStorage.getItem(FEEDBACK_STORAGE_KEY) || "[]");
+      return Array.isArray(rows) ? rows : [];
+    } catch {
+      return [];
+    }
+  }
+  async function showAiSuggestion(featureArea, suggestion, fallbackMessage = "") {
+    const output = suggestion?.outputSummary || fallbackMessage || AI_REVIEW_DISCLAIMER;
+    const reviewId = makeId("ai-review");
+    setAiAssistReview({
+      id: reviewId,
+      featureArea,
+      title: suggestion?.title || "AI Assist suggestion",
+      inputSummary: suggestion?.inputSummary || "",
+      outputSummary: output,
+      editableOutput: output,
+      confidenceScore: suggestion?.confidenceScore == null ? null : Number(suggestion.confidenceScore),
+      relatedEntityType: suggestion?.relatedEntityType || "",
+      relatedEntityId: suggestion?.relatedEntityId || "",
+      status: "suggested",
+      createdAt: new Date().toISOString(),
+    });
+    setVaultToast(output);
+    await logAiAssistEvent(featureArea, {
+      inputSummary: suggestion?.inputSummary || "",
+      outputSummary: output,
+      confidenceScore: suggestion?.confidenceScore,
+      relatedEntityType: suggestion?.relatedEntityType,
+      relatedEntityId: suggestion?.relatedEntityId,
+    });
+    return output;
+  }
+
+  async function resolveAiAssistReview(status = "accepted") {
+    if (!aiAssistReview) return;
+    const edited = String(aiAssistReview.editableOutput || "") !== String(aiAssistReview.outputSummary || "");
+    await logAiAssistEvent(aiAssistReview.featureArea, {
+      inputSummary: aiAssistReview.inputSummary,
+      outputSummary: aiAssistReview.editableOutput || aiAssistReview.outputSummary,
+      confidenceScore: aiAssistReview.confidenceScore,
+      relatedEntityType: aiAssistReview.relatedEntityType,
+      relatedEntityId: aiAssistReview.relatedEntityId,
+      status: status === "accepted" && edited ? "edited" : status,
+      accepted: status === "accepted",
+    });
+    setVaultToast(status === "accepted" ? "AI suggestion marked reviewed. Make any final form changes before saving." : "AI suggestion dismissed.");
+    setAiAssistReview(null);
+  }
+
+  function renderAiAssistActions(actions = [], { label = "AI Assist", compact = true } = {}) {
+    const visibleActions = actions.filter(Boolean).slice(0, 6);
+    if (!visibleActions.length) return null;
+    return (
+      <details className={`ai-assist-menu ${compact ? "ai-assist-menu--compact" : ""}`}>
+        <summary>{label}</summary>
+        <div className="ai-assist-menu-actions">
+          {visibleActions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              className="secondary-button"
+              onClick={(event) => {
+                event.currentTarget.closest("details")?.removeAttribute("open");
+                action.onClick?.();
+              }}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+        <p>{AI_REVIEW_DISCLAIMER}</p>
+      </details>
+    );
+  }
+  function aiEventCountFor(featureArea) {
+    return phase2RecentAiAssistEvents.filter((event) => event.featureArea === featureArea || event.feature_area === featureArea).length;
+  }
   const retryPhase2Sync = async () => {
     const { data, status } = await loadPhase2Data(phase2Context());
     setPhase2Data(data);
@@ -4485,7 +5262,14 @@ export default function App() {
 
     setMultiDestinationCatalogQuery(catalogSearchQuery || "");
     setMultiDestinationMatchSearchOpen(!rest.catalogProductId);
-    const nextDestinations = { ...BLANK_MULTI_DESTINATION_FORM.destinations, ...(destinations || {}) };
+    const normalizedSeedDestinations = Object.entries(destinations || {}).reduce((acc, [key, enabled]) => {
+      const normalizedKey = normalizeAddDestinationValue(key, "", { allowIgnore: false });
+      if (normalizedKey && Object.prototype.hasOwnProperty.call(BLANK_MULTI_DESTINATION_FORM.destinations, normalizedKey)) {
+        acc[normalizedKey] = Boolean(enabled);
+      }
+      return acc;
+    }, {});
+    const nextDestinations = { ...BLANK_MULTI_DESTINATION_FORM.destinations, ...normalizedSeedDestinations };
     const nextVault = {
       ...BLANK_MULTI_DESTINATION_FORM.vault,
       workspaceId: defaultWorkspaceIdForDestination("vault"),
@@ -4523,17 +5307,19 @@ export default function App() {
     },
   }));
   const updateMultiDestinationToggle = (destination, checked) => setMultiDestinationForm((current) => {
+    const normalizedDestination = normalizeAddDestinationValue(destination, "", { allowIgnore: false });
+    if (!normalizedDestination || !Object.prototype.hasOwnProperty.call(current.destinations, normalizedDestination)) return current;
     const next = {
       ...current,
       destinations: {
         ...current.destinations,
-        [destination]: checked,
+        [normalizedDestination]: checked,
       },
     };
-    if (checked && ["vault", "wishlist", "forge"].includes(destination)) {
-      next[destination] = {
-        ...next[destination],
-        workspaceId: next[destination]?.workspaceId || defaultWorkspaceIdForDestination(destination),
+    if (checked && ["vault", "wishlist", "forge"].includes(normalizedDestination)) {
+      next[normalizedDestination] = {
+        ...next[normalizedDestination],
+        workspaceId: next[normalizedDestination]?.workspaceId || defaultWorkspaceIdForDestination(normalizedDestination),
       };
     }
     return next;
@@ -4555,6 +5341,15 @@ export default function App() {
       ]);
       setMultiDestinationCatalogQuery(catalogTitle(product));
       setMultiDestinationMatchSearchOpen(false);
+      void logAiAssistEvent(AI_FEATURE_AREAS.CATALOG_MATCH, {
+        inputSummary: multiDestinationCatalogQuery || catalogTitle(product),
+        outputSummary: `User selected catalog match for review: ${catalogTitle(product)}.`,
+        confidenceScore: 90,
+        status: "accepted",
+        accepted: true,
+        relatedEntityType: "catalog_item",
+        relatedEntityId: product.masterCatalogItemId || product.id,
+      });
     }
 
     setMultiDestinationForm((current) => ({
@@ -4596,9 +5391,20 @@ export default function App() {
 
   function markMultiDestinationMissingCatalog() {
     const query = String(multiDestinationCatalogQuery || "").trim();
+    const prefill = buildMissingProductPrefill({
+      query: query || multiDestinationForm.itemName,
+      detectedText: query || multiDestinationForm.itemName,
+      productType: multiDestinationForm.productType,
+      setName: multiDestinationForm.setName,
+      upc: multiDestinationForm.upcSku,
+    });
     setMultiDestinationForm((current) => ({
       ...current,
-      itemName: current.itemName || query,
+      itemName: current.itemName || prefill.productName || query,
+      productType: current.productType || prefill.productType,
+      setName: current.setName || prefill.setName,
+      upcSku: current.upcSku || prefill.upc,
+      notes: [current.notes, prefill.notes].filter(Boolean).join("\n"),
       destinations: {
         ...current.destinations,
         tidetradr: true,
@@ -4606,11 +5412,18 @@ export default function App() {
       tidetradr: {
         ...current.tidetradr,
         action: "suggest",
-        productType: current.tidetradr.productType || current.productType,
-        upc: current.tidetradr.upc || current.upcSku,
+        productType: current.tidetradr.productType || current.productType || prefill.productType,
+        upc: current.tidetradr.upc || current.upcSku || prefill.upc,
         msrpPrice: current.tidetradr.msrpPrice || current.msrpPrice,
       },
     }));
+    void logAiAssistEvent(AI_FEATURE_AREAS.MISSING_PRODUCT, {
+      inputSummary: prefill.inputSummary || query,
+      outputSummary: prefill.outputSummary,
+      confidenceScore: prefill.confidenceScore,
+      relatedEntityType: "missing_catalog_product",
+    });
+    setVaultToast(`${prefill.outputSummary} It will still go to Admin Review before any catalog item is created.`);
   }
 
   function normalizeDestinationScopes(value) {
@@ -5025,10 +5838,12 @@ export default function App() {
   }
 
   function updateLocationSettings(updates) {
+    if (blockGuestSave()) return;
     setLocationSettings((current) => ({ ...current, ...updates, lastUpdated: new Date().toISOString() }));
   }
 
   function saveManualLocation() {
+    if (blockGuestSave()) return;
     const value = String(locationSettings.manualLocation || "").trim();
     if (!value) return;
     setLocationSettings((current) => ({
@@ -5058,6 +5873,7 @@ export default function App() {
 
   function savePromptLocation(event) {
     event?.preventDefault?.();
+    if (blockGuestSave()) return;
     const value = String(locationPromptZip || "").trim();
     if (!value) return;
     setLocationSettings((current) => ({
@@ -5606,16 +6422,19 @@ export default function App() {
   function importedRowToItem(row, destination) {
     const matched = catalogProducts.find((product) => String(product.id) === String(row.matchedCatalogItemId));
     const defaultPurchaser = purchasers.find((purchaser) => purchaser.active) || purchasers[0] || { id: "", name: "Unassigned" };
-    const normalizedDestination = destination === "Wishlist" ? "Wishlist" : destination === "Vault" ? "Vault" : "Forge";
-    const status = normalizedDestination === "Vault" ? "Personal Collection" : normalizedDestination === "Wishlist" ? "Wishlist" : "In Stock";
+    const normalizedDestination = normalizeAddDestinationValue(destination, "forge");
+    const isVaultDestination = normalizedDestination === "vault";
+    const isWishlistDestination = normalizedDestination === "wishlist";
+    const isForgeDestination = normalizedDestination === "forge";
+    const status = isVaultDestination ? "Personal Collection" : isWishlistDestination ? "Wishlist" : "In Stock";
     return {
       ...blankItem,
-      id: makeId(normalizedDestination === "Vault" ? "vault-import" : normalizedDestination === "Wishlist" ? "wishlist-import" : "import"),
+      id: makeId(isVaultDestination ? "vault-import" : isWishlistDestination ? "wishlist-import" : "import"),
       name: row.itemName,
-      destinationScope: [normalizedDestination === "Vault" ? "vault" : normalizedDestination === "Wishlist" ? "wishlist" : "forge"],
-      recordType: normalizedDestination === "Vault" ? "vault_item" : normalizedDestination === "Wishlist" ? "wishlist_item" : "forge_inventory",
-      businessInventory: normalizedDestination === "Forge",
-      isWishlist: normalizedDestination === "Wishlist",
+      destinationScope: [normalizedDestination],
+      recordType: isVaultDestination ? "vault_item" : isWishlistDestination ? "wishlist_item" : "forge_inventory",
+      businessInventory: isForgeDestination,
+      isWishlist: isWishlistDestination,
       buyer: defaultPurchaser.name,
       purchaserId: defaultPurchaser.id,
       purchaserName: defaultPurchaser.name,
@@ -5645,8 +6464,8 @@ export default function App() {
       variant: row.variant || "",
       purchaseDate: row.purchaseDate || "",
       status,
-      vaultStatus: normalizedDestination === "Vault" ? "personal_collection" : normalizedDestination === "Wishlist" ? "wishlist" : "",
-      actionNotes: normalizedDestination === "Vault" ? "Imported collection item" : normalizedDestination === "Wishlist" ? "Imported wishlist item" : "Imported Forge item",
+      vaultStatus: isVaultDestination ? "personal_collection" : isWishlistDestination ? "wishlist" : "",
+      actionNotes: isVaultDestination ? "Imported collection item" : isWishlistDestination ? "Imported wishlist item" : "Imported Forge item",
       notes: [row.notes, `Imported from ${row.sourceType}. Original: ${row.originalText}`].filter(Boolean).join(" | "),
       createdAt: new Date().toISOString(),
       importStatus: "imported",
@@ -5704,6 +6523,16 @@ export default function App() {
   }
 
   async function saveInventoryRecords(records = []) {
+    if (blockGuestSave()) {
+      return {
+        saved: [],
+        failures: records.map((record) => ({
+          rowId: record?.id || record?.itemId || record?.name || "inventory-save",
+          itemName: record?.name || record?.itemName || "Inventory item",
+          error: "Create a free account to save this.",
+        })),
+      };
+    }
     if (!records.length) return { saved: [], failures: [] };
     if (BETA_LOCAL_MODE || !supabase || !user?.id) {
       return { saved: records, failures: [] };
@@ -5726,9 +6555,7 @@ export default function App() {
   }
 
   function importDestinationScope(destination) {
-    if (destination === "Vault") return "vault";
-    if (destination === "Wishlist") return "wishlist";
-    return "forge";
+    return normalizeAddDestinationValue(destination, "forge");
   }
 
   function findImportDuplicate(row, destination) {
@@ -6296,6 +7123,8 @@ export default function App() {
       bestBuyAlerts: saved.bestBuyAlerts || [],
       restockIntel,
       restockPatterns: saved.restockPatterns || buildScoutRestockPatterns(restockIntel),
+      storeGuesses: saved.storeGuesses || saved.guesses || [],
+      forecastWindows: saved.forecastWindows || [],
       intelImportReviews: saved.intelImportReviews || [],
       scoutProfile: saved.scoutProfile || {},
       alertSettings: saved.alertSettings || {},
@@ -6323,6 +7152,7 @@ export default function App() {
 
   function submitTidepoolPost(event) {
     event?.preventDefault?.();
+    if (blockGuestSave()) return false;
     if (!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()) return false;
     const post = makeTidepoolPost({
       ...tidepoolPostForm,
@@ -6508,7 +7338,10 @@ export default function App() {
 
   useEffect(() => {
     if (BETA_LOCAL_MODE) return;
-    if (user) loadAllData();
+    if (user) {
+      setGuestPreview(false);
+      loadAllData();
+    }
     else {
       setItems([]);
       setCatalogProducts([]);
@@ -6539,6 +7372,16 @@ export default function App() {
           .order("created_at", { ascending: true });
         if (memberError) throw memberError;
         let nextMembers = (memberRows || []).map(normalizeWorkspaceMember);
+        const { data: teamMemberRows, error: teamMemberError } = await supabase
+          .from("workspace_members")
+          .select("*")
+          .order("created_at", { ascending: true });
+        if (!teamMemberError && Array.isArray(teamMemberRows)) {
+          const memberKey = (member) => `${member.workspaceId || member.workspace_id}:${member.userId || member.user_id || member.email || ""}`;
+          const memberMap = new Map(nextMembers.map((member) => [memberKey(member), member]));
+          teamMemberRows.map(normalizeWorkspaceMember).forEach((member) => memberMap.set(memberKey(member), member));
+          nextMembers = [...memberMap.values()];
+        }
 
         if (!nextWorkspaces.length) {
           const { data: createdWorkspace, error: createWorkspaceError } = await supabase
@@ -6595,6 +7438,11 @@ export default function App() {
 
   useEffect(() => {
     if (!localDataLoaded) return undefined;
+    if (guestPreviewActive) {
+      setPhase2Data(createEmptyPhase2Data());
+      setPhase2SyncStatus({ source: "guest", message: "Preview mode is read-only. Sign up to save your progress." });
+      return undefined;
+    }
     let cancelled = false;
     loadPhase2Data(phase2Context()).then(({ data, status }) => {
       if (cancelled) return;
@@ -6604,7 +7452,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [localDataLoaded, user?.id, activeWorkspaceId]);
+  }, [localDataLoaded, user?.id, activeWorkspaceId, guestPreviewActive]);
 
   useEffect(() => {
     const preferences = phase2Data.notificationPreferences || {};
@@ -6621,6 +7469,7 @@ export default function App() {
 
   useEffect(() => {
     if (!localDataLoaded) return undefined;
+    if (guestPreviewActive) return undefined;
     const timeout = window.setTimeout(() => {
       saveAppPreferences(phase2Context(), {
         dashboardPreset,
@@ -6631,7 +7480,7 @@ export default function App() {
       }).then((result) => updatePhase2Status(result, "Dashboard preferences saved locally."));
     }, 700);
     return () => window.clearTimeout(timeout);
-  }, [localDataLoaded, user?.id, activeWorkspaceId, dashboardPreset, homeStatsEnabled, dashboardLayout]);
+  }, [localDataLoaded, user?.id, activeWorkspaceId, dashboardPreset, homeStatsEnabled, dashboardLayout, guestPreviewActive]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -6707,6 +7556,12 @@ export default function App() {
         const profile = makeFallbackUserProfile(user);
         if (!active) return;
         setCurrentUserProfile(profile);
+        setProfileForm({
+          firstName: profile.firstName || "",
+          lastName: profile.lastName || "",
+          displayName: profile.displayName || profile.fullName || "",
+          preferredRegion: profile.preferredRegion || profile.preferred_region || "Hampton Roads / 757",
+        });
         setSubscriptionProfile((current) => ({
           ...current,
           userId: profile.userId,
@@ -6721,6 +7576,12 @@ export default function App() {
       const profile = await getCurrentUserProfile(user);
       if (!active) return;
       setCurrentUserProfile(profile);
+      setProfileForm({
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        displayName: profile.displayName || profile.fullName || "",
+        preferredRegion: profile.preferredRegion || profile.preferred_region || "Hampton Roads / 757",
+      });
       setSubscriptionProfile((current) => ({
         ...current,
         userId: profile.userId,
@@ -6847,13 +7708,12 @@ export default function App() {
   }, [quickAddMenuOpen, activeFlowModal, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showVaultAddForm, showInventoryScanner, receiptScanOpen, vaultForm, scanReview]);
 
   function getPasswordResetRedirectTo() {
-    if (typeof window === "undefined") return undefined;
-    return `${window.location.origin}/reset-password`;
+    const appUrl = String(import.meta.env.VITE_PUBLIC_APP_URL || PRODUCTION_APP_URL).replace(/\/$/, "");
+    return `${appUrl}/reset-password`;
   }
 
   function getAuthEmailRedirectTo() {
-    if (typeof window === "undefined") return undefined;
-    return window.location.origin;
+    return String(import.meta.env.VITE_PUBLIC_APP_URL || PRODUCTION_APP_URL).replace(/\/$/, "");
   }
 
   function normalizeAuthErrorMessage(message = "") {
@@ -6873,6 +7733,65 @@ export default function App() {
     setAuthError("");
     setPasswordResetMessage("");
     setPasswordResetError("");
+  }
+
+  function startGuestPreview() {
+    setGuestPreview(true);
+    setUser(null);
+    setAuthMode("login");
+    setAuthPassword("");
+    setAuthError("");
+    setAuthMessage("");
+    setPasswordResetError("");
+    setPasswordResetMessage("");
+    setNewPasswordError("");
+    setNewPasswordMessage("");
+    setMenuOpen(false);
+    setQuickAddMenuOpen(false);
+    setActiveFlowModal(null);
+    setActiveTab("dashboard");
+    setScoutView("overview");
+    setItems([]);
+    setExpenses([]);
+    setSales([]);
+    setVehicles([]);
+    setMileageTrips([]);
+    setTideTradrWatchlist([]);
+    setMarketplaceListings([]);
+    setMarketplaceReports([]);
+    setMarketplaceSavedIds([]);
+    setTidepoolPosts([]);
+    setTidepoolComments([]);
+    setTidepoolReactions([]);
+    setScoutSnapshot(createEmptyScoutSnapshot());
+    setPhase2Data(createEmptyPhase2Data());
+    setPhase2SyncStatus({ source: "guest", message: "Preview mode is read-only. Sign up to save your progress." });
+    setCurrentUserProfile(makeFallbackUserProfile(null));
+    setSubscriptionProfile((current) => ({
+      ...current,
+      userId: "",
+      email: "",
+      displayName: "Guest Preview",
+      userRole: USER_ROLES.USER,
+      tier: PLAN_TYPES.FREE,
+      featureTier: PLAN_TYPES.FREE,
+      subscriptionPlan: PLAN_TYPES.FREE,
+      isAdmin: false,
+    }));
+    setVaultToast("Preview mode — sign up to save your progress.");
+  }
+
+  function exitGuestPreview() {
+    setGuestPreview(false);
+    setAuthMode("login");
+    setAuthPassword("");
+    setAuthError("");
+    setAuthMessage("");
+    setPasswordResetError("");
+    setPasswordResetMessage("");
+    setActiveTab("dashboard");
+    setMenuOpen(false);
+    setVaultToast("");
   }
 
   async function sendPasswordResetEmail(email) {
@@ -6947,19 +7866,24 @@ export default function App() {
         return;
       }
       setNewPasswordForm({ password: "", confirm: "" });
-      setNewPasswordMessage("Password updated. You can now sign in.");
-      setVaultToast("Password updated. You can now sign in.");
+      const message = "Password updated. Please log in with your new password.";
+      setNewPasswordMessage(message);
+      setVaultToast(message);
+      await goToSignInAfterPasswordReset(message);
     } finally {
       setNewPasswordLoading(false);
     }
   }
 
-  async function goToSignInAfterPasswordReset() {
+  async function goToSignInAfterPasswordReset(successMessage = "") {
+    const nextAuthMessage = typeof successMessage === "string" ? successMessage : "";
     setAuthMode("login");
     setAuthPassword("");
     setNewPasswordForm({ password: "", confirm: "" });
     setNewPasswordError("");
     setNewPasswordMessage("");
+    setAuthError("");
+    setAuthMessage(nextAuthMessage);
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
     }
@@ -7004,6 +7928,21 @@ export default function App() {
       setAuthError("Password must be at least 6 characters.");
       return;
     }
+    const signupFirstName = normalizePersonName(authFirstName);
+    const signupLastName = normalizePersonName(authLastName);
+    const signupFullName = [signupFirstName, signupLastName].filter(Boolean).join(" ");
+    if (authMode === "signup") {
+      const nameError = validateSignupFullName(signupFirstName, signupLastName);
+      if (nameError) {
+        setAuthError(nameError);
+        return;
+      }
+      if (!authTermsAccepted) {
+        setAuthError("You must agree to the Terms of Use and Privacy Policy before creating an account.");
+        return;
+      }
+    }
+    const consentTimestamp = new Date().toISOString();
     setAuthLoading(true);
     try {
       if (authMode === "signup") {
@@ -7012,6 +7951,19 @@ export default function App() {
           password,
           options: {
             emailRedirectTo: getAuthEmailRedirectTo(),
+            data: {
+              first_name: signupFirstName,
+              last_name: signupLastName,
+              full_name: signupFullName,
+              display_name: signupFullName,
+              terms_accepted_at: consentTimestamp,
+              privacy_accepted_at: consentTimestamp,
+              beta_acknowledged_at: authBetaAcknowledged ? consentTimestamp : null,
+              consent_text: {
+                terms: SIGNUP_TERMS_TEXT,
+                beta: authBetaAcknowledged ? SIGNUP_BETA_ACK_TEXT : "",
+              },
+            },
           },
         });
         if (error) {
@@ -7021,12 +7973,38 @@ export default function App() {
           return;
         }
         if (!data.session) {
-          const message = "Please check your email to confirm your account.";
+          const message = "Check your email to confirm your account. After confirming, return here to log in.";
           setAuthMessage(message);
           setVaultToast(message);
           setAuthMode("login");
           setAuthPassword("");
           return;
+        }
+        if (data.user?.id) {
+          const { error: profileError } = await supabase.from("profiles").upsert(
+            {
+              id: data.user.id,
+              email,
+              first_name: signupFirstName,
+              last_name: signupLastName,
+              full_name: signupFullName,
+              display_name: signupFullName,
+              terms_accepted_at: consentTimestamp,
+              privacy_accepted_at: consentTimestamp,
+              beta_acknowledged_at: authBetaAcknowledged ? consentTimestamp : null,
+              consent_text: {
+                terms: SIGNUP_TERMS_TEXT,
+                beta: authBetaAcknowledged ? SIGNUP_BETA_ACK_TEXT : "",
+              },
+              beta_access_status: (betaReadinessData.readiness?.betaAccessMode || "open_beta") === "open_beta" ? "approved" : "pending",
+              beta_access_requested_at: consentTimestamp,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+          if (profileError) {
+            console.warn("Unable to sync signup profile names", profileError);
+          }
         }
         const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
         setUser(currentUserError ? data.user : currentUserData.user);
@@ -7042,6 +8020,12 @@ export default function App() {
         setUser(currentUserError ? data.user : currentUserData.user);
       }
       setAuthPassword("");
+      if (authMode === "signup") {
+        setAuthFirstName("");
+        setAuthLastName("");
+        setAuthTermsAccepted(false);
+        setAuthBetaAcknowledged(false);
+      }
       setAuthMessage(authMode === "signup" ? "Account created. You are signed in." : "Signed in.");
       setVaultToast("Signed in. Beta data remains saved on this device.");
     } catch (error) {
@@ -7081,11 +8065,6 @@ export default function App() {
 
   async function createWorkspace(event) {
     event?.preventDefault?.();
-    if (!featureAllowed("shared_workspace")) {
-      setWorkspaceMessage("Shared workspaces are part of Ultimate. Billing is coming soon.");
-      openLockedFeatureNotice("shared_workspace");
-      return;
-    }
     const name = String(workspaceForm.name || "").trim();
     if (!name) {
       setWorkspaceMessage("Enter a workspace name first.");
@@ -7096,7 +8075,7 @@ export default function App() {
     const workspace = {
       id: makeId("workspace"),
       name,
-      type: workspaceForm.type || "shared_collection",
+      type: workspaceForm.type || "business",
       ownerUserId: ownerId,
       owner_user_id: ownerId,
       createdAt: now,
@@ -7144,7 +8123,7 @@ export default function App() {
       const mappedMember = createdMember ? normalizeWorkspaceMember(createdMember) : normalizeWorkspaceMember({ ...ownerMember, workspaceId: createdWorkspace.id });
       setWorkspaces((current) => [mappedWorkspace, ...current.filter((entry) => String(entry.id) !== String(mappedWorkspace.id))]);
       setWorkspaceMembers((current) => [mappedMember, ...current.filter((entry) => !(String(entry.workspaceId || entry.workspace_id) === String(mappedWorkspace.id) && String(entry.userId || entry.user_id) === String(user.id)))]);
-      setWorkspaceForm({ name: "", type: "shared_collection" });
+      setWorkspaceForm({ name: "", type: "business" });
       setActiveWorkspaceId(mappedWorkspace.id);
       setWorkspaceInviteForm((current) => ({ ...current, workspaceId: mappedWorkspace.id }));
       setWorkspaceMessage(`${mappedWorkspace.name} created. Personal data was not moved or shared.`);
@@ -7153,7 +8132,7 @@ export default function App() {
 
     setWorkspaces((current) => [workspace, ...current]);
     setWorkspaceMembers((current) => [ownerMember, ...current]);
-    setWorkspaceForm({ name: "", type: "shared_collection" });
+    setWorkspaceForm({ name: "", type: "business" });
     setActiveWorkspaceId(workspace.id);
     setWorkspaceInviteForm((current) => ({ ...current, workspaceId: workspace.id }));
     setWorkspaceMessage(`${workspace.name} created. Personal data was not moved or shared.`);
@@ -7161,18 +8140,15 @@ export default function App() {
 
   async function sendWorkspaceInvite(event) {
     event?.preventDefault?.();
-    if (!featureAllowed("team_access")) {
-      setWorkspaceMessage("Team access is part of Ultimate. Billing is coming soon.");
-      openLockedFeatureNotice("team_access");
-      return;
-    }
     const email = String(workspaceInviteForm.email || "").trim().toLowerCase();
     const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceInviteForm.workspaceId));
     if (!email || !workspace) {
       setWorkspaceMessage("Choose a workspace and enter an email address.");
       return;
     }
-    const role = workspaceInviteForm.role === "owner" ? "viewer" : workspaceInviteForm.role || "viewer";
+    const role = normalizeWorkspaceRoleValue(workspaceInviteForm.role, "viewer") === "owner"
+      ? "viewer"
+      : normalizeWorkspaceRoleValue(workspaceInviteForm.role, "viewer");
     const now = new Date().toISOString();
     const invite = normalizeWorkspaceInvite({
       id: makeId("invite"),
@@ -7275,7 +8251,7 @@ export default function App() {
     setWorkspaceMembers(defaultWorkspaceState.members);
     setWorkspaceInvites(defaultWorkspaceState.invites);
     setActiveWorkspaceId(defaultWorkspaceState.activeWorkspaceId);
-    setWorkspaceForm({ name: "", type: "shared_collection" });
+    setWorkspaceForm({ name: "", type: "business" });
     setWorkspaceInviteForm({ email: "", workspaceId: defaultWorkspaceState.activeWorkspaceId, role: "viewer", note: "" });
     setWorkspaceMessage("");
     setScoutSnapshot({
@@ -7463,6 +8439,7 @@ export default function App() {
 
   async function addVaultItem(event) {
     event?.preventDefault?.();
+    if (blockGuestSave()) return;
     const validationMessage = validateVaultDraft(vaultForm);
     if (validationMessage) {
       setVaultToast(validationMessage);
@@ -7525,7 +8502,8 @@ export default function App() {
     setScanMode("upc");
     setScanMatches([]);
     setScanReview(null);
-    setScanDestination(defaultDestination);
+    setScanSearchState("idle");
+    setScanDestination(normalizeAddDestinationValue(defaultDestination, "none", { allowIgnore: true }));
     setScanMessage("");
     setScanInput("");
     setPictureLookup({ imageUrl: "", fileName: "", text: "", message: "" });
@@ -7534,12 +8512,12 @@ export default function App() {
   }
 
   function openReceiptScanWorkflow() {
-    if (!featureAllowed("receipt_scan_review")) {
+    if (!guestPreviewActive && !featureAllowed("receipt_scan_review")) {
       openLockedFeatureNotice("receipt_scan_review");
       return;
     }
     setReceiptScanOpen(true);
-    setReceiptScanStatus("draft_extracted");
+    setReceiptScanStatus(receiptScanDraft ? "ready_for_review" : "draft_extracted");
     setReceiptScanMessage("");
     setScanMode("receipt");
     setShowInventoryScanner(false);
@@ -7555,7 +8533,7 @@ export default function App() {
     setReceiptScanMessage("");
   }
 
-  function handleReceiptScanFile(event) {
+  function handleReceiptScanFile(event, source = "upload") {
     const file = event.target.files?.[0];
     if (!file) return;
     const supported = file.type.startsWith("image/") || file.type === "application/pdf";
@@ -7572,6 +8550,7 @@ export default function App() {
         fileName: file.name,
         filePreviewUrl: previewUrl,
         receiptImageUrl: previewUrl,
+        source,
       };
     });
     setReceiptScanMessage(file.type === "application/pdf" ? "PDF received. OCR support will process PDFs later; paste visible text for this beta review." : "Receipt image ready. Paste visible text or use the beta extractor.");
@@ -7596,27 +8575,35 @@ export default function App() {
       purchaseDate: "2026-05-10",
       subtotal: "39.05",
       tax: "0.99",
+      discounts: "0",
       total: "40.04",
+      paymentMethod: "QA test",
       transactionNumber: `QA-${Date.now()}`,
       rawText: "QA Receipt Vault Item 11.35\nQA Receipt Forge Item 22.70\nQA Receipt Expense Item 5.00",
+      source: "manual",
     }));
     setReceiptScanDraft({
-      id: makeId("receipt-draft"),
+      id: makeReceiptEntityId("receipt-draft"),
       storeName: "QA Receipt Merchant 2026-05-10",
       storeLocation: "QA Cloud Mode",
       purchaseDate: "2026-05-10",
       subtotal: 39.05,
       tax: 0.99,
+      discounts: 0,
       total: 40.04,
+      paymentMethod: "QA test",
       receiptImageUrl: "",
+      source: "manual",
       receiptHash: `qa-receipt-${Date.now()}`,
       transactionNumber: `QA-${Date.now()}`,
       status: "draft_extracted",
       items: [
         {
-          id: makeId("receipt-line"),
+          id: makeReceiptEntityId("receipt-line"),
           rawText: "QA Receipt Vault Item 11.35",
+          itemName: "QA Receipt Vault Item",
           matchedCatalogId: vaultMatch.id,
+          matchedCatalogItemId: vaultMatch.id,
           suggestedMatchName: vaultMatch.name,
           matchConfidence: 98,
           quantity: 1,
@@ -7631,9 +8618,11 @@ export default function App() {
           possibleMatches: [],
         },
         {
-          id: makeId("receipt-line"),
+          id: makeReceiptEntityId("receipt-line"),
           rawText: "QA Receipt Forge Item 22.70",
+          itemName: "QA Receipt Forge Item",
           matchedCatalogId: forgeMatch.id,
+          matchedCatalogItemId: forgeMatch.id,
           suggestedMatchName: forgeMatch.name,
           matchConfidence: 98,
           quantity: 1,
@@ -7648,9 +8637,11 @@ export default function App() {
           possibleMatches: [],
         },
         {
-          id: makeId("receipt-line"),
+          id: makeReceiptEntityId("receipt-line"),
           rawText: "QA Receipt Expense Item 5.00",
+          itemName: "QA Receipt Expense Item",
           matchedCatalogId: "",
+          matchedCatalogItemId: "",
           suggestedMatchName: "QA Receipt Expense Item",
           matchConfidence: 65,
           quantity: 1,
@@ -7676,6 +8667,7 @@ export default function App() {
     setShowInventoryScanner(false);
     setScanReview(null);
     setScanMatches([]);
+    setScanSearchState("idle");
     setScanInput("");
     setPictureLookup((current) => {
       if (current.imageUrl?.startsWith("blob:")) URL.revokeObjectURL(current.imageUrl);
@@ -7707,22 +8699,63 @@ export default function App() {
       .filter((line) => line.name);
   }
 
-  function buildReceiptReviewDraft() {
+  function makeReceiptEntityId(prefix = "receipt") {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    return makeId(prefix);
+  }
+
+  async function findReceiptLineCatalogMatches(line = {}) {
+    const query = String(line.rawText || line.name || "").trim();
+    if (!query || query.length < 2) return [];
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const result = await searchPokemonCatalog({
+          supabase,
+          query,
+          mode: detectCatalogSearchMode(query),
+          page: 1,
+          pageSize: 5,
+          force: true,
+        });
+        const normalizedLineName = normalizeSearchText(line.name || line.rawText);
+        return (result.rows || []).map((row, index) => {
+          const item = mapCatalog(row);
+          const normalizedTitle = normalizeSearchText(catalogTitle(item));
+          const exactTitle = normalizedTitle && normalizedTitle === normalizedLineName;
+          return {
+            item,
+            score: exactTitle ? 1000 : Math.max(350, 850 - index * 55),
+            confidencePercent: exactTitle ? 96 : Math.max(58, 88 - index * 7),
+            explanation: result.searchPhase === "rpc" ? "Fast catalog match" : "Catalog search match",
+            reason: result.searchPhase || result.sourceName || "catalog search",
+          };
+        });
+      } catch {
+        return getBestCatalogMatches(query, catalogProducts).slice(0, 5);
+      }
+    }
+    return getBestCatalogMatches(query, catalogProducts).slice(0, 5);
+  }
+
+  async function buildReceiptReviewDraft() {
     setReceiptScanStatus("reading_receipt");
     setReceiptScanStatus("matching_products");
     const rawText = receiptScanForm.rawText || "";
     const parsedReceiptLines = parseReceiptDraftLines(rawText);
     const fallbackLines = parsedReceiptLines.length ? parsedReceiptLines : [{ rawText: "Unmatched receipt item", name: "Unmatched receipt item", quantity: 1, unitCost: 0, totalCost: 0 }];
-    const items = fallbackLines.map((line) => {
-      const matches = getBestCatalogMatches(line.rawText || line.name, catalogProducts);
+    const items = await Promise.all(fallbackLines.map(async (line) => {
+      const matches = await findReceiptLineCatalogMatches(line);
       const best = matches[0];
       const confidence = best?.confidencePercent || 0;
-      const needsReview = confidence < 80 || !best?.item;
+      const autoAccept = confidence >= 92 && best?.item;
+      const needsReview = !autoAccept;
       return {
-        id: makeId("receipt-line"),
+        id: makeReceiptEntityId("receipt-line"),
         rawText: line.rawText,
-        matchedCatalogId: best?.item?.id || "",
-        suggestedMatchName: best?.item ? catalogTitle(best.item) : "",
+        itemName: line.name || "",
+        matchedCatalogId: autoAccept ? best?.item?.id || "" : "",
+        matchedCatalogItemId: autoAccept ? best?.item?.masterCatalogItemId || best?.item?.id || "" : "",
+        suggestedMatchName: best?.item ? catalogTitle(best.item) : line.name || "",
         matchConfidence: confidence,
         quantity: line.quantity || 1,
         unitCost: Number(line.unitCost || 0).toFixed(2),
@@ -7735,33 +8768,48 @@ export default function App() {
         verified: false,
         possibleMatches: matches.slice(0, 5),
       };
-    });
+    }));
     const itemTotal = items.reduce((sum, item) => sum + Number(item.totalCost || 0), 0);
-    const total = Number(receiptScanForm.total || itemTotal + Number(receiptScanForm.tax || 0) || 0);
+    const discountTotal = Number(receiptScanForm.discounts || 0);
+    const total = Number(receiptScanForm.total || itemTotal + Number(receiptScanForm.tax || 0) - discountTotal || 0);
     const receiptHash = [receiptScanForm.storeName, receiptScanForm.purchaseDate, total, receiptScanForm.transactionNumber].join("|").toLowerCase();
     const duplicatePossible = phase2Data.receiptRecords.some((receipt) =>
       String(receipt.merchant || "").toLowerCase() === String(receiptScanForm.storeName || "").toLowerCase() &&
       Math.abs(Number(receipt.total || 0) - total) < 0.01 &&
       String(receipt.purchasedAt || "").slice(0, 10) === String(receiptScanForm.purchaseDate || "").slice(0, 10)
     );
+    const aiSummary = buildAiReceiptDraftSummary({
+      storeName: receiptScanForm.storeName || "Unknown store",
+      rawText,
+      lineCount: items.length,
+      total: total ? money(total) : "",
+    });
     setReceiptScanDraft({
-      id: makeId("receipt-draft"),
+      id: makeReceiptEntityId("receipt-draft"),
       storeName: receiptScanForm.storeName || "Unknown store",
       storeLocation: receiptScanForm.storeLocation || "",
       purchaseDate: receiptScanForm.purchaseDate || new Date().toISOString().slice(0, 10),
-      subtotal: Number(receiptScanForm.subtotal || Math.max(0, total - Number(receiptScanForm.tax || 0)) || 0),
+      subtotal: Number(receiptScanForm.subtotal || itemTotal || Math.max(0, total - Number(receiptScanForm.tax || 0) + discountTotal) || 0),
       tax: Number(receiptScanForm.tax || 0),
+      discounts: discountTotal,
       total,
+      paymentMethod: receiptScanForm.paymentMethod || "",
       receiptImageUrl: receiptScanForm.receiptImageUrl || receiptScanForm.filePreviewUrl || "",
+      source: receiptScanForm.source || (receiptScanForm.receiptImageUrl || receiptScanForm.filePreviewUrl ? "upload" : "manual"),
       receiptHash,
       transactionNumber: receiptScanForm.transactionNumber || "",
       status: duplicatePossible ? "duplicate_possible" : "draft_extracted",
       items,
       warnings: [],
+      aiSummary: aiSummary.outputSummary,
       createdAt: new Date().toISOString(),
     });
     setReceiptScanStatus("ready_for_review");
-    setReceiptScanMessage("Review Receipt. Verify Items before Submit Report.");
+    setReceiptScanMessage(`${aiSummary.outputSummary} ${AI_REVIEW_DISCLAIMER}`);
+    void logAiAssistEvent(AI_FEATURE_AREAS.RECEIPT_EXTRACTION, {
+      ...aiSummary,
+      relatedEntityType: "receipt_draft",
+    });
   }
 
   function updateReceiptDraft(field, value) {
@@ -7769,28 +8817,166 @@ export default function App() {
   }
 
   function updateReceiptDraftItem(itemId, field, value) {
+    const nextValue = field === "destination" ? normalizeReceiptDestination(value) : value;
     setReceiptScanDraft((current) => current ? {
       ...current,
-      items: current.items.map((item) => item.id === itemId ? {
-        ...item,
-        [field]: value,
-        status: field === "verified" && value ? "verified" : item.status,
-      } : item),
+      items: current.items.map((item) => {
+        if (item.id !== itemId) return item;
+        const nextItem = {
+          ...item,
+          [field]: nextValue,
+          status: field === "verified" && nextValue ? "verified" : field === "verified" ? "needs_review" : item.status,
+        };
+        if (["quantity", "unitCost"].includes(field)) {
+          const quantity = Math.max(0, Number(field === "quantity" ? nextValue : nextItem.quantity || 0));
+          const unitCost = Math.max(0, Number(field === "unitCost" ? nextValue : nextItem.unitCost || 0));
+          nextItem.totalCost = (quantity * unitCost).toFixed(2);
+          if (field !== "verified") nextItem.verified = false;
+        }
+        if (field === "totalCost") {
+          const quantity = Math.max(1, Number(nextItem.quantity || 1));
+          nextItem.unitCost = (Number(nextValue || 0) / quantity).toFixed(2);
+          nextItem.verified = false;
+        }
+        if (field !== "verified" && !["quantity", "unitCost", "totalCost"].includes(field)) {
+          nextItem.verified = false;
+        }
+        return nextItem;
+      }),
     } : current);
   }
 
   function selectReceiptItemCatalogMatch(itemId, productId) {
-    const product = catalogProducts.find((candidate) => String(candidate.id) === String(productId));
+    const draftItem = receiptScanDraft?.items?.find((item) => item.id === itemId);
+    const product =
+      catalogProducts.find((candidate) => String(candidate.id) === String(productId)) ||
+      draftItem?.possibleMatches?.find((match) => String(match.item?.id) === String(productId))?.item;
+    if (product?.id) rememberCatalogProduct(product);
     setReceiptScanDraft((current) => current ? {
       ...current,
       items: current.items.map((item) => item.id === itemId ? {
         ...item,
         matchedCatalogId: product?.id || "",
+        matchedCatalogItemId: product?.masterCatalogItemId || product?.id || "",
         suggestedMatchName: product ? catalogTitle(product) : "",
         matchConfidence: product ? Math.max(Number(item.matchConfidence || 0), 90) : 0,
         status: product ? "needs_review" : item.status,
+        verified: false,
       } : item),
     } : current);
+  }
+
+  async function searchReceiptItemCatalogMatch(itemId) {
+    const line = receiptScanDraft?.items?.find((item) => item.id === itemId);
+    if (!line) return;
+    setReceiptScanStatus("matching_products");
+    const matches = await findReceiptLineCatalogMatches({
+      rawText: line.rawText || line.suggestedMatchName,
+      name: line.suggestedMatchName || line.itemName || line.rawText,
+    });
+    const aiSummary = buildAiCatalogMatchSummary({ query: line.rawText || line.suggestedMatchName, matches });
+    setReceiptScanDraft((current) => current ? {
+      ...current,
+      items: current.items.map((item) => item.id === itemId ? {
+        ...item,
+        possibleMatches: matches,
+        matchConfidence: matches[0]?.confidencePercent || item.matchConfidence || 0,
+        suggestedMatchName: matches[0]?.item ? catalogTitle(matches[0].item) : item.suggestedMatchName,
+        verified: false,
+        status: "needs_review",
+      } : item),
+    } : current);
+    setReceiptScanStatus("ready_for_review");
+    setReceiptScanMessage(`${aiSummary.outputSummary} ${AI_REVIEW_DISCLAIMER}`);
+    void logAiAssistEvent(AI_FEATURE_AREAS.CATALOG_MATCH, {
+      ...aiSummary,
+      relatedEntityType: "receipt_line_item",
+    });
+  }
+
+  function addReceiptCustomItem(itemId) {
+    setReceiptScanDraft((current) => current ? {
+      ...current,
+      items: current.items.map((item) => item.id === itemId ? {
+        ...item,
+        matchedCatalogId: "",
+        matchedCatalogItemId: "",
+        possibleMatches: [],
+        matchConfidence: 0,
+        suggestedMatchName: item.suggestedMatchName || item.itemName || item.rawText,
+        status: "needs_review",
+        verified: false,
+      } : item),
+    } : current);
+  }
+
+  function removeReceiptDraftItem(itemId) {
+    setReceiptScanDraft((current) => current ? {
+      ...current,
+      items: current.items.filter((item) => item.id !== itemId),
+    } : current);
+  }
+
+  function splitReceiptDraftItem(itemId) {
+    setReceiptScanDraft((current) => {
+      if (!current) return current;
+      const source = current.items.find((item) => item.id === itemId);
+      if (!source) return current;
+      const quantity = Math.max(1, Number(source.quantity || 1));
+      const splitQuantity = quantity > 1 ? 1 : 1;
+      const remainingQuantity = quantity > 1 ? quantity - splitQuantity : quantity;
+      const unitCost = Number(source.unitCost || 0);
+      const nextSource = {
+        ...source,
+        quantity: remainingQuantity,
+        totalCost: (remainingQuantity * unitCost).toFixed(2),
+        verified: false,
+        status: "needs_review",
+      };
+      const splitLine = {
+        ...source,
+        id: makeReceiptEntityId("receipt-line"),
+        quantity: splitQuantity,
+        totalCost: (splitQuantity * unitCost).toFixed(2),
+        destination: "expense_only",
+        verified: false,
+        status: "needs_review",
+        notes: [source.notes, "Split from receipt line."].filter(Boolean).join(" "),
+      };
+      return {
+        ...current,
+        items: current.items.flatMap((item) => item.id === itemId ? [nextSource, splitLine] : [item]),
+      };
+    });
+  }
+
+  function mergeReceiptDuplicateLines() {
+    setReceiptScanDraft((current) => {
+      if (!current) return current;
+      const merged = [];
+      const byKey = new Map();
+      current.items.forEach((item) => {
+        const key = [
+          normalizeSearchText(item.matchedCatalogId || item.suggestedMatchName || item.itemName || item.rawText),
+          normalizeReceiptDestination(item.destination),
+          Number(item.unitCost || 0).toFixed(2),
+        ].join("|");
+        if (!byKey.has(key)) {
+          const clone = { ...item };
+          byKey.set(key, clone);
+          merged.push(clone);
+          return;
+        }
+        const existing = byKey.get(key);
+        const quantity = Number(existing.quantity || 0) + Number(item.quantity || 0);
+        existing.quantity = quantity;
+        existing.totalCost = (Number(existing.totalCost || 0) + Number(item.totalCost || 0)).toFixed(2);
+        existing.rawText = [existing.rawText, item.rawText].filter(Boolean).join(" | ");
+        existing.verified = false;
+        existing.status = "needs_review";
+      });
+      return { ...current, items: merged };
+    });
   }
 
   function bulkVerifyHighConfidenceReceiptItems() {
@@ -7809,13 +8995,13 @@ export default function App() {
     const warnings = [];
     if (draft.status === "duplicate_possible") warnings.push("Duplicate receipt already uploaded may exist.");
     const itemTotal = draft.items.reduce((sum, item) => sum + Number(item.totalCost || 0), 0);
-    if (Math.abs((itemTotal + Number(draft.tax || 0)) - Number(draft.total || 0)) > 1) warnings.push("Receipt total does not match item totals plus tax.");
+    if (Math.abs((itemTotal + Number(draft.tax || 0) - Number(draft.discounts || 0)) - Number(draft.total || 0)) > 1) warnings.push("Receipt total does not match item totals plus tax/discounts.");
     draft.items.forEach((item, index) => {
       const destination = normalizeReceiptDestination(item.destination);
       const createsInventory = ["vault", "forge", "wishlist"].includes(destination);
       if (!item.verified) warnings.push(`Item ${index + 1} must be verified before submit.`);
-      if (createsInventory && !item.matchedCatalogId) warnings.push(`Item ${index + 1} is marked for ${RECEIPT_DESTINATION_LABELS[destination] || "inventory"} without a catalog match.`);
-      if (Number(item.matchConfidence || 0) < 50 && createsInventory) warnings.push(`Item ${index + 1} has a very low confidence match.`);
+      if (createsInventory && !item.matchedCatalogId) warnings.push(`Item ${index + 1} will save as a custom ${RECEIPT_DESTINATION_LABELS[destination] || "inventory"} item because no catalog match is selected.`);
+      if (Number(item.matchConfidence || 0) < 50 && createsInventory && item.matchedCatalogId) warnings.push(`Item ${index + 1} has a very low confidence match.`);
       if (!Number(item.quantity || 0) || !Number(item.unitCost || 0)) warnings.push(`Item ${index + 1} is missing quantity or cost.`);
     });
     return [...new Set(warnings)];
@@ -7831,7 +9017,13 @@ export default function App() {
   }
 
   function receiptItemToInventoryRecord(item, receipt, destination) {
-    const product = catalogProducts.find((candidate) => String(candidate.id) === String(item.matchedCatalogId));
+    const product = catalogProducts.find((candidate) =>
+      String(candidate.id) === String(item.matchedCatalogId) ||
+      String(candidate.masterCatalogItemId || "") === String(item.matchedCatalogItemId || "")
+    ) || item.possibleMatches?.find((match) =>
+      String(match.item?.id || "") === String(item.matchedCatalogId || "") ||
+      String(match.item?.masterCatalogItemId || "") === String(item.matchedCatalogItemId || "")
+    )?.item;
     const normalizedDestination = normalizeReceiptDestination(destination);
     const workspace = workspaces.find((entry) => String(entry.id) === String(defaultWorkspaceIdForDestination(normalizedDestination))) || activeWorkspace;
     const isWishlist = normalizedDestination === "wishlist";
@@ -7839,8 +9031,8 @@ export default function App() {
     return applyWorkspaceToRecord({
       ...blankItem,
       id: makeId(isWishlist ? "receipt-wishlist" : isVault ? "receipt-vault" : "receipt-forge"),
-      name: product ? catalogTitle(product) : item.suggestedMatchName || item.rawText,
-      itemName: product ? catalogTitle(product) : item.suggestedMatchName || item.rawText,
+      name: product ? catalogTitle(product) : item.suggestedMatchName || item.itemName || item.rawText,
+      itemName: product ? catalogTitle(product) : item.suggestedMatchName || item.itemName || item.rawText,
       destinationScope: [isWishlist ? "wishlist" : isVault ? "vault" : "forge"],
       recordType: isWishlist ? "wishlist_item" : isVault ? "vault_item" : "forge_inventory",
       businessInventory: !isVault,
@@ -7857,7 +9049,8 @@ export default function App() {
       expansion: product?.setName || product?.expansion || "",
       barcode: product?.barcode || product?.upc || "",
       catalogProductId: product?.id || item.matchedCatalogId || "",
-      catalogProductName: product ? catalogTitle(product) : item.suggestedMatchName || "",
+      masterCatalogItemId: product?.masterCatalogItemId || item.matchedCatalogItemId || "",
+      catalogProductName: product ? catalogTitle(product) : item.suggestedMatchName || item.itemName || "",
       marketPrice: Number(product?.marketPrice || 0),
       msrpPrice: Number(product?.msrpPrice || 0),
       condition: item.condition,
@@ -7878,7 +9071,12 @@ export default function App() {
   async function submitReceiptReview() {
     if (!receiptScanDraft) return;
     const warnings = receiptReviewWarnings();
-    if (warnings.some((warning) => /must be verified|without a catalog match|missing quantity/i.test(warning))) {
+    if (guestPreviewActive) {
+      setReceiptScanMessage("Create a free account to save receipts and inventory.");
+      setReceiptScanDraft((current) => current ? { ...current, warnings: ["Create a free account to save receipts and inventory."] } : current);
+      return;
+    }
+    if (warnings.some((warning) => /must be verified|missing quantity/i.test(warning))) {
       setReceiptScanDraft((current) => ({ ...current, warnings }));
       setReceiptScanMessage("Resolve required warnings before submitting.");
       return;
@@ -7890,11 +9088,20 @@ export default function App() {
     const receipt = {
       id: receiptScanDraft.id,
       merchant: receiptScanDraft.storeName,
+      storeName: receiptScanDraft.storeName,
       purchasedAt: `${receiptScanDraft.purchaseDate}T12:00:00.000Z`,
+      purchaseDate: receiptScanDraft.purchaseDate,
       total: receiptScanDraft.total,
+      receiptTotal: receiptScanDraft.total,
+      subtotal: receiptScanDraft.subtotal,
       tax: receiptScanDraft.tax,
+      discounts: receiptScanDraft.discounts || 0,
+      paymentMethod: receiptScanDraft.paymentMethod || "",
       category: "Receipt Scan",
       imageUrl: receiptScanDraft.receiptImageUrl,
+      receiptImageUrl: receiptScanDraft.receiptImageUrl,
+      status: "submitted",
+      source: receiptScanDraft.source || "manual",
       splitMode: "expense_only",
       businessTotal: importableItems.filter((item) => receiptItemDbDestination(item) === "forge").reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
       personalTotal: importableItems.filter((item) => receiptItemDbDestination(item) === "vault").reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
@@ -7902,13 +9109,21 @@ export default function App() {
       rawOcrText: receiptScanForm.rawText,
       lines: receiptScanDraft.items.map((item) => ({
         id: item.id,
-        catalogItemId: item.matchedCatalogId,
-        productName: item.suggestedMatchName || item.rawText,
+        catalogItemId: item.matchedCatalogItemId || item.matchedCatalogId,
+        matchedCatalogItemId: item.matchedCatalogItemId || item.matchedCatalogId,
+        rawText: item.rawText,
+        itemName: item.itemName || item.suggestedMatchName || item.rawText,
+        productName: item.suggestedMatchName || item.itemName || item.rawText,
         quantity: Number(item.quantity || 1),
         unitPrice: Number(item.unitCost || 0),
+        unitCost: Number(item.unitCost || 0),
         lineTotal: Number(item.totalCost || 0),
+        totalCost: Number(item.totalCost || 0),
         destination: receiptItemDbDestination(item),
+        confidenceScore: Number(item.matchConfidence || 0),
         matchedConfidence: item.verified ? "confirmed" : "needs_review",
+        verified: Boolean(item.verified),
+        notes: item.notes || "",
       })),
       createdAt: receiptScanDraft.createdAt,
     };
@@ -7926,6 +9141,22 @@ export default function App() {
     const inventorySaveResult = await saveInventoryRecords(createdItems);
     const savedInventoryItems = inventorySaveResult.saved;
     if (savedInventoryItems.length) setItems((current) => [...savedInventoryItems, ...current]);
+    const savedByReceiptLine = new Map();
+    savedInventoryItems.forEach((savedItem) => {
+      const sourceLine = importableItems.find((item) =>
+        normalizeSearchText(item.suggestedMatchName || item.itemName || item.rawText) === normalizeSearchText(savedItem.name || savedItem.itemName)
+      );
+      if (sourceLine?.id) savedByReceiptLine.set(sourceLine.id, savedItem.id);
+    });
+    if (result.source === "supabase" && savedByReceiptLine.size && isSupabaseConfigured && supabase) {
+      await Promise.all([...savedByReceiptLine.entries()].map(([lineId, inventoryItemId]) => {
+        if (!/^[0-9a-f-]{36}$/i.test(String(lineId)) || !/^[0-9a-f-]{36}$/i.test(String(inventoryItemId))) return null;
+        return supabase
+          .from("receipt_line_items")
+          .update({ created_inventory_item_id: inventoryItemId, updated_at: new Date().toISOString() })
+          .eq("id", lineId);
+      }).filter(Boolean));
+    }
     const report = {
       receiptId: savedReceiptId,
       store: receiptScanDraft.storeName,
@@ -7949,14 +9180,15 @@ export default function App() {
       receiptReports: [report, ...(current.receiptReports || [])],
     }));
     if (inventorySaveResult.failures.length) {
+      const failedNames = inventorySaveResult.failures.map((failure) => `${failure.itemName}: ${failure.error}`).join(" | ");
       setReceiptScanStatus("ready_for_review");
       setReceiptScanDraft((current) => current ? {
         ...current,
         status: "needs_review",
         report,
-        warnings: [...warnings, `${inventorySaveResult.failures.length} destination item(s) failed to save.`],
+        warnings: [...warnings, `${inventorySaveResult.failures.length} destination item(s) failed to save: ${failedNames}`],
       } : current);
-      setReceiptScanMessage(`Receipt synced, but ${inventorySaveResult.failures.length} destination item(s) failed to save. Review remains open.`);
+      setReceiptScanMessage(`Receipt synced, but destination save failed: ${failedNames}. Review remains open.`);
       return;
     }
     setReceiptScanStatus("submitted");
@@ -7974,7 +9206,7 @@ export default function App() {
       imageUrl: "",
       fileName: "",
       text: "",
-      message: "Photo lookup is available without saving your image. Enter any visible text if OCR cannot read it yet.",
+      message: "Photo lookup is coming soon. For now, search by name or scan a barcode.",
     });
   }
 
@@ -7987,23 +9219,34 @@ export default function App() {
         ...current,
         imageUrl: URL.createObjectURL(file),
         fileName: file.name,
-        message: "Image preview ready. Beta 1 picture lookup uses visible text clues and UPC/SKU entry before manual fallback.",
+        message: `Image preview ready. ${AI_UPLOAD_WARNING} Enter visible text, UPC/SKU, card number, or product name for reviewable matching.`,
       };
     });
   }
 
   function runPictureLookupSearch() {
     const lookup = String(pictureLookup.text || scanInput || "").trim();
+    const clues = detectPhotoLookupClues(lookup);
+    void logAiAssistEvent(AI_FEATURE_AREAS.PHOTO_LOOKUP, {
+      inputSummary: lookup ? `Visible text clues: ${lookup}` : "No visible text clues entered",
+      outputSummary: clues.outputSummary,
+      confidenceScore: clues.confidenceScore,
+    });
     if (!lookup) {
       setPictureLookup((current) => ({
         ...current,
-        message: "No readable text yet. Enter a product name, set, UPC, SKU, or shorthand from the picture to search TideTradr.",
+        message: "We could not confidently match this item. You can search manually, add custom item, or submit it for review.",
       }));
-      setScanMessage("No match found from picture. Search TideTradr, enter UPC/SKU, add manually, or suggest a missing product.");
+      setScanSearchState("empty");
+      setScanMessage("We could not confidently match this item. You can search manually, add custom item, or submit it for review.");
       return;
     }
+    setPictureLookup((current) => ({
+      ...current,
+      message: `${clues.outputSummary} ${AI_REVIEW_DISCLAIMER}`,
+    }));
     setScanMode("manual");
-    handleCatalogScanMatch(lookup);
+    handleCatalogScanMatch(clues.searchText || lookup);
   }
 
   async function handleCatalogScanMatch(value) {
@@ -8012,15 +9255,19 @@ export default function App() {
       setScanMessage("Scan a barcode or enter a product name before searching.");
       setScanReview(null);
       setScanMatches([]);
+      setScanSearchState("idle");
       return;
     }
     setScanInput(lookupValue);
+    setScanReview(null);
+    setScanMatches([]);
+    setScanSearchState("loading");
+    setScanMessage("Searching for matches...");
 
     let matches = [];
     const mode = detectCatalogSearchMode(lookupValue);
     const exactIdentifier = ["barcode", "id"].includes(mode);
     if (isSupabaseConfigured && supabase && lookupValue.length >= 2) {
-      setScanMessage("Searching TideTradr catalog...");
       try {
         const result = await searchPokemonCatalog({
           supabase,
@@ -8052,12 +9299,20 @@ export default function App() {
     if (!matches.length) {
       matches = getBestCatalogMatches(lookupValue, catalogProducts);
     }
+    const aiSummary = buildAiCatalogMatchSummary({ query: lookupValue, matches });
+    void logAiAssistEvent(AI_FEATURE_AREAS.CATALOG_MATCH, {
+      ...aiSummary,
+      relatedEntityType: "scanner_intake",
+    });
     setScanMatches(matches);
-    setScanReview(buildScanReview(lookupValue, matches, scanDestination));
     if (matches.length) {
-      setScanMessage(isSupabaseConfigured && supabase ? "Catalog match ready for review." : "Local catalog match ready for review.");
+      setScanReview({ ...buildScanReview(lookupValue, matches, scanDestination), aiSummary: aiSummary.outputSummary });
+      setScanSearchState("results");
+      setScanMessage(`${aiSummary.outputSummary} ${AI_REVIEW_DISCLAIMER}`);
     } else {
-      setScanMessage("No match found. Try a product name, set, UPC, SKU, or add manually.");
+      setScanReview(null);
+      setScanSearchState("empty");
+      setScanMessage("We could not confidently match this item. You can search manually, add custom item, or submit it for review.");
     }
   }
 
@@ -8065,12 +9320,14 @@ export default function App() {
     const match = scanMatches.find((candidate) => String(candidate.item.id) === String(productId));
     if (!match?.item) return;
     setScanReview(buildScanReview(scanReview?.rawValue || scanInput || match.item.name, [match, ...scanMatches.filter((candidate) => String(candidate.item.id) !== String(productId))], scanDestination));
+    setScanSearchState("results");
   }
 
   async function persistScannerIntake(destinationOverride = "", status = "saved") {
+    if (blockGuestSave()) return null;
     if (!scanReview) return null;
     const explicitDestination = typeof destinationOverride === "string" ? destinationOverride : "";
-    const destination = explicitDestination || scanDestination || scanReview.destination || "search_only";
+    const destination = normalizeAddDestinationValue(explicitDestination || scanDestination || scanReview.destination || "search_only", "none", { allowIgnore: true });
     const destinationMap = {
       tidetradr: "search_only",
       pinned: "wishlist",
@@ -8118,6 +9375,20 @@ export default function App() {
   function submitScannerCorrection(reason) {
     if (!scanReview) return;
     const hasCatalogMatch = Boolean(scanReview.matchedCatalogItemId);
+    const missingProductPrefill = buildMissingProductPrefill({
+      query: scanReview.itemName || scanReview.rawValue || scanInput,
+      detectedText: scanReview.rawValue || scanInput,
+      productType: scanReview.productType,
+      setName: scanReview.setName,
+      upc: scanReview.upc,
+    });
+    void logAiAssistEvent(AI_FEATURE_AREAS.MISSING_PRODUCT, {
+      inputSummary: missingProductPrefill.inputSummary || scanReview.rawValue || scanInput,
+      outputSummary: missingProductPrefill.outputSummary,
+      confidenceScore: missingProductPrefill.confidenceScore,
+      relatedEntityType: hasCatalogMatch ? "catalog_correction" : "missing_catalog_product",
+      relatedEntityId: scanReview.matchedCatalogItemId || "",
+    });
     submitUniversalSuggestion({
       suggestionType: hasCatalogMatch ? SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT : SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
       targetTable: "product_catalog",
@@ -8125,11 +9396,12 @@ export default function App() {
       submittedData: {
         reason,
         rawScan: scanReview.rawValue || scanInput || "",
-        itemName: scanReview.itemName,
-        setName: scanReview.setName,
-        productType: scanReview.productType || scanReview.catalogType,
-        upc: scanReview.upc,
+        itemName: missingProductPrefill.productName || scanReview.itemName,
+        setName: missingProductPrefill.setName || scanReview.setName,
+        productType: missingProductPrefill.productType || scanReview.productType || scanReview.catalogType,
+        upc: missingProductPrefill.upc || scanReview.upc,
         sku: scanReview.sku,
+        aiPrefillReviewRequired: true,
         source: "scanner_review",
       },
       currentDataSnapshot: {
@@ -8141,15 +9413,46 @@ export default function App() {
           confidence: match.confidencePercent,
         })),
       },
-      notes: `Scanner correction: ${reason}. User must verify before save.`,
+      notes: `Scanner correction: ${reason}. AI prefill is review-only. User/admin must verify before any catalog change.`,
       source: "user",
     });
-    setScanMessage(`${reason} was sent for admin review. Choose another match, continue manual review, or cancel.`);
+    setScanMessage(`${reason} was sent for admin review. ${missingProductPrefill.outputSummary}`);
+  }
+
+  function submitScannerNoMatchForReview() {
+    const prefill = buildMissingProductPrefill({
+      query: scanInput || pictureLookup.text,
+      detectedText: pictureLookup.text || scanInput,
+    });
+    const suggestion = submitSuggestion({
+      suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+      targetTable: "product_catalog",
+      submittedData: {
+        productName: prefill.productName || scanInput || pictureLookup.text || "Unknown scanned item",
+        productType: prefill.productType,
+        setName: prefill.setName,
+        upc: prefill.upc,
+        source: "scanner_no_match",
+        aiPrefillReviewRequired: true,
+      },
+      notes: prefill.notes || "Scanner no-match product suggestion. User/admin must review before catalog creation.",
+      source: "scanner-no-match",
+    });
+    void logAiAssistEvent(AI_FEATURE_AREAS.MISSING_PRODUCT, {
+      inputSummary: prefill.inputSummary || scanInput || pictureLookup.text,
+      outputSummary: prefill.outputSummary,
+      confidenceScore: prefill.confidenceScore,
+      relatedEntityType: "missing_catalog_product",
+      relatedEntityId: suggestion?.suggestion?.id || "",
+    });
+    setScanMessage(suggestion.ok
+      ? `${prefill.outputSummary} Missing product suggestion created for admin review.`
+      : "Similar catalog suggestion is already under review.");
   }
 
   async function confirmScannerDestination(destinationOverride = "") {
     const explicitDestination = typeof destinationOverride === "string" ? destinationOverride : "";
-    const destination = explicitDestination || scanDestination || scanReview?.destination || "none";
+    const destination = normalizeAddDestinationValue(explicitDestination || scanDestination || scanReview?.destination || "none", "none", { allowIgnore: true });
     const productId = scanReview?.matchedCatalogItemId;
     if (!destination || destination === "none") {
       setScanMessage("Choose where this scanned item should go.");
@@ -8166,7 +9469,9 @@ export default function App() {
         setScanMessage("No verified catalog match yet. Search TideTradr, enter UPC/SKU manually, add manually, or suggest a missing product.");
         return;
       }
-      await persistScannerIntake(destination, "confirmed");
+      if (!guestPreviewActive) {
+        await persistScannerIntake(destination, "confirmed");
+      }
       closeInventoryScanner();
       return openProductAddFlow({
         product,
@@ -8178,6 +9483,7 @@ export default function App() {
       });
     }
     if (destination === "expense_only" || destination === "ignore") {
+      if (blockGuestSave()) return;
       await persistScannerIntake(destination, destination === "ignore" ? "discarded" : "confirmed");
       closeInventoryScanner();
       setVaultToast(destination === "ignore"
@@ -8545,7 +9851,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       reportDate: getLocalDateKey(now),
       reportTime: getLocalTimeKey(now),
       dayOfWeek: SCOUT_WEEKDAYS[now.getDay()],
-      visibility: "public_cleaned",
+      guessedTimeWindow: "",
+      confidenceSelfRating: "50",
+      visibility: "public",
       ...overrides,
     };
   }
@@ -8601,6 +9909,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         if (value === "today") next.reportDate = getLocalDateKey();
         if (value === "yesterday") next.reportDate = getYesterdayDateKey();
       }
+      if (field === "reportType") {
+        const nextType = SCOUT_QUICK_REPORT_TYPES.find((option) => option.value === value);
+        next.visibility = nextType?.isGuess ? normalizeScoutGuessVisibility(current.visibility || "private") : normalizeScoutReportVisibility(current.visibility || "public");
+        if (nextType?.isGuess) next.dateMode = current.dateMode === "today" ? "day_only" : current.dateMode;
+      }
       return next;
     });
   }
@@ -8628,6 +9941,45 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (form.dateMode === "day_only") return form.dayOfWeek || "Day not selected";
     const dateLabel = form.dateMode === "yesterday" ? getYesterdayDateKey() : form.reportDate || getLocalDateKey();
     return `${dateLabel}${form.reportTime ? ` at ${form.reportTime}` : ""}`;
+  }
+
+  function normalizeScoutReportVisibility(value = "") {
+    const normalized = String(value || "").toLowerCase();
+    if (["public", "public_cleaned", "community", "community_report"].includes(normalized)) return "public";
+    if (["admin_only", "admin review only"].includes(normalized)) return "admin_only";
+    return "private_from_map";
+  }
+
+  function normalizeScoutGuessVisibility(value = "") {
+    const normalized = String(value || "").toLowerCase();
+    if (["public", "public_cleaned", "community"].includes(normalized)) return "public";
+    if (["shared", "shared_with_team", "team"].includes(normalized)) return "shared";
+    return "private";
+  }
+
+  function scoutVisibilityOptionLabel(value = "", isGuess = false) {
+    const options = isGuess ? SCOUT_GUESS_VISIBILITY_OPTIONS : SCOUT_REPORT_VISIBILITY_OPTIONS;
+    return options.find((option) => option.value === value)?.label || value.replace(/_/g, " ");
+  }
+
+  function scoutConfidenceScore(value = "") {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "confirmed") return 95;
+    if (normalized === "likely") return 72;
+    if (normalized === "possible") return 48;
+    if (normalized === "rumor") return 30;
+    if (normalized === "guess") return 22;
+    return 40;
+  }
+
+  function quickScoutNormalizedReportType(type = quickScoutReportTypeMeta()) {
+    if (type.value === "no_stock") return "no_stock";
+    if (type.value === "line_queue_seen") return "line_seen";
+    if (type.value === "restock_happening_now" || type.value === "stock_on_shelf" || type.value === "confirmed_purchase") return "restock";
+    if (type.value === "truck_vendor_seen") return "vendor_seen";
+    if (type.value === "online_stock_changed") return "online_drop";
+    if (type.stockStatus === "low_stock") return "low_stock";
+    return "other";
   }
 
   function quickScoutReportReady() {
@@ -8669,9 +10021,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       quickReportLabel: type.label,
       stockStatus: type.stockStatus,
       sourceType: type.sourceType,
+      source_type: type.sourceType,
       confidence: type.confidence,
+      confidence_score: scoutConfidenceScore(type.confidence),
       storeId: quickScoutReportForm.storeId,
+      store_id: quickScoutReportForm.storeId,
       storeName,
+      store_name: storeName,
       retailer,
       chain: retailer,
       city: selectedStore.city || quickScoutReportForm.city || "",
@@ -8680,11 +10036,18 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       needsStoreReview: !quickScoutReportForm.storeId,
       needsReview: Boolean(type.needsReview || !quickScoutReportForm.storeId),
       verificationStatus: type.needsReview || !quickScoutReportForm.storeId ? "Needs Review" : "User Report",
+      verification_status: type.needsReview || !quickScoutReportForm.storeId ? "pending" : "unverified",
+      status: type.needsReview || !quickScoutReportForm.storeId ? "pending" : "unverified",
       verified: false,
-      visibility: quickScoutReportForm.visibility,
+      visibility: normalizeScoutReportVisibility(quickScoutReportForm.visibility),
+      visibilitySelection: quickScoutReportForm.visibility,
       itemName: productName,
       productName,
+      product_name: productName,
+      product_type: "",
+      set_name: "",
       quantitySeen: quickScoutReportForm.quantity,
+      quantity_estimate: quickScoutReportForm.quantity,
       price: quickScoutReportForm.price,
       itemsSeen: productName ? [{
         productName,
@@ -8699,6 +10062,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       stockLeft: quickScoutReportForm.stockLeft,
       reportDate: timestampSourceDate,
       reportTime: quickScoutReportForm.reportTime,
+      report_time: reportedAt,
       dayOfWeek: quickScoutReportForm.dayOfWeek,
       reportedAt,
       submittedAt: new Date().toISOString(),
@@ -8707,17 +10071,83 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
       displayName: currentUserProfile?.displayName || user?.email || "Local Scout",
       sourceStatus: BETA_LOCAL_MODE ? "local_beta" : "local",
+      report_type: quickScoutNormalizedReportType(type),
+    };
+  }
+
+  function buildQuickScoutGuessRecord() {
+    const knownStore = quickScoutReportForm.storeId ? findScoutQuickStore({ id: quickScoutReportForm.storeId }) : null;
+    const selectedStore = knownStore || quickScoutReportForm;
+    const storeName = quickScoutReportForm.storeId
+      ? getScoutQuickStoreName(selectedStore)
+      : quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName || "Needs Store Review";
+    const guessedDay = quickScoutReportForm.dateMode === "day_only"
+      ? quickScoutReportForm.dayOfWeek
+      : quickScoutReportForm.dateMode === "not_sure"
+        ? "Unknown"
+        : new Date(`${quickScoutReportForm.reportDate || getLocalDateKey()}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" });
+    const id = makeId("store-guess");
+    const now = new Date().toISOString();
+    return {
+      id,
+      recordType: "guess",
+      userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
+      user_id: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
+      displayName: currentUserProfile?.displayName || user?.email || "Local Scout",
+      storeId: quickScoutReportForm.storeId,
+      store_id: quickScoutReportForm.storeId,
+      storeName,
+      store_name: storeName,
+      retailer: getScoutQuickRetailer(selectedStore),
+      city: selectedStore.city || quickScoutReportForm.city || "",
+      guessedDay,
+      guessed_day: guessedDay,
+      guessedTimeWindow: quickScoutReportForm.guessedTimeWindow || (quickScoutReportForm.reportTime ? `Around ${quickScoutReportForm.reportTime}` : ""),
+      guessed_time_window: quickScoutReportForm.guessedTimeWindow || (quickScoutReportForm.reportTime ? `Around ${quickScoutReportForm.reportTime}` : ""),
+      restockPatternNotes: quickScoutReportForm.note.trim() || quickScoutReportForm.proofText.trim() || "User pattern note; not confirmed stock.",
+      restock_pattern_notes: quickScoutReportForm.note.trim() || quickScoutReportForm.proofText.trim() || "User pattern note; not confirmed stock.",
+      productType: quickScoutReportForm.productName.trim(),
+      product_type: quickScoutReportForm.productName.trim(),
+      confidenceSelfRating: Number(quickScoutReportForm.confidenceSelfRating || 50),
+      confidence_self_rating: Number(quickScoutReportForm.confidenceSelfRating || 50),
+      confidence: "guess",
+      sourceType: "manual_prediction",
+      source_type: "manual_prediction",
+      visibility: normalizeScoutGuessVisibility(quickScoutReportForm.visibility),
+      createdAt: now,
+      created_at: now,
+      updatedAt: now,
+      updated_at: now,
     };
   }
 
   function submitQuickScoutReport(event) {
     event?.preventDefault?.();
+    if (guestPreviewActive) {
+      setQuickScoutReportMessage("Create a free account to submit reports and build forecasts.");
+      setVaultToast("Create a free account to submit reports and build forecasts.");
+      return;
+    }
     if (!quickScoutReportReady()) {
       setQuickScoutReportMessage("Choose a report type and a store or manual location.");
       return;
     }
-    const report = buildQuickScoutReportRecord();
+    const currentType = quickScoutReportTypeMeta();
     const scoutData = getSharedScoutData();
+    if (currentType.isGuess) {
+      const guess = buildQuickScoutGuessRecord();
+      const nextGuesses = [guess, ...(scoutData.storeGuesses || scoutSnapshot.storeGuesses || [])]
+        .filter((entry, index, list) => list.findIndex((candidate) => String(candidate.id) === String(entry.id)) === index);
+      saveSharedScoutData({ ...scoutData, storeGuesses: nextGuesses });
+      setQuickScoutReportSaved(guess);
+      setQuickScoutReportStep("submitted");
+      setQuickScoutReportMessage("Guess saved to the planner. Forecasts will treat it as a guess, not confirmed stock.");
+      setScoutView("guesses");
+      setVaultToast("Guess saved to Scout Planner.");
+      flowModalBaselineRef.current.scoutSubmit = quickScoutReportForm;
+      return;
+    }
+    const report = buildQuickScoutReportRecord();
     const nextReports = [report, ...(scoutData.reports || scoutSnapshot.reports || [])]
       .filter((entry, index, list) => list.findIndex((candidate) => getScoutReportId(candidate) === getScoutReportId(entry)) === index);
     saveSharedScoutData({ ...scoutData, reports: nextReports });
@@ -8743,8 +10173,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const seededReportType = SCOUT_QUICK_REPORT_TYPES.find((option) => option.value === options.reportType || option.reportType === options.reportType);
     const draft = createQuickScoutReportDraft({
       ...buildQuickScoutStoreDraft(seededStore || {}),
-      reportType: seededReportType?.value || (options.action === "addGuess" ? "employee_restock_coming" : "stock_on_shelf"),
+      reportType: seededReportType?.value || (options.action === "addGuess" ? "restock_guess" : "stock_on_shelf"),
       proofType: options.proofType || (options.action === "importIntel" ? "text_link" : "manual"),
+      ...(options.action === "addGuess" ? { dateMode: "day_only", visibility: "private" } : {}),
       productName: options.productName || "",
       proofText: options.proofText || "",
       manualLocation: options.manualLocation || "",
@@ -8920,6 +10351,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   async function submitMultiDestinationAdd(event) {
     event.preventDefault();
+    if (blockGuestSave()) return;
     const itemName = String(multiDestinationForm.itemName || "").trim();
     const destinations = multiDestinationForm.destinations || {};
     const selectedDestinationCount = Object.values(destinations).filter(Boolean).length;
@@ -9241,6 +10673,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       workspaceName: row.workspaceName || row.workspace_name || "",
       workspaceType: row.workspaceType || row.workspace_type || "",
       workspaceScope: row.workspaceScope || row.workspace_scope || "workspace",
+      ownerUserId: row.ownerUserId || row.owner_user_id || row.user_id || "",
+      owner_user_id: row.owner_user_id || row.ownerUserId || row.user_id || "",
+      visibility: row.visibility || "private",
       lastPriceChecked: row.lastPriceChecked || row.last_price_checked || "",
       plannedSalePrice: Number(row.plannedSalePrice ?? row.planned_sale_price ?? row.salePrice ?? row.sale_price ?? 0),
       createdAt: row.createdAt || row.created_at,
@@ -9344,6 +10779,7 @@ function mapCatalog(row) {
     barcode: row.barcode || row.upc || "",
     upc: row.upc || row.barcode || "",
     sku: row.sku || "",
+    retailerSkus: row.retailerSkus || row.retailer_skus || {},
     identifiers: normalizedIdentifiers.map((identifier) => ({
       id: identifier.id,
       catalogProductId: identifier.catalogProductId || identifier.catalog_product_id,
@@ -9386,7 +10822,7 @@ function mapCatalog(row) {
     expansionId: row.expansionId || row.expansion_id || "",
     expansionOfficialName: officialExpansionName,
     expansionDisplayName: row.expansionDisplayName || row.expansion_display_name || expansionRecord?.displayName || expansionRecord?.display_name || officialExpansionName,
-    expansionSeries: row.expansionSeries || row.expansion_series || expansionRecord?.series || "",
+    expansionSeries: row.expansionSeries || row.expansion_series || row.series || expansionRecord?.series || "",
     expansionSymbolUrl: row.expansionSymbolUrl || row.expansion_symbol_url || expansionRecord?.symbolUrl || expansionRecord?.symbol_url || "",
     expansionLogoUrl: row.expansionLogoUrl || row.expansion_logo_url || expansionRecord?.logoUrl || expansionRecord?.logo_url || "",
     pokemonTcgIoId: row.pokemonTcgIoId || row.pokemon_tcg_io_id || expansionRecord?.pokemon_tcg_io_id || "",
@@ -9401,6 +10837,7 @@ function mapCatalog(row) {
     sealedProductType: row.sealedProductType || row.sealed_product_type || "",
     isPokemonCenterExclusive: Boolean(row.isPokemonCenterExclusive || row.is_pokemon_center_exclusive),
     contents: row.contents || {},
+    relatedCards: row.relatedCards || row.related_cards || [],
     region: row.region || "US",
     language: row.language || "English",
     sourceGroupId: row.sourceGroupId || row.source_group_id || "",
@@ -9408,6 +10845,11 @@ function mapCatalog(row) {
     priceSubtype: row.priceSubtype || row.price_subtype || "",
     masterCatalogItemId: row.masterCatalogItemId || row.master_catalog_item_id || "",
     catalogItemType: row.catalogItemType || row.catalog_item_type || catalogType,
+    variantCount: Number(row.variantCount ?? row.variant_count ?? 0),
+    defaultVariantId: row.defaultVariantId || row.default_variant_id || "",
+    adminReviewStatus: row.adminReviewStatus || row.admin_review_status || "",
+    isVerified: Boolean(row.isVerified || row.is_verified),
+    duplicateOf: row.duplicateOf || row.duplicate_of || "",
     priceConfidence: row.priceConfidence || row.price_confidence || normalizedMarketSummary?.price_confidence || "",
     marketSourceCount: Number(row.marketSourceCount ?? row.market_source_count ?? normalizedMarketSummary?.source_count ?? 0),
     dataConfidenceScore: Number(row.dataConfidenceScore ?? row.data_confidence_score ?? 0),
@@ -9434,10 +10876,14 @@ function mapCatalog(row) {
     variants: normalizedVariants.map((variant) => ({
       id: variant.id,
       catalogProductId: variant.catalogProductId || variant.catalog_product_id || "",
+      catalogItemId: variant.catalogItemId || variant.catalog_item_id || "",
+      variantType: variant.variantType || variant.variant_type || "",
       variantName: variant.variantName || variant.variant_name || "",
       printing: variant.printing || "",
       finish: variant.finish || "",
       language: variant.language || "English",
+      imageUrl: variant.imageUrl || variant.image_url || "",
+      marketPrice: Number(variant.marketPrice ?? variant.market_price ?? 0),
       tcgplayerSkuId: variant.tcgplayerSkuId || variant.tcgplayer_sku_id || "",
       conditionId: variant.conditionId || variant.condition_id || "",
       conditionName: variant.conditionName || variant.condition_name || "",
@@ -9560,7 +11006,7 @@ function mapCatalog(row) {
   async function loadCatalog() {
     let result = await supabase
       .from("catalog_search_lightweight")
-      .select("id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,set_name,product_type,barcode,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,expansion,product_line,card_number,rarity,is_sealed,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at")
+      .select("id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,product_name,set_name,series,product_type,barcode,upc,sku,retailer_skus,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,release_date,expansion,product_line,contents,related_cards,card_number,rarity,is_sealed,variant_count,variant_names,default_variant_id,source,source_url,admin_review_status,is_verified,duplicate_of,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at")
       .order("last_verified_at", { ascending: false, nullsFirst: false })
       .order("name", { ascending: true })
       .limit(50);
@@ -9612,12 +11058,14 @@ function mapCatalog(row) {
       return;
     }
 
+    if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in before uploading images.");
 
-    const ext = file.name.split(".").pop();
-    const filePath = `${user.id}/${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+    const safeFolder = String(folder || "misc").toLowerCase().replace(/[^a-z0-9-]/g, "-") || "misc";
+    const filePath = `users/${user.id}/${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-    const { error } = await supabase.storage.from("receipts").upload(filePath, file, {
+    const { error } = await supabase.storage.from(PRIVATE_UPLOAD_BUCKET).upload(filePath, file, {
       cacheControl: "3600",
       upsert: false,
       contentType: file.type,
@@ -9625,8 +11073,15 @@ function mapCatalog(row) {
 
     if (error) return showAppMessage("Could not upload image: " + error.message);
 
-    const { data } = supabase.storage.from("receipts").getPublicUrl(filePath);
-    setter(data.publicUrl);
+    const { data, error: signedUrlError } = await supabase.storage
+      .from(PRIVATE_UPLOAD_BUCKET)
+      .createSignedUrl(filePath, PRIVATE_UPLOAD_SIGNED_URL_SECONDS);
+
+    if (signedUrlError || !data?.signedUrl) {
+      return showAppMessage("Image uploaded, but the private preview link could not be created. Please retry.");
+    }
+
+    setter(data.signedUrl);
   }
 
   function getMatchingItem(form) {
@@ -9681,6 +11136,7 @@ function mapCatalog(row) {
 
   async function addItem(event) {
     event.preventDefault();
+    if (blockGuestSave()) return;
     if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
     if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) return showAppMessage("Please fill out item name, quantity, and unit cost.");
 
@@ -9695,6 +11151,9 @@ function mapCatalog(row) {
         recordType: "forge_inventory",
         businessInventory: true,
         isWishlist: false,
+        ownerUserId: currentWorkspaceUserId,
+        owner_user_id: currentWorkspaceUserId,
+        visibility: defaultVisibilityForWorkspace(activeWorkspace),
         sku: `ET-${Date.now()}`,
         buyer: purchaser.purchaserName,
         purchaserId: purchaser.purchaserId,
@@ -9838,6 +11297,8 @@ function mapCatalog(row) {
     const row = {
       user_id: user.id,
       workspace_id: uuidOrNull(activeWorkspace?.id),
+      owner_user_id: user.id,
+      visibility: defaultVisibilityForWorkspace(activeWorkspace),
       name: itemForm.name,
       buyer: purchaser.purchaserName,
       purchaser_id: purchaser.purchaserId || null,
@@ -9894,6 +11355,7 @@ function mapCatalog(row) {
 
   async function saveEditedItem(event) {
     event.preventDefault();
+    if (blockGuestSave()) return;
     const currentEditingItem = items.find((item) => item.id === editingItemId);
     if (!ensureWorkspaceEditor(currentEditingItem?.workspaceId || currentEditingItem?.workspace_id || activeWorkspace?.id)) return;
     const editingVault = isEditingVaultItem();
@@ -10382,6 +11844,7 @@ function mapCatalog(row) {
   }
   async function addCatalogProduct(event) {
     event.preventDefault();
+    if (blockGuestSave()) return;
     if (!catalogForm.name) return showAppMessage("Please enter a product name.");
 
     if (BETA_LOCAL_MODE) {
@@ -11125,6 +12588,7 @@ function buildDealFinderSessionRecord() {
 }
 
 async function saveDealFinderWorkflow(options = {}) {
+  if (blockGuestSave()) return null;
   if (!dealForm.title && !selectedDealProduct) {
     setVaultToast("Add a deal title or choose a product first.");
     return null;
@@ -11273,6 +12737,11 @@ function renderTideTradrHeader() {
       actions={(
         <>
           <button type="button" onClick={() => openQuickFindFlow({ source: "market" })}>Quick Find</button>
+          {renderAiAssistActions([
+            { label: "Suggest search aliases", onClick: () => void runCatalogAiAssist() },
+            { label: "Help identify item", onClick: () => void runItemIdentificationAssist(catalogSearch || submittedCatalogSearch) },
+            { label: "Explain variants", onClick: () => void runVariantAssist(catalogSearch || submittedCatalogSearch) },
+          ])}
         </>
       )}
     >
@@ -11331,8 +12800,9 @@ function renderScoutHeader() {
   const scoutTabs = [
     { key: "overview", label: "Overview" },
     { key: "reports", label: "Reports" },
+    { key: "guesses", label: "Guesses Planner" },
     { key: "stores", label: "Stores" },
-    { key: "predictions", label: "Forecast" },
+    { key: "predictions", label: "Forecast Windows" },
     { key: "myReports", label: "My Reports" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
   ].filter(Boolean);
@@ -11371,6 +12841,11 @@ function renderScoutHeader() {
           Submit Report
         </button>
           <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Add Store Suggestion</button>
+          {renderAiAssistActions([
+            { label: "Summarize store activity", onClick: () => void summarizeScoutStore(scoutForecastPreviewRows[0] || scoutReportRows[0] || {}) },
+            { label: "Summarize store history", onClick: () => void runStoreDirectoryAiAssist() },
+            { label: "Explain forecast", onClick: () => void explainScoutForecast(scoutForecastPreviewRows[0] || {}) },
+          ])}
         </>
       )}
     >
@@ -11493,6 +12968,11 @@ function renderVaultHeader() {
         <button type="button" className="vault-command-quick-add" onClick={openVaultQuickAddFlow}>
           Quick Add
         </button>
+        {renderAiAssistActions([
+          { label: "Summarize Vault", onClick: () => void runVaultAiSummary() },
+          { label: "Find missing details", onClick: () => void runVaultMissingDetailsAssist() },
+          { label: "Help identify variant", onClick: () => void runVariantAssist(vaultSearch) },
+        ])}
         </>
       )}
       tabs={[
@@ -11540,6 +13020,9 @@ function renderVaultHeader() {
 function renderForgeHeader() {
   const activeMarketplaceCount = workspaceMarketplaceListings.filter((listing) => listing.status === "Active").length;
   const forgeReportRecordCount = workspaceSales.length + workspaceExpenses.length + workspaceMileageTrips.length;
+  const forgeWorkspaceContextLabel = activeWorkspace?.type === "personal"
+    ? `Personal business inventory: ${activeWorkspace?.name || "My Personal Space"}`
+    : `Workspace: ${activeWorkspace?.name || "Ember & Tide"}`;
   const forgeOverviewCards = [
     {
       key: "inventory",
@@ -11622,9 +13105,15 @@ function renderForgeHeader() {
         <button type="button" className="forge-command-quick-add" onClick={openForgeQuickAddFlow}>
           Quick Add
         </button>
+        {renderAiAssistActions([
+          { label: "Summarize Forge", onClick: () => void runForgeAiSummary() },
+          { label: "Summarize business", onClick: () => void runBusinessReportAiSummary() },
+          { label: "Explain profit", onClick: () => void runSaleProfitAiAssist() },
+          { label: "Suggest expense category", onClick: () => void runExpenseAiAssist() },
+        ])}
         </>
       )}
-      summaryLabel="Business Overview"
+      summaryLabel={forgeWorkspaceContextLabel}
       summary={(
         <div className="forge-command-overview" aria-label="Forge Business Overview">
         {forgeOverviewCards.map((card) => (
@@ -11714,6 +13203,7 @@ function renderForgeHeader() {
 
   async function addExpense(event) {
     event.preventDefault();
+    if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in first.");
     if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
     if (!expenseForm.vendor || !expenseForm.amount) return showAppMessage("Please enter vendor and amount.");
@@ -11805,6 +13295,7 @@ function renderForgeHeader() {
 
   async function addVehicle(event) {
     event.preventDefault();
+    if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in first.");
     if (!vehicleForm.name || !vehicleForm.averageMpg) return showAppMessage("Please enter vehicle name and average MPG.");
 
@@ -11854,6 +13345,7 @@ function renderForgeHeader() {
 
   async function addTrip(event) {
     event.preventDefault();
+    if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in first.");
     if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
     if (!tripForm.purpose || !tripForm.startMiles || !tripForm.endMiles) return showAppMessage("Please enter purpose, start miles, and end miles.");
@@ -11936,6 +13428,7 @@ function renderForgeHeader() {
 
   async function addSale(event) {
     event.preventDefault();
+    if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in first.");
     if (!saleForm.itemId || !saleForm.quantitySold || !saleForm.finalSalePrice) return showAppMessage("Please choose item, quantity, and price.");
 
@@ -12093,8 +13586,8 @@ function renderForgeHeader() {
     }
 
     return {
-      appName: "E&T TCG",
-      fullBrand: "Ember & Tide TCG",
+      appName: "Ember & Tide",
+      fullBrand: "Ember & Tide",
       backupType: "local-beta",
       backupVersion: 2,
       createdAt: new Date().toISOString(),
@@ -12220,7 +13713,7 @@ function renderForgeHeader() {
         const payload = JSON.parse(String(reader.result || "{}"));
         const data = normalizeBackupPayload(payload);
         if (!payload || typeof payload !== "object" || (!payload.data && !Array.isArray(data.items))) {
-          throw new Error("This does not look like an E&T TCG beta backup.");
+          throw new Error("This does not look like an Ember & Tide beta backup.");
         }
         setBackupImportPreview({
           fileName: file.name,
@@ -12689,7 +14182,7 @@ function renderForgeHeader() {
     adminUser ? "admin" :
     moderatorUser ? "moderator" :
     normalizedActualRole || "user";
-  const actualAdminUser = adminUser || moderatorUser;
+  const actualAdminUser = !guestPreviewActive && (adminUser || moderatorUser);
   const adminModeUserKey = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "anonymous");
   const adminModeStorageKey = `${ADMIN_MODE_STORAGE_PREFIX}:${adminModeUserKey}`;
   const adminModeLoaded = !actualAdminUser || adminModeStorageReady;
@@ -12746,21 +14239,23 @@ function renderForgeHeader() {
     : planProfile;
   const featureGateOptions = {
     admin: adminViewingAsAdmin && adminUser,
-    betaTester: !actualAdminUser && (BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester),
+    betaTester: !guestPreviewActive && !actualAdminUser && (BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester),
     qaUnlock: QA_UNLOCK_PAID_FEATURES,
   };
   const featureAllowed = (featureKey) => canUseFeature(regularPreviewPlanProfile, featureKey, featureGateOptions);
   const unlockedFeatureKeys = getUnlockedFeatures(regularPreviewPlanProfile, featureGateOptions);
   const lockedFeatureKeys = getLockedFeatures(regularPreviewPlanProfile, featureGateOptions);
   const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
-  const accountStatusTitle = signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Private Beta Mode" : "Supabase Sign-In Required";
+  const accountStatusTitle = guestPreviewActive ? "Guest Preview" : signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Private Beta Mode" : "Supabase Sign-In Required";
   const accountStatusDescription = signedInWithSupabase
     ? currentUserProfile.email || user?.email || "Supabase account"
-    : BETA_LOCAL_MODE
-      ? "Beta data is saved on this device unless you export or connect cloud sync."
-      : isSupabaseConfigured
-        ? "Cloud sync is enabled. Sign in with Supabase to save Phase 2 workflows."
-        : "Cloud sync is enabled, but Supabase URL/key configuration is missing.";
+    : guestPreviewActive
+      ? "Preview mode is read-only. Sign up to save inventory, reports, scans, and settings."
+      : BETA_LOCAL_MODE
+        ? "Beta data is saved on this device unless you export or connect cloud sync."
+        : isSupabaseConfigured
+          ? "Cloud sync is enabled. Sign in with Supabase to save Phase 2 workflows."
+          : "Cloud sync is enabled, but Supabase URL/key configuration is missing.";
   const adminToolsVisible = adminViewingAsAdmin;
   const adminEditModeAvailable = adminViewingAsAdmin;
   const adminEditModeActive = adminEditModeAvailable && adminEditMode;
@@ -12847,7 +14342,7 @@ function renderForgeHeader() {
     },
     feature: {
       title: "Request a Feature",
-      intro: "Tell us what would make E&T TCG more useful.",
+      intro: "Tell us what would make Ember & Tide more useful.",
       label: "Feature request",
       placeholder: "What should we add, change, or make easier?",
       stepsLabel: "What were you doing?",
@@ -12916,6 +14411,7 @@ function renderForgeHeader() {
   };
 
   function completeDailyAction(actionKey, { badge = "", points = 8 } = {}) {
+    if (blockGuestSave()) return false;
     setDailyTide((current) => {
       const today = getLocalDateKey();
       const base = normalizeDailyTideState(current);
@@ -12948,6 +14444,7 @@ function renderForgeHeader() {
     window.setTimeout(() => {
       setDailyTide((current) => ({ ...current, lastCelebration: "" }));
     }, 1800);
+    return true;
   }
   const activeTabFeature = {
     sales: "sales_tracking",
@@ -13146,7 +14643,7 @@ function renderForgeHeader() {
     { label: "Price changes", value: recentMarketUpdates[0]?.name || "No catalog changes", updatedAt: recentMarketUpdates[0]?.createdAt || "Local catalog" },
     { label: "Store limit changes", value: scoutSnapshot.stores.find((store) => store.limitPolicy || store.limit_policy)?.limitPolicy || "No limits logged", updatedAt: scoutLastUpdated },
   ];
-  const scoutReportsByStore = scoutSnapshot.reports.reduce((acc, report) => {
+  const scoutReportsByStore = (scoutSnapshot.reports || []).filter((report) => !isScoutGuessRow(report)).reduce((acc, report) => {
     const storeId = report.storeId || report.store_id || "";
     if (!storeId) return acc;
     acc[storeId] = [...(acc[storeId] || []), report];
@@ -13201,8 +14698,10 @@ function renderForgeHeader() {
 
   function scoutReportStatusLabel(report = {}) {
     const rawStatus = String(report.verificationStatus || report.verification_status || report.status || "").toLowerCase();
-    if (report.verified || rawStatus === "verified") return "Verified";
+    if (report.verified || rawStatus === "verified" || rawStatus === "confirmed") return "Confirmed";
     if (rawStatus === "pending") return "Pending";
+    if (rawStatus === "stale") return "Stale";
+    if (rawStatus === "rejected") return "Rejected";
     if (rawStatus.includes("review")) return "Needs Review";
     if (rawStatus === "user_report" || rawStatus === "unverified") return "User Report";
     return report.userId || report.reportedBy || report.reported_by ? "User Report" : "Pending";
@@ -13419,8 +14918,86 @@ function renderForgeHeader() {
 
   function isCurrentUserScoutReport(report = {}) {
     const userIds = [currentUserProfile.userId, user?.id, "local-beta", "local-beta-scout"].filter(Boolean).map(String);
-    return userIds.some((id) => String(report.userId || report.reportedBy || report.reported_by || "").includes(id));
+    return userIds.some((id) => String(report.userId || report.user_id || report.reportedBy || report.reported_by || "").includes(id));
   }
+
+  function isScoutGuessRow(row = {}) {
+    const source = String(row.sourceType || row.source_type || "").toLowerCase();
+    const confidence = String(row.confidence || "").toLowerCase();
+    const reportType = String(row.reportType || row.report_type || row.quickReportType || "").toLowerCase();
+    const recordType = String(row.recordType || row.record_type || "").toLowerCase();
+    return recordType === "guess"
+      || reportType === "restock_guess"
+      || ["planner_guess", "manual_prediction", "user_correction"].includes(source)
+      || confidence === "guess";
+  }
+
+  function scoutReportSortTime(row = {}) {
+    const raw = row.reportedAt || row.reported_at || row.submittedAt || row.submitted_at || row.createdAt || row.created_at || "";
+    if (raw) {
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) return parsed.getTime();
+    }
+    const date = row.reportDate || row.report_date || "";
+    const time = row.reportTime || row.report_time || "00:00";
+    const parsed = date ? new Date(`${date}T${time}`) : null;
+    return parsed && !Number.isNaN(parsed.getTime()) ? parsed.getTime() : 0;
+  }
+
+  function normalizeScoutGuessRow(row = {}, index = 0) {
+    const store = findScoutQuickStore({
+      id: row.storeId || row.store_id || "",
+      storeId: row.storeId || row.store_id || "",
+      storeName: row.storeName || row.store_name || row.storeAlias || row.store_alias || "",
+      retailer: row.retailer || row.chain || "",
+    });
+    const storeName = row.storeName || row.store_name || row.storeAlias || row.store_alias || getScoutQuickStoreName(store || {}) || "Store not selected";
+    const guessedDay = row.guessedDay || row.guessed_day || row.patternDay || row.pattern_day || scoutForecastDayNames(row.pattern, row.sourceText, row.source_text, row.restockPatternNotes, row.restock_pattern_notes)[0] || "Unknown";
+    const notes = row.restockPatternNotes || row.restock_pattern_notes || row.pattern || row.sourceText || row.source_text || row.notes || "User pattern note; not confirmed stock.";
+    const confidence = Number(row.confidenceSelfRating ?? row.confidence_self_rating ?? 0);
+    return {
+      id: row.id || `guess-${index}-${storeName}`,
+      recordType: "guess",
+      userId: row.userId || row.user_id || "local-beta-scout",
+      storeId: row.storeId || row.store_id || store?.id || "",
+      storeName,
+      retailer: row.retailer || row.chain || getScoutQuickRetailer(store || {}) || "Retailer",
+      city: row.city || store?.city || "",
+      guessedDay,
+      guessedTimeWindow: row.guessedTimeWindow || row.guessed_time_window || row.usualTimeWindow || row.usual_time_window || "",
+      restockPatternNotes: notes,
+      productType: row.productType || row.product_type || row.rawProductText || row.raw_product_text || "",
+      confidenceSelfRating: Number.isFinite(confidence) && confidence > 0 ? confidence : scoutConfidenceScore(row.confidence || "guess"),
+      confidence: row.confidence || "guess",
+      sourceType: row.sourceType || row.source_type || "manual_prediction",
+      visibility: normalizeScoutGuessVisibility(row.visibility || "private"),
+      createdAt: row.createdAt || row.created_at || "2026-05-09T12:00:00.000Z",
+      updatedAt: row.updatedAt || row.updated_at || row.submittedAt || row.submitted_at || row.createdAt || row.created_at || "",
+      submittedBy: row.submittedBy || row.submitted_by || row.displayName || row.display_name || "",
+    };
+  }
+
+  function canSeeScoutGuess(row = {}) {
+    const visibility = normalizeScoutGuessVisibility(row.visibility || "private");
+    if (visibility === "public") return true;
+    if (isCurrentUserScoutReport(row)) return true;
+    if (adminEditModeActive) return true;
+    return false;
+  }
+
+  function canSeeScoutReport(row = {}) {
+    const visibility = normalizeScoutReportVisibility(row.visibility || "public");
+    if (visibility === "public") return true;
+    if (isCurrentUserScoutReport(row)) return true;
+    if (adminEditModeActive) return true;
+    return false;
+  }
+
+  const rawScoutReportRows = [...(scoutSnapshot.reports || [])];
+  const scoutReportRows = rawScoutReportRows
+    .filter(canSeeScoutReport)
+    .filter((report) => !isScoutGuessRow(report))
+    .sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a));
   const homeScoutPreview = scoutSnapshot.stores
     .map((store) => {
       const storeReports = scoutReportsByStore[store.id] || [];
@@ -13457,16 +15034,29 @@ function renderForgeHeader() {
       return true;
     })
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  const scoutReportRows = [...(scoutSnapshot.reports || [])].sort((a, b) => {
-    const aDate = `${a.reportDate || a.report_date || a.createdAt || ""}T${a.reportTime || a.report_time || "00:00"}`;
-    const bDate = `${b.reportDate || b.report_date || b.createdAt || ""}T${b.reportTime || b.report_time || "00:00"}`;
-    return new Date(bDate) - new Date(aDate);
-  });
   const scoutIntelRows = scoutSnapshot.restockIntel?.length ? scoutSnapshot.restockIntel : SCOUT_HISTORICAL_INTEL_SEED;
   const scoutPatternRows = scoutSnapshot.restockPatterns?.length ? scoutSnapshot.restockPatterns : buildScoutRestockPatterns(scoutIntelRows);
   const confirmedScoutIntel = scoutIntelRows.filter((row) => ["confirmed", "likely"].includes(row.confidence));
   const predictionScoutIntel = scoutIntelRows.filter((row) => ["guess", "possible", "rumor"].includes(row.confidence) || /guess|prediction|planner/i.test(row.sourceType || ""));
-  const scoutForecastPreviewRows = scoutPatternRows.map((pattern) => {
+  const scoutGuessRows = [
+    ...(scoutSnapshot.storeGuesses || []),
+    ...(scoutSnapshot.guesses || []),
+    ...predictionScoutIntel,
+    ...rawScoutReportRows.filter(isScoutGuessRow),
+  ]
+    .map(normalizeScoutGuessRow)
+    .filter(canSeeScoutGuess)
+    .filter((row, index, list) => list.findIndex((candidate) => (
+      `${candidate.storeName}|${candidate.guessedDay}|${candidate.guessedTimeWindow}|${candidate.restockPatternNotes}`.toLowerCase()
+        === `${row.storeName}|${row.guessedDay}|${row.guessedTimeWindow}|${row.restockPatternNotes}`.toLowerCase()
+    )) === index)
+    .sort((a, b) => {
+      const aDay = scoutForecastDayDistance(a.guessedDay);
+      const bDay = scoutForecastDayDistance(b.guessedDay);
+      if (aDay !== bDay) return aDay - bDay;
+      return String(a.storeName).localeCompare(String(b.storeName));
+    });
+  const scoutForecastPatternRows = scoutPatternRows.map((pattern) => {
     const relatedIntel = scoutIntelRows
       .filter((row) => {
         const rowStore = String(row.storeAlias || row.store_alias || "").toLowerCase();
@@ -13476,26 +15066,51 @@ function renderForgeHeader() {
         return rowStore === patternStore && (!patternRetailer || !rowRetailer || rowRetailer === patternRetailer);
       })
       .sort((a, b) => scoutForecastSourceRank(a) - scoutForecastSourceRank(b));
+    const relatedReports = scoutReportRows.filter((report) => {
+      const store = getScoutReportStore(report);
+      const reportStore = String(store.name || store.nickname || report.storeName || report.store_name || "").toLowerCase();
+      const reportRetailer = String(store.chain || store.retailer || report.retailer || "").toLowerCase();
+      const patternStore = String(pattern.storeAlias || pattern.nickname || "").toLowerCase();
+      const patternRetailer = String(pattern.retailer || "").toLowerCase();
+      return reportStore === patternStore && (!patternRetailer || !reportRetailer || reportRetailer === patternRetailer);
+    });
+    const relatedGuesses = scoutGuessRows.filter((guess) => {
+      const guessStore = String(guess.storeName || "").toLowerCase();
+      const guessRetailer = String(guess.retailer || "").toLowerCase();
+      const patternStore = String(pattern.storeAlias || pattern.nickname || "").toLowerCase();
+      const patternRetailer = String(pattern.retailer || "").toLowerCase();
+      return guessStore === patternStore && (!patternRetailer || !guessRetailer || guessRetailer === patternRetailer);
+    });
     const latest = relatedIntel[0] || {};
-    const confidence = latest.confidence || pattern.computedConfidence || "unknown";
+    const latestConfirmedReport = relatedReports.find((report) => /verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`));
+    const confidence = latestConfirmedReport ? "confirmed" : latest.confidence || pattern.computedConfidence || (relatedGuesses.length ? "possible" : "unknown");
     const sourceType = latest.sourceType || latest.source_type || pattern.patternCandidates?.[0]?.sourceType || "pattern";
     const days = pattern.usualDays?.length
       ? pattern.usualDays
-      : scoutForecastDayNames(latest.pattern, latest.sourceText, latest.source_text, pattern.productTypePattern);
+      : relatedGuesses.length
+        ? [...new Set(relatedGuesses.map((guess) => guess.guessedDay).filter(Boolean))]
+        : scoutForecastDayNames(latest.pattern, latest.sourceText, latest.source_text, pattern.productTypePattern);
     const groupLabel = scoutForecastGroupLabel(days);
-    const windowLabel = scoutForecastWindowLabel(days, pattern.usualTimeWindow, groupLabel);
+    const windowLabel = scoutForecastWindowLabel(days, pattern.usualTimeWindow || relatedGuesses[0]?.guessedTimeWindow, groupLabel);
     const products = scoutForecastProducts(latest);
-    const reason = scoutForecastReason(latest, pattern);
-    const updatedAt = latest.updatedAt || latest.updated_at || latest.submittedAt || latest.submitted_at || latest.createdAt || latest.created_at || pattern.lastConfirmedRestockAt || "";
+    const reason = scoutForecastReason(latest, pattern) || relatedGuesses[0]?.restockPatternNotes || "";
+    const updatedAt = latestConfirmedReport?.reportedAt || latestConfirmedReport?.reported_at || latest.updatedAt || latest.updated_at || latest.submittedAt || latest.submitted_at || latest.createdAt || latest.created_at || pattern.lastConfirmedRestockAt || relatedGuesses[0]?.updatedAt || "";
     const updatedLabel = updatedAt ? scoutReportDateTimeLabel({ submittedAt: updatedAt }) : "";
     const submittedBy = latest.submittedBy || latest.submitted_by || latest.username || latest.userName || latest.user_name || "";
+    const baseScore = scoutConfidenceScore(confidence);
+    const reportBoost = Math.min(18, relatedReports.length * 6);
+    const guessBoost = Math.min(12, relatedGuesses.length * 4);
+    const noStockPenalty = relatedReports.some((report) => /empty|no_stock|sold out/i.test(`${report.stockStatus || report.stock_status || report.reportType || ""}`)) ? 12 : 0;
+    const confidenceScore = Math.max(5, Math.min(95, baseScore + reportBoost + guessBoost - noStockPenalty));
+    const forecastConfidenceLabel = confidenceScore >= 75 ? "High" : confidenceScore >= 45 ? "Medium" : "Low";
     return {
       id: pattern.id || `${pattern.storeAlias || pattern.nickname}-${pattern.retailer}`,
       storeName: pattern.nickname || pattern.storeAlias || "Store not selected",
       retailer: pattern.retailer || latest.retailer || "Retailer unknown",
       confidence,
       confidenceKey: scoutForecastConfidenceKey(confidence),
-      confidenceLabel: scoutForecastConfidenceLabel(confidence),
+      confidenceLabel: latestConfirmedReport ? "Confirmed" : forecastConfidenceLabel,
+      confidenceScore,
       sourceType,
       sourceLabel: sourceType ? scoutSourceTypeLabel(sourceType) : "",
       badges: scoutForecastSourceBadges(sourceType, confidence),
@@ -13506,10 +15121,51 @@ function renderForgeHeader() {
       reason,
       updatedLabel,
       submittedBy,
+      lastConfirmedReportLabel: latestConfirmedReport ? scoutReportDateTimeLabel(latestConfirmedReport) : "",
+      supportingReportCount: relatedReports.length,
+      supportingGuessCount: relatedGuesses.length,
+      basisSummary: [
+        relatedReports.length ? `${relatedReports.length} report${relatedReports.length === 1 ? "" : "s"}` : "",
+        relatedGuesses.length ? `${relatedGuesses.length} guess${relatedGuesses.length === 1 ? "" : "es"}` : "",
+        reason,
+      ].filter(Boolean).join(" | "),
       sortRank: scoutForecastSourceRank({ sourceType, confidence }),
       dayDistance: Math.min(...(days.length ? days.map(scoutForecastDayDistance) : [99])),
     };
-  }).sort((a, b) => {
+  });
+  const scoutForecastPatternKeys = new Set(scoutForecastPatternRows.map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
+  const scoutGuessForecastRows = scoutGuessRows
+    .filter((guess) => !scoutForecastPatternKeys.has(`${guess.storeName}|${guess.retailer}`.toLowerCase()))
+    .map((guess) => {
+      const confidenceScore = Math.max(5, Math.min(95, Number(guess.confidenceSelfRating || 25)));
+      const confidenceLabel = confidenceScore >= 75 ? "High" : confidenceScore >= 45 ? "Medium" : "Low";
+      return {
+        id: `guess-forecast-${guess.id}`,
+        storeName: guess.storeName,
+        retailer: guess.retailer,
+        confidence: "guess",
+        confidenceKey: "possible",
+        confidenceLabel,
+        confidenceScore,
+        sourceType: guess.sourceType || "manual_prediction",
+        sourceLabel: scoutSourceTypeLabel(guess.sourceType || "manual_prediction"),
+        badges: ["User Guess"],
+        days: [guess.guessedDay].filter(Boolean),
+        groupLabel: scoutForecastGroupLabel([guess.guessedDay].filter(Boolean)),
+        windowLabel: scoutForecastWindowLabel([guess.guessedDay].filter(Boolean), guess.guessedTimeWindow, "Unknown window"),
+        products: guess.productType ? [guess.productType] : [],
+        reason: guess.restockPatternNotes,
+        updatedLabel: guess.updatedAt ? scoutReportDateTimeLabel({ submittedAt: guess.updatedAt }) : "",
+        submittedBy: guess.submittedBy || "",
+        lastConfirmedReportLabel: "",
+        supportingReportCount: 0,
+        supportingGuessCount: 1,
+        basisSummary: `1 guess${guess.restockPatternNotes ? ` | ${guess.restockPatternNotes}` : ""}`,
+        sortRank: 2,
+        dayDistance: scoutForecastDayDistance(guess.guessedDay),
+      };
+    });
+  const scoutForecastPreviewRows = [...scoutForecastPatternRows, ...scoutGuessForecastRows].sort((a, b) => {
     if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank;
     if (a.dayDistance !== b.dayDistance) return a.dayDistance - b.dayDistance;
     return String(a.storeName).localeCompare(String(b.storeName));
@@ -13674,13 +15330,13 @@ function renderForgeHeader() {
     upcomingReleases: Object.values(releaseEventsByKey).length,
   };
   const filteredScoutReports = scoutReportRows.filter((report) => {
-    if (scoutReportFilter === "Verified") return Boolean(report.verified || report.verificationStatus === "verified");
+    if (scoutReportFilter === "Verified") return Boolean(report.verified || /verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`));
     if (scoutReportFilter === "My Reports") return isCurrentUserScoutReport(report);
-    if (scoutReportFilter === "Needs Review") return !report.verified && report.verificationStatus !== "verified";
+    if (scoutReportFilter === "Needs Review") return !report.verified && !/verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`);
     return true;
   }).sort((a, b) => {
     if (scoutReportSort === "Verified first") {
-      const verifiedDiff = Number(b.verified || b.verificationStatus === "verified") - Number(a.verified || a.verificationStatus === "verified");
+      const verifiedDiff = Number(b.verified || /verified|confirmed/i.test(`${b.verificationStatus || b.verification_status || b.status || ""}`)) - Number(a.verified || /verified|confirmed/i.test(`${a.verificationStatus || a.verification_status || a.status || ""}`));
       if (verifiedDiff) return verifiedDiff;
     }
     if (scoutReportSort === "Closest first") {
@@ -13701,6 +15357,49 @@ function renderForgeHeader() {
   const scoutReviewVisible = canReviewSharedData;
   const normalizedScoutView = scoutView === "main" || !scoutView ? "overview" : scoutView;
   const activeScoutPage = normalizedScoutView === "review" && !scoutReviewVisible ? "overview" : normalizedScoutView;
+
+  function scoutStoreSignalRows(row = {}) {
+    const storeName = String(row.storeName || row.store_name || row.name || "").trim().toLowerCase();
+    const retailer = String(row.retailer || row.chain || "").trim().toLowerCase();
+    const sameStore = (candidate = {}) => {
+      const candidateStore = String(candidate.storeName || candidate.store_name || candidate.store || candidate.name || "").trim().toLowerCase();
+      const candidateRetailer = String(candidate.retailer || candidate.chain || "").trim().toLowerCase();
+      if (!storeName && !retailer) return false;
+      return (!storeName || candidateStore === storeName) && (!retailer || candidateRetailer === retailer);
+    };
+    return {
+      reports: scoutReportRows.filter(sameStore),
+      guesses: scoutGuessRows.filter(sameStore),
+      forecasts: scoutForecastPreviewRows.filter(sameStore),
+    };
+  }
+
+  async function explainScoutForecast(row = {}) {
+    const suggestion = explainForecastSignal(row);
+    return showAiSuggestion(AI_FEATURE_AREAS.FORECAST_EXPLANATION, {
+      ...suggestion,
+      relatedEntityType: "forecast_window",
+      relatedEntityId: row.id || "",
+      outputSummary: `${suggestion.outputSummary} ${AI_FORECAST_DISCLAIMER}`,
+    });
+  }
+
+  async function summarizeScoutStore(row = {}) {
+    const rows = scoutStoreSignalRows(row);
+    const suggestion = summarizeScoutSignals({
+      storeName: row.storeName || row.store_name || row.name || "this store",
+      reports: rows.reports,
+      guesses: rows.guesses,
+      forecasts: rows.forecasts,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.SCOUT_SUMMARY, {
+      ...suggestion,
+      relatedEntityType: "store",
+      relatedEntityId: row.storeId || row.store_id || row.id || "",
+      outputSummary: `${suggestion.outputSummary} ${AI_FORECAST_DISCLAIMER}`,
+    });
+  }
+
   function currentRoutePath() {
     if (activeTab === "resetPassword") return "/reset-password";
     if (activeTab === "scout") {
@@ -13720,6 +15419,14 @@ function renderForgeHeader() {
     if (activeTab === "inventory" || activeTab === "addInventory" || activeTab === "addSale") return "/forge";
     if (activeTab === "vault") return "/vault/cards";
     if (activeTab === "tidepool") return "/tidepool";
+    if (activeTab === "kidsProgram") return "/kids-program";
+    if (activeTab === "sponsor") return "/partner";
+    if (activeTab === "trust") return "/trust";
+    if (activeTab === "links") return "/links";
+    if (activeTab === "whatsNew") return "/whats-new";
+    if (activeTab === "knownLimitations") return "/known-limitations";
+    if (activeTab === "membership") return "/settings";
+    if (activeTab === "betaReadiness") return "/settings";
     if (activeTab === "menu") return "/settings";
     return "/";
   }
@@ -14543,13 +16250,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function getCatalogIdentifiers(product = {}) {
     const explicit = Array.isArray(product.identifiers) ? product.identifiers.map(normalizeCatalogIdentifier).filter((entry) => entry.value) : [];
+    const retailerSkuEntries = product.retailerSkus && typeof product.retailerSkus === "object"
+      ? Object.entries(product.retailerSkus)
+          .filter(([, value]) => value)
+          .map(([retailer, value]) => ({ label: retailer || "RETAILER_SKU", value: String(value), source: retailer || "retailer_skus", confidence: "imported" }))
+      : [];
     const fallback = [
       product.upc || product.barcode ? { label: "UPC", value: product.upc || product.barcode, source: product.marketSource || product.sourceType || "", confidence: "imported" } : null,
+      product.sku ? { label: "SKU", value: product.sku, source: product.marketSource || product.sourceType || "", confidence: "imported" } : null,
       product.tcgplayerProductId ? { label: "TCGPLAYER_PRODUCT_ID", value: product.tcgplayerProductId, source: "TCGplayer", confidence: "imported" } : null,
       product.externalProductId && !product.tcgplayerProductId ? { label: "External ID", value: product.externalProductId, source: product.marketSource || "", confidence: "imported" } : null,
     ].filter(Boolean);
     const seen = new Set();
-    return [...explicit, ...fallback].filter((entry) => {
+    return [...explicit, ...retailerSkuEntries, ...fallback].filter((entry) => {
       const key = `${entry.label}|${entry.value}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -14850,6 +16563,104 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       notes: "User reported that the card version, finish, printing, or price variant needs review.",
       source: "tidetradr-detail",
     });
+  }
+
+  async function updateMasterCatalogAdminState(product = {}, updates = {}, correctionType = "metadata_update", reason = "") {
+    if (!product?.id) return;
+    const masterCatalogId = product.masterCatalogItemId || product.master_catalog_item_id || product.id;
+    const now = new Date().toISOString();
+    const nextProduct = {
+      ...product,
+      adminReviewStatus: updates.admin_review_status || product.adminReviewStatus,
+      isVerified: updates.is_verified ?? product.isVerified,
+      duplicateOf: updates.duplicate_of || product.duplicateOf || "",
+      lastVerifiedAt: updates.last_verified_at || product.lastVerifiedAt,
+      updatedAt: now,
+    };
+
+    if (!adminEditModeActive) {
+      submitUniversalSuggestion({
+        suggestionType: SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT,
+        targetTable: "master_catalog_items",
+        targetRecordId: masterCatalogId,
+        submittedData: { requestedAction: correctionType, ...updates },
+        currentDataSnapshot: product,
+        notes: reason || "User requested catalog admin review.",
+        source: "tidetradr-detail",
+      });
+      return;
+    }
+
+    if (BETA_LOCAL_MODE || !isSupabaseConfigured || !supabase) {
+      setCatalogProducts((current) => current.map((item) => String(item.id) === String(product.id) ? { ...item, ...nextProduct } : item));
+      setCatalogDetailExtras((current) => ({
+        ...current,
+        [product.id]: {
+          ...(current[product.id] || {}),
+          product: { ...(current[product.id]?.product || product), ...nextProduct },
+        },
+      }));
+      showAppMessage("Catalog admin state updated locally. Apply the catalog migration before cloud writes.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("master_catalog_items")
+      .update({ ...updates, updated_at: now })
+      .eq("id", masterCatalogId);
+
+    if (error) {
+      showAppMessage(`Could not update master catalog item: ${error.message}`);
+      return;
+    }
+
+    await supabase.from("catalog_admin_corrections").insert({
+      catalog_item_id: masterCatalogId,
+      correction_type: correctionType,
+      previous_data: product,
+      corrected_data: updates,
+      reason,
+      admin_user_id: user?.id || null,
+    });
+
+    setCatalogProducts((current) => current.map((item) => String(item.id) === String(product.id) ? { ...item, ...nextProduct } : item));
+    setCatalogDetailExtras((current) => ({
+      ...current,
+      [product.id]: {
+        ...(current[product.id] || {}),
+        product: { ...(current[product.id]?.product || product), ...nextProduct },
+      },
+    }));
+    showAppMessage("Master catalog item updated.");
+  }
+
+  function markCatalogItemVerified(product = selectedCatalogDetailProduct) {
+    updateMasterCatalogAdminState(product, {
+      is_verified: true,
+      admin_review_status: "verified",
+      last_verified_at: new Date().toISOString(),
+      verified_at: new Date().toISOString(),
+      verified_by: user?.id || null,
+    }, "mark_verified", "Admin marked catalog item verified.");
+  }
+
+  function flagCatalogItemBadData(product = selectedCatalogDetailProduct) {
+    updateMasterCatalogAdminState(product, {
+      is_verified: false,
+      admin_review_status: "bad_data",
+    }, "flag_bad_data", "Admin flagged this catalog item as bad data.");
+  }
+
+  function markCatalogItemDuplicate(product = selectedCatalogDetailProduct) {
+    const duplicateTarget = typeof window !== "undefined"
+      ? window.prompt("Enter the master catalog item ID this duplicate should merge into.")
+      : "";
+    if (!duplicateTarget) return;
+    updateMasterCatalogAdminState(product, {
+      is_verified: false,
+      admin_review_status: "duplicate",
+      duplicate_of: duplicateTarget.trim(),
+    }, "mark_duplicate", `Admin marked duplicate of ${duplicateTarget.trim()}.`);
   }
 
   function scrollCatalogDetailToMarketHistory() {
@@ -15349,17 +17160,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   const SCOUT_ADMIN_MODERATION_ACTIONS = {
-    verify: {
-      label: "Verify",
+    confirm: {
+      label: "Confirm",
       rpc: "admin_verify_store_report",
-      status: "verified",
-      message: "Scout report verified.",
+      status: "confirmed",
+      message: "Scout report confirmed.",
     },
-    hide: {
-      label: "Hide",
+    reject: {
+      label: "Reject",
       rpc: "admin_hide_store_report",
-      status: "hidden",
-      message: "Scout report hidden.",
+      status: "rejected",
+      message: "Scout report rejected.",
+      risky: true,
+    },
+    stale: {
+      label: "Mark Stale",
+      rpc: "admin_mark_report_disputed",
+      status: "stale",
+      message: "Scout report marked stale.",
       risky: true,
     },
     restore: {
@@ -15367,13 +17185,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       rpc: "admin_restore_store_report",
       status: "unverified",
       message: "Scout report restored.",
-    },
-    disputed: {
-      label: "Mark Disputed",
-      rpc: "admin_mark_report_disputed",
-      status: "disputed",
-      message: "Scout report marked disputed.",
-      risky: true,
     },
     softDelete: {
       label: "Soft Delete",
@@ -15397,7 +17208,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const baseReports = scoutData.reports || scoutSnapshot.reports || [];
     const nextReports = baseReports.map((candidate) => {
       if (String(getScoutReportId(candidate)) !== String(reportId)) return candidate;
-      const hidden = action.status === "hidden";
+      const hidden = action.status === "rejected";
       const adminRemoved = action.status === "admin_removed";
       const restored = action.status === "unverified";
       return {
@@ -15472,10 +17283,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function getScoutReportAdminActions(report) {
     if (!adminEditModeActive) return [];
     return [
-      { label: "Verify", onClick: () => queueScoutReportAdminModeration(report, "verify") },
-      { label: "Hide", onClick: () => queueScoutReportAdminModeration(report, "hide") },
+      { label: "Confirm", onClick: () => queueScoutReportAdminModeration(report, "confirm") },
+      { label: "Reject", danger: true, onClick: () => queueScoutReportAdminModeration(report, "reject") },
+      { label: "Mark Stale", onClick: () => queueScoutReportAdminModeration(report, "stale") },
       { label: "Restore", onClick: () => queueScoutReportAdminModeration(report, "restore") },
-      { label: "Mark Disputed", onClick: () => queueScoutReportAdminModeration(report, "disputed") },
       { label: "Soft Delete", danger: true, onClick: () => queueScoutReportAdminModeration(report, "softDelete") },
       { label: "View Audit", onClick: () => setVaultToast("Audit details are not available in this beta UI yet.") },
     ];
@@ -15782,6 +17593,51 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderScoutGuessesPanel() {
+    return (
+      <section className="panel scout-subpage-panel">
+        <div className="compact-card-header">
+          <div>
+            <h2>Guesses Planner</h2>
+            <p>User predictions and pattern notes. These are not confirmed stock reports.</p>
+          </div>
+          <div className="summary-pill-row">
+            <span className="status-badge">{scoutGuessRows.length} guess{scoutGuessRows.length === 1 ? "" : "es"}</span>
+            <button type="button" className="secondary-button" onClick={() => void runGuessPlannerAiAssist()}>Summarize guesses</button>
+            <button type="button" onClick={openScoutGuessFlow}>Add Guess</button>
+          </div>
+        </div>
+        <div className="scout-intel-dashboard">
+          {scoutGuessRows.length ? scoutGuessRows.map((guess) => (
+            <article className="scout-intel-card scout-intel-card--prediction" key={guess.id}>
+              <div className="compact-card-header">
+                <div>
+                  <strong>{guess.storeName}</strong>
+                  <p>{guess.retailer}{guess.city ? ` | ${guess.city}` : ""}</p>
+                </div>
+                <span className="status-badge">Guess</span>
+              </div>
+              <p><strong>{guess.guessedDay || "Unknown day"}</strong>{guess.guessedTimeWindow ? ` | ${guess.guessedTimeWindow}` : ""}</p>
+              {guess.productType ? <p>Expected: {guess.productType}</p> : <p className="compact-subtitle">Products unknown</p>}
+              <p>{guess.restockPatternNotes}</p>
+              <div className="scout-forecast-chip-row">
+                <span className="mini-badge">{scoutVisibilityOptionLabel(guess.visibility, true)}</span>
+                <span className="mini-badge">Self rating {guess.confidenceSelfRating}/100</span>
+                <span className="mini-badge">{scoutSourceTypeLabel(guess.sourceType)}</span>
+              </div>
+            </article>
+          )) : (
+            <div className="small-empty-state">
+              <strong>No guesses saved yet.</strong>
+              <span>Add a pattern note when you think a store usually restocks.</span>
+              <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   function renderScoutOverviewPanel() {
     const latestReports = scoutReportRows.slice(0, 3);
     const forecastRows = scoutForecastPreviewRows.slice(0, 5);
@@ -15904,6 +17760,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => setScoutView("predictions")}>Open Predictions</button>
             </div>
           </div>
+          <p className="ai-helper-note">{AI_FORECAST_DISCLAIMER}</p>
           <div className="scout-forecast-groups">
             {forecastGroups.length ? forecastGroups.map((group) => (
               <div className="scout-forecast-group" key={`forecast-group-${group.label}`}>
@@ -15934,6 +17791,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <div className="scout-forecast-meta">
                         <span>Expected: {row.windowLabel}</span>
                         {row.updatedLabel ? <span>Updated: {row.updatedLabel}</span> : null}
+                        {row.lastConfirmedReportLabel ? <span>Last confirmed: {row.lastConfirmedReportLabel}</span> : null}
+                        <span>{row.supportingReportCount} report{row.supportingReportCount === 1 ? "" : "s"} | {row.supportingGuessCount} guess{row.supportingGuessCount === 1 ? "" : "es"}</span>
                       </div>
                       <div className="scout-forecast-chip-row">
                         {row.badges.map((badge) => <span className="mini-badge" key={`${row.id}-${badge}`}>{badge}</span>)}
@@ -15944,8 +17803,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <p className="scout-forecast-products scout-forecast-products--empty">Products unknown</p>
                       )}
                       {row.reason ? <p className="scout-forecast-reason">Reason: {row.reason}</p> : null}
+                      {row.basisSummary ? <p className="scout-forecast-reason">Basis: {row.basisSummary}</p> : null}
                       {row.sourceLabel ? <small>Source: {row.sourceLabel}</small> : null}
                       {row.submittedBy ? <small>Submitted by {row.submittedBy}</small> : null}
+                      <div className="scout-radar-actions">
+                        <button type="button" className="secondary-button" onClick={() => { completeDailyAction("store", { badge: "restock_reporter", points: 5 }); setVaultToast(`${row.storeName} added to watch.`); }}>Watch</button>
+                        <button type="button" className="secondary-button" onClick={() => void explainScoutForecast(row)}>Explain forecast</button>
+                        <button type="button" className="secondary-button" onClick={() => void summarizeScoutStore(row)}>Summarize reports</button>
+                        <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "forecast-overview", store: findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer }) || { name: row.storeName, retailer: row.retailer } })}>Report stock</button>
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -15970,57 +17836,54 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <section className="panel scout-subpage-panel">
         <div className="compact-card-header">
           <div>
-            <h2>Forecast</h2>
-            <p>Confirmed reports, user guesses, and expected restock windows.</p>
+            <h2>Forecast Windows</h2>
+            <p>App-generated predictions from reports, guesses, history, and patterns. Forecasts show confidence, not certainty.</p>
+            <p className="ai-helper-note">{AI_FORECAST_DISCLAIMER}</p>
           </div>
           <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
         </div>
-        <div className="scout-intel-dashboard">
-          <div className="scout-intel-column">
-            <h3>Reports</h3>
-            {confirmedScoutIntel.length ? confirmedScoutIntel.slice(0, 6).map((row) => (
-              <div className="scout-intel-card" key={row.id}>
-                <strong>{row.storeAlias}</strong>
-                <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
-                <p>{row.productsMentioned?.join(", ") || row.sourceText || "Reported stock intel"}</p>
-              </div>
-            )) : (
-              <div className="small-empty-state">
-                <strong>No confirmed reports yet.</strong>
-                <span>Submit a store report to start building this view.</span>
-              </div>
-            )}
-          </div>
-          <div className="scout-intel-column">
-            <h3>Guesses / Planner</h3>
-            {predictionScoutIntel.length ? predictionScoutIntel.slice(0, 6).map((row) => (
-              <div className="scout-intel-card scout-intel-card--prediction" key={row.id}>
-                <strong>{row.storeAlias}</strong>
-                <span>{row.retailer} | {scoutSourceTypeLabel(row.sourceType)} | {row.confidence}</span>
-                <p>{row.pattern || row.sourceText || "Pattern candidate"}</p>
-              </div>
-            )) : (
-              <div className="small-empty-state">
-                <strong>No guesses saved yet.</strong>
-                <span>Add a guess when you hear a likely restock day or window.</span>
-              </div>
-            )}
-          </div>
-          <div className="scout-intel-column scout-intel-column--wide">
-            <h3>Forecast Windows</h3>
-            {scoutPatternRows.length ? scoutPatternRows.slice(0, 8).map((pattern) => (
-              <div className="scout-intel-card" key={pattern.id}>
-                <strong>{pattern.usualDays.length ? pattern.usualDays.join(" / ") : "This week"} - {pattern.nickname}</strong>
-                <span>Expected: {pattern.usualTimeWindow || "Unknown"} | Confidence: {pattern.computedConfidence}</span>
-                <p>{pattern.productTypePattern}</p>
-              </div>
-            )) : (
-              <div className="small-empty-state">
-                <strong>No forecast windows yet.</strong>
-                <span>Reports and guesses will build a useful forecast over time.</span>
-              </div>
-            )}
-          </div>
+        <div className="scout-forecast-card-grid">
+          {scoutForecastPreviewRows.length ? scoutForecastPreviewRows.map((row) => {
+            const reportStore = findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer }) || {
+              name: row.storeName,
+              retailer: row.retailer,
+            };
+            return (
+              <article className="scout-forecast-card-item" key={`forecast-window-${row.id}`}>
+                <div className="scout-forecast-card-top">
+                  <div>
+                    <strong>{row.storeName}</strong>
+                    <span>{row.retailer}</span>
+                  </div>
+                  <span className={`status-badge scout-confidence-badge scout-confidence-badge--${row.confidenceKey}`}>{row.confidenceLabel}</span>
+                </div>
+                <div className="scout-forecast-meta">
+                  <span>Expected: {row.windowLabel}</span>
+                  <span>Score: {row.confidenceScore}/100</span>
+                  {row.lastConfirmedReportLabel ? <span>Last confirmed: {row.lastConfirmedReportLabel}</span> : null}
+                  <span>{row.supportingReportCount} report{row.supportingReportCount === 1 ? "" : "s"} | {row.supportingGuessCount} guess{row.supportingGuessCount === 1 ? "" : "es"}</span>
+                </div>
+                <div className="scout-forecast-chip-row">
+                  {row.badges.map((badge) => <span className="mini-badge" key={`${row.id}-${badge}`}>{badge}</span>)}
+                </div>
+                {row.products.length ? <p className="scout-forecast-products">Items: {row.products.join(", ")}</p> : <p className="scout-forecast-products scout-forecast-products--empty">Products unknown</p>}
+                {row.basisSummary ? <p className="scout-forecast-reason">Why: {row.basisSummary}</p> : null}
+                <div className="scout-radar-actions">
+                  <button type="button" className="secondary-button" onClick={() => { completeDailyAction("store", { badge: "restock_reporter", points: 5 }); setVaultToast(`${row.storeName} added to watch.`); }}>Watch</button>
+                  <button type="button" className="secondary-button" onClick={() => void explainScoutForecast(row)}>Explain forecast</button>
+                  <button type="button" className="secondary-button" onClick={() => void summarizeScoutStore(row)}>Summarize reports</button>
+                  <button type="button" className="secondary-button" onClick={() => openScoutGuessFlow()}>Add note</button>
+                  <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "forecast-window", store: reportStore })}>Report stock</button>
+                  <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "forecast-no-stock", store: reportStore, reportType: "no_stock" })}>Mark no stock</button>
+                </div>
+              </article>
+            );
+          }) : (
+            <div className="small-empty-state">
+              <strong>No forecast windows yet.</strong>
+              <span>Reports and guesses will build a useful forecast over time.</span>
+            </div>
+          )}
         </div>
       </section>
     );
@@ -16506,8 +18369,1233 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           ))}
         </div>
-          <p className="compact-subtitle">Protected provider credentials are handled server-side. Some live source connectors may remain unavailable during private beta.</p>
+          <p className="compact-subtitle">{AI_PRICE_DISCLAIMER} Protected provider credentials are handled server-side. Some live source connectors may remain unavailable during private beta.</p>
       </section>
+    );
+  }
+
+  async function runFeedbackAiSummary() {
+    const feedbackRows = getLocalFeedbackRecords();
+    const suggestion = summarizeFeedbackItems(feedbackRows);
+    return showAiSuggestion(AI_FEATURE_AREAS.FEEDBACK_SUMMARY, suggestion);
+  }
+
+  async function runFeedbackSeverityAiAssist(feedback = null) {
+    const target = feedback || (betaReadinessData.betaFeedback || [])[0] || {};
+    const suggestion = suggestFeedbackSeverity(target);
+    return showAiSuggestion(AI_FEATURE_AREAS.FEEDBACK_SUMMARY, {
+      ...suggestion,
+      title: "Feedback severity assist",
+      relatedEntityType: "beta_feedback",
+      relatedEntityId: target.id || "",
+    });
+  }
+
+  async function runAdminReviewAiSummary() {
+    const feedbackRows = getLocalFeedbackRecords();
+    const feedbackSuggestion = summarizeFeedbackItems(feedbackRows);
+    const suggestion = summarizeAdminReviewQueue({
+      suggestions,
+      listings: workspaceMarketplaceListings,
+      reports: scoutNeedsReviewReports,
+      feedback: feedbackRows,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.ADMIN_REVIEW, {
+      ...suggestion,
+      outputSummary: `${suggestion.outputSummary} ${feedbackSuggestion.outputSummary}`,
+    });
+  }
+
+  async function runCatalogAiAssist() {
+    const query = catalogSearch || submittedCatalogSearch || multiDestinationCatalogQuery || scanInput || "";
+    const suggestion = expandCatalogSearchQuery(query);
+    return showAiSuggestion(AI_FEATURE_AREAS.CATALOG_CLEANUP, {
+      ...suggestion,
+      title: "Catalog search assist",
+      relatedEntityType: "catalog_search",
+    });
+  }
+
+  async function runItemIdentificationAssist(text = "") {
+    const sourceText = text || multiDestinationCatalogQuery || multiDestinationForm.itemName || scanInput || quickFindForm.lookup || "";
+    const suggestion = suggestItemDetailsFromText({ text: sourceText, context: activeTab });
+    return showAiSuggestion(AI_FEATURE_AREAS.ITEM_IDENTIFICATION, {
+      ...suggestion,
+      title: "Item identification assist",
+      relatedEntityType: "item_intake",
+    });
+  }
+
+  async function runVariantAssist(text = "") {
+    const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(selectedCatalogDetailId));
+    const suggestion = explainVariantHelp({
+      text: text || multiDestinationForm.variant || vaultForm.finish || selectedCatalog?.variant || selectedCatalog?.name || "",
+      productType: multiDestinationForm.productType || vaultForm.productType || selectedCatalog?.productType || selectedCatalog?.category || "",
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.VARIANT_HELP, {
+      ...suggestion,
+      title: "Variant help",
+      relatedEntityType: selectedCatalog ? "catalog_item" : "variant_review",
+      relatedEntityId: selectedCatalog?.masterCatalogItemId || selectedCatalog?.id || "",
+    });
+  }
+
+  async function runVaultAiSummary() {
+    const suggestion = summarizeVaultCollection(activeVaultItems);
+    return showAiSuggestion(AI_FEATURE_AREAS.VAULT_SUMMARY, {
+      ...suggestion,
+      title: "Vault summary",
+      relatedEntityType: "vault",
+    });
+  }
+
+  async function runVaultMissingDetailsAssist() {
+    const missing = activeVaultItems.filter((item) =>
+      !item.condition && !item.conditionName ||
+      !Number(item.marketPrice || item.marketValue || 0) ||
+      (/card|single|graded|slab/i.test(String(item.productType || item.category || "")) && !item.variant && !item.finish)
+    );
+    return showAiSuggestion(AI_FEATURE_AREAS.VAULT_SUMMARY, {
+      title: "Vault missing details",
+      inputSummary: `${missing.length} Vault rows need details`,
+      outputSummary: missing.length
+        ? `Find missing details: ${missing.slice(0, 6).map((item) => item.name || item.itemName).filter(Boolean).join("; ")}${missing.length > 6 ? ` and ${missing.length - 6} more` : ""}. Review condition, variant, cost, market value, and storage location before saving changes.`
+        : "No obvious Vault detail gaps found in the current filtered view.",
+      confidenceScore: missing.length ? 74 : 60,
+      relatedEntityType: "vault",
+    });
+  }
+
+  async function runForgeAiSummary() {
+    const suggestion = summarizeForgeRecords({
+      inventory: forgeInventoryItems,
+      sales: workspaceSales,
+      expenses: workspaceExpenses,
+      mileageTrips: workspaceMileageTrips,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.FORGE_SUMMARY, {
+      ...suggestion,
+      title: "Forge summary",
+      relatedEntityType: "workspace",
+      relatedEntityId: activeWorkspaceId,
+    });
+  }
+
+  async function runBusinessReportAiSummary() {
+    const suggestion = summarizeBusinessReport({
+      inventory: forgeInventoryItems,
+      sales: workspaceSales,
+      expenses: workspaceExpenses,
+      mileageTrips: workspaceMileageTrips,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.BUSINESS_REPORT, {
+      ...suggestion,
+      title: "Business report assist",
+      relatedEntityType: "workspace",
+      relatedEntityId: activeWorkspaceId,
+    });
+  }
+
+  async function runSaleProfitAiAssist(sale = null) {
+    const targetSale = sale || workspaceSales[0] || saleForm;
+    const item = forgeInventoryItems.find((entry) => String(entry.id) === String(targetSale.itemId || saleForm.itemId)) || selectedSaleItem || {};
+    const suggestion = explainSaleProfit({ sale: targetSale, item });
+    return showAiSuggestion(AI_FEATURE_AREAS.SALES_SUMMARY, {
+      ...suggestion,
+      title: "Sales profit explanation",
+      relatedEntityType: "sale",
+      relatedEntityId: targetSale.id || "",
+    });
+  }
+
+  async function runExpenseAiAssist(expense = null) {
+    const targetExpense = expense || expenseForm;
+    const suggestion = suggestExpenseCategory({
+      vendor: targetExpense.vendor,
+      notes: [targetExpense.category, targetExpense.subcategory, targetExpense.notes].filter(Boolean).join(" "),
+      amount: targetExpense.amount,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.EXPENSE_MILEAGE, {
+      ...suggestion,
+      title: "Expense category assist",
+      relatedEntityType: "expense",
+      relatedEntityId: targetExpense.id || "",
+    });
+  }
+
+  async function runMileageAiAssist() {
+    const purpose = tripForm.purpose || (scoutView === "stores" ? "Store check route" : "");
+    return showAiSuggestion(AI_FEATURE_AREAS.EXPENSE_MILEAGE, {
+      title: "Mileage purpose assist",
+      inputSummary: purpose || "Mileage purpose request",
+      outputSummary: purpose
+        ? `Suggested mileage purpose: ${purpose}. Confirm whether this trip is business, personal, or mixed before saving. Mileage and tax-related estimates are for tracking only and are not tax advice.`
+        : "Suggested mileage purpose: Store scouting / inventory sourcing. Confirm before saving; this is not tax advice.",
+      confidenceScore: purpose ? 64 : 45,
+      relatedEntityType: "mileage_trip",
+    });
+  }
+
+  async function runScoutReportClassificationAssist() {
+    const suggestion = classifyScoutReportNote({
+      note: [quickScoutReportForm.note, quickScoutReportForm.proofText].filter(Boolean).join(" "),
+      productName: quickScoutReportForm.productName,
+      currentType: quickScoutReportTypeMeta().label,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.SCOUT_REPORT_CLASSIFICATION, {
+      ...suggestion,
+      title: "Scout report classification",
+      relatedEntityType: "store_report",
+    });
+  }
+
+  async function runGuessPlannerAiAssist() {
+    const suggestion = structureGuessFromNote({
+      storeName: quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Selected store",
+      note: quickScoutReportForm.note || quickScoutReportForm.proofText,
+      day: quickScoutReportForm.dayOfWeek,
+      window: quickScoutReportForm.guessedTimeWindow,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.GUESS_PLANNER, {
+      ...suggestion,
+      title: "Guess planner assist",
+      relatedEntityType: "store_guess",
+    });
+  }
+
+  async function runStoreDirectoryAiAssist(store = null) {
+    const targetStore = store || (scoutSnapshot.stores || [])[0] || {};
+    const rows = scoutStoreSignalRows({
+      storeName: targetStore.nickname || targetStore.name,
+      retailer: targetStore.retailer || targetStore.chain,
+      id: targetStore.id,
+    });
+    const suggestion = summarizeStoreHistory({ store: targetStore, reports: rows.reports, guesses: rows.guesses });
+    return showAiSuggestion(AI_FEATURE_AREAS.STORE_DIRECTORY, {
+      ...suggestion,
+      title: "Store directory assist",
+      relatedEntityType: "store_location",
+      relatedEntityId: targetStore.id || "",
+    });
+  }
+
+  async function runKidsProgramAiAssist(application = null) {
+    const target = application || (betaReadinessData.kidsApplications || [])[0] || {};
+    const suggestion = summarizeKidsApplication(target);
+    return showAiSuggestion(AI_FEATURE_AREAS.KIDS_PROGRAM, {
+      ...suggestion,
+      title: "Kids Program admin summary",
+      relatedEntityType: "kids_program_application",
+      relatedEntityId: target.id || "",
+    });
+  }
+
+  async function runNotificationCopyAiAssist(notification = null) {
+    const latest = notification || (betaReadinessData.notifications || [])[0] || {};
+    const suggestion = draftNotificationCopy(latest);
+    return showAiSuggestion(AI_FEATURE_AREAS.NOTIFICATION_COPY, {
+      ...suggestion,
+      title: "Notification copy assist",
+      relatedEntityType: "notification",
+      relatedEntityId: latest.id || "",
+    });
+  }
+
+  async function runMarketingAiAssist(audience = "parents") {
+    const suggestion = draftMarketingCopy({ topic: "Ember & Tide beta", audience });
+    return showAiSuggestion(AI_FEATURE_AREAS.MARKETING_COPY, {
+      ...suggestion,
+      title: "Marketing draft assist",
+      relatedEntityType: "marketing_material",
+    });
+  }
+
+  async function runTrustCopyAiAssist(section = "privacy") {
+    const suggestion = draftTrustCopy({ section, copy: "Review current trust, terms, privacy, Kids Program, and community guidance for clarity." });
+    return showAiSuggestion(AI_FEATURE_AREAS.TRUST_COPY, {
+      ...suggestion,
+      title: "Trust copy assist",
+      relatedEntityType: "trust_page",
+    });
+  }
+
+  async function runSettingsHelpAiAssist() {
+    return showAiSuggestion(AI_FEATURE_AREAS.SETTINGS_HELP, {
+      title: "Settings help",
+      inputSummary: "User settings support",
+      outputSummary: "Settings help: profile controls identity, preferred region changes local defaults, notifications control in-app/email beta preferences, privacy requests go to admin review, and membership is a foundation only until billing is approved.",
+      confidenceScore: 72,
+      relatedEntityType: "settings",
+    });
+  }
+
+  async function runOnboardingAiAssist() {
+    const suggestion = suggestOnboardingNextStep({
+      choices: onboardingChoices,
+      hasVaultItems: Boolean(vaultItems.length),
+      hasForgeItems: Boolean(forgeInventoryItems.length),
+      hasReports: Boolean(scoutReportRows.length),
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.ONBOARDING_HELP, {
+      ...suggestion,
+      title: "Onboarding next step",
+      relatedEntityType: "onboarding",
+    });
+  }
+
+  async function runRoadmapChangelogAiAssist() {
+    const suggestion = draftRoadmapOrChangelog({
+      updates: betaReadinessData.roadmapItems || [],
+      feedbackThemes: `${(betaReadinessData.betaFeedback || []).length} feedback rows`,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.ROADMAP_CHANGELOG, {
+      ...suggestion,
+      title: "Roadmap / changelog assist",
+      relatedEntityType: "roadmap",
+    });
+  }
+
+  async function runBetaReadinessAiAssist() {
+    const reviewCounts = {
+      kids: (betaReadinessData.kidsApplications || []).filter((entry) => entry.status === "pending_review").length,
+      feedback: (betaReadinessData.betaFeedback || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
+      sponsor: (betaReadinessData.sponsorInterest || []).filter((entry) => ["new", "pending"].includes(entry.status || "new")).length,
+      scout: scoutNeedsReviewReports.length,
+      errors: (betaReadinessData.appErrorLogs || []).length,
+    };
+    const suggestion = summarizeBetaReadiness({
+      blockers: betaReadinessData.readiness?.blockers || [],
+      feedback: betaReadinessData.betaFeedback || [],
+      reviewCounts,
+    });
+    return showAiSuggestion(AI_FEATURE_AREAS.BETA_READINESS, {
+      ...suggestion,
+      title: "Beta readiness summary",
+      relatedEntityType: "beta_readiness",
+    });
+  }
+
+  function renderNotificationCenter() {
+    const notifications = (betaReadinessData.notifications || []).filter((entry) => !entry.dismissedAt);
+    const unreadCount = notifications.filter((entry) => !entry.readAt).length;
+    return (
+      <div className="notification-center-shell">
+        <button
+          type="button"
+          className="notification-bell-button"
+          aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+          onClick={() => setNotificationCenterOpen((current) => !current)}
+        >
+          <AppNavIcon kind="bell" />
+          {unreadCount ? <span>{unreadCount}</span> : null}
+        </button>
+        {notificationCenterOpen ? (
+          <section className="notification-center-panel panel" aria-label="Notification center">
+            <div className="compact-card-header">
+              <div>
+                <h3>Notifications</h3>
+                <p>In-app alerts are active. SMS is disabled for beta foundation.</p>
+              </div>
+              <div className="quick-actions">
+                <button type="button" className="secondary-button" onClick={() => void runNotificationCopyAiAssist()}>Draft notification</button>
+                <button type="button" className="secondary-button" onClick={() => setNotificationCenterOpen(false)}>Close</button>
+              </div>
+            </div>
+            {notifications.length ? (
+              <div className="notification-list">
+                {notifications.slice(0, 8).map((entry) => (
+                  <article className={entry.readAt ? "notification-card" : "notification-card unread"} key={entry.id}>
+                    <span className="status-badge">{entry.type || "notice"}</span>
+                    <strong>{entry.title}</strong>
+                    <p>{entry.message}</p>
+                    <div className="drawer-inline-actions">
+                      {!entry.readAt ? <button type="button" className="secondary-button" onClick={() => markNotificationRead(entry.id)}>Mark read</button> : null}
+                      <button type="button" className="ghost-button" onClick={() => dismissNotification(entry.id)}>Dismiss</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <h3>No notifications yet</h3>
+                <p>Kids Program updates, receipt reminders, workspace notices, and admin review alerts will appear here.</p>
+              </div>
+            )}
+          </section>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderOnboardingPanel() {
+    const completedAt = betaReadinessData.onboarding?.completedAt;
+    const choices = [
+      "Track my personal collection",
+      "Track business inventory",
+      "Watch local restocks",
+      "Join Kids Program updates",
+      "Browse market/pricing tools",
+    ];
+    const firstActions = [
+      { label: "Add first Vault item", action: () => setActiveTab("vault") },
+      { label: "Add first Forge item", action: () => setActiveTab("addInventory") },
+      { label: "Add a wishlist item", action: () => openOperatingSystemFeature("wishlist") },
+      { label: "Submit a store report", action: () => openScoutSubmitFlow({ source: "onboarding" }) },
+      { label: "View Scout forecast", action: () => setActiveTab("scout") },
+    ];
+    return (
+      <section className="panel beta-onboarding-panel" aria-label="Beta onboarding">
+        <div className="compact-card-header">
+          <div>
+            <p className="section-kicker">Beta onboarding</p>
+            <h2>Welcome to Ember & Tide</h2>
+            <p>Track your Pokemon collection, business inventory, store reports, and restock predictions in one place.</p>
+          </div>
+          {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">Step {onboardingStep} of 3</span>}
+        </div>
+        <div className="quick-actions">
+          <button type="button" className="secondary-button" onClick={() => void runOnboardingAiAssist()}>What should I do first?</button>
+          <button type="button" className="secondary-button" onClick={runSettingsHelpAiAssist}>Explain the app modes</button>
+        </div>
+        {completedAt ? (
+          <div className="beta-foundation-grid">
+            {(betaReadinessData.onboarding?.preferences || []).map((choice) => <span className="status-badge" key={choice}>{choice}</span>)}
+            <button type="button" className="secondary-button" onClick={restartOnboarding}>Restart onboarding</button>
+          </div>
+        ) : onboardingStep === 1 ? (
+          <>
+            <div className="beta-foundation-grid">
+              {Object.entries(BETA_TOOLTIPS).slice(0, 6).map(([label, tooltip]) => (
+                <article className="beta-readiness-card" key={label}>
+                  <span>{label}</span>
+                  <strong>{tooltip}</strong>
+                </article>
+              ))}
+            </div>
+            <div className="quick-actions">
+              <button type="button" onClick={() => setOnboardingStep(2)}>Get started</button>
+              <button type="button" className="secondary-button" onClick={completeOnboarding}>Skip for now</button>
+            </div>
+          </>
+        ) : onboardingStep === 2 ? (
+          <>
+            <div className="beta-choice-grid">
+              {choices.map((choice) => (
+                <button
+                  type="button"
+                  className={onboardingChoices.includes(choice) ? "choice-pill active" : "choice-pill"}
+                  aria-pressed={onboardingChoices.includes(choice)}
+                  key={choice}
+                  onClick={() => setOnboardingChoices((current) => toggleArrayValue(current, choice))}
+                >
+                  {choice}
+                </button>
+              ))}
+            </div>
+            <div className="quick-actions">
+              <button type="button" onClick={() => setOnboardingStep(3)}>Next</button>
+              <button type="button" className="secondary-button" onClick={() => setOnboardingStep(1)}>Back</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="beta-foundation-grid">
+              {firstActions.map((entry) => (
+                <button type="button" className="beta-action-card" key={entry.label} onClick={entry.action}>
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+            <div className="quick-actions">
+              <button type="button" onClick={completeOnboarding}>Finish onboarding</button>
+              <button type="button" className="secondary-button" onClick={() => setOnboardingStep(2)}>Back</button>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  function renderKidsProgramPage() {
+    const email = accountEmail();
+    const activeApplication = (betaReadinessData.kidsApplications || []).find((entry) => {
+      const entryUser = String(entry.userId || entry.user_id || "");
+      const entryEmail = String(entry.email || "").toLowerCase();
+      return (user?.id && entryUser === String(user.id)) || (email && entryEmail === email.toLowerCase());
+    });
+    return (
+      <>
+        <PageHeader
+          className={getHeaderCardClass("panel page-summary-card")}
+          title="Kids Program"
+          subtitle={KIDS_PROGRAM_COPY}
+          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+          summary={(
+            <div className="settings-header-summary">
+              <span>{KIDS_PROGRAM_ANTI_RESALE_COPY}</span>
+              <span>Checkout is not built in this beta task.</span>
+            </div>
+          )}
+        />
+        {adminToolsVisible ? (
+          <section className="panel ai-page-helper-panel">
+            <div className="compact-card-header">
+              <div>
+                <h3>Admin AI Assist</h3>
+                <p>Application summaries are review-only. Admins make final Kids Program decisions.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => void runKidsProgramAiAssist(activeApplication)}>
+                Summarize application
+              </button>
+            </div>
+          </section>
+        ) : null}
+        <section className="panel kids-program-layout">
+          <div className="beta-info-card">
+            <h3>Program status</h3>
+            {activeApplication ? (
+              <>
+                <span className="status-badge">{activeApplication.status || "pending_review"}</span>
+                <p>No Kids Program drops are available right now. We'll post opportunities as inventory allows.</p>
+              </>
+            ) : (
+              <p>{BETA_EMPTY_STATES.kids.body}</p>
+            )}
+          </div>
+          <div className="beta-info-card for-parents-card">
+            <h3>For Parents</h3>
+            <p>Ember & Tide is built with families in mind. Kids Program participation should be managed by a parent or guardian. We keep child information minimal, use age ranges instead of birthdates, and do not create public child profiles.</p>
+            <ul className="clean-bullet-list">
+              {FOR_PARENTS_COPY.map((point) => <li key={point}>{point}</li>)}
+            </ul>
+          </div>
+          <form className="form beta-form-card" onSubmit={submitKidsProgramApplication} noValidate>
+            <h3>Apply for Kids Program access</h3>
+            <p className="compact-subtitle">We collect minimal child information: no full child names, exact birthdates, IDs, or addresses.</p>
+            <Field label="Parent/guardian name">
+              <input value={kidsProgramForm.parentName} onChange={(event) => updateKidsProgramField("parentName", event.target.value)} placeholder="Parent or guardian" />
+            </Field>
+            <Field label="Email">
+              <input type="email" value={kidsProgramForm.email || email} onChange={(event) => updateKidsProgramField("email", event.target.value)} placeholder="you@example.com" />
+            </Field>
+            <div className="inline-input-grid">
+              <Field label="ZIP code">
+                <input value={kidsProgramForm.zipCode} onChange={(event) => updateKidsProgramField("zipCode", event.target.value)} inputMode="numeric" />
+              </Field>
+              <Field label="Child age range">
+                <select value={kidsProgramForm.childAgeRange} onChange={(event) => updateKidsProgramField("childAgeRange", event.target.value)}>
+                  <option value="">Choose range</option>
+                  <option value="under_6">Under 6</option>
+                  <option value="6_8">6-8</option>
+                  <option value="9_12">9-12</option>
+                  <option value="13_17">13-17</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="Child first name optional">
+              <input value={kidsProgramForm.childFirstName} onChange={(event) => updateKidsProgramField("childFirstName", event.target.value)} />
+            </Field>
+            <Field label="Favorite Pokemon">
+              <input value={kidsProgramForm.favoritePokemon} onChange={(event) => updateKidsProgramField("favoritePokemon", event.target.value)} />
+            </Field>
+            <Field label="What are they collecting right now?">
+              <textarea value={kidsProgramForm.collectingInterest} onChange={(event) => updateKidsProgramField("collectingInterest", event.target.value)} />
+            </Field>
+            <Field label="What are you hoping to access?">
+              <div className="checkbox-grid">
+                {KIDS_PROGRAM_ACCESS_OPTIONS.map((option) => (
+                  <label key={option}>
+                    <input
+                      type="checkbox"
+                      checked={kidsProgramForm.requestedAccess.includes(option)}
+                      onChange={() => updateKidsProgramField("requestedAccess", toggleArrayValue(kidsProgramForm.requestedAccess, option))}
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <Field label="Reason optional">
+              <textarea value={kidsProgramForm.reason} onChange={(event) => updateKidsProgramField("reason", event.target.value)} />
+            </Field>
+            <label className="checkbox-row">
+              <input type="checkbox" checked={kidsProgramForm.agreesNoResale} onChange={(event) => updateKidsProgramField("agreesNoResale", event.target.checked)} />
+              <span>I understand Kids Program items are intended for children and families, not resale.</span>
+            </label>
+            <label className="checkbox-row">
+              <input type="checkbox" checked={kidsProgramForm.consentContact} onChange={(event) => updateKidsProgramField("consentContact", event.target.checked)} />
+              <span>I agree Ember & Tide may contact me about Kids Program opportunities.</span>
+            </label>
+            <button type="submit">{guestPreviewActive ? "Create account to apply" : "Submit application"}</button>
+          </form>
+        </section>
+      </>
+    );
+  }
+
+  function renderSponsorInterestPage() {
+    return (
+      <>
+        <PageHeader
+          className={getHeaderCardClass("panel page-summary-card")}
+          title="Partner With Ember & Tide"
+          subtitle="Support kid-friendly Pokemon access, local events, fair collecting, and beta sponsor opportunities."
+          actions={(
+            <>
+              <button type="button" className="secondary-button" onClick={() => void runMarketingAiAssist("sponsor")}>Draft sponsor message</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
+            </>
+          )}
+        />
+        <section className="panel sponsor-interest-panel">
+          <form className="form beta-form-card" onSubmit={submitSponsorInterest} noValidate>
+            <Field label="Name">
+              <input value={sponsorForm.name} onChange={(event) => updateSponsorForm("name", event.target.value)} />
+            </Field>
+            <Field label="Business/shop name optional">
+              <input value={sponsorForm.businessName} onChange={(event) => updateSponsorForm("businessName", event.target.value)} />
+            </Field>
+            <div className="inline-input-grid">
+              <Field label="Email">
+                <input type="email" value={sponsorForm.email} onChange={(event) => updateSponsorForm("email", event.target.value)} />
+              </Field>
+              <Field label="Phone optional">
+                <input value={sponsorForm.phone} onChange={(event) => updateSponsorForm("phone", event.target.value)} />
+              </Field>
+            </div>
+            <Field label="Website/social optional">
+              <input value={sponsorForm.websiteUrl} onChange={(event) => updateSponsorForm("websiteUrl", event.target.value)} />
+            </Field>
+            <Field label="Location/city">
+              <input value={sponsorForm.city} onChange={(event) => updateSponsorForm("city", event.target.value)} />
+            </Field>
+            <Field label="Partnership types">
+              <div className="checkbox-grid">
+                {SPONSOR_PARTNERSHIP_TYPES.map((option) => (
+                  <label key={option}>
+                    <input
+                      type="checkbox"
+                      checked={sponsorForm.partnershipTypes.includes(option)}
+                      onChange={() => updateSponsorForm("partnershipTypes", toggleArrayValue(sponsorForm.partnershipTypes, option))}
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <Field label="Message">
+              <textarea value={sponsorForm.message} onChange={(event) => updateSponsorForm("message", event.target.value)} />
+            </Field>
+            <label className="checkbox-row">
+              <input type="checkbox" checked={sponsorForm.consent} onChange={(event) => updateSponsorForm("consent", event.target.checked)} />
+              <span>I agree Ember & Tide may contact me about partnership opportunities.</span>
+            </label>
+            <button type="submit">Send sponsor interest</button>
+          </form>
+          <footer className="brand-legal-footer">
+            <p>{BRAND_LEGAL_NOTICE}</p>
+            <p>{POKEMON_AFFILIATION_NOTICE}</p>
+          </footer>
+        </section>
+      </>
+    );
+  }
+
+  function renderTrustPages() {
+    return (
+      <>
+        <PageHeader
+          className={getHeaderCardClass("panel page-summary-card")}
+          title="Trust & Safety"
+          subtitle="Beta trust pages for privacy, terms, Kids Program rules, community guidelines, acceptable use, and support."
+          actions={(
+            <>
+              {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runTrustCopyAiAssist("legal")}>Review clarity</button> : null}
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
+            </>
+          )}
+        />
+        <section className="trust-page-grid">
+          {TRUST_PAGE_CONTENT.map((entry) => (
+            <article className="panel trust-page-card" key={entry.key}>
+              <h2>{entry.title}</h2>
+              <p>{entry.body}</p>
+            </article>
+          ))}
+          <article className="panel trust-page-card">
+            <h2>Upload Safety</h2>
+            <p>{UPLOAD_SAFETY_WARNING}</p>
+          </article>
+          <article className="panel trust-page-card">
+            <h2>Draft Notice</h2>
+            <p>These beta documents are operational foundations and are not final lawyer-approved documents.</p>
+          </article>
+        </section>
+        <footer className="brand-legal-footer trust-legal-footer">
+          <p>{BRAND_LEGAL_NOTICE}</p>
+          <p>{POKEMON_AFFILIATION_NOTICE}</p>
+        </footer>
+      </>
+    );
+  }
+
+  function renderLinksPage() {
+    const linkActions = [
+      { label: "Try the Beta", action: () => setActiveTab("dashboard") },
+      { label: "Preview the App", action: startGuestPreview },
+      { label: "Join / Learn About Kids Program", action: () => setActiveTab("kidsProgram") },
+      { label: "Partner With Us", action: () => setActiveTab("sponsor") },
+      { label: "Send Feedback", action: () => openFeedbackDialog("feedback") },
+      { label: "Contact Support", action: () => window.location.assign(`mailto:${SUPPORT_EMAIL}`) },
+    ];
+    return (
+      <>
+        <PageHeader
+          className={getHeaderCardClass("panel page-summary-card")}
+          title="Ember & Tide Links"
+          subtitle="Beta, Kids Program, partner interest, feedback, support, and campaign links in one place."
+          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+        />
+        <section className="panel link-bio-panel">
+          <figure className="link-bio-hero">
+            <img src={BRAND_ASSETS.linkBioHeader} alt="Ember & Tide link-in-bio header with Track. Trade. Thrive." loading="lazy" />
+          </figure>
+          <div className="beta-link-stack">
+            {linkActions.map((entry) => (
+              <button type="button" key={entry.label} onClick={entry.action}>{entry.label}</button>
+            ))}
+            <button type="button" className="secondary-button" onClick={() => setVaultToast("Follow links are coming soon for beta launch.")}>Follow Ember & Tide</button>
+          </div>
+          <div className="beta-foundation-grid">
+            {BETA_REF_CODES.map((code) => <span className="status-badge" key={code}>{code}</span>)}
+          </div>
+          <footer className="brand-legal-footer">
+            <p>{BRAND_LEGAL_NOTICE}</p>
+            <p>{POKEMON_AFFILIATION_NOTICE}</p>
+          </footer>
+        </section>
+      </>
+    );
+  }
+
+  function renderWhatsNewPage() {
+    const updates = [
+      {
+        title: "Beta readiness foundations",
+        body: "Name-based sign-up, onboarding, empty states, notification preferences, beta feedback, Kids Program, sponsor interest, trust pages, and launch links.",
+      },
+      {
+        title: "Admin review foundations",
+        body: "Kids Program applications, sponsor interest, beta feedback, readiness blockers, marketing materials, roadmap, and local audit events are now visible from admin-only screens.",
+      },
+      {
+        title: "Safety foundations",
+        body: "SMS, billing, provider integrations, auto-buying, scraping, and marketplace auto-posting remain intentionally disabled until separately approved.",
+      },
+    ];
+    return (
+      <>
+        <PageHeader
+          className={getHeaderCardClass("panel page-summary-card")}
+          title="What's New"
+          subtitle="Beta release notes for testers and admins."
+          actions={(
+            <>
+              {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft changelog</button> : null}
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
+            </>
+          )}
+        />
+        <section className="panel">
+          <div className="beta-foundation-grid">
+            {updates.map((entry) => (
+              <article className="beta-readiness-card" key={entry.title}>
+                <span>Beta update</span>
+                <strong>{entry.title}</strong>
+                <p>{entry.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderKnownLimitationsPage() {
+    return (
+      <>
+        <PageHeader
+          className={getHeaderCardClass("panel page-summary-card")}
+          title="Known Limitations"
+          subtitle="Ember & Tide is in beta. Some features are still being built, tested, or verified. This page lists known limitations so testers know what to expect."
+          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+        />
+        <section className="panel">
+          <div className="beta-foundation-grid">
+            {KNOWN_LIMITATIONS.map((item) => (
+              <article className="beta-readiness-card" key={item}>
+                <span>Beta limitation</span>
+                <strong>{item}</strong>
+              </article>
+            ))}
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderMembershipFoundation() {
+    const plan = getEffectivePlan(currentUserProfile);
+    const trialActive = isTrialActive(currentUserProfile);
+    return (
+      <section className="panel membership-foundation-panel">
+        <div className="compact-card-header">
+          <div>
+            <h2>Membership Foundation</h2>
+            <p>Paid tiers are planned, but Stripe and checkout are not connected in this beta task.</p>
+          </div>
+          <span className="status-badge">{plan}</span>
+        </div>
+        <div className="cards mini-cards">
+          <div className="card"><p>Current plan</p><h2>{plan}</h2></div>
+          <div className="card"><p>Trial</p><h2>{trialActive ? "Active" : "None"}</h2></div>
+          <div className="card"><p>Watched store limit</p><h2>{String(getFeatureLimit("watched_stores", currentUserProfile))}</h2></div>
+          <div className="card"><p>Advanced exports</p><h2>{canAccessBetaFeature("marketplace_exports", currentUserProfile, actualAdminRole) ? "Allowed" : "Locked"}</h2></div>
+        </div>
+        <div className="quick-actions">
+          <button type="button" className="secondary-button" disabled>Upgrade coming soon</button>
+          <button type="button" className="secondary-button" disabled>14-day no-card trial coming soon</button>
+        </div>
+      </section>
+    );
+  }
+
+  function renderBetaReadinessPanel() {
+    if (!adminToolsVisible) return null;
+    const blockers = betaReadinessData.readiness?.blockers || [];
+    const reviewCounts = {
+      "Kids Program Applications": (betaReadinessData.kidsApplications || []).filter((entry) => entry.status === "pending_review").length,
+      "Data Requests": (betaReadinessData.dataRequests || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
+      "User Management": 1,
+      "App Error Logs": (betaReadinessData.appErrorLogs || []).length,
+      "Sponsor Interest": (betaReadinessData.sponsorInterest || []).filter((entry) => ["new", "pending"].includes(entry.status || "new")).length,
+      "Beta Feedback": (betaReadinessData.betaFeedback || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
+      "Store Reports": scoutNeedsReviewReports.length,
+      "Catalog Corrections": suggestions.filter((entry) => getSuggestionReviewSection(entry) === "catalog").length,
+    };
+    return (
+      <>
+        <PageHeader
+          className={getHeaderCardClass("panel admin-page-header")}
+          title="Beta Readiness"
+          subtitle="Launch control panel for auth, inventory, mobile UI, admin tools, feedback, blockers, safety, marketing, and roadmap."
+          actions={(
+            <>
+              <button type="button" className="secondary-button" onClick={() => void runBetaReadinessAiAssist()}>Summarize beta status</button>
+              <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft roadmap summary</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("adminReview")}>Admin Review</button>
+            </>
+          )}
+        />
+        <section className="panel beta-readiness-panel">
+          <div className="compact-card-header">
+            <div>
+              <h2>Launch decision</h2>
+              <p>{BETA_MODE_COPY}</p>
+            </div>
+            <select
+              value={betaReadinessData.readiness?.launchState || "Not ready"}
+              onChange={(event) => updateBetaReadinessData((current) => ({
+                ...current,
+                readiness: { ...(current.readiness || {}), launchState: event.target.value },
+              }))}
+            >
+              {BETA_LAUNCH_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+            </select>
+          </div>
+          <div className="settings-subsection">
+            <h3>Beta access control</h3>
+            <p className="compact-subtitle">Open beta is the default. Invite-only and waitlist modes gate protected app access while keeping guest preview available.</p>
+            <select value={betaAccessMode()} onChange={(event) => updateBetaAccessMode(event.target.value)}>
+              {BETA_ACCESS_MODES.map((mode) => <option key={mode} value={mode}>{mode.replace(/_/g, " ")}</option>)}
+            </select>
+          </div>
+          <div className="beta-foundation-grid">
+            {BETA_READINESS_SECTIONS.map((section) => (
+              <article className="beta-readiness-card" key={section}>
+                <span>{section}</span>
+                <strong>{section === "Known Blockers" ? blockers.length : section === "Launch Decision" ? betaReadinessData.readiness?.launchState || "Not ready" : "Foundation ready"}</strong>
+              </article>
+            ))}
+          </div>
+          <div className="settings-subsection">
+            <h3>Auth / email copy review</h3>
+            <div className="beta-foundation-grid">
+              {AUTH_COPY_REVIEW.map((entry) => (
+                <article className="beta-readiness-card" key={entry.key}>
+                  <span>{entry.title}</span>
+                  <strong>{entry.expected}</strong>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div className="settings-subsection">
+            <h3>Production config audit</h3>
+            <div className="beta-foundation-grid">
+              {PRODUCTION_CONFIG_AUDIT.map((entry) => (
+                <article className="beta-readiness-card" key={entry}>
+                  <span>Audit item</span>
+                  <strong>{entry}</strong>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div className="settings-subsection">
+            <h3>Review queues</h3>
+            <div className="beta-foundation-grid">
+              {BETA_REVIEW_SECTIONS.map((section) => (
+                <button type="button" className="beta-action-card" key={section} onClick={() => setAdminReviewFilter(section)}>
+                  <span>{section}</span>
+                  <strong>{reviewCounts[section] || 0}</strong>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="settings-subsection">
+            <h3>Known blockers</h3>
+            <div className="inventory-list compact-inventory-list">
+              {blockers.map((blocker, index) => (
+                <article className="inventory-card compact-card" key={`${blocker.title}-${index}`}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{blocker.title}</strong>
+                      <p>{blocker.notes}</p>
+                    </div>
+                    <span className={`status-badge severity-${blocker.severity}`}>{blocker.severity}</span>
+                  </div>
+                  <small>{blocker.owner} | {blocker.status}</small>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div className="settings-subsection">
+            <h3>Beta launch materials</h3>
+            <div className="quick-actions">
+              <button type="button" className="secondary-button" onClick={() => void runMarketingAiAssist("parents")}>Draft parent post</button>
+              <button type="button" className="secondary-button" onClick={() => void runMarketingAiAssist("card_shop")}>Draft card shop outreach</button>
+            </div>
+            <div className="brand-asset-reference">
+              <img src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
+              <div>
+                <strong>Brand asset rules</strong>
+                <p>App icon = flame/wave only. Splash = logo + Track. Trade. Thrive. Promo mockup = marketing hero/social/flyer only. Do not use official Pokemon logos or art.</p>
+                <p>Approved colors: ember orange, tide blue, deep navy. Secondary tagline: Built for collectors. Powered by community.</p>
+              </div>
+            </div>
+            <div className="beta-foundation-grid">
+              {[
+                "Final human-refined SVG logo created",
+                "Trademark search completed",
+                "Trademark filing considered",
+                "Domains secured",
+                "Social handles secured",
+                "Source files archived",
+              ].map((item) => (
+                <article className="beta-readiness-card" key={item}>
+                  <span>Brand checklist</span>
+                  <strong>{item}</strong>
+                </article>
+              ))}
+            </div>
+            <div className="beta-foundation-grid">
+              {(betaReadinessData.marketingMaterials || []).map((entry) => (
+                <article className="beta-readiness-card" key={entry.title}>
+                  <span>{entry.platform}</span>
+                  <strong>{entry.title}</strong>
+                  <small>{entry.status}</small>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div className="settings-subsection">
+            <h3>Roadmap</h3>
+            <div className="beta-foundation-grid">
+              {(betaReadinessData.roadmapItems || []).map((entry) => (
+                <article className="beta-readiness-card" key={`${entry.section}-${entry.title}`}>
+                  <span>{entry.section}</span>
+                  <strong>{entry.title}</strong>
+                  <small>{entry.status}</small>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderBetaAdminReviewQueues() {
+    if (!adminToolsVisible) return null;
+    const showKids = adminReviewFilter === "All" || adminReviewFilter === "Kids Program Applications";
+    const showSponsor = adminReviewFilter === "All" || adminReviewFilter === "Sponsor Interest";
+    const showFeedback = adminReviewFilter === "All" || adminReviewFilter === "Beta Feedback";
+    const showDataRequests = adminReviewFilter === "All" || adminReviewFilter === "Data Requests";
+    const showUserManagement = adminReviewFilter === "All" || adminReviewFilter === "User Management";
+    const showErrors = adminReviewFilter === "All" || adminReviewFilter === "App Error Logs";
+    const localUsers = [
+      currentUserProfile,
+      ...(betaReadinessData.kidsApplications || []).map((entry) => ({
+        userId: entry.userId,
+        email: entry.email,
+        fullName: entry.parentName,
+        displayName: entry.parentName,
+        createdAt: entry.createdAt,
+        kidsProgramStatus: entry.status,
+      })),
+      ...(betaReadinessData.betaFeedback || []).map((entry) => ({
+        userId: entry.userId,
+        email: entry.email || "",
+        fullName: entry.fullName || "",
+        displayName: entry.fullName || entry.email || "Beta user",
+        createdAt: entry.createdAt,
+      })),
+    ].filter(Boolean);
+    const userMap = new Map();
+    localUsers.forEach((entry) => {
+      const key = String(entry.userId || entry.email || entry.displayName || "").toLowerCase();
+      if (!key) return;
+      userMap.set(key, { ...(userMap.get(key) || {}), ...entry });
+    });
+    const userSearch = userManagementSearch.trim().toLowerCase();
+    const visibleUsers = [...userMap.values()].filter((entry) => {
+      const haystack = `${entry.fullName || ""} ${entry.displayName || ""} ${entry.email || ""}`.toLowerCase();
+      return !userSearch || haystack.includes(userSearch);
+    });
+    return (
+      <>
+        {showUserManagement ? (
+          <section className="settings-subsection beta-review-queue">
+            <div className="compact-card-header">
+              <div>
+                <h3>User Management</h3>
+                <p>Admin-only user summaries. Private Vault/Forge data is not exposed here.</p>
+              </div>
+              <input value={userManagementSearch} onChange={(event) => setUserManagementSearch(event.target.value)} placeholder="Search name or email" />
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {visibleUsers.length ? visibleUsers.map((entry) => {
+                const kidsStatus = (betaReadinessData.kidsApplications || []).find((application) =>
+                  String(application.userId || application.email) === String(entry.userId || entry.email)
+                )?.status || entry.kidsProgramStatus || "not_applied";
+                const reportCount = scoutReportRows.filter((report) => String(report.userId || report.user_id || report.reporterEmail || "") === String(entry.userId || entry.email)).length;
+                const feedbackCount = (betaReadinessData.betaFeedback || []).filter((feedback) => String(feedback.userId || feedback.email || "") === String(entry.userId || entry.email)).length;
+                const note = (betaReadinessData.userAdminNotes || []).find((item) => String(item.userId) === String(entry.userId || entry.email));
+                const accessStatus = userBetaAccessStatus(entry);
+                return (
+                  <article className="inventory-card compact-card" key={entry.userId || entry.email || entry.displayName}>
+                    <div className="compact-card-header">
+                      <div>
+                        <strong>{entry.fullName || entry.displayName || "Unnamed user"}</strong>
+                        <p>{entry.email || "Email unavailable"} | {entry.createdAt ? shortDate(entry.createdAt) : "Created date unavailable"}</p>
+                      </div>
+                      <span className="status-badge">{entry.isAdmin ? "admin" : entry.userRole || "user"}</span>
+                    </div>
+                    <div className="detail-grid compact-detail-grid">
+                      <DetailItem label="Plan/tier" value={entry.planTier || entry.tier || "free"} />
+                      <DetailItem label="Beta access" value={accessStatus} />
+                      <DetailItem label="Kids Program" value={kidsStatus} />
+                      <DetailItem label="Reports" value={String(reportCount)} />
+                      <DetailItem label="Feedback" value={String(feedbackCount)} />
+                      <DetailItem label="Flagged/suspended" value="Placeholder only" />
+                    </div>
+                    <textarea className="drawer-field" defaultValue={note?.note || ""} placeholder="Internal admin note" onBlur={(event) => setUserAdminNote(entry.userId || entry.email, event.target.value)} />
+                    <div className="quick-actions">
+                      {BETA_ACCESS_STATUSES.map((status) => (
+                        <button type="button" className="secondary-button" key={status} onClick={() => updateBetaAccessUser(entry, status)}>{status}</button>
+                      ))}
+                    </div>
+                  </article>
+                );
+              }) : (
+                <div className="empty-state">
+                  <h3>No users match that search</h3>
+                  <p>User summaries appear from the current profile, Kids Program applications, and beta feedback.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+        {showKids ? (
+          <section className="settings-subsection beta-review-queue">
+            <div className="compact-card-header">
+              <div>
+                <h3>Kids Program Applications</h3>
+                <p>Admins review manually. AI and Regular Preview Mode never approve applications.</p>
+              </div>
+              <span className="status-badge">{(betaReadinessData.kidsApplications || []).length} total</span>
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {(betaReadinessData.kidsApplications || []).length ? betaReadinessData.kidsApplications.map((entry) => (
+                <article className="inventory-card compact-card" key={entry.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{entry.parentName || entry.email}</strong>
+                      <p>{entry.zipCode || "ZIP not provided"} | {entry.childAgeRange || "Age range not provided"} | {(entry.requestedAccess || []).join(", ") || "Access not specified"}</p>
+                    </div>
+                    <span className="status-badge">{entry.status || "pending_review"}</span>
+                  </div>
+                  <p className="compact-subtitle">{entry.collectingInterest || entry.reason || "No application note."}</p>
+                  <div className="quick-actions">
+                    <button type="button" className="secondary-button" onClick={() => void runKidsProgramAiAssist(entry)}>Summarize application</button>
+                    {["approved", "waitlisted", "denied", "suspended"].map((status) => (
+                      <button type="button" className="secondary-button" key={status} onClick={() => updateKidsProgramApplicationStatus(entry.id, status)}>{status}</button>
+                    ))}
+                  </div>
+                </article>
+              )) : (
+                <div className="empty-state">
+                  <h3>No Kids Program applications pending</h3>
+                  <p>Applications appear here after a signed-in user submits the Kids Program form.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+        {showSponsor ? (
+          <section className="settings-subsection beta-review-queue">
+            <div className="compact-card-header">
+              <div>
+                <h3>Sponsor Interest</h3>
+                <p>Partner, card shop, donor, and sponsor outreach queue.</p>
+              </div>
+              <span className="status-badge">{(betaReadinessData.sponsorInterest || []).length} total</span>
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {(betaReadinessData.sponsorInterest || []).length ? betaReadinessData.sponsorInterest.map((entry) => (
+                <article className="inventory-card compact-card" key={entry.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{entry.businessName || entry.name}</strong>
+                      <p>{entry.email} | {entry.city || "City not provided"}</p>
+                    </div>
+                    <span className="status-badge">{entry.status || "new"}</span>
+                  </div>
+                  <p className="compact-subtitle">{(entry.partnershipTypes || []).join(", ") || "No partnership type"} | {entry.message || "No message"}</p>
+                  <div className="quick-actions">
+                    <button type="button" className="secondary-button" onClick={() => void runMarketingAiAssist("sponsor")}>Draft sponsor message</button>
+                    {["reviewing", "planned", "archived"].map((status) => (
+                      <button type="button" className="secondary-button" key={status} onClick={() => updateSponsorStatus(entry.id, status)}>{status}</button>
+                    ))}
+                  </div>
+                </article>
+              )) : (
+                <div className="empty-state">
+                  <h3>No sponsor interest yet</h3>
+                  <p>New partner and sponsor forms will appear here.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+        {showFeedback ? (
+          <section className="settings-subsection beta-review-queue">
+            <div className="compact-card-header">
+              <div>
+                <h3>Beta Feedback</h3>
+                <p>Feedback, bugs, wrong catalog data, scanner issues, receipt problems, and feature requests.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => void runFeedbackAiSummary()}>Summarize feedback</button>
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {(betaReadinessData.betaFeedback || []).length ? betaReadinessData.betaFeedback.map((entry) => (
+                <article className="inventory-card compact-card" key={entry.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{entry.title}</strong>
+                      <p>{entry.feedbackType || entry.type || "Feedback"} | {entry.page || "Page not set"}</p>
+                    </div>
+                    <span className="status-badge">{entry.status || "new"}</span>
+                  </div>
+                  <p className="compact-subtitle">{entry.description}</p>
+                  <div className="quick-actions">
+                    <button type="button" className="secondary-button" onClick={() => void runFeedbackSeverityAiAssist(entry)}>Suggest severity</button>
+                  </div>
+                </article>
+              )) : (
+                <div className="empty-state">
+                  <h3>No beta feedback waiting for review</h3>
+                  <p>Feedback submitted through the app appears here for admins.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+        {showDataRequests ? (
+          <section className="settings-subsection beta-review-queue">
+            <div className="compact-card-header">
+              <div>
+                <h3>Data Requests</h3>
+                <p>Data export, deletion, correction, and privacy questions are manual admin-review requests during beta.</p>
+              </div>
+              <span className="status-badge">{(betaReadinessData.dataRequests || []).length} total</span>
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {(betaReadinessData.dataRequests || []).length ? betaReadinessData.dataRequests.map((entry) => (
+                <article className="inventory-card compact-card" key={entry.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{String(entry.requestType || "").replace(/_/g, " ")}</strong>
+                      <p>{entry.email || "No email"} | {entry.createdAt ? shortDate(entry.createdAt) : "No date"}</p>
+                    </div>
+                    <span className="status-badge">{entry.status || "new"}</span>
+                  </div>
+                  <p className="compact-subtitle">{entry.message || "No message"}</p>
+                  <div className="quick-actions">
+                    {["reviewing", "completed", "rejected", "archived"].map((status) => (
+                      <button type="button" className="secondary-button" key={status} onClick={() => updateDataRequestStatus(entry.id, status)}>{status}</button>
+                    ))}
+                  </div>
+                </article>
+              )) : (
+                <div className="empty-state">
+                  <h3>No data requests</h3>
+                  <p>Privacy and account requests will appear here.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+        {showErrors ? (
+          <section className="settings-subsection beta-review-queue">
+            <div className="compact-card-header">
+              <div>
+                <h3>App Error Logs</h3>
+                <p>Lightweight client errors only. Sensitive images, tokens, passwords, and child details are excluded.</p>
+              </div>
+              <span className="status-badge">{(betaReadinessData.appErrorLogs || []).length} total</span>
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {(betaReadinessData.appErrorLogs || []).length ? betaReadinessData.appErrorLogs.slice(0, 20).map((entry) => (
+                <article className="inventory-card compact-card" key={entry.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{entry.action}</strong>
+                      <p>{entry.page} | {entry.createdAt ? shortDate(entry.createdAt) : "No date"}</p>
+                    </div>
+                    <span className={`status-badge severity-${entry.severity || "normal"}`}>{entry.severity || "normal"}</span>
+                  </div>
+                  <p className="compact-subtitle">{entry.errorMessage}</p>
+                </article>
+              )) : (
+                <div className="empty-state">
+                  <h3>No app errors logged</h3>
+                  <p>Failed saves and safe app errors will appear here for admins.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+      </>
     );
   }
 
@@ -16522,7 +19610,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         />
       );
     }
-    const sections = ["All", ...Object.values(REVIEW_SECTION_LABELS), "Marketplace Listings", "Market Source Controls"];
+    const sections = [...new Set(["All", ...Object.values(REVIEW_SECTION_LABELS), ...BETA_REVIEW_SECTIONS, "Marketplace Listings", "Market Source Controls"])];
     const visibleSuggestions = suggestions.filter((suggestion) => {
       if (adminReviewFilter === "All") return true;
       return REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)] === adminReviewFilter;
@@ -16538,7 +19626,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         className={getHeaderCardClass("panel admin-page-header")}
         title="Admin Tools"
         subtitle="Import status, shared-data review, Marketplace moderation, and beta data controls in one place."
-        actions={<span className="status-badge">{totalOpenCount} open</span>}
+        actions={(
+          <div className="summary-pill-row">
+            <span className="status-badge">{totalOpenCount} open</span>
+            <button type="button" className="secondary-button" onClick={() => void runAdminReviewAiSummary()}>Summarize review queue</button>
+          </div>
+        )}
         summary={(
           <div className="settings-header-summary">
             <span>{adminReviewIdentityLabel}</span>
@@ -16585,6 +19678,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <span>Data Import</span>
               <strong>{supabaseImportStatus.loading ? "Refreshing" : "Ready"}</strong>
               <p>Protected import and provider credentials stay server-side.</p>
+            </article>
+            <article className="admin-command-card">
+              <span>AI Review Log</span>
+              <strong>{phase2RecentAiAssistEvents.length} events</strong>
+              <p>{aiEventCountFor(AI_FEATURE_AREAS.ADMIN_REVIEW)} admin summary event{aiEventCountFor(AI_FEATURE_AREAS.ADMIN_REVIEW) === 1 ? "" : "s"} logged locally/cloud when available.</p>
             </article>
           </div>
           <details className="admin-detail-panel">
@@ -16642,7 +19740,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </button>
           ) : null}
         </div>
-        {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" ? (
+        {renderBetaAdminReviewQueues()}
+        {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
         <div className="inventory-list compact-inventory-list">
           {visibleSuggestions.length ? pagedVisibleSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
             <div className="empty-state">
@@ -16873,6 +19972,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       catalogItemId: listing.catalogItemId || "",
       createdAt: new Date().toISOString(),
     }));
+  }
+
+  async function draftMarketplaceListingWithAi() {
+    const draftSource = {
+      ...marketplaceForm,
+      title: marketplaceForm.title || marketplaceForm.productType || marketplaceForm.setName || "Pokemon TCG item",
+    };
+    const suggestion = draftMarketplaceListingCopy(draftSource);
+    setMarketplaceForm((current) => ({
+      ...current,
+      title: current.title || suggestion.drafts.ebayTitle,
+      description: suggestion.drafts.facebookPost || current.description,
+      sellerNotes: [
+        current.sellerNotes,
+        "AI listing draft generated. Review title, description, photos, condition, and price before saving.",
+      ].filter(Boolean).join(" | "),
+    }));
+    await logAiAssistEvent(AI_FEATURE_AREAS.LISTING_DESCRIPTION, {
+      ...suggestion,
+      outputSummary: `${suggestion.outputSummary} Review before saving or exporting.`,
+      relatedEntityType: "marketplace_listing_draft",
+      relatedEntityId: marketplaceForm.id || "",
+    });
+    setVaultToast(`${suggestion.outputSummary} Review before saving or exporting.`);
   }
 
   async function persistCrossListingChannels(listing = {}) {
@@ -17230,6 +20353,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <Field label="Tags"><input value={marketplaceForm.tags || ""} onChange={(event) => updateMarketplaceForm("tags", event.target.value)} placeholder="sealed, trade, local pickup..." /></Field>
                 <Field label="Seller Notes"><input value={marketplaceForm.sellerNotes || ""} onChange={(event) => updateMarketplaceForm("sellerNotes", event.target.value)} /></Field>
                 <Field label="Description"><textarea value={marketplaceForm.description} onChange={(event) => updateMarketplaceForm("description", event.target.value)} /></Field>
+                <div className="ai-helper-note">
+                  <span>AI can draft listing copy, but it does not post anywhere. Review before saving.</span>
+                  <button type="button" className="secondary-button" onClick={() => void draftMarketplaceListingWithAi()}>Draft listing description</button>
+                </div>
                 <label className="toggle-row"><span>Pickup only</span><input type="checkbox" checked={marketplaceForm.pickupOnly} onChange={(event) => updateMarketplaceForm("pickupOnly", event.target.checked)} /></label>
                 <label className="toggle-row"><span>Shipping available</span><input type="checkbox" checked={marketplaceForm.shippingAvailable} onChange={(event) => updateMarketplaceForm("shippingAvailable", event.target.checked)} /></label>
                 <label className="toggle-row"><span>Intended for kids/families</span><input type="checkbox" checked={marketplaceForm.intendedForKids} onChange={(event) => updateMarketplaceForm("intendedForKids", event.target.checked)} /></label>
@@ -17654,9 +20781,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       };
     }
     if (activeFlowModal?.type === "scoutSubmit") {
+      const isGuess = quickScoutReportTypeMeta(quickScoutReportForm.reportType)?.isGuess;
       return {
-        title: "Quick Scout Report",
-        description: "Log what you saw, where, and proof source before Scout review.",
+        title: isGuess ? "Add Scout Guess" : "Quick Scout Report",
+        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Log what you saw, where, and proof source before Scout review.",
         size: "medium",
       };
     }
@@ -17780,6 +20908,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div><span>Net Profit</span><strong>{money(saleProfitPreview)}</strong></div>
           </div>
         </div>
+        <div className="ai-helper-note">
+          <span>Mileage, sales, and tax-related estimates are for tracking only and are not tax advice.</span>
+          <button type="button" className="secondary-button" onClick={() => void runSaleProfitAiAssist(saleForm)}>Explain this profit</button>
+          <button type="button" className="secondary-button" onClick={() => void runSaleProfitAiAssist(saleForm)}>Find missing sale details</button>
+        </div>
         <div className="forge-form-footer">
           <button type="submit">{editingSaleId ? "Save Sale" : "Add Sale"}</button>
         </div>
@@ -17798,6 +20931,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <Field label="Date"><input type="date" value={expenseForm.date} onChange={(e) => updateExpenseForm("date", e.target.value)} /></Field>
         <Field label="Vendor / Store"><input value={expenseForm.vendor} onChange={(e) => updateExpenseForm("vendor", e.target.value)} /></Field>
         <Field label="Expense Category"><select value={expenseForm.category} onChange={(e) => updateExpenseForm("category", e.target.value)}>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
+        <div className="ai-helper-note">
+          <span>AI can suggest a category, but you confirm before saving.</span>
+          <button type="button" className="secondary-button" onClick={() => void runExpenseAiAssist(expenseForm)}>Suggest category</button>
+          <button type="button" className="secondary-button" onClick={() => void runBusinessReportAiSummary()}>Find missing receipts</button>
+        </div>
         <Field label="Subcategory"><input value={expenseForm.subcategory} placeholder="Facebook ads, flyers, labels, domain..." onChange={(e) => updateExpenseForm("subcategory", e.target.value)} /></Field>
         <Field label="Who Paid?"><select value={expenseForm.buyer} onChange={(e) => updateExpenseForm("buyer", e.target.value)}>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
         <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
@@ -17848,6 +20986,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <form onSubmit={addTrip} className="form flow-form-grid">
         <Field label="Trip Purpose"><input value={tripForm.purpose} onChange={(e) => updateTripForm("purpose", e.target.value)} /></Field>
+        <div className="ai-helper-note">
+          <span>Purpose suggestions are for tracking only and are not tax advice.</span>
+          <button type="button" className="secondary-button" onClick={() => void runMileageAiAssist()}>Suggest purpose</button>
+        </div>
         <Field label="Driver"><select value={tripForm.driver} onChange={(e) => updateTripForm("driver", e.target.value)}>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
         <Field label="Vehicle"><select value={tripForm.vehicleId} onChange={(e) => updateTripForm("vehicleId", e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} - {v.averageMpg} MPG</option>)}</select></Field>
         <Field label="Starting Odometer"><input type="number" value={tripForm.startMiles} onChange={(e) => updateTripForm("startMiles", e.target.value)} /></Field>
@@ -17926,6 +21068,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <Field label="Tags"><input value={marketplaceForm.tags || ""} onChange={(event) => updateMarketplaceForm("tags", event.target.value)} placeholder="sealed, trade, local pickup..." /></Field>
               <Field label="Seller Notes"><input value={marketplaceForm.sellerNotes || ""} onChange={(event) => updateMarketplaceForm("sellerNotes", event.target.value)} /></Field>
               <Field label="Description"><textarea value={marketplaceForm.description} onChange={(event) => updateMarketplaceForm("description", event.target.value)} /></Field>
+              <div className="ai-helper-note">
+                <span>AI can draft listing copy, but it does not post anywhere. Review before saving.</span>
+                <button type="button" className="secondary-button" onClick={() => void draftMarketplaceListingWithAi()}>Draft listing description</button>
+              </div>
               <label className="toggle-row"><span>Pickup only</span><input type="checkbox" checked={marketplaceForm.pickupOnly} onChange={(event) => updateMarketplaceForm("pickupOnly", event.target.checked)} /></label>
               <label className="toggle-row"><span>Shipping available</span><input type="checkbox" checked={marketplaceForm.shippingAvailable} onChange={(event) => updateMarketplaceForm("shippingAvailable", event.target.checked)} /></label>
               <label className="toggle-row"><span>Intended for kids/families</span><input type="checkbox" checked={marketplaceForm.intendedForKids} onChange={(event) => updateMarketplaceForm("intendedForKids", event.target.checked)} /></label>
@@ -18001,14 +21147,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       })
       .slice(0, 8);
     const summaryRows = [
-      ["Report type", currentType.label],
+      [currentType.isGuess ? "Planner type" : "Report type", currentType.label],
       ["Proof/source", quickScoutProofLabel()],
       ["Store", selectedStoreContext ? getScoutQuickStoreName(selectedStoreContext) : quickScoutReportForm.manualLocation || "Needs Store Review"],
       ["Product", quickScoutReportForm.productName || "Not specified"],
-      ["Quantity", quickScoutReportForm.quantity || "Not specified"],
-      ["Stock left", quickScoutStockLeftLabel()],
-      ["When", quickScoutDateLabel()],
-      ["Visibility", quickScoutReportForm.visibility.replace(/_/g, " ")],
+      ...(currentType.isGuess
+        ? [
+            ["Expected day", quickScoutDateLabel()],
+            ["Expected window", quickScoutReportForm.guessedTimeWindow || "Unknown"],
+            ["Self rating", `${quickScoutReportForm.confidenceSelfRating || 50}/100`],
+          ]
+        : [
+            ["Quantity", quickScoutReportForm.quantity || "Not specified"],
+            ["Stock left", quickScoutStockLeftLabel()],
+            ["When", quickScoutDateLabel()],
+          ]),
+      ["Visibility", scoutVisibilityOptionLabel(quickScoutReportForm.visibility || (currentType.isGuess ? "private" : "public"), currentType.isGuess)],
     ];
 
     if (quickScoutReportStep === "submitted") {
@@ -18017,7 +21171,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="scout-quick-report-success">
             <span>Sent</span>
             <h3>{quickScoutReportMessage || "Report sent. You can add details now or later."}</h3>
-            <p>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store"} now appears in Scout reports as a local beta record.</p>
+            <p>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store"} now appears in {currentType.isGuess ? "Guesses Planner" : "Scout reports"} as a local beta record.</p>
           </div>
           <div className="quick-actions">
             <button type="button" onClick={openQuickScoutReportDetails}>Add details</button>
@@ -18061,7 +21215,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ) : null}
             <div className="flow-form-footer">
               <button type="button" className="secondary-button" onClick={() => setQuickScoutReportStep("compose")}>Back to details</button>
-              <button type="submit" disabled={!quickScoutReportReady()}>Submit Report</button>
+              <button type="submit" disabled={!quickScoutReportReady()}>{currentType.isGuess ? "Save Guess" : "Submit Report"}</button>
             </div>
           </section>
         ) : (
@@ -18197,29 +21351,44 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="scout-report-step-header">
                 <span>Details</span>
                 <div>
-                  <h3>Optional details</h3>
-                  <p>Add product, quantity, notes, proof text, or a screenshot/photo.</p>
+                  <h3>{currentType.isGuess ? "Guess details" : "Optional details"}</h3>
+                  <p>{currentType.isGuess ? "Add the pattern, product type, and confidence. This is not confirmed stock." : "Add product, quantity, notes, proof text, or a screenshot/photo."}</p>
                 </div>
               </div>
               <div className="scout-report-detail-grid">
                 <label>
-                  Product seen
-                  <input value={quickScoutReportForm.productName} onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)} placeholder="Search product, UPC, SKU" />
+                  {currentType.isGuess ? "Product type expected" : "Product seen"}
+                  <input value={quickScoutReportForm.productName} onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)} placeholder={currentType.isGuess ? "ETBs, tins, booster bundles..." : "Search product, UPC, SKU"} />
                 </label>
-                <label>
-                  Quantity estimate
-                  <input value={quickScoutReportForm.quantity} onChange={(event) => updateQuickScoutReportForm("quantity", event.target.value)} placeholder="Qty or estimate" />
-                </label>
-                <label>
-                  Price
-                  <input inputMode="decimal" value={quickScoutReportForm.price} onChange={(event) => updateQuickScoutReportForm("price", event.target.value)} placeholder="Optional" />
-                </label>
-                <label>
-                  Photo/screenshot
-                  <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
-                </label>
+                {currentType.isGuess ? (
+                  <>
+                    <label>
+                      Expected time window
+                      <input value={quickScoutReportForm.guessedTimeWindow} onChange={(event) => updateQuickScoutReportForm("guessedTimeWindow", event.target.value)} placeholder="Morning, 12-2 PM, Thursday afternoon..." />
+                    </label>
+                    <label>
+                      Self confidence
+                      <input type="number" min="0" max="100" value={quickScoutReportForm.confidenceSelfRating} onChange={(event) => updateQuickScoutReportForm("confidenceSelfRating", event.target.value)} placeholder="0-100" />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <label>
+                      Quantity estimate
+                      <input value={quickScoutReportForm.quantity} onChange={(event) => updateQuickScoutReportForm("quantity", event.target.value)} placeholder="Qty or estimate" />
+                    </label>
+                    <label>
+                      Price
+                      <input inputMode="decimal" value={quickScoutReportForm.price} onChange={(event) => updateQuickScoutReportForm("price", event.target.value)} placeholder="Optional" />
+                    </label>
+                    <label>
+                      Photo/screenshot
+                      <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
+                    </label>
+                  </>
+                )}
               </div>
-              {quickScoutReportForm.photoUrl ? (
+              {!currentType.isGuess && quickScoutReportForm.photoUrl ? (
                 <div className="scout-photo-preview">
                   <img src={quickScoutReportForm.photoUrl} alt="" />
                   <div>
@@ -18238,7 +21407,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 onChange={(event) => updateQuickScoutReportForm("proofText", event.target.value)}
                 placeholder="Optional text/link from receipt, screenshot, post, or site"
               />
-              <div className="scout-stock-status-grid" role="group" aria-label="Stock left after purchase">
+              <div className="ai-helper-note">
+                <span>{currentType.isGuess ? "AI can structure a pattern note, but guesses stay separate from confirmed reports." : "AI can help classify the report, but you confirm before submitting."}</span>
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => void runScoutReportClassificationAssist()}>Help classify report</button>
+                  <button type="button" className="secondary-button" onClick={() => void runGuessPlannerAiAssist()}>Turn note into guess</button>
+                </div>
+              </div>
+              {!currentType.isGuess ? <div className="scout-stock-status-grid" role="group" aria-label="Stock left after purchase">
                 {SCOUT_QUICK_STOCK_LEFT_OPTIONS.map((option) => (
                   <button
                     key={option.value}
@@ -18250,15 +21426,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     {option.label}{option.helper ? ` | ${option.helper}` : ""}
                   </button>
                 ))}
-              </div>
+              </div> : null}
             </section>
 
             <section className="scout-quick-section">
               <div className="scout-report-step-header">
                 <span>When</span>
                 <div>
-                  <h3>Date/time</h3>
-                  <p>Defaults to now. Exact date is optional for rough intel.</p>
+                  <h3>{currentType.isGuess ? "Expected day/window" : "Date/time"}</h3>
+                  <p>{currentType.isGuess ? "Choose the day this store usually restocks. Forecast will show confidence, not certainty." : "Defaults to now. Exact date is optional for rough intel."}</p>
                 </div>
               </div>
               <div className="scout-stock-status-grid">
@@ -18300,23 +21476,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <span>Share</span>
                 <div>
                   <h3>Visibility</h3>
-                  <p>Private data stays private unless you choose a community report.</p>
+                  <p>{currentType.isGuess ? "A guess is a planner note, not a confirmed report." : "Private-from-map reports are not public, but admins may review them for moderation and scoring."}</p>
                 </div>
               </div>
               <label className="scout-report-visibility-field">
                 Visibility
                 <select value={quickScoutReportForm.visibility} onChange={(event) => updateQuickScoutReportForm("visibility", event.target.value)}>
-                  <option value="public_cleaned">Community Report</option>
-                  <option value="shared_with_team">Team Shared</option>
-                  <option value="private">Private note</option>
-                  <option value="admin_only">Admin Only</option>
+                  {(currentType.isGuess ? SCOUT_GUESS_VISIBILITY_OPTIONS : SCOUT_REPORT_VISIBILITY_OPTIONS).map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
+                <small>{(currentType.isGuess ? SCOUT_GUESS_VISIBILITY_OPTIONS : SCOUT_REPORT_VISIBILITY_OPTIONS).find((option) => option.value === quickScoutReportForm.visibility)?.helper}</small>
               </label>
             </section>
 
             <div className="flow-form-footer">
               <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Cancel</button>
-              <button type="button" disabled={!quickScoutReportReady()} onClick={() => setQuickScoutReportStep("review")}>Review report</button>
+              <button type="button" disabled={!quickScoutReportReady()} onClick={() => setQuickScoutReportStep("review")}>{currentType.isGuess ? "Review guess" : "Review report"}</button>
             </div>
           </>
         )}
@@ -18369,7 +21545,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       },
       {
         key: "picture",
-        title: "Look Up by Picture",
+        title: "Look Up by Photo",
         helper: "Use a product/card photo without requiring a UPC.",
         onClick: () => runVaultQuickAction(() => openPictureLookupFlow("none")),
       },
@@ -18568,7 +21744,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             if (!closeFlowModal({ force: true, reset: false })) return;
             openPictureLookupFlow("none");
           }}>
-            <strong>Look Up by Picture</strong>
+            <strong>Look Up by Photo</strong>
             <span>Upload a product/card photo and confirm a match.</span>
           </button>
         </div>
@@ -18626,7 +21802,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <span>Scan a product or card barcode.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runOption(() => openPictureLookupFlow("none"))}>
-            <strong>Look Up by Picture</strong>
+            <strong>Look Up by Photo</strong>
             <span>Match from a photo without requiring a UPC.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runQuickFindSearch(null, "barcode")}>
@@ -18768,7 +21944,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       money={money}
                     />
                   </Field>
+                  <p className="compact-subtitle">{AI_REVIEW_DISCLAIMER} Global catalog changes require admin review.</p>
                   <div className="catalog-selector-actions match-tools">
+                    <button type="button" className="secondary-button" onClick={() => {
+                      const query = String(multiDestinationCatalogQuery || multiDestinationForm.itemName || multiDestinationForm.upcSku || "").trim();
+                      if (!query) {
+                        setVaultToast("Enter a product name, UPC, SKU, or visible text first.");
+                        return;
+                      }
+                      const matches = getBestCatalogMatches(query, catalogProducts).slice(0, 5);
+                      const summary = buildAiCatalogMatchSummary({ query, matches });
+                      void showAiSuggestion(AI_FEATURE_AREAS.CATALOG_MATCH, summary);
+                    }}>
+                      Suggest matches
+                    </button>
+                    <button type="button" className="secondary-button" onClick={() => void runItemIdentificationAssist(multiDestinationCatalogQuery || multiDestinationForm.itemName || multiDestinationForm.upcSku)}>
+                      Help identify item
+                    </button>
+                    <button type="button" className="secondary-button" onClick={() => void runVariantAssist(multiDestinationForm.variant || multiDestinationForm.itemName)}>
+                      Explain variants
+                    </button>
                     <button type="button" className="secondary-button" onClick={() => {
                       const lookup = String(multiDestinationForm.upcSku || multiDestinationCatalogQuery || "").trim();
                       if (lookup) {
@@ -18783,7 +21978,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       closeFlowModal({ force: true, reset: false });
                       openPictureLookupFlow(destination);
                     }}>
-                      Look Up by Picture
+                      Look Up by Photo
                     </button>
                     {selectedCatalog ? (
                       <button type="button" className="secondary-button" onClick={() => setMultiDestinationMatchSearchOpen(false)}>
@@ -19227,6 +22422,42 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }, [activeFlowModal?.id]);
 
   useEffect(() => {
+    if (!showInventoryScanner || typeof window === "undefined") return undefined;
+    const scannerStateId = `scanner-${Date.now()}`;
+    const currentState = window.history.state || {};
+    window.history.pushState({ ...currentState, emberTideScanner: scannerStateId }, "", window.location.href);
+    const handlePopState = () => {
+      closeInventoryScanner();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (window.history.state?.emberTideScanner === scannerStateId) {
+        const { emberTideScanner, ...rest } = window.history.state || {};
+        window.history.replaceState(rest, "", window.location.href);
+      }
+    };
+  }, [showInventoryScanner]);
+
+  useEffect(() => {
+    if (!receiptScanOpen || typeof window === "undefined") return undefined;
+    const receiptStateId = `receipt-${Date.now()}`;
+    const currentState = window.history.state || {};
+    window.history.pushState({ ...currentState, emberTideReceiptScan: receiptStateId }, "", window.location.href);
+    const handlePopState = () => {
+      closeReceiptScanWorkflow();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (window.history.state?.emberTideReceiptScan === receiptStateId) {
+        const { emberTideReceiptScan, ...rest } = window.history.state || {};
+        window.history.replaceState(rest, "", window.location.href);
+      }
+    };
+  }, [receiptScanOpen]);
+
+  useEffect(() => {
     if (!selectedCatalogDetailId || typeof window === "undefined") return undefined;
     const detailId = String(selectedCatalogDetailId);
     const currentState = window.history.state || {};
@@ -19243,7 +22474,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }, [selectedCatalogDetailId]);
 
   useEffect(() => {
-    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || selectedScoutReport || scoutReportModerationTarget || adminConfirmAction || feedbackDialog);
+    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || aiAssistReview || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || selectedScoutReport || scoutReportModerationTarget || adminConfirmAction || feedbackDialog);
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
@@ -19264,15 +22495,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       if (event.key !== "Escape") return;
       if (showInventoryScanner) {
         event.preventDefault();
-        setShowInventoryScanner(false);
-        setScanReview(null);
-        setScanMatches([]);
-        setScanInput("");
+        closeInventoryScanner();
         return;
       }
       if (receiptScanOpen) {
         event.preventDefault();
         closeReceiptScanWorkflow();
+        return;
+      }
+      if (aiAssistReview) {
+        event.preventDefault();
+        setAiAssistReview(null);
         return;
       }
       if (lockedFeatureKey) {
@@ -19337,7 +22570,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportModerationTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, aiAssistReview, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportModerationTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (activeTab === "resetPassword") {
     return (
@@ -19391,7 +22624,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
-  if (!user) {
+  if (!user && !guestPreviewActive) {
+    const signedOutPublicContent = (() => {
+      if (activeTab === "kidsProgram") return renderKidsProgramPage();
+      if (activeTab === "sponsor") return renderSponsorInterestPage();
+      if (activeTab === "trust") return renderTrustPages();
+      if (activeTab === "links") return renderLinksPage();
+      if (activeTab === "whatsNew") return renderWhatsNewPage();
+      if (activeTab === "knownLimitations") return renderKnownLimitationsPage();
+      return null;
+    })();
+
     return (
       <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
         <header className="header app-shell-header app-shell-header--full">
@@ -19406,12 +22649,58 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }}
   title="There might be something hidden here..."
 >
-  E&T TCG
+  Ember & Tide
 </h1>
-          <p>Log in to sync Ember & Tide TCG across your collection, market checks, restocks, and The Forge.</p>
+          <p>Log in to sync Ember & Tide across your collection, market checks, restocks, and The Forge.</p>
         </header>
-        <main className="main">
-          <section className="panel">
+        <main className="main auth-main">
+          {signedOutPublicContent || (
+          <section className="signed-out-landing panel">
+            <div className="landing-hero">
+              <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
+              <p className="section-kicker">Private beta</p>
+              <h2>Track. Trade. Thrive.</h2>
+              <p>Built for collectors. Powered by community.</p>
+              <p>Ember & Tide started after a child was pushed out of the hobby by scalpers who cleared shelves and said Pokemon was not for kids anymore. We believe Pokemon collecting should still be fun, fair, and family-friendly.</p>
+              <div className="quick-actions">
+                <button type="button" onClick={() => setAuthMode("signup")}>Get Started</button>
+                <button type="button" className="secondary-button" onClick={startGuestPreview}>Preview App</button>
+                <button type="button" className="secondary-button" onClick={() => { startGuestPreview(); setActiveTab("kidsProgram"); }}>Learn About the Kids Program</button>
+              </div>
+            </div>
+            <figure className="landing-promo-art">
+              <img src={BRAND_ASSETS.promoHero} alt="Ember & Tide app preview showing Scout, Vault, Forge, and AI Assistant dashboard." loading="eager" />
+            </figure>
+            <div className="landing-feature-grid">
+              {[
+                ["Vault", "Track personal cards, sealed products, variants, and collection value."],
+                ["Forge", "Manage business inventory, receipts, expenses, and seller tools."],
+                ["Scout", "Submit reports, add guesses, and build restock forecasts."],
+                ["Market", "Prepare pricing, deal checks, and market source confidence."],
+                ["Kids Program", "Support kid-focused packs, giveaways, and fair-access opportunities."],
+                ["Tidepool", "Build community posts, feedback, and trusted local sharing."],
+              ].map(([title, body]) => (
+                <article className="landing-feature-card" key={title}>
+                  <strong>{title}</strong>
+                  <p>{body}</p>
+                </article>
+              ))}
+            </div>
+            <div className="landing-link-row">
+              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("kidsProgram"); }}>Kids Program</button>
+              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("sponsor"); }}>Partner With Us</button>
+              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("links"); }}>Links</button>
+              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("whatsNew"); }}>What's New</button>
+              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("knownLimitations"); }}>Known Limitations</button>
+              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("trust"); }}>Privacy / Terms</button>
+            </div>
+            <footer className="brand-legal-footer">
+              <p>{BRAND_LEGAL_NOTICE}</p>
+              <p>{POKEMON_AFFILIATION_NOTICE}</p>
+            </footer>
+          </section>
+          )}
+          <section className="panel auth-panel signed-out-auth-card">
             {authMode === "reset" ? (
               <>
                 <h2>Reset Password</h2>
@@ -19432,39 +22721,112 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </button>
                 </form>
                 <button
-                  className="secondary-button"
+                  type="button"
+                  className="auth-text-button"
                   onClick={() => {
                     setPasswordResetError("");
                     setPasswordResetMessage("");
                     setAuthMode("login");
                   }}
                 >
-                  Back to sign in
+                  Back to Log In
                 </button>
               </>
             ) : (
               <>
                 <h2>{authMode === "login" ? "Log In" : "Create Account"}</h2>
-                <form onSubmit={handleAuth} className="form" noValidate>
-                  <Field label="Email"><input type="email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} /></Field>
-                  <Field label="Password"><input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} /></Field>
+                {authMode === "signup" ? (
+                  <p className="compact-subtitle">Create a free account to save inventory, reports, scans, and settings.</p>
+                ) : null}
+                <form onSubmit={handleAuth} className="form auth-form" noValidate>
+                  {authMode === "signup" ? (
+                    <div className="auth-name-grid">
+                      <Field label="First name">
+                        <input
+                          type="text"
+                          value={authFirstName}
+                          autoComplete="given-name"
+                          onChange={(event) => setAuthFirstName(event.target.value)}
+                        />
+                      </Field>
+                      <Field label="Last name">
+                        <input
+                          type="text"
+                          value={authLastName}
+                          autoComplete="family-name"
+                          onChange={(event) => setAuthLastName(event.target.value)}
+                        />
+                      </Field>
+                      <p className="compact-subtitle auth-name-helper">{SIGNUP_NAME_HELPER}</p>
+                    </div>
+                  ) : null}
+                  <Field label="Email"><input type="email" value={authEmail} autoComplete="email" onChange={(e) => setAuthEmail(e.target.value)} /></Field>
+                  <Field label="Password"><input type="password" value={authPassword} autoComplete={authMode === "login" ? "current-password" : "new-password"} onChange={(e) => setAuthPassword(e.target.value)} /></Field>
+                  {authMode === "signup" ? (
+                    <div className="signup-consent-box">
+                      <label className="checkbox-row">
+                        <input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} />
+                        <span>
+                          {SIGNUP_TERMS_TEXT}{" "}
+                          <button type="button" className="inline-text-button" onClick={() => { startGuestPreview(); setActiveTab("trust"); }}>View Terms / Privacy</button>
+                        </span>
+                      </label>
+                      <label className="checkbox-row">
+                        <input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} />
+                        <span>{SIGNUP_BETA_ACK_TEXT}</span>
+                      </label>
+                    </div>
+                  ) : null}
                   {authError ? <p className="auth-status-message error" role="alert">{authError}</p> : null}
                   {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
-                  {authMode === "login" ? (
-                    <button type="button" className="auth-text-button" onClick={openPasswordResetRequest}>Forgot password?</button>
-                  ) : null}
-                  <button type="submit" disabled={authLoading}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
+                  <button type="submit" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Sign Up"}</button>
                 </form>
-                <button
-                  className="secondary-button"
-                  onClick={() => {
-                    setAuthError("");
-                    setAuthMessage("");
-                    setAuthMode(authMode === "login" ? "signup" : "login");
-                  }}
-                >
-                  {authMode === "login" ? "Need an account? Sign up" : "Already have an account? Log in"}
-                </button>
+                <div className="auth-link-stack" aria-label="Account options">
+                  {authMode === "login" ? (
+                    <>
+                      <button type="button" className="auth-text-button" onClick={openPasswordResetRequest}>Forgot password?</button>
+                      <button
+                        type="button"
+                        className="auth-text-button"
+                        onClick={() => {
+                          setAuthError("");
+                          setAuthMessage("");
+                          setAuthMode("signup");
+                          setAuthFirstName("");
+                          setAuthLastName("");
+                          setAuthTermsAccepted(false);
+                          setAuthBetaAcknowledged(false);
+                        }}
+                      >
+                        Need an account? Sign up
+                      </button>
+                      <button type="button" className="auth-text-button auth-preview-link" onClick={startGuestPreview}>
+                        Preview the app
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="auth-text-button"
+                        onClick={() => {
+                          setAuthError("");
+                          setAuthMessage("");
+                          setAuthMode("login");
+                          setAuthFirstName("");
+                          setAuthLastName("");
+                          setAuthTermsAccepted(false);
+                          setAuthBetaAcknowledged(false);
+                        }}
+                      >
+                        Back to Log In
+                      </button>
+                      <button type="button" className="auth-text-button auth-preview-link" onClick={startGuestPreview}>
+                        Preview the app
+                      </button>
+                    </>
+                  )}
+                </div>
               </>
             )}
           </section>
@@ -19479,8 +22841,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  if (user && !guestPreviewActive && !betaAccessAllowed()) {
+    return (
+      <div className="app app-beta-waitlist">
+        <header className="header app-shell-header app-shell-header--full">
+          <h1>E&amp;T TCG</h1>
+          <p>Ember &amp; Tide beta access</p>
+        </header>
+        <main className="main auth-main">
+          <section className="panel auth-panel">
+            <h2>Beta access pending</h2>
+            <p>You&apos;re on the Ember &amp; Tide beta waitlist. We&apos;ll let you know when your access is approved.</p>
+            <p className="compact-subtitle">Current mode: {betaAccessMode().replace(/_/g, " ")}. Status: {userBetaAccessStatus()}.</p>
+            <div className="quick-actions">
+              <button type="button" onClick={startGuestPreview}>Preview App</button>
+              <button type="button" className="secondary-button" onClick={signOut}>Log Out</button>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
+    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -19493,10 +22877,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }}
     title="There might be something hidden here..."
   >
-    E&T TCG
+    Ember & Tide
   </h1>
 
-  <p>{activeTabLabel} | {BETA_LOCAL_MODE ? "Private Beta" : user ? `Cloud sync: ${user.email}` : "Supabase mode"}</p>
+  <p>{activeTabLabel} | {guestPreviewActive ? "Preview mode" : BETA_LOCAL_MODE ? "Private Beta" : user ? `Cloud sync: ${user.email}` : "Supabase mode"}</p>
 
   {showTreasure && (
     <div className="hidden-treasure">
@@ -19559,6 +22943,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     </span>
     Add
   </button>
+  {renderNotificationCenter()}
 
   <div className={searchExpanded ? "app-search expanded" : "app-search"}>
     {searchExpanded ? (
@@ -19570,7 +22955,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     <button
       type="button"
       className="app-search-toggle"
-      aria-label={activeTab === "market" ? "Quick Find TideTradr" : "Search E&T TCG"}
+      aria-label={activeTab === "market" ? "Quick Find TideTradr" : "Search Ember & Tide"}
       onClick={() => {
         setQuickAddMenuOpen(false);
         if (activeTab === "market") {
@@ -19594,14 +22979,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         setSearchExpanded(true);
       }}
       placeholder="Try: sv8 etb, 151 zard, evs booster..."
-      aria-label="Search across E&T TCG"
+      aria-label="Search across Ember & Tide"
     />
     {searchExpanded && appSearchQuery.trim().length >= 2 ? (
       <div className="app-search-results">
         <div className="compact-card-header">
           <div>
             <h3>Search results</h3>
-            <p>{appSearchResults.length} matches across E&T TCG</p>
+            <p>{appSearchResults.length} matches across Ember & Tide</p>
           </div>
           <button type="button" className="secondary-button" onClick={closeSearchResults}>Close</button>
         </div>
@@ -19638,6 +23023,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     ) : null}
   </div>
 </div>
+
+      {guestPreviewActive ? (
+        <section className="guest-preview-banner" role="status">
+          <div>
+            <strong>Preview mode</strong>
+            <span>— sign up to save your progress.</span>
+          </div>
+          <button type="button" className="auth-text-button" onClick={exitGuestPreview}>Exit preview</button>
+        </section>
+      ) : null}
 
       {actualAdminUser ? (
         <section className={`admin-mode-control-bar${adminViewingAsAdmin ? " is-admin" : " is-regular"}${adminEditModeActive ? " is-editing" : ""}`} aria-label="Admin display controls">
@@ -19701,7 +23096,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
-      <nav className="main-tabs app-main-tabs" aria-label="E&T TCG main tabs">
+      <nav className="main-tabs app-main-tabs" aria-label="Ember & Tide main tabs">
         {mainTabs.map((tab) => (
           <button
             key={tab.key}
@@ -19723,7 +23118,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
           <aside className="drawer open">
             <div className="drawer-header">
-              <div><p>E&T TCG</p><h3>Menu</h3></div>
+              <div><p>Ember & Tide</p><h3>Menu</h3></div>
               <button type="button" className="secondary-button" onClick={() => setMenuOpen(false)}>Close</button>
             </div>
             <div className="drawer-menu-stack">
@@ -19735,15 +23130,35 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <p className="compact-subtitle">{accountStatusDescription}</p>
                     </div>
                     <dl className="drawer-status-list">
-                      <div><dt>App Version</dt><dd>E&T TCG beta web app</dd></div>
-                      <div><dt>Account</dt><dd>{signedInWithSupabase ? "Supabase" : "Private beta"}</dd></div>
+                      <div><dt>App Version</dt><dd>Ember & Tide beta web app</dd></div>
+                      <div><dt>Account</dt><dd>{guestPreviewActive ? "Guest preview" : signedInWithSupabase ? "Supabase" : "Private beta"}</dd></div>
                       <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
                       <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
-                      <div><dt>Data</dt><dd>{cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
+                      <div><dt>Data</dt><dd>{guestPreviewActive ? "Read-only preview" : cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
                     </dl>
                     {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
                   </div>
-                  {!signedInWithSupabase ? (
+                  {guestPreviewActive ? (
+                    <div className="drawer-info-card">
+                      <strong>Preview mode</strong>
+                      <p className="compact-subtitle">You can browse the app, but saving inventory, reports, scans, and settings requires a free account.</p>
+                      <div className="drawer-inline-actions">
+                        <button type="button" className="drawer-link" onClick={() => runMenuAction(exitGuestPreview)}>Back to Log In</button>
+                        <button
+                          type="button"
+                          className="drawer-link"
+                          onClick={() => {
+                            runMenuAction(() => {
+                              exitGuestPreview();
+                              setAuthMode("signup");
+                            });
+                          }}
+                        >
+                          Sign Up
+                        </button>
+                      </div>
+                    </div>
+                  ) : !signedInWithSupabase ? (
                     authMode === "reset" ? (
                       <form className="drawer-info-card" onSubmit={handlePasswordResetRequest} noValidate>
                         <strong>Reset password</strong>
@@ -19781,6 +23196,40 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
                         <p className="compact-subtitle">Sign in for admin tools and future cloud sync. User-owned beta data stays local for now.</p>
                         {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
+                        {authMode === "signup" ? (
+                          <>
+                            <div className="drawer-two-column">
+                              <input
+                                className="drawer-field"
+                                type="text"
+                                value={authFirstName}
+                                onChange={(event) => setAuthFirstName(event.target.value)}
+                                placeholder="First name"
+                                autoComplete="given-name"
+                              />
+                              <input
+                                className="drawer-field"
+                                type="text"
+                                value={authLastName}
+                                onChange={(event) => setAuthLastName(event.target.value)}
+                                placeholder="Last name"
+                                autoComplete="family-name"
+                              />
+                            </div>
+                            <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p>
+                            <label className="checkbox-row">
+                              <input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} />
+                              <span>{SIGNUP_TERMS_TEXT}</span>
+                            </label>
+                            <label className="checkbox-row">
+                              <input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} />
+                              <span>{SIGNUP_BETA_ACK_TEXT}</span>
+                            </label>
+                            <button type="button" className="auth-text-button drawer-auth-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>
+                              View Terms / Privacy
+                            </button>
+                          </>
+                        ) : null}
                         <input
                           className="drawer-field"
                           type="email"
@@ -19814,7 +23263,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           onClick={() => {
                             setAuthError("");
                             setAuthMessage("");
-                            setAuthMode(authMode === "login" ? "signup" : "login");
+                            const nextMode = authMode === "login" ? "signup" : "login";
+                            setAuthMode(nextMode);
+                            if (nextMode === "login") {
+                              setAuthFirstName("");
+                              setAuthLastName("");
+                              setAuthTermsAccepted(false);
+                              setAuthBetaAcknowledged(false);
+                            }
                           }}
                         >
                           {authMode === "login" ? "Create Account" : "Use Login"}
@@ -19834,19 +23290,45 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <button type="button" className="drawer-link logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
                     </div>
                   )}
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
-                  <div className="drawer-danger-zone">
-                    <strong>Danger zone</strong>
-                    <p className="compact-subtitle">Resetting private beta data clears saved beta records on this device. Export first if you want a backup.</p>
-                    <button type="button" className="drawer-link drawer-danger-link" onClick={resetBetaLocalData}>Reset Private Beta Data</button>
-                  </div>
+                  {!guestPreviewActive ? (
+                    <form className="drawer-info-card" onSubmit={saveProfileSettings} noValidate>
+                      <strong>Profile Settings</strong>
+                      <p className="compact-subtitle">Your full name is private by default and used for account, Kids Program, and admin review context.</p>
+                      <div className="ai-helper-note">
+                        <span>AI can explain what these settings do; it cannot change account permissions.</span>
+                        <button type="button" className="secondary-button" onClick={() => void runSettingsHelpAiAssist()}>Explain this setting</button>
+                      </div>
+                      <div className="drawer-two-column">
+                        <input className="drawer-field" value={profileForm.firstName} onChange={(event) => setProfileForm((current) => ({ ...current, firstName: event.target.value }))} placeholder="First name" autoComplete="given-name" />
+                        <input className="drawer-field" value={profileForm.lastName} onChange={(event) => setProfileForm((current) => ({ ...current, lastName: event.target.value }))} placeholder="Last name" autoComplete="family-name" />
+                      </div>
+                      <input className="drawer-field" value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} placeholder="Display name" />
+                      <select className="drawer-field" value={profileForm.preferredRegion} onChange={(event) => setProfileForm((current) => ({ ...current, preferredRegion: event.target.value }))}>
+                        {["Hampton Roads / 757", "Richmond / Central Virginia", "Northern Virginia", "Fredericksburg", "Charlottesville / Albemarle", "Roanoke / Southwest Virginia", "Lynchburg", "Shenandoah Valley", "Eastern Shore", "Southside Virginia", "Other Virginia"].map((region) => (
+                          <option key={region} value={region}>{region}</option>
+                        ))}
+                      </select>
+                      <p className="compact-subtitle">Email: {accountEmail() || "Not signed in"}. Email changes require a separate auth-safe flow.</p>
+                      <button type="submit" className="drawer-link" disabled={profileSaving}>{profileSaving ? "Saving..." : "Save Profile"}</button>
+                    </form>
+                  ) : null}
+                  {!guestPreviewActive ? (
+                    <>
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
+                      <div className="drawer-danger-zone">
+                        <strong>Danger zone</strong>
+                        <p className="compact-subtitle">Resetting private beta data clears saved beta records on this device. Export first if you want a backup.</p>
+                        <button type="button" className="drawer-link drawer-danger-link" onClick={resetBetaLocalData}>Reset Private Beta Data</button>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               ), "account")}
               {renderMenuPullDown("workspace", "Workspace", "Switch spaces, invite members, and keep personal data separate", (
                 <div className="drawer-links workspace-settings-panel">
                   <div className="drawer-info-card">
                     <strong>Current workspace</strong>
-                    <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this workspace.</p>
+                    <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this workspace. Workspace roles are separate from platform Admin Mode.</p>
                     <Field label="Workspace">
                       <select value={activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID} onChange={(event) => changeActiveWorkspace(event.target.value)}>
                         {workspaceSelectorOptions.map((workspace) => (
@@ -19858,7 +23340,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </Field>
                     <dl className="drawer-status-list">
                       <div><dt>Type</dt><dd>{workspaceTypeLabel(activeWorkspace?.type)}</dd></div>
-                      <div><dt>Your role</dt><dd>{workspaceRoleLabel(activeWorkspaceRole)}</dd></div>
+                      <div><dt>Workspace role</dt><dd>{workspaceRoleLabel(activeWorkspaceRole)}</dd></div>
                       <div><dt>Vault items</dt><dd>{vaultItems.length}</dd></div>
                       <div><dt>Forge items</dt><dd>{forgeInventoryItems.length}</dd></div>
                     </dl>
@@ -19871,14 +23353,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       className="drawer-field"
                       value={workspaceForm.name}
                       onChange={(event) => setWorkspaceForm((current) => ({ ...current, name: event.target.value }))}
-                      placeholder="Zena + Dillon Collection"
+                      placeholder="Ember & Tide"
                     />
                     <select
                       className="drawer-field"
                       value={workspaceForm.type}
                       onChange={(event) => setWorkspaceForm((current) => ({ ...current, type: event.target.value }))}
                     >
-                      {WORKSPACE_TYPES.filter((type) => type.value !== "personal").map((type) => (
+                      {WORKSPACE_TYPES.filter((type) => !["personal", "shared_collection", "team"].includes(type.value)).map((type) => (
                         <option key={type.value} value={type.value}>{type.label}</option>
                       ))}
                     </select>
@@ -19886,10 +23368,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </form>
 
                   <form className="drawer-info-card" onSubmit={sendWorkspaceInvite}>
-                    <strong>Invite member</strong>
+                    <strong>Invite member by email</strong>
                     <p className="compact-subtitle">
                       {canManageActiveWorkspace
-                        ? "Invite by email. They cannot see data until the invite is accepted."
+                        ? "Invite by email. They cannot see data until the invite is accepted. App Admin Mode does not grant workspace access."
                         : "You do not have permission to invite members in this workspace."}
                     </p>
                     <select
@@ -20047,6 +23529,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="drawer-info-card">
                     <strong>Notifications</strong>
                     <p className="compact-subtitle">Push/text notifications are coming soon. These local preferences keep the Scout Alerts flow ready for beta.</p>
+                    <div className="ai-helper-note">
+                      <span>Draft clearer alert copy without sending anything.</span>
+                      <button type="button" className="secondary-button" onClick={() => void runNotificationCopyAiAssist()}>Draft notification</button>
+                      <button type="button" className="secondary-button" onClick={() => void runSettingsHelpAiAssist()}>Explain alert settings</button>
+                    </div>
                     <div className="menu-toggle-list">
                       {notificationPreferenceRows.map((row) => (
                         <label className="toggle-row" key={row.key}>
@@ -20062,6 +23549,35 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         </label>
                       ))}
                     </div>
+                    <details className="drawer-subdetails">
+                      <summary>Beta notification preferences</summary>
+                      <div className="menu-toggle-list">
+                        {[
+                          ["stock_alerts", "Stock alerts"],
+                          ["restock_predictions", "Restock predictions"],
+                          ["wishlist_matches", "Wishlist matches"],
+                          ["kids_program_updates", "Kids Program updates"],
+                          ["giveaways", "Giveaways"],
+                          ["receipt_review_reminders", "Receipt review reminders"],
+                          ["inventory_value_changes", "Inventory value changes"],
+                          ["catalog_updates", "Catalog updates"],
+                          ["workspace_invites", "Workspace invites"],
+                          ["admin_review_alerts", "Admin review needed"],
+                          ["email_enabled", "Email enabled"],
+                          ["sms_enabled", "SMS later disabled"],
+                        ].map(([key, label]) => (
+                          <label className="toggle-row" key={key}>
+                            <span><strong>{label}</strong></span>
+                            <input
+                              type="checkbox"
+                              disabled={key === "sms_enabled"}
+                              checked={Boolean((betaReadinessData.notificationPreferences || DEFAULT_NOTIFICATION_SETTINGS)[key])}
+                              onChange={(event) => updateNotificationPreference(key, event.target.checked)}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </details>
                   </div>
                   <div className="drawer-info-card">
                     <strong>Dashboard Display Settings</strong>
@@ -20152,6 +23668,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openBulkAddFlow("Mixed"))}>Bulk Add Items</button>
                     </div>
                   </div>
+                  <form className="drawer-info-card" onSubmit={submitDataRequest} noValidate>
+                    <strong>Privacy / Data Requests</strong>
+                    <p className="compact-subtitle">Beta requests create admin review items. Nothing is automatically deleted without a safe process.</p>
+                    <select className="drawer-field" value={dataRequestForm.requestType} onChange={(event) => setDataRequestForm((current) => ({ ...current, requestType: event.target.value }))}>
+                      {DATA_REQUEST_TYPES.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
+                    </select>
+                    <input className="drawer-field" type="email" value={dataRequestForm.email || accountEmail()} onChange={(event) => setDataRequestForm((current) => ({ ...current, email: event.target.value }))} placeholder="Email" />
+                    <textarea className="drawer-field" value={dataRequestForm.message} onChange={(event) => setDataRequestForm((current) => ({ ...current, message: event.target.value }))} placeholder="Optional details" />
+                    <button type="submit" className="drawer-link">Submit Privacy Request</button>
+                    <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Open Privacy / Terms</button>
+                  </form>
                   {adminToolsVisible ? (
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>
                       Admin Review Queue
@@ -20161,13 +23688,38 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ), "data")}
               {renderMenuPullDown("feedback", "Feedback / Help", "Send feedback, report bugs, and app help", (
                 <div className="drawer-links">
+                  <div className="drawer-info-card">
+                    <strong>Feedback types</strong>
+                    <p className="compact-subtitle">{BETA_FEEDBACK_TYPES.slice(0, 6).join(", ")} and more.</p>
+                    <div className="ai-helper-note">
+                      <span>AI can help categorize feedback, but admin status changes stay manual.</span>
+                      <button type="button" className="secondary-button" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button>
+                    </div>
+                  </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Send Feedback</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("catalog_data"))}>Report Bad Catalog Data</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("store_data"))}>Report Bad Store Data</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("market_data"))}>Report Wrong Market Price</button>
+                  {adminToolsVisible ? <button type="button" className="drawer-link" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button> : null}
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("How to Use App guide is coming soon for beta testers."))}>How to Use App</button>
+                </div>
+              ), "help")}
+              {renderMenuPullDown("beta_foundations", "Beta Foundations", "Kids Program, trust pages, notifications, membership, and launch links", (
+                <div className="drawer-links">
+                  <div className="drawer-info-card">
+                    <strong>{BETA_MODE_COPY}</strong>
+                    <p className="compact-subtitle">SMS, billing, provider integrations, and marketplace auto-posting are intentionally disabled.</p>
+                  </div>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("kidsProgram"))}>Kids Program</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("sponsor"))}>Sponsor / Partner Interest</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("links"))}>Link-in-Bio Page</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("whatsNew"))}>What's New / Changelog</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Known Limitations</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Privacy / Terms / Rules</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>Restart Onboarding</button>
                 </div>
               ), "help")}
               {renderMenuPullDown("community", "Community / Tidepool", "Tidepool, guidelines, and community rules", (
@@ -20178,7 +23730,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Open Tidepool</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Report Guidelines are coming soon for beta."))}>Report Guidelines</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Community Rules are coming soon for beta."))}>Community Rules</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Community Rules</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Discord Coming Soon</button>
                 </div>
               ), "community")}
@@ -20189,6 +23741,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <p className="compact-subtitle">Current plan: {TIER_LABELS[currentTier] || currentPlan}. Paid gates are active for product behavior, but no payment processing or checkout is connected.</p>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Open Settings / Billing</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Request beta access</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Stripe Not Connected</button>
                 </div>
@@ -20210,7 +23763,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </div>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Open Admin Dashboard</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("betaReadiness"))}>Beta Readiness Dashboard</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("All"); setActiveTab("adminReview"); })}>Import Status & Review Queue</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); })}>Kids Program Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); })}>Beta Feedback Review</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Sponsor Interest"); setActiveTab("adminReview"); })}>Sponsor Interest Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminEditMode(true); openTidepoolCommunity("Needs Review"); })}>Tidepool Moderation</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Market Source Controls"); setActiveTab("adminReview"); })}>Market Source Controls</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Marketplace Listings"); setActiveTab("adminReview"); })}>Marketplace Listing Review</button>
@@ -20224,7 +23781,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ), "admin") : null}
             </div>
             <div className="drawer-footer-card">
-              <span>E&T TCG beta web app</span>
+              <span>Ember & Tide beta web app</span>
               {signedInWithSupabase ? (
                 <button type="button" className="logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
               ) : (
@@ -21047,18 +24604,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       {showInventoryScanner ? (
         <div className="location-modal-backdrop" role="presentation" onClick={closeInventoryScanner}>
           <section className="scanner-review-modal" role="dialog" aria-modal="true" aria-labelledby="scanner-review-title" onClick={(event) => event.stopPropagation()}>
-            <div className="compact-card-header">
+            <div className="modal-title-row modal-sticky-header scanner-modal-header">
               <div>
                 <h2 id="scanner-review-title">Scan Product/Card</h2>
-                <p>{scanReview ? "Confirm the match, then choose where this item should go. Nothing is saved automatically." : "Scan a barcode, UPC, SKU label, card, or product image. You can always search manually."}</p>
+                <p>{scanReview ? "Confirm the match, choose the destination, then continue to review. Nothing is saved automatically." : "Scan a barcode/UPC, enter a product or card name, or use manual fallback. Nothing is saved until you review and submit."}</p>
               </div>
-              <button type="button" className="secondary-button" onClick={closeInventoryScanner}>Cancel</button>
+              <button type="button" className="modal-close-button" aria-label="Close scanner" onClick={closeInventoryScanner}>X</button>
             </div>
             <div className="quick-action-rail">
               {[
                 ["upc", "Barcode / UPC"],
                 ["card", "Card"],
-                ["picture", "Look Up by Picture"],
+                ["picture", "Look Up by Photo"],
                 ["receipt", "Scan Receipt"],
                 ["manual", "Manual"],
               ].map(([key, label]) => (
@@ -21078,22 +24635,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {scanMode === "picture" ? (
               <div className="picture-lookup-panel">
                 <div className="small-empty-state">
-                  <strong>Look Up by Picture</strong>
-                  <span>Upload or take a picture of a card, box, tin, pack, shelf tag, or product label. Do not upload receipts, personal documents, addresses, faces, or private information during beta.</span>
+                  <strong>AI Photo Lookup</strong>
+                  <span>Use visible text from a product/card photo to search TideTradr. {AI_REVIEW_DISCLAIMER}</span>
                 </div>
                 <div className="picture-lookup-actions">
-                  <label className="secondary-button file-action-label">
-                    Take / Upload Photo
-                    <input type="file" accept="image/*" capture="environment" onChange={handlePictureLookupFile} />
-                  </label>
                   <button type="button" className="secondary-button" onClick={() => setScanMode("manual")}>Search manually instead</button>
+                  <button type="button" className="secondary-button" onClick={() => {
+                    const destinations = scanDestination === "vault" ? { vault: true } : scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : {};
+                    closeInventoryScanner();
+                    openProductAddFlow({ source: "picture-lookup-manual", destinations });
+                  }}>Add custom item</button>
                 </div>
-                {pictureLookup.imageUrl ? (
-                  <div className="picture-lookup-preview">
-                    <img src={pictureLookup.imageUrl} alt="Uploaded product lookup preview" />
-                    <span>{pictureLookup.fileName || "Photo preview"}</span>
-                  </div>
-                ) : null}
                 <Field label="Visible text or UPC/SKU from picture">
                   <input
                     value={pictureLookup.text}
@@ -21103,15 +24655,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </Field>
                 <div className="quick-actions">
                   <button type="button" onClick={runPictureLookupSearch}>Find matches</button>
-                  <button type="button" className="secondary-button" onClick={() => {
-                    const destinations = scanDestination === "vault" ? { vault: true } : scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : {};
-                    closeInventoryScanner();
-                    openProductAddFlow({ source: "picture-lookup-manual", destinations });
-                  }}>Add manually</button>
+                  <button type="button" className="secondary-button" onClick={runPictureLookupSearch}>Help identify item</button>
                   <button type="button" className="secondary-button" onClick={() => { setScanMode("manual"); setPictureLookup((current) => ({ ...current, message: "Enter a product name, set, UPC, SKU, or shorthand to search TideTradr." })); }}>Search TideTradr</button>
                 </div>
                 {pictureLookup.message ? <p className="compact-subtitle">{pictureLookup.message}</p> : null}
-                <p className="compact-subtitle">Tip: use good lighting, avoid glare, and include the product name, barcode, or collector number when possible.</p>
               </div>
             ) : scanMode === "upc" ? (
               <BarcodeScanner onScan={handleCatalogScanMatch} onClose={() => setScanMode("manual")} />
@@ -21124,27 +24671,57 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     onChange={(event) => {
                       const nextValue = event.target.value;
                       setScanInput(nextValue);
-                      if (!nextValue.trim()) {
-                        setScanMatches([]);
-                        setScanReview(null);
-                        setScanMessage("");
-                        return;
-                      }
-                      const matches = getBestCatalogMatches(nextValue, catalogProducts);
-                      setScanMatches(matches);
-                      setScanReview(buildScanReview(nextValue, matches, scanDestination));
+                      setScanMatches([]);
+                      setScanReview(null);
+                      setScanSearchState("idle");
+                      setScanMessage(nextValue.trim().length >= 2 ? "Tap Search Item to run fast catalog matching." : "");
                     }}
                     placeholder={scanMode === "card" ? "Try 199/165, zard sir, sv8 card 159" : "Try 151 upc, pr evo etb, Target TCIN, or UPC/SKU"}
                   />
                 </Field>
-                <button type="button" onClick={() => handleCatalogScanMatch(scanReview?.rawValue || scanInput)}>Search Item</button>
+                <button type="button" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput)}>
+                  {scanSearchState === "loading" ? "Searching..." : "Search Item"}
+                </button>
+                <button type="button" className="secondary-button" onClick={() => void runItemIdentificationAssist(scanInput)}>
+                  Help identify item
+                </button>
                 <p className="compact-subtitle">Scanner matching checks verified UPC/EAN/GTIN and retailer identifiers before lower-confidence name or alias matches.</p>
               </div>
             ) : null}
 
-            {!scanReview ? (
+            {scanSearchState === "loading" ? (
+              <div className="small-empty-state scanner-search-status">
+                <strong>Searching for matches...</strong>
+                <span>Checking catalog items, UPC/SKU fields, names, sets, and shorthand aliases.</span>
+              </div>
+            ) : null}
+
+            {scanSearchState === "empty" && !scanReview ? (
+              <div className="small-empty-state scanner-search-status">
+                <strong>No confident match.</strong>
+                <span>We could not confidently match this item. You can search manually, add custom item, or submit it for review.</span>
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => setScanMode("manual")}>Search manually</button>
+                  <button type="button" onClick={() => {
+                    const destinations = scanDestination === "vault" ? { vault: true } : scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : {};
+                    closeInventoryScanner();
+                    openProductAddFlow({
+                      source: "scanner-no-match-manual",
+                      seed: {
+                        itemName: scanInput,
+                        catalogSearchQuery: scanInput,
+                        destinations,
+                      },
+                    });
+                  }}>Add custom item</button>
+                  <button type="button" className="secondary-button" onClick={submitScannerNoMatchForReview}>Submit for review</button>
+                </div>
+              </div>
+            ) : null}
+
+            {!scanReview && scanSearchState === "idle" ? (
               <div className="small-empty-state scanner-start-state">
-                <strong>No item detected yet.</strong>
+                <strong>Ready to scan or search.</strong>
                 <span>Use the camera, enter a UPC/SKU, or type a product name. Nothing is saved until you review the match and choose a destination.</span>
               </div>
             ) : null}
@@ -21156,6 +24733,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <span className="is-current">2. Review</span>
                   <span>3. Destination</span>
                   <span>4. Submit</span>
+                </div>
+                <div className="scanner-section-heading">
+                  <strong>Smart Matches</strong>
+                  <span>Best match selected. Change it below if needed.</span>
+                </div>
+                <div className="small-empty-state ai-helper-note">
+                  <strong>{aiConfidenceLabel(scanReview.matchConfidence)}</strong>
+                  <span>{scanReview.aiSummary || AI_REVIEW_DISCLAIMER}</span>
                 </div>
                 <div className="compact-card-header">
                   <div>
@@ -21185,7 +24770,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 </div>
                 <Field label="Destination">
-                  <select value={scanDestination} onChange={(event) => setScanDestination(event.target.value)}>
+                  <select value={scanDestination} onChange={(event) => setScanDestination(normalizeAddDestinationValue(event.target.value, "none", { allowIgnore: true }))}>
                     {SCAN_DESTINATIONS.map((destination) => (
                       <option key={destination.value} value={destination.value}>{destination.label}</option>
                     ))}
@@ -21237,7 +24822,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
             {scanMatches.length > 1 ? (
               <div className="inventory-list compact-inventory-list">
-                <h3>Possible matches</h3>
+                <h3>Other Smart Matches</h3>
                 {scanMatches.slice(0, 5).map((match) => (
                   <button type="button" className="catalog-picker-card scanner-match-row" key={match.item.id} onClick={() => confirmScanMatch(match.item.id)}>
                     <div className="catalog-thumb">
@@ -21252,6 +24837,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 ))}
               </div>
             ) : null}
+            <div className="location-modal-actions modal-sticky-footer scanner-modal-footer">
+              <button type="button" className="secondary-button" onClick={closeInventoryScanner}>Close</button>
+            </div>
           </section>
         </div>
       ) : null}
@@ -21262,7 +24850,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="compact-card-header">
               <div>
                 <h2 id="receipt-scan-title">Scan Receipt</h2>
-                <p>{"Scan Receipt -> App reads receipt -> App suggests matches -> User verifies each item -> User chooses Vault or Forge -> User submits -> App creates report -> Items are added."}</p>
+                <p>Upload or photograph a receipt. AI suggests possible lines, but you review each item, choose destinations, then submit verified records.</p>
               </div>
               <div className="quick-actions">
                 <button type="button" className="secondary-button modal-close-icon" aria-label="Close receipt scan" onClick={closeReceiptScanWorkflow}>X</button>
@@ -21272,43 +24860,37 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
             <div className="receipt-progress-steps" aria-label="Receipt scan progress">
               {[
-                ["uploading", "Scan Receipt"],
-                ["reading_receipt", "App reads receipt"],
-                ["matching_products", "App suggests matches"],
-                ["ready_for_review", "Verify Items"],
-                ["submitted", "Submit Report"],
-              ].map(([status, label]) => (
-                <span key={status} className={receiptScanStatus === status ? "active" : receiptScanStatus === "submitted" ? "complete" : ""}>{label}</span>
-              ))}
-            </div>
-
-            <div className="receipt-workflow-sequence" aria-label="Receipt workflow sequence">
-              {[
-                "Scan Receipt",
-                "App reads receipt",
-                "App suggests matches",
-                "User verifies each item",
-                "User chooses Vault or Forge",
-                "User submits",
-                "App creates report",
-                "Items are added",
-              ].map((step) => <span key={step}>{step}</span>)}
+                ["draft_extracted", "1. Upload"],
+                ["ready_for_review", "2. Review"],
+                ["submitted", "3. Submit"],
+              ].map(([status, label]) => {
+                const activeStep =
+                  (status === "draft_extracted" && ["draft_extracted", "uploading"].includes(receiptScanStatus)) ||
+                  (status === "ready_for_review" && ["reading_receipt", "matching_products", "ready_for_review"].includes(receiptScanStatus)) ||
+                  (status === "submitted" && receiptScanStatus === "submitted");
+                const completeStep = receiptScanStatus === "submitted" && status !== "submitted";
+                return <span key={status} className={activeStep ? "active" : completeStep ? "complete" : ""}>{label}</span>;
+              })}
             </div>
 
             <div className="receipt-scan-layout">
               <div className="receipt-upload-panel">
+                <div className="small-empty-state ai-helper-note">
+                  <strong>AI Receipt Helper</strong>
+                  <span>{AI_UPLOAD_WARNING} {AI_REVIEW_DISCLAIMER}</span>
+                </div>
                 <div className="quick-actions">
                   <label className="secondary-button file-action-label">
                     Take Photo
-                    <input type="file" accept="image/*" capture="environment" onChange={handleReceiptScanFile} />
+                    <input type="file" accept="image/*" capture="environment" onChange={(event) => handleReceiptScanFile(event, "camera")} />
                   </label>
                   <label className="secondary-button file-action-label">
                     Upload Image
-                    <input type="file" accept="image/*" onChange={handleReceiptScanFile} />
+                    <input type="file" accept="image/*" onChange={(event) => handleReceiptScanFile(event, "upload")} />
                   </label>
                   <label className="secondary-button file-action-label">
                     Upload PDF
-                    <input type="file" accept="application/pdf" onChange={handleReceiptScanFile} />
+                    <input type="file" accept="application/pdf" onChange={(event) => handleReceiptScanFile(event, "upload")} />
                   </label>
                 </div>
                 {receiptScanForm.filePreviewUrl ? (
@@ -21352,12 +24934,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <Field label="Tax / fees">
                     <input type="number" step="0.01" value={receiptScanForm.tax} onChange={(event) => setReceiptScanForm((current) => ({ ...current, tax: event.target.value }))} />
                   </Field>
+                  <Field label="Discounts">
+                    <input type="number" step="0.01" value={receiptScanForm.discounts} onChange={(event) => setReceiptScanForm((current) => ({ ...current, discounts: event.target.value }))} />
+                  </Field>
                   <Field label="Receipt total">
                     <input type="number" step="0.01" value={receiptScanForm.total} onChange={(event) => setReceiptScanForm((current) => ({ ...current, total: event.target.value }))} />
                   </Field>
+                  <Field label="Payment method">
+                    <input value={receiptScanForm.paymentMethod} onChange={(event) => setReceiptScanForm((current) => ({ ...current, paymentMethod: event.target.value }))} placeholder="Cash, card, Venmo..." />
+                  </Field>
                 </div>
                 <div className="quick-actions">
-                  <button type="button" onClick={buildReceiptReviewDraft}>Review Receipt</button>
+                  <button type="button" aria-label="Review Receipt" onClick={buildReceiptReviewDraft} disabled={receiptScanStatus === "matching_products" || receiptScanStatus === "reading_receipt"}>
+                    {receiptScanStatus === "matching_products" || receiptScanStatus === "reading_receipt" ? "Finding matches..." : "Extract receipt lines"}
+                  </button>
+                  {receiptScanDraft ? <button type="button" className="secondary-button" onClick={() => receiptScanDraft.items.slice(0, 3).forEach((item) => void searchReceiptItemCatalogMatch(item.id))}>Suggest matches</button> : null}
                   {receiptScanDraft ? <button type="button" className="secondary-button" onClick={bulkVerifyHighConfidenceReceiptItems}>Verify Items</button> : null}
                   {QA_UNLOCK_PAID_FEATURES ? <button type="button" className="ghost-button" onClick={prefillQaReceiptScanDraft}>Fill QA Receipt Draft</button> : null}
                 </div>
@@ -21374,6 +24965,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                   <span className={`status-badge ${receiptScanDraft.status === "duplicate_possible" ? "danger" : ""}`}>{receiptScanDraft.status}</span>
                 </div>
+                <div className="small-empty-state ai-helper-note">
+                  <strong>AI found these possible receipt items. Please review before saving.</strong>
+                  <span>{receiptScanDraft.aiSummary || AI_REVIEW_DISCLAIMER}</span>
+                </div>
 
                 <div className="form-grid">
                   <Field label="Verified store">
@@ -21388,6 +24983,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <Field label="Verified tax">
                     <input type="number" step="0.01" value={receiptScanDraft.tax} onChange={(event) => updateReceiptDraft("tax", event.target.value)} />
                   </Field>
+                  <Field label="Discounts">
+                    <input type="number" step="0.01" value={receiptScanDraft.discounts || 0} onChange={(event) => updateReceiptDraft("discounts", event.target.value)} />
+                  </Field>
+                  <Field label="Payment method">
+                    <input value={receiptScanDraft.paymentMethod || ""} onChange={(event) => updateReceiptDraft("paymentMethod", event.target.value)} />
+                  </Field>
                 </div>
 
                 {receiptReviewWarnings(receiptScanDraft).length ? (
@@ -21397,8 +24998,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 ) : (
                   <p className="compact-subtitle">All required receipt checks are clear.</p>
                 )}
+                {adminEditModeActive ? (
+                  <details className="catalog-source-details">
+                    <summary>Receipt debug/source info</summary>
+                    <div className="catalog-detail-grid">
+                      <DetailItem label="Source" value={receiptScanDraft.source || "manual"} />
+                      <DetailItem label="Status" value={receiptScanDraft.status} />
+                      <DetailItem label="Receipt hash" value={receiptScanDraft.receiptHash} />
+                      <DetailItem label="Image URL" value={receiptScanDraft.receiptImageUrl} />
+                    </div>
+                  </details>
+                ) : null}
 
                 <div className="receipt-draft-list">
+                  <div className="quick-actions">
+                    <button type="button" className="secondary-button" onClick={mergeReceiptDuplicateLines}>Merge duplicate lines</button>
+                  </div>
                   {receiptScanDraft.items.map((item, index) => (
                     <article className={`receipt-draft-card ${item.verified ? "verified" : ""}`} key={item.id}>
                       <div className="compact-card-header">
@@ -21410,6 +25025,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       </div>
                       <div className="catalog-detail-grid">
                         <DetailItem label="Suggested match" value={item.suggestedMatchName || "Needs Review"} />
+                        <DetailItem label="Destination" value={RECEIPT_DESTINATION_LABELS[normalizeReceiptDestination(item.destination)] || "Expense only"} />
                         <DetailItem label="Quantity" value={item.quantity || 1} />
                         <DetailItem label="Unit cost" value={money(item.unitCost || 0)} />
                         <DetailItem label="Line total" value={money(item.totalCost || 0)} />
@@ -21434,6 +25050,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           />
                         </Field>
                       )}
+                      <div className="quick-actions">
+                        <button type="button" className="secondary-button" onClick={() => searchReceiptItemCatalogMatch(item.id)}>Suggest matches</button>
+                        <button type="button" className="secondary-button" onClick={() => addReceiptCustomItem(item.id)}>Add custom item</button>
+                      </div>
                       <div className="form-grid">
                         <Field label="Quantity">
                           <input type="number" min="1" step="1" value={item.quantity} onChange={(event) => updateReceiptDraftItem(item.id, "quantity", event.target.value)} />
@@ -21445,7 +25065,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           <input type="number" min="0" step="0.01" value={item.totalCost} onChange={(event) => updateReceiptDraftItem(item.id, "totalCost", event.target.value)} />
                         </Field>
                         <Field label="Destination">
-                          <select value={item.destination} onChange={(event) => updateReceiptDraftItem(item.id, "destination", event.target.value)}>
+                          <select value={normalizeReceiptDestination(item.destination)} onChange={(event) => updateReceiptDraftItem(item.id, "destination", event.target.value)}>
                             {RECEIPT_REVIEW_DESTINATIONS.map((destination) => <option key={destination.value} value={destination.value}>{destination.label}</option>)}
                           </select>
                         </Field>
@@ -21471,8 +25091,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "vault")}>Add to Vault</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "forge")}>Add to Forge</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "expense_only")}>Expense Only</button>
-                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "ignore")}>Ignore Item</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "wishlist")}>Wishlist</button>
+                        <button type="button" className="secondary-button" onClick={() => splitReceiptDraftItem(item.id)}>Split line</button>
+                        <button type="button" className="danger-button" onClick={() => removeReceiptDraftItem(item.id)}>Remove line</button>
                         <button type="button" className="ghost-button" onClick={() => {
                           const suggestion = submitSuggestion({
                             suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
@@ -21511,6 +25132,49 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               </div>
             ) : null}
+          </section>
+        </div>
+      ) : null}
+
+      {aiAssistReview ? (
+        <div className="location-modal-backdrop ai-assist-review-backdrop" role="presentation" onClick={() => setAiAssistReview(null)}>
+          <section className="location-modal ai-assist-review-modal" role="dialog" aria-modal="true" aria-labelledby="ai-assist-review-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <p className="section-kicker">AI Assist</p>
+                <h2 id="ai-assist-review-title">{aiAssistReview.title || "Review suggestion"}</h2>
+                <p>{AI_REVIEW_DISCLAIMER}</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close AI Assist review" onClick={() => setAiAssistReview(null)}>
+                X
+              </button>
+            </div>
+            <div className="ai-assist-review-body">
+              <div className="catalog-detail-grid">
+                <DetailItem label="Area" value={String(aiAssistReview.featureArea || "").replace(/_/g, " ")} />
+                <DetailItem label="Confidence" value={aiAssistReview.confidenceScore == null ? "Not scored" : `${Math.round(aiAssistReview.confidenceScore)}%`} />
+                <DetailItem label="Status" value={aiAssistReview.status || "suggested"} />
+              </div>
+              {aiAssistReview.inputSummary ? (
+                <div className="small-empty-state">
+                  <strong>Input summary</strong>
+                  <span>{aiAssistReview.inputSummary}</span>
+                </div>
+              ) : null}
+              <Field label="Editable suggestion">
+                <textarea
+                  rows={7}
+                  value={aiAssistReview.editableOutput || ""}
+                  onChange={(event) => setAiAssistReview((current) => current ? { ...current, editableOutput: event.target.value } : current)}
+                />
+              </Field>
+              <p className="compact-subtitle">Accepting this only marks the suggestion reviewed. Final app data still requires the normal Save, Submit, or Admin approval action.</p>
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" onClick={() => void resolveAiAssistReview("accepted")}>Mark reviewed</button>
+              <button type="button" className="secondary-button" onClick={() => void resolveAiAssistReview("rejected")}>Dismiss suggestion</button>
+              <button type="button" className="ghost-button" onClick={() => setAiAssistReview(null)}>Close</button>
+            </div>
           </section>
         </div>
       ) : null}
@@ -21584,6 +25248,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {!activeTabLocked && activeTab === "tidepool" && renderTidepoolCommunity()}
         {!activeTabLocked && activeTab === "mySuggestions" && renderMySuggestionsPage()}
         {!activeTabLocked && activeTab === "adminReview" && adminToolsVisible && renderAdminReviewPage()}
+        {!activeTabLocked && activeTab === "kidsProgram" && renderKidsProgramPage()}
+        {!activeTabLocked && activeTab === "sponsor" && renderSponsorInterestPage()}
+        {!activeTabLocked && activeTab === "trust" && renderTrustPages()}
+        {!activeTabLocked && activeTab === "links" && renderLinksPage()}
+        {!activeTabLocked && activeTab === "whatsNew" && renderWhatsNewPage()}
+        {!activeTabLocked && activeTab === "knownLimitations" && renderKnownLimitationsPage()}
+        {!activeTabLocked && activeTab === "membership" && renderMembershipFoundation()}
+        {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dashboard" && (
           <div className="dashboard-layout home-clean-layout">
             <PageHeader
@@ -21627,6 +25299,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
               )}
             />
+
+            {renderOnboardingPanel()}
 
             <section className="panel today-tide-command" aria-label="Today's Tide command center">
               <div className="today-tide-hero">
@@ -22142,7 +25816,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section className="panel dashboard-section" style={dashboardSectionStyle("settings")}>
               <h2>Beta Settings</h2>
               <p>
-                Ember & Tide TCG is running in private beta mode. Your beta data is stored in this browser.
+                Ember & Tide is running in private beta mode. Your beta data is stored in this browser.
               </p>
               <div className="quick-actions">
                 <button type="button" className="secondary-button" onClick={resetBetaLocalData}>
@@ -22225,16 +25899,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section className="panel dashboard-section" style={dashboardSectionStyle("settings")}>
               <h2>Settings / About</h2>
               <p>
-                Ember & Tide TCG helps collectors stay organized, helps parents avoid overpaying, and helps keep Pokemon fun, fair, and accessible for kids.
+                Ember & Tide helps collectors stay organized, helps parents avoid overpaying, and helps keep Pokemon fun, fair, and accessible for kids.
               </p>
               <div className="cards">
                 <div className="card">
                   <p>App Name</p>
-                  <h2>E&T TCG</h2>
+                  <h2>Ember & Tide</h2>
                 </div>
                 <div className="card">
                   <p>Full Brand</p>
-                  <h2>Ember & Tide TCG</h2>
+                  <h2>Ember & Tide</h2>
                 </div>
                 <div className="card">
                   <p>Beta Storage</p>
@@ -22575,7 +26249,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <h2>Daily Scout Report</h2>
                 {homeScoutPreview.length === 0 ? (
                   <div className="home-callout">
-                    <p>Scout is ready for Hampton Roads / 757 store checks, Scout Tips, and local availability notes.</p>
+                    <p>Scout is ready for statewide Virginia store checks, Scout Tips, and local availability notes.</p>
                     <button type="button" onClick={() => setActiveTab("scout")}>Open Scout</button>
                   </div>
                 ) : (
@@ -23061,6 +26735,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               />
                 </section>
               </>
+            ) : activeScoutPage === "guesses" ? (
+              renderScoutGuessesPanel()
             ) : activeScoutPage === "predictions" ? (
               renderScoutPredictionsPanel()
             ) : activeScoutPage === "myReports" ? (
@@ -24836,6 +28512,11 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <div><span>Net Profit</span><strong>{money(saleProfitPreview)}</strong></div>
                 </div>
               </div>
+              <div className="ai-helper-note">
+                <span>Mileage, sales, and tax-related estimates are for tracking only and are not tax advice.</span>
+                <button type="button" className="secondary-button" onClick={() => void runSaleProfitAiAssist(saleForm)}>Explain this profit</button>
+                <button type="button" className="secondary-button" onClick={() => void runSaleProfitAiAssist(saleForm)}>Find missing sale details</button>
+              </div>
               <div className="forge-form-footer">
                 <button type="submit">{editingSaleId ? "Save Sale" : "Add Sale"}</button>
                 {editingSaleId && <button type="button" className="secondary-button" onClick={() => { setEditingSaleId(null); setSaleForm({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCharged: "", shippingCost: "", platformFees: "", notes: "" }); }}>Cancel Edit</button>}
@@ -25306,6 +28987,18 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 	                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Price Confidence" value={selectedCatalogDetailMarketInfo?.confidenceLevel} /> : null}
                       <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.updatedAt} />
                     </div>
+                    {shouldShowCatalogRepairLabels() ? (
+                      <div className="admin-inline-panel">
+                        <strong>Admin catalog controls</strong>
+                        <span>Universal catalog edits affect search, scanner, and smart matches.</span>
+                        <div className="quick-actions">
+                          <button type="button" className="secondary-button" onClick={() => startEditingCatalogProduct(selectedCatalogDetailProduct)}>Edit Fields</button>
+                          <button type="button" className="secondary-button" onClick={() => markCatalogItemVerified(selectedCatalogDetailProduct)}>Mark Verified</button>
+                          <button type="button" className="secondary-button" onClick={() => flagCatalogItemBadData(selectedCatalogDetailProduct)}>Flag Bad Data</button>
+                          <button type="button" className="secondary-button" onClick={() => markCatalogItemDuplicate(selectedCatalogDetailProduct)}>Mark Duplicate</button>
+                        </div>
+                      </div>
+                    ) : null}
                     {selectedCatalogDetailVariants.length && selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? (
                       <div className="catalog-version-picker">
                         <span>Version / Finish</span>

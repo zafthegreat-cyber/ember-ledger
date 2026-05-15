@@ -57,6 +57,7 @@ function buildPgConfig() {
 const relationChecks = [
   ["workspaces table", "public.workspaces"],
   ["workspace memberships table", "public.workspace_memberships"],
+  ["workspace members table", "public.workspace_members"],
   ["profiles table", "public.profiles"],
   ["inventory items table", "public.inventory_items"],
   ["Vault inventory table", "public.user_inventory"],
@@ -99,11 +100,17 @@ const indexChecks = [
   "marketplace_listing_channels_workspace_status_idx",
   "receipt_records_user_created_idx",
   "kid_community_projects_workspace_status_idx",
+  "workspace_members_workspace_idx",
+  "workspace_members_user_idx",
+  "workspace_members_workspace_role_idx",
+  "inventory_items_workspace_status_idx",
+  "inventory_items_owner_visibility_idx",
 ];
 
 const rlsChecks = [
   "workspaces",
   "workspace_memberships",
+  "workspace_members",
   "profiles",
   "inventory_items",
   "user_inventory",
@@ -160,6 +167,10 @@ const policyChecks = [
   ["universal_data_suggestions", "Users create universal data suggestions"],
   ["universal_data_suggestions", "Users read own universal data suggestions"],
   ["universal_data_suggestions", "Admins manage universal data suggestions"],
+  ["workspace_members", "workspace_members_read_members"],
+  ["workspace_members", "workspace_managers_insert_members"],
+  ["workspace_members", "workspace_managers_update_members"],
+  ["workspace_members", "workspace_managers_delete_members"],
   ...suggestionTables.flatMap((tableName) => [
     [tableName, `suggestions_insert_own_${tableName}`],
     [tableName, `suggestions_read_own_or_admin_${tableName}`],
@@ -212,12 +223,12 @@ const functionDefinitionChecks = [
   {
     name: "can_read_workspace allows viewer reads",
     signature: "public.can_read_workspace(uuid)",
-    includes: ["'viewer'", "'editor'", "'admin'", "'owner'"],
+    includes: ["'viewer'", "'contributor'", "'admin'", "'owner'"],
   },
   {
-    name: "can_edit_workspace allows owner/admin/editor only",
+    name: "can_edit_workspace allows owner/admin/contributor only",
     signature: "public.can_edit_workspace(uuid)",
-    includes: ["'editor'", "'admin'", "'owner'"],
+    includes: ["'contributor'", "'admin'", "'owner'"],
     excludes: ["'viewer'"],
   },
 ];
@@ -228,25 +239,29 @@ const policyExpressionChecks = [
       tableName,
       policyName: `workspace_read_strict_${tableName}`,
       columnName: "qual",
-      includes: ["can_read_workspace(workspace_id)", "is_admin_or_moderator"],
+      includes: ["can_read_workspace(workspace_id)"],
+      excludes: ["is_admin_or_moderator"],
     },
     {
       tableName,
       policyName: `workspace_insert_strict_${tableName}`,
       columnName: "with_check",
-      includes: ["workspace_id is null", "can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
+      includes: ["workspace_id is null", "can_edit_workspace(workspace_id)"],
+      excludes: ["is_admin_or_moderator"],
     },
     {
       tableName,
       policyName: `workspace_update_strict_${tableName}`,
       columnName: "with_check",
-      includes: ["workspace_id is null", "not (exists", "can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
+      includes: ["workspace_id is null", "not (exists", "can_edit_workspace(workspace_id)"],
+      excludes: ["is_admin_or_moderator"],
     },
     {
       tableName,
       policyName: `workspace_delete_strict_${tableName}`,
       columnName: "qual",
-      includes: ["workspace_id is null", "not (exists", "can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
+      includes: ["workspace_id is null", "not (exists", "can_manage_workspace(workspace_id)"],
+      excludes: ["can_edit_workspace(workspace_id)", "is_admin_or_moderator"],
     },
   ]),
   ...suggestionTables.flatMap((tableName) => [

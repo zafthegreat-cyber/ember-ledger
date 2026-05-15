@@ -48,6 +48,7 @@ export function createEmptyPhase2Data() {
     receiptLineItems: [],
     kidCommunityProjects: [],
     kidCommunityProjectItems: [],
+    aiAssistEvents: [],
     userTrustProfile: null,
     updatedAt: "",
   };
@@ -197,15 +198,25 @@ function mapDealItem(row = {}) {
 }
 
 function mapReceipt(row = {}) {
+  const purchasedAt = row.purchased_at || (row.purchase_date ? `${row.purchase_date}T12:00:00.000Z` : "");
+  const total = Number(row.receipt_total ?? row.total ?? 0);
   return {
     id: row.id,
-    merchant: row.merchant || "",
-    purchasedAt: row.purchased_at || "",
-    total: Number(row.total || 0),
+    merchant: row.store_name || row.merchant || "",
+    storeName: row.store_name || row.merchant || "",
+    purchasedAt,
+    purchaseDate: row.purchase_date || String(purchasedAt || "").slice(0, 10),
+    total,
+    receiptTotal: total,
+    subtotal: Number(row.subtotal || 0),
     tax: Number(row.tax || 0),
+    discounts: Number(row.discounts || 0),
     paymentMethod: row.payment_method || "",
     category: row.category || "",
-    imageUrl: row.image_url || "",
+    imageUrl: row.receipt_image_url || row.image_url || "",
+    receiptImageUrl: row.receipt_image_url || row.image_url || "",
+    status: row.status || "draft",
+    source: row.source || "manual",
     splitMode: row.split_mode || "expense_only",
     businessTotal: Number(row.business_total || 0),
     personalTotal: Number(row.personal_total || 0),
@@ -217,17 +228,29 @@ function mapReceipt(row = {}) {
 }
 
 function mapReceiptLine(row = {}) {
+  const unitCost = Number(row.unit_cost ?? row.unit_price ?? 0);
+  const totalCost = Number(row.total_cost ?? row.line_total ?? 0);
   return {
     id: row.id,
     receiptId: row.receipt_id,
-    catalogItemId: row.catalog_item_id,
-    productName: row.product_name || "",
+    rawText: row.raw_text || "",
+    catalogItemId: row.matched_catalog_item_id || row.catalog_item_id,
+    matchedCatalogItemId: row.matched_catalog_item_id || row.catalog_item_id,
+    productName: row.item_name || row.product_name || "",
+    itemName: row.item_name || row.product_name || "",
     quantity: Number(row.quantity || 1),
-    unitPrice: Number(row.unit_price || 0),
-    lineTotal: Number(row.line_total || 0),
+    unitPrice: unitCost,
+    unitCost,
+    lineTotal: totalCost,
+    totalCost,
     destination: normalizeReceiptDestination(row.destination),
+    confidenceScore: Number(row.confidence_score || 0),
     matchedConfidence: row.matched_confidence || "needs_review",
+    verified: Boolean(row.verified),
+    createdInventoryItemId: row.created_inventory_item_id || "",
+    notes: row.notes || "",
     createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -302,6 +325,23 @@ function mapMarketplaceChannel(row = {}) {
   };
 }
 
+function mapAiAssistEvent(row = {}) {
+  return {
+    id: row.id,
+    userId: row.user_id || "",
+    workspaceId: row.workspace_id || "",
+    featureArea: row.feature_area || "",
+    inputSummary: row.input_summary || "",
+    outputSummary: row.output_summary || "",
+    confidenceScore: row.confidence_score == null ? null : Number(row.confidence_score),
+    status: row.status || "suggested",
+    accepted: row.accepted,
+    relatedEntityType: row.related_entity_type || "",
+    relatedEntityId: row.related_entity_id || "",
+    createdAt: row.created_at,
+  };
+}
+
 async function selectMaybe(builder) {
   const { data, error } = await builder;
   if (error) throw error;
@@ -348,6 +388,7 @@ export async function loadPhase2Data(ctx = {}) {
       marketplaceChannels,
       receipts,
       kidProjects,
+      aiAssistEvents,
       trustProfile,
     ] = await Promise.all([
       selectMaybe(preferencesQuery.limit(1)),
@@ -357,6 +398,7 @@ export async function loadPhase2Data(ctx = {}) {
       selectMaybe(workspaceFilter(ctx.supabase.from("marketplace_listing_channels").select("*").eq("user_id", uid)).order("created_at", { ascending: false }).limit(50)),
       selectMaybe(workspaceFilter(ctx.supabase.from("receipt_records").select("*").eq("user_id", uid)).order("created_at", { ascending: false }).limit(25)),
       selectMaybe(workspaceFilter(ctx.supabase.from("kid_community_projects").select("*").eq("user_id", uid)).order("created_at", { ascending: false }).limit(25)),
+      selectMaybe(workspaceFilter(ctx.supabase.from("ai_assist_events").select("*").eq("user_id", uid)).order("created_at", { ascending: false }).limit(50)),
       selectMaybe(ctx.supabase.from("user_trust_profiles").select("*").eq("user_id", uid).limit(1)),
     ]);
 
@@ -396,6 +438,7 @@ export async function loadPhase2Data(ctx = {}) {
         receiptLineItems: receiptLines.map(mapReceiptLine),
         kidCommunityProjects: kidProjects.map(mapKidProject),
         kidCommunityProjectItems: kidItems.map(mapKidProjectItem),
+        aiAssistEvents: aiAssistEvents.map(mapAiAssistEvent),
         userTrustProfile: trustProfile[0] || null,
         updatedAt: new Date().toISOString(),
       },
@@ -685,12 +728,20 @@ export async function saveReceiptRecord(ctx = {}, receipt = {}) {
     user_id: userId(ctx),
     workspace_id: workspaceId(ctx),
     merchant: receipt.merchant || "",
+    store_name: receipt.storeName || receipt.merchant || "",
     purchased_at: receipt.purchasedAt || null,
+    purchase_date: receipt.purchaseDate || (receipt.purchasedAt ? String(receipt.purchasedAt).slice(0, 10) : null),
     total: Number(receipt.total || 0),
+    receipt_total: Number(receipt.receiptTotal ?? receipt.total ?? 0),
+    subtotal: Number(receipt.subtotal || 0),
     tax: Number(receipt.tax || 0),
+    discounts: Number(receipt.discounts || 0),
     payment_method: receipt.paymentMethod || "",
     category: receipt.category || "",
     image_url: receipt.imageUrl || "",
+    receipt_image_url: receipt.receiptImageUrl || receipt.imageUrl || "",
+    status: receipt.status || "submitted",
+    source: receipt.source || "manual",
     split_mode: receipt.splitMode || "expense_only",
     business_total: Number(receipt.businessTotal ?? 0),
     personal_total: Number(receipt.personalTotal ?? 0),
@@ -706,14 +757,25 @@ export async function saveReceiptRecord(ctx = {}, receipt = {}) {
     let receiptLines = [];
     if (receipt.lines?.length) {
       const lineRows = receipt.lines.map((line) => ({
+        ...(isUuid(line.id) ? { id: line.id } : {}),
         receipt_id: data.id,
         catalog_item_id: uuidOrNull(line.catalogItemId),
+        matched_catalog_item_id: uuidOrNull(line.matchedCatalogItemId || line.catalogItemId),
+        raw_text: line.rawText || "",
         product_name: line.productName || "",
+        item_name: line.itemName || line.productName || "",
         quantity: Number(line.quantity || 1),
         unit_price: Number(line.unitPrice || 0),
+        unit_cost: Number(line.unitCost ?? line.unitPrice ?? 0),
         line_total: Number(line.lineTotal || 0),
+        total_cost: Number(line.totalCost ?? line.lineTotal ?? 0),
         destination: normalizeReceiptDestination(line.destination),
+        confidence_score: Number(line.confidenceScore || 0),
         matched_confidence: line.matchedConfidence || "needs_review",
+        verified: Boolean(line.verified),
+        created_inventory_item_id: uuidOrNull(line.createdInventoryItemId),
+        notes: line.notes || "",
+        updated_at: now,
       }));
       const { data: lineData, error: lineError } = await ctx.supabase.from("receipt_line_items").insert(lineRows).select();
       if (lineError) throw lineError;
@@ -792,5 +854,48 @@ export async function saveKidCommunityProject(ctx = {}, project = {}) {
     return { source: "supabase", data };
   } catch (error) {
     return { source: "local", data: local.kidCommunityProjects[0], error };
+  }
+}
+
+export async function saveAiAssistEvent(ctx = {}, event = {}) {
+  const now = new Date().toISOString();
+  const eventId = event.id || `ai-assist-${Math.random().toString(36).slice(2, 8)}`;
+  const localEvent = {
+    ...event,
+    id: eventId,
+    createdAt: event.createdAt || now,
+    status: event.status || "suggested",
+  };
+  const local = saveLocalPhase2Data((current) => ({
+    ...current,
+    aiAssistEvents: upsertLocal(current.aiAssistEvents, localEvent),
+  }));
+  if (!canUseSupabase(ctx)) return { source: "local", data: localEvent };
+
+  const row = {
+    user_id: userId(ctx),
+    workspace_id: workspaceId(ctx),
+    feature_area: event.featureArea || event.feature_area || "catalog_match",
+    input_summary: event.inputSummary || event.input_summary || "",
+    output_summary: event.outputSummary || event.output_summary || "",
+    confidence_score: event.confidenceScore == null ? null : Number(event.confidenceScore),
+    status: event.status || "suggested",
+    accepted: event.accepted == null ? null : Boolean(event.accepted),
+    related_entity_type: event.relatedEntityType || event.related_entity_type || "",
+    related_entity_id: uuidOrNull(event.relatedEntityId || event.related_entity_id),
+  };
+  if (isUuid(event.id)) row.id = event.id;
+
+  try {
+    const { data, error } = await ctx.supabase.from("ai_assist_events").insert(row).select().single();
+    if (error) throw error;
+    const mapped = mapAiAssistEvent(data);
+    saveLocalPhase2Data((current) => ({
+      ...current,
+      aiAssistEvents: upsertLocal((current.aiAssistEvents || []).filter((entry) => entry.id !== event.id), mapped),
+    }));
+    return { source: "supabase", data: mapped };
+  } catch (error) {
+    return { source: "local", data: local.aiAssistEvents[0], error };
   }
 }

@@ -1,6 +1,6 @@
-# Ember & Tide TCG Product Vision
+# Ember & Tide Product Vision
 
-Ember & Tide TCG helps users know what they have, what it is worth, where to find more, what to buy, what to sell, what to grade, and what to share, all in one place.
+Ember & Tide helps users know what they have, what it is worth, where to find more, what to buy, what to sell, what to grade, and what to share, all in one place.
 
 The product combines the best parts of collection trackers, marketplaces, restock Discords, Facebook groups, TCGplayer-style pricing, grading tools, spreadsheets, and business inventory apps, but makes them cleaner, smarter, safer, and easier.
 

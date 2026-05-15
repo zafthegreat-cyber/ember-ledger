@@ -1,1 +1,1 @@
-name,nickname,chain,storeGroup,address,city,state,zip,phone,latitude,longitude,region,county,source,sourceUrl,carriesPokemonLikely,pokemonConfidence,notes
+retailer,store_name,nickname,address,city,state,zip_code,region,phone,store_number,retailer_store_id,latitude,longitude,source,source_url,notes,country,active,pokemon_stock_likelihood,last_verified_at,verified_by,confidence
