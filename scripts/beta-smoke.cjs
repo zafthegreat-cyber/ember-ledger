@@ -51,7 +51,8 @@ async function main() {
 
   async function nav(label) {
     await closeOpenModals();
-    const tab = page.locator(".main-tabs button").filter({ hasText: new RegExp(`^${label}$`) });
+    const normalizedLabel = label === "Home" ? "Hearth" : label === "TideTradr" ? "Market" : label;
+    const tab = page.locator(".main-tabs button").filter({ hasText: new RegExp(`^${normalizedLabel}$`) });
     if (await tab.count()) {
       await tab.click();
       return;
@@ -221,12 +222,16 @@ async function main() {
 
   await step("app opens and beta data resets", async () => {
     await resetBetaData();
+    const announcementDismiss = page.getByRole("button", { name: /Got It|Open Hearth/i }).first();
+    if (await announcementDismiss.isVisible().catch(() => false)) {
+      await announcementDismiss.click();
+    }
     await assertVisibleText("E&T TCG");
-    await assertVisibleText("Home");
+    await assertVisibleText("Hearth");
     await assertVisibleText("Forge");
     await assertVisibleText("Scout");
     await assertVisibleText("Vault");
-    await assertVisibleText("TideTradr");
+    await assertVisibleText("Market");
   });
 
   await step("Admin modes: regular preview and edit toggle stay gated", async () => {

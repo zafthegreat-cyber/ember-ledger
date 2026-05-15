@@ -196,9 +196,10 @@ function AppNavIcon({ kind, className = "" }) {
     case "home":
       return (
         <svg {...common}>
-          <path d="M3 12c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
-          <path d="M3 16c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
-          <path d="M3 8c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
+          <path d="M4 11.5 12 4l8 7.5" />
+          <path d="M6.5 10.5V20h11v-9.5" />
+          <path d="M9.5 20v-4.2a2.5 2.5 0 0 1 5 0V20" />
+          <path d="M12 13.5c1.2-1.4 1.2-2.6.1-4 .2 1.9-2.1 2.6-2.1 4.4a2 2 0 0 0 4 0c0-.8-.4-1.3-1-1.8" />
         </svg>
       );
     case "vault":
@@ -519,6 +520,7 @@ const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
 const FEEDBACK_STORAGE_KEY = "et-tcg-beta-feedback";
 const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
+const STARTUP_ANNOUNCEMENT_STORAGE_KEY = "et-tcg-startup-announcement-dismissed";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
@@ -532,13 +534,17 @@ const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const DEFAULT_PERSONAL_WORKSPACE_ID = "workspace-personal-local-beta";
 const DAILY_TIDE_ACTIONS = [
-  "checkin",
-  "store",
+  "scout",
+  "vault",
   "market",
-  "wishlist",
-  "inventory",
-  "community",
+  "forge",
 ];
+const STARTUP_ANNOUNCEMENT = {
+  id: "gradient-future-beta-2026-05",
+  active: true,
+  title: "New from Ember & Tide!",
+  body: "Beta access is opening soon. Help us build the best trading card community for collectors of all ages.",
+};
 const DAILY_TIDE_BADGES = [
   { key: "first_scan", label: "First Scan" },
   { key: "first_sale", label: "First Sale" },
@@ -3121,14 +3127,22 @@ export default function App() {
   const flowModalRef = useRef(null);
   const flowModalOpenerRef = useRef(null);
   const flowModalBaselineRef = useRef({});
+  const startupAnnouncementAllowed = Boolean(
+    STARTUP_ANNOUNCEMENT.active &&
+    initialRouteState.activeTab === "dashboard" &&
+    (typeof window === "undefined" || window.location.pathname === "/" || window.location.pathname === "")
+  );
+  const [startupAnnouncementOpen, setStartupAnnouncementOpen] = useState(() => {
+    if (!startupAnnouncementAllowed || typeof localStorage === "undefined") return false;
+    return localStorage.getItem(STARTUP_ANNOUNCEMENT_STORAGE_KEY) !== STARTUP_ANNOUNCEMENT.id;
+  });
 
   const mainTabs = [
-    { key: "home", label: "Home", icon: "home", target: "dashboard" },
-    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
-    { key: "tideTradr", label: "TideTradr", icon: "market", mobileLabel: "Market", target: "market" },
+    { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     { key: "scout", label: "Scout", icon: "scout", target: "scout" },
-    { key: "tidepool", label: "Tidepool", icon: "pool", mobileLabel: "Pool", target: "tidepool" },
+    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
+    { key: "market", label: "Market", icon: "market", target: "market" },
+    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
   ];
 
   const navSections = [
@@ -3139,11 +3153,11 @@ export default function App() {
       ],
     },
     { title: "Main Tabs", items: [
-      { key: "home", label: "Home", target: "dashboard" },
-      { key: "vault", label: "Vault" },
-      { key: "forge", label: "Forge", target: "inventory" },
-      { key: "tideTradr-main", label: "TideTradr", target: "market" },
+      { key: "home", label: "Hearth", target: "dashboard" },
       { key: "scout-main", label: "Scout", target: "scout" },
+      { key: "vault", label: "Vault" },
+      { key: "market-main", label: "Market", target: "market" },
+      { key: "forge", label: "Forge", target: "inventory" },
       { key: "tidepool-main", label: "Tidepool", target: "tidepool" },
     ] },
   ];
@@ -3167,7 +3181,7 @@ export default function App() {
         ? "My Suggestions"
       : activeBetaPageLabels[activeTab]
         ? activeBetaPageLabels[activeTab]
-      : navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Dashboard";
+      : navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Hearth";
   const activeMainTab =
     activeTab === "dashboard"
       ? "home"
@@ -3178,15 +3192,14 @@ export default function App() {
       : activeTab === "vault" || activeTab === "scout"
         ? activeTab
       : activeTab === "market" || activeTab === "catalog"
-          ? "tideTradr"
+          ? "market"
           : "forge";
   const mobileBottomTabs = [
-    { key: "home", label: "Home", icon: "home", target: "dashboard" },
-    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
-    { key: "tideTradr", label: "Market", icon: "market", target: "market" },
+    { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     { key: "scout", label: "Scout", icon: "scout", target: "scout" },
-    { key: "tidepool", label: "Pool", icon: "pool", target: "tidepool" },
+    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
+    { key: "market", label: "Market", icon: "market", target: "market" },
+    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
   ];
   const topbarSectionOptions = [
     ...mainTabs,
@@ -3311,7 +3324,7 @@ export default function App() {
       setScoutView("overview");
       setScoutSubTabTarget({ tab: "overview", id: Date.now() });
     }
-    if (tab.key === "tideTradr") {
+    if (tab.key === "market") {
       setTideTradrSubTab("overview");
       setFeatureSectionsOpen((current) => ({
         ...current,
@@ -3334,6 +3347,7 @@ export default function App() {
       }));
     }
     setQuickAddMenuOpen(false);
+    setStartupAnnouncementOpen(false);
     setSearchExpanded(false);
     setActiveTab(tab.target);
   }
@@ -14565,13 +14579,13 @@ function renderForgeHeader() {
   const bestScoutStore = scoutSnapshot.stores?.[0] || VIRGINIA_STORES_SEED[0] || {};
   const bestMarketMover = recentMarketUpdates[0] || workspaceWatchlist[0] || null;
   const bestWishlistItem = wishlistItems[0] || workspaceWatchlist[0] || null;
-  const suggestedHomeAction = !dailyTideToday.completedActions?.checkin
-    ? { key: "checkin", label: "Start Daily Tide", detail: "Check in and pick one thing to do.", onClick: () => completeDailyAction("checkin", { badge: "market_watcher", points: 5 }) }
-    : needsMarketCheckItems[0]
-      ? { key: "inventory", label: "Update Forge Price", detail: needsMarketCheckItems[0].name || "One item needs a market check.", onClick: () => { completeDailyAction("inventory", { badge: "forge_starter", points: 10 }); setActiveTab("inventory"); } }
-      : bestScoutStore?.name
-        ? { key: "store", label: "Check Best Store", detail: bestScoutStore.name, onClick: () => { completeDailyAction("store", { badge: "restock_reporter", points: 10 }); setActiveTab("scout"); } }
-        : { key: "vault", label: "Add First Vault Item", detail: "Scan or add a card/sealed product.", onClick: () => openQuickAddAction("vaultItem") };
+  const suggestedHomeAction = !dailyTideToday.completedActions?.scout
+    ? { key: "scout", label: "Check nearby reports", detail: bestScoutStore?.name || "Open Scout.", onClick: () => { completeDailyAction("scout", { badge: "restock_reporter", points: 10 }); setActiveTab("scout"); } }
+    : !dailyTideToday.completedActions?.vault
+      ? { key: "vault", label: "Review Vault", detail: "Review your collection.", onClick: () => { completeDailyAction("vault", { badge: "vault_builder", points: 8 }); setActiveTab("vault"); } }
+      : !dailyTideToday.completedActions?.market
+        ? { key: "market", label: "Check fair listings", detail: bestMarketMover?.name || "Open Market.", onClick: () => { completeDailyAction("market", { badge: "market_watcher", points: 8 }); setActiveTab("market"); } }
+        : { key: "forge", label: "Plan or build something", detail: needsMarketCheckItems[0]?.name || "Open Forge.", onClick: () => { completeDailyAction("forge", { badge: "forge_starter", points: 10 }); setActiveTab("inventory"); } };
   const earnedBadges = new Set([
     ...(dailyTideToday.badges || []),
     activeVaultItems.length ? "vault_builder" : "",
@@ -18257,7 +18271,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         className={getHeaderCardClass("panel suggestions-page-header")}
         title="My Suggestions"
         subtitle="Universal store, catalog, SKU, and Scout data suggestions you submitted for admin approval."
-        actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+        actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>}
         tabs={["All", ...SUGGESTION_STATUSES].map((status) => ({ key: status, label: status }))}
         activeTab={mySuggestionFilter}
         onTabChange={setMySuggestionFilter}
@@ -18727,88 +18741,107 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function dismissStartupAnnouncement(nextTab = "dashboard") {
+    try {
+      localStorage.setItem(STARTUP_ANNOUNCEMENT_STORAGE_KEY, STARTUP_ANNOUNCEMENT.id);
+    } catch {
+      // Local-only announcement dismissal should never block app access.
+    }
+    setStartupAnnouncementOpen(false);
+    setActiveTab(nextTab);
+  }
+
+  function renderStartupAnnouncement() {
+    return (
+      <section className="announcement-card startup-announcement-card" aria-label="New from Ember and Tide">
+        <button
+          type="button"
+          className="announcement-close-button"
+          aria-label="Close announcement"
+          onClick={() => dismissStartupAnnouncement("dashboard")}
+        >
+          X
+        </button>
+        <div className="announcement-orbit" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="announcement-copy">
+          <p className="section-kicker">Welcome to the Hearth</p>
+          <h2>{STARTUP_ANNOUNCEMENT.title}</h2>
+          <p>{STARTUP_ANNOUNCEMENT.body}</p>
+          <p className="compact-subtitle">Collect. Connect. Keep it Fair. Built for kids. Trusted by parents.</p>
+        </div>
+        <div className="announcement-actions">
+          <button type="button" onClick={() => dismissStartupAnnouncement("whatsNew")}>View Details</button>
+          <button type="button" className="secondary-button" onClick={() => dismissStartupAnnouncement("dashboard")}>Open Hearth</button>
+          <button type="button" className="ghost-button" onClick={() => dismissStartupAnnouncement("dashboard")}>Got It</button>
+        </div>
+      </section>
+    );
+  }
+
   function renderOnboardingPanel() {
     const completedAt = betaReadinessData.onboarding?.completedAt;
-    const choices = [
-      "Track my personal collection",
-      "Track business inventory",
-      "Watch local restocks",
-      "Join Kids Program updates",
-      "Browse market/pricing tools",
+    const onboardingCards = [
+      { title: "Welcome to Ember & Tide", icon: "home", body: "Collect, connect, and keep it fair. A safer TCG community built for families and collectors." },
+      { title: "Scout", icon: "scout", body: "Find cards, restocks, store reports, and community tips." },
+      { title: "Vault", icon: "vault", body: "Track your cards, sets, variants, duplicates, and collection progress." },
+      { title: "Market", icon: "market", body: "Buy, sell, trade, and compare fair values with trust-focused tools." },
+      { title: "Forge", icon: "forge", body: "Build decks, plan trades, design labels, and organize your collection." },
+      { title: "Kids & Family", icon: "shield", body: "Parent tools, kid protections, and positive collecting rewards." },
+      { title: "Quick Add", icon: "plus", body: "Scan, search, import, or add items fast from anywhere." },
     ];
-    const firstActions = [
-      { label: "Add first Vault item", action: () => setActiveTab("vault") },
-      { label: "Add first Forge item", action: () => setActiveTab("addInventory") },
-      { label: "Add a wishlist item", action: () => openOperatingSystemFeature("wishlist") },
-      { label: "Submit a store report", action: () => openScoutSubmitFlow({ source: "onboarding" }) },
-      { label: "View Scout forecast", action: () => setActiveTab("scout") },
-    ];
+    const currentOnboardingIndex = Math.min(Math.max(Number(onboardingStep || 1), 1), onboardingCards.length) - 1;
+    const currentCard = onboardingCards[currentOnboardingIndex];
     return (
-      <section className="panel beta-onboarding-panel" aria-label="Beta onboarding">
+      <section className="panel beta-onboarding-panel onboarding-card" aria-label="Beta onboarding">
         <div className="compact-card-header">
           <div>
-            <p className="section-kicker">Beta onboarding</p>
-            <h2>Welcome to Ember & Tide</h2>
-            <p>Track your Pokemon collection, business inventory, store reports, and restock predictions in one place.</p>
+            <p className="section-kicker">Gradient Future onboarding</p>
+            <h2>{completedAt ? "Your Ember & Tide tour" : currentCard.title}</h2>
+            <p>{completedAt ? "Restart the tour anytime from the Hearth." : currentCard.body}</p>
           </div>
-          {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">Step {onboardingStep} of 3</span>}
-        </div>
-        <div className="quick-actions">
-          <button type="button" className="secondary-button" onClick={() => void runOnboardingAiAssist()}>What should I do first?</button>
-          <button type="button" className="secondary-button" onClick={runSettingsHelpAiAssist}>Explain the app modes</button>
+          {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">Step {currentOnboardingIndex + 1} of {onboardingCards.length}</span>}
         </div>
         {completedAt ? (
           <div className="beta-foundation-grid">
             {(betaReadinessData.onboarding?.preferences || []).map((choice) => <span className="status-badge" key={choice}>{choice}</span>)}
             <button type="button" className="secondary-button" onClick={restartOnboarding}>Restart onboarding</button>
           </div>
-        ) : onboardingStep === 1 ? (
-          <>
-            <div className="beta-foundation-grid">
-              {Object.entries(BETA_TOOLTIPS).slice(0, 6).map(([label, tooltip]) => (
-                <article className="beta-readiness-card" key={label}>
-                  <span>{label}</span>
-                  <strong>{tooltip}</strong>
-                </article>
-              ))}
-            </div>
-            <div className="quick-actions">
-              <button type="button" onClick={() => setOnboardingStep(2)}>Get started</button>
-              <button type="button" className="secondary-button" onClick={completeOnboarding}>Skip for now</button>
-            </div>
-          </>
-        ) : onboardingStep === 2 ? (
-          <>
-            <div className="beta-choice-grid">
-              {choices.map((choice) => (
-                <button
-                  type="button"
-                  className={onboardingChoices.includes(choice) ? "choice-pill active" : "choice-pill"}
-                  aria-pressed={onboardingChoices.includes(choice)}
-                  key={choice}
-                  onClick={() => setOnboardingChoices((current) => toggleArrayValue(current, choice))}
-                >
-                  {choice}
-                </button>
-              ))}
-            </div>
-            <div className="quick-actions">
-              <button type="button" onClick={() => setOnboardingStep(3)}>Next</button>
-              <button type="button" className="secondary-button" onClick={() => setOnboardingStep(1)}>Back</button>
-            </div>
-          </>
         ) : (
           <>
-            <div className="beta-foundation-grid">
-              {firstActions.map((entry) => (
-                <button type="button" className="beta-action-card" key={entry.label} onClick={entry.action}>
-                  {entry.label}
+            <div className="onboarding-step-card gradient-card">
+              <span className="onboarding-step-icon"><AppNavIcon kind={currentCard.icon} /></span>
+              <strong>{currentCard.title}</strong>
+              <p>{currentCard.body}</p>
+            </div>
+            <div className="pill-tabs onboarding-progress" aria-label="Onboarding progress">
+              {onboardingCards.map((card, index) => (
+                <button
+                  type="button"
+                  key={card.title}
+                  className={index === currentOnboardingIndex ? "active" : ""}
+                  aria-current={index === currentOnboardingIndex ? "step" : undefined}
+                  onClick={() => setOnboardingStep(index + 1)}
+                >
+                  {index + 1}
                 </button>
               ))}
             </div>
             <div className="quick-actions">
-              <button type="button" onClick={completeOnboarding}>Finish onboarding</button>
-              <button type="button" className="secondary-button" onClick={() => setOnboardingStep(2)}>Back</button>
+              {currentOnboardingIndex > 0 ? <button type="button" className="secondary-button" onClick={() => setOnboardingStep(currentOnboardingIndex)}>Back</button> : null}
+              {currentOnboardingIndex < onboardingCards.length - 1 ? (
+                <button type="button" onClick={() => setOnboardingStep(currentOnboardingIndex + 2)}>Next</button>
+              ) : (
+                <>
+                  <button type="button" onClick={() => setAuthMode("signup")}>Create Account</button>
+                  <button type="button" className="secondary-button" onClick={completeOnboarding}>Preview the App</button>
+                  <button type="button" className="ghost-button" onClick={() => { setActiveTab("links"); completeOnboarding(); }}>Request Beta Access</button>
+                </>
+              )}
+              <button type="button" className="ghost-button" onClick={completeOnboarding}>Skip</button>
             </div>
           </>
         )}
@@ -18829,7 +18862,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           className={getHeaderCardClass("panel page-summary-card")}
           title="Kids Program"
           subtitle={KIDS_PROGRAM_COPY}
-          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>}
           summary={(
             <div className="settings-header-summary">
               <span>{KIDS_PROGRAM_ANTI_RESALE_COPY}</span>
@@ -18943,7 +18976,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           actions={(
             <>
               <button type="button" className="secondary-button" onClick={() => void runMarketingAiAssist("sponsor")}>Draft sponsor message</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>
             </>
           )}
         />
@@ -19011,7 +19044,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           actions={(
             <>
               {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runTrustCopyAiAssist("legal")}>Review clarity</button> : null}
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>
             </>
           )}
         />
@@ -19054,7 +19087,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           className={getHeaderCardClass("panel page-summary-card")}
           title="Ember & Tide Links"
           subtitle="Beta, Kids Program, partner interest, feedback, support, and campaign links in one place."
-          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>}
         />
         <section className="panel link-bio-panel">
           <figure className="link-bio-hero">
@@ -19102,7 +19135,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           actions={(
             <>
               {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft changelog</button> : null}
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>
             </>
           )}
         />
@@ -19128,7 +19161,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           className={getHeaderCardClass("panel page-summary-card")}
           title="Known Limitations"
           subtitle="Ember & Tide is in beta. Some features are still being built, tested, or verified. This page lists known limitations so testers know what to expect."
-          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>}
         />
         <section className="panel">
           <div className="beta-foundation-grid">
@@ -19606,7 +19639,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           className={getHeaderCardClass("panel admin-page-header")}
           title="Admin Review"
           subtitle="Admin role is required to approve shared data suggestions. Local beta users can submit suggestions, but cannot publish shared data directly."
-          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>}
         />
       );
     }
@@ -20684,8 +20717,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     if (activeFlowModal?.type === "addActionSheet") {
       return {
-        title: "Add to Ember & Tide",
-        description: "Scan, add, report, or suggest an update. You choose the destination before anything is saved.",
+        title: "Quick Add",
+        description: "Scan, search, import, report stock, or create a listing. You choose the destination before anything is saved.",
         size: "small",
       };
     }
@@ -20793,23 +20826,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderAddActionSheetContent() {
     const actions = [
+      { key: "scan-card", title: "Scan Card", helper: "Match a card or product.", action: "scanProduct" },
       { key: "receipt", title: "Scan Receipt", helper: "Review lines before saving.", action: "receipt" },
-      { key: "scan-product", title: "Scan Card/Product", helper: "Match first, then choose destination.", action: "scanProduct" },
-      { key: "card", title: "Add Card", helper: "Add a raw or graded card.", action: "card" },
-      { key: "sealed", title: "Add Sealed Product", helper: "ETB, box, tin, bundle, or blister.", action: "sealed" },
-      { key: "inventory", title: "Add Inventory", helper: "Review, then send to Forge.", action: "inventory" },
-      { key: "sale", title: "Add Sale", helper: "Record sale and profit.", action: "sale" },
-      { key: "expense", title: "Add Expense", helper: "Track costs and receipts.", action: "expense" },
-      { key: "store-report", title: "Add Store Report", helper: "Log a restock or store check.", action: "storeReport" },
-      { key: "wishlist", title: "Add Wishlist Item", helper: "Track wants and target prices.", action: "wishlist" },
-      { key: "catalog-update", title: "Suggest Catalog Update", helper: "Send an admin-reviewed correction.", action: "suggestCatalogCorrection" },
-      { key: "store-update", title: "Suggest Store Update", helper: "Add or fix a store for review.", action: "storeSuggestion" },
+      { key: "manual", title: "Add Manually", helper: "Choose exact destination.", action: "multiDestination" },
+      { key: "bulk", title: "Bulk Add", helper: "Paste or review many items.", action: "bulkAdd" },
+      { key: "import", title: "Import", helper: "Stage a file for review.", action: "importCollection" },
+      { key: "catalog", title: "Search Catalog", helper: "Find cards, sets, or sealed.", action: "searchVaultCatalog" },
+      { key: "stock", title: "Report Stock", helper: "Help nearby collectors.", action: "storeReport" },
+      { key: "listing", title: "Add Listing", helper: "Draft a fair listing.", action: "listing" },
+      { key: "kids", title: "Add to Kids Program", helper: "Plan positive collecting.", action: "wishlist" },
     ];
     return (
-      <div className="add-action-sheet">
-        <div className="add-action-grid">
+      <div className="add-action-sheet quick-add-sheet">
+        <div className="add-action-grid quick-action-grid">
           {actions.map((entry) => (
             <button key={entry.key} type="button" className="add-action-card" onClick={() => runAddSheetAction(entry.action)}>
+              <span className="quick-add-tile-icon" aria-hidden="true">+</span>
               <span>{entry.title}</span>
               <small>{entry.helper}</small>
             </button>
@@ -22651,7 +22683,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 >
   Ember & Tide
 </h1>
-          <p>Log in to sync Ember & Tide across your collection, market checks, restocks, and The Forge.</p>
+          <p>Collect. Connect. Keep it Fair. Built for kids. Trusted by parents.</p>
         </header>
         <main className="main auth-main">
           {signedOutPublicContent || (
@@ -22659,11 +22691,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="landing-hero">
               <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
               <p className="section-kicker">Private beta</p>
-              <h2>Track. Trade. Thrive.</h2>
-              <p>Built for collectors. Powered by community.</p>
+              <h2>Collect. Connect. Keep it Fair.</h2>
+              <p>Built for kids. Trusted by parents.</p>
               <p>Ember & Tide started after a child was pushed out of the hobby by scalpers who cleared shelves and said Pokemon was not for kids anymore. We believe Pokemon collecting should still be fun, fair, and family-friendly.</p>
               <div className="quick-actions">
-                <button type="button" onClick={() => setAuthMode("signup")}>Get Started</button>
+                <button type="button" onClick={() => setAuthMode("signup")}>Request Beta Access</button>
                 <button type="button" className="secondary-button" onClick={startGuestPreview}>Preview App</button>
                 <button type="button" className="secondary-button" onClick={() => { startGuestPreview(); setActiveTab("kidsProgram"); }}>Learn About the Kids Program</button>
               </div>
@@ -22673,10 +22705,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </figure>
             <div className="landing-feature-grid">
               {[
+                ["Scout", "Find cards, restocks, store reports, and community tips."],
                 ["Vault", "Track personal cards, sealed products, variants, and collection value."],
+                ["Market", "Buy, sell, trade, and compare fair values with trust-focused tools."],
                 ["Forge", "Manage business inventory, receipts, expenses, and seller tools."],
-                ["Scout", "Submit reports, add guesses, and build restock forecasts."],
-                ["Market", "Prepare pricing, deal checks, and market source confidence."],
                 ["Kids Program", "Support kid-focused packs, giveaways, and fair-access opportunities."],
                 ["Tidepool", "Build community posts, feedback, and trusted local sharing."],
               ].map(([title, body]) => (
@@ -22894,7 +22926,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   <button
     type="button"
     className="topbar-brand"
-    aria-label="Go to Home"
+    aria-label="Go to Hearth"
     onClick={() => {
       setQuickAddMenuOpen(false);
       setSearchExpanded(false);
@@ -23581,7 +23613,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                   <div className="drawer-info-card">
                     <strong>Dashboard Display Settings</strong>
-                    <p className="compact-subtitle">Choose which Home cards and sections are visible. This only changes the dashboard display, not your saved data.</p>
+                    <p className="compact-subtitle">Choose which Hearth cards and sections are visible. This only changes the dashboard display, not your saved data.</p>
                     <div className="menu-toggle-list">
                       {menuHomeStatRows.map((row) => (
                         <label className="toggle-row" key={row.key}>
@@ -23611,7 +23643,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       ))}
                     </div>
                     <details className="drawer-subdetails">
-                      <summary>Home sections</summary>
+                      <summary>Hearth sections</summary>
                       <div className="menu-toggle-list">
                         {menuDashboardSectionRows.map((row) => {
                           const section = dashboardSectionState(row.key);
@@ -25258,23 +25290,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dashboard" && (
           <div className="dashboard-layout home-clean-layout">
+            {startupAnnouncementOpen ? renderStartupAnnouncement() : (
+              <>
             <PageHeader
               className={getHeaderCardClass("panel page-summary-card home-summary-card")}
-              title="Today's Tide"
-              subtitle="Your daily collecting, selling, and restock command center."
+              title="Welcome to the Hearth"
+              subtitle="Your Ember & Tide home base. Gather, collect, and keep it fair."
               actions={(
                 <>
-                  <button type="button" onClick={() => {
+                  <button type="button" className="gradient-button" onClick={() => {
                     setShowTopbarActions(true);
                     openAddActionSheet("home");
-                  }}>+ Add</button>
+                  }}>+ Quick Add</button>
                   <button type="button" className="secondary-button" onClick={() => openBulkAddFlow("Mixed")}>Bulk Add</button>
                   <button type="button" className="secondary-button" onClick={() => openInventoryImportAssistant("Vault", { mode: BATCH_INTAKE_MODES.TRANSFER, sourceType: "spreadsheet_csv", source: "home-import" })}>Import</button>
                   <button type="button" className="secondary-button" onClick={() => setSearchExpanded(true)}>Search</button>
                 </>
               )}
               summary={(
-                <div className="home-summary-stats" aria-label="Home metrics">
+                <div className="home-summary-stats" aria-label="Hearth Metrics">
                 {homeStatsEnabled.collection_value !== false ? (
                 <button type="button" className="home-metric-card" onClick={() => setActiveTab("vault")}>
                   <p>Collection Value</p>
@@ -25305,8 +25339,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section className="panel today-tide-command" aria-label="Today's Tide command center">
               <div className="today-tide-hero">
                 <div>
-                  <p className="section-kicker">Daily Tide Check</p>
-                  <p className="today-tide-hero-description">Pick one quick task for today.</p>
+                  <p className="section-kicker">Today's Tide</p>
+                  <h2>Your daily pulse for collecting, trading, and community.</h2>
+                  <p className="today-tide-hero-description">Trade with kindness. Collect with purpose.</p>
                 </div>
                 <button type="button" onClick={suggestedHomeAction.onClick} aria-label={suggestedHomeAction.detail || "Start Daily Tide"}>
                   Start Daily Tide
@@ -25334,41 +25369,57 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <small>{bestWishlistItem ? money(bestWishlistItem.marketPrice || bestWishlistItem.marketValue || bestWishlistItem.targetPrice || 0) : "Track target prices"}</small>
                 </button>
                 <button type="button" className="today-tide-card" onClick={() => setActiveTab("market")}>
-                  <span>Market Mover</span>
-                  <strong>{bestMarketMover?.name || bestMarketMover?.productName || "No mover yet"}</strong>
-                  <small>{bestMarketMover ? money(bestMarketMover.marketPrice || bestMarketMover.marketValue || 0) : "Watch products to fill this"}</small>
+                  <span>Market Mood</span>
+                  <strong>{recentMarketUpdates.length ? "RISING" : "CALM"}</strong>
+                  <small>{recentMarketUpdates.length ? "+8.42% | Collectors are active today." : "Great day to compare fair listings."}</small>
+                </button>
+                <button type="button" className="today-tide-card" onClick={() => openTidepoolCommunity("Latest")}>
+                  <span>Community Mood</span>
+                  <strong>SUNNY</strong>
+                  <small>Great day to trade.</small>
                 </button>
               </div>
 
               <div className="daily-tide-panel">
                 <div className="daily-tide-progress-card">
                   <div>
-                    <strong>{dailyCompletedCount}/{DAILY_TIDE_ACTIONS.length} complete</strong>
-                    <span>{dailyCompletionPercent}% daily progress</span>
+                    <strong>{dailyCompletedCount === DAILY_TIDE_ACTIONS.length ? "All tasks complete!" : `${dailyCompletedCount}/${DAILY_TIDE_ACTIONS.length} complete`}</strong>
+                    <span>{dailyCompletedCount === DAILY_TIDE_ACTIONS.length ? "Great job keeping the tide strong." : `${dailyCompletionPercent}% daily progress`}</span>
                   </div>
                   <div className="daily-progress-track"><i style={{ width: `${dailyCompletionPercent}%` }} /></div>
                 </div>
-                <div className="daily-tide-actions">
+                {dailyCompletedCount === DAILY_TIDE_ACTIONS.length ? (
+                  <div className="daily-check-complete-card">
+                    <strong>All tasks complete!</strong>
+                    <span>Great job keeping the tide strong.</span>
+                    <div className="daily-check-complete-strip">
+                      {["Scout", "Vault", "Market", "Forge"].map((label) => <b key={label}>✓ {label}</b>)}
+                    </div>
+                  </div>
+                ) : (
+                <div className="daily-tide-actions daily-check-card">
                   {[
-                    { key: "checkin", label: "Check in", helper: `${dailyTideToday.checkInStreak || 0} day streak`, badge: "market_watcher", points: 5 },
-                    { key: "store", label: "Scout store", helper: bestScoutStore?.name || "Pick a store", badge: "restock_reporter", points: 10 },
-                    { key: "market", label: "Check market", helper: bestMarketMover?.name || "Review watchlist", badge: "market_watcher", points: 8 },
-                    { key: "wishlist", label: "Wishlist", helper: bestWishlistItem?.name || "Add a chase", badge: "vault_builder", points: 8 },
-                    { key: "inventory", label: "Forge task", helper: needsMarketCheckItems[0]?.name || "Review inventory", badge: "forge_starter", points: 10 },
-                    { key: "community", label: "Tidepool", helper: "Share or review a report", badge: "tidepool_helper", points: 8 },
+                    { key: "scout", label: "Scout", helper: "Check nearby reports", badge: "restock_reporter", points: 10, onDone: () => setActiveTab("scout") },
+                    { key: "vault", label: "Vault", helper: "Review your collection", badge: "vault_builder", points: 8, onDone: () => setActiveTab("vault") },
+                    { key: "market", label: "Market", helper: "Check fair listings", badge: "market_watcher", points: 8, onDone: () => setActiveTab("market") },
+                    { key: "forge", label: "Forge", helper: "Plan or build something", badge: "forge_starter", points: 10, onDone: () => setActiveTab("inventory") },
                   ].map((action) => (
                     <button
                       key={action.key}
                       type="button"
-                      className={dailyTideToday.completedActions?.[action.key] ? "daily-action-card is-complete" : "daily-action-card"}
-                      onClick={() => completeDailyAction(action.key, { badge: action.badge, points: action.points })}
+                      className={dailyTideToday.completedActions?.[action.key] ? "daily-action-card daily-check-pill is-complete" : "daily-action-card"}
+                      onClick={() => {
+                        completeDailyAction(action.key, { badge: action.badge, points: action.points });
+                        action.onDone?.();
+                      }}
                     >
-                      <span>{dailyTideToday.completedActions?.[action.key] ? "Done" : "Do"}</span>
+                      <span>{dailyTideToday.completedActions?.[action.key] ? "✓ Done" : "Do"}</span>
                       <strong>{action.label}</strong>
                       <small>{action.helper}</small>
                     </button>
                   ))}
                 </div>
+                )}
                 <div className="daily-badge-strip" aria-label="Tide badges">
                   <span>{dailyTideToday.tidePoints || 0} Tide Points</span>
                   {DAILY_TIDE_BADGES.slice(0, 8).map((badge) => (
@@ -25377,6 +25428,38 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               </div>
               {dailyTideToday.lastCelebration ? <div className="tide-celebration">Daily action complete. Tide Points added.</div> : null}
+            </section>
+
+            <section className="family-dashboard-card section-card" aria-label="Family Dashboard">
+              <div>
+                <p className="section-kicker">Family Dashboard</p>
+                <h2>Collect together in a safe, positive environment.</h2>
+                <p>Parent controls help keep trades, listings, and messages safe. Earn badges for kindness, fair trades, and helping others.</p>
+              </div>
+              <div className="family-tool-grid">
+                {["Link kid accounts", "Parent Controls", "Kid Protection", "Positive Rewards", "Kids Program"].map((item) => (
+                  <span className="trust-badge" key={item}>{item}</span>
+                ))}
+              </div>
+              <div className="quick-actions">
+                <button type="button" onClick={() => setActiveTab("kidsProgram")}>View Dashboard</button>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Safety Settings</button>
+              </div>
+            </section>
+
+            <section className="trust-strip" aria-label="Ember and Tide values">
+              {[
+                ["Built for Kids", "Safe, age-appropriate, and parent-approved."],
+                ["Fair & Honest", "No price gouging. No shady deals."],
+                ["Real Community", "Connect, share, and grow together."],
+                ["Transparent Values", "Clear data, fair tools, better decisions."],
+              ].map(([title, body]) => (
+                <article className="trust-strip-item" key={title}>
+                  <span aria-hidden="true">✓</span>
+                  <strong>{title}</strong>
+                  <p>{body}</p>
+                </article>
+              ))}
             </section>
 
             {renderPokemonWatchCalendarHomeModule()}
@@ -25650,6 +25733,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
             </section>
             ) : null}
+              </>
+            )}
           </div>
         )}
         {!activeTabLocked && false && activeTab === "dashboard" && (
@@ -25687,7 +25772,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section className="cards dashboard-section" style={dashboardSectionStyle("home_stats")}>
               {visibleCoreHomeStats.length === 0 ? (
                 <div className="card">
-                  <p>Home Page Stats</p>
+                  <p>Hearth Stats</p>
                   <h2>Hidden</h2>
                 </div>
               ) : (
@@ -25775,7 +25860,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               </CollapsibleFeatureSection>
               <section className="panel dashboard-section">
-                <h2>All Home Metrics</h2>
+                <h2>All Hearth Metrics</h2>
                 <p>These stay out of the default Home overview. Use Customize Dashboard to choose which ones appear on Home.</p>
                 <div className="cards mini-cards">
                   {visibleDashboardStats.map((stat) => (
@@ -25809,7 +25894,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <>
               <CollapsibleFeatureSection
                 title="Settings / Customize Dashboard"
-                summary="Choose which Home metrics are visible and reset the dashboard layout"
+                summary="Choose which Hearth Metrics are visible and reset the dashboard layout"
                 open={isFeatureSectionOpen("home_display_settings")}
                 onToggle={() => toggleFeatureSection("home_display_settings")}
               >
@@ -25971,7 +26056,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
               <div className="settings-subsection">
                 <h3>Dashboard Layout</h3>
-                <p>Pick a preset, choose a card density, and decide which Home sections show first.</p>
+                <p>Pick a preset, choose a card density, and decide which Hearth sections show first.</p>
                 <div className="settings-toolbar">
                   <Field label="Dashboard Preset">
                     <select value={dashboardPreset} onChange={(event) => updateDashboardPreset(event.target.value)}>
@@ -26028,7 +26113,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
 
               <div className="settings-subsection">
-                <h3>Home Page Stats</h3>
+                <h3>Hearth Stats</h3>
                 <p>Choose exactly which dashboard stat cards show on Home. This only changes visibility, not the underlying data.</p>
                 <div className="settings-toolbar">
                   {Object.entries(HOME_VIEW_PRESETS).map(([key, preset]) => (
@@ -26675,7 +26760,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <h2>Portfolio</h2>
                     <p>Collector value, cost basis, MSRP, duplicates, and trade/sell readiness stay separate from Forge business inventory.</p>
                   </div>
-                  <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>Home Metrics</button>
+                  <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>Hearth Metrics</button>
                 </div>
                 <div className="vault-portfolio-grid">
                   {vaultPortfolioStats.map((stat) => (
@@ -29236,11 +29321,21 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         <b>Top</b>
       </button>
       <nav className="mobile-bottom-nav" aria-label="Mobile main navigation">
+        <button
+          type="button"
+          className="quick-add-button"
+          ref={quickAddButtonRef}
+          aria-label="Quick Add"
+          onClick={() => openAddActionSheet("bottom-nav")}
+        >
+          <span aria-hidden="true">+</span>
+          <b>Quick Add</b>
+        </button>
         {mobileBottomTabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
-            className={activeMainTab === tab.key ? "active" : ""}
+            className={activeMainTab === tab.key ? "bottom-nav-item active" : "bottom-nav-item"}
             aria-current={activeMainTab === tab.key ? "page" : undefined}
             onClick={() => navigateMainTab(tab)}
           >

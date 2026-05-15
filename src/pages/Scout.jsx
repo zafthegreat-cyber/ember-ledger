@@ -486,7 +486,7 @@ const styles = {
   page: {
     minHeight: "100vh",
     background:
-      "linear-gradient(180deg, #fff7ed 0%, #fef3c7 45%, #f0fdfa 100%)",
+      "radial-gradient(circle at 14% 0%, rgba(255, 90, 47, .18), transparent 22rem), radial-gradient(circle at 88% 4%, rgba(88, 213, 232, .22), transparent 24rem), linear-gradient(180deg, #fff7eb 0%, #fffaf2 48%, #eefcff 100%)",
     padding: "10px",
     fontFamily:
       'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -500,11 +500,11 @@ const styles = {
     gap: "14px",
   },
   hero: {
-    background: "linear-gradient(135deg, #2a2522 0%, #7c2d12 50%, #0f766e 100%)",
+    background: "radial-gradient(circle at 18% 10%, rgba(255,255,255,.24), transparent 16rem), linear-gradient(135deg, #08324d 0%, #0e9fb5 55%, #7b4df3 100%)",
     color: "#fff",
-    borderRadius: "20px",
+    borderRadius: "28px",
     padding: "18px",
-    boxShadow: "0 20px 50px rgba(15, 23, 42, 0.18)",
+    boxShadow: "0 16px 45px rgba(12, 38, 56, 0.16), 0 0 30px rgba(88, 213, 232, 0.28)",
   },
   heroTitle: {
     margin: 0,
@@ -525,9 +525,9 @@ const styles = {
     marginTop: "20px",
   },
   statCard: {
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "16px",
+    background: "rgba(255, 250, 242, .94)",
+    border: "1px solid rgba(255,255,255,.45)",
+    borderRadius: "22px",
     padding: "12px",
     boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
   },
@@ -552,11 +552,11 @@ const styles = {
     gap: "20px",
   },
   card: {
-    background: "#ffffff",
-    borderRadius: "16px",
+    background: "linear-gradient(145deg, rgba(255,255,255,.94), rgba(255,241,223,.82))",
+    borderRadius: "22px",
     padding: "14px",
-    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
-    border: "1px solid #e5e7eb",
+    boxShadow: "0 12px 30px rgba(12, 38, 56, 0.10)",
+    border: "1px solid rgba(12, 38, 56, .12)",
   },
   sectionTitle: {
     margin: "0 0 14px 0",
@@ -572,8 +572,8 @@ const styles = {
     width: "100%",
     minHeight: "46px",
     padding: "12px 14px",
-    borderRadius: "14px",
-    border: "1px solid #d1d5db",
+    borderRadius: "16px",
+    border: "1px solid rgba(12, 38, 56, .14)",
     outline: "none",
     fontSize: "14px",
     background: "#fff",
@@ -593,20 +593,20 @@ const styles = {
     boxSizing: "border-box",
   },
   buttonPrimary: {
-    background: "linear-gradient(135deg, #f97316 0%, #0f766e 100%)",
+    background: "linear-gradient(135deg, #ff5a2f 0%, #ff8a5c 28%, #0e9fb5 68%, #7b4df3 100%)",
     color: "#fff",
     border: "none",
-    borderRadius: "14px",
+    borderRadius: "999px",
     minHeight: "46px",
     padding: "12px 14px",
     fontWeight: 700,
     cursor: "pointer",
   },
   buttonSoft: {
-    background: "#fff7ed",
-    color: "#2a2522",
-    border: "1px solid #fed7aa",
-    borderRadius: "12px",
+    background: "rgba(255, 250, 242, .88)",
+    color: "#0c2638",
+    border: "1px solid rgba(12, 38, 56, .12)",
+    borderRadius: "999px",
     minHeight: "44px",
     padding: "10px 12px",
     fontWeight: 600,
@@ -712,7 +712,7 @@ const styles = {
     border: "1px solid #e5e7eb",
     borderRadius: "16px",
     padding: "12px",
-    background: "#fff",
+    background: "rgba(255,255,255,.86)",
     cursor: "pointer",
   },
   storeRow: {
@@ -803,11 +803,11 @@ const styles = {
     paddingBottom: "4px",
   },
   pageHeader: {
-    background: "#fff",
-    borderRadius: "16px",
+    background: "rgba(255, 250, 242, .9)",
+    borderRadius: "24px",
     padding: "12px",
-    border: "1px solid #e5e7eb",
-    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
+    border: "1px solid rgba(12, 38, 56, .12)",
+    boxShadow: "0 12px 30px rgba(12, 38, 56, 0.10)",
     display: "grid",
     gap: "10px",
   },
@@ -4229,8 +4229,13 @@ async function handleUpdateStore(e) {
         {!compact ? <div style={styles.hero}>
           <h1 style={styles.heroTitle}>Scout</h1>
           <p style={styles.heroSub}>
-            Find stores, log sightings, and track restock intelligence.
+            Search cards, sets, stores, or members. Find nearby restocks, report stock, and share verified community tips.
           </p>
+          <div style={{ ...styles.row, marginTop: "14px" }} aria-label="Scout quick actions">
+            <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Report Stock</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("stores")}>Nearby Restocks</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("online")}>Browse Cards</button>
+          </div>
 
           <div style={styles.statsRow}>
             <Metric label="Stores" value={totals.stores} />
