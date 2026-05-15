@@ -660,7 +660,8 @@ const SCOUT_GUESS_VISIBILITY_OPTIONS = [
 const WATCH_CALENDAR_VIEW_OPTIONS = [
   { value: "today", label: "Today" },
   { value: "week", label: "Week" },
-  { value: "agenda", label: "Agenda" },
+  { value: "stores", label: "Stores" },
+  { value: "watchlist", label: "Watchlist" },
 ];
 const WATCH_CALENDAR_LAYER_OPTIONS = [
   { key: "localRestocks", label: "Local restocks" },
@@ -2658,7 +2659,7 @@ export default function App() {
   const [whatDidISeeSeedProduct, setWhatDidISeeSeedProduct] = useState(null);
   const [scoutReportFilter, setScoutReportFilter] = useState(initialRouteState.scoutReportFilter || "Latest");
   const [scoutReportSort, setScoutReportSort] = useState(initialRouteState.scoutReportSort || "Newest first");
-  const [watchCalendarView, setWatchCalendarView] = useState("agenda");
+  const [watchCalendarView, setWatchCalendarView] = useState("today");
   const [watchCalendarArea, setWatchCalendarArea] = useState("hampton_roads");
   const [watchCalendarLayers, setWatchCalendarLayers] = useState(WATCH_CALENDAR_DEFAULT_LAYERS);
   const [selectedWatchCalendarEvent, setSelectedWatchCalendarEvent] = useState(null);
@@ -3517,9 +3518,9 @@ export default function App() {
         setScoutView("predictions");
       }
       else if (action === "Store Map") setScoutView("storeMap");
-      else if (action === "Alerts") setScoutView("alerts");
+      else if (action === "Alerts" || action === "Ember Watch") setScoutView("alerts");
       else setScoutView("overview");
-      setScoutSubTabTarget({ tab: action === "Alerts" ? "alerts" : action === "Store Map" ? "storeMap" : "overview", id: Date.now() });
+      setScoutSubTabTarget({ tab: action === "Alerts" || action === "Ember Watch" ? "alerts" : action === "Store Map" ? "storeMap" : "overview", id: Date.now() });
       if (action === "Submit Report") openScoutSubmitFlow({ source: "global-command" });
       if (action === "Import Intel") openScoutSubmitFlow({ action: "importIntel" });
       return;
@@ -3633,7 +3634,7 @@ export default function App() {
       { key: "scan", label: "Scan / Review Item", category: "tools", onClick: () => openCommandCenterQuickAdd("scanProduct") },
       { key: "search", label: "Search", category: "tools", onClick: () => openCommandCenterAction("catalog", "Search Catalog") },
       { key: "import", label: "Import / Bulk Add", category: "manage", onClick: () => openCommandCenterBulkAdd() },
-      { key: "watch", label: "Ember Watch", category: "activity", onClick: () => openCommandCenterAction("scout", "Alerts") },
+      { key: "watch", label: "Ember Watch", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
       { key: "map", label: "Store Map", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
       ...(adminToolsVisible ? [{ key: "admin", label: "Admin Edit", category: "manage", onClick: () => openCommandCenterAction("admin") }] : []),
     ];
@@ -3653,7 +3654,7 @@ export default function App() {
     ];
     const smartTools = [
       { key: "store-map", label: "Store Map", helper: "Find and review store intel.", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
-      { key: "ember-watch", label: "Ember Watch", helper: "Alerts and watch windows.", category: "activity", onClick: () => openCommandCenterAction("scout", "Alerts") },
+      { key: "ember-watch", label: "Ember Watch", helper: "Restock windows, reports, and watched stores.", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
       { key: "watchlist", label: "Watchlist", helper: "Track wants and market changes.", category: "activity", onClick: () => openCommandCenterAction("market", "Watchlist") },
       { key: "daily-tide", label: "Daily Tide Report", helper: "Review today's quick loop.", category: "activity", onClick: () => closeFlowModal({ force: true }) },
       { key: "family", label: "Family Dashboard", helper: "Parent and kid-safe controls.", category: "community", onClick: () => { closeFlowModal({ force: true }); setActiveTab("dashboard"); } },
@@ -13076,6 +13077,7 @@ function renderScoutHeader() {
     { key: "reports", label: "Reports" },
     { key: "guesses", label: "Guesses Planner" },
     { key: "stores", label: "Stores" },
+    { key: "alerts", label: "Ember Watch" },
     { key: "predictions", label: "Forecast Windows" },
     { key: "myReports", label: "My Reports" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
@@ -13138,6 +13140,17 @@ function renderScoutHeader() {
             onClick: () => {
               setScoutSubTabTarget({ tab: "storeMap", id: Date.now() });
               setScoutView("storeMap");
+            },
+          },
+          {
+            key: "scout-ember-watch",
+            title: "Ember Watch",
+            subtitle: `${watchCalendarHomeCounts.week} signals this week`,
+            className: "scout-hero-nav-tile",
+            onClick: () => {
+              setWatchCalendarView("today");
+              setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+              setScoutView("alerts");
             },
           },
           {
@@ -15089,19 +15102,21 @@ function renderForgeHeader() {
   function scoutForecastConfidenceKey(value = "") {
     const normalized = String(value || "").toLowerCase();
     if (normalized === "confirmed" || normalized === "verified") return "confirmed";
-    if (normalized === "likely") return "likely";
-    if (normalized === "possible" || normalized === "rumor") return "possible";
-    return "unknown";
+    if (normalized === "high" || normalized === "likely") return "high";
+    if (normalized === "medium" || normalized === "possible") return "medium";
+    if (normalized === "low" || normalized === "rumor" || normalized === "guess") return "low";
+    return "needs-data";
   }
 
   function scoutForecastConfidenceLabel(value = "") {
     const labels = {
       confirmed: "Confirmed",
-      likely: "Likely",
-      possible: "Possible",
-      unknown: "Unknown",
+      high: "High",
+      medium: "Medium",
+      low: "Low",
+      "needs-data": "Needs Data",
     };
-    return labels[scoutForecastConfidenceKey(value)] || "Unknown";
+    return labels[scoutForecastConfidenceKey(value)] || "Needs Data";
   }
 
   function scoutForecastSourceBadges(sourceType = "", confidence = "") {
@@ -15216,7 +15231,7 @@ function renderForgeHeader() {
     if (!hasEnabledLayer) return false;
     if (event.isMilitary && !watchCalendarLayers.militaryStores) return false;
     if (watchCalendarLayers.adminVerifiedOnly && !event.verified && event.confidenceKey !== "confirmed") return false;
-    if (watchCalendarLayers.highConfidenceOnly && !["confirmed", "likely"].includes(event.confidenceKey)) return false;
+    if (watchCalendarLayers.highConfidenceOnly && !["confirmed", "high"].includes(event.confidenceKey)) return false;
     return true;
   }
 
@@ -15467,7 +15482,7 @@ function renderForgeHeader() {
         storeName: guess.storeName,
         retailer: guess.retailer,
         confidence: "guess",
-        confidenceKey: "possible",
+        confidenceKey: "low",
         confidenceLabel,
         confidenceScore,
         sourceType: guess.sourceType || "manual_prediction",
@@ -15529,7 +15544,7 @@ function renderForgeHeader() {
     const dayDistance = Number.isFinite(row.dayDistance) ? Math.min(Math.max(row.dayDistance, 0), 7) : 7;
     const sourceText = `${row.sourceType || ""} ${row.sourceLabel || ""} ${row.badges?.join(" ") || ""}`.toLowerCase();
     const isOnline = /online|website|pokemon center|best buy/.test(sourceText) || /pokemon center/i.test(row.storeName || "");
-    const isGuess = /guess|prediction|planner|possible|rumor/.test(sourceText) || row.confidenceKey === "possible";
+    const isGuess = /guess|prediction|planner|possible|rumor/.test(sourceText) || ["medium", "low", "needs-data"].includes(row.confidenceKey);
     const matchedStore = !isOnline ? findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer }) : null;
     return {
       id: `forecast-${row.id || index}`,
@@ -15545,13 +15560,13 @@ function renderForgeHeader() {
       layerKeys: [
         isOnline ? "onlineRestocks" : "localRestocks",
         isGuess ? "userGuesses" : "appPredictions",
-        row.confidenceKey === "confirmed" || row.confidenceKey === "likely" ? "retailDrops" : "",
+        row.confidenceKey === "confirmed" || row.confidenceKey === "high" ? "retailDrops" : "",
       ].filter(Boolean),
       eventType: isOnline ? "online" : "local",
       locationType: isOnline ? "online" : "store",
       timeLabel: row.windowLabel || "Unknown time",
       confidenceLabel: row.confidenceLabel || "Possible",
-      confidenceKey: row.confidenceKey || "possible",
+      confidenceKey: row.confidenceKey || "medium",
       sourceLabel: row.sourceLabel || "",
       products: row.products || [],
       reason: row.reason || "",
@@ -15613,7 +15628,7 @@ function renderForgeHeader() {
     locationType: "online",
     timeLabel: alert.time || alert.checkedTime || "Unknown time",
     confidenceLabel: alert.inStock || alert.status === "in_stock" ? "Confirmed" : "Possible",
-    confidenceKey: alert.inStock || alert.status === "in_stock" ? "confirmed" : "possible",
+    confidenceKey: alert.inStock || alert.status === "in_stock" ? "confirmed" : "medium",
     sourceLabel: "Existing online watch data",
     products: [alert.productName || alert.name || ""].filter(Boolean),
     reason: alert.message || alert.status || "",
@@ -17768,11 +17783,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <section className="panel pokemon-watch-home" style={dashboardSectionStyle("restock_calendar")}>
         <div className="compact-card-header">
           <div>
-            <p className="section-kicker">Pokémon Watch Calendar</p>
-            <h2>Today&apos;s Watch</h2>
-            <p>Local checks, online watches, and release data in one compact view.</p>
+            <p className="section-kicker">Ember Watch</p>
+            <h2>Today&apos;s Restock Watch</h2>
+            <p>Likely restock windows, confirmed reports, watchlist alerts, and upcoming TCG drops.</p>
           </div>
-          <button type="button" onClick={openPokemonWatchCalendar}>View Calendar</button>
+          <button type="button" onClick={openPokemonWatchCalendar}>Open Ember Watch</button>
         </div>
         <div className="watch-calendar-home-metrics">
           <button type="button" onClick={openPokemonWatchCalendar}>
@@ -17808,7 +17823,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <section className="panel pokemon-watch-calendar-panel">
         <div className="compact-card-header">
           <div>
-            <p className="section-kicker">Pokémon Watch Calendar</p>
+            <p className="section-kicker">Ember Watch</p>
             <h2>Today + Next 7 Days</h2>
             <p>Focused local restock, online watch, release, guess, and prediction rows. Empty layers stay empty instead of inventing events.</p>
           </div>
@@ -17817,7 +17832,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         <div className="watch-calendar-summary-grid">
           <div>
-            <span>Today&apos;s Watch</span>
+            <span>Today&apos;s Restock Watch</span>
             <strong>{watchCalendarHomeCounts.local} local / {watchCalendarHomeCounts.online} online</strong>
           </div>
           <div>
@@ -17874,6 +17889,207 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           )}
         </div>
+      </section>
+    );
+  }
+
+  function isWatchedEmberStore(store = {}) {
+    return Boolean(store.favorite || store.priority || store.watchlisted || store.watchlist);
+  }
+
+  function eventMatchesWatchedStore(event = {}, watchedRows = []) {
+    const eventStore = String(event.title || event.store?.name || "").toLowerCase();
+    const eventRetailer = String(event.retailer || event.store?.retailer || event.store?.chain || "").toLowerCase();
+    return watchedRows.some((row) => {
+      const rowName = String(row.name || getScoutQuickStoreName(row.store)).toLowerCase();
+      const rowRetailer = String(row.retailer || getScoutQuickRetailer(row.store)).toLowerCase();
+      return rowName && eventStore.includes(rowName) && (!rowRetailer || !eventRetailer || eventRetailer.includes(rowRetailer));
+    });
+  }
+
+  function renderEmberWatchSection(title, helper, events, emptyCopy) {
+    return (
+      <section className="ember-watch-section">
+        <div className="watch-calendar-day-heading">
+          <div>
+            <strong>{title}</strong>
+            <span>{helper}</span>
+          </div>
+          <span>{events.length} item{events.length === 1 ? "" : "s"}</span>
+        </div>
+        <div className="watch-calendar-compact-list">
+          {events.length ? events.map(renderWatchCalendarEventRow) : (
+            <div className="small-empty-state">
+              <strong>{emptyCopy}</strong>
+              <span>Submit reports or watch stores to improve Ember Watch without treating predictions as guarantees.</span>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderEmberWatchStoreRow(row) {
+    const reports = row.reports || [];
+    const confirmed = reports.find((report) => /confirmed|verified/i.test(scoutReportStatusLabel(report)));
+    const emptyReport = reports.find((report) => /empty|no_stock/i.test(`${report.stockStatus || report.stock_status || report.reportType || report.report_type || ""}`));
+    const bestWindow = row.store.bestCheckWindow || row.store.restockWindow || row.store.truckDays || row.store.restockDays || "Needs more data";
+    const confidence = ["High", "Medium", "Low"].includes(row.confidence) ? row.confidence : row.reports.length ? row.confidence : "Needs Data";
+    return (
+      <article className="ember-watch-store-card" key={`ember-watch-store-${row.id}`}>
+        <div className="compact-card-header">
+          <div>
+            <h3>{row.name}</h3>
+            <p>{row.retailer} | {row.area || "Area not listed"}</p>
+          </div>
+          <span className={`status-badge ember-watch-confidence ember-watch-confidence--${String(confidence).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
+            {confidence}
+          </span>
+        </div>
+        <div className="ember-watch-store-grid">
+          <DetailItem label="Known truck/restock days" value={row.store.truckDays || row.store.restockDays || row.store.usualDays || "Not logged yet"} />
+          <DetailItem label="Historical report pattern" value={reports.length ? `${reports.length} report${reports.length === 1 ? "" : "s"} connected` : "Needs more reports"} />
+          <DetailItem label="Last confirmed stock" value={confirmed ? scoutReportDateTimeLabel(confirmed) : "No confirmed stock yet"} />
+          <DetailItem label="Last empty report" value={emptyReport ? scoutReportDateTimeLabel(emptyReport) : "No empty report yet"} />
+          <DetailItem label="Best days/times" value={bestWindow} />
+          <DetailItem label="User notes" value={row.store.userNotes || row.store.notes || "Private notes stay private."} />
+        </div>
+        <p className="compact-subtitle">Community notes appear only when reports are public or allowed. Ember Watch signals are estimates, not guarantees.</p>
+        <div className="scout-radar-actions">
+          <button type="button" className="secondary-button" onClick={() => openStoreMapReport(row, "stock_on_shelf")}>Report Stock</button>
+          <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(row)}>{row.watchlisted ? "Unwatch Store" : "Watch Store"}</button>
+          <button type="button" className="ghost-button" onClick={() => { setSelectedStoreMapStore(row); setScoutView("storeMap"); }}>Store Details</button>
+        </div>
+      </article>
+    );
+  }
+
+  function renderEmberWatchPanel() {
+    const storeRows = buildStoreMapRows();
+    const watchedStoreRows = storeRows.filter((row) => row.watchlisted || isWatchedEmberStore(row.store));
+    const todayLikelyRestocks = watchCalendarTodayEvents.filter((event) => (
+      event.layerKeys.includes("localRestocks") && ["confirmed", "high", "medium"].includes(event.confidenceKey)
+    )).slice(0, 8);
+    const recentConfirmedReports = watchCalendarEvents.filter((event) => (
+      event.eventType === "report" && event.confidenceKey === "confirmed"
+    )).slice(0, 6);
+    const watchlistAlerts = watchCalendarEvents
+      .filter((event) => eventMatchesWatchedStore(event, watchedStoreRows))
+      .slice(0, 8);
+    const routeStores = watchedStoreRows.length ? watchedStoreRows.slice(0, 3) : storeRows.slice(0, 3);
+    const kidAlertsDisabled = /kid|child/i.test(`${currentUserProfile?.accountType || currentUserProfile?.role || userType || ""}`);
+    return (
+      <section className="panel pokemon-watch-calendar-panel ember-watch-panel">
+        <div className="compact-card-header ember-watch-header">
+          <div>
+            <p className="section-kicker">Ember Watch</p>
+            <h2>Scout Restock Calendar</h2>
+            <p>Track predicted restock windows, confirmed Scout reports, watched stores, and upcoming TCG drops. Signals are never guarantees.</p>
+          </div>
+          <div className="summary-pill-row">
+            <button type="button" className="secondary-button" onClick={() => setScoutView("storeMap")}>Open Store Map</button>
+            <button type="button" onClick={() => openScoutSubmitFlow({ source: "ember-watch-header" })}>Quick Report</button>
+          </div>
+        </div>
+
+        <div className="watch-calendar-summary-grid">
+          <div><span>Today</span><strong>{watchCalendarHomeCounts.local} local / {watchCalendarHomeCounts.online} online</strong></div>
+          <div><span>Week</span><strong>{watchCalendarHomeCounts.week} signal{watchCalendarHomeCounts.week === 1 ? "" : "s"}</strong></div>
+          <div><span>Watchlist</span><strong>{watchedStoreRows.length} watched store{watchedStoreRows.length === 1 ? "" : "s"}</strong></div>
+        </div>
+
+        <div className="watch-calendar-toolbar">
+          <div className="segmented-control" role="tablist" aria-label="Ember Watch views">
+            {WATCH_CALENDAR_VIEW_OPTIONS.map((view) => (
+              <button key={view.value} type="button" className={watchCalendarView === view.value ? "active" : ""} onClick={() => setWatchCalendarView(view.value)}>
+                {view.label}
+              </button>
+            ))}
+          </div>
+          <label className="watch-calendar-area-select">
+            <span>Area</span>
+            <select value={watchCalendarArea} onChange={(event) => setWatchCalendarArea(event.target.value)}>
+              {WATCH_CALENDAR_AREAS.map((area) => <option key={area.value} value={area.value}>{area.label}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div className="watch-calendar-layer-strip" aria-label="Ember Watch layers">
+          {WATCH_CALENDAR_LAYER_OPTIONS.map((layer) => (
+            <label key={layer.key} className={watchCalendarLayers[layer.key] ? "watch-layer-chip active" : "watch-layer-chip"}>
+              <input type="checkbox" checked={Boolean(watchCalendarLayers[layer.key])} onChange={() => toggleWatchCalendarLayer(layer.key)} />
+              <span>{layer.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <div className="ember-watch-privacy-note">
+          <strong>Privacy-safe watch data</strong>
+          <span>{kidAlertsDisabled ? "Kid location and calendar alerts are disabled unless a parent allows them." : "Private user notes stay private. Kid location/calendar alerts stay disabled unless a parent allows them."}</span>
+        </div>
+
+        {watchCalendarView === "today" ? (
+          <div className="ember-watch-today-grid">
+            {renderEmberWatchSection("Likely Restocks Today", "High and medium Scout signals for today.", todayLikelyRestocks, "No likely restocks today")}
+            {renderEmberWatchSection("Recent Confirmed Reports", "Confirmed stock reports in the current watch window.", recentConfirmedReports, "No confirmed reports in this window")}
+            {renderEmberWatchSection("Watchlist Alerts", "Signals connected to stores you watch.", watchlistAlerts, "No watchlist alerts yet")}
+            <section className="ember-watch-section ember-watch-route-card">
+              <div className="watch-calendar-day-heading">
+                <div>
+                  <strong>Suggested Route</strong>
+                  <span>Route planning can use watched stores and confidence later.</span>
+                </div>
+              </div>
+              <div className="ember-watch-route-list">
+                {routeStores.map((row, index) => (
+                  <span key={`route-${row.id}`}><b>{index + 1}</b>{row.name}</span>
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {watchCalendarView === "week" ? (
+          <div className="watch-calendar-agenda ember-watch-week">
+            {watchCalendarGroupedEvents.length ? watchCalendarGroupedEvents.map((group) => (
+              <div className="watch-calendar-day-group" key={group.dateKey}>
+                <div className="watch-calendar-day-heading">
+                  <div>
+                    <strong>{group.label}</strong>
+                    <span>Daily restock signals, confirmed reports, and possible windows.</span>
+                  </div>
+                  <span>{group.events.length} signal{group.events.length === 1 ? "" : "s"}</span>
+                </div>
+                <div className="watch-calendar-compact-list">
+                  {group.events.map(renderWatchCalendarEventRow)}
+                </div>
+              </div>
+            )) : (
+              <div className="empty-state">
+                <h3>No weekly watch items</h3>
+                <p>Submit reports, watch stores, or broaden your area/layers to build the week view.</p>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {watchCalendarView === "stores" ? (
+          <div className="ember-watch-store-list">
+            {storeRows.slice(0, 12).map(renderEmberWatchStoreRow)}
+          </div>
+        ) : null}
+
+        {watchCalendarView === "watchlist" ? (
+          <div className="ember-watch-store-list">
+            {watchedStoreRows.length ? watchedStoreRows.map(renderEmberWatchStoreRow) : (
+              <div className="empty-state">
+                <h3>No watched stores yet</h3>
+                <p>Open Store Map and watch stores you care about. Ember Watch will keep their signals together here.</p>
+                <button type="button" onClick={() => setScoutView("storeMap")}>Open Store Map</button>
+              </div>
+            )}
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -18151,6 +18367,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <div className="store-map-hero-actions">
             <button type="button" onClick={() => openScoutSubmitFlow({ source: "store-map-hero" })}>Report Stock</button>
+            <button type="button" className="secondary-button" onClick={() => { setWatchCalendarView("today"); setScoutView("alerts"); }}>Open Ember Watch</button>
             <button type="button" className="secondary-button" onClick={() => setStoreMapFilters((current) => ({ ...current, watchlistOnly: !current.watchlistOnly }))}>
               {storeMapFilters.watchlistOnly ? "Show All Stores" : "Watchlist Only"}
             </button>
@@ -24755,6 +24972,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" onClick={() => openStoreMapReport(selectedStoreMapStore, "stock_on_shelf")}>Report Stock</button>
               <button type="button" className="secondary-button" onClick={() => openStoreMapReport(selectedStoreMapStore, "no_stock")}>Report Empty</button>
               <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(selectedStoreMapStore)}>{selectedStoreMapStore.watchlisted ? "Unwatch Store" : "Watch Store"}</button>
+              <button type="button" className="secondary-button" onClick={() => { setSelectedStoreMapStore(null); setWatchCalendarView("stores"); setScoutView("alerts"); }}>Open Ember Watch</button>
               <button type="button" className="ghost-button" onClick={() => setVaultToast("Store notes are staged for a later persistence pass.")}>Add Note</button>
               <button type="button" className="ghost-button" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([selectedStoreMapStore.name, selectedStoreMapStore.address, selectedStoreMapStore.city].filter(Boolean).join(" "))}`, "_blank", "noopener,noreferrer")}>Directions</button>
             </div>
@@ -27321,7 +27539,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ) : activeScoutPage === "reports" ? (
               renderScoutReportsPanel()
             ) : activeScoutPage === "alerts" ? (
-              renderPokemonWatchCalendarPanel()
+              renderEmberWatchPanel()
             ) : activeScoutPage === "storeMap" ? (
               renderStoreMapPanel()
             ) : activeScoutPage === "stores" ? (

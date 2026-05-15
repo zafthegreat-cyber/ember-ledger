@@ -16776,12 +16776,22 @@ button.home-metric-card small,
   background: #16a34a;
 }
 
+.watch-calendar-dot--high,
 .watch-calendar-dot--likely {
   background: #f97316;
 }
 
+.watch-calendar-dot--medium,
 .watch-calendar-dot--possible {
   background: #f59e0b;
+}
+
+.watch-calendar-dot--low {
+  background: #64748b;
+}
+
+.watch-calendar-dot--needs-data {
+  background: #94a3b8;
 }
 
 .watch-calendar-event-meta {
@@ -16807,6 +16817,153 @@ button.home-metric-card small,
 
 .watch-calendar-detail-modal {
   max-height: min(82dvh, 680px);
+}
+
+.ember-watch-panel {
+  display: grid;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 90, 47, 0.10), transparent 32%),
+    radial-gradient(circle at 92% 10%, rgba(88, 213, 232, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(255, 241, 223, 0.86));
+}
+
+.ember-watch-header {
+  align-items: flex-start;
+}
+
+.ember-watch-header h2 {
+  color: var(--color-navy, #0c2638);
+}
+
+.ember-watch-today-grid,
+.ember-watch-store-list {
+  display: grid;
+  gap: 12px;
+}
+
+.ember-watch-today-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ember-watch-section,
+.ember-watch-store-card,
+.ember-watch-privacy-note {
+  border: 1px solid rgba(12, 38, 56, 0.10);
+  border-radius: 20px;
+  background: rgba(255, 250, 242, 0.86);
+  box-shadow: 0 12px 28px rgba(12, 38, 56, 0.08);
+}
+
+.ember-watch-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.ember-watch-section .watch-calendar-day-heading {
+  align-items: flex-start;
+}
+
+.ember-watch-route-card {
+  background:
+    linear-gradient(135deg, rgba(255, 90, 47, 0.12), rgba(88, 213, 232, 0.12)),
+    rgba(255, 250, 242, 0.9);
+}
+
+.ember-watch-route-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ember-watch-route-list span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-navy, #0c2638);
+  font-weight: 850;
+}
+
+.ember-watch-route-list b {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--gradient-ember-tide);
+  color: #fffaf2;
+  font-size: 0.78rem;
+}
+
+.ember-watch-store-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ember-watch-store-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.ember-watch-store-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ember-watch-privacy-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background:
+    linear-gradient(135deg, rgba(12, 38, 56, 0.94), rgba(8, 118, 141, 0.86)),
+    var(--color-navy, #0c2638);
+  color: #fffaf2;
+}
+
+.ember-watch-privacy-note span {
+  color: rgba(255, 250, 242, 0.78);
+  font-weight: 750;
+}
+
+.ember-watch-confidence--confirmed {
+  background: rgba(28, 166, 106, 0.14);
+  color: #0d6b45;
+}
+
+.ember-watch-confidence--high {
+  background: rgba(255, 90, 47, 0.14);
+  color: #b73516;
+}
+
+.ember-watch-confidence--medium {
+  background: rgba(246, 168, 59, 0.16);
+  color: #8b5606;
+}
+
+.ember-watch-confidence--low,
+.ember-watch-confidence--needs-data {
+  background: rgba(66, 97, 116, 0.12);
+  color: #334155;
+}
+
+@media (max-width: 860px) {
+  .ember-watch-today-grid,
+  .ember-watch-store-list,
+  .ember-watch-store-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ember-watch-privacy-note {
+    display: grid;
+  }
 }
 
 @media (max-width: 760px) {
