@@ -24,6 +24,7 @@ import {
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
 import { POKEMON_PRODUCT_UPCS } from "./data/pokemonProductCatalog";
 import { VIRGINIA_STORES_SEED } from "./data/virginiaStoresSeed";
+import { VIRGINIA_RETAILERS } from "./data/storeGroups";
 import { SCOUT_HISTORICAL_INTEL_SEED, buildScoutRestockPatterns } from "./data/scoutRestockIntelSeed";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
@@ -2934,6 +2935,16 @@ export default function App() {
     trackingEnabled: false,
     lastUpdated: "",
   });
+  const [storeMapFilters, setStoreMapFilters] = useState({
+    retailer: "All",
+    category: "All",
+    status: "All",
+    distance: "Any",
+    watchlistOnly: false,
+    query: "",
+    area: "",
+  });
+  const [selectedStoreMapStore, setSelectedStoreMapStore] = useState(null);
   const [locationPromptOpen, setLocationPromptOpen] = useState(false);
   const [locationPromptZip, setLocationPromptZip] = useState("");
   const [importAssistantOpen, setImportAssistantOpen] = useState(false);
@@ -3505,9 +3516,10 @@ export default function App() {
         if (!featureAllowed("restock_predictions")) return openLockedFeatureNotice("restock_predictions");
         setScoutView("predictions");
       }
+      else if (action === "Store Map") setScoutView("storeMap");
       else if (action === "Alerts") setScoutView("alerts");
       else setScoutView("overview");
-      setScoutSubTabTarget({ tab: action === "Alerts" ? "alerts" : "overview", id: Date.now() });
+      setScoutSubTabTarget({ tab: action === "Alerts" ? "alerts" : action === "Store Map" ? "storeMap" : "overview", id: Date.now() });
       if (action === "Submit Report") openScoutSubmitFlow({ source: "global-command" });
       if (action === "Import Intel") openScoutSubmitFlow({ action: "importIntel" });
       return;
@@ -3622,7 +3634,7 @@ export default function App() {
       { key: "search", label: "Search", category: "tools", onClick: () => openCommandCenterAction("catalog", "Search Catalog") },
       { key: "import", label: "Import / Bulk Add", category: "manage", onClick: () => openCommandCenterBulkAdd() },
       { key: "watch", label: "Ember Watch", category: "activity", onClick: () => openCommandCenterAction("scout", "Alerts") },
-      { key: "map", label: "Store Map", category: "tools", onClick: () => openCommandCenterAction("scout") },
+      { key: "map", label: "Store Map", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
       ...(adminToolsVisible ? [{ key: "admin", label: "Admin Edit", category: "manage", onClick: () => openCommandCenterAction("admin") }] : []),
     ];
     const overviewStats = [
@@ -3640,7 +3652,7 @@ export default function App() {
       { label: "Badges", value: dailyTideToday.badges?.length || 0 },
     ];
     const smartTools = [
-      { key: "store-map", label: "Store Map", helper: "Find and review store intel.", category: "tools", onClick: () => openCommandCenterAction("scout") },
+      { key: "store-map", label: "Store Map", helper: "Find and review store intel.", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
       { key: "ember-watch", label: "Ember Watch", helper: "Alerts and watch windows.", category: "activity", onClick: () => openCommandCenterAction("scout", "Alerts") },
       { key: "watchlist", label: "Watchlist", helper: "Track wants and market changes.", category: "activity", onClick: () => openCommandCenterAction("market", "Watchlist") },
       { key: "daily-tide", label: "Daily Tide Report", helper: "Review today's quick loop.", category: "activity", onClick: () => closeFlowModal({ force: true }) },
@@ -10112,7 +10124,20 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function getScoutQuickStores() {
     const seen = new Set();
-    return [...(scoutSnapshot.stores || []), ...VIRGINIA_STORES_SEED]
+    const reportStores = [...(scoutSnapshot.reports || []), ...(scoutSnapshot.tidepoolReports || [])]
+      .map((report) => ({
+        id: report.storeId || report.store_id || "",
+        name: report.storeName || report.store_name || "",
+        nickname: report.storeName || report.store_name || "",
+        retailer: report.retailer || report.chain || "",
+        chain: report.retailer || report.chain || "",
+        city: report.city || "",
+        address: report.address || "",
+        region: report.region || "",
+        source: "scout-report",
+      }))
+      .filter((store) => store.name || store.id);
+    return [...(scoutSnapshot.stores || []), ...reportStores, ...VIRGINIA_STORES_SEED]
       .filter(Boolean)
       .filter((store, index) => {
         const key = String(store.id || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
@@ -13047,6 +13072,7 @@ function renderScoutHeader() {
   const scoutTrustScore = scoutSnapshot.scoutProfile?.trustScore || 72;
   const scoutTabs = [
     { key: "overview", label: "Overview" },
+    { key: "storeMap", label: "Store Map" },
     { key: "reports", label: "Reports" },
     { key: "guesses", label: "Guesses Planner" },
     { key: "stores", label: "Stores" },
@@ -13067,6 +13093,9 @@ function renderScoutHeader() {
     }
     if (nextPage === "stores") {
       setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+    }
+    if (nextPage === "storeMap") {
+      setScoutSubTabTarget({ tab: "storeMap", id: Date.now() });
     }
     if (nextPage === "alerts") {
       setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
@@ -13102,12 +13131,21 @@ function renderScoutHeader() {
         ariaLabel="Scout quick actions"
         actions={[
           {
+            key: "scout-map",
+            title: "Store Map",
+            subtitle: "Pins, reports, and watchlist",
+            className: "scout-hero-nav-tile",
+            onClick: () => {
+              setScoutSubTabTarget({ tab: "storeMap", id: Date.now() });
+              setScoutView("storeMap");
+            },
+          },
+          {
             key: "scout-stores",
             title: "Stores",
             subtitle: `${scoutStoreCount} nearby entries`,
             className: "scout-hero-nav-tile",
             onClick: () => {
-              if (!requestScoutLocation()) return;
               setScoutSubTabTarget({ tab: "stores", id: Date.now() });
               setScoutView("stores");
             },
@@ -15690,6 +15728,7 @@ function renderForgeHeader() {
     if (activeTab === "scout") {
       if (activeScoutPage === "stores" && scoutSubTabTarget.storeId) return `/scout/stores/${encodeURIComponent(scoutSubTabTarget.storeId)}`;
       if (activeScoutPage === "reports" && selectedScoutReport) return `/scout/reports/${encodeURIComponent(getScoutReportId(selectedScoutReport) || "selected")}`;
+      if (activeScoutPage === "storeMap") return "/scout/store-map";
       if (activeScoutPage === "alerts") return "/scout/calendar";
       return "/scout";
     }
@@ -17918,6 +17957,300 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
             </div>
           )}
+        </div>
+      </section>
+    );
+  }
+
+  function getStoreMapStoreId(store = {}, index = 0) {
+    return String(store.id || store.storeId || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || store.zip || index}`).toLowerCase();
+  }
+
+  function getStoreMapCoordinates(store = {}) {
+    const lat = Number(store.latitude ?? store.lat ?? store.locationLat ?? store.location_lat);
+    const lng = Number(store.longitude ?? store.lng ?? store.lon ?? store.locationLng ?? store.location_lng);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  }
+
+  function parseManualLocationCoordinates(value = "") {
+    const match = String(value || "").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+    if (!match) return null;
+    const lat = Number(match[1]);
+    const lng = Number(match[2]);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  }
+
+  function distanceMilesBetween(origin, destination) {
+    if (!origin || !destination) return null;
+    const toRad = (value) => (value * Math.PI) / 180;
+    const earthMiles = 3958.8;
+    const dLat = toRad(destination.lat - origin.lat);
+    const dLng = toRad(destination.lng - origin.lng);
+    const lat1 = toRad(origin.lat);
+    const lat2 = toRad(destination.lat);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    return earthMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function getStoreMapReports(store = {}) {
+    const storeId = String(store.id || store.storeId || "");
+    const storeName = getScoutQuickStoreName(store).toLowerCase();
+    const retailer = getScoutQuickRetailer(store).toLowerCase();
+    return scoutReportRows.filter((report) => {
+      const reportStoreId = String(report.storeId || report.store_id || "");
+      if (storeId && reportStoreId && storeId === reportStoreId) return true;
+      const reportStore = getScoutReportStore(report);
+      const reportName = String(reportStore.name || reportStore.nickname || report.storeName || report.store_name || "").toLowerCase();
+      const reportRetailer = String(reportStore.chain || reportStore.retailer || report.retailer || report.chain || "").toLowerCase();
+      return reportName && reportName === storeName && (!retailer || !reportRetailer || reportRetailer === retailer);
+    });
+  }
+
+  function getStoreMapStatus(store = {}, reports = []) {
+    const latest = reports[0];
+    const latestStatus = scoutStockStatusLabel(latest?.stockStatus || latest?.stock_status || "");
+    const raw = `${latestStatus} ${latest?.reportType || latest?.report_type || ""} ${store.status || store.currentStatus || ""}`.toLowerCase();
+    if (raw.includes("empty") || raw.includes("no_stock")) return "Empty shelves";
+    if (raw.includes("vendor") || raw.includes("stocking") || raw.includes("restock")) return "Restock signal";
+    if (raw.includes("low")) return "Low stock";
+    if (raw.includes("in stock") || raw.includes("found") || raw.includes("confirmed")) return "Stock reported";
+    if (reports.length) return "Recent report";
+    return "Needs report";
+  }
+
+  function getStoreMapConfidence(store = {}, reports = []) {
+    const latest = reports[0];
+    const rawScore = Number(latest?.confidence_score || store.restockConfidence || store.prediction_confidence || 0);
+    if (rawScore >= 75 || latest?.verified) return "High";
+    if (rawScore >= 45 || reports.length >= 2) return "Medium";
+    if (reports.length) return "Low";
+    return store.pokemonStockLikelihood || store.pokemon_stock_likelihood || "Unknown";
+  }
+
+  function buildStoreMapRows() {
+    const locationText = String(locationSettings.manualLocation || locationSettings.selectedSavedLocation || "").trim();
+    const origin = parseManualLocationCoordinates(locationText);
+    const query = String(storeMapFilters.query || "").trim().toLowerCase();
+    const area = String(storeMapFilters.area || "").trim().toLowerCase();
+    const sourceStores = getScoutQuickStores();
+    const rows = sourceStores.map((store, index) => {
+      const reports = getStoreMapReports(store);
+      const latestReport = reports[0] || null;
+      const categories = [...new Set(reports.flatMap((report) => normalizeScoutReportItems(report).map((item) => item.productType || report.productCategory || report.product_category || "Pokemon")).filter(Boolean))];
+      const coordinates = getStoreMapCoordinates(store);
+      const computedDistance = Number(store.distanceMiles ?? store.distance ?? store.miles);
+      const distance = Number.isFinite(computedDistance)
+        ? computedDistance
+        : distanceMilesBetween(origin, coordinates);
+      const retailer = getScoutQuickRetailer(store);
+      const name = getScoutQuickStoreName(store);
+      const city = store.city || store.addressCity || store.region || "";
+      const status = getStoreMapStatus(store, reports);
+      const confidence = getStoreMapConfidence(store, reports);
+      const watchlisted = Boolean(store.favorite || store.priority || store.watchlisted || store.watchlist);
+      return {
+        id: getStoreMapStoreId(store, index),
+        store,
+        name,
+        retailer,
+        city,
+        area: [city, store.region || store.state || ""].filter(Boolean).join(" / "),
+        address: store.address || store.streetAddress || "",
+        reports,
+        latestReport,
+        status,
+        confidence,
+        watchlisted,
+        categories,
+        distance,
+        coordinates,
+        pinX: 12 + ((index * 23) % 72),
+        pinY: 14 + ((index * 31) % 64),
+      };
+    });
+
+    return rows
+      .filter((row) => storeMapFilters.retailer === "All" || row.retailer === storeMapFilters.retailer)
+      .filter((row) => storeMapFilters.category === "All" || row.categories.includes(storeMapFilters.category))
+      .filter((row) => storeMapFilters.status === "All" || row.status === storeMapFilters.status)
+      .filter((row) => !storeMapFilters.watchlistOnly || row.watchlisted)
+      .filter((row) => {
+        if (storeMapFilters.distance === "Any") return true;
+        if (!Number.isFinite(row.distance)) return false;
+        return row.distance <= Number(storeMapFilters.distance);
+      })
+      .filter((row) => {
+        if (!query) return true;
+        const haystack = [row.name, row.retailer, row.city, row.address, row.area].join(" ").toLowerCase();
+        return haystack.includes(query);
+      })
+      .filter((row) => {
+        if (!area) return true;
+        const haystack = [row.city, row.address, row.area, row.store.zip, row.store.postalCode].join(" ").toLowerCase();
+        return haystack.includes(area);
+      })
+      .sort((a, b) => {
+        if (hasScoutLocation && Number.isFinite(a.distance) && Number.isFinite(b.distance)) return a.distance - b.distance;
+        if (b.watchlisted !== a.watchlisted) return Number(b.watchlisted) - Number(a.watchlisted);
+        if (b.reports.length !== a.reports.length) return b.reports.length - a.reports.length;
+        return a.name.localeCompare(b.name);
+      });
+  }
+
+  function updateStoreMapFilter(key, value) {
+    setStoreMapFilters((current) => ({ ...current, [key]: value }));
+  }
+
+  function toggleStoreMapWatch(rowOrStore = {}) {
+    if (blockGuestSave()) return;
+    const row = rowOrStore.store ? rowOrStore : { store: rowOrStore };
+    const targetId = getStoreMapStoreId(row.store);
+    const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
+    const savedStores = saved.stores?.length ? saved.stores : scoutSnapshot.stores || [];
+    const exists = savedStores.some((store) => getStoreMapStoreId(store) === targetId);
+    const nextWatchlisted = !Boolean(row.store.favorite || row.store.priority || row.store.watchlisted || row.store.watchlist);
+    const nextStores = exists
+      ? savedStores.map((store) => getStoreMapStoreId(store) === targetId ? { ...store, favorite: nextWatchlisted, watchlisted: nextWatchlisted } : store)
+      : [{ ...row.store, id: row.store.id || targetId, favorite: nextWatchlisted, watchlisted: nextWatchlisted }, ...savedStores];
+    const nextScout = { ...saved, stores: nextStores };
+    localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(nextScout));
+    setScoutSnapshot((current) => ({ ...current, stores: nextStores }));
+    setSelectedStoreMapStore((current) => current && getStoreMapStoreId(current.store) === targetId ? { ...current, store: { ...current.store, favorite: nextWatchlisted, watchlisted: nextWatchlisted }, watchlisted: nextWatchlisted } : current);
+    setVaultToast(nextWatchlisted ? `${row.name || getScoutQuickStoreName(row.store)} added to watchlist.` : `${row.name || getScoutQuickStoreName(row.store)} removed from watchlist.`);
+  }
+
+  function openStoreMapReport(row, reportType = "stock_on_shelf") {
+    setSelectedStoreMapStore(null);
+    openScoutSubmitFlow({
+      source: "store-map",
+      store: row.store,
+      reportType,
+    });
+  }
+
+  function renderStoreMapStatusBadge(row) {
+    return <span className={`status-badge store-map-status store-map-status--${row.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{row.status}</span>;
+  }
+
+  function renderStoreMapPanel() {
+    const rows = buildStoreMapRows();
+    const categoryOptions = ["All", ...new Set(buildStoreMapRows().flatMap((row) => row.categories).filter(Boolean))];
+    const statusOptions = ["All", ...new Set(buildStoreMapRows().map((row) => row.status))];
+    const retailerOptions = ["All", ...VIRGINIA_RETAILERS];
+    const featuredRows = rows.slice(0, 7);
+    const locationCopy = hasScoutLocation
+      ? `Nearby sorting is on${locationSettings.manualLocation || locationSettings.selectedSavedLocation ? ` for ${locationSettings.manualLocation || locationSettings.selectedSavedLocation}` : ""}.`
+      : "Location is optional. Search by city, store, or manual area to use Store Map without sharing location.";
+    return (
+      <section className="store-map-page" aria-label="Store Map">
+        <article className="store-map-hero">
+          <div>
+            <p className="section-kicker">Scout Store Map</p>
+            <h2>Find trusted store signals nearby.</h2>
+            <p>{locationCopy}</p>
+          </div>
+          <div className="store-map-hero-actions">
+            <button type="button" onClick={() => openScoutSubmitFlow({ source: "store-map-hero" })}>Report Stock</button>
+            <button type="button" className="secondary-button" onClick={() => setStoreMapFilters((current) => ({ ...current, watchlistOnly: !current.watchlistOnly }))}>
+              {storeMapFilters.watchlistOnly ? "Show All Stores" : "Watchlist Only"}
+            </button>
+          </div>
+        </article>
+
+        <article className="store-map-filters panel">
+          <label>
+            <span>Search stores</span>
+            <input value={storeMapFilters.query} onChange={(event) => updateStoreMapFilter("query", event.target.value)} placeholder="Store, city, ZIP, nickname" />
+          </label>
+          <label>
+            <span>Manual area</span>
+            <input value={storeMapFilters.area} onChange={(event) => updateStoreMapFilter("area", event.target.value)} placeholder="City, ZIP, or area" />
+          </label>
+          <label>
+            <span>Retailer</span>
+            <select value={storeMapFilters.retailer} onChange={(event) => updateStoreMapFilter("retailer", event.target.value)}>
+              {retailerOptions.map((retailer) => <option key={retailer}>{retailer}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Product</span>
+            <select value={storeMapFilters.category} onChange={(event) => updateStoreMapFilter("category", event.target.value)}>
+              {categoryOptions.map((category) => <option key={category}>{category}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select value={storeMapFilters.status} onChange={(event) => updateStoreMapFilter("status", event.target.value)}>
+              {statusOptions.map((status) => <option key={status}>{status}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Distance</span>
+            <select value={storeMapFilters.distance} onChange={(event) => updateStoreMapFilter("distance", event.target.value)}>
+              <option value="Any">Any</option>
+              <option value="5">Within 5 mi</option>
+              <option value="15">Within 15 mi</option>
+              <option value="30">Within 30 mi</option>
+              <option value="50">Within 50 mi</option>
+            </select>
+          </label>
+          <label className="store-map-watch-toggle">
+            <input type="checkbox" checked={storeMapFilters.watchlistOnly} onChange={(event) => updateStoreMapFilter("watchlistOnly", event.target.checked)} />
+            <span>Watchlist only</span>
+          </label>
+        </article>
+
+        <div className="store-map-layout">
+          <article className="store-map-canvas panel" aria-label="Store Map visual">
+            <div className="store-map-rings" aria-hidden="true" />
+            {featuredRows.map((row) => (
+              <button
+                type="button"
+                key={`pin-${row.id}`}
+                className={`store-map-pin store-map-pin--${row.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}${row.watchlisted ? " is-watched" : ""}`}
+                style={{ left: `${row.pinX}%`, top: `${row.pinY}%` }}
+                onClick={() => setSelectedStoreMapStore(row)}
+                aria-label={`Open ${row.name}`}
+              >
+                <span>{row.retailer.slice(0, 1)}</span>
+              </button>
+            ))}
+            <div className="store-map-canvas-summary">
+              <strong>{rows.length} stores shown</strong>
+              <span>{featuredRows.filter((row) => row.watchlisted).length} watched on map</span>
+            </div>
+          </article>
+
+          <div className="store-map-card-list">
+            {rows.slice(0, 12).map((row) => (
+              <article className="store-map-card" key={row.id}>
+                <button type="button" className="store-map-card-main" onClick={() => setSelectedStoreMapStore(row)}>
+                  <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
+                  <span>
+                    <strong>{row.name}</strong>
+                    <small>{row.retailer} | {row.area || "Area not listed"}{Number.isFinite(row.distance) ? ` | ${row.distance.toFixed(1)} mi` : ""}</small>
+                    <em>{row.latestReport ? `Last report: ${scoutReportDateTimeLabel(row.latestReport)}` : "No Scout report yet"}</em>
+                  </span>
+                </button>
+                <div className="store-map-card-meta">
+                  {renderStoreMapStatusBadge(row)}
+                  <span className="confidence-badge">{row.confidence} confidence</span>
+                  <span className={row.watchlisted ? "status-badge watchlist" : "status-badge"}>{row.watchlisted ? "Watching" : "Not watched"}</span>
+                </div>
+                <div className="store-map-card-actions">
+                  <button type="button" className="secondary-button" onClick={() => openStoreMapReport(row, "stock_on_shelf")}>Report Stock</button>
+                  <button type="button" className="ghost-button" onClick={() => toggleStoreMapWatch(row)}>{row.watchlisted ? "Unwatch" : "Watch"}</button>
+                  <button type="button" className="ghost-button" onClick={() => setSelectedStoreMapStore(row)}>Details</button>
+                </div>
+              </article>
+            ))}
+            {!rows.length ? (
+              <div className="empty-state">
+                <h3>No stores match those filters</h3>
+                <p>Try a broader city search, clear Watchlist only, or suggest a missing store from Quick Add.</p>
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
     );
@@ -24358,6 +24691,77 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
+      {selectedStoreMapStore ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => setSelectedStoreMapStore(null)}>
+          <section className="location-modal store-map-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="store-map-detail-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="store-map-detail-title">{selectedStoreMapStore.name}</h2>
+                <p>{selectedStoreMapStore.retailer} | {selectedStoreMapStore.area || "Area not listed"}</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close store details" onClick={() => setSelectedStoreMapStore(null)}>X</button>
+            </div>
+            <div className="store-map-detail-body">
+              <article className="store-map-detail-summary">
+                <div className="store-map-retailer-mark">{selectedStoreMapStore.retailer.slice(0, 2).toUpperCase()}</div>
+                <div>
+                  <strong>{selectedStoreMapStore.name}</strong>
+                  <p>{selectedStoreMapStore.address || "Address not listed"}{Number.isFinite(selectedStoreMapStore.distance) ? ` | ${selectedStoreMapStore.distance.toFixed(1)} mi away` : ""}</p>
+                  <div className="summary-pill-row">
+                    {renderStoreMapStatusBadge(selectedStoreMapStore)}
+                    <span className="confidence-badge">{selectedStoreMapStore.confidence} confidence</span>
+                    <span className={selectedStoreMapStore.watchlisted ? "status-badge watchlist" : "status-badge"}>{selectedStoreMapStore.watchlisted ? "Watching" : "Not watched"}</span>
+                  </div>
+                </div>
+              </article>
+
+              <div className="store-map-detail-grid">
+                <DetailItem label="Last Scout report" value={selectedStoreMapStore.latestReport ? scoutReportDateTimeLabel(selectedStoreMapStore.latestReport) : "No report yet"} />
+                <DetailItem label="Known restock/truck days" value={selectedStoreMapStore.store.restockDays || selectedStoreMapStore.store.truckDays || selectedStoreMapStore.store.bestCheckWindow || "Not logged yet"} />
+                <DetailItem label="Product categories" value={selectedStoreMapStore.categories.length ? selectedStoreMapStore.categories.join(", ") : "No category reports yet"} />
+                <DetailItem label="User notes" value={selectedStoreMapStore.store.notes || selectedStoreMapStore.store.userNotes || "No notes yet"} />
+              </div>
+
+              <section className="store-map-detail-reports">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>Recent Scout Reports</h3>
+                    <p>{selectedStoreMapStore.reports.length} report{selectedStoreMapStore.reports.length === 1 ? "" : "s"} connected to this store.</p>
+                  </div>
+                </div>
+                <div className="scout-preview-list">
+                  {selectedStoreMapStore.reports.slice(0, 3).map((report) => renderScoutReportCard(report, { compact: true }))}
+                  {!selectedStoreMapStore.reports.length ? (
+                    <div className="small-empty-state">
+                      <strong>No reports for this store yet</strong>
+                      <span>Submit a stock or empty shelf report after your next check.</span>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+
+              {adminEditModeActive ? (
+                <section className="store-map-admin-box">
+                  <strong>Admin basics</strong>
+                  <p>Edit name, nickname, retailer, address, coordinates, notes, status, and duplicate records through the existing admin review flow when wired.</p>
+                  <div className="summary-pill-row">
+                    <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Scout Store Map", topic: selectedStoreMapStore.name })}>Suggest/Edit Store Data</button>
+                    <button type="button" className="ghost-button" onClick={() => setVaultToast("Duplicate record review is staged for the admin store approval flow.")}>Flag Duplicate</button>
+                  </div>
+                </section>
+              ) : null}
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" onClick={() => openStoreMapReport(selectedStoreMapStore, "stock_on_shelf")}>Report Stock</button>
+              <button type="button" className="secondary-button" onClick={() => openStoreMapReport(selectedStoreMapStore, "no_stock")}>Report Empty</button>
+              <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(selectedStoreMapStore)}>{selectedStoreMapStore.watchlisted ? "Unwatch Store" : "Watch Store"}</button>
+              <button type="button" className="ghost-button" onClick={() => setVaultToast("Store notes are staged for a later persistence pass.")}>Add Note</button>
+              <button type="button" className="ghost-button" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([selectedStoreMapStore.name, selectedStoreMapStore.address, selectedStoreMapStore.city].filter(Boolean).join(" "))}`, "_blank", "noopener,noreferrer")}>Directions</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       {selectedScoutReport ? (
         <div className="location-modal-backdrop" role="presentation" onClick={() => setSelectedScoutReport(null)}>
           <section className="location-modal scout-report-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-report-detail-title" onClick={(event) => event.stopPropagation()}>
@@ -26918,6 +27322,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               renderScoutReportsPanel()
             ) : activeScoutPage === "alerts" ? (
               renderPokemonWatchCalendarPanel()
+            ) : activeScoutPage === "storeMap" ? (
+              renderStoreMapPanel()
             ) : activeScoutPage === "stores" ? (
               <>
                 <section className="embedded-page">
