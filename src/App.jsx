@@ -2308,6 +2308,13 @@ function DetailItem({ label, value }) {
   );
 }
 
+function maskEmail(value = "") {
+  const [name = "", domain = ""] = String(value || "").split("@");
+  if (!name || !domain) return value || "Email unavailable";
+  const visible = name.length <= 2 ? `${name.slice(0, 1)}*` : `${name.slice(0, 2)}***`;
+  return `${visible}@${domain}`;
+}
+
 function clampPageSize(value, fallback = 24) {
   const size = Number(value || fallback);
   return CATALOG_PAGE_SIZE_OPTIONS.includes(size) ? size : fallback;
@@ -4510,6 +4517,18 @@ export default function App() {
       };
     });
     addAuditLog("beta_access_update", "profile", targetUser.userId || null, { email: targetUser.email, status });
+  }
+
+  function createAdminAnnouncement() {
+    if (!adminToolsVisible) return;
+    addBetaNotification({
+      type: "announcement",
+      title: "New from Ember & Tide!",
+      message: "Admin-created announcement draft. Review copy before making this public in a backend-managed announcement system.",
+      actionUrl: "/",
+    });
+    addAuditLog("announcement_create_draft", "announcement", "local-draft", { source: "admin_dashboard" });
+    setVaultToast("Announcement draft added to local New Stuff notifications.");
   }
 
   function toggleArrayValue(values = [], value) {
@@ -20231,7 +20250,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <div className="compact-card-header">
                       <div>
                         <strong>{entry.fullName || entry.displayName || "Unnamed user"}</strong>
-                        <p>{entry.email || "Email unavailable"} | {entry.createdAt ? shortDate(entry.createdAt) : "Created date unavailable"}</p>
+                        <p>{maskEmail(entry.email)} | {entry.createdAt ? shortDate(entry.createdAt) : "Created date unavailable"}</p>
                       </div>
                       <span className="status-badge">{entry.isAdmin ? "admin" : entry.userRole || "user"}</span>
                     </div>
@@ -20311,7 +20330,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="compact-card-header">
                     <div>
                       <strong>{entry.businessName || entry.name}</strong>
-                      <p>{entry.email} | {entry.city || "City not provided"}</p>
+                      <p>{maskEmail(entry.email)} | {entry.city || "City not provided"}</p>
                     </div>
                     <span className="status-badge">{entry.status || "new"}</span>
                   </div>
@@ -20380,7 +20399,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="compact-card-header">
                     <div>
                       <strong>{String(entry.requestType || "").replace(/_/g, " ")}</strong>
-                      <p>{entry.email || "No email"} | {entry.createdAt ? shortDate(entry.createdAt) : "No date"}</p>
+                      <p>{maskEmail(entry.email)} | {entry.createdAt ? shortDate(entry.createdAt) : "No date"}</p>
                     </div>
                     <span className="status-badge">{entry.status || "new"}</span>
                   </div>
@@ -20434,8 +20453,212 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderAdminScoutReportQueue() {
+    const reports = adminReviewFilter === "All"
+      ? scoutReportRows.slice(0, 8)
+      : scoutNeedsReviewReports.length ? scoutNeedsReviewReports : scoutReportRows.slice(0, 8);
+    return (
+      <section className="settings-subsection admin-ops-section">
+        <div className="compact-card-header">
+          <div>
+            <h3>Reports & Moderation</h3>
+            <p>Review Scout reports, confirm good reports, reject bad reports, or hide unsafe entries. Writes still depend on admin edit mode and backend/RLS protections.</p>
+          </div>
+          <div className="summary-pill-row">
+            <span className="status-badge">{scoutNeedsReviewReports.length} need review</span>
+            <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("review"); }}>Open Scout Review</button>
+          </div>
+        </div>
+        <div className="admin-report-review-grid">
+          {reports.length ? reports.map((report) => (
+            <article className="admin-report-review-card" key={getScoutReportId(report) || `${report.storeName}-${report.createdAt}`}>
+              {renderScoutReportCard(report, { compact: true })}
+              <div className="quick-actions">
+                <button type="button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>Approve</button>
+                <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(report, "reject")}>Reject</button>
+                <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(report, "softDelete")}>Hide</button>
+              </div>
+            </article>
+          )) : (
+            <div className="empty-state">
+              <h3>No Scout reports waiting</h3>
+              <p>Submitted reports, disputed posts, and low-confidence reports appear here.</p>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderAdminStoreManagementSection() {
+    const storeRows = buildStoreMapRows().slice(0, 8);
+    return (
+      <section className="settings-subsection admin-ops-section">
+        <div className="compact-card-header">
+          <div>
+            <h3>Store Management</h3>
+            <p>Manage store records, nicknames, retailer data, city/address details, coordinates, duplicate records, notes, and current status through existing review flows.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("storeMap"); }}>Open Store Map</button>
+        </div>
+        <div className="admin-store-management-grid">
+          {storeRows.map((row) => (
+            <article className="admin-store-card" key={`admin-store-${row.id}`}>
+              <div>
+                <strong>{row.name}</strong>
+                <p>{row.retailer} | {row.area || "Area not listed"}</p>
+              </div>
+              <div className="summary-pill-row">
+                {renderStoreMapStatusBadge(row)}
+                <span className="confidence-badge">{row.confidence} confidence</span>
+              </div>
+              <div className="quick-actions">
+                <button type="button" className="secondary-button" onClick={() => setSelectedStoreMapStore(row)}>Details</button>
+                <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Admin Store Management", topic: row.name })}>Edit / Suggest</button>
+                <button type="button" className="ghost-button" onClick={() => setVaultToast("Duplicate store review is staged through admin review suggestions.")}>Duplicate</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  function renderAdminAnnouncementSection() {
+    const announcements = (betaReadinessData.notifications || []).filter((entry) => entry.type === "announcement" || /new|update|announcement/i.test(`${entry.title || ""} ${entry.type || ""}`));
+    return (
+      <section className="settings-subsection admin-ops-section">
+        <div className="compact-card-header">
+          <div>
+            <h3>Announcements / New Stuff</h3>
+            <p>Create local announcement drafts and review active New Stuff messages. Backend-managed announcements can plug into this surface later.</p>
+          </div>
+          <button type="button" onClick={createAdminAnnouncement}>Create Draft</button>
+        </div>
+        <div className="admin-compact-list">
+          {announcements.length ? announcements.slice(0, 6).map((entry) => (
+            <article className="admin-compact-row" key={entry.id}>
+              <div>
+                <strong>{entry.title}</strong>
+                <p>{entry.message}</p>
+              </div>
+              <span className="status-badge">{entry.dismissedAt ? "dismissed" : "active"}</span>
+            </article>
+          )) : (
+            <div className="small-empty-state">
+              <strong>No announcements active</strong>
+              <span>Create a draft or connect the future admin-managed announcement feed.</span>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderAdminOperationsDashboard() {
+    const openSuggestions = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status));
+    const listingReviewItems = workspaceMarketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
+    const betaRequests = (betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused"].includes(entry.status || "pending"));
+    const kidsApplications = betaReadinessData.kidsApplications || [];
+    const sponsorRows = betaReadinessData.sponsorInterest || [];
+    const auditLogs = betaReadinessData.auditLogs || [];
+    const announcementCount = (betaReadinessData.notifications || []).filter((entry) => entry.type === "announcement").length;
+    const shopWorkspaces = workspaces.filter((workspace) => ["business", "card_shop_partner", "team"].includes(workspace.type));
+    const adminOpsSections = [
+      { title: "Reports & Moderation", value: scoutNeedsReviewReports.length, helper: "Scout report approvals, rejects, hides", filter: "Reports & Moderation" },
+      { title: "Store Management", value: buildStoreMapRows().length, helper: "Stores, nicknames, duplicate review", filter: "Store Management" },
+      { title: "Announcements / New Stuff", value: announcementCount, helper: "Launch notes and app updates", filter: "Announcements / New Stuff" },
+      { title: "Users & Usernames", value: 1 + (betaReadinessData.betaFeedback || []).length, helper: "Search users, usernames, badges", filter: "User Management" },
+      { title: "Family / Kid Accounts", value: kidsApplications.length, helper: "Parent links and kid safety review", filter: "Family / Kid Accounts" },
+      { title: "Kids Program", value: kidsApplications.filter((entry) => entry.status === "pending_review").length, helper: "Applications and fair-access status", filter: "Kids Program Applications" },
+      { title: "Marketplace", value: listingReviewItems.length, helper: "Listings, reports, fair trade review", filter: "Marketplace Listings" },
+      { title: "Memberships / Billing", value: subscriptionProfile?.subscriptionPlan || "free", helper: "Modeled membership status only", filter: "Memberships / Billing" },
+      { title: "Shops / Seller Verification", value: sponsorRows.length + shopWorkspaces.length, helper: "Card shops, sponsors, sellers", filter: "Shops / Seller Verification" },
+      { title: "Beta Access", value: betaRequests.length, helper: "Invite/waitlist approvals", filter: "Beta Access" },
+      { title: "App Content / Admin Edit", value: adminEditModeActive ? "On" : "Off", helper: "Safe edit mode and content review", filter: "App Content / Admin Edit" },
+      { title: "System Health / Logs", value: (betaReadinessData.appErrorLogs || []).length + auditLogs.length, helper: "Client errors and admin audit log", filter: "System Health / Logs" },
+    ];
+    return (
+      <section className="admin-ops-dashboard">
+        <div className="admin-security-panel">
+          <div>
+            <strong>Admin access is restricted</strong>
+            <p>Only approved admins/founders should reach this dashboard. Frontend visibility is only a convenience layer; protected writes must remain guarded by Supabase RLS, backend checks, and audit logs.</p>
+          </div>
+          <span className={adminEditModeActive ? "status-badge danger" : "status-badge"}>{adminEditModeActive ? "Admin Edit On" : "View Mode"}</span>
+        </div>
+
+        <div className="admin-ops-grid">
+          {adminOpsSections.map((section) => (
+            <button type="button" className="admin-ops-card" key={section.title} onClick={() => setAdminReviewFilter(section.filter)}>
+              <span>{section.title}</span>
+              <strong>{section.value}</strong>
+              <small>{section.helper}</small>
+            </button>
+          ))}
+        </div>
+
+        <div className="admin-ops-lane-grid">
+          {renderAdminScoutReportQueue()}
+          {renderAdminStoreManagementSection()}
+          {renderAdminAnnouncementSection()}
+          <section className="settings-subsection admin-ops-section">
+            <div className="compact-card-header">
+              <div>
+                <h3>Memberships / Billing</h3>
+                <p>Membership status is modeled locally. Raw payment data is never stored here; billing providers remain disconnected until approved.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("membership")}>Open Membership Foundation</button>
+            </div>
+            <div className="admin-compact-list">
+              <article className="admin-compact-row">
+                <div><strong>{TIER_LABELS[currentTier] || currentTier}</strong><p>{subscriptionProfile?.subscriptionStatus || "active"} | {subscriptionProfile?.subscriptionPlan || "free"}</p></div>
+                <span className="status-badge">No payment data</span>
+              </article>
+            </div>
+          </section>
+          <section className="settings-subsection admin-ops-section">
+            <div className="compact-card-header">
+              <div>
+                <h3>Shops / Seller Verification</h3>
+                <p>Review shop, sponsor, seller, and card shop partner interest without exposing private buyer data.</p>
+              </div>
+              <span className="status-badge">{sponsorRows.length + shopWorkspaces.length} records</span>
+            </div>
+            <div className="admin-compact-list">
+              {[...sponsorRows.slice(0, 4), ...shopWorkspaces.slice(0, 4).map((workspace) => ({ id: workspace.id, businessName: workspace.name, status: workspace.type }))].map((entry) => (
+                <article className="admin-compact-row" key={entry.id || entry.businessName}>
+                  <div><strong>{entry.businessName || entry.name}</strong><p>{entry.city || entry.status || "Seller verification pending"}</p></div>
+                  <span className="status-badge">{entry.status || "new"}</span>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="settings-subsection admin-ops-section">
+            <div className="compact-card-header">
+              <div>
+                <h3>System Health / Logs</h3>
+                <p>Client-side error logs and local admin audit records. Server logs stay in backend/Vercel/Supabase tools.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("betaReadiness")}>Open Beta Readiness</button>
+            </div>
+            <div className="admin-compact-list">
+              {(auditLogs.slice(0, 5)).map((entry) => (
+                <article className="admin-compact-row" key={entry.id}>
+                  <div><strong>{entry.action}</strong><p>{entry.entityType} | {shortDate(entry.createdAt)}</p></div>
+                  <span className="status-badge">audit</span>
+                </article>
+              ))}
+              {!auditLogs.length ? <div className="small-empty-state"><strong>No audit log entries yet</strong><span>Important local admin actions will appear here.</span></div> : null}
+            </div>
+          </section>
+        </div>
+      </section>
+    );
+  }
+
   function renderAdminReviewPage() {
-    if (!canReviewSharedData) {
+    if (!adminToolsVisible) {
       return (
         <PageHeader
           className={getHeaderCardClass("panel admin-page-header")}
@@ -20445,7 +20668,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         />
       );
     }
-    const sections = [...new Set(["All", ...Object.values(REVIEW_SECTION_LABELS), ...BETA_REVIEW_SECTIONS, "Marketplace Listings", "Market Source Controls"])];
+    const sections = [...new Set([
+      "All",
+      "Reports & Moderation",
+      "Store Management",
+      "Announcements / New Stuff",
+      "Family / Kid Accounts",
+      "Memberships / Billing",
+      "Shops / Seller Verification",
+      "Beta Access",
+      "App Content / Admin Edit",
+      "System Health / Logs",
+      ...Object.values(REVIEW_SECTION_LABELS),
+      ...BETA_REVIEW_SECTIONS,
+      "Marketplace Listings",
+      "Market Source Controls",
+    ])];
     const visibleSuggestions = suggestions.filter((suggestion) => {
       if (adminReviewFilter === "All") return true;
       return REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)] === adminReviewFilter;
@@ -20459,8 +20697,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <>
       <PageHeader
         className={getHeaderCardClass("panel admin-page-header")}
-        title="Admin Tools"
-        subtitle="Import status, shared-data review, Marketplace moderation, and beta data controls in one place."
+        title="Admin Operations"
+        subtitle="Operations dashboard for reports, stores, announcements, users, families, marketplace, membership foundations, sellers, beta access, content, and system health."
         actions={(
           <div className="summary-pill-row">
             <span className="status-badge">{totalOpenCount} open</span>
@@ -20483,6 +20721,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <p className="compact-subtitle">{adminReviewIdentityDetail}</p>
           {currentUserProfile?.source ? <span className="status-badge">{currentUserProfile.source}</span> : null}
         </div>
+        {renderAdminOperationsDashboard()}
         <section className="settings-subsection marketplace-admin-review">
           <div className="compact-card-header">
             <div>
