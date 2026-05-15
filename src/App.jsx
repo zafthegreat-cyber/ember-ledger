@@ -10,6 +10,7 @@ import MarketPriceHistoryPanel from "./components/MarketPriceHistoryPanel";
 import SmartCatalogSearchBox from "./components/SmartCatalogSearchBox";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
 import Scout from "./pages/Scout";
+import { APP_VERSION, checkForEmberTideUpdate, refreshEmberTideApp } from "./appUpdate";
 import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/sharedPokemonCatalog";
 import {
   ALERT_TYPE_OPTIONS,
@@ -2562,6 +2563,9 @@ export default function App() {
   const [adminEditMode, setAdminEditMode] = useState(false);
   const [adminModeStorageReady, setAdminModeStorageReady] = useState(false);
   const [adminConfirmAction, setAdminConfirmAction] = useState(null);
+  const [appUpdate, setAppUpdate] = useState({ available: false, latestVersion: "", source: "" });
+  const [dismissedUpdateVersion, setDismissedUpdateVersion] = useState("");
+  const [appRefreshInProgress, setAppRefreshInProgress] = useState(false);
   const quickAddRef = useRef(null);
   const quickAddButtonRef = useRef(null);
   const quickAddMenuRef = useRef(null);
@@ -3304,6 +3308,61 @@ export default function App() {
   const getHeaderCardClass = (className = "") =>
     `app-header-card app-header-card--${headerMode}${className ? ` ${className}` : ""}`;
   const legacyVaultAddModalEnabled = false; // Deprecated: product adds now route through Add to Multiple Places.
+  const showAppUpdatePrompt = Boolean(
+    appUpdate.available &&
+    appUpdate.latestVersion !== dismissedUpdateVersion &&
+    !autoHideBlocked &&
+    !appRefreshInProgress
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    async function checkForUpdate(source = "version-json") {
+      try {
+        const update = await checkForEmberTideUpdate();
+        if (!active || !update.available) return;
+        setAppUpdate({ ...update, source });
+      } catch {
+        // Version checks must stay quiet so offline/beta sessions are not interrupted.
+      }
+    }
+
+    const onServiceWorkerUpdate = (event) => {
+      setAppUpdate((current) => ({
+        ...current,
+        available: true,
+        latestVersion: current.latestVersion || "service-worker-update",
+        source: event.detail?.source || "service-worker",
+      }));
+    };
+
+    checkForUpdate();
+    const interval = window.setInterval(() => checkForUpdate(), 5 * 60 * 1000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") checkForUpdate("visibility");
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("ember-tide:update-available", onServiceWorkerUpdate);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("ember-tide:update-available", onServiceWorkerUpdate);
+    };
+  }, []);
+
+  async function handleSafeAppRefresh() {
+    setAppRefreshInProgress(true);
+    setVaultToast("Refreshing Ember & Tide to the newest version...");
+    try {
+      await refreshEmberTideApp();
+    } catch (error) {
+      setAppRefreshInProgress(false);
+      setVaultToast(`Refresh failed: ${error.message || "try again"}`);
+    }
+  }
 
   function navigateMainTab(tab) {
     if (!confirmLeaveVaultWork()) return;
@@ -23688,6 +23747,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ), "data")}
               {renderMenuPullDown("feedback", "Feedback / Help", "Send feedback, report bugs, and app help", (
                 <div className="drawer-links">
+                  <div className="drawer-info-card app-support-card">
+                    <strong>App Support</strong>
+                    <p className="compact-subtitle">Having issues after an update? Refresh Ember & Tide to load the newest version.</p>
+                    <dl className="drawer-status-list">
+                      <div><dt>Loaded version</dt><dd>{APP_VERSION}</dd></div>
+                      <div><dt>Update status</dt><dd>{appUpdate.available ? "Update available" : "Up to date"}</dd></div>
+                    </dl>
+                    <button type="button" className="drawer-link" disabled={appRefreshInProgress} onClick={() => runMenuAction(() => void handleSafeAppRefresh())}>
+                      {appRefreshInProgress ? "Refreshing..." : "Refresh App"}
+                    </button>
+                  </div>
                   <div className="drawer-info-card">
                     <strong>Feedback types</strong>
                     <p className="compact-subtitle">{BETA_FEEDBACK_TYPES.slice(0, 6).join(", ")} and more.</p>
@@ -24121,6 +24191,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => setDealFinderOpen(false)}>Close</button>
             </div>
           </section>
+        </div>
+      ) : null}
+
+      {showAppUpdatePrompt ? (
+        <div className="app-update-prompt" role="dialog" aria-modal="false" aria-labelledby="app-update-title">
+          <div>
+            <h2 id="app-update-title">Update available</h2>
+            <p>A new Ember & Tide update is ready. Tap update to refresh safely.</p>
+          </div>
+          <div className="app-update-actions">
+            <button type="button" disabled={appRefreshInProgress} onClick={() => void handleSafeAppRefresh()}>
+              {appRefreshInProgress ? "Updating..." : "Update App"}
+            </button>
+            <button type="button" className="secondary-button" onClick={() => setDismissedUpdateVersion(appUpdate.latestVersion)}>
+              Later
+            </button>
+          </div>
         </div>
       ) : null}
 

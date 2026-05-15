@@ -17971,8 +17971,77 @@ button,
   color: rgba(248, 250, 252, 0.68);
 }
 
+.app-update-prompt {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(var(--bottom-nav-height, 74px) + max(18px, env(safe-area-inset-bottom)));
+  z-index: 130;
+  width: min(420px, calc(100vw - 32px));
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(12, 38, 56, 0.14);
+  border-radius: 22px;
+  color: var(--color-navy, #0f172a);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 90, 47, 0.16), transparent 14rem),
+    radial-gradient(circle at 100% 0%, rgba(88, 213, 232, 0.18), transparent 14rem),
+    var(--color-paper, #fffaf2);
+  box-shadow: 0 22px 60px rgba(12, 38, 56, 0.22);
+}
+
+.app-update-prompt h2,
+.app-crash-card h1 {
+  margin: 0 0 6px;
+  color: var(--color-navy, #0f172a);
+  font-size: 1.2rem;
+}
+
+.app-update-prompt p,
+.app-crash-card p {
+  margin: 0;
+  color: var(--color-navy-muted, #426174);
+  line-height: 1.45;
+}
+
+.app-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.app-support-card .drawer-status-list dd {
+  overflow-wrap: anywhere;
+}
+
+.app-crash-recovery {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 15% 8%, rgba(255, 90, 47, 0.22), transparent 24rem),
+    radial-gradient(circle at 88% 12%, rgba(88, 213, 232, 0.22), transparent 24rem),
+    linear-gradient(180deg, #fff7eb 0%, #eefcff 100%);
+}
+
+.app-crash-card {
+  width: min(460px, 100%);
+  padding: 24px;
+  border-radius: 24px;
+  text-align: left;
+}
+
 @media (max-width: 720px) {
   .signed-out-landing.panel {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-update-prompt {
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--bottom-nav-height, 74px) + max(12px, env(safe-area-inset-bottom)));
+    width: auto;
   }
 }
