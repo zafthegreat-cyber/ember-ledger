@@ -18865,6 +18865,29 @@ button,
   color: var(--text-muted, #426174);
 }
 
+.daily-tide-progress-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 4px;
+}
+
+.daily-tide-progress-preview span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(14, 159, 181, 0.12);
+  color: var(--color-navy, #0c2638);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.daily-tide-progress-preview .ghost-button {
+  min-height: 36px;
+  padding: 7px 10px;
+}
+
 .daily-tide-modal {
   max-width: 440px;
 }
@@ -18892,6 +18915,180 @@ button,
 
   .daily-tide-modal {
     width: min(100% - 24px, 440px);
+  }
+}
+
+/* Profile Progress */
+.profile-progress-page {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+}
+
+.profile-progress-header {
+  overflow: hidden;
+}
+
+.profile-progress-hero {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 90, 47, 0.14), rgba(88, 213, 232, 0.16)),
+    var(--color-paper, #fffaf2);
+}
+
+.profile-public-preview,
+.profile-privacy-note {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.profile-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border-radius: 24px;
+  background: var(--gradient-ember-tide, linear-gradient(135deg, #ff5a2f, #0e9fb5, #7b4df3));
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 900;
+  box-shadow: var(--shadow-ember-glow, 0 0 28px rgba(255, 90, 47, 0.28));
+}
+
+.profile-public-preview h2,
+.profile-privacy-note strong,
+.profile-progress-card h2 {
+  margin: 0;
+  color: var(--color-navy, #0c2638);
+}
+
+.profile-public-preview p,
+.profile-privacy-note p,
+.profile-safety-card p {
+  margin: 4px 0 0;
+  color: var(--color-navy-muted, #426174);
+}
+
+.profile-privacy-note {
+  max-width: 360px;
+  padding: 14px;
+  border: 1px solid rgba(12, 38, 56, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 250, 242, 0.8);
+}
+
+.profile-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.profile-progress-card {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-level-card {
+  background:
+    linear-gradient(135deg, rgba(123, 77, 243, 0.1), rgba(255, 110, 180, 0.1)),
+    var(--color-paper, #fffaf2);
+}
+
+.profile-mini-list,
+.profile-stat-list {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-mini-list span,
+.profile-stat-list div {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 247, 235, 0.75);
+  border: 1px solid rgba(12, 38, 56, 0.08);
+  color: var(--color-navy, #0c2638);
+}
+
+.profile-stat-list {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.profile-stat-list strong {
+  display: block;
+  color: var(--color-navy, #0c2638);
+  font-size: 1.35rem;
+}
+
+.profile-stat-list span,
+.profile-stat-list small {
+  display: block;
+  color: var(--color-navy-muted, #426174);
+}
+
+.profile-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.profile-badge-card {
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid rgba(12, 38, 56, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 250, 242, 0.82);
+  box-shadow: 0 10px 24px rgba(12, 38, 56, 0.06);
+}
+
+.profile-badge-card span {
+  color: var(--color-navy-muted, #426174);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.profile-badge-card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-navy, #0c2638);
+}
+
+.profile-badge-card.is-earned {
+  border-color: rgba(14, 159, 181, 0.28);
+  background:
+    linear-gradient(135deg, rgba(255, 90, 47, 0.16), rgba(88, 213, 232, 0.16), rgba(123, 77, 243, 0.14)),
+    var(--color-paper, #fffaf2);
+}
+
+.profile-badge-card.is-earned span {
+  color: var(--color-tide-dark, #08768d);
+}
+
+.profile-safety-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .profile-progress-hero,
+  .profile-safety-card {
+    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
+  }
+
+  .profile-progress-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-privacy-note {
+    max-width: none;
   }
 }
 

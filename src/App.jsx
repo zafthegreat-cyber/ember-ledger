@@ -751,6 +751,7 @@ function routeStateFromPath(pathname = "") {
   if (section === "whats-new" || section === "changelog") return { activeTab: "whatsNew" };
   if (section === "known-limitations") return { activeTab: "knownLimitations" };
   if (section === "kids-program") return { activeTab: "kidsProgram" };
+  if (section === "profile" && subSection === "progress") return { activeTab: "profileProgress" };
   if (section === "partner" || section === "sponsor") return { activeTab: "sponsor" };
   if (section === "privacy" || section === "terms" || section === "trust") return { activeTab: "trust" };
   if (section === "settings") return { activeTab: "menu" };
@@ -3218,6 +3219,7 @@ export default function App() {
     whatsNew: "What's New",
     knownLimitations: "Known Limitations",
     membership: "Membership",
+    profileProgress: "Profile Progress",
     betaReadiness: "Beta Readiness",
   };
   const activeTabLabel =
@@ -14935,6 +14937,12 @@ function renderForgeHeader() {
     scoutSnapshot.reports?.length ? "restock_reporter" : "",
     workspaceWatchlist.length ? "market_watcher" : "",
   ].filter(Boolean));
+  const dailyTidePointsToday = dailyCompletedCount * 10;
+  const dailyTideStreak = Math.max(
+    Number(dailyTideToday.checkInStreak || 0),
+    Number(scoutSnapshot.scoutProfile?.reportStreak || 0),
+    Number(dailyTideToday.scoutReportStreak || 0)
+  );
   const watchlistPreview = [...missingMarketPriceItems, ...needsMarketCheckItems]
     .filter((item, index, list) => list.findIndex((candidate) => candidate.id === item.id) === index)
     .slice(0, 5);
@@ -15783,6 +15791,7 @@ function renderForgeHeader() {
     if (activeTab === "links") return "/links";
     if (activeTab === "whatsNew") return "/whats-new";
     if (activeTab === "knownLimitations") return "/known-limitations";
+    if (activeTab === "profileProgress") return "/profile/progress";
     if (activeTab === "membership") return "/settings";
     if (activeTab === "betaReadiness") return "/settings";
     if (activeTab === "menu") return "/settings";
@@ -20020,6 +20029,168 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <button type="button" className="secondary-button" disabled>Upgrade coming soon</button>
           <button type="button" className="secondary-button" disabled>14-day no-card trial coming soon</button>
         </div>
+      </section>
+    );
+  }
+
+  function renderProfileProgressPage() {
+    const displayName = currentUserProfile?.displayName || profileForm.displayName || user?.user_metadata?.display_name || "Ember & Tide Collector";
+    const handleSource = String(displayName || "collector").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 18) || "collector";
+    const avatarInitials = String(displayName || "ET")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "ET";
+    const totalProgressPoints = Number(dailyTideToday.tidePoints || 0) + Number(scoutSnapshot.scoutProfile?.rewardPoints || 0);
+    const progressLevel = Math.max(1, Math.floor(totalProgressPoints / 100) + 1);
+    const levelProgress = Math.min(100, totalProgressPoints % 100);
+    const trialEndsAt = currentUserProfile?.trialEndsAt || currentUserProfile?.trial_expires_at || currentUserProfile?.trialExpiresAt || subscriptionProfile?.trialEndsAt || subscriptionProfile?.trial_end || "";
+    const trialDaysLeft = trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : null;
+    const linkedSeats = workspaceMembers.filter((member) => String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id)).length || 1;
+    const addOnLabels = [
+      featureAllowed("seller_tools") ? "Seller tools" : "",
+      featureAllowed("alerts_advanced") ? "Advanced alerts" : "",
+      featureAllowed("marketplace_exports") ? "Marketplace exports" : "",
+    ].filter(Boolean);
+    const profileStreaks = [
+      { label: "Daily Tide", value: `${dailyTideToday.checkInStreak || 0} day`, helper: "Private check-in streak" },
+      { label: "Scout reports", value: `${dailyTideToday.scoutReportStreak || scoutSnapshot.scoutProfile?.reportStreak || 0} day`, helper: "Helpful report activity" },
+      { label: "Scan rhythm", value: `${dailyTideToday.scannerStreak || 0} day`, helper: "Card and receipt review habit" },
+    ];
+    const profileActivity = [
+      { label: "Vault cards", value: activeVaultItems.length },
+      { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
+      { label: "Market listings", value: marketplaceListings.length },
+      { label: "Forge items", value: forgeInventoryItems.length },
+    ];
+    const isKidProfile = /kid|child/i.test(`${currentUserProfile?.accountType || currentUserProfile?.role || userType || ""}`);
+    return (
+      <section className="profile-progress-page">
+        <PageHeader
+          className={getHeaderCardClass("panel page-summary-card profile-progress-header")}
+          title="Profile Progress"
+          subtitle="Achievements, points, badges, membership status, and account progress in one private place."
+          actions={(
+            <>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Settings</button>
+              <button type="button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>
+            </>
+          )}
+        />
+
+        <section className="panel profile-progress-hero">
+          <div className="profile-public-preview" aria-label="Public profile preview">
+            <div className="profile-avatar" aria-hidden="true">{avatarInitials}</div>
+            <div>
+              <p className="section-kicker">Public profile preview</p>
+              <h2>{displayName}</h2>
+              <p>@{handleSource} · {isKidProfile ? "Kid collector" : "Collector"}</p>
+            </div>
+          </div>
+          <div className="profile-privacy-note">
+            <strong>Privacy-safe preview</strong>
+            <p>Email, billing data, private kid details, exact location, and device details are never shown publicly.</p>
+          </div>
+        </section>
+
+        <section className="profile-progress-grid">
+          <article className="panel profile-progress-card profile-level-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Points / XP</p>
+                <h2>Level {progressLevel}</h2>
+              </div>
+              <span className="status-badge">{totalProgressPoints} points</span>
+            </div>
+            <div className="daily-progress-track"><i style={{ width: `${levelProgress}%` }} /></div>
+            <p className="compact-subtitle">{100 - levelProgress} points to next level. Points reward helpful collecting habits, not pay-to-win mechanics.</p>
+          </article>
+
+          <article className="panel profile-progress-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Membership</p>
+                <h2>{TIER_LABELS[currentTier] || currentPlan}</h2>
+              </div>
+              <span className="status-badge">{subscriptionProfile.subscriptionStatus || "active"}</span>
+            </div>
+            <div className="profile-mini-list">
+              <span>Trial: {trialDaysLeft === null ? (isTrialActive(currentUserProfile) ? "Active" : "None") : `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left`}</span>
+              <span>Add-ons: {addOnLabels.length ? addOnLabels.join(", ") : "None active"}</span>
+              <span>Linked seats: {linkedSeats}</span>
+            </div>
+            <p className="compact-subtitle">Membership details are modeled for beta only. No billing or payment data is shown here.</p>
+          </article>
+        </section>
+
+        <section className="panel profile-progress-card">
+          <div className="compact-card-header">
+            <div>
+              <p className="section-kicker">Achievements</p>
+              <h2>Badges</h2>
+            </div>
+            <span className="status-badge">{earnedBadges.size} earned</span>
+          </div>
+          <div className="profile-badge-grid">
+            {DAILY_TIDE_BADGES.map((badge) => {
+              const earned = earnedBadges.has(badge.key);
+              return (
+                <article className={earned ? "profile-badge-card is-earned" : "profile-badge-card"} key={badge.key}>
+                  <span>{earned ? "Earned" : "Locked"}</span>
+                  <strong>{badge.label}</strong>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="profile-progress-grid">
+          <article className="panel profile-progress-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Streaks</p>
+                <h2>Consistency</h2>
+              </div>
+            </div>
+            <div className="profile-stat-list">
+              {profileStreaks.map((item) => (
+                <div key={item.label}>
+                  <strong>{item.value}</strong>
+                  <span>{item.label}</span>
+                  <small>{item.helper}</small>
+                </div>
+              ))}
+            </div>
+          </article>
+          <article className="panel profile-progress-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Activity</p>
+                <h2>Summary</h2>
+              </div>
+            </div>
+            <div className="profile-stat-list">
+              {profileActivity.map((item) => (
+                <div key={item.label}>
+                  <strong>{item.value}</strong>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        <section className="panel profile-progress-card profile-safety-card">
+          <div>
+            <p className="section-kicker">Account Safety</p>
+            <h2>Privacy, devices, and protection</h2>
+            <p>Account safety and device status stay private. Kid profiles follow parent privacy settings and do not expose exact location or private family details.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Open Settings</button>
+        </section>
       </section>
     );
   }
@@ -24391,6 +24562,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ) : null}
                   {!guestPreviewActive ? (
                     <>
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile Progress</button>
                       <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
                       <div className="drawer-danger-zone">
                         <strong>Danger zone</strong>
@@ -24792,6 +24964,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("market_data"))}>Report Wrong Market Price</button>
                   {adminToolsVisible ? <button type="button" className="drawer-link" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button> : null}
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>App Guide / Replay Onboarding</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile Progress</button>
                 </div>
               ), "help")}
               {renderMenuPullDown("beta_foundations", "Beta Foundations", "Kids Program, trust pages, notifications, membership, and launch links", (
@@ -24806,6 +24979,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("whatsNew"))}>What's New / Changelog</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Known Limitations</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Privacy / Terms / Rules</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile Progress</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>Restart Onboarding</button>
                 </div>
@@ -26469,6 +26643,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {!activeTabLocked && activeTab === "links" && renderLinksPage()}
         {!activeTabLocked && activeTab === "whatsNew" && renderWhatsNewPage()}
         {!activeTabLocked && activeTab === "knownLimitations" && renderKnownLimitationsPage()}
+        {!activeTabLocked && activeTab === "profileProgress" && renderProfileProgressPage()}
         {!activeTabLocked && activeTab === "membership" && renderMembershipFoundation()}
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dashboard" && (
@@ -26505,6 +26680,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <span>{dailyCompletedCount}/{DAILY_TIDE_ACTIONS.length} today</span>
                 <div className="daily-progress-track"><i style={{ width: `${dailyCompletionPercent}%` }} /></div>
                 <small>{dailyTideComplete ? "Today's Tide is ready." : "Task order: Scout, Vault, Market, Forge."}</small>
+                <div className="daily-tide-progress-preview" aria-label="Daily Tide progress preview">
+                  <span>{dailyTidePointsToday ? `+${dailyTidePointsToday} points earned today` : "+10 points available today"}</span>
+                  <span>{dailyTideStreak ? `${dailyTideStreak}-day streak continued` : "Start a streak today"}</span>
+                  <button type="button" className="ghost-button" onClick={() => setActiveTab("profileProgress")}>View Progress</button>
+                </div>
               </div>
               {dailyTideToday.lastCelebration ? <div className="tide-celebration">Daily action complete. Tide Points added.</div> : null}
             </section>
