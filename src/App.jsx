@@ -3151,6 +3151,7 @@ export default function App() {
   const [activeFlowModal, setActiveFlowModal] = useState(null);
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
+  const [commandCenterTab, setCommandCenterTab] = useState("all");
   const [quickScoutReportForm, setQuickScoutReportForm] = useState(() => createQuickScoutReportDraft());
   const [quickScoutReportStep, setQuickScoutReportStep] = useState("what");
   const [quickScoutReportMessage, setQuickScoutReportMessage] = useState("");
@@ -3511,6 +3512,13 @@ export default function App() {
       if (action === "Import Intel") openScoutSubmitFlow({ action: "importIntel" });
       return;
     }
+    if (modeKey === "market") {
+      setActiveTab("market");
+      setTideTradrSubTab(action === "Watchlist" ? "watch" : "overview");
+      if (action === "Create Listing") openMarketplaceCreate("manual", {});
+      if (action === "Check Deal") openDealFinderModal();
+      return;
+    }
     if (modeKey === "tidepool") {
       openTidepoolCommunity(action === "Deal Check" ? "Deals" : "Latest");
       if (action === "Create Post" || action === "Donation Post") openTidepoolCreatePostFlow();
@@ -3565,101 +3573,236 @@ export default function App() {
   }
 
   function renderTcgOperatingSystemPanel({ compact = false } = {}) {
+    const primaryAreas = [
+      {
+        key: "scout",
+        title: "Scout",
+        verb: "Find",
+        summary: "Restock reports, nearby store checks, and community intel.",
+        stat: `${scoutSnapshot.reports?.length || 0} reports`,
+        actions: ["Open Scout", "Submit Report"],
+        onOpen: () => openCommandCenterAction("scout"),
+        onAction: () => openCommandCenterAction("scout", "Submit Report"),
+      },
+      {
+        key: "vault",
+        title: "Vault",
+        verb: "Collect",
+        summary: "Your collection, wishlist, set progress, and card records.",
+        stat: `${activeVaultItems.length || 0} items`,
+        actions: ["Open Vault", "Add Item"],
+        onOpen: () => openCommandCenterAction("vault"),
+        onAction: () => openCommandCenterAction("vault", "Add Item"),
+      },
+      {
+        key: "market",
+        title: "Market",
+        verb: "Trade",
+        summary: "Fair value tools, watchlist, deal checks, and listings.",
+        stat: `${marketplaceListings.length || 0} listings`,
+        actions: ["Open Market", "Check Deal"],
+        onOpen: () => openCommandCenterAction("market"),
+        onAction: () => openCommandCenterAction("market", "Check Deal"),
+      },
+      {
+        key: "forge",
+        title: "Forge",
+        verb: "Build",
+        summary: "Inventory, sales, expenses, receipts, and planning tools.",
+        stat: `${forgeInventoryItems.length || 0} items`,
+        actions: ["Open Forge", "Add Inventory"],
+        onOpen: () => openCommandCenterAction("forge"),
+        onAction: () => openCommandCenterAction("forge", "Add Inventory"),
+      },
+    ];
+    const commandQuickActions = [
+      { key: "report", label: "Quick Scout Report", category: "activity", onClick: () => openCommandCenterAction("scout", "Submit Report") },
+      { key: "add", label: "Quick Add Item", category: "tools", onClick: () => openCommandCenterQuickAdd("vaultItem") },
+      { key: "scan", label: "Scan / Review Item", category: "tools", onClick: () => openCommandCenterQuickAdd("scanProduct") },
+      { key: "search", label: "Search", category: "tools", onClick: () => openCommandCenterAction("catalog", "Search Catalog") },
+      { key: "import", label: "Import / Bulk Add", category: "manage", onClick: () => openCommandCenterBulkAdd() },
+      { key: "watch", label: "Ember Watch", category: "activity", onClick: () => openCommandCenterAction("scout", "Alerts") },
+      { key: "map", label: "Store Map", category: "tools", onClick: () => openCommandCenterAction("scout") },
+      ...(adminToolsVisible ? [{ key: "admin", label: "Admin Edit", category: "manage", onClick: () => openCommandCenterAction("admin") }] : []),
+    ];
+    const overviewStats = [
+      { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
+      { label: "Vault items", value: activeVaultItems.length || 0 },
+      { label: "Market listings", value: marketplaceListings.length || 0 },
+      { label: "Forge inventory", value: forgeInventoryItems.length || 0 },
+      { label: "Alerts", value: (betaReadinessData.notifications || []).filter((entry) => !entry.dismissedAt && !entry.readAt).length },
+      { label: "Reviews", value: adminToolsVisible ? suggestions.filter((entry) => entry.status === SUGGESTION_STATUSES.PENDING).length : phase2MarketplaceDraftListings.length || 0 },
+    ];
+    const missionStats = [
+      { label: "Level", value: TIER_LABELS[getUserTier(subscriptionProfile)] || getUserTier(subscriptionProfile) || "Beta" },
+      { label: "Streak", value: `${dailyTideToday.checkInStreak || 0} day` },
+      { label: "Trust", value: scoutSnapshot.scoutProfile?.trustScore || 72 },
+      { label: "Badges", value: dailyTideToday.badges?.length || 0 },
+    ];
+    const smartTools = [
+      { key: "store-map", label: "Store Map", helper: "Find and review store intel.", category: "tools", onClick: () => openCommandCenterAction("scout") },
+      { key: "ember-watch", label: "Ember Watch", helper: "Alerts and watch windows.", category: "activity", onClick: () => openCommandCenterAction("scout", "Alerts") },
+      { key: "watchlist", label: "Watchlist", helper: "Track wants and market changes.", category: "activity", onClick: () => openCommandCenterAction("market", "Watchlist") },
+      { key: "daily-tide", label: "Daily Tide Report", helper: "Review today's quick loop.", category: "activity", onClick: () => closeFlowModal({ force: true }) },
+      { key: "family", label: "Family Dashboard", helper: "Parent and kid-safe controls.", category: "community", onClick: () => { closeFlowModal({ force: true }); setActiveTab("dashboard"); } },
+      { key: "kids", label: "Kids Program", helper: "Fair collecting for families.", category: "community", onClick: () => { closeFlowModal({ force: true }); setActiveTab("kidsProgram"); } },
+      ...(adminToolsVisible ? [{ key: "admin-tools", label: "Admin tools", helper: "Review queue and moderation.", category: "manage", onClick: () => openCommandCenterAction("admin") }] : []),
+    ];
+    const visibleQuickActions = commandCenterTab === "all"
+      ? commandQuickActions
+      : commandQuickActions.filter((action) => action.category === commandCenterTab);
+    const visibleSmartTools = commandCenterTab === "all"
+      ? smartTools
+      : smartTools.filter((tool) => tool.category === commandCenterTab);
+    function openCommandCenterAction(modeKey, action = "") {
+      closeFlowModal({ force: true, reset: false });
+      window.setTimeout(() => openOperatingSystemFeature(modeKey, action), 0);
+    }
+    function openCommandCenterQuickAdd(action) {
+      closeFlowModal({ force: true, reset: false });
+      window.setTimeout(() => openQuickAddAction(action), 0);
+    }
+    function openCommandCenterBulkAdd() {
+      closeFlowModal({ force: true, reset: false });
+      window.setTimeout(() => openBulkAddFlow("Mixed"), 0);
+    }
     return (
-      <section className={`panel tcg-os-panel${compact ? " tcg-os-panel-compact" : ""}`}>
-        <div className="compact-card-header">
+      <section className={`panel tcg-os-panel tcg-command-center${compact ? " tcg-os-panel-compact" : ""}`}>
+        <div className="tcg-command-hero">
           <div>
-            <h2>TCG Operating System</h2>
-            <p>Collect, sell, find, share, know, decide, scan, and give from one mobile-first command center.</p>
-            <div className="phase2-sync-status">
-              <strong>{phase2SyncStatus.label || (phase2SyncStatus.source === "supabase" ? "Supabase connected" : "Local only mode")}</strong>
-              <span>{phase2SyncStatus.message}</span>
-              {phase2SyncStatus.source !== "supabase" ? (
-                <button type="button" className="ghost-button" onClick={retryPhase2Sync}>Retry sync</button>
-              ) : null}
-            </div>
+            <h2>TCG Command Center</h2>
+            <p>Jump into Scout, Vault, Market, or Forge.</p>
           </div>
-          <div className="quick-actions">
-            <button type="button" className="secondary-button" onClick={() => setMenuOpen(true)}>Menu</button>
-            <button type="button" className="secondary-button" onClick={() => { setMenuSectionsOpen({ settings: true }); setMenuOpen(true); }}>Notifications</button>
+          <div className="phase2-sync-status tcg-command-sync">
+            <strong>{phase2SyncStatus.label || (phase2SyncStatus.source === "supabase" ? "Supabase connected" : "Local only mode")}</strong>
+            <span>{phase2SyncStatus.message}</span>
+            {phase2SyncStatus.source !== "supabase" ? (
+              <button type="button" className="ghost-button" onClick={retryPhase2Sync}>Retry sync</button>
+            ) : null}
           </div>
         </div>
-        {(
-          phase2RecentDeals.length ||
-          phase2RecentScannerIntakes.length ||
-          phase2RecentReceipts.length ||
-          phase2MarketplaceDraftListings.length ||
-          phase2RecentKidProjects.length
-        ) ? (
-          <div className="home-list compact-home-list phase2-workflow-list">
-            {phase2RecentDeals.slice(0, 1).map((session) => (
-              <button type="button" className="home-list-row" key={`deal-${session.id}`} onClick={() => setActiveTab("market")}>
-                <span>
-                  <strong>{session.title || "Saved deal check"}</strong>
-                  <small>Deal Finder | {session.recommendation || "saved"} | View only</small>
-                </span>
-                <b>{money(session.askingPrice)}</b>
+
+        <div className="tcg-command-primary-grid" aria-label="Main app areas">
+          {primaryAreas.map((area) => (
+            <article className={`tcg-command-primary-card tcg-command-primary-${area.key}`} key={area.key}>
+              <button type="button" className="tcg-command-primary-main" onClick={area.onOpen}>
+                <span>{area.verb}</span>
+                <strong>{area.title}</strong>
+                <small>{area.summary}</small>
+                <b>{area.stat}</b>
               </button>
-            ))}
-            {phase2RecentScannerIntakes.slice(0, 3).map((session) => (
-              <button type="button" className="home-list-row" key={`scan-${session.id}`} onClick={() => openInventoryScanner("manual")}>
-                <span>
-                  <strong>{session.extractedClues?.itemName || session.rawValue || "Saved scanner intake"}</strong>
-                  <small>Scanner Intake | {session.destination || "review"} | {phase2WorkflowSyncLabel} {session.createdAt ? new Date(session.createdAt).toLocaleDateString() : ""}</small>
-                </span>
-                <b>{phase2SyncStatus.source === "supabase" ? "Synced" : "Local"}</b>
-              </button>
-            ))}
-            {phase2RecentReceipts.slice(0, 1).map((receipt) => (
-              <button type="button" className="home-list-row" key={`receipt-${receipt.id}`} onClick={() => setActiveTab("inventory")}>
-                <span>
-                  <strong>{receipt.merchant || "Saved receipt"}</strong>
-                  <small>
-                    Receipt Draft | {receipt.purchasedAt ? new Date(receipt.purchasedAt).toLocaleDateString() : "No date"} | {phase2ReceiptLineItemCounts[receipt.id] || 0} lines | {phase2ReceiptDestinationSummaryText(receipt.id)} | {phase2WorkflowSyncLabel}
-                  </small>
-                </span>
-                <b>{money(receipt.total)}</b>
-              </button>
-            ))}
-            {phase2MarketplaceDraftListings.slice(0, 1).map((listing) => (
-              <button type="button" className="home-list-row" key={`market-${listing.id}`} onClick={() => { setActiveTab("inventory"); setForgeSubTab("marketplace"); setMarketplaceView("my"); }}>
-                <span>
-                  <strong>{listing.title || "Marketplace channel draft"}</strong>
-                  <small>Marketplace Channels | {listing.channels?.length || 0} platforms</small>
-                </span>
-                <b>{money(listing.askingPrice)}</b>
-              </button>
-            ))}
-            {phase2RecentKidProjects.slice(0, 1).map((project) => (
-              <button type="button" className="home-list-row" key={`kid-${project.id}`} onClick={() => setActiveTab("home")}>
-                <span>
-                  <strong>{project.name || "Kid Pack Builder"}</strong>
-                  <small>Kid Pack Builder | {project.targetPackCount || 0} packs | {phase2KidProjectItemCounts[project.id] || 0} items</small>
-                </span>
-                <b>{project.status || "planning"}</b>
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <div className="tcg-os-grid">
-          {TCG_OS_MODES.map((mode) => (
-            <article className="tcg-os-card" key={mode.key}>
-              <div>
-                <span className="tcg-os-verb">{mode.verb}</span>
-                <h3>{mode.title}</h3>
-                <p>{mode.summary}</p>
-                <small>{mode.benchmark}</small>
-              </div>
-              <div className="tcg-os-actions">
-                {mode.actions.slice(0, compact ? 2 : 4).map((action) => (
-                  <button type="button" className="secondary-button" key={action} onClick={() => openOperatingSystemFeature(mode.key, action)}>
-                    {action}
-                  </button>
-                ))}
+              <div className="tcg-command-primary-actions">
+                <button type="button" className="ghost-button" onClick={area.onOpen}>{area.actions[0]}</button>
+                <button type="button" className="secondary-button" onClick={area.onAction}>{area.actions[1]}</button>
               </div>
             </article>
           ))}
         </div>
+
+        <div className="tcg-command-tabs" role="tablist" aria-label="Command Center categories">
+          {["all", "tools", "activity", "community", "manage"].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={commandCenterTab === tab ? "active" : ""}
+              onClick={() => setCommandCenterTab(tab)}
+            >
+              {tab === "all" ? "All" : tab[0].toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        <section className="tcg-command-section">
+          <div className="tcg-command-section-title">
+            <h3>Quick Actions</h3>
+            <span>{visibleQuickActions.length} shortcuts</span>
+          </div>
+          <div className="tcg-command-action-grid">
+            {visibleQuickActions.map((action) => (
+              <button type="button" className="tcg-command-action" key={action.key} onClick={action.onClick}>
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <div className="tcg-command-dashboard-grid">
+          <section className="tcg-command-status-card">
+            <div className="tcg-command-section-title">
+              <h3>Mission / Status</h3>
+              <span>Private beta</span>
+            </div>
+            <div className="tcg-command-stat-row">
+              {missionStats.map((stat) => (
+                <span key={stat.label}>
+                  <small>{stat.label}</small>
+                  <strong>{stat.value}</strong>
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <section className="tcg-command-overview-card">
+            <div className="tcg-command-section-title">
+              <h3>System Overview</h3>
+              <span>Live counts</span>
+            </div>
+            <div className="tcg-command-overview-grid">
+              {overviewStats.map((stat) => (
+                <span key={stat.label}>
+                  <small>{stat.label}</small>
+                  <strong>{stat.value}</strong>
+                </span>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {visibleSmartTools.length ? (
+          <section className="tcg-command-section">
+            <div className="tcg-command-section-title">
+              <h3>Smart Tools</h3>
+              <span>{commandCenterTab === "all" ? "Filtered by chips" : commandCenterTab}</span>
+            </div>
+            <div className="tcg-command-tool-grid">
+              {visibleSmartTools.map((tool) => (
+                <button type="button" className="tcg-command-tool" key={tool.key} onClick={tool.onClick}>
+                  <strong>{tool.label}</strong>
+                  <small>{tool.helper}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <div className="empty-state-card tcg-command-empty">
+            <h3>No tools in this category yet.</h3>
+            <p>Switch tabs or use the four main actions above.</p>
+          </div>
+        )}
+        {commandCenterTab === "all" && (
+          <section className="tcg-command-section tcg-command-recent">
+            <div className="tcg-command-section-title">
+              <h3>Recent Workflow</h3>
+              <span>Compact</span>
+            </div>
+            <div className="tcg-command-recent-grid">
+              {[
+                phase2RecentDeals[0] ? { key: "deal", label: phase2RecentDeals[0].title || "Saved deal check", value: money(phase2RecentDeals[0].askingPrice), onClick: () => openCommandCenterAction("deal_finder") } : null,
+                phase2RecentScannerIntakes[0] ? { key: "scan", label: phase2RecentScannerIntakes[0].extractedClues?.itemName || phase2RecentScannerIntakes[0].rawValue || "Saved scanner intake", value: phase2WorkflowSyncLabel, onClick: () => openCommandCenterAction("scanner") } : null,
+                phase2RecentReceipts[0] ? { key: "receipt", label: phase2RecentReceipts[0].merchant || "Saved receipt", value: money(phase2RecentReceipts[0].total), onClick: () => openCommandCenterAction("forge") } : null,
+                phase2MarketplaceDraftListings[0] ? { key: "market", label: phase2MarketplaceDraftListings[0].title || "Marketplace draft", value: money(phase2MarketplaceDraftListings[0].askingPrice), onClick: () => openCommandCenterAction("market") } : null,
+              ].filter(Boolean).slice(0, 4).map((entry) => (
+                <button type="button" key={entry.key} className="tcg-command-recent-item" onClick={entry.onClick}>
+                  <strong>{entry.label}</strong>
+                  <small>{entry.value}</small>
+                </button>
+              ))}
+              {!phase2RecentDeals.length && !phase2RecentScannerIntakes.length && !phase2RecentReceipts.length && !phase2MarketplaceDraftListings.length ? (
+                <span className="tcg-command-recent-empty">No recent workflow yet.</span>
+              ) : null}
+              </div>
+          </section>
+        )}
       </section>
     );
   }
@@ -9787,6 +9930,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     setActiveFlowModal(null);
     if (options.reset !== false) resetFlowModalDraft(modal.type);
+    if (modal.type === "tcgCommandCenter") {
+      setActiveTab("dashboard");
+    }
     setTimeout(() => flowModalOpenerRef.current?.focus?.(), 0);
     return true;
   }
