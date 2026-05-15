@@ -589,12 +589,13 @@ const DAILY_TIDE_BADGES = [
   { key: "budget_boss", label: "Budget Boss" },
 ];
 const SCOUT_QUICK_PROOF_TYPES = [
-  { value: "stock_photo", label: "Stock photo" },
+  { value: "stock_photo", label: "Photo" },
   { value: "receipt", label: "Receipt" },
-  { value: "screenshot", label: "Screenshot" },
+  { value: "screenshot", label: "Shelf/sign photo" },
   { value: "text_link", label: "Text/link" },
-  { value: "manual", label: "Manual" },
+  { value: "manual", label: "Skip proof" },
 ];
+const SCOUT_PRODUCT_CATEGORY_OPTIONS = ["Pokemon", "One Piece", "Lorcana", "Sports cards", "Other TCG"];
 const SCOUT_QUICK_REPORT_TYPES = [
   { value: "stock_on_shelf", label: "Stock on shelf", helper: "In stock", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "possible" },
   { value: "no_stock", label: "No stock", helper: "Nothing found", reportType: "Store Restock Report", stockStatus: "empty", sourceType: "user_report", confidence: "possible" },
@@ -3151,7 +3152,7 @@ export default function App() {
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
   const [quickScoutReportForm, setQuickScoutReportForm] = useState(() => createQuickScoutReportDraft());
-  const [quickScoutReportStep, setQuickScoutReportStep] = useState("compose");
+  const [quickScoutReportStep, setQuickScoutReportStep] = useState("what");
   const [quickScoutReportMessage, setQuickScoutReportMessage] = useState("");
   const [quickScoutReportSaved, setQuickScoutReportSaved] = useState(null);
   const [vaultCatalogSearchQuery, setVaultCatalogSearchQuery] = useState("");
@@ -3161,6 +3162,7 @@ export default function App() {
   const flowModalRef = useRef(null);
   const flowModalOpenerRef = useRef(null);
   const flowModalBaselineRef = useRef({});
+  const quickScoutWizardTouchRef = useRef(0);
 
   const mainTabs = [
     { key: "home", label: "Home", icon: "home", target: "dashboard" },
@@ -9753,7 +9755,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "scoutSubmit") {
       const draft = createQuickScoutReportDraft();
       setQuickScoutReportForm(draft);
-      setQuickScoutReportStep("compose");
+      setQuickScoutReportStep("what");
       setQuickScoutReportMessage("");
       setQuickScoutReportSaved(null);
       flowModalBaselineRef.current.scoutSubmit = draft;
@@ -9935,6 +9937,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       address: "",
       manualLocation: "",
       storeSearch: "",
+      productCategory: "Pokemon",
       productName: "",
       quantity: "",
       price: "",
@@ -10139,13 +10142,16 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemName: productName,
       productName,
       product_name: productName,
-      product_type: "",
+      productCategory: quickScoutReportForm.productCategory || "Pokemon",
+      product_category: quickScoutReportForm.productCategory || "Pokemon",
+      product_type: quickScoutReportForm.productCategory || "",
       set_name: "",
       quantitySeen: quickScoutReportForm.quantity,
       quantity_estimate: quickScoutReportForm.quantity,
       price: quickScoutReportForm.price,
       itemsSeen: productName ? [{
         productName,
+        category: quickScoutReportForm.productCategory || "Pokemon",
         quantity: quickScoutReportForm.quantity,
         price: quickScoutReportForm.price,
         note: quickScoutReportForm.note.trim(),
@@ -10276,7 +10282,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       manualLocation: options.manualLocation || "",
     });
     setQuickScoutReportForm(draft);
-    setQuickScoutReportStep("compose");
+    setQuickScoutReportStep("what");
     setQuickScoutReportMessage("");
     setQuickScoutReportSaved(null);
     flowModalBaselineRef.current.scoutSubmit = draft;
@@ -21266,16 +21272,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const currentType = quickScoutReportTypeMeta();
     const selectedStore = quickScoutReportForm.storeId ? stores.find((store) => String(store.id) === String(quickScoutReportForm.storeId)) : null;
     const selectedStoreContext = selectedStore || (quickScoutReportForm.storeName ? quickScoutReportForm : null);
-    const currentRetailer = quickScoutReportForm.retailer || (selectedStore ? getScoutQuickRetailer(selectedStore) : "");
-    const retailerOptions = [...new Set([
-      ...SCOUT_QUICK_RETAILER_OPTIONS,
-      ...stores.map(getScoutQuickRetailer).filter(Boolean),
-    ])];
     const normalizedStoreSearch = quickScoutReportForm.storeSearch.trim().toLowerCase();
+    const locationText = String(locationSettings.manualLocation || locationSettings.selectedSavedLocation || "").trim();
+    const locationAvailable = Boolean(locationSettings.trackingEnabled || locationText);
+    const quickReportTypeOptions = currentType.isGuess
+      ? [
+          { value: "restock_guess", title: "Restock pattern", helper: "A planning note, not confirmed stock." },
+          { value: "employee_restock_coming", title: "Employee tip", helper: "Needs community review." },
+          { value: "truck_vendor_seen", title: "Truck/vendor seen", helper: "Possible restock signal." },
+          { value: "other_intel", title: "Other", helper: "Manual note or pattern." },
+        ]
+      : [
+          { value: "stock_on_shelf", title: "Stock found", helper: "Products were on shelf or available." },
+          { value: "no_stock", title: "Empty shelves", helper: "Nothing found where TCG usually sits." },
+          { value: "restock_happening_now", title: "Restock in progress", helper: "Vendor or staff stocking now." },
+          { value: "shelf_tag_only", title: "Limit/sign posted", helper: "Shelf tag, limit, or sign spotted." },
+          { value: "other_intel", title: "Other", helper: "Useful store intel or context." },
+        ];
     const filteredStores = stores
       .filter((store) => {
         const retailer = getScoutQuickRetailer(store);
-        if (currentRetailer && currentRetailer !== "Other" && retailer !== currentRetailer) return false;
         if (!normalizedStoreSearch) return true;
         return [
           getScoutQuickStoreName(store),
@@ -21287,11 +21303,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         ].filter(Boolean).join(" ").toLowerCase().includes(normalizedStoreSearch);
       })
       .slice(0, 8);
+    const recommendedStores = filteredStores.slice(0, 4);
+    const wizardSteps = [
+      { key: "what", label: "What" },
+      { key: "where", label: "Where" },
+      { key: "proof", label: "Proof" },
+      { key: "product", label: "Product" },
+      { key: "review", label: "Review" },
+    ];
+    const activeStepIndex = Math.max(0, wizardSteps.findIndex((step) => step.key === quickScoutReportStep));
+    const activeWizardStep = wizardSteps[activeStepIndex] || wizardSteps[0];
     const summaryRows = [
       [currentType.isGuess ? "Planner type" : "Report type", currentType.label],
-      ["Proof/source", quickScoutProofLabel()],
       ["Store", selectedStoreContext ? getScoutQuickStoreName(selectedStoreContext) : quickScoutReportForm.manualLocation || "Needs Store Review"],
-      ["Product", quickScoutReportForm.productName || "Not specified"],
+      ["Proof/source", quickScoutProofLabel()],
+      ["Product/category", [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ") || "Pokemon"],
       ...(currentType.isGuess
         ? [
             ["Expected day", quickScoutDateLabel()],
@@ -21305,6 +21331,42 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           ]),
       ["Visibility", scoutVisibilityOptionLabel(quickScoutReportForm.visibility || (currentType.isGuess ? "private" : "public"), currentType.isGuess)],
     ];
+    const canAdvanceScoutWizard = (stepKey = activeWizardStep.key) => {
+      if (stepKey === "what") return Boolean(quickScoutReportForm.reportType);
+      if (stepKey === "where") return Boolean(quickScoutReportForm.storeId || quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName.trim());
+      if (stepKey === "product") return Boolean(quickScoutReportForm.productCategory || currentType.isGuess);
+      if (stepKey === "review") return quickScoutReportReady();
+      return true;
+    };
+    const goToScoutWizardStep = (stepKey) => {
+      const targetIndex = wizardSteps.findIndex((step) => step.key === stepKey);
+      if (targetIndex < 0) return;
+      const firstIncompleteIndex = wizardSteps.findIndex((step) => !canAdvanceScoutWizard(step.key));
+      if (firstIncompleteIndex >= 0 && targetIndex > firstIncompleteIndex) {
+        setQuickScoutReportStep(wizardSteps[firstIncompleteIndex].key);
+        return;
+      }
+      setQuickScoutReportStep(stepKey);
+    };
+    const goNextScoutWizardStep = () => {
+      if (!canAdvanceScoutWizard()) return;
+      setQuickScoutReportStep(wizardSteps[Math.min(activeStepIndex + 1, wizardSteps.length - 1)].key);
+    };
+    const goBackScoutWizardStep = () => {
+      setQuickScoutReportStep(wizardSteps[Math.max(activeStepIndex - 1, 0)].key);
+    };
+    const handleScoutWizardTouchStart = (event) => {
+      quickScoutWizardTouchRef.current = event.touches?.[0]?.clientX || 0;
+    };
+    const handleScoutWizardTouchEnd = (event) => {
+      const startX = quickScoutWizardTouchRef.current;
+      const endX = event.changedTouches?.[0]?.clientX || 0;
+      const delta = endX - startX;
+      quickScoutWizardTouchRef.current = 0;
+      if (Math.abs(delta) < 56) return;
+      if (delta < 0) goNextScoutWizardStep();
+      if (delta > 0 && activeStepIndex > 0) goBackScoutWizardStep();
+    };
 
     if (quickScoutReportStep === "submitted") {
       return (
@@ -21323,8 +21385,245 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
 
     return (
-      <form className="scout-report-flow scout-quick-report-v2" onSubmit={submitQuickScoutReport}>
+      <form
+        className="scout-report-flow scout-quick-report-v2 scout-report-wizard"
+        onSubmit={submitQuickScoutReport}
+        onTouchStart={handleScoutWizardTouchStart}
+        onTouchEnd={handleScoutWizardTouchEnd}
+      >
         {quickScoutReportMessage ? <div className="form-error">{quickScoutReportMessage}</div> : null}
+        <div className="scout-report-progress">
+          <div>
+            <strong>Step {activeStepIndex + 1} of {wizardSteps.length}</strong>
+            <span>{activeWizardStep.label}</span>
+          </div>
+          <div className="scout-report-progress-track" aria-hidden="true">
+            <i style={{ width: `${((activeStepIndex + 1) / wizardSteps.length) * 100}%` }} />
+          </div>
+        </div>
+        <div className="scout-report-stepper" aria-label="Scout report steps">
+          {wizardSteps.map((step, index) => (
+            <button
+              key={step.key}
+              type="button"
+              className={`scout-report-step-pill ${step.key === activeWizardStep.key ? "active" : ""} ${index < activeStepIndex ? "complete" : ""}`}
+              onClick={() => goToScoutWizardStep(step.key)}
+            >
+              <span>{index + 1}</span>
+              {step.label}
+            </button>
+          ))}
+        </div>
+
+        {quickScoutReportStep === "what" ? (
+          <section className="scout-report-step-card active">
+            <div className="scout-report-step-header">
+              <span>What</span>
+              <div>
+                <h3>What did you find?</h3>
+                <p>Pick the closest TCG stock signal. Add a quick note if it helps.</p>
+              </div>
+            </div>
+            <div className="scout-report-type-grid">
+              {quickReportTypeOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`scout-report-choice-card ${quickScoutReportForm.reportType === option.value ? "selected" : ""}`}
+                  onClick={() => updateQuickScoutReportForm("reportType", option.value)}
+                >
+                  <strong>{option.title}</strong>
+                  <span>{option.helper}</span>
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={quickScoutReportForm.note}
+              onChange={(event) => updateQuickScoutReportForm("note", event.target.value)}
+              placeholder="Optional quick note: aisle, limit sign, vendor stocking, shelf status..."
+            />
+          </section>
+        ) : null}
+
+        {quickScoutReportStep === "where" ? (
+          <section className="scout-report-step-card active">
+            <div className="scout-report-step-header">
+              <span>Where</span>
+              <div>
+                <h3>Choose the store or location</h3>
+                <p>{locationAvailable ? "Recommended stores appear first. You can still search or enter a missing store." : "Location is off. Search by city/store or enter a manual location; proof helps the community trust the update."}</p>
+              </div>
+            </div>
+            {selectedStoreContext ? (
+              <article className="scout-report-store-card selected">
+                <div className="scout-report-store-main">
+                  <div>
+                    <strong>{getScoutQuickStoreName(selectedStoreContext)}</strong>
+                    <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
+                  </div>
+                  <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Selected" : "Manual"}</span>
+                </div>
+                <div className="scout-report-store-actions">
+                  <button type="button" className="secondary-button" onClick={() => setQuickScoutReportForm((current) => ({ ...current, storeId: "", storeName: "", address: "" }))}>Change store</button>
+                </div>
+              </article>
+            ) : (
+              <>
+                <div className="scout-report-store-tools">
+                  <input
+                    value={quickScoutReportForm.storeSearch}
+                    onChange={(event) => updateQuickScoutReportForm("storeSearch", event.target.value)}
+                    placeholder="Search store, city, ZIP, nickname, or address"
+                  />
+                  <input
+                    value={quickScoutReportForm.manualLocation}
+                    onChange={(event) => updateQuickScoutReportForm("manualLocation", event.target.value)}
+                    placeholder="Manual store/location if missing"
+                  />
+                </div>
+                <div className="scout-location-trust-note">
+                  <strong>{locationAvailable ? "Nearby suggestions" : "No location permission"}</strong>
+                  <span>Reports with location or proof help the community trust the update.</span>
+                </div>
+                <div className="scout-report-store-list">
+                  {recommendedStores.length ? recommendedStores.map((store) => (
+                    <article key={store.id || `${getScoutQuickStoreName(store)}-${store.city}`} className="scout-report-store-card">
+                      <div className="scout-report-store-main">
+                        <div>
+                          <strong>{getScoutQuickStoreName(store)}</strong>
+                          <p>{getScoutQuickRetailer(store)}{store.city ? ` | ${store.city}` : ""}{store.address ? ` | ${store.address}` : ""}</p>
+                        </div>
+                        <span className="scout-store-temperature scout-store-temperature-watching">{store.favorite || store.watched ? "Watching" : "Known"}</span>
+                      </div>
+                      <div className="scout-report-store-meta">
+                        <span>Last report: {store.lastReport || store.lastReportDate || "Not logged"}</span>
+                        <span>Best window: {store.bestCheckWindow || store.restockWindow || "Unknown"}</span>
+                      </div>
+                      <div className="scout-report-store-actions">
+                        <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(store)}>Report here</button>
+                      </div>
+                    </article>
+                  )) : (
+                    <div className="scout-report-empty-step">
+                      <strong>No matching stores</strong>
+                      <p>Enter a manual location or city and this report will be labeled Needs Store Review.</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+        ) : null}
+
+        {quickScoutReportStep === "proof" ? (
+          <section className="scout-report-step-card active">
+            <div className="scout-report-step-header">
+              <span>Proof</span>
+              <div>
+                <h3>Proof / verification</h3>
+                <p>Reports with location or proof help the community trust the update. You can skip proof when appropriate.</p>
+              </div>
+            </div>
+            <div className="scout-stock-status-grid">
+              {SCOUT_QUICK_PROOF_TYPES.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`scout-stock-status-button ${quickScoutReportForm.proofType === option.value ? "selected" : ""}`}
+                  onClick={() => updateQuickScoutReportForm("proofType", option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="scout-report-detail-grid">
+              <label>
+                Attach photo/receipt
+                <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
+              </label>
+              <label>
+                Proof text or link
+                <input
+                  value={quickScoutReportForm.proofText}
+                  onChange={(event) => updateQuickScoutReportForm("proofText", event.target.value)}
+                  placeholder="Receipt detail, screenshot note, site link..."
+                />
+              </label>
+            </div>
+            {!locationAvailable && quickScoutReportForm.proofType === "manual" ? (
+              <div className="scout-report-empty-step">
+                <strong>Proof recommended</strong>
+                <p>Location is off, so a photo, receipt, shelf/sign photo, or extra detail will make this easier to trust.</p>
+              </div>
+            ) : null}
+            {quickScoutReportForm.photoUrl ? (
+              <div className="scout-photo-preview">
+                <img src={quickScoutReportForm.photoUrl} alt="" />
+                <div>
+                  <strong>Image attached</strong>
+                  <span>Existing beta upload/local image path only.</span>
+                </div>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {quickScoutReportStep === "product" ? (
+          <section className="scout-report-step-card active">
+            <div className="scout-report-step-header">
+              <span>Product</span>
+              <div>
+                <h3>Product details</h3>
+                <p>Keep it quick. Category is enough; exact product, quantity, and price are optional.</p>
+              </div>
+            </div>
+            <div className="scout-stock-status-grid">
+              {SCOUT_PRODUCT_CATEGORY_OPTIONS.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  className={`scout-stock-status-button ${quickScoutReportForm.productCategory === category ? "selected" : ""}`}
+                  onClick={() => updateQuickScoutReportForm("productCategory", category)}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+            <div className="scout-report-detail-grid">
+              <label>
+                Product name/search
+                <input value={quickScoutReportForm.productName} onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)} placeholder="Optional: ETB, booster bundle, UPC, SKU..." />
+              </label>
+              <label>
+                Quantity estimate
+                <input value={quickScoutReportForm.quantity} onChange={(event) => updateQuickScoutReportForm("quantity", event.target.value)} placeholder="Optional qty or estimate" />
+              </label>
+              <label>
+                Price / MSRP
+                <input inputMode="decimal" value={quickScoutReportForm.price} onChange={(event) => updateQuickScoutReportForm("price", event.target.value)} placeholder="Optional" />
+              </label>
+              <label>
+                When
+                <input type="time" value={quickScoutReportForm.reportTime} onChange={(event) => updateQuickScoutReportForm("reportTime", event.target.value)} />
+              </label>
+            </div>
+            {!currentType.isGuess ? (
+              <div className="scout-stock-status-grid" role="group" aria-label="Stock left after purchase">
+                {SCOUT_QUICK_STOCK_LEFT_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-stock-status-button ${quickScoutReportForm.stockLeft === option.value ? "selected" : ""}`}
+                    aria-label={option.helper || option.label}
+                    onClick={() => updateQuickScoutReportForm("stockLeft", option.value)}
+                  >
+                    {option.label}{option.helper ? ` | ${option.helper}` : ""}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         {quickScoutReportStep === "review" ? (
           <section className="scout-report-step-card active">
@@ -21348,295 +21647,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <p>{quickScoutReportForm.note}</p>
               </div>
             ) : null}
-            {!quickScoutReportForm.storeId ? (
-              <div className="scout-report-empty-step">
-                <strong>Needs Store Review</strong>
-                <p>This will save with the manual location text. Admin-reviewed universal store creation is still TODO.</p>
-              </div>
-            ) : null}
-            <div className="flow-form-footer">
-              <button type="button" className="secondary-button" onClick={() => setQuickScoutReportStep("compose")}>Back to details</button>
-              <button type="submit" disabled={!quickScoutReportReady()}>{currentType.isGuess ? "Save Guess" : "Submit Report"}</button>
+            <div className="scout-location-trust-note">
+              <strong>{quickScoutReportForm.storeId || quickScoutReportForm.photoUrl || quickScoutReportForm.proofType !== "manual" ? "Trust signal included" : "Needs Store Review"}</strong>
+              <span>{quickScoutReportForm.storeId ? "Known store selected." : "Manual locations may go through admin review."}</span>
             </div>
           </section>
-        ) : (
-          <>
-            <section className="scout-quick-section">
-              <div className="scout-report-step-header">
-                <span>What</span>
-                <div>
-                  <h3>What did you see?</h3>
-                  <p>Pick the closest signal. Product and photo are optional.</p>
-                </div>
-              </div>
-              <div className="scout-report-type-grid">
-                {SCOUT_QUICK_REPORT_TYPES.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`scout-report-choice-card ${quickScoutReportForm.reportType === option.value ? "selected" : ""}`}
-                    onClick={() => updateQuickScoutReportForm("reportType", option.value)}
-                  >
-                    <strong>{option.label}</strong>
-                    <span>{option.helper}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
+        ) : null}
 
-            <section className="scout-quick-section">
-              <div className="scout-report-step-header">
-                <span>Proof</span>
-                <div>
-                  <h3>Proof/source type</h3>
-                  <p>Use the source that best describes your report.</p>
-                </div>
-              </div>
-              <div className="scout-stock-status-grid">
-                {SCOUT_QUICK_PROOF_TYPES.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`scout-stock-status-button ${quickScoutReportForm.proofType === option.value ? "selected" : ""}`}
-                    onClick={() => updateQuickScoutReportForm("proofType", option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="scout-quick-section">
-              <div className="scout-report-step-header">
-                <span>Where</span>
-                <div>
-                  <h3>Store/location</h3>
-                  <p>{selectedStoreContext ? "Store is preselected. Change it if needed." : "Choose a known store or enter a manual location."}</p>
-                </div>
-              </div>
-              {selectedStoreContext ? (
-                <article className="scout-report-store-card selected">
-                  <div className="scout-report-store-main">
-                    <div>
-                      <strong>{getScoutQuickStoreName(selectedStoreContext)}</strong>
-                      <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
-                    </div>
-                    <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Selected" : "Context"}</span>
-                  </div>
-                  <div className="scout-report-store-actions">
-                    <button type="button" className="secondary-button" onClick={() => setQuickScoutReportForm((current) => ({ ...current, storeId: "", storeName: "", address: "" }))}>Change store</button>
-                  </div>
-                </article>
-              ) : (
-                <>
-                  <div className="scout-report-retailer-grid">
-                    {retailerOptions.map((retailer) => {
-                      const count = stores.filter((store) => getScoutQuickRetailer(store) === retailer).length;
-                      return (
-                        <button
-                          key={retailer}
-                          type="button"
-                          className={`scout-report-retailer-card ${currentRetailer === retailer ? "selected" : ""}`}
-                          onClick={() => setQuickScoutReportForm((current) => ({ ...current, retailer, storeSearch: "", storeId: "", storeName: "" }))}
-                        >
-                          <span className="scout-report-retailer-icon">{retailer.split(/\s+/).map((part) => part[0]).join("").slice(0, 3).toUpperCase()}</span>
-                          <strong>{retailer}</strong>
-                          <small>{count ? `${count} known location${count === 1 ? "" : "s"}` : "Use manual location"}</small>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="scout-report-store-tools">
-                    <input
-                      value={quickScoutReportForm.storeSearch}
-                      onChange={(event) => updateQuickScoutReportForm("storeSearch", event.target.value)}
-                      placeholder={`Search ${currentRetailer || "known"} stores by city, nickname, or address`}
-                    />
-                    <input
-                      value={quickScoutReportForm.manualLocation}
-                      onChange={(event) => updateQuickScoutReportForm("manualLocation", event.target.value)}
-                      placeholder="Manual store/location if missing"
-                    />
-                  </div>
-                  <div className="scout-report-store-list">
-                    {filteredStores.length ? filteredStores.map((store) => (
-                      <article key={store.id || `${getScoutQuickStoreName(store)}-${store.city}`} className="scout-report-store-card">
-                        <div className="scout-report-store-main">
-                          <div>
-                            <strong>{getScoutQuickStoreName(store)}</strong>
-                            <p>{store.city || "City not added"}{store.address ? ` | ${store.address}` : ""}</p>
-                          </div>
-                          <span className="scout-store-temperature scout-store-temperature-watching">{store.favorite || store.watched ? "Watching" : "Known"}</span>
-                        </div>
-                        <div className="scout-report-store-meta">
-                          <span>{getScoutQuickRetailer(store)}</span>
-                          <span>Last report: {store.lastReport || store.lastReportDate || "Not logged"}</span>
-                          <span>Best window: {store.bestCheckWindow || store.restockWindow || "Unknown"}</span>
-                        </div>
-                        <div className="scout-report-store-actions">
-                          <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(store)}>Report here</button>
-                        </div>
-                      </article>
-                    )) : (
-                      <div className="scout-report-empty-step">
-                        <strong>No matching stores</strong>
-                        <p>Enter a manual location and this report will be labeled Needs Store Review.</p>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </section>
-
-            <section className="scout-quick-section">
-              <div className="scout-report-step-header">
-                <span>Details</span>
-                <div>
-                  <h3>{currentType.isGuess ? "Guess details" : "Optional details"}</h3>
-                  <p>{currentType.isGuess ? "Add the pattern, product type, and confidence. This is not confirmed stock." : "Add product, quantity, notes, proof text, or a screenshot/photo."}</p>
-                </div>
-              </div>
-              <div className="scout-report-detail-grid">
-                <label>
-                  {currentType.isGuess ? "Product type expected" : "Product seen"}
-                  <input value={quickScoutReportForm.productName} onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)} placeholder={currentType.isGuess ? "ETBs, tins, booster bundles..." : "Search product, UPC, SKU"} />
-                </label>
-                {currentType.isGuess ? (
-                  <>
-                    <label>
-                      Expected time window
-                      <input value={quickScoutReportForm.guessedTimeWindow} onChange={(event) => updateQuickScoutReportForm("guessedTimeWindow", event.target.value)} placeholder="Morning, 12-2 PM, Thursday afternoon..." />
-                    </label>
-                    <label>
-                      Self confidence
-                      <input type="number" min="0" max="100" value={quickScoutReportForm.confidenceSelfRating} onChange={(event) => updateQuickScoutReportForm("confidenceSelfRating", event.target.value)} placeholder="0-100" />
-                    </label>
-                  </>
-                ) : (
-                  <>
-                    <label>
-                      Quantity estimate
-                      <input value={quickScoutReportForm.quantity} onChange={(event) => updateQuickScoutReportForm("quantity", event.target.value)} placeholder="Qty or estimate" />
-                    </label>
-                    <label>
-                      Price
-                      <input inputMode="decimal" value={quickScoutReportForm.price} onChange={(event) => updateQuickScoutReportForm("price", event.target.value)} placeholder="Optional" />
-                    </label>
-                    <label>
-                      Photo/screenshot
-                      <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
-                    </label>
-                  </>
-                )}
-              </div>
-              {!currentType.isGuess && quickScoutReportForm.photoUrl ? (
-                <div className="scout-photo-preview">
-                  <img src={quickScoutReportForm.photoUrl} alt="" />
-                  <div>
-                    <strong>Image attached</strong>
-                    <span>Existing beta upload/local image path only.</span>
-                  </div>
-                </div>
-              ) : null}
-              <textarea
-                value={quickScoutReportForm.note}
-                onChange={(event) => updateQuickScoutReportForm("note", event.target.value)}
-                placeholder="Notes, shelf status, employee quote, limit, or context"
-              />
-              <input
-                value={quickScoutReportForm.proofText}
-                onChange={(event) => updateQuickScoutReportForm("proofText", event.target.value)}
-                placeholder="Optional text/link from receipt, screenshot, post, or site"
-              />
-              <div className="ai-helper-note">
-                <span>{currentType.isGuess ? "AI can structure a pattern note, but guesses stay separate from confirmed reports." : "AI can help classify the report, but you confirm before submitting."}</span>
-                <div className="quick-actions">
-                  <button type="button" className="secondary-button" onClick={() => void runScoutReportClassificationAssist()}>Help classify report</button>
-                  <button type="button" className="secondary-button" onClick={() => void runGuessPlannerAiAssist()}>Turn note into guess</button>
-                </div>
-              </div>
-              {!currentType.isGuess ? <div className="scout-stock-status-grid" role="group" aria-label="Stock left after purchase">
-                {SCOUT_QUICK_STOCK_LEFT_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`scout-stock-status-button ${quickScoutReportForm.stockLeft === option.value ? "selected" : ""}`}
-                    aria-label={option.helper || option.label}
-                    onClick={() => updateQuickScoutReportForm("stockLeft", option.value)}
-                  >
-                    {option.label}{option.helper ? ` | ${option.helper}` : ""}
-                  </button>
-                ))}
-              </div> : null}
-            </section>
-
-            <section className="scout-quick-section">
-              <div className="scout-report-step-header">
-                <span>When</span>
-                <div>
-                  <h3>{currentType.isGuess ? "Expected day/window" : "Date/time"}</h3>
-                  <p>{currentType.isGuess ? "Choose the day this store usually restocks. Forecast will show confidence, not certainty." : "Defaults to now. Exact date is optional for rough intel."}</p>
-                </div>
-              </div>
-              <div className="scout-stock-status-grid">
-                {SCOUT_QUICK_DATE_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`scout-stock-status-button ${quickScoutReportForm.dateMode === option.value ? "selected" : ""}`}
-                    onClick={() => updateQuickScoutReportForm("dateMode", option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              {quickScoutReportForm.dateMode === "pick_date" || quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "yesterday" ? (
-                <div className="scout-report-detail-grid">
-                  <label>
-                    Date
-                    <input type="date" value={quickScoutReportForm.reportDate} onChange={(event) => updateQuickScoutReportForm("reportDate", event.target.value)} />
-                  </label>
-                  <label>
-                    Time
-                    <input type="time" value={quickScoutReportForm.reportTime} onChange={(event) => updateQuickScoutReportForm("reportTime", event.target.value)} />
-                  </label>
-                </div>
-              ) : null}
-              {quickScoutReportForm.dateMode === "day_only" ? (
-                <label className="scout-report-visibility-field">
-                  Day of week
-                  <select value={quickScoutReportForm.dayOfWeek} onChange={(event) => updateQuickScoutReportForm("dayOfWeek", event.target.value)}>
-                    {SCOUT_WEEKDAYS.map((day) => <option key={day}>{day}</option>)}
-                  </select>
-                </label>
-              ) : null}
-            </section>
-
-            <section className="scout-quick-section">
-              <div className="scout-report-step-header">
-                <span>Share</span>
-                <div>
-                  <h3>Visibility</h3>
-                  <p>{currentType.isGuess ? "A guess is a planner note, not a confirmed report." : "Private-from-map reports are not public, but admins may review them for moderation and scoring."}</p>
-                </div>
-              </div>
-              <label className="scout-report-visibility-field">
-                Visibility
-                <select value={quickScoutReportForm.visibility} onChange={(event) => updateQuickScoutReportForm("visibility", event.target.value)}>
-                  {(currentType.isGuess ? SCOUT_GUESS_VISIBILITY_OPTIONS : SCOUT_REPORT_VISIBILITY_OPTIONS).map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <small>{(currentType.isGuess ? SCOUT_GUESS_VISIBILITY_OPTIONS : SCOUT_REPORT_VISIBILITY_OPTIONS).find((option) => option.value === quickScoutReportForm.visibility)?.helper}</small>
-              </label>
-            </section>
-
-            <div className="flow-form-footer">
-              <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Cancel</button>
-              <button type="button" disabled={!quickScoutReportReady()} onClick={() => setQuickScoutReportStep("review")}>{currentType.isGuess ? "Review guess" : "Review report"}</button>
-            </div>
-          </>
-        )}
+        <div className="flow-form-footer scout-wizard-footer">
+          <button type="button" className="secondary-button" onClick={quickScoutReportStep === "what" ? () => closeFlowModal() : goBackScoutWizardStep}>
+            {quickScoutReportStep === "what" ? "Cancel" : "Back"}
+          </button>
+          {quickScoutReportStep === "review" ? (
+            <button type="submit" disabled={!quickScoutReportReady()}>{currentType.isGuess ? "Save Guess" : "Submit Report"}</button>
+          ) : (
+            <button type="button" disabled={!canAdvanceScoutWizard()} onClick={goNextScoutWizardStep}>Next</button>
+          )}
+        </div>
       </form>
     );
   }

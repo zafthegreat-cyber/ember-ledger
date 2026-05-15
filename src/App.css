@@ -15145,8 +15145,104 @@ button.home-metric-card small,
   gap: 12px;
 }
 
+.scout-report-wizard {
+  gap: 12px;
+}
+
+.scout-report-progress {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(14, 159, 181, 0.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 90, 47, 0.14), transparent 12rem),
+    linear-gradient(135deg, rgba(255, 247, 235, 0.94), rgba(239, 252, 255, 0.9));
+}
+
+.scout-report-progress > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scout-report-progress strong {
+  color: var(--color-heading);
+  font-size: 0.9rem;
+}
+
+.scout-report-progress span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.scout-report-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(12, 38, 56, 0.08);
+}
+
+.scout-report-progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff5a2f, #0e9fb5, #7b4df3);
+  transition: width 180ms ease;
+}
+
 .scout-quick-report-v2 .scout-report-type-grid {
   grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+}
+
+.scout-report-wizard .scout-report-type-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.scout-report-wizard .scout-report-choice-card,
+.scout-report-wizard .scout-stock-status-button {
+  min-height: 54px;
+}
+
+.scout-report-wizard .scout-report-step-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(88, 213, 232, 0.1), transparent 12rem),
+    rgba(255, 255, 255, 0.92);
+}
+
+.scout-report-wizard textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.scout-location-trust-note {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid rgba(14, 159, 181, 0.16);
+  border-radius: 14px;
+  background: rgba(240, 253, 250, 0.78);
+}
+
+.scout-location-trust-note strong {
+  color: var(--color-heading);
+  font-size: 0.86rem;
+}
+
+.scout-location-trust-note span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.scout-wizard-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-top: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), var(--surface, #fff) 28%);
 }
 
 .scout-quick-section,
@@ -15604,6 +15700,7 @@ button.home-metric-card small,
     overflow-x: auto;
     justify-content: start;
     scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
   }
 
   .scout-report-step-pill {
@@ -15654,6 +15751,25 @@ button.home-metric-card small,
   .scout-report-store-list {
     max-height: none;
     overflow: visible;
+  }
+
+  .scout-report-wizard .scout-report-store-list {
+    max-height: min(34dvh, 320px);
+    overflow: auto;
+  }
+
+  .scout-report-progress {
+    padding: 10px;
+  }
+
+  .scout-wizard-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scout-wizard-footer button {
+    width: 100%;
+    min-height: 48px;
   }
 
   .scout-photo-first-button {
