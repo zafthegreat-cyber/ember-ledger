@@ -3366,6 +3366,11 @@ export default function App() {
   const [activeFlowModal, setActiveFlowModal] = useState(null);
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
+  const [multiDestinationSaving, setMultiDestinationSaving] = useState(false);
+  const [multiDestinationMessage, setMultiDestinationMessage] = useState("");
+  const [marketAddChooserProductId, setMarketAddChooserProductId] = useState("");
+  const [marketAddSavingKey, setMarketAddSavingKey] = useState("");
+  const [marketAddConfirmation, setMarketAddConfirmation] = useState(null);
   const [commandCenterTab, setCommandCenterTab] = useState("all");
   const [quickScoutReportForm, setQuickScoutReportForm] = useState(() => createQuickScoutReportDraft());
   const [quickScoutReportStep, setQuickScoutReportStep] = useState("what");
@@ -3379,6 +3384,7 @@ export default function App() {
   const flowModalOpenerRef = useRef(null);
   const flowModalBaselineRef = useRef({});
   const quickScoutWizardTouchRef = useRef(0);
+  const marketAddLastActionRef = useRef({ key: "", time: 0 });
 
   const mainTabs = [
     { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
@@ -5188,6 +5194,63 @@ export default function App() {
     } catch (error) {
       if (requestId !== supabaseCatalogRequestId.current) return;
       if (error?.name === "AbortError") return;
+      if (catalogProducts.length) {
+        setCatalogSearchHasRun(true);
+        setCatalogPagedResultIds([]);
+        setSupabaseCatalogStatus({
+          loading: false,
+          loadedCount: 0,
+          page,
+          pageSize,
+          totalCount: null,
+          hasMore: false,
+          message: `Search timed out. Showing cached local catalog matches for "${cleanedSearch || barcode}".`,
+          error: "",
+          exactMatchCount: 0,
+          exactBarcodeMiss: false,
+          usedFallback: true,
+          alternateKinds: [],
+          alternateCount: 0,
+          coverageWarning: null,
+        });
+        return;
+      }
+      const fallbackName = cleanedSearch || barcode || "Market search item";
+      const fallbackLooksSealed = /\b(etb|elite trainer|booster|box|bundle|tin|blister|deck|collection|upc|ultra premium|toolkit|chest|lunchbox|sealed)\b/i.test(fallbackName);
+      const fallbackProduct = mapCatalog({
+        id: makeId("market-search-draft"),
+        name: fallbackName,
+        product_name: fallbackName,
+        category: "Pokemon",
+        catalog_type: fallbackLooksSealed ? "sealed" : "other",
+        product_type: fallbackLooksSealed ? "Sealed Product" : "Market Search Draft",
+        market_source: "Market search draft",
+        source: "market_search_draft",
+        data_confidence_score: 20,
+        admin_review_status: "needs_review",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      setCatalogProducts((current) => [fallbackProduct, ...current.filter((product) => String(product.id) !== String(fallbackProduct.id))]);
+      setCatalogSearchHasRun(true);
+      setCatalogPagedResultIds([fallbackProduct.id]);
+      setSupabaseCatalogStatus({
+        loading: false,
+        loadedCount: 1,
+        page,
+        pageSize,
+        totalCount: 1,
+        hasMore: false,
+        message: `Search timed out. Created an editable draft result for "${fallbackName}".`,
+        error: "",
+        exactMatchCount: 0,
+        exactBarcodeMiss: false,
+        usedFallback: true,
+        alternateKinds: [],
+        alternateCount: 0,
+        coverageWarning: null,
+      });
+      return;
       setCatalogPagedResultIds([]);
       setSupabaseCatalogStatus({
         loading: false,
@@ -5774,17 +5837,26 @@ export default function App() {
       tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, ...(tidetradr || {}) },
     };
     flowModalBaselineRef.current.multiDestinationAdd = nextForm;
+    setMultiDestinationMessage("");
+    setMultiDestinationSaving(false);
     setMultiDestinationForm(nextForm);
   };
-  const updateMultiDestinationField = (field, value) => setMultiDestinationForm((current) => ({ ...current, [field]: value }));
-  const updateMultiDestinationSection = (section, field, value) => setMultiDestinationForm((current) => ({
-    ...current,
-    [section]: {
-      ...current[section],
-      [field]: value,
-    },
-  }));
+  const updateMultiDestinationField = (field, value) => {
+    setMultiDestinationMessage("");
+    setMultiDestinationForm((current) => ({ ...current, [field]: value }));
+  };
+  const updateMultiDestinationSection = (section, field, value) => {
+    setMultiDestinationMessage("");
+    setMultiDestinationForm((current) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        [field]: value,
+      },
+    }));
+  };
   const updateMultiDestinationToggle = (destination, checked) => setMultiDestinationForm((current) => {
+    setMultiDestinationMessage("");
     const normalizedDestination = normalizeAddDestinationValue(destination, "", { allowIgnore: false });
     if (!normalizedDestination || !Object.prototype.hasOwnProperty.call(current.destinations, normalizedDestination)) return current;
     const next = {
@@ -10707,8 +10779,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (action === "receipt") return openReceiptScanWorkflow();
     if (action === "multiDestination") return openProductAddFlow({ source: "quick-add" });
     if (action === "bulkAdd") return openBulkAddFlow("Mixed");
-    if (action === "card") return openProductAddFlow({ source: "quick-add-card", seed: { productType: "Individual Card" } });
-    if (action === "sealed") return openProductAddFlow({ source: "quick-add-sealed", seed: { productType: "Sealed Product" } });
+    if (action === "card") return openProductAddFlow({ source: "quick-add-card", seed: { productType: "Individual Card" }, destinations: { vault: true } });
+    if (action === "sealed") return openProductAddFlow({ source: "quick-add-sealed", seed: { productType: "Sealed Product" }, destinations: { vault: true } });
     if (action === "vaultItem") return openProductAddFlow({ source: "quick-add-vault", destinations: { vault: true } });
     if (action === "searchVaultCatalog") return openVaultCatalogSearchFlow({ source: "quick-add" });
     if (action === "importCollection") return openVaultImportCollectionFlow();
@@ -10857,13 +10929,22 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   async function submitMultiDestinationAdd(event) {
     event.preventDefault();
+    if (multiDestinationSaving) return;
     if (blockGuestSave()) return;
     const itemName = String(multiDestinationForm.itemName || "").trim();
     const destinations = multiDestinationForm.destinations || {};
     const selectedDestinationCount = Object.values(destinations).filter(Boolean).length;
-    if (!itemName) return showAppMessage("Enter an item name first.");
-    if (!selectedDestinationCount) return showAppMessage("Choose at least one destination.");
+    if (!itemName) {
+      setMultiDestinationMessage("Enter an item name before adding.");
+      return;
+    }
+    if (!selectedDestinationCount) {
+      setMultiDestinationMessage("Choose Add to Vault, Add to Forge, Wishlist, or TideTradr before adding.");
+      return;
+    }
 
+    setMultiDestinationSaving(true);
+    setMultiDestinationMessage("Saving item...");
     const now = new Date().toISOString();
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
     const successes = [];
@@ -11106,7 +11187,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (uniqueFailures.length) console.error("Multi-destination save failures", uniqueFailures);
     if (uniqueSuccesses.length) setVaultToast(uniqueFailures.length ? `${uniqueSuccesses.join(" | ")}. Could not save item.` : uniqueSuccesses.join(" | "));
     if (!successes.length && uniqueFailures.length) setVaultToast("Could not save item.");
-    if (failures.length) return;
+    if (failures.length) {
+      setMultiDestinationMessage("Could not save item. Check the destination details and try again.");
+      setMultiDestinationSaving(false);
+      return;
+    }
+    setMultiDestinationSaving(false);
     closeFlowModal({ force: true, reset: false });
     resetMultiDestinationForm();
   }
@@ -17400,6 +17486,162 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     openProductAddFlow({ product, source: "catalog-forge", destinations: { forge: true } });
   }
 
+  function buildMarketSearchInventoryDraft(product = {}, destination = "forge") {
+    const normalizedDestination = normalizeAddDestinationValue(destination, "forge", { allowIgnore: false });
+    const marketInfo = getTideTradrMarketInfo(product);
+    const now = new Date().toISOString();
+    const title = catalogTitle(product);
+    const productType = normalizedInventoryProductType({
+      ...product,
+      name: title,
+      productType: catalogProductTypeLabel(product),
+      setName: catalogExpansionName(product),
+    });
+    const workspaceId = defaultWorkspaceIdForDestination(normalizedDestination);
+    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
+    const shared = {
+      id: makeId(normalizedDestination === "vault" ? "vault" : "item"),
+      name: title,
+      category: product.category || "Pokemon",
+      productType,
+      quantity: 1,
+      itemImage: catalogImage(product),
+      itemImageSource: product.imageSource || product.marketSource || "TideTradr",
+      itemImageStatus: catalogImage(product) ? "catalog" : "placeholder",
+      itemImageSourceUrl: catalogSourceUrl(product),
+      barcode: product.barcode || product.upc || "",
+      catalogProductId: product.id || "",
+      catalogVariantId: getCatalogVariantOptions(product).find((variant) => variant.isDefault)?.id || "",
+      catalogProductName: title,
+      externalProductId: product.externalProductId || product.tcgplayerProductId || product.id || "",
+      externalProductSource: product.marketSource || product.sourceType || "TideTradr",
+      tideTradrUrl: catalogSourceUrl(product),
+      marketPrice: Number(marketInfo.currentMarketValue || product.marketPrice || product.midPrice || 0),
+      marketValue: Number(marketInfo.currentMarketValue || product.marketPrice || product.midPrice || 0),
+      lowPrice: Number(product.lowPrice || marketInfo.lowPrice || 0),
+      midPrice: Number(product.midPrice || marketInfo.midPrice || 0),
+      highPrice: Number(product.highPrice || marketInfo.highPrice || 0),
+      msrpPrice: Number(marketInfo.msrp || product.msrpPrice || 0),
+      setCode: product.setCode || "",
+      setName: catalogExpansionName(product),
+      expansion: catalogExpansionName(product),
+      productLine: product.productLine || product.series || "",
+      packCount: Number(product.packCount || 0),
+      sourceType: "Market search",
+      source: "Market search",
+      notes: ["Draft created from Market search.", product.rarity ? `Rarity: ${product.rarity}` : "", product.variant ? `Variant: ${product.variant}` : ""].filter(Boolean).join(" "),
+      actionNotes: "Draft created from Market search. Open in Forge or Vault to complete details.",
+      lastPriceChecked: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (normalizedDestination === "vault") {
+      return applyWorkspaceToRecord({
+        ...shared,
+        destinationScope: ["vault"],
+        recordType: "vault_item",
+        businessInventory: false,
+        isWishlist: false,
+        ownedQuantity: 1,
+        forgeQuantity: 0,
+        unitCost: 0,
+        salePrice: 0,
+        status: "Personal Collection",
+        vaultStatus: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "sealed" : "personal_collection",
+        vaultCategory: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "Sealed / Holding" : "Personal collection",
+        storageLocation: "",
+        conditionName: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "Sealed" : "Near Mint",
+        language: "English",
+      }, workspace);
+    }
+
+    return applyWorkspaceToRecord({
+      ...shared,
+      destinationScope: ["forge"],
+      recordType: "forge_inventory",
+      businessInventory: true,
+      isWishlist: false,
+      ownedQuantity: 0,
+      forgeQuantity: 1,
+      quantityWanted: 0,
+      unitCost: 0,
+      salePrice: Number(marketInfo.currentMarketValue || product.marketPrice || product.midPrice || 0),
+      status: "Draft",
+      buyer: currentUserProfile?.displayName || "Zena",
+      purchaserId: "purchaser-default-1",
+      purchaserName: currentUserProfile?.displayName || "Zena",
+      conditionName: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "Sealed" : "Near Mint",
+      language: "English",
+    }, workspace);
+  }
+
+  async function addMarketSearchResultToDestination(product = {}, destination = "forge") {
+    const normalizedDestination = normalizeAddDestinationValue(destination, "forge", { allowIgnore: false });
+    const productId = product.id || catalogTitle(product);
+    const actionKey = `${normalizedDestination}:${productId}`;
+    const nowMs = Date.now();
+    if (marketAddSavingKey || (marketAddLastActionRef.current.key === actionKey && nowMs - marketAddLastActionRef.current.time < 2000)) {
+      setMarketAddConfirmation({
+        productId,
+        destination: normalizedDestination,
+        message: "Already adding this item. Give it a moment before trying again.",
+        itemId: "",
+      });
+      return;
+    }
+    if (blockGuestSave()) return;
+    const workspaceId = defaultWorkspaceIdForDestination(normalizedDestination);
+    if (!canEditWorkspaceId(workspaceId)) {
+      setMarketAddConfirmation({
+        productId,
+        destination: normalizedDestination,
+        message: "You do not have permission to add items to that workspace.",
+        itemId: "",
+      });
+      return;
+    }
+
+    marketAddLastActionRef.current = { key: actionKey, time: nowMs };
+    setMarketAddSavingKey(actionKey);
+    setMarketAddConfirmation(null);
+    const draft = buildMarketSearchInventoryDraft(product, normalizedDestination);
+    const saveResult = await saveInventoryRecords([draft]);
+    setMarketAddSavingKey("");
+
+    if (saveResult.failures?.length) {
+      console.error("Market search add failed", saveResult.failures);
+      setVaultToast("Could not save item.");
+      setMarketAddConfirmation({
+        productId,
+        destination: normalizedDestination,
+        message: "Could not save item. Try again or open the full add form.",
+        itemId: "",
+      });
+      return;
+    }
+
+    const savedItem = saveResult.saved?.[0] || draft;
+    setItems((current) => [savedItem, ...current]);
+    setMarketAddChooserProductId("");
+    setMarketAddConfirmation({
+      productId,
+      destination: normalizedDestination,
+      itemId: savedItem.id,
+      message: `Added to ${normalizedDestination === "vault" ? "Vault" : "Forge"} as a draft.`,
+    });
+  }
+
+  function openMarketAddedItem(destination = "forge", itemId = "") {
+    if (destination === "vault") {
+      setActiveTab("vault");
+      if (itemId) setSelectedVaultDetailId(itemId);
+      return;
+    }
+    setActiveTab("inventory");
+    if (itemId) setSelectedForgeDetailId(itemId);
+  }
+
   function renderTideTradrCatalogResultCard(product) {
     const marketInfo = getTideTradrMarketInfo(product);
     const isCard = isCatalogCardProduct(product);
@@ -17410,6 +17652,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const ownedCount = getCatalogOwnedCount(product);
     const showRepairMeta = shouldShowCatalogRepairLabels();
     const marketLabel = hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market: -";
+    const productId = product.id || catalogTitle(product);
+    const chooserOpen = String(marketAddChooserProductId) === String(productId);
+    const confirmation = marketAddConfirmation && String(marketAddConfirmation.productId) === String(productId) ? marketAddConfirmation : null;
+    const forgeSaving = marketAddSavingKey === `forge:${productId}`;
+    const vaultSaving = marketAddSavingKey === `vault:${productId}`;
     return (
       <div className="catalog-result-card" key={product.id}>
         <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(product)}>
@@ -17469,6 +17716,52 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ) : null}
           </div>
         </button>
+        <div className="catalog-result-actions market-result-add-actions">
+          <button
+            type="button"
+            className="gradient-button market-result-add-button"
+            onClick={() => {
+              setMarketAddConfirmation(null);
+              setMarketAddChooserProductId((current) => String(current) === String(productId) ? "" : productId);
+            }}
+            aria-expanded={chooserOpen}
+          >
+            + Add
+          </button>
+          <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "market-search-review", destinations: { forge: true, vault: false } })}>
+            Review
+          </button>
+        </div>
+        {chooserOpen ? (
+          <div className="market-result-destination-panel">
+            <strong>Add this Market result</strong>
+            <span>Known details will be copied into a draft you can finish later.</span>
+            <div className="market-result-destination-actions">
+              <button type="button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "forge")}>
+                {forgeSaving ? "Adding..." : "Add to Forge"}
+              </button>
+              <button type="button" className="secondary-button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "vault")}>
+                {vaultSaving ? "Adding..." : "Add to Vault"}
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setMarketAddChooserProductId("")}>
+                Keep searching
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {confirmation ? (
+          <div className={`market-result-confirmation ${confirmation.itemId ? "is-success" : "is-warning"}`} role="status">
+            <span>{confirmation.message}</span>
+            {confirmation.itemId ? (
+              <button type="button" onClick={() => openMarketAddedItem(confirmation.destination, confirmation.itemId)}>
+                {confirmation.destination === "vault" ? "Open in Vault" : "Open in Forge"}
+              </button>
+            ) : null}
+            <button type="button" className="ghost-button" onClick={() => setMarketAddConfirmation(null)}>
+              Keep searching
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -23423,7 +23716,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       );
     };
     return (
-      <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd}>
+      <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd} noValidate>
         <div className="universal-review-banner">
           <strong>Review before save</strong>
           <span>Search and scanner matches are drafts here. Choose Vault, Forge, Wishlist, or TideTradr, then submit to save.</span>
@@ -23794,6 +24087,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </section>
         ) : null}
 
+        {multiDestinationMessage ? (
+          <p className={`flow-inline-message ${/could not|choose|enter/i.test(multiDestinationMessage) ? "is-warning" : "is-info"}`} role="status">
+            {multiDestinationMessage}
+          </p>
+        ) : null}
         <p className="compact-subtitle">Cancel and Add Item stay available in the modal footer.</p>
       </form>
     );
@@ -25398,7 +25696,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "scoutSubmit", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
               </button>
               {activeFlowModal?.type === "multiDestinationAdd" ? (
-                <button type="submit" form="multi-destination-add-form">Add Item</button>
+                <button type="submit" form="multi-destination-add-form" disabled={multiDestinationSaving}>
+                  {multiDestinationSaving ? "Saving..." : "Add Item"}
+                </button>
               ) : null}
             </div>
           </section>

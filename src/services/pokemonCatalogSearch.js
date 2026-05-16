@@ -12,17 +12,7 @@ const TEXT_SEARCH_FIELDS = [
   "name",
   "product_name",
   "set_name",
-  "series",
-  "expansion",
   "product_type",
-  "product_line",
-  "catalog_item_type",
-  "upc",
-  "sku",
-  "identifier_search",
-  "retailer_skus_search",
-  "variant_names",
-  "card_number",
   "set_code",
 ];
 
@@ -958,10 +948,9 @@ async function runSearchAgainstSource({ supabase, sourceName, query, barcode, mo
     };
   }
 
-  if (sourceName === "catalog_search_lightweight") {
-    const rpcResult = await runFastCatalogRpcSearch({ supabase, query, barcode, mode, filters, sort, page, pageSize, signal });
-    if (rpcResult) return rpcResult;
-  }
+  // The RPC path is fast when tuned, but a timed-out RPC surfaces as a noisy
+  // browser 500 during beta. The lightweight view search is safer for mobile
+  // add flows and still preserves pagination/filtering.
 
   return runTextSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, textFields, matchMode: "fuzzy", signal });
 }

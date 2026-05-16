@@ -12020,6 +12020,76 @@ button,
   gap: var(--space-button);
 }
 
+.market-result-add-actions {
+  position: relative;
+  z-index: 3;
+  margin-top: 10px;
+}
+
+.market-result-add-button {
+  min-height: 40px;
+}
+
+.market-result-destination-panel,
+.market-result-confirmation,
+.flow-inline-message {
+  position: relative;
+  z-index: 3;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(88, 213, 232, 0.28);
+  background: rgba(5, 18, 33, 0.78);
+  color: var(--color-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.market-result-destination-panel,
+.market-result-destination-actions button,
+.market-result-confirmation {
+  scroll-margin-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+}
+
+.market-result-destination-panel strong,
+.market-result-confirmation span,
+.flow-inline-message {
+  display: block;
+}
+
+.market-result-destination-panel span {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+.market-result-destination-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.market-result-confirmation {
+  display: grid;
+  gap: 8px;
+}
+
+.market-result-confirmation.is-success {
+  border-color: rgba(28, 166, 106, 0.45);
+  box-shadow: 0 0 22px rgba(28, 166, 106, 0.14);
+}
+
+.market-result-confirmation.is-warning,
+.flow-inline-message.is-warning {
+  border-color: rgba(246, 168, 59, 0.45);
+  box-shadow: 0 0 22px rgba(246, 168, 59, 0.12);
+}
+
+.flow-inline-message.is-info {
+  border-color: rgba(88, 213, 232, 0.34);
+}
+
 .quick-action-card-grid,
 .home-summary-stats,
 .forge-command-overview,
