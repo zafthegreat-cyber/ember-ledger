@@ -1656,7 +1656,47 @@ function catalogNameSuggestsSealedProduct(value = {}) {
     source.displayName,
     source.display_name,
   ].filter(Boolean).join(" "));
-  return /\bbooster\s+(box|bundle|pack|display)\b|\belite\s+trainer\s+box\b|\bpokemon\s+center\s+elite\s+trainer\s+box\b|\bsleeved\s+booster\b|\bchecklane\s+blister\b|\b3[-\s]?pack\s+blister\b|\bmini\s+tin\b|\btin\b|\bcollection\s+box\b|\bpremium\s+collection\b|\bspecial\s+collection\b|\bultra[-\s]?premium\s+collection\b|\bbuild\s*&?\s*battle\s+(box|stadium)\b|\btrainer'?s?\s+toolkit\b|\bleague\s+battle\s+deck\b|\btheme\s+deck\b|\bstarter\s+deck\b|\bdisplay\s+case\b|\bretail\s+bundle\b/.test(nameText);
+  return /\bbooster\s+(box|bundle|pack|display)\b|\belite\s+trainer\s+box\b|\betb\b|\bpokemon\s+center\s+elite\s+trainer\s+box\b|\bsleeved\s+booster\b|\bchecklane\s+blister\b|\b3[-\s]?pack\s+blister\b|\bmini\s+tin\b|\bpok[eÃ©]?\s*ball\s+tin\b|\btin\b|\bcollection\s+box\b|\bpremium\s+collection\b|\bspecial\s+collection\b|\bultra[-\s]?premium\s+collection\b|\bupc\b|\bbuild\s*&?\s*battle\s+(box|stadium)\b|\btrainer'?s?\s+toolkit\b|\bleague\s+battle\s+deck\b|\btheme\s+deck\b|\bstarter\s+deck\b|\bdisplay\s+case\b|\bretail\s+bundle\b|\blunch\s*box\b|\blunchbox\b|\bcollector'?s?\s+chest\b|\bholiday\s+calendar\b/.test(nameText);
+}
+
+function inferSealedProductTypeLabel(value = {}) {
+  const text = catalogClassificationText(value);
+  const match = CATALOG_SEALED_COVERAGE_CATEGORIES.find((category) =>
+    [category.label, ...(category.aliases || [])].some((entry) => {
+      const alias = normalizeSearchText(entry);
+      return alias && text.includes(alias);
+    })
+  );
+  return match?.label || "";
+}
+
+function normalizedInventoryProductType(value = {}) {
+  const source = value || {};
+  const current = String(source.productType || source.product_type || "").trim();
+  if (catalogSourceSuggestsSealed(source)) {
+    const inferred = inferSealedProductTypeLabel(source);
+    return inferred || (/sealed/i.test(current) ? current : "Sealed Product");
+  }
+  if (current) return current;
+  if (isCatalogCodeCardLike(source)) return "Code Card";
+  if (catalogHasStrongCardIndicators({ ...source, productType: "Individual Card" })) return "Individual Card";
+  return "";
+}
+
+function isInventorySealedProduct(value = {}) {
+  const source = value || {};
+  const statusText = normalizeSearchText([source.status, source.vaultStatus, source.vault_status, source.condition, source.conditionName, source.condition_name].filter(Boolean).join(" "));
+  return catalogSourceSuggestsSealed(source) || /\bsealed\b|\bkeep\s+sealed\b|\bsealed\s*\/\s*holding\b/.test(statusText);
+}
+
+function isInventoryCardProduct(value = {}) {
+  if (isInventorySealedProduct(value)) return false;
+  const text = catalogClassificationText(value);
+  return (
+    isCatalogCodeCardLike(value) ||
+    catalogHasStrongCardIndicators(value) ||
+    /\bsingle[_\s-]?card\b|\bindividual\s+card\b|\bpromo\s+card\b|\bgraded\s+card\b|\bslab\b/.test(text)
+  );
 }
 
 function catalogHasStrongCardIndicators(value = {}) {
@@ -1758,8 +1798,8 @@ function catalogHasStrongCardIndicators(value = {}) {
 function classifyCatalogItem(value = {}) {
   if (!value) return "other";
   if (isCatalogCodeCardLike(value)) return "code_card";
-  if (catalogHasStrongCardIndicators(value)) return "card";
   if (catalogSourceSuggestsSealed(value)) return "sealed";
+  if (catalogHasStrongCardIndicators(value)) return "card";
   return "other";
 }
 
@@ -3260,6 +3300,15 @@ export default function App() {
   const showAppMessage = (message) => {
     setVaultToast(String(message || "Something went wrong."));
     return false;
+  };
+  const compactInventorySaveFailure = (failures = []) => {
+    const uniqueFailures = [...new Set(
+      failures
+        .map((failure) => typeof failure === "string" ? failure : `${failure?.itemName || "Inventory item"} failed: ${failure?.error || "Could not save"}`)
+        .filter(Boolean)
+    )];
+    if (uniqueFailures.length) console.error("Inventory save failures", uniqueFailures);
+    return "Could not save item.";
   };
   const blockGuestSave = () => {
     if (!guestPreviewActive) return false;
@@ -5630,7 +5679,7 @@ export default function App() {
       ...current,
       catalogProductId: productId,
       itemName: product ? catalogTitle(product) : current.itemName,
-      productType: product?.productType || product?.sealedProductType || product?.productKind || current.productType,
+      productType: normalizedInventoryProductType(product || current),
       category: product?.category || current.category,
       setName: product ? catalogExpansionName(product) : current.setName,
       variant: defaultVariant?.variantName || current.variant,
@@ -5644,7 +5693,7 @@ export default function App() {
         upc: product?.barcode || product?.upc || current.tidetradr.upc,
         sku: product?.sku || current.tidetradr.sku,
         setName: catalogExpansionName(product || {}) || current.tidetradr.setName,
-        productType: product?.productType || current.tidetradr.productType,
+        productType: normalizedInventoryProductType(product || current.tidetradr),
         releaseDate: product?.releaseDate || product?.releaseYear || current.tidetradr.releaseDate,
       },
     }));
@@ -5834,7 +5883,7 @@ export default function App() {
   function filterVaultItems(collection, status = "all") {
     return collection.filter((item) => {
       if (status === "all") return isActiveVaultItem(item);
-      if (status === "sealed") return ["sealed", "held"].includes(normalizeVaultStatus(item));
+      if (status === "sealed") return isInventorySealedProduct(item) || ["sealed", "held"].includes(normalizeVaultStatus(item));
       if (status === "wishlist") return ["wishlist", "held"].includes(normalizeVaultStatus(item));
       if (status === "sold_archived") {
         const normalizedStatus = normalizeVaultStatus(item);
@@ -6779,9 +6828,9 @@ export default function App() {
       high_price: Number(record.highPrice || 0),
       msrp_price: Number(record.msrpPrice || record.msrp || 0),
       set_code: record.setCode || "",
-      expansion: record.expansion || record.setName || "",
+      set_name: record.setName || record.expansion || "",
       product_line: record.productLine || "",
-      product_type: record.productType || "",
+      product_type: normalizedInventoryProductType(record),
       pack_count: Number(record.packCount || 0),
       last_price_checked: record.marketPrice || record.marketValue ? new Date().toISOString() : null,
       status: record.status || "In Stock",
@@ -8628,7 +8677,13 @@ export default function App() {
       expansion: vaultForm.setName || "",
       setName: vaultForm.setName || "",
       productLine: "",
-      productType: vaultForm.productType || "",
+      productType: normalizedInventoryProductType({
+        name: vaultForm.name,
+        productType: vaultForm.productType || "",
+        setName: vaultForm.setName || "",
+        condition: vaultForm.condition || "",
+        vaultStatus,
+      }),
       packCount: Number(vaultForm.packCount || 0),
       notes: vaultForm.notes || "",
       storageLocation: vaultForm.storageLocation || "",
@@ -8731,7 +8786,7 @@ export default function App() {
     const saveResult = await saveInventoryRecords([newItem]);
     if (saveResult.failures?.length) {
       setVaultSaving(false);
-      setVaultToast(saveResult.failures[0]?.error || "Could not save Vault item.");
+      setVaultToast(compactInventorySaveFailure(saveResult.failures));
       return;
     }
     const savedItem = saveResult.saved?.[0] || newItem;
@@ -8754,7 +8809,7 @@ export default function App() {
       matchedCatalogItemId: product?.id || "",
       itemName: product?.name || product?.productName || product?.cardName || rawValue || "Unknown item",
       catalogType: product?.catalogType || "unknown",
-      productType: product?.productType || product?.rarity || "",
+      productType: normalizedInventoryProductType(product || {}),
       setName: product?.setName || product?.expansion || "",
       upc: product?.barcode || product?.upc || (/^\d{8,}$/.test(String(rawValue || "")) ? rawValue : ""),
       sku: product?.sku || "",
@@ -9318,7 +9373,7 @@ export default function App() {
       salePrice: Number(product?.marketPrice || 0),
       plannedSalePrice: Number(product?.marketPrice || 0),
       category: product?.category || "Pokemon",
-      productType: product?.productType || "",
+      productType: normalizedInventoryProductType(product || item),
       setName: product?.setName || product?.expansion || "",
       expansion: product?.setName || product?.expansion || "",
       barcode: product?.barcode || product?.upc || "",
@@ -9454,15 +9509,15 @@ export default function App() {
       receiptReports: [report, ...(current.receiptReports || [])],
     }));
     if (inventorySaveResult.failures.length) {
-      const failedNames = inventorySaveResult.failures.map((failure) => `${failure.itemName}: ${failure.error}`).join(" | ");
+      const compactFailure = compactInventorySaveFailure(inventorySaveResult.failures);
       setReceiptScanStatus("ready_for_review");
       setReceiptScanDraft((current) => current ? {
         ...current,
         status: "needs_review",
         report,
-        warnings: [...warnings, `${inventorySaveResult.failures.length} destination item(s) failed to save: ${failedNames}`],
+        warnings: [...warnings, `${inventorySaveResult.failures.length} destination item(s) failed to save.`],
       } : current);
-      setReceiptScanMessage(`Receipt synced, but destination save failed: ${failedNames}. Review remains open.`);
+      setReceiptScanMessage(`Receipt synced, but destination save failed: ${compactFailure} Review remains open.`);
       return;
     }
     setReceiptScanStatus("submitted");
@@ -10669,7 +10724,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const shared = {
       name: itemName,
       category: multiDestinationForm.category || "Pokemon",
-      productType: multiDestinationForm.productType || selectedCatalog?.productType || "",
+      productType: normalizedInventoryProductType({
+        ...selectedCatalog,
+        name: itemName,
+        productType: multiDestinationForm.productType || selectedCatalog?.productType || "",
+        setName: multiDestinationForm.setName || selectedCatalog?.setName || selectedCatalog?.expansion || "",
+      }),
       barcode: multiDestinationForm.upcSku || "",
       catalogProductId: selectedCatalog?.id || "",
       catalogVariantId: multiDestinationForm.catalogVariantId || "",
@@ -10886,8 +10946,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
 
     const uniqueSuccesses = [...new Set(successes)];
-    if (uniqueSuccesses.length) setVaultToast(failures.length ? `${uniqueSuccesses.join(" | ")}. ${failures.join(" | ")}` : uniqueSuccesses.join(" | "));
-    if (!successes.length && failures.length) setVaultToast(failures.join(" | "));
+    const uniqueFailures = [...new Set(failures)];
+    if (uniqueFailures.length) console.error("Multi-destination save failures", uniqueFailures);
+    if (uniqueSuccesses.length) setVaultToast(uniqueFailures.length ? `${uniqueSuccesses.join(" | ")}. Could not save item.` : uniqueSuccesses.join(" | "));
+    if (!successes.length && uniqueFailures.length) setVaultToast("Could not save item.");
     if (failures.length) return;
     closeFlowModal({ force: true, reset: false });
     resetMultiDestinationForm();
@@ -11483,7 +11545,7 @@ function mapCatalog(row) {
         setCode: itemForm.setCode || "",
         expansion: itemForm.expansion || "",
         productLine: itemForm.productLine || "",
-        productType: itemForm.productType || "",
+        productType: normalizedInventoryProductType(itemForm),
         packCount: Number(itemForm.packCount || 0),
         notes: itemForm.notes || "",
         storageLocation: itemForm.storageLocation || "",
@@ -11547,9 +11609,9 @@ function mapCatalog(row) {
 
         msrp_price: Number(itemForm.msrpPrice || existing.msrpPrice || 0),
         set_code: itemForm.setCode || existing.setCode || "",
-        expansion: itemForm.expansion || existing.expansion || "",
+        set_name: itemForm.expansion || existing.expansion || existing.setName || "",
         product_line: itemForm.productLine || existing.productLine || "",
-        product_type: itemForm.productType || existing.productType || "",
+        product_type: normalizedInventoryProductType({ ...existing, ...itemForm, productType: itemForm.productType || existing.productType || "" }),
         pack_count: Number(itemForm.packCount || existing.packCount || 0),
 
         receipt_image: itemForm.receiptImage || existing.receiptImage || "",
@@ -11574,7 +11636,10 @@ function mapCatalog(row) {
         updated_at: new Date().toISOString(),
       };
       const { data, error } = await supabase.from("inventory_items").update(row).eq("id", existing.id).select().single();
-      if (error) return showAppMessage("Could not merge restock: " + error.message);
+      if (error) {
+        console.error("Could not merge inventory restock", error);
+        return showAppMessage("Could not save item.");
+      }
       setItems(items.map((item) => (item.id === existing.id ? mapItem(data) : item)));
       setItemForm(blankItem);
       if (activeFlowModal?.type === "addInventory") {
@@ -11619,9 +11684,9 @@ function mapCatalog(row) {
       high_price: Number(itemForm.highPrice || 0),
       msrp_price: Number(itemForm.msrpPrice || 0),
       set_code: itemForm.setCode || "",
-      expansion: itemForm.expansion || "",
+      set_name: itemForm.expansion || "",
       product_line: itemForm.productLine || "",
-      product_type: itemForm.productType || "",
+      product_type: normalizedInventoryProductType(itemForm),
       pack_count: Number(itemForm.packCount || 0),
       last_price_checked: itemForm.marketPrice ? new Date().toISOString() : null,
       status: itemForm.status,
@@ -11636,7 +11701,10 @@ function mapCatalog(row) {
     };
 
     const { data, error } = await supabase.from("inventory_items").insert(row).select().single();
-    if (error) return showAppMessage("Could not add item: " + error.message);
+    if (error) {
+      console.error("Could not add inventory item", error);
+      return showAppMessage("Could not save item.");
+    }
 
     setItems([mapItem(data), ...items]);
     setItemForm(blankItem);
@@ -11714,7 +11782,7 @@ function mapCatalog(row) {
         expansion: itemForm.expansion || "",
         setName: itemForm.expansion || "",
         productLine: itemForm.productLine || "",
-        productType: itemForm.productType || "",
+        productType: normalizedInventoryProductType(itemForm),
         packCount: Number(itemForm.packCount || 0),
         lastPriceChecked: itemForm.marketPrice ? new Date().toISOString() : "",
         status: itemForm.status,
@@ -11773,9 +11841,9 @@ function mapCatalog(row) {
       high_price: Number(itemForm.highPrice || 0),
       msrp_price: Number(itemForm.msrpPrice || 0),
       set_code: itemForm.setCode || "",
-      expansion: itemForm.expansion || "",
+      set_name: itemForm.expansion || "",
       product_line: itemForm.productLine || "",
-      product_type: itemForm.productType || "",
+      product_type: normalizedInventoryProductType(itemForm),
       pack_count: Number(itemForm.packCount || 0),
       last_price_checked: itemForm.marketPrice ? new Date().toISOString() : null,
       status: itemForm.status,
@@ -11792,7 +11860,10 @@ function mapCatalog(row) {
     };
 
     const { data, error } = await supabase.from("inventory_items").update(row).eq("id", editingItemId).select().single();
-    if (error) return showAppMessage("Could not update item: " + error.message);
+    if (error) {
+      console.error("Could not update inventory item", error);
+      return showAppMessage("Could not save item.");
+    }
 
     setItems(items.map((item) => (item.id === editingItemId ? mapItem(data) : item)));
     setEditingItemId(null);
@@ -13208,8 +13279,8 @@ function renderScoutHeader() {
 }
 
 function renderVaultHeader() {
-  const personalCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "personal_collection").length;
-  const sealedHoldingCount = vaultItems.filter((item) => ["sealed", "held"].includes(normalizeVaultStatus(item))).length;
+  const personalCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "personal_collection" && !isInventorySealedProduct(item)).length;
+  const sealedHoldingCount = vaultItems.filter((item) => activeVaultSealedItems.includes(item) || ["sealed", "held"].includes(normalizeVaultStatus(item))).length;
   const wishlistHeldCount = wishlistItems.length;
   const movedToForgeCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "moved_to_forge").length;
   const activeVaultPage = vaultSubTab === "overview" ? "collection" : vaultSubTab;
@@ -13226,7 +13297,7 @@ function renderVaultHeader() {
       key: "total-items",
       title: "Total Items",
       value: activeVaultItems.length,
-      helper: "Cards, sealed, and held items.",
+      helper: `${activeVaultCardItems.length} cards, ${activeVaultSealedItems.length} sealed.`,
       active: vaultFilter === "all",
       onClick: () => openVaultItems("all"),
     },
@@ -14337,6 +14408,8 @@ function renderForgeHeader() {
   const vaultItems = useMemo(() => workspaceItems.filter(isVaultItemRecord), [workspaceItems]);
   const wishlistItems = useMemo(() => workspaceItems.filter(isWishlistItemRecord), [workspaceItems]);
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
+  const activeVaultCardItems = useMemo(() => activeVaultItems.filter(isInventoryCardProduct), [activeVaultItems]);
+  const activeVaultSealedItems = useMemo(() => activeVaultItems.filter(isInventorySealedProduct), [activeVaultItems]);
   const vaultCatalogSearchTerm = String(vaultForm.tideTradrSearch || vaultForm.name || "").trim().toLowerCase();
   const vaultSuggestedCatalogItems = useMemo(() => catalogProducts
     .filter((product) => {
@@ -27926,8 +27999,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ))}
                 </div>
                 <div className="vault-portfolio-breakdown">
-                  <span>{activeVaultItems.filter((item) => /card/i.test(item.productType || item.category || "")).length} raw cards</span>
-                  <span>{activeVaultItems.filter((item) => /sealed|box|etb|tin|booster/i.test(`${item.productType || ""} ${item.name || ""}`)).length} sealed products</span>
+                  <span>{activeVaultCardItems.length} raw cards</span>
+                  <span>{activeVaultSealedItems.length} sealed products</span>
                   <span>{activeVaultItems.filter((item) => item.graded || item.grade || item.gradingCompany).length} graded/slab records</span>
                   <span>{wishlistItems.length} wishlist items</span>
                 </div>

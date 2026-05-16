@@ -51,7 +51,13 @@ async function main() {
 
   async function nav(label) {
     await closeOpenModals();
-    const tab = page.locator(".main-tabs button").filter({ hasText: new RegExp(`^${label}$`) });
+    const visibleLabel =
+      label === "TideTradr"
+        ? "(TideTradr|Market)"
+        : label === "Home"
+          ? "(Home|Hearth)"
+          : label;
+    const tab = page.locator(".main-tabs button").filter({ hasText: new RegExp(`^${visibleLabel}$`) });
     if (await tab.count()) {
       await tab.click();
       return;

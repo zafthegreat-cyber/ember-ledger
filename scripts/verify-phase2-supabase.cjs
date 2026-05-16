@@ -6,14 +6,14 @@ const dotenv = require("dotenv");
 
 const ROOT = path.resolve(__dirname, "..");
 
-function loadEnvFile(fileName) {
+function loadEnvFile(fileName, override = false) {
   const filePath = path.join(ROOT, fileName);
   if (!fs.existsSync(filePath)) return;
-  dotenv.config({ path: filePath, override: false, quiet: true });
+  dotenv.config({ path: filePath, override, quiet: true });
 }
 
-loadEnvFile(".env.local");
 loadEnvFile(".env");
+loadEnvFile(".env.local", true);
 
 function envStatus(name) {
   console.log(`${name} is ${process.env[name] ? "set" : "missing"}`);
