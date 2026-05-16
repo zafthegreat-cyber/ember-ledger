@@ -2484,20 +2484,72 @@ function QuickActionGrid({ actions = [], className = "", ariaLabel = "Quick acti
     <div className={`quick-action-card-grid ${className}`.trim()} aria-label={ariaLabel}>
       {visibleActions.map((action) => {
         const title = action.title || action.label || "Action";
+        const iconKey = action.icon || action.key || title;
         return (
           <button
             key={action.key || title}
             type="button"
-            className={`quick-action-card ${action.primary ? "primary" : "secondary-button"} ${action.className || ""}`.trim()}
+            className={`quick-action-card icon-action-tile ${action.primary ? "primary" : "secondary-button"} ${action.className || ""}`.trim()}
             onClick={action.onClick}
             disabled={action.disabled}
             aria-label={action.ariaLabel || title}
           >
-            <span>{title}</span>
-            {action.subtitle ? <small>{action.subtitle}</small> : null}
+            <span className="command-icon" aria-hidden="true">{commandGlyph(iconKey)}</span>
+            <span className="quick-action-copy">
+              <span>{title}</span>
+              {action.subtitle ? <small>{action.subtitle}</small> : null}
+            </span>
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function commandGlyph(seed = "") {
+  const key = String(seed).toLowerCase();
+  if (/scout|signal|report|map|store/.test(key)) return "⌁";
+  if (/vault|card|collection|sealed|wishlist/.test(key)) return "▣";
+  if (/market|trade|deal|listing|watch/.test(key)) return "⇄";
+  if (/forge|inventory|sale|expense|receipt|mileage|product/.test(key)) return "⚒";
+  if (/tidepool|post|community|comment/.test(key)) return "◌";
+  if (/kid|spark|family|giveaway/.test(key)) return "✦";
+  if (/scan|camera|barcode/.test(key)) return "⌗";
+  if (/import|bulk/.test(key)) return "⇥";
+  if (/search|find/.test(key)) return "⌕";
+  return "+";
+}
+
+function sectionHeroKind(title = "", className = "") {
+  const value = `${title} ${className}`.toLowerCase();
+  if (/scout|signal/.test(value)) return "scout";
+  if (/vault|deep/.test(value)) return "vault";
+  if (/market|exchange|tidetradr/.test(value)) return "market";
+  if (/forge|workshop/.test(value)) return "forge";
+  if (/tidepool|community/.test(value)) return "tidepool";
+  if (/kids|spark/.test(value)) return "spark";
+  if (/new stuff|announcement|washed/.test(value)) return "newstuff";
+  if (/daily|tide/.test(value)) return "daily";
+  return "hearth";
+}
+
+function SectionHeroArt({ title, className }) {
+  const kind = sectionHeroKind(title, className);
+  return (
+    <div className={`section-hero-art section-hero-art--${kind}`} aria-hidden="true">
+      <div className="section-hero-orb" />
+      <div className="section-hero-symbol">
+        {kind === "hearth" ? "⌂" : null}
+        {kind === "scout" ? "⌁" : null}
+        {kind === "vault" ? "▣" : null}
+        {kind === "market" ? "⇄" : null}
+        {kind === "forge" ? "⚒" : null}
+        {kind === "tidepool" ? "◌" : null}
+        {kind === "spark" ? "✦" : null}
+        {kind === "newstuff" ? "▰" : null}
+        {kind === "daily" ? "≈" : null}
+      </div>
+      <div className="section-hero-lines" />
     </div>
   );
 }
@@ -2515,12 +2567,13 @@ function PageHeader({
   children = null,
 }) {
   return (
-    <section className={`standard-page-header ${className}`.trim()}>
+    <section className={`standard-page-header command-screen-hero ${className}`.trim()}>
       <div className="standard-page-header-main">
         <div className="standard-page-header-copy">
           <h2>{title}</h2>
           {subtitle ? <p>{subtitle}</p> : null}
         </div>
+        <SectionHeroArt title={title} className={className} />
         {actions ? <div className="standard-page-header-actions">{actions}</div> : null}
       </div>
       {summary ? (
@@ -3285,11 +3338,11 @@ export default function App() {
           ? "tideTradr"
           : "forge";
   const mobileBottomTabs = [
-    { key: "home", label: "Home", icon: "home", target: "dashboard" },
-    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
-    { key: "tideTradr", label: "Market", icon: "market", target: "market" },
+    { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     { key: "scout", label: "Scout", icon: "scout", target: "scout" },
+    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
+    { key: "tideTradr", label: "Market", icon: "market", target: "market" },
+    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
     { key: "tidepool", label: "Tidepool", icon: "pool", target: "tidepool" },
   ];
   const topbarSectionOptions = [
@@ -10579,6 +10632,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (action === "sale") return openAddSaleFlow();
     if (action === "expense") return openAddExpenseFlow();
     if (action === "mileage") return openAddMileageFlow();
+    if (action === "listing") return openMarketplaceCreate("manual", {});
     if (action === "importFile") return openForgeImportFlow();
     if (action === "storeReport") {
       return openScoutSubmitFlow({ source: "add-action-sheet" });
@@ -19773,6 +19827,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           )}
         />
+        <section className="panel spark-mascot-panel">
+          <div className="spark-mascot" aria-hidden="true">
+            <span className="spark-mascot-flame" />
+            <span className="spark-mascot-face" />
+          </div>
+          <div className="spark-mascot-copy">
+            <h2>The Spark</h2>
+            <p>Warm, fair collecting support for kids and families. No resale pressure, no gambling feel, just a safer way to gather and collect.</p>
+            <div className="spark-status-grid">
+              <div><span>Open Requests</span><strong>{activeApplication ? "1" : "0"}</strong></div>
+              <div><span>Next Retail Drop</span><strong>When inventory allows</strong></div>
+            </div>
+            <div className="quick-actions spark-action-row">
+              <button type="button" className="secondary-button" onClick={() => setVaultToast("Kids Program details are included below.")}>How It Works</button>
+              <button type="button" onClick={() => document.querySelector(".beta-form-card")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Request Access</button>
+              <button type="button" className="secondary-button" onClick={() => setVaultToast("Giveaways will appear when active.")}>Giveaways</button>
+              <button type="button" className="secondary-button" onClick={() => setVaultToast("Family events are coming soon.")}>Events</button>
+            </div>
+          </div>
+        </section>
         {adminToolsVisible ? (
           <section className="panel ai-page-helper-panel">
             <div className="compact-card-header">
@@ -20017,16 +20091,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderWhatsNewPage() {
     const updates = [
       {
-        title: "Beta readiness foundations",
-        body: "Name-based sign-up, onboarding, empty states, notification preferences, beta feedback, Kids Program, sponsor interest, trust pages, and launch links.",
+        title: "Kids Program Updates",
+        body: "Easier requests, family-safe wording, and a warmer Spark home for collectors.",
       },
       {
-        title: "Admin review foundations",
-        body: "Kids Program applications, sponsor interest, beta feedback, readiness blockers, marketing materials, roadmap, and local audit events are now visible from admin-only screens.",
+        title: "Scout Improvements",
+        body: "Better signals, report flow polish, and stronger store/restock card treatment.",
       },
       {
-        title: "Safety foundations",
-        body: "SMS, billing, provider integrations, auto-buying, scraping, and marketplace auto-posting remain intentionally disabled until separately approved.",
+        title: "Daily Tide Refresh",
+        body: "A tighter overview with the Scout, Vault, Market, and Forge daily loop.",
+      },
+      {
+        title: "Bug Fixes & Performance",
+        body: "Smoother beta flows, safer inventory saves, and cleaner mobile navigation.",
       },
     ];
     return (
@@ -22119,25 +22197,48 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderAddActionSheetContent() {
     const actions = [
       { key: "tcg-command", title: "Open TCG Command Center", helper: "Jump to the collector command hub.", action: "tcgCommand" },
-      { key: "receipt", title: "Scan Receipt", helper: "Review lines before saving.", action: "receipt" },
-      { key: "scan-product", title: "Scan Card/Product", helper: "Match first, then choose destination.", action: "scanProduct" },
-      { key: "card", title: "Add Card", helper: "Add a raw or graded card.", action: "card" },
-      { key: "sealed", title: "Add Sealed Product", helper: "ETB, box, tin, bundle, or blister.", action: "sealed" },
+      { key: "scan-item", title: "Scan Item", helper: "Match first, then choose destination.", action: "scanProduct" },
+      { key: "store-report", title: "Add Scout Report", helper: "Log a restock or store check.", action: "storeReport" },
+      { key: "receipt", title: "Import Receipt", helper: "Review lines before saving.", action: "receipt" },
+      { key: "bulk", title: "Bulk Add", helper: "Import or transfer a list.", action: "bulkAdd" },
+      { key: "listing", title: "Add Listing", helper: "Create a marketplace draft.", action: "listing" },
+      { key: "mileage", title: "Add Mileage", helper: "Track business travel.", action: "mileage" },
       { key: "inventory", title: "Add Inventory", helper: "Review, then send to Forge.", action: "inventory" },
+      { key: "card", title: "Add Vault Item", helper: "Card, sealed, slab, or wishlist.", action: "card" },
+      { key: "sealed", title: "Add Sealed Product", helper: "ETB, box, tin, bundle, or blister.", action: "sealed" },
       { key: "sale", title: "Add Sale", helper: "Record sale and profit.", action: "sale" },
       { key: "expense", title: "Add Expense", helper: "Track costs and receipts.", action: "expense" },
-      { key: "store-report", title: "Add Store Report", helper: "Log a restock or store check.", action: "storeReport" },
-      { key: "wishlist", title: "Add Wishlist Item", helper: "Track wants and target prices.", action: "wishlist" },
       { key: "catalog-update", title: "Suggest Catalog Update", helper: "Send an admin-reviewed correction.", action: "suggestCatalogCorrection" },
       { key: "store-update", title: "Suggest Store Update", helper: "Add or fix a store for review.", action: "storeSuggestion" },
     ];
+    const hubActions = actions.filter((entry) => ["scan-item", "store-report", "receipt", "bulk", "listing", "mileage", "inventory", "card"].includes(entry.key));
+    const extraActions = actions.filter((entry) => !hubActions.includes(entry));
     return (
-      <div className="add-action-sheet">
-        <div className="add-action-grid">
-          {actions.map((entry) => (
-            <button key={entry.key} type="button" className="add-action-card" onClick={() => runAddSheetAction(entry.action)}>
+      <div className="add-action-sheet command-quick-add">
+        <div className="command-hub" aria-label="Quick Add command hub">
+          <div className="command-hub-core" aria-hidden="true">
+            <span>+</span>
+          </div>
+          {hubActions.map((entry, index) => (
+            <button
+              key={entry.key}
+              type="button"
+              className={`command-hub-node command-hub-node-${index + 1}`}
+              onClick={() => runAddSheetAction(entry.action)}
+            >
+              <span className="command-icon" aria-hidden="true">{commandGlyph(entry.key)}</span>
               <span>{entry.title}</span>
-              <small>{entry.helper}</small>
+            </button>
+          ))}
+        </div>
+        <div className="add-action-grid command-action-list">
+          {extraActions.map((entry) => (
+            <button key={entry.key} type="button" className="add-action-card icon-action-tile" onClick={() => runAddSheetAction(entry.action)}>
+              <span className="command-icon" aria-hidden="true">{commandGlyph(entry.key)}</span>
+              <span className="quick-action-copy">
+                <span>{entry.title}</span>
+                <small>{entry.helper}</small>
+              </span>
             </button>
           ))}
         </div>
