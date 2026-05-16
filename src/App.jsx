@@ -2508,6 +2508,15 @@ function QuickActionGrid({ actions = [], className = "", ariaLabel = "Quick acti
 
 function commandGlyph(seed = "") {
   const key = String(seed).toLowerCase();
+  if (/scout|signal|report|map|store/.test(key)) return "S";
+  if (/vault|card|collection|sealed|wishlist/.test(key)) return "V";
+  if (/market|trade|deal|listing|watch/.test(key)) return "M";
+  if (/forge|inventory|sale|expense|receipt|mileage|product/.test(key)) return "F";
+  if (/tidepool|post|community|comment/.test(key)) return "T";
+  if (/kid|spark|family|giveaway/.test(key)) return "K";
+  if (/scan|camera|barcode/.test(key)) return "SCAN";
+  if (/import|bulk/.test(key)) return "IN";
+  if (/search|find/.test(key)) return "GO";
   if (/scout|signal|report|map|store/.test(key)) return "⌁";
   if (/vault|card|collection|sealed|wishlist/.test(key)) return "▣";
   if (/market|trade|deal|listing|watch/.test(key)) return "⇄";

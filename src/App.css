@@ -21547,3 +21547,393 @@ textarea::placeholder {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* Second visual matching pass: fuller command-center depth */
+.section-hero-symbol {
+  color: transparent !important;
+  text-shadow: none !important;
+}
+
+.section-hero-symbol::before {
+  content: "H";
+  color: #fff;
+  font-size: 1.55rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 20px currentColor, 0 0 38px rgba(0, 216, 255, 0.38);
+}
+
+.section-hero-art--scout .section-hero-symbol::before { content: "SIG"; color: #85f4ff; }
+.section-hero-art--vault .section-hero-symbol::before { content: "VLT"; color: #85f4ff; }
+.section-hero-art--market .section-hero-symbol::before { content: "EX"; color: #ff79d7; }
+.section-hero-art--forge .section-hero-symbol::before { content: "WRK"; color: #ffb45f; }
+.section-hero-art--tidepool .section-hero-symbol::before { content: "TP"; color: #73d9ff; }
+.section-hero-art--spark .section-hero-symbol::before { content: "SPK"; color: #ffd66b; }
+.section-hero-art--newstuff .section-hero-symbol::before { content: "NEW"; color: #ff79d7; }
+.section-hero-art--daily .section-hero-symbol::before { content: "DAY"; color: #8feaff; }
+
+.section-hero-art::before,
+.section-hero-art::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.section-hero-art::before {
+  inset: 10px 12px 42px;
+  border-radius: 22px;
+  opacity: 0.72;
+  filter: drop-shadow(0 0 18px rgba(0, 216, 255, 0.35));
+}
+
+.section-hero-art::after {
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 122, 24, 0.45), rgba(0, 216, 255, 0.55));
+  filter: blur(8px);
+  opacity: 0.58;
+}
+
+.section-hero-art--hearth::before {
+  background:
+    radial-gradient(circle at 50% 76%, #ffcf6b 0 12%, #ff7a18 13% 24%, transparent 25%),
+    linear-gradient(180deg, transparent 0 42%, rgba(255, 122, 24, 0.32) 43% 58%, transparent 59%),
+    linear-gradient(135deg, transparent 0 28%, rgba(255, 255, 255, 0.22) 29% 31%, transparent 32%),
+    radial-gradient(circle at 50% 108%, rgba(255, 122, 24, 0.7), transparent 46%);
+  clip-path: polygon(8% 100%, 8% 34%, 28% 20%, 50% 8%, 72% 20%, 92% 34%, 92% 100%);
+}
+
+.section-hero-art--scout::before {
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 16%, rgba(133, 244, 255, 0.55) 17% 19%, transparent 20% 32%, rgba(133, 244, 255, 0.35) 33% 35%, transparent 36%),
+    conic-gradient(from 240deg, transparent, rgba(133, 244, 255, 0.45), transparent 32%),
+    linear-gradient(180deg, rgba(0, 216, 255, 0.12), transparent);
+}
+
+.section-hero-art--vault::before {
+  background:
+    linear-gradient(180deg, rgba(133, 244, 255, 0.3), transparent 42%),
+    linear-gradient(135deg, transparent 18%, rgba(255, 207, 107, 0.82) 19% 34%, transparent 35%),
+    radial-gradient(circle at 50% 68%, rgba(255, 122, 24, 0.95), transparent 22%),
+    linear-gradient(180deg, transparent 45%, rgba(10, 24, 52, 0.98) 46% 100%);
+  clip-path: polygon(8% 44%, 24% 20%, 76% 20%, 92% 44%, 86% 100%, 14% 100%);
+}
+
+.section-hero-art--market::before {
+  background:
+    radial-gradient(circle at 30% 42%, rgba(255, 57, 200, 0.66), transparent 22%),
+    radial-gradient(circle at 74% 64%, rgba(139, 92, 255, 0.7), transparent 22%),
+    linear-gradient(135deg, transparent 26%, rgba(255, 255, 255, 0.18) 27% 29%, transparent 30%);
+  clip-path: polygon(14% 28%, 84% 20%, 94% 44%, 72% 86%, 22% 78%);
+}
+
+.section-hero-art--forge::before {
+  background:
+    radial-gradient(circle at 50% 72%, rgba(255, 122, 24, 0.86), transparent 30%),
+    linear-gradient(180deg, rgba(255, 207, 107, 0.92) 0 16%, transparent 17%),
+    linear-gradient(90deg, transparent 0 28%, rgba(255, 122, 24, 0.82) 29% 70%, transparent 71%),
+    linear-gradient(180deg, transparent 50%, rgba(40, 10, 2, 0.98) 51% 100%);
+  clip-path: polygon(18% 28%, 82% 28%, 72% 52%, 58% 52%, 58% 88%, 42% 88%, 42% 52%, 28% 52%);
+}
+
+.section-hero-art--tidepool::before {
+  background:
+    radial-gradient(circle at 78% 28%, rgba(255, 57, 200, 0.42), transparent 24%),
+    radial-gradient(circle at 28% 72%, rgba(0, 216, 255, 0.66), transparent 26%),
+    linear-gradient(135deg, rgba(0, 216, 255, 0.16), rgba(139, 92, 255, 0.3));
+  clip-path: polygon(4% 70%, 20% 48%, 40% 60%, 58% 36%, 80% 52%, 96% 28%, 96% 100%, 4% 100%);
+}
+
+.section-hero-art--newstuff::before {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.22) 0 10%, transparent 11% 88%, rgba(255,255,255,.16) 89%),
+    radial-gradient(circle at 50% 50%, #ff7a18 0 18%, #ff39c8 19% 40%, #0a1024 41%);
+  transform: rotate(8deg);
+  clip-path: polygon(8% 4%, 92% 4%, 86% 16%, 92% 28%, 86% 40%, 92% 52%, 86% 64%, 92% 76%, 86% 88%, 92% 100%, 8% 100%, 14% 88%, 8% 76%, 14% 64%, 8% 52%, 14% 40%, 8% 28%, 14% 16%);
+}
+
+.section-hero-art--spark::before {
+  background:
+    radial-gradient(circle at 38% 42%, #1b1424 0 4%, transparent 5%),
+    radial-gradient(circle at 62% 42%, #1b1424 0 4%, transparent 5%),
+    radial-gradient(circle at 50% 72%, #1b1424 0 5%, transparent 6%),
+    linear-gradient(180deg, #ffd66b, #ff7a18 56%, #ff3e76);
+  clip-path: polygon(50% 0, 70% 28%, 64% 46%, 88% 34%, 74% 80%, 50% 100%, 24% 80%, 10% 36%, 38% 52%, 32% 28%);
+}
+
+.command-icon {
+  font-size: 0.96rem;
+  letter-spacing: 0.04em;
+}
+
+.command-icon:has(+ .quick-action-copy) {
+  font-size: 0.9rem;
+}
+
+.app .compact-card,
+.app .stat-tile,
+.app .feature-card,
+.app .section-card,
+.app .empty-state-card,
+.app .card,
+.app .panel,
+.app .settings-card,
+.app .profile-card,
+.app .forge-item-card,
+.app .vault-item-card,
+.app .marketplace-listing-card,
+.app .tidepool-post-card,
+.app .scout-report-card,
+.app .scout-forecast-card,
+.app .store-forecast-card {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.07), transparent 24%),
+    linear-gradient(145deg, rgba(17, 28, 51, 0.82), rgba(5, 10, 22, 0.92)) !important;
+  border: 1px solid rgba(122, 229, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 18px 44px rgba(0, 0, 0, 0.3) !important;
+}
+
+.app .scout-forecast-card,
+.app .store-forecast-card,
+.app .scout-report-card {
+  background:
+    radial-gradient(circle at 86% 18%, rgba(0, 216, 255, 0.2), transparent 30%),
+    linear-gradient(145deg, rgba(5, 28, 52, 0.86), rgba(3, 8, 18, 0.94)) !important;
+  border-color: rgba(0, 216, 255, 0.26) !important;
+}
+
+.app .forge-page .panel,
+.app .forge-page .card,
+.app .forge-item-card,
+.app .business-command-card,
+.app .forge-summary-grid .card {
+  background:
+    radial-gradient(circle at 82% 0%, rgba(255, 122, 24, 0.2), transparent 30%),
+    linear-gradient(145deg, rgba(39, 14, 3, 0.9), rgba(8, 10, 18, 0.94)) !important;
+  border-color: rgba(255, 122, 24, 0.24) !important;
+}
+
+.app .vault-page .panel,
+.app .vault-page .card,
+.app .vault-item-card,
+.app .collection-binder-card {
+  background:
+    radial-gradient(circle at 82% 0%, rgba(0, 216, 255, 0.22), transparent 32%),
+    linear-gradient(145deg, rgba(4, 27, 54, 0.88), rgba(4, 9, 20, 0.94)) !important;
+  border-color: rgba(0, 216, 255, 0.22) !important;
+}
+
+.app .marketplace-page-heading,
+.app .marketplace-listing-card,
+.app .market-card,
+.app .deal-finder-card {
+  background:
+    radial-gradient(circle at 84% 4%, rgba(255, 57, 200, 0.22), transparent 32%),
+    linear-gradient(145deg, rgba(38, 9, 44, 0.88), rgba(6, 10, 22, 0.94)) !important;
+  border-color: rgba(255, 57, 200, 0.24) !important;
+}
+
+.app .kids-program-layout .panel,
+.app .kids-program-layout .card,
+.app .spark-mascot-panel {
+  background:
+    radial-gradient(circle at 82% 0%, rgba(255, 194, 71, 0.2), transparent 34%),
+    linear-gradient(145deg, rgba(43, 18, 4, 0.9), rgba(7, 10, 20, 0.94)) !important;
+  border-color: rgba(255, 194, 71, 0.26) !important;
+}
+
+.app .forge-summary-grid,
+.app .stat-grid,
+.app .vault-summary-grid,
+.app .market-stats-grid,
+.app .business-command-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.app .forge-summary-grid .card,
+.app .stat-tile,
+.app .metric-card,
+.app .dashboard-stat-card {
+  min-height: 72px !important;
+  padding: 12px !important;
+  border-radius: 18px !important;
+}
+
+.app .forge-summary-grid .card h2,
+.app .stat-tile strong,
+.app .metric-card strong,
+.app .dashboard-stat-card strong {
+  font-size: clamp(1.05rem, 4.8vw, 1.42rem) !important;
+  line-height: 1.05 !important;
+}
+
+.app .forge-quick-action-grid,
+.app .tool-grid,
+.app .quick-actions,
+.app .action-grid,
+.app .forge-filter-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.app .forge-quick-action-grid button,
+.app .tool-grid button,
+.app .quick-actions button,
+.app .action-grid button,
+.app .forge-filter-grid button,
+.app .primary-button,
+.app .secondary-button,
+.app .ghost-button {
+  border-radius: 16px !important;
+  min-height: 44px !important;
+  background:
+    radial-gradient(circle at 26% 0%, rgba(255, 255, 255, 0.12), transparent 28%),
+    rgba(9, 17, 34, 0.78) !important;
+  border: 1px solid rgba(122, 229, 255, 0.2) !important;
+  color: #f7fbff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 0 18px rgba(0, 216, 255, 0.08) !important;
+}
+
+.app .forge-filter-grid button {
+  min-height: 42px !important;
+  padding: 9px 10px !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.02em !important;
+}
+
+.app .primary-button,
+.app .gradient-button,
+.app .ember-gradient-button,
+.app .tide-gradient-button,
+.app button.primary,
+.app .quick-action-card.primary {
+  background:
+    linear-gradient(135deg, #ff7a18 0%, #ff39c8 50%, #00d8ff 100%) !important;
+  border-color: rgba(255, 255, 255, 0.26) !important;
+  color: #fff !important;
+  box-shadow: 0 0 26px rgba(255, 57, 200, 0.3), 0 0 22px rgba(0, 216, 255, 0.2) !important;
+}
+
+.app input,
+.app select,
+.app textarea,
+.app .search-input,
+.app .catalog-search-input {
+  background: rgba(5, 12, 28, 0.78) !important;
+  border: 1px solid rgba(122, 229, 255, 0.18) !important;
+  color: #f7fbff !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+.app .pill-tabs,
+.app .compact-tab-pills,
+.app .standard-page-header-tabs,
+.app .tidepool-filter-row,
+.app .marketplace-tabs {
+  background: rgba(3, 8, 18, 0.5) !important;
+  border: 1px solid rgba(122, 229, 255, 0.12) !important;
+  border-radius: 18px !important;
+  padding: 4px !important;
+}
+
+.app .empty-state-card {
+  min-height: 112px !important;
+  align-content: center !important;
+  text-align: left !important;
+}
+
+.command-hub {
+  min-height: 382px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 57, 200, 0.28), transparent 22%),
+    radial-gradient(circle at 50% 50%, rgba(0, 216, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(8, 15, 30, 0.92), rgba(3, 7, 18, 0.96)) !important;
+}
+
+.command-hub::after {
+  content: "";
+  position: absolute;
+  inset: 46px;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  filter: drop-shadow(0 0 18px rgba(255, 57, 200, 0.28));
+}
+
+.command-hub-node {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.16), transparent 30%),
+    rgba(8, 15, 30, 0.9) !important;
+}
+
+.spark-mascot-panel {
+  grid-template-columns: 152px minmax(0, 1fr);
+}
+
+.spark-mascot {
+  width: 146px;
+  height: 146px;
+}
+
+.spark-mascot::after {
+  content: "";
+  position: absolute;
+  right: 20px;
+  bottom: 18px;
+  width: 34px;
+  height: 28px;
+  border-radius: 999px 999px 12px 12px;
+  background: linear-gradient(135deg, #ffc247, #ff7a18);
+  box-shadow: 0 0 18px rgba(255, 194, 71, 0.45);
+}
+
+@media (max-width: 520px) {
+  .command-screen-hero {
+    min-height: 0 !important;
+    padding: 16px !important;
+  }
+
+  .concept-deck {
+    margin-top: 10px;
+  }
+
+  .concept-signal-card,
+  .concept-product-card,
+  .concept-post-card,
+  .concept-activity-row,
+  .concept-update-row {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .app .forge-summary-grid,
+  .app .stat-grid,
+  .app .vault-summary-grid,
+  .app .market-stats-grid,
+  .app .business-command-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app .forge-quick-action-grid,
+  .app .tool-grid,
+  .app .quick-actions,
+  .app .action-grid,
+  .app .forge-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .spark-mascot-panel {
+    grid-template-columns: 116px minmax(0, 1fr);
+  }
+
+  .spark-mascot {
+    width: 108px;
+    height: 124px;
+  }
+}
