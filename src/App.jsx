@@ -2554,6 +2554,98 @@ function SectionHeroArt({ title, className }) {
   );
 }
 
+function SectionConceptDeck({ title, className }) {
+  const kind = sectionHeroKind(title, className);
+  if (kind === "scout") {
+    return (
+      <div className="concept-deck concept-deck--signals">
+        <div className="concept-tabs"><span className="active">Nearby</span><span>Following</span><span>All Stores</span></div>
+        {["Walmart · 2.4 mi", "Target · 3.7 mi", "GameStop · 4.1 mi"].map((store, index) => (
+          <div className="concept-signal-card" key={store}>
+            <span className="concept-thumb concept-thumb-card" />
+            <span><strong>{store}</strong><small>{index === 0 ? "Pokemon 151 Booster Bundle" : index === 1 ? "Paldea Evolved ETB" : "Paradox Rift Booster Box"}</small></span>
+            <b>{index === 0 ? "HOT" : "WARM"}</b>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (kind === "vault") {
+    return (
+      <div className="concept-deck concept-deck--deep">
+        <div className="concept-value-card"><span>Total Collection Value</span><strong>$3,742.18</strong><small>+4.6% this week</small></div>
+        <div className="concept-mini-grid">
+          {["Sealed", "Singles", "Graded", "Favorites"].map((label) => <span key={label}><b>{commandGlyph(label)}</b>{label}</span>)}
+        </div>
+        <div className="concept-activity-row"><span className="concept-thumb concept-thumb-card" /><span><strong>Recent Additions</strong><small>Charizard ex · 2h ago</small></span></div>
+      </div>
+    );
+  }
+  if (kind === "market") {
+    return (
+      <div className="concept-deck concept-deck--exchange">
+        <div className="concept-search">Search cards, products, sellers...</div>
+        <div className="concept-tabs"><span className="active">For You</span><span>Near Retail</span><span>Local</span><span>Shipping</span></div>
+        {["Pokemon 151 ETB", "Crown Zenith Booster Box"].map((item, index) => (
+          <div className="concept-product-card" key={item}>
+            <span className="concept-thumb concept-thumb-pack" />
+            <span><strong>{item}</strong><small>{index ? "Market $124.99" : "MSRP $54.99"}</small></span>
+            <b>{index ? "$119.00" : "$54.99"}</b>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (kind === "forge") {
+    return (
+      <div className="concept-deck concept-deck--workshop">
+        <div className="concept-profit-card"><span>Profit This Month</span><strong>$1,243.50</strong><small>+12.7% vs last month</small></div>
+        <div className="concept-tool-grid">
+          {["Expenses", "Receipts", "Mileage", "Inventory", "Products", "Sales"].map((label) => <span key={label}><b>{commandGlyph(label)}</b>{label}</span>)}
+        </div>
+      </div>
+    );
+  }
+  if (kind === "tidepool") {
+    return (
+      <div className="concept-deck concept-deck--community">
+        <div className="concept-tabs"><span className="active">For You</span><span>Recent</span><span>Following</span><span>Local</span></div>
+        {["ISO: 151 Zapdos SIR", "Have extras of these"].map((post) => (
+          <div className="concept-post-card" key={post}><span className="concept-avatar" /><span><strong>{post}</strong><small>Community post · 10m</small></span><button type="button">Trade</button></div>
+        ))}
+      </div>
+    );
+  }
+  if (kind === "spark") {
+    return (
+      <div className="concept-deck concept-deck--spark">
+        <div className="concept-spark-mascot" aria-hidden="true" />
+        <div className="concept-mini-grid">
+          <span><b>3</b>Open Requests</span>
+          <span><b>May 31</b>Next Drop</span>
+        </div>
+      </div>
+    );
+  }
+  if (kind === "newstuff") {
+    return (
+      <div className="concept-deck concept-deck--newstuff">
+        <div className="concept-pack-art"><span /></div>
+        {["Kids Program Updates", "Scout Improvements", "Daily Tide Refresh", "Bug Fixes & Performance"].map((item) => <div className="concept-update-row" key={item}><b>{commandGlyph(item)}</b><span>{item}</span></div>)}
+      </div>
+    );
+  }
+  return (
+    <div className="concept-deck concept-deck--hearth">
+      <div className="concept-tide-card"><strong>Today’s Tide</strong><small>Your daily flow.</small><button type="button">View</button></div>
+      <div className="concept-mini-grid">
+        {["Scout", "Vault", "Market", "Forge"].map((label) => <span key={label}><b>{label === "Vault" ? "$3,742" : label === "Scout" ? "7" : label === "Market" ? "5" : "2"}</b>{label}</span>)}
+      </div>
+      <div className="concept-activity-row"><span className="concept-thumb concept-thumb-card" /><span><strong>Recent Activity</strong><small>Walmart restock spotted · 8 min ago</small></span></div>
+    </div>
+  );
+}
+
 function PageHeader({
   className = "",
   title,
@@ -2583,6 +2675,7 @@ function PageHeader({
         </div>
       ) : null}
       {children ? <div className="standard-page-header-body">{children}</div> : null}
+      <SectionConceptDeck title={title} className={className} />
       {tabs.length ? (
         <div className="standard-page-header-tabs" aria-label={`${title} navigation`}>
           {tabs.map((tab) => (
