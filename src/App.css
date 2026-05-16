@@ -22224,3 +22224,480 @@ textarea::placeholder {
 .section-hero-art--spark {
   box-shadow: inset 0 0 30px rgba(255,255,255,.05), 0 0 34px rgba(255, 122, 24, 0.3) !important;
 }
+
+/* Desktop command-center repair: preserve the mobile shell, but stop stretching it on web. */
+@media (min-width: 1024px) {
+  body {
+    background:
+      radial-gradient(circle at 8% 5%, rgba(255, 122, 24, 0.22), transparent 28rem),
+      radial-gradient(circle at 92% 8%, rgba(0, 216, 255, 0.22), transparent 30rem),
+      radial-gradient(circle at 72% 82%, rgba(255, 57, 200, 0.16), transparent 32rem),
+      linear-gradient(135deg, #01030a 0%, #061327 50%, #02050d 100%) !important;
+  }
+
+  .app {
+    width: min(100%, 1480px);
+    margin-inline: auto;
+    padding: 18px 24px 34px !important;
+  }
+
+  .app-shell-header,
+  .topbar,
+  .main-tabs.app-main-tabs,
+  .main.app-shell-dark {
+    width: min(100%, 1320px);
+    margin-inline: auto !important;
+  }
+
+  .main.app-shell-dark,
+  .main,
+  .auth-main,
+  .app-shell-dark {
+    padding: 16px 0 42px !important;
+  }
+
+  .app-shell-header,
+  .topbar {
+    border-radius: 24px !important;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
+      rgba(4, 9, 20, 0.78) !important;
+    border: 1px solid rgba(122, 229, 255, 0.18) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+    backdrop-filter: blur(20px) saturate(1.25);
+  }
+
+  .topbar {
+    min-height: 60px !important;
+    padding: 10px 12px !important;
+    gap: 10px !important;
+  }
+
+  .topbar-brand,
+  .topbar .menu-button,
+  .topbar-mobile-scan,
+  .topbar-mobile-add,
+  .topbar .quick-add-wrapper > button {
+    min-height: 42px !important;
+    border-radius: 16px !important;
+    background: rgba(8, 15, 30, 0.78) !important;
+    color: #f7fbff !important;
+    border: 1px solid rgba(122, 229, 255, 0.2) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 18px rgba(0, 216, 255, 0.08) !important;
+  }
+
+  .topbar .app-search {
+    width: min(520px, 38vw) !important;
+    min-width: 340px !important;
+  }
+
+  .topbar .app-search input {
+    min-height: 42px !important;
+    border-radius: 16px !important;
+    background: rgba(2, 6, 16, 0.78) !important;
+    border: 1px solid rgba(122, 229, 255, 0.18) !important;
+    color: #f7fbff !important;
+  }
+
+  .main-tabs.app-main-tabs {
+    position: sticky;
+    top: 10px;
+    z-index: 70;
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(92px, 1fr)) !important;
+    gap: 8px !important;
+    margin-block: 12px 16px !important;
+    padding: 8px !important;
+    border-radius: 24px !important;
+    background: rgba(4, 9, 20, 0.84) !important;
+    border: 1px solid rgba(122, 229, 255, 0.16) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+    backdrop-filter: blur(18px) saturate(1.25);
+  }
+
+  .main-tabs.app-main-tabs .main-tab {
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: center;
+    justify-content: start;
+    gap: 8px;
+    min-height: 48px !important;
+    padding: 7px 10px !important;
+    border-radius: 16px !important;
+    background: rgba(8, 15, 30, 0.52) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important;
+    color: rgba(247, 251, 255, 0.76) !important;
+  }
+
+  .main-tabs.app-main-tabs .main-tab.active {
+    background:
+      radial-gradient(circle at 28% 18%, rgba(255, 122, 24, 0.3), transparent 38%),
+      linear-gradient(135deg, rgba(255, 122, 24, 0.22), rgba(0, 216, 255, 0.13)) !important;
+    border-color: rgba(255, 122, 24, 0.42) !important;
+    color: #fff !important;
+    box-shadow: 0 0 24px rgba(255, 122, 24, 0.14), 0 0 26px rgba(0, 216, 255, 0.08) !important;
+  }
+
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  .dashboard-layout,
+  .screen,
+  .marketplace-section,
+  .forge-page,
+  .vault-page,
+  .scout-page,
+  .tidepool-community {
+    width: min(100%, 1320px);
+    margin-inline: auto;
+    gap: 16px !important;
+  }
+
+  .panel,
+  .standard-page-header,
+  .compact-card,
+  .card,
+  .section-card,
+  .feature-card,
+  .empty-state {
+    border-radius: 22px !important;
+    padding: 16px !important;
+  }
+
+  .standard-page-header {
+    min-height: 260px;
+    display: grid !important;
+    align-content: space-between;
+  }
+
+  .standard-page-header-copy h2 {
+    max-width: 760px;
+    font-size: clamp(2rem, 3vw, 3.35rem) !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .standard-page-header-copy p {
+    max-width: 560px;
+    font-size: 1rem !important;
+  }
+
+  .hearth-command-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
+    grid-auto-flow: dense;
+    align-items: start;
+  }
+
+  .hearth-command-layout > .hearth-command-hero {
+    grid-column: 1;
+    min-height: 360px !important;
+  }
+
+  .hearth-command-layout > .today-tide-command,
+  .hearth-command-layout > .pokemon-watch-home,
+  .hearth-command-layout > .beta-onboarding-panel,
+  .hearth-command-layout > .beta-path-panel {
+    grid-column: 1;
+  }
+
+  .hearth-command-layout > .kid-community-panel,
+  .hearth-command-layout > .home-preview-grid,
+  .hearth-command-layout > .home-optional-sections {
+    grid-column: 2;
+  }
+
+  .hearth-command-layout > .home-preview-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .hearth-command-hero {
+    padding: 24px !important;
+  }
+
+  .hearth-command-hero::after {
+    width: 220px !important;
+    height: 170px !important;
+    right: 34px !important;
+    bottom: 22px !important;
+    opacity: 0.95 !important;
+  }
+
+  .today-tide-command {
+    min-height: 220px;
+  }
+
+  .daily-tide-compact-status {
+    max-width: 720px;
+  }
+
+  .home-quick-action-grid,
+  .quick-action-grid,
+  .scout-main-actions,
+  .quick-actions,
+  .action-grid {
+    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .cards,
+  .mini-cards,
+  .stat-grid,
+  .vault-command-overview,
+  .forge-command-overview,
+  .tidepool-stat-grid,
+  .beta-foundation-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .quick-action-card,
+  .vault-overview-card,
+  .forge-overview-card,
+  .tidepool-stat-card,
+  .card {
+    min-height: 104px !important;
+  }
+
+  .scout-page,
+  .forge-page,
+  .vault-page,
+  .marketplace-section,
+  .tidepool-community {
+    grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.75fr);
+    align-items: start;
+  }
+
+  .scout-page > .standard-page-header,
+  .vault-page > .standard-page-header,
+  .forge-page > .standard-page-header,
+  .marketplace-section > .standard-page-header,
+  .tidepool-community-header,
+  .kids-spark-header,
+  .vault-command-center,
+  .forge-command-center {
+    grid-column: 1 / -1;
+  }
+
+  .scout-page > .panel:nth-of-type(2),
+  .vault-page > .panel:nth-of-type(2),
+  .forge-page > .panel:nth-of-type(2),
+  .marketplace-section > .cards.mini-cards,
+  .marketplace-section > .quick-actions.marketplace-nav-actions {
+    grid-column: 2;
+  }
+
+  .scout-page > .panel:not(.standard-page-header):nth-of-type(n+3),
+  .vault-page > .panel:not(.standard-page-header):nth-of-type(n+3),
+  .forge-page > .panel:not(.standard-page-header):nth-of-type(n+3),
+  .marketplace-section > .marketplace-browse-panel,
+  .marketplace-section > .marketplace-create-panel {
+    grid-column: 1;
+  }
+
+  .marketplace-section > .marketplace-beta-note {
+    grid-column: 1 / -1;
+  }
+
+  .marketplace-section > .cards.mini-cards {
+    grid-row: span 2;
+  }
+
+  .marketplace-browse-panel,
+  .marketplace-create-panel,
+  .forge-inventory-section,
+  .vault-collection-section,
+  .tidepool-community {
+    min-width: 0;
+  }
+
+  .inventory-list,
+  .compact-inventory-list,
+  .tidepool-feed-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 10px !important;
+  }
+
+  .marketplace-browse-panel .inventory-list,
+  .forge-page .inventory-list,
+  .vault-page .inventory-list {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  .tidepool-community {
+    grid-column: 1 / -1;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.4fr) minmax(310px, 0.65fr);
+  }
+
+  .tidepool-community > .compact-card-header,
+  .tidepool-community > .tidepool-feed-grid {
+    grid-column: 1;
+  }
+
+  .tidepool-community > .tidepool-rules-card,
+  .tidepool-community > .tidepool-post-composer,
+  .tidepool-community > .empty-state {
+    grid-column: 2;
+  }
+
+  .kids-program-layout,
+  .spark-mascot-panel {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.75fr);
+    gap: 16px !important;
+    align-items: stretch;
+  }
+
+  .spark-mascot-panel {
+    grid-column: 1 / -1;
+  }
+
+  .spark-mascot {
+    width: 220px !important;
+    height: 230px !important;
+    justify-self: center;
+  }
+
+  .command-screen-hero,
+  .section-hero-art {
+    min-height: 260px !important;
+  }
+
+  .section-hero-art {
+    width: min(32vw, 360px) !important;
+  }
+
+  .quick-add-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1810 !important;
+    display: block !important;
+    align-items: center !important;
+    padding: 32px !important;
+    background: rgba(0, 0, 0, 0.72) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: blur(10px) saturate(1.15);
+  }
+
+  .flow-modal[data-flow="addActionSheet"],
+  .flow-modal.flow-modal-small:has(.command-quick-add) {
+    width: min(920px, calc(100vw - 80px)) !important;
+    max-width: 920px !important;
+    max-height: min(88vh, 760px) !important;
+    padding: 18px !important;
+    border-radius: 30px !important;
+  }
+
+  .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .flow-modal.flow-modal-small:has(.command-quick-add) .flow-modal-body {
+    overflow: auto !important;
+    max-height: calc(min(88vh, 760px) - 126px) !important;
+    padding-bottom: 18px !important;
+  }
+
+  .quick-add-menu,
+  .quick-add-sheet,
+  .command-quick-add {
+    width: min(920px, calc(100vw - 64px)) !important;
+    max-width: 920px !important;
+    max-height: min(88vh, 760px) !important;
+    border-radius: 30px !important;
+  }
+
+  .quick-add-menu {
+    position: fixed !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+    z-index: 1820 !important;
+    transform: translate(-50%, -50%) !important;
+    overflow: auto !important;
+    padding: 18px !important;
+  }
+
+  .command-hub {
+    min-height: 430px !important;
+  }
+
+  .command-hub::before {
+    width: 360px !important;
+    height: 360px !important;
+  }
+
+  .command-hub-core {
+    width: 132px !important;
+    height: 132px !important;
+    font-size: 5rem !important;
+  }
+
+  .command-hub-node {
+    width: 112px !important;
+    min-height: 88px !important;
+  }
+
+  .command-hub-node-1 { transform: translate(0, -178px) !important; }
+  .command-hub-node-2 { transform: translate(126px, -126px) !important; }
+  .command-hub-node-3 { transform: translate(178px, 0) !important; }
+  .command-hub-node-4 { transform: translate(126px, 126px) !important; }
+  .command-hub-node-5 { transform: translate(0, 178px) !important; }
+  .command-hub-node-6 { transform: translate(-126px, 126px) !important; }
+  .command-hub-node-7 { transform: translate(-178px, 0) !important; }
+  .command-hub-node-8 { transform: translate(-126px, -126px) !important; }
+
+  .drawer.open,
+  .drawer,
+  .menu-drawer,
+  .settings-drawer {
+    width: min(1040px, calc(100vw - 56px)) !important;
+    max-width: 1040px !important;
+    right: 28px !important;
+    left: auto !important;
+    border-radius: 28px !important;
+  }
+
+  .drawer-menu-stack {
+    display: grid !important;
+    grid-template-columns: minmax(260px, 0.45fr) minmax(0, 1fr);
+    gap: 14px !important;
+    align-items: start;
+  }
+
+  .drawer-menu-stack > * {
+    min-width: 0;
+  }
+
+  .settings-groups,
+  .menu-toggle-list {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .app {
+    padding-inline: 32px !important;
+  }
+
+  .hearth-command-layout {
+    grid-template-columns: minmax(0, 1.48fr) minmax(380px, 0.72fr);
+  }
+
+  .scout-page,
+  .forge-page,
+  .vault-page,
+  .marketplace-section {
+    grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.78fr);
+  }
+
+  .marketplace-browse-panel .inventory-list,
+  .forge-page .inventory-list,
+  .vault-page .inventory-list {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
