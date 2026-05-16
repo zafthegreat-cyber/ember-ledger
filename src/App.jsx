@@ -3226,7 +3226,7 @@ export default function App() {
   const quickScoutWizardTouchRef = useRef(0);
 
   const mainTabs = [
-    { key: "home", label: "Home", icon: "home", target: "dashboard" },
+    { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
     { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
     { key: "tideTradr", label: "TideTradr", icon: "market", mobileLabel: "Market", target: "market" },
@@ -3290,7 +3290,7 @@ export default function App() {
     { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
     { key: "tideTradr", label: "Market", icon: "market", target: "market" },
     { key: "scout", label: "Scout", icon: "scout", target: "scout" },
-    { key: "tidepool", label: "Pool", icon: "pool", target: "tidepool" },
+    { key: "tidepool", label: "Tidepool", icon: "pool", target: "tidepool" },
   ];
   const topbarSectionOptions = [
     ...mainTabs,
@@ -13098,8 +13098,8 @@ function renderTideTradrHeader() {
   return (
     <PageHeader
       className={getHeaderCardClass("panel tidetradr-summary-card")}
-      title="TideTradr"
-      subtitle="Search products, cards, prices, and catalog details."
+      title="Market / Exchange"
+      subtitle="Fair trades. Real value. Stronger together."
       actions={(
         <>
           <button type="button" onClick={() => openQuickFindFlow({ source: "market" })}>Quick Find</button>
@@ -13199,8 +13199,8 @@ function renderScoutHeader() {
   return (
     <PageHeader
       className={getHeaderCardClass("panel scout-summary-card")}
-      title="Scout"
-      subtitle="Store reports, restock sightings, and local tracking."
+      title="Scout / Signals"
+      subtitle="Watch the shelves. Catch the signals."
       tabs={scoutTabs}
       activeTab={activeScoutPage}
       onTabChange={changeScoutPage}
@@ -13352,8 +13352,8 @@ function renderVaultHeader() {
   return (
     <PageHeader
       className={getHeaderCardClass("panel vault-command-center")}
-      title="Vault"
-      subtitle="Track your collection, wishlist, and stored items."
+      title="Vault / The Deep"
+      subtitle="Your collection. Protected in the deep."
       actions={(
         <>
         <button type="button" className="vault-command-quick-add" onClick={openVaultQuickAddFlow}>
@@ -13489,8 +13489,8 @@ function renderForgeHeader() {
   return (
     <PageHeader
       className={getHeaderCardClass("panel forge-hero-panel forge-command-center")}
-      title="Forge"
-      subtitle="Inventory, sales, expenses, mileage, and reports."
+      title="Forge / Workshop"
+      subtitle="Build your business. Track the heat."
       actions={(
         <>
         <button type="button" className="forge-command-quick-add" onClick={openForgeQuickAddFlow}>
@@ -19762,9 +19762,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <>
         <PageHeader
-          className={getHeaderCardClass("panel page-summary-card")}
-          title="Kids Program"
-          subtitle={KIDS_PROGRAM_COPY}
+          className={getHeaderCardClass("panel page-summary-card kids-spark-header")}
+          title="Kids Program / The Spark"
+          subtitle="For the next generation of collectors."
           actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
           summary={(
             <div className="settings-header-summary">
@@ -20032,9 +20032,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <>
         <PageHeader
-          className={getHeaderCardClass("panel page-summary-card")}
-          title="What's New"
-          subtitle="Beta release notes for testers and admins."
+          className={getHeaderCardClass("panel page-summary-card announcements-new-stuff-header")}
+          title="Hey, new stuff just washed in."
+          subtitle="Check out what's new in Ember & Tide."
           actions={(
             <>
               {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft changelog</button> : null}
@@ -20043,10 +20043,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           )}
         />
         <section className="panel">
-          <div className="beta-foundation-grid">
+          <div className="beta-foundation-grid announcements-update-grid">
             {updates.map((entry) => (
               <article className="beta-readiness-card" key={entry.title}>
-                <span>Beta update</span>
+                <span>New Stuff</span>
                 <strong>{entry.title}</strong>
                 <p>{entry.body}</p>
               </article>
@@ -21831,8 +21831,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <>
         <PageHeader
           className={getHeaderCardClass("panel tidepool-community-header")}
-          title="Tidepool"
-          subtitle="Community feed for posts, questions, sightings, events, comments, confirmations, and replies."
+          title="Tidepool / Community"
+          subtitle="Community currents. Share. Help. Connect."
           actions={(
             <>
               <button type="button" onClick={openTidepoolCreatePostFlow}>Create Post</button>
@@ -21981,7 +21981,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function flowModalMeta() {
     if (activeFlowModal?.type === "forgeQuickAdd") {
       return {
-        title: "Quick Add",
+        title: "Quick Add / Command Center",
         description: "Create or import Forge records without leaving the current page.",
         size: "small",
       };
@@ -22002,8 +22002,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     if (activeFlowModal?.type === "addActionSheet") {
       return {
-        title: "Add to Ember & Tide",
-        description: "Scan, add, report, or suggest an update. You choose the destination before anything is saved.",
+        title: "Quick Add / Command Center",
+        description: "Scan, add, report, import, or jump into a core Ember & Tide tool.",
         size: "small",
       };
     }
@@ -26703,7 +26703,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
-      <main className={`main dashboard-card-style-${dashboardCardStyle}`}>
+      <main className={`main app-shell-dark dashboard-card-style-${dashboardCardStyle}`}>
         {activeTabLocked ? (
           <UpgradeScreen featureKey={activeTabFeature} subscriptionsLive={SUBSCRIPTIONS_LIVE} onBack={() => setActiveTab("dashboard")} />
         ) : null}
@@ -26720,11 +26720,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {!activeTabLocked && activeTab === "membership" && renderMembershipFoundation()}
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dashboard" && (
-          <div className="dashboard-layout home-clean-layout">
+          <div className="dashboard-layout home-clean-layout hearth-command-layout">
             <PageHeader
-              className={getHeaderCardClass("panel page-summary-card home-summary-card")}
-              title="Home"
-              subtitle="Your Ember & Tide base for quick actions and the daily collecting loop."
+              className={getHeaderCardClass("panel page-summary-card home-summary-card hearth-command-hero")}
+              title="Home / Hearth"
+              subtitle="Welcome back. Protect the spark. Follow the tide."
               actions={(
                 <button type="button" onClick={() => openAddActionSheet("home")}>Quick Add</button>
               )}
@@ -26732,7 +26732,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
             {!betaReadinessData.onboarding?.completedAt ? renderOnboardingPanel() : null}
 
-            <section className="panel today-tide-command" aria-label="Today's Tide command center">
+            <section className="panel today-tide-command daily-tide-overview-card" aria-label="Today's Tide command center">
               <div className="today-tide-hero">
                 <div>
                   <p className="section-kicker">Daily Tide Check</p>
