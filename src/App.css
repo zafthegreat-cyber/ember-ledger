@@ -21560,6 +21560,7 @@ textarea::placeholder {
   font-size: 1.55rem;
   font-weight: 950;
   letter-spacing: 0.08em;
+  white-space: nowrap;
   text-shadow: 0 0 20px currentColor, 0 0 38px rgba(0, 216, 255, 0.38);
 }
 
@@ -21569,7 +21570,7 @@ textarea::placeholder {
 .section-hero-art--forge .section-hero-symbol::before { content: "WRK"; color: #ffb45f; }
 .section-hero-art--tidepool .section-hero-symbol::before { content: "TP"; color: #73d9ff; }
 .section-hero-art--spark .section-hero-symbol::before { content: "SPK"; color: #ffd66b; }
-.section-hero-art--newstuff .section-hero-symbol::before { content: "NEW"; color: #ff79d7; }
+.section-hero-art--newstuff .section-hero-symbol::before { content: "NEW"; color: #ff79d7; font-size: 1.18rem; }
 .section-hero-art--daily .section-hero-symbol::before { content: "DAY"; color: #8feaff; }
 
 .section-hero-art::before,
@@ -21936,4 +21937,220 @@ textarea::placeholder {
     width: 108px;
     height: 124px;
   }
+}
+
+/* Icon system polish: neon TCG command glyphs */
+.main-tab-icon,
+.mobile-tab-icon,
+.action-icon,
+.drawer-section-icon,
+.command-icon,
+.concept-mini-grid b,
+.concept-tool-grid b,
+.concept-update-row b {
+  position: relative;
+  isolation: isolate;
+}
+
+.main-tab-icon,
+.mobile-tab-icon,
+.action-icon,
+.drawer-section-icon {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 14px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.24), transparent 25%),
+    linear-gradient(145deg, rgba(255, 122, 24, 0.16), rgba(0, 216, 255, 0.13)),
+    rgba(5, 12, 28, 0.86) !important;
+  border: 1px solid rgba(122, 229, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 16px rgba(0, 216, 255, 0.12);
+}
+
+.mobile-bottom-nav button:nth-child(1) .mobile-tab-icon,
+.main-tab:nth-child(1) .main-tab-icon {
+  color: #ffb45f;
+  border-color: rgba(255, 122, 24, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 18px rgba(255, 122, 24, 0.18);
+}
+
+.mobile-bottom-nav button:nth-child(2) .mobile-tab-icon,
+.main-tab:nth-child(2) .main-tab-icon {
+  color: #85f4ff;
+}
+
+.mobile-bottom-nav button:nth-child(3) .mobile-tab-icon,
+.main-tab:nth-child(3) .main-tab-icon {
+  color: #70dcff;
+  border-color: rgba(0, 216, 255, 0.28);
+}
+
+.mobile-bottom-nav button:nth-child(4) .mobile-tab-icon,
+.main-tab:nth-child(4) .main-tab-icon {
+  color: #ff79d7;
+  border-color: rgba(255, 57, 200, 0.28);
+}
+
+.mobile-bottom-nav button:nth-child(5) .mobile-tab-icon,
+.main-tab:nth-child(5) .main-tab-icon {
+  color: #ffb45f;
+  border-color: rgba(255, 122, 24, 0.3);
+}
+
+.mobile-bottom-nav button:nth-child(6) .mobile-tab-icon,
+.main-tab:nth-child(6) .main-tab-icon {
+  color: #8fffe0;
+}
+
+.mobile-bottom-nav button.active .mobile-tab-icon,
+.main-tab.active .main-tab-icon {
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.34), transparent 22%),
+    conic-gradient(from 210deg, #ff7a18, #ff39c8, #7b4df3, #00d8ff, #ff7a18) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  box-shadow:
+    0 0 20px rgba(255, 57, 200, 0.32),
+    0 0 24px rgba(0, 216, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+}
+
+.app-nav-icon {
+  width: 18px !important;
+  height: 18px !important;
+  stroke-width: 2.45 !important;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+
+.mobile-bottom-nav button span:last-child,
+.main-tab span:last-child {
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.command-icon,
+.concept-mini-grid b,
+.concept-tool-grid b,
+.concept-update-row b {
+  min-width: 38px;
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.28), transparent 24%),
+    linear-gradient(145deg, rgba(255, 122, 24, 0.22), rgba(255, 57, 200, 0.14) 48%, rgba(0, 216, 255, 0.18)),
+    rgba(5, 12, 28, 0.9);
+  border: 1px solid rgba(122, 229, 255, 0.22);
+  color: #aefcff !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 10px currentColor;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 16px rgba(0, 216, 255, 0.14);
+}
+
+.quick-action-card.primary .command-icon,
+.command-hub-core,
+.command-hub-node:hover .command-icon {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    0 0 22px rgba(255, 57, 200, 0.34),
+    0 0 24px rgba(0, 216, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.command-hub-node:nth-child(2) .command-icon,
+.quick-action-card:has(.quick-action-copy span:is(:where(*))) .command-icon {
+  text-transform: uppercase;
+}
+
+.concept-mini-grid span,
+.concept-tool-grid span {
+  color: #dff8ff !important;
+}
+
+.concept-mini-grid b,
+.concept-tool-grid b {
+  margin: 0 auto 3px;
+}
+
+.concept-deck--workshop .concept-tool-grid b,
+.section-hero-art--forge .section-hero-symbol::before {
+  color: #ffb45f !important;
+}
+
+.concept-deck--exchange .concept-product-card b,
+.section-hero-art--market .section-hero-symbol::before {
+  color: #ff79d7 !important;
+}
+
+.concept-deck--signals .concept-signal-card b,
+.section-hero-art--scout .section-hero-symbol::before,
+.section-hero-art--vault .section-hero-symbol::before {
+  color: #85f4ff !important;
+}
+
+.spark-mascot {
+  background:
+    radial-gradient(circle at 46% 26%, rgba(255, 255, 255, 0.16), transparent 16%),
+    radial-gradient(circle at 58% 82%, rgba(0, 216, 255, 0.22), transparent 30%),
+    linear-gradient(145deg, rgba(255, 122, 24, 0.16), rgba(8, 15, 30, 0.82)) !important;
+}
+
+.spark-mascot-flame {
+  filter:
+    drop-shadow(0 0 16px rgba(255, 194, 71, 0.72))
+    drop-shadow(0 0 24px rgba(255, 57, 200, 0.28)) !important;
+}
+
+.spark-mascot::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  bottom: 16px;
+  width: 34px;
+  height: 42px;
+  border-radius: 48% 48% 42% 42%;
+  background:
+    radial-gradient(circle at 36% 34%, #1b1424 0 5%, transparent 6%),
+    radial-gradient(circle at 64% 34%, #1b1424 0 5%, transparent 6%),
+    linear-gradient(180deg, #ffe28a, #ff9a1f 58%, #ff5a2f);
+  box-shadow: 0 0 18px rgba(255, 194, 71, 0.48);
+}
+
+.section-hero-art {
+  box-shadow:
+    inset 0 0 30px rgba(255, 255, 255, 0.055),
+    0 0 22px rgba(255, 57, 200, 0.14),
+    0 0 34px rgba(0, 216, 255, 0.16) !important;
+}
+
+.section-hero-art--scout {
+  box-shadow: inset 0 0 30px rgba(255,255,255,.05), 0 0 34px rgba(0, 216, 255, 0.28) !important;
+}
+
+.section-hero-art--vault,
+.section-hero-art--tidepool {
+  box-shadow: inset 0 0 30px rgba(255,255,255,.05), 0 0 34px rgba(56, 189, 248, 0.28) !important;
+}
+
+.section-hero-art--market,
+.section-hero-art--newstuff {
+  box-shadow: inset 0 0 30px rgba(255,255,255,.05), 0 0 34px rgba(255, 57, 200, 0.3) !important;
+}
+
+.section-hero-art--forge,
+.section-hero-art--spark {
+  box-shadow: inset 0 0 30px rgba(255,255,255,.05), 0 0 34px rgba(255, 122, 24, 0.3) !important;
 }

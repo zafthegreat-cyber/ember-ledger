@@ -16,8 +16,28 @@
       <stop offset=".7" stop-color="#0ea5e9"/>
       <stop offset="1" stop-color="#0369a1"/>
     </linearGradient>
+    <linearGradient id="packGrad" x1="120" y1="70" x2="380" y2="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#150a34"/>
+      <stop offset=".46" stop-color="#08172d"/>
+      <stop offset="1" stop-color="#020712"/>
+    </linearGradient>
+    <linearGradient id="neonEdge" x1="92" y1="64" x2="432" y2="438" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff6a13"/>
+      <stop offset=".34" stop-color="#ff2fb3"/>
+      <stop offset=".68" stop-color="#7c3cff"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <radialGradient id="packGlow" cx="50%" cy="42%" r="58%">
+      <stop offset="0" stop-color="#ff2fb3" stop-opacity=".42"/>
+      <stop offset=".46" stop-color="#38bdf8" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
     <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
       <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000814" flood-opacity=".42"/>
+    </filter>
+    <filter id="neonGlow" x="-45%" y="-45%" width="190%" height="190%">
+      <feDropShadow dx="0" dy="0" stdDeviation="9" flood-color="#ff2fb3" flood-opacity=".62"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#38bdf8" flood-opacity=".42"/>
     </filter>
   </defs>
 
@@ -25,12 +45,23 @@
     <rect width="512" height="512" rx="108" fill="url(#bg)"/>
     <rect x="18" y="18" width="476" height="476" rx="92" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/>
 
-  <g transform="translate(46 50) scale(1.1122448979591837)" filter="url(#softShadow)">
-    <path fill="url(#emberGrad)" d="M223 28c-40 43-36 82-31 107-26-22-42-49-40-82-59 54-86 112-78 171 10 76 76 124 158 126 78 2 143-42 158-113 10-47-4-89-44-129 3 32-8 56-31 72 3-49-21-96-92-152Z"/>
-    <path fill="#ffb34f" opacity=".95" d="M210 146c-24 27-26 55-13 83-22-12-35-29-38-52-31 31-41 62-31 93 13 39 55 61 104 57 45-4 80-31 86-70 4-25-5-49-29-73-1 21-12 38-31 50 2-35-12-63-48-88Z"/>
-    <path fill="url(#tideGrad)" d="M55 279c50 42 105 58 162 45 57-14 101-55 162-55-47 79-118 122-202 112-58-7-101-39-122-102Z"/>
-    <path fill="#04111f" opacity=".88" d="M82 285c62 25 113 24 154-2 29-19 62-32 103-30-47 23-80 52-127 61-43 9-87-.2-130-29Z"/>
-    <path fill="#04111f" opacity=".78" d="M118 329c47 15 89 12 127-9 22-12 48-20 77-19-35 24-72 42-116 45-32 2-61-4-88-17Z"/>
-    <path fill="#38bdf8" opacity=".72" d="M77 258c64 23 120 18 168-15 41-28 83-38 129-28-54 6-94 35-135 59-48 29-102 23-162-16Z"/>
+  <g filter="url(#softShadow)">
+    <path d="M172 108 344 72l42 264-172 36z" fill="#061427" opacity=".72" stroke="url(#neonEdge)" stroke-width="8" filter="url(#neonGlow)"/>
+    <path d="M142 132 322 96l50 274-180 38z" fill="#080c20" opacity=".85" stroke="url(#neonEdge)" stroke-width="8" filter="url(#neonGlow)"/>
+    <g transform="translate(112 92) rotate(-6 144 172)">
+      <path d="M36 0h216l18 26-10 18 10 18-10 18 10 18-10 18 10 18-10 18 10 18-10 18 10 18-10 18 10 18-18 26H36L18 252l10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18z" fill="url(#packGrad)" stroke="url(#neonEdge)" stroke-width="10" filter="url(#neonGlow)"/>
+      <path d="M50 34h188v206H50z" fill="url(#packGlow)" opacity=".92"/>
+      <path d="M72 56h144v158H72z" rx="28" fill="#050b1c" stroke="url(#neonEdge)" stroke-width="6"/>
+      <g transform="translate(44 34) scale(.52)">
+        <path fill="url(#emberGrad)" d="M223 28c-40 43-36 82-31 107-26-22-42-49-40-82-59 54-86 112-78 171 10 76 76 124 158 126 78 2 143-42 158-113 10-47-4-89-44-129 3 32-8 56-31 72 3-49-21-96-92-152Z"/>
+        <path fill="#ffb34f" opacity=".95" d="M210 146c-24 27-26 55-13 83-22-12-35-29-38-52-31 31-41 62-31 93 13 39 55 61 104 57 45-4 80-31 86-70 4-25-5-49-29-73-1 21-12 38-31 50 2-35-12-63-48-88Z"/>
+        <path fill="url(#tideGrad)" d="M55 279c50 42 105 58 162 45 57-14 101-55 162-55-47 79-118 122-202 112-58-7-101-39-122-102Z"/>
+        <path fill="#04111f" opacity=".88" d="M82 285c62 25 113 24 154-2 29-19 62-32 103-30-47 23-80 52-127 61-43 9-87-.2-130-29Z"/>
+        <path fill="#04111f" opacity=".78" d="M118 329c47 15 89 12 127-9 22-12 48-20 77-19-35 24-72 42-116 45-32 2-61-4-88-17Z"/>
+        <path fill="#38bdf8" opacity=".72" d="M77 258c64 23 120 18 168-15 41-28 83-38 129-28-54 6-94 35-135 59-48 29-102 23-162-16Z"/>
+      </g>
+      <path d="M54 18h178M54 262h178" stroke="#ff2fb3" stroke-opacity=".6" stroke-width="4"/>
+      <path d="M54 28h178M54 252h178" stroke="#38bdf8" stroke-opacity=".5" stroke-width="3"/>
+    </g>
   </g>
 </svg>
