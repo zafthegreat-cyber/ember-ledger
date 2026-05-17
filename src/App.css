@@ -23755,3 +23755,550 @@ html body .standard-page-header .vault-command-overview button.vault-overview-ca
     width: 100%;
   }
 }
+
+/* Usability polish: keep the command-center visual language without oversized
+   mobile blocks, stretched desktop cards, or controls hidden under chrome. */
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+:root {
+  --usable-bottom-nav-height: 62px;
+  --usable-page-max: 1320px;
+  --usable-card-pad: clamp(12px, 1.4vw, 18px);
+}
+
+.app {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 105, 36, 0.16), transparent 30%),
+    radial-gradient(circle at 92% 8%, rgba(0, 210, 255, 0.13), transparent 30%),
+    linear-gradient(145deg, #02050d 0%, #071120 50%, #100516 100%);
+}
+
+.app main,
+.main,
+.app-content,
+.screen-content,
+.auth-main,
+.shoreline-access-main {
+  width: min(100% - 24px, var(--usable-page-max));
+  margin-inline: auto;
+  padding-bottom: calc(var(--usable-bottom-nav-height) + 18px + env(safe-area-inset-bottom, 0px));
+}
+
+.standard-page-header,
+.hearth-command-hero,
+.glass-card,
+.glass-panel,
+.compact-card,
+.panel,
+.card,
+.marketplace-create-panel,
+.marketplace-browse-panel,
+.marketplace-detail-panel,
+.drawer-info-card,
+.settings-group,
+.location-modal,
+.catalog-detail-drawer {
+  border-color: rgba(120, 226, 255, 0.16) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.062), rgba(255, 255, 255, 0.018)),
+    rgba(5, 12, 28, 0.78) !important;
+  color: var(--cmd-text, #f7fbff) !important;
+}
+
+.standard-page-header,
+.hearth-command-hero {
+  min-height: 0 !important;
+  padding: clamp(14px, 2vw, 22px) !important;
+  border-radius: clamp(20px, 2.4vw, 30px) !important;
+}
+
+.standard-page-header-main {
+  gap: clamp(12px, 2vw, 22px) !important;
+}
+
+.standard-page-header-copy h2,
+.hearth-command-hero h2,
+.dashboard-hero h2,
+.page-title,
+h1 {
+  letter-spacing: 0 !important;
+  line-height: 1.03 !important;
+}
+
+.standard-page-header-copy p,
+.compact-subtitle,
+.muted,
+.card p,
+.panel p,
+.drawer-link small,
+.settings-group p,
+.location-modal p {
+  color: rgba(238, 247, 255, 0.72) !important;
+}
+
+.section-hero-art {
+  min-height: 0 !important;
+  width: clamp(74px, 12vw, 152px) !important;
+  height: clamp(74px, 12vw, 152px) !important;
+  flex: 0 0 auto;
+}
+
+.section-hero-symbol {
+  font-size: clamp(1.9rem, 5vw, 4.2rem) !important;
+}
+
+.concept-deck {
+  min-height: 0 !important;
+  padding: 12px !important;
+  gap: 8px !important;
+}
+
+.concept-value-card,
+.concept-profit-card,
+.concept-tide-card,
+.concept-signal-card,
+.concept-product-card,
+.concept-post-card,
+.concept-activity-row {
+  min-height: 0 !important;
+  padding: 10px !important;
+}
+
+.concept-value-card strong,
+.concept-profit-card strong {
+  font-size: clamp(1.25rem, 2.5vw, 2rem) !important;
+}
+
+.concept-mini-grid,
+.stat-grid,
+.mini-cards,
+.forge-command-overview,
+.vault-command-overview,
+.home-preview-grid,
+.action-grid,
+.tool-grid {
+  gap: 10px !important;
+}
+
+.stat-grid,
+.home-preview-grid,
+.forge-command-overview,
+.vault-command-overview {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+}
+
+.dashboard-stat-card,
+.forge-overview-card,
+.vault-overview-card,
+.stat-tile,
+.compact-card,
+.panel,
+.card {
+  padding: var(--usable-card-pad) !important;
+  min-height: 0 !important;
+}
+
+button,
+.button,
+.primary-button,
+.secondary-button,
+.ghost-button,
+.auth-submit,
+.drawer-link,
+.standard-page-header-tabs button,
+.mobile-tab,
+.main-tab {
+  min-height: 38px;
+  border-radius: 14px;
+}
+
+button:not(.primary-button):not(.ember-gradient-button):not(.tide-gradient-button):not(.delete-button):not(.auth-submit):not(.quick-add-fab):not(.command-hub-core),
+.secondary-button,
+.ghost-button,
+.drawer-link {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.018)),
+    rgba(5, 12, 28, 0.72) !important;
+  border: 1px solid rgba(129, 228, 255, 0.18) !important;
+  color: rgba(246, 251, 255, 0.92) !important;
+  box-shadow: none !important;
+}
+
+button:disabled,
+.disabled,
+[aria-disabled="true"] {
+  opacity: 0.56 !important;
+  cursor: not-allowed !important;
+  color: rgba(236, 244, 252, 0.64) !important;
+}
+
+input,
+select,
+textarea {
+  min-height: 40px;
+  color: #f8fbff !important;
+  background: rgba(3, 10, 23, 0.78) !important;
+  border: 1px solid rgba(128, 226, 255, 0.22) !important;
+  border-radius: 12px !important;
+}
+
+textarea {
+  min-height: 86px;
+}
+
+label,
+.field,
+.form label {
+  color: rgba(242, 249, 255, 0.84) !important;
+}
+
+.form,
+.marketplace-form,
+.shoreline-form {
+  gap: 12px !important;
+}
+
+.location-modal-backdrop,
+.drawer-backdrop {
+  padding: 14px !important;
+}
+
+.location-modal,
+.modal-sheet-compact,
+.catalog-detail-drawer,
+.marketplace-review-modal {
+  width: min(100%, 720px) !important;
+  max-height: min(88dvh, 860px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+}
+
+.location-modal-content,
+.drawer-body,
+.menu-drawer-body {
+  overflow: auto !important;
+  padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.location-modal-actions,
+.modal-footer,
+.drawer-header,
+.menu-drawer-header {
+  gap: 8px !important;
+}
+
+.drawer-header,
+.menu-drawer-header {
+  min-height: 54px !important;
+  padding: 12px 14px !important;
+  background:
+    linear-gradient(145deg, rgba(13, 25, 45, 0.95), rgba(12, 8, 27, 0.92)) !important;
+}
+
+.drawer-header h3,
+.drawer-header p,
+.menu-drawer-header h3,
+.menu-drawer-header p {
+  background: transparent !important;
+  color: #f8fbff !important;
+}
+
+.catalog-result-card,
+.marketplace-listing-card,
+.product-card {
+  display: grid !important;
+  grid-template-columns: minmax(58px, 82px) minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 10px !important;
+  padding: 10px !important;
+}
+
+.catalog-result-card img,
+.marketplace-thumb,
+.product-card img {
+  width: 100% !important;
+  max-height: 96px !important;
+  object-fit: contain !important;
+}
+
+.market-history-chart.empty,
+.empty-state,
+.empty-state-card {
+  color: rgba(238, 247, 255, 0.76) !important;
+  background: rgba(5, 12, 28, 0.62) !important;
+  border-color: rgba(128, 226, 255, 0.14) !important;
+}
+
+.mobile-bottom-nav {
+  min-height: calc(var(--usable-bottom-nav-height) + env(safe-area-inset-bottom, 0px)) !important;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: 18px 18px 0 0 !important;
+  background:
+    linear-gradient(180deg, rgba(9, 18, 35, 0.92), rgba(2, 6, 15, 0.95)) !important;
+  border-top: 1px solid rgba(121, 233, 255, 0.16) !important;
+}
+
+.mobile-bottom-nav button {
+  min-height: 46px !important;
+  padding: 4px 3px !important;
+  gap: 2px !important;
+  font-size: 0.68rem !important;
+}
+
+.mobile-bottom-nav .app-nav-icon,
+.mobile-bottom-nav svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.mobile-bottom-nav button.active,
+.mobile-bottom-nav [aria-current="page"] {
+  box-shadow: 0 0 18px rgba(255, 105, 36, 0.18) !important;
+}
+
+.floating-up-button,
+.scroll-top-button {
+  display: none !important;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --usable-bottom-nav-height: 58px;
+  }
+
+  .app main,
+  .main,
+  .app-content,
+  .screen-content,
+  .auth-main,
+  .shoreline-access-main {
+    width: min(100% - 18px, 100%);
+    padding-bottom: calc(var(--usable-bottom-nav-height) + 20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .standard-page-header,
+  .hearth-command-hero {
+    padding: 13px !important;
+    gap: 10px !important;
+  }
+
+  .standard-page-header-main {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+  }
+
+  .standard-page-header-copy h2,
+  .hearth-command-hero h2,
+  .dashboard-hero h2,
+  .page-title,
+  h1 {
+    font-size: clamp(1.35rem, 7vw, 1.85rem) !important;
+  }
+
+  .standard-page-header-copy p,
+  .hearth-command-hero p {
+    font-size: 0.88rem !important;
+  }
+
+  .section-hero-art {
+    width: 78px !important;
+    height: 78px !important;
+  }
+
+  .concept-deck {
+    padding: 10px !important;
+  }
+
+  .concept-mini-grid,
+  .stat-grid,
+  .mini-cards,
+  .forge-command-overview,
+  .vault-command-overview,
+  .home-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .standard-page-header-tabs,
+  .compact-tabs,
+  .filter-tabs {
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    padding-bottom: 2px !important;
+  }
+
+  .standard-page-header-tabs button,
+  .compact-tabs button,
+  .filter-tabs button {
+    flex: 0 0 auto !important;
+    min-height: 34px !important;
+    padding: 7px 10px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .location-modal,
+  .modal-sheet-compact,
+  .catalog-detail-drawer,
+  .marketplace-review-modal {
+    width: min(100%, calc(100vw - 18px)) !important;
+    max-height: 86dvh !important;
+    border-radius: 20px !important;
+  }
+
+  .location-modal-actions {
+    position: sticky;
+    bottom: 0;
+    padding-top: 10px;
+    background: linear-gradient(180deg, rgba(5, 12, 28, 0), rgba(5, 12, 28, 0.96) 28%) !important;
+  }
+
+  .command-hub {
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .command-hub-core,
+  .quick-add-fab {
+    width: 72px !important;
+    height: 72px !important;
+    min-height: 72px !important;
+    font-size: 2.2rem !important;
+    justify-self: center;
+    grid-column: 1 / -1;
+  }
+
+  .command-hub .command-hub-node,
+  .command-hub-node-1,
+  .command-hub-node-2,
+  .command-hub-node-3,
+  .command-hub-node-4,
+  .command-hub-node-5,
+  .command-hub-node-6,
+  .command-hub-node-7,
+  .command-hub-node-8 {
+    position: static !important;
+    transform: none !important;
+    width: auto !important;
+    min-height: 64px !important;
+    padding: 8px !important;
+  }
+
+  .flow-modal[data-flow="addActionSheet"],
+  .flow-modal.flow-modal-small:has(.command-quick-add) {
+    max-height: 90dvh !important;
+    padding: 12px !important;
+  }
+
+  .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .flow-modal.flow-modal-small:has(.command-quick-add) .flow-modal-body {
+    max-height: calc(90dvh - 122px) !important;
+    padding-bottom: 82px !important;
+  }
+
+  .command-action-list,
+  .add-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .add-action-card,
+  .icon-action-tile {
+    min-height: 62px !important;
+    padding: 8px !important;
+  }
+
+  .add-action-card small,
+  .icon-action-tile small {
+    display: none !important;
+  }
+
+  .catalog-result-card,
+  .marketplace-listing-card,
+  .product-card {
+    grid-template-columns: 64px minmax(0, 1fr) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app main,
+  .main,
+  .app-content,
+  .screen-content,
+  .auth-main,
+  .shoreline-access-main {
+    padding: 24px 28px 48px !important;
+  }
+
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  .app-shell-header,
+  .topbar {
+    width: min(100% - 48px, var(--usable-page-max)) !important;
+    margin-inline: auto !important;
+  }
+
+  .standard-page-header,
+  .hearth-command-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.58fr) !important;
+    align-items: stretch !important;
+  }
+
+  .standard-page-header-copy h2,
+  .hearth-command-hero h2,
+  .dashboard-hero h2,
+  .page-title,
+  h1 {
+    font-size: clamp(2.2rem, 4.2vw, 4.25rem) !important;
+  }
+
+  .standard-page-header-main {
+    min-width: 0;
+  }
+
+  .standard-page-header-body,
+  .standard-page-header-summary,
+  .standard-page-header-tabs {
+    grid-column: 1 / -1;
+  }
+
+  .concept-deck {
+    align-self: stretch;
+  }
+
+  .dashboard-grid,
+  .marketplace-section,
+  .catalog-grid,
+  .forge-dashboard-grid,
+  .vault-dashboard-grid,
+  .settings-groups {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  }
+
+  .settings-drawer,
+  .menu-drawer,
+  .drawer {
+    width: min(960px, calc(100vw - 64px)) !important;
+  }
+
+  .settings-groups {
+    display: grid !important;
+    gap: 16px !important;
+  }
+
+  .command-hub {
+    width: min(720px, 90vw);
+    min-height: 520px !important;
+    margin-inline: auto;
+  }
+}

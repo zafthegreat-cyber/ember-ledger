@@ -543,7 +543,7 @@ const PRIVATE_UPLOAD_SIGNED_URL_SECONDS = 60 * 60 * 24 * 7;
 const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 const LONG_LIST_PAGE_SIZE = 12;
-const DEFAULT_PURCHASER_NAMES = ["Zena", "Dillon", "Business", "Personal", "Kids", "Other"];
+const DEFAULT_PURCHASER_NAMES = ["Personal", "Business", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const DEFAULT_PERSONAL_WORKSPACE_ID = "workspace-personal-local-beta";
 const DAILY_TIDE_TASKS = [
@@ -1282,7 +1282,7 @@ const blankExpense = {
   vendor: "",
   category: "Supplies",
   subcategory: "",
-  buyer: "Zena",
+  buyer: "",
   amount: "",
   paymentMethod: "",
   linkedItemId: "",
@@ -2576,17 +2576,21 @@ function SectionHeroArt({ title, className }) {
   );
 }
 
-function SectionConceptDeck({ title, className }) {
+function SectionStatusDeck({ title, className }) {
   const kind = sectionHeroKind(title, className);
   if (kind === "scout") {
     return (
-      <div className="concept-deck concept-deck--signals">
+      <div className="concept-deck concept-deck--signals concept-deck--empty">
         <div className="concept-tabs"><span className="active">Nearby</span><span>Following</span><span>All Stores</span></div>
-        {["Walmart · 2.4 mi", "Target · 3.7 mi", "GameStop · 4.1 mi"].map((store, index) => (
-          <div className="concept-signal-card" key={store}>
+        {[
+          ["No nearby signals yet", "Reports will appear after the community checks in.", "0"],
+          ["Watch a store", "Follow stores to track Scout signals.", "New"],
+          ["Submit first report", "Add a real shelf update.", "New"],
+        ].map(([label, note, value]) => (
+          <div className="concept-signal-card is-empty" key={label}>
             <span className="concept-thumb concept-thumb-card" />
-            <span><strong>{store}</strong><small>{index === 0 ? "Pokemon 151 Booster Bundle" : index === 1 ? "Paldea Evolved ETB" : "Paradox Rift Booster Box"}</small></span>
-            <b>{index === 0 ? "HOT" : "WARM"}</b>
+            <span><strong>{label}</strong><small>{note}</small></span>
+            <b>{value}</b>
           </div>
         ))}
       </div>
@@ -2594,25 +2598,28 @@ function SectionConceptDeck({ title, className }) {
   }
   if (kind === "vault") {
     return (
-      <div className="concept-deck concept-deck--deep">
-        <div className="concept-value-card"><span>Total Collection Value</span><strong>$3,742.18</strong><small>+4.6% this week</small></div>
+      <div className="concept-deck concept-deck--deep concept-deck--empty">
+        <div className="concept-value-card"><span>Total Collection Value</span><strong>$0.00</strong><small>Add items to start tracking value.</small></div>
         <div className="concept-mini-grid">
-          {["Sealed", "Singles", "Graded", "Favorites"].map((label) => <span key={label}><b>{commandGlyph(label)}</b>{label}</span>)}
+          {["Sealed", "Singles", "Graded", "Favorites"].map((label) => <span key={label}><b>0</b>{label}</span>)}
         </div>
-        <div className="concept-activity-row"><span className="concept-thumb concept-thumb-card" /><span><strong>Recent Additions</strong><small>Charizard ex · 2h ago</small></span></div>
+        <div className="concept-activity-row"><span className="concept-thumb concept-thumb-card" /><span><strong>No recent additions</strong><small>Add your first card or sealed product.</small></span></div>
       </div>
     );
   }
   if (kind === "market") {
     return (
-      <div className="concept-deck concept-deck--exchange">
+      <div className="concept-deck concept-deck--exchange concept-deck--empty">
         <div className="concept-search">Search cards, products, sellers...</div>
         <div className="concept-tabs"><span className="active">For You</span><span>Near Retail</span><span>Local</span><span>Shipping</span></div>
-        {["Pokemon 151 ETB", "Crown Zenith Booster Box"].map((item, index) => (
-          <div className="concept-product-card" key={item}>
+        {[
+          ["No watched deals yet", "Add products to your watchlist."],
+          ["Search Market to compare", "Results use live catalog/search data."],
+        ].map(([label, note]) => (
+          <div className="concept-product-card" key={label}>
             <span className="concept-thumb concept-thumb-pack" />
-            <span><strong>{item}</strong><small>{index ? "Market $124.99" : "MSRP $54.99"}</small></span>
-            <b>{index ? "$119.00" : "$54.99"}</b>
+            <span><strong>{label}</strong><small>{note}</small></span>
+            <b>$0</b>
           </div>
         ))}
       </div>
@@ -2620,8 +2627,8 @@ function SectionConceptDeck({ title, className }) {
   }
   if (kind === "forge") {
     return (
-      <div className="concept-deck concept-deck--workshop">
-        <div className="concept-profit-card"><span>Profit This Month</span><strong>$1,243.50</strong><small>+12.7% vs last month</small></div>
+      <div className="concept-deck concept-deck--workshop concept-deck--empty">
+        <div className="concept-profit-card"><span>Profit This Month</span><strong>$0.00</strong><small>Sales and expenses will populate this.</small></div>
         <div className="concept-tool-grid">
           {["Expenses", "Receipts", "Mileage", "Inventory", "Products", "Sales"].map((label) => <span key={label}><b>{commandGlyph(label)}</b>{label}</span>)}
         </div>
@@ -2630,21 +2637,21 @@ function SectionConceptDeck({ title, className }) {
   }
   if (kind === "tidepool") {
     return (
-      <div className="concept-deck concept-deck--community">
+      <div className="concept-deck concept-deck--community concept-deck--empty">
         <div className="concept-tabs"><span className="active">For You</span><span>Recent</span><span>Following</span><span>Local</span></div>
-        {["ISO: 151 Zapdos SIR", "Have extras of these"].map((post) => (
-          <div className="concept-post-card" key={post}><span className="concept-avatar" /><span><strong>{post}</strong><small>Community post · 10m</small></span><button type="button">Trade</button></div>
+        {["No posts yet", "Create the first private beta post"].map((post) => (
+          <div className="concept-post-card" key={post}><span className="concept-avatar" /><span><strong>{post}</strong><small>Community activity appears here.</small></span><button type="button">Open</button></div>
         ))}
       </div>
     );
   }
   if (kind === "spark") {
     return (
-      <div className="concept-deck concept-deck--spark">
+      <div className="concept-deck concept-deck--spark concept-deck--empty">
         <div className="concept-spark-mascot" aria-hidden="true" />
         <div className="concept-mini-grid">
-          <span><b>3</b>Open Requests</span>
-          <span><b>May 31</b>Next Drop</span>
+          <span><b>0</b>Open Requests</span>
+          <span><b>-</b>Next Drop</span>
         </div>
       </div>
     );
@@ -2658,12 +2665,12 @@ function SectionConceptDeck({ title, className }) {
     );
   }
   return (
-    <div className="concept-deck concept-deck--hearth">
-      <div className="concept-tide-card"><strong>Today’s Tide</strong><small>Your daily flow.</small><button type="button">View</button></div>
+    <div className="concept-deck concept-deck--hearth concept-deck--empty">
+      <div className="concept-tide-card"><strong>Today's Tide</strong><small>Your daily flow.</small><button type="button">View</button></div>
       <div className="concept-mini-grid">
-        {["Scout", "Vault", "Market", "Forge"].map((label) => <span key={label}><b>{label === "Vault" ? "$3,742" : label === "Scout" ? "7" : label === "Market" ? "5" : "2"}</b>{label}</span>)}
+        {["Scout", "Vault", "Market", "Forge"].map((label) => <span key={label}><b>0</b>{label}</span>)}
       </div>
-      <div className="concept-activity-row"><span className="concept-thumb concept-thumb-card" /><span><strong>Recent Activity</strong><small>Walmart restock spotted · 8 min ago</small></span></div>
+      <div className="concept-activity-row"><span className="concept-thumb concept-thumb-card" /><span><strong>No recent activity</strong><small>Your real activity will show here.</small></span></div>
     </div>
   );
 }
@@ -2697,7 +2704,7 @@ function PageHeader({
         </div>
       ) : null}
       {children ? <div className="standard-page-header-body">{children}</div> : null}
-      <SectionConceptDeck title={title} className={className} />
+      <SectionStatusDeck title={title} className={className} />
       {tabs.length ? (
         <div className="standard-page-header-tabs" aria-label={`${title} navigation`}>
           {tabs.map((tab) => (
@@ -3302,9 +3309,9 @@ export default function App() {
 
   const blankItem = {
   name: "",
-  buyer: "Zena",
-  purchaserId: "purchaser-default-1",
-  purchaserName: "Zena",
+  buyer: "",
+  purchaserId: "",
+  purchaserName: "",
   category: "Pokemon",
   store: "",
   quantity: 1,
@@ -3350,7 +3357,7 @@ export default function App() {
   sourceType: "Manual",
 };
 
-  const blankTrip = { purpose: "", driver: "Zena", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" };
+  const blankTrip = { purpose: "", driver: "", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" };
   const blankSale = { itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCharged: "", shippingCost: "", platformFees: "", notes: "" };
 
   const blankCatalog = {
@@ -3407,7 +3414,7 @@ export default function App() {
   const [itemForm, setItemForm] = useState(blankItem);
   const [catalogForm, setCatalogForm] = useState(blankCatalog);
   const [expenseForm, setExpenseForm] = useState(blankExpense);
-  const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "Zena", averageMpg: "", wearCostPerMile: "", notes: "" });
+  const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
   const [tripForm, setTripForm] = useState(blankTrip);
   const [saleForm, setSaleForm] = useState(blankSale);
   const [activeFlowModal, setActiveFlowModal] = useState(null);
@@ -9135,7 +9142,7 @@ export default function App() {
 
   function buildVaultItemFromForm() {
     const now = new Date().toISOString();
-    const defaultPurchaser = purchaserOptions[0] || { id: "", name: "Zena" };
+    const defaultPurchaser = purchaserOptions[0] || { id: "", name: "" };
     const vaultCategory = vaultForm.vaultCategory || "Personal collection";
     const vaultStatus = vaultForm.vaultStatus || normalizeVaultStatus({ status: vaultForm.status, actionNotes: vaultCategory });
     const status = vaultStatusLabel(vaultStatus);
@@ -11355,9 +11362,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           category: multiDestinationForm.forge.businessCategory || shared.category,
           store: multiDestinationForm.forge.source || "",
           status: "In Stock",
-          buyer: "Zena",
+          buyer: "",
           purchaserId: "purchaser-default-1",
-          purchaserName: "Zena",
+          purchaserName: "",
           conditionName: multiDestinationForm.forge.conditionName || "Near Mint",
           language: "English",
           notes: [multiDestinationForm.forge.notes, multiDestinationForm.notes].filter(Boolean).join(" "),
@@ -11485,9 +11492,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemName: row.itemName || row.item_name || row.name || "",
       name: row.name || "",
       sku: row.sku || "",
-      buyer: row.purchaser_name || row.buyer || "Zena",
+      buyer: row.purchaser_name || row.buyer || "",
       purchaserId: row.purchaserId || row.purchaser_id || "",
-      purchaserName: row.purchaserName || row.purchaser_name || row.buyer || "Zena",
+      purchaserName: row.purchaserName || row.purchaser_name || row.buyer || "",
       category: row.category || "Pokemon",
       store: row.store || "",
       quantity: Number(row.quantity || 0),
@@ -11834,7 +11841,7 @@ function mapCatalog(row) {
       vendor: row.vendor || "",
       category: normalizedCategory,
       subcategory: row.subcategory || "",
-      buyer: row.buyer || "Zena",
+      buyer: row.buyer || "",
       amount: Number(row.amount || 0),
       paymentMethod: row.paymentMethod || row.payment_method || "",
       linkedItemId: row.linkedItemId || row.linked_item_id || "",
@@ -11863,11 +11870,11 @@ function mapCatalog(row) {
   }
 
   function mapVehicle(row) {
-    return { id: row.id, name: row.name || "", owner: row.owner || "Zena", averageMpg: Number(row.average_mpg || 0), wearCostPerMile: Number(row.wear_cost_per_mile || 0), notes: row.notes || "", createdAt: row.created_at };
+    return { id: row.id, name: row.name || "", owner: row.owner || "", averageMpg: Number(row.average_mpg || 0), wearCostPerMile: Number(row.wear_cost_per_mile || 0), notes: row.notes || "", createdAt: row.created_at };
   }
 
   function mapTrip(row) {
-    return { id: row.id, vehicleId: row.vehicle_id, vehicleName: row.vehicle_name || "", purpose: row.purpose || "", driver: row.driver || "Zena", startMiles: Number(row.start_miles || 0), endMiles: Number(row.end_miles || 0), businessMiles: Number(row.business_miles || 0), gasPrice: Number(row.gas_price || 0), fuelCost: Number(row.fuel_cost || 0), wearCost: Number(row.wear_cost || 0), totalVehicleCost: Number(row.total_vehicle_cost || 0), mileageValue: Number(row.mileage_value || 0), gasReceiptImage: row.gas_receipt_image || "", notes: row.notes || "", workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID, workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceName: row.workspaceName || row.workspace_name || "", createdAt: row.createdAt || row.created_at };
+    return { id: row.id, vehicleId: row.vehicle_id, vehicleName: row.vehicle_name || "", purpose: row.purpose || "", driver: row.driver || "", startMiles: Number(row.start_miles || 0), endMiles: Number(row.end_miles || 0), businessMiles: Number(row.business_miles || 0), gasPrice: Number(row.gas_price || 0), fuelCost: Number(row.fuel_cost || 0), wearCost: Number(row.wear_cost || 0), totalVehicleCost: Number(row.total_vehicle_cost || 0), mileageValue: Number(row.mileage_value || 0), gasReceiptImage: row.gas_receipt_image || "", notes: row.notes || "", workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID, workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceName: row.workspaceName || row.workspace_name || "", createdAt: row.createdAt || row.created_at };
   }
 
   function mapSale(row) {
@@ -14252,7 +14259,7 @@ function renderForgeHeader() {
     const mapped = mapVehicle(data);
     setVehicles(editingVehicleId ? vehicles.map((v) => (v.id === editingVehicleId ? mapped : v)) : [mapped, ...vehicles]);
     setEditingVehicleId(null);
-    setVehicleForm({ name: "", owner: "Zena", averageMpg: "", wearCostPerMile: "", notes: "" });
+    setVehicleForm({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
   }
 
   function startEditingVehicle(vehicle) {
@@ -17932,9 +17939,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       unitCost: 0,
       salePrice: Number(marketInfo.currentMarketValue || product.marketPrice || product.midPrice || 0),
       status: "Draft",
-      buyer: currentUserProfile?.displayName || "Zena",
+      buyer: currentUserProfile?.displayName || "",
       purchaserId: "purchaser-default-1",
-      purchaserName: currentUserProfile?.displayName || "Zena",
+      purchaserName: currentUserProfile?.displayName || "",
       conditionName: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "Sealed" : "Near Mint",
       language: "English",
     }, workspace);
@@ -25260,12 +25267,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     Ember & Tide
   </h1>
 
-  <p>{activeTabLabel} | {guestPreviewActive ? "Preview mode" : BETA_LOCAL_MODE ? "Private Beta" : user ? `Cloud sync: ${user.email}` : "Supabase mode"}</p>
+  <p>{activeTabLabel} | {guestPreviewActive ? "Preview mode" : BETA_LOCAL_MODE ? "Private Beta" : user ? "Cloud sync active" : "Supabase mode"}</p>
 
   {showTreasure && (
     <div className="hidden-treasure">
       <p>Hidden Treasure Found ✨</p>
-      <h2>I love you Dillon — with you by my side I can do anything.</h2>
+      <h2>Thanks for finding the hidden tide.</h2>
     </div>
   )}
 </header>
@@ -30989,7 +30996,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <Field label="Wear Cost Per Mile"><input type="number" step="0.01" value={vehicleForm.wearCostPerMile} onChange={(e) => updateVehicleForm("wearCostPerMile", e.target.value)} /></Field>
                 <Field label="Notes"><input value={vehicleForm.notes} onChange={(e) => updateVehicleForm("notes", e.target.value)} /></Field>
                 <button type="submit">{editingVehicleId ? "Save Vehicle" : "Add Vehicle"}</button>
-                {editingVehicleId && <button type="button" className="secondary-button" onClick={() => { setEditingVehicleId(null); setVehicleForm({ name: "", owner: "Zena", averageMpg: "", wearCostPerMile: "", notes: "" }); }}>Cancel Edit</button>}
+                {editingVehicleId && <button type="button" className="secondary-button" onClick={() => { setEditingVehicleId(null); setVehicleForm({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" }); }}>Cancel Edit</button>}
               </form>
             </section>
             <ListPanel title="Vehicles" emptyText="No vehicles added yet.">
@@ -31035,7 +31042,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 {tripForm.gasReceiptImage && <div className="receipt-preview"><p>Gas Receipt</p><img src={tripForm.gasReceiptImage} alt="Gas Receipt" /></div>}
                 <Field label="Notes"><input value={tripForm.notes} onChange={(e) => updateTripForm("notes", e.target.value)} /></Field>
                 <button type="submit">{editingTripId ? "Save Trip" : "Add Mileage Trip"}</button>
-                {editingTripId && <button type="button" className="secondary-button" onClick={() => { setEditingTripId(null); setTripForm({ purpose: "", driver: "Zena", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" }); }}>Cancel Edit</button>}
+                {editingTripId && <button type="button" className="secondary-button" onClick={() => { setEditingTripId(null); setTripForm({ purpose: "", driver: "", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" }); }}>Cancel Edit</button>}
               </form>
             </section>
             )}
