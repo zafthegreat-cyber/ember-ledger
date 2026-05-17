@@ -635,7 +635,7 @@ async function main() {
     await nav("Forge");
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form#multi-destination-add-form").first();
-    const forgeDestination = form.locator("label.destination-checkbox").filter({ hasText: "Add to Forge" }).locator("input");
+    const forgeDestination = form.locator("label.destination-checkbox").filter({ hasText: /Forge/ }).locator("input");
     if (!(await forgeDestination.isChecked())) await forgeDestination.check();
     await fillByLabel(form, "Item Name", "Smoke Forge ETB");
     await fillByLabel(form, "Type / Category", "Elite Trainer Box");
@@ -646,7 +646,7 @@ async function main() {
     await fillByLabel(form, "Source / Purchase Location", "Smoke Shared Target");
     await fillByLabel(form, "MSRP", "49.99");
     await fillByLabel(form, "Market Price", "60");
-    await page.locator(".flow-modal").getByRole("button", { name: "Add Item" }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close|Add Item/ }).click();
     await assertVisibleText("Smoke Forge ETB");
     const smokeForgeCard = page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }).first();
     await smokeForgeCard.getByRole("button", { name: "View" }).click();
@@ -711,12 +711,12 @@ async function main() {
     const vaultForm = page.locator("form#multi-destination-add-form").first();
     await fillByLabel(vaultForm, "Item Name", "Smoke Vault Binder");
     await fillByLabel(vaultForm, "Type / Category", "Binder");
-    await vaultForm.getByRole("checkbox", { name: /Add to Vault/ }).check();
+    await vaultForm.getByRole("checkbox", { name: /Vault/ }).check();
     await fillByLabel(vaultForm, "Quantity for Vault", "1");
     await fillByLabel(vaultForm, "Collection Category", "Smoke Set");
     await fillByLabel(vaultForm, "Cost Basis", "20");
     await fillByLabel(vaultForm, "Market Price", "30");
-    await page.locator(".flow-modal").getByRole("button", { name: "Add Item" }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close|Add Item/ }).click();
     await assertVisibleText("Smoke Vault Binder");
 
     await nav("Forge");
@@ -745,7 +745,7 @@ async function main() {
     await fillByLabel(wishlistForm, "Type / Category", "Collection Box");
     await fillByLabel(wishlistForm, "Quantity Wanted", "1");
     await fillByLabel(wishlistForm, "Target Price", "25");
-    await page.locator(".flow-modal").getByRole("button", { name: "Add Item" }).click();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close|Add Item/ }).click();
     await page.waitForTimeout(300);
     const wishlistRecord = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");

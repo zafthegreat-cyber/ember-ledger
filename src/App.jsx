@@ -4012,6 +4012,7 @@ export default function App() {
   function openOperatingSystemFeature(modeKey, action = "") {
     setQuickAddMenuOpen(false);
     setSearchExpanded(false);
+    const storesActionRequested = action === "Stores" || action === "Store Map";
     if (modeKey === "vault") {
       setActiveTab("vault");
       if (action === "Open Sets") {
@@ -4044,13 +4045,13 @@ export default function App() {
         if (!featureAllowed("restock_predictions")) return openLockedFeatureNotice("restock_predictions");
         setScoutView("predictions");
       }
-      else if (action === "Store Map") {
+      else if (storesActionRequested) {
         setScoutView("stores");
         setScoutStoresMode("map");
       }
       else if (action === "Alerts" || action === "Ember Watch") setScoutView("alerts");
       else setScoutView("overview");
-      setScoutSubTabTarget({ tab: action === "Alerts" || action === "Ember Watch" ? "alerts" : action === "Store Map" ? "storeMap" : "overview", id: Date.now() });
+      setScoutSubTabTarget({ tab: action === "Alerts" || action === "Ember Watch" ? "alerts" : storesActionRequested ? "stores" : "overview", id: Date.now() });
       if (action === "Submit Report") openScoutSubmitFlow({ source: "global-command" });
       if (action === "Import Intel") openScoutSubmitFlow({ action: "importIntel" });
       return;
@@ -4165,7 +4166,7 @@ export default function App() {
       { key: "search", label: "Search", category: "tools", onClick: () => openCommandCenterAction("catalog", "Search Catalog") },
       { key: "import", label: "Import / Bulk Add", category: "manage", onClick: () => openCommandCenterBulkAdd() },
       { key: "watch", label: "Ember Watch", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
-      { key: "map", label: "Stores", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
+      { key: "map", label: "Stores", category: "tools", onClick: () => openCommandCenterAction("scout", "Stores") },
       ...(adminToolsVisible ? [{ key: "admin", label: "Admin Edit", category: "manage", onClick: () => openCommandCenterAction("admin") }] : []),
     ];
     const overviewStats = [
@@ -4179,11 +4180,11 @@ export default function App() {
     const missionStats = [
       { label: "Level", value: TIER_LABELS[getUserTier(subscriptionProfile)] || getUserTier(subscriptionProfile) || "Beta" },
       { label: "Streak", value: `${dailyTideToday.checkInStreak || 0} day` },
-      { label: "Trust", value: scoutSnapshot.scoutProfile?.trustScore || 72 },
+      { label: "Trust", value: Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0 },
       { label: "Badges", value: dailyTideToday.badges?.length || 0 },
     ];
     const smartTools = [
-      { key: "store-map", label: "Stores", helper: "List and map store intel.", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
+      { key: "store-map", label: "Stores", helper: "List and map store intel.", category: "tools", onClick: () => openCommandCenterAction("scout", "Stores") },
       { key: "ember-watch", label: "Ember Watch", helper: "Restock windows, reports, and watched stores.", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
       { key: "watchlist", label: "Watchlist", helper: "Track wants and market changes.", category: "activity", onClick: () => openCommandCenterAction("market", "Watchlist") },
       { key: "daily-tide", label: "Daily Tide Report", helper: "Review today's quick loop.", category: "activity", onClick: () => closeFlowModal({ force: true }) },
@@ -14012,7 +14013,7 @@ function renderTideTradrHeader() {
 function renderScoutHeader() {
   const scoutStoreCount = scoutSnapshot.stores?.length || VIRGINIA_STORES_SEED.length;
   const scoutRecentReportCount = (scoutSnapshot.reports || []).length || (scoutSnapshot.tidepoolReports || []).length;
-  const scoutTrustScore = scoutSnapshot.scoutProfile?.trustScore || 72;
+  const scoutTrustScore = Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0;
   const scoutTabs = [
     { key: "overview", label: "Overview" },
     { key: "reports", label: "Scout Reports" },
@@ -19700,12 +19701,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const featuredRows = rows.slice(0, 7);
     const locationCopy = hasScoutLocation
       ? `Nearby sorting is on${locationSettings.manualLocation || locationSettings.selectedSavedLocation ? ` for ${locationSettings.manualLocation || locationSettings.selectedSavedLocation}` : ""}.`
-      : "Location is optional. Search by city, store, or manual area to use Store Map without sharing location.";
+      : "Location is optional. Search by city, store, or manual area to use Stores without sharing location.";
     return (
-      <section className="store-map-page" aria-label="Store Map">
+      <section className="store-map-page" aria-label="Stores">
         <article className="store-map-hero">
           <div>
-            <p className="section-kicker">Scout Store Map</p>
+            <p className="section-kicker">Scout Stores</p>
             <h2>Find trusted store signals nearby.</h2>
             <p>{locationCopy}</p>
           </div>
@@ -19775,7 +19776,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </article>
 
         <div className="store-map-layout">
-          <article className="store-map-canvas panel" aria-label="Store Map visual">
+          <article className="store-map-canvas panel" aria-label="Stores map visual">
             <div className="store-map-rings" aria-hidden="true" />
             {featuredRows.map((row) => (
               <button
@@ -19889,7 +19890,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         actions={[
                           { label: "Edit Store", onClick: () => setVaultToast("Store editing will use the admin store approval flow in a later pass.") },
                           { label: "View Details", onClick: () => setVaultToast("Store audit details are not available in this beta UI yet.") },
-                          { label: "Mark Disputed", onClick: () => setVaultToast("Drop Radar dispute moderation is not wired for this card yet.") },
+                          { label: "Mark Disputed", disabled: true, reason: "Admin moderation queue is beta soon." },
                         ]}
                       />
                     ) : null}
@@ -19973,8 +19974,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                             buttonLabel="Admin"
                             actions={[
                               { label: "Edit Prediction", onClick: () => setVaultToast("Prediction editing will use admin prediction tools in a later pass.") },
-                              { label: "Verify", onClick: () => setVaultToast("Prediction verify is not wired to backend persistence yet.") },
-                              { label: "Hide", onClick: () => setVaultToast("Prediction hide is not wired to backend persistence yet.") },
+                              { label: "Verify", disabled: true, reason: "Backend persistence is beta soon." },
+                              { label: "Hide", disabled: true, reason: "Backend persistence is beta soon." },
                               { label: "View Audit", onClick: () => setVaultToast("Prediction audit details are not available in this beta UI yet.") },
                             ]}
                           />
@@ -23523,7 +23524,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="compact-card-header">
             <div>
               <h2>Stores</h2>
-              <p>Store list and Store Map are consolidated here. Open a store from either view for details.</p>
+              <p>Store list and map are consolidated here. Open a store from either view for details.</p>
             </div>
             <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Suggest Store</button>
           </div>
@@ -24590,22 +24591,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const destinationOptions = [
       {
         key: "vault",
-        title: "Add to Vault",
+        title: "Vault",
         helper: "Owned collection or stored item.",
       },
       {
         key: "wishlist",
-        title: "Add to Wishlist",
+        title: "Wishlist",
         helper: "Wanted item, not owned yet.",
       },
       {
         key: "forge",
-        title: "Add to Forge",
+        title: "Forge",
         helper: "Business inventory or seller tracking.",
       },
       {
         key: "tidetradr",
-        title: "Add to Market",
+        title: "Market",
         helper: "Catalog, watchlist, or product suggestion.",
       },
     ];
@@ -26825,7 +26826,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="submit" form="multi-destination-add-form" name="saveMode" value="add-more" className="secondary-button" disabled={multiDestinationSaving}>
                     {multiDestinationSaving ? "Saving..." : "Save and Add More"}
                   </button>
-                  <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" aria-label="Add Item" disabled={multiDestinationSaving}>
+                  <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" aria-label="Save and Close" disabled={multiDestinationSaving}>
                     {multiDestinationSaving ? "Saving..." : "Save and Close"}
                   </button>
                 </>
@@ -27012,7 +27013,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             </div>
             <div className="scout-score-grid">
-              <div className="scout-score-stat"><p>Trust score</p><h3>{scoutSnapshot.scoutProfile?.trustScore || 72}</h3></div>
+              <div className="scout-score-stat"><p>Trust score</p><h3>{Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0}</h3></div>
               <div className="scout-score-stat"><p>Verified reports</p><h3>{scoutSnapshot.scoutProfile?.verifiedReportCount || 0}</h3></div>
               <div className="scout-score-stat"><p>Reward points</p><h3>{scoutSnapshot.scoutProfile?.rewardPoints || 0}</h3></div>
               <div className="scout-score-stat"><p>Report streak</p><h3>{scoutSnapshot.scoutProfile?.reportStreak || 0}</h3></div>
@@ -27122,7 +27123,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <strong>Admin basics</strong>
                   <p>Edit name, nickname, retailer, address, coordinates, notes, status, and duplicate records through the existing admin review flow when wired.</p>
                   <div className="summary-pill-row">
-                    <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Scout Store Map", topic: selectedStoreMapStore.name })}>Suggest/Edit Store Data</button>
+                    <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Scout Stores", topic: selectedStoreMapStore.name })}>Suggest/Edit Store Data</button>
                     <button type="button" className="ghost-button" onClick={() => setVaultToast("Duplicate record review is staged for the admin store approval flow.")}>Flag Duplicate</button>
                   </div>
                 </section>

@@ -120,6 +120,7 @@ export default function WhatDidISee({
   initialProduct,
   stores = [],
   money = (value) => `$${Number(value || 0).toFixed(2)}`,
+  onAddItem,
   onAddToVault,
   onAddToForge,
   onSaveScoutReport,
@@ -315,6 +316,15 @@ export default function WhatDidISee({
     onMessage?.("What Did I See list cleared.");
   }
 
+  function addProductToUnifiedFlow(product) {
+    if (onAddItem) {
+      onAddItem(product);
+      return;
+    }
+    const fallbackAdd = onAddToVault || onAddToForge;
+    fallbackAdd?.(product);
+  }
+
   function exportJson() {
     const report = buildReport("export");
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
@@ -376,8 +386,7 @@ export default function WhatDidISee({
           <label className="what-see-notes-field">Notes<textarea value={details.notes} onChange={(event) => updateDetails(product.id, { notes: event.target.value })} placeholder="limit 2 per customer, behind counter, display looked fresh..." /></label>
         </div>
         <div className="quick-actions">
-          <button type="button" onClick={() => onAddToVault?.(product)}>Add to Vault</button>
-          <button type="button" className="secondary-button" onClick={() => onAddToForge?.(product)}>Add to Forge</button>
+          <button type="button" onClick={() => addProductToUnifiedFlow(product)} disabled={!onAddItem && !onAddToVault && !onAddToForge}>Add Item</button>
           <button type="button" className="secondary-button" onClick={() => toggleItem(product)}>Remove from list</button>
           <button type="button" className="secondary-button" onClick={() => updateDetails(product.id, { collapsed: true })}>Collapse details</button>
         </div>

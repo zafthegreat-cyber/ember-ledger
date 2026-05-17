@@ -4091,6 +4091,30 @@ button.overflow-menu-delete {
   box-shadow: none;
 }
 
+.overflow-menu-list button:disabled,
+.overflow-menu-list button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.overflow-menu-list button:disabled:hover,
+.overflow-menu-list button[aria-disabled="true"]:hover {
+  background: transparent;
+}
+
+.overflow-menu-list button span,
+.overflow-menu-list button small {
+  display: block;
+}
+
+.overflow-menu-list button small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .overflow-menu-list .overflow-menu-delete,
 button.overflow-menu-delete {
   color: #8b1f2b;

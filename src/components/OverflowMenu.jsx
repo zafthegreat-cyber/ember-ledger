@@ -49,8 +49,14 @@ export default function OverflowMenu({
   }
 
   function runAction(action) {
+    if (typeof action === "function") {
+      setOpen(false);
+      action();
+      return;
+    }
+    if (!action || action.disabled) return;
     setOpen(false);
-    action?.();
+    action.onClick?.();
   }
 
   return (
@@ -80,10 +86,14 @@ export default function OverflowMenu({
                 key={action.label}
                 type="button"
                 role="menuitem"
-                className={action.danger ? "overflow-menu-delete" : ""}
-                onClick={() => runAction(action.onClick)}
+                className={[action.danger ? "overflow-menu-delete" : "", action.disabled ? "overflow-menu-disabled" : ""].filter(Boolean).join(" ")}
+                disabled={Boolean(action.disabled)}
+                aria-disabled={action.disabled ? "true" : undefined}
+                title={action.reason || undefined}
+                onClick={() => runAction(action)}
               >
-                {action.label}
+                <span>{action.label}</span>
+                {action.reason ? <small>{action.reason}</small> : null}
               </button>
             ))}
             {onDelete ? (
