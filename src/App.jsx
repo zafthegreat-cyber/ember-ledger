@@ -2573,18 +2573,24 @@ function commandGlyph(seed = "") {
 
 function sectionHeroKind(title = "", className = "") {
   const value = `${title} ${className}`.toLowerCase();
-  if (/scout|signal/.test(value)) return "scout";
-  if (/vault|deep/.test(value)) return "vault";
-  if (/market|exchange|tidetradr/.test(value)) return "market";
-  if (/forge|workshop/.test(value)) return "forge";
+  if (/new stuff|announcement|washed|what'?s new|known limitations|partner|links|trust/.test(value)) return "newstuff";
+  if (/admin|operations|moderation|review|readiness/.test(value)) return "admin";
+  if (/settings|menu|support|profile|suggestions/.test(value)) return "settings";
+  if (/ember watch|monthly|calendar|drops?/.test(value)) return "watch";
+  if (/tide forecast|forecast|planner|guess|prediction|window/.test(value)) return "forecast";
+  if (/\bstores?\b|store map|map/.test(value)) return "stores";
+  if (/wishlist|wanted|watchlist/.test(value)) return "wishlist";
+  if (/daily|today/.test(value)) return "daily";
+  if (/kids|spark|family/.test(value)) return "spark";
   if (/tidepool|community/.test(value)) return "tidepool";
-  if (/kids|spark/.test(value)) return "spark";
-  if (/new stuff|announcement|washed/.test(value)) return "newstuff";
-  if (/daily|tide/.test(value)) return "daily";
+  if (/forge|workshop|inventory|business/.test(value)) return "forge";
+  if (/market|exchange|tidetradr|deal|listing/.test(value)) return "market";
+  if (/vault|deep|collection|sets?/.test(value)) return "vault";
+  if (/scout|signal|report/.test(value)) return "scout";
   return "hearth";
 }
 
-function SectionHeroArt({ title, className }) {
+function LegacySectionHeroArt({ title, className }) {
   const kind = sectionHeroKind(title, className);
   return (
     <div className={`section-hero-art section-hero-art--${kind}`} aria-hidden="true">
@@ -2602,6 +2608,208 @@ function SectionHeroArt({ title, className }) {
       </div>
       <div className="section-hero-lines" />
       <span className="section-hero-svg"><CommandGlyphIcon seed={kind} /></span>
+    </div>
+  );
+}
+
+function featureHeroLabel(kind) {
+  return ({
+    hearth: "Home base",
+    scout: "Stock signal",
+    vault: "Collection vault",
+    market: "Exchange",
+    forge: "Workbench",
+    tidepool: "Community",
+    spark: "Little Sparks",
+    newstuff: "New Stuff",
+    daily: "Daily report",
+    stores: "Stores",
+    forecast: "Tide Forecast",
+    watch: "Ember Watch",
+    wishlist: "Wishlist",
+    settings: "Controls",
+    admin: "Admin",
+  })[kind] || "Command center";
+}
+
+function SectionHeroArt({ title, className }) {
+  const kind = sectionHeroKind(title, className);
+  const calendarCells = kind === "watch" ? Array.from({ length: 12 }) : [];
+  const vaultSlots = kind === "vault" ? Array.from({ length: 8 }) : [];
+  const controlRows = kind === "settings" || kind === "admin" ? Array.from({ length: 3 }) : [];
+
+  return (
+    <div className={`section-hero-art feature-hero-scene feature-hero-scene--${kind}`} aria-hidden="true">
+      <span className="feature-scene-glass" />
+
+      {kind === "hearth" ? (
+        <>
+          <span className="hero-hearth-base" />
+          <span className="hero-hearth-flame" />
+          <span className="hero-hearth-wave" />
+          <span className="hero-dashboard-tile hero-dashboard-tile-a" />
+          <span className="hero-dashboard-tile hero-dashboard-tile-b" />
+          <span className="hero-dashboard-tile hero-dashboard-tile-c" />
+        </>
+      ) : null}
+
+      {kind === "scout" ? (
+        <>
+          <span className="hero-store-shelf hero-store-shelf-top" />
+          <span className="hero-store-shelf hero-store-shelf-bottom" />
+          <span className="hero-pack hero-pack-a" />
+          <span className="hero-pack hero-pack-b" />
+          <span className="hero-pack hero-pack-c" />
+          <span className="hero-signal-arc hero-signal-arc-a" />
+          <span className="hero-signal-arc hero-signal-arc-b" />
+          <span className="hero-map-pin" />
+          <span className="hero-confirm-dot" />
+        </>
+      ) : null}
+
+      {kind === "vault" ? (
+        <>
+          <span className="hero-vault-door" />
+          <span className="hero-vault-ring" />
+          <span className="hero-binder-grid">
+            {vaultSlots.map((_, index) => <i key={`vault-slot-${index}`} />)}
+          </span>
+          <span className="hero-card-stack hero-card-stack-a" />
+          <span className="hero-card-stack hero-card-stack-b" />
+        </>
+      ) : null}
+
+      {kind === "market" ? (
+        <>
+          <span className="hero-market-table" />
+          <span className="hero-listing-card hero-listing-card-a" />
+          <span className="hero-listing-card hero-listing-card-b" />
+          <span className="hero-price-tag" />
+          <span className="hero-trade-arrow hero-trade-arrow-a" />
+          <span className="hero-trade-arrow hero-trade-arrow-b" />
+        </>
+      ) : null}
+
+      {kind === "forge" ? (
+        <>
+          <span className="hero-workbench" />
+          <span className="hero-receipt" />
+          <span className="hero-price-label" />
+          <span className="hero-forge-stack" />
+          <span className="hero-hammer hero-hammer-head" />
+          <span className="hero-hammer hero-hammer-handle" />
+        </>
+      ) : null}
+
+      {kind === "tidepool" ? (
+        <>
+          <span className="hero-wave-line" />
+          <span className="hero-post-card hero-post-card-a" />
+          <span className="hero-post-card hero-post-card-b" />
+          <span className="hero-avatar-dot hero-avatar-dot-a" />
+          <span className="hero-avatar-dot hero-avatar-dot-b" />
+          <span className="hero-chat-line hero-chat-line-a" />
+          <span className="hero-chat-line hero-chat-line-b" />
+        </>
+      ) : null}
+
+      {kind === "spark" ? (
+        <>
+          <span className="hero-gift-box" />
+          <span className="hero-gift-lid" />
+          <span className="hero-spark-mascot">
+            <i className="hero-spark-eye hero-spark-eye-a" />
+            <i className="hero-spark-eye hero-spark-eye-b" />
+            <i className="hero-spark-smile" />
+          </span>
+          <span className="hero-safe-ring" />
+        </>
+      ) : null}
+
+      {kind === "newstuff" ? (
+        <>
+          <span className="hero-card-back hero-card-back-a" />
+          <span className="hero-card-back hero-card-back-b" />
+          <span className="hero-booster-pack" />
+          <span className="hero-booster-mark" />
+          <span className="hero-update-dot hero-update-dot-a" />
+          <span className="hero-update-dot hero-update-dot-b" />
+        </>
+      ) : null}
+
+      {kind === "daily" ? (
+        <>
+          <span className="hero-checklist-card">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="hero-checkmark hero-checkmark-a" />
+          <span className="hero-checkmark hero-checkmark-b" />
+          <span className="hero-daily-wave" />
+        </>
+      ) : null}
+
+      {kind === "stores" ? (
+        <>
+          <span className="hero-storefront" />
+          <span className="hero-store-awning" />
+          <span className="hero-route-line" />
+          <span className="hero-route-pin hero-route-pin-a" />
+          <span className="hero-route-pin hero-route-pin-b" />
+          <span className="hero-store-window" />
+        </>
+      ) : null}
+
+      {kind === "forecast" ? (
+        <>
+          <span className="hero-forecast-card">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="hero-timeline" />
+          <span className="hero-forecast-dot hero-forecast-dot-a" />
+          <span className="hero-forecast-dot hero-forecast-dot-b" />
+          <span className="hero-forecast-dot hero-forecast-dot-c" />
+          <span className="hero-clock" />
+        </>
+      ) : null}
+
+      {kind === "watch" ? (
+        <>
+          <span className="hero-month-grid">
+            {calendarCells.map((_, index) => <i key={`watch-cell-${index}`} className={index === 3 || index === 8 ? "has-drop" : ""} />)}
+          </span>
+          <span className="hero-watch-flame" />
+          <span className="hero-watch-alert" />
+        </>
+      ) : null}
+
+      {kind === "wishlist" ? (
+        <>
+          <span className="hero-wishlist-card" />
+          <span className="hero-wishlist-lines">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="hero-heart" />
+          <span className="hero-star" />
+        </>
+      ) : null}
+
+      {kind === "settings" || kind === "admin" ? (
+        <>
+          <span className={kind === "admin" ? "hero-admin-shield" : "hero-settings-gear"} />
+          <span className="hero-control-panel">
+            {controlRows.map((_, index) => <i key={`${kind}-row-${index}`} />)}
+          </span>
+          <span className={kind === "admin" ? "hero-admin-pencil" : "hero-settings-slider"} />
+        </>
+      ) : null}
+
+      <span className="feature-hero-label">{featureHeroLabel(kind)}</span>
     </div>
   );
 }
@@ -2738,7 +2946,6 @@ function PageHeader({
         </div>
       ) : null}
       {children ? <div className="standard-page-header-body">{children}</div> : null}
-      <SectionStatusDeck title={title} className={className} />
       {tabs.length ? (
         <div className="standard-page-header-tabs" aria-label={`${title} navigation`}>
           {tabs.map((tab) => (
@@ -19041,6 +19248,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <h2>Scout Restock Calendar</h2>
             <p>Track predicted restock windows, confirmed Scout reports, watched stores, and upcoming TCG drops. Signals are never guarantees.</p>
           </div>
+          <SectionHeroArt title="Ember Watch" className="ember-watch-feature-art" />
           <div className="summary-pill-row">
             <button type="button" className="secondary-button" onClick={() => { setScoutView("stores"); setScoutStoresMode("map"); }}>Open Stores</button>
             <button type="button" onClick={() => openScoutSubmitFlow({ source: "ember-watch-header" })}>Quick Report</button>
@@ -19501,6 +19709,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <h2>Find trusted store signals nearby.</h2>
             <p>{locationCopy}</p>
           </div>
+          <SectionHeroArt title="Stores" className="store-map-feature-art" />
           <div className="store-map-hero-actions">
             <button type="button" onClick={() => openScoutSubmitFlow({ source: "store-map-hero" })}>Report Stock</button>
             <button type="button" className="secondary-button" onClick={() => { setWatchCalendarView("today"); setScoutView("alerts"); }}>Open Ember Watch</button>
@@ -25595,6 +25804,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <h2>Tide Forecast</h2>
               <p>Forecast Windows and Guess Planner are combined here so planning stays in one place.</p>
             </div>
+            <SectionHeroArt title="Tide Forecast" className="forecast-feature-art" />
             <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
           </div>
           <div className="segmented-control scout-subtoggle" role="tablist" aria-label="Tide Forecast views">
