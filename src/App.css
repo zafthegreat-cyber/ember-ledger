@@ -24514,3 +24514,394 @@ label,
     min-height: 112px;
   }
 }
+
+/* Precision visual-matching pass for the command-center reference. */
+:root {
+  --bottom-nav-height: 62px;
+}
+
+.app {
+  width: min(100%, 1500px) !important;
+}
+
+.main.app-shell-dark,
+.main,
+.app-shell-dark {
+  padding-bottom: calc(var(--bottom-nav-height, 62px) + env(safe-area-inset-bottom, 0px) + 22px) !important;
+}
+
+.standard-page-header,
+.hearth-command-hero {
+  min-height: 0 !important;
+  padding: 14px !important;
+  border-radius: 20px !important;
+}
+
+.command-screen-hero .standard-page-header-main {
+  grid-template-columns: minmax(0, 1fr) 96px !important;
+  gap: 10px !important;
+}
+
+.standard-page-header-copy h2,
+.hearth-command-hero h2,
+.dashboard-hero h2,
+.page-title,
+h1 {
+  font-size: clamp(1.55rem, 6.8vw, 2.35rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.standard-page-header-copy p,
+.hearth-command-hero p {
+  font-size: 0.88rem !important;
+  line-height: 1.38 !important;
+}
+
+.section-hero-art {
+  width: 94px !important;
+  height: 94px !important;
+  min-height: 94px !important;
+  border-radius: 22px !important;
+  align-self: start !important;
+}
+
+.section-hero-symbol,
+.section-hero-symbol::before {
+  display: none !important;
+  content: none !important;
+}
+
+.section-hero-art::before {
+  inset: 12px 14px 18px !important;
+  opacity: 0.98 !important;
+  filter: drop-shadow(0 0 18px rgba(0, 216, 255, 0.32)) drop-shadow(0 0 12px rgba(255, 122, 24, 0.18)) !important;
+}
+
+.section-hero-art::after {
+  height: 24px !important;
+  bottom: 10px !important;
+  opacity: 0.7 !important;
+}
+
+.section-hero-art--hearth::before {
+  background:
+    radial-gradient(circle at 50% 72%, #ffdf85 0 10%, #ff7a18 11% 23%, transparent 24%),
+    radial-gradient(circle at 58% 54%, rgba(0, 216, 255, 0.68), transparent 24%),
+    linear-gradient(180deg, transparent 0 35%, rgba(255, 122, 24, 0.52) 36% 58%, transparent 59%) !important;
+  clip-path: polygon(50% 0, 67% 30%, 62% 50%, 86% 38%, 74% 82%, 50% 100%, 25% 80%, 12% 40%, 38% 54%, 32% 28%) !important;
+}
+
+.section-hero-art--scout::before {
+  background:
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 12px, rgba(133, 244, 255, 0.58) 13px 15px, transparent 16px 27px),
+    conic-gradient(from 230deg, transparent 0 18%, rgba(0, 216, 255, 0.72) 19% 31%, transparent 32% 100%) !important;
+  clip-path: circle(48% at 50% 50%) !important;
+}
+
+.section-hero-art--vault::before {
+  background:
+    radial-gradient(circle at 50% 70%, rgba(255, 190, 76, 0.95), transparent 22%),
+    linear-gradient(180deg, rgba(114, 230, 255, 0.36), transparent 44%),
+    linear-gradient(180deg, transparent 42%, rgba(5, 17, 42, 0.98) 43% 100%) !important;
+  clip-path: polygon(10% 42%, 25% 18%, 75% 18%, 90% 42%, 84% 100%, 16% 100%) !important;
+}
+
+.section-hero-art--market::before {
+  background:
+    radial-gradient(circle at 32% 34%, rgba(255, 57, 200, 0.82), transparent 23%),
+    radial-gradient(circle at 68% 66%, rgba(139, 92, 255, 0.8), transparent 24%),
+    linear-gradient(135deg, transparent 30%, rgba(0, 216, 255, 0.3) 31% 34%, transparent 35%) !important;
+  clip-path: polygon(12% 32%, 80% 20%, 96% 48%, 72% 88%, 22% 78%) !important;
+}
+
+.section-hero-art--forge::before {
+  background:
+    radial-gradient(circle at 50% 76%, rgba(255, 122, 24, 0.9), transparent 30%),
+    linear-gradient(180deg, #ffd06b 0 14%, transparent 15%),
+    linear-gradient(90deg, transparent 0 25%, rgba(255, 122, 24, 0.88) 26% 74%, transparent 75%) !important;
+  clip-path: polygon(18% 28%, 82% 28%, 72% 52%, 58% 52%, 58% 90%, 42% 90%, 42% 52%, 28% 52%) !important;
+}
+
+.section-hero-art--tidepool::before {
+  background:
+    radial-gradient(circle at 78% 30%, rgba(255, 57, 200, 0.48), transparent 22%),
+    radial-gradient(circle at 30% 72%, rgba(0, 216, 255, 0.78), transparent 28%),
+    linear-gradient(135deg, rgba(0, 216, 255, 0.2), rgba(139, 92, 255, 0.34)) !important;
+  clip-path: polygon(2% 72%, 20% 48%, 40% 60%, 58% 36%, 80% 52%, 98% 28%, 98% 100%, 2% 100%) !important;
+}
+
+.section-hero-art--spark::before {
+  background:
+    radial-gradient(circle at 38% 40%, #211427 0 4%, transparent 5%),
+    radial-gradient(circle at 62% 40%, #211427 0 4%, transparent 5%),
+    radial-gradient(circle at 50% 68%, #211427 0 5%, transparent 6%),
+    linear-gradient(180deg, #ffe28a, #ff921f 56%, #ff3f7c) !important;
+  clip-path: polygon(50% 0, 70% 28%, 64% 46%, 88% 34%, 74% 82%, 50% 100%, 24% 80%, 10% 36%, 38% 52%, 32% 28%) !important;
+}
+
+.section-hero-art--newstuff::before {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22) 0 10%, transparent 11% 88%, rgba(255, 255, 255, 0.16) 89%),
+    radial-gradient(circle at 50% 50%, #ff7a18 0 17%, #ff39c8 18% 39%, #071022 40%) !important;
+  transform: rotate(8deg);
+  clip-path: polygon(8% 4%, 92% 4%, 86% 16%, 92% 28%, 86% 40%, 92% 52%, 86% 64%, 92% 76%, 86% 88%, 92% 100%, 8% 100%, 14% 88%, 8% 76%, 14% 64%, 8% 52%, 14% 40%, 8% 28%, 14% 16%) !important;
+}
+
+.concept-deck {
+  min-height: 86px !important;
+  margin-top: 8px !important;
+}
+
+.concept-deck::before {
+  inset: 10px 12px !important;
+}
+
+.concept-deck::after {
+  width: 32% !important;
+  top: 17% !important;
+  right: 12% !important;
+}
+
+.standard-page-header-actions button,
+.quick-actions button,
+.flow-modal-footer button,
+.location-modal-actions button {
+  min-height: 42px !important;
+  padding: 9px 12px !important;
+}
+
+.standard-page-header-actions button:not(:first-child),
+.quick-actions button:not(:first-child),
+.location-modal-actions button:not(:first-child),
+.flow-modal-footer button:not(:last-child) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    rgba(4, 10, 24, 0.78) !important;
+  border-color: rgba(121, 233, 255, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 16px rgba(0, 216, 255, 0.08) !important;
+}
+
+.quick-action-card,
+.vault-overview-card,
+.forge-overview-card,
+.card,
+.marketplace-listing-card,
+.catalog-result-card,
+.tidepool-post-card,
+.scout-report-card,
+.store-map-card {
+  padding: 10px !important;
+  min-height: 0 !important;
+}
+
+.quick-action-copy > span,
+.quick-action-card > span:not(.command-icon),
+.add-action-card > span:not(.command-icon) {
+  color: #f8fbff !important;
+}
+
+.quick-action-card small,
+.quick-action-copy small {
+  color: rgba(213, 230, 255, 0.7) !important;
+}
+
+.quick-action-card,
+.quick-action-card *,
+.quick-action-card[disabled],
+.quick-action-card[disabled] *,
+.icon-action-tile,
+.icon-action-tile * {
+  color: #f8fbff !important;
+}
+
+.quick-action-card[disabled] {
+  opacity: 0.72 !important;
+  cursor: not-allowed;
+}
+
+.command-icon {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 13px !important;
+  font-size: 1.05rem !important;
+  line-height: 1 !important;
+}
+
+.marketplace-listing-card,
+.catalog-result-card,
+.product-card {
+  background:
+    radial-gradient(circle at 14% 10%, rgba(255, 57, 200, 0.1), transparent 30%),
+    linear-gradient(145deg, rgba(14, 24, 46, 0.86), rgba(5, 10, 22, 0.94)) !important;
+  border-color: rgba(255, 57, 200, 0.18) !important;
+}
+
+.mobile-bottom-nav {
+  left: 12px !important;
+  right: 12px !important;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+  min-height: 58px !important;
+  padding: 5px 6px !important;
+  border-radius: 20px !important;
+  gap: 1px !important;
+}
+
+.mobile-bottom-nav button {
+  min-height: 46px !important;
+  padding: 3px 1px !important;
+  font-size: 0.58rem !important;
+  gap: 1px !important;
+  border-radius: 14px !important;
+}
+
+.mobile-bottom-nav button b {
+  font-size: 0.58rem !important;
+  line-height: 1.05 !important;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-tab-icon,
+.main-tab-icon {
+  width: 24px !important;
+  height: 24px !important;
+  margin-bottom: 1px !important;
+  border-radius: 10px !important;
+  background: rgba(5, 12, 28, 0.58);
+}
+
+.mobile-bottom-nav button.active .mobile-tab-icon,
+.mobile-bottom-nav button[aria-current="page"] .mobile-tab-icon {
+  background: linear-gradient(135deg, rgba(255, 122, 24, 0.55), rgba(0, 216, 255, 0.28)) !important;
+  box-shadow: 0 0 14px rgba(255, 122, 24, 0.24), 0 0 14px rgba(0, 216, 255, 0.18) !important;
+}
+
+.flow-modal,
+.location-modal {
+  border-radius: 22px !important;
+}
+
+.flow-modal-body,
+.location-modal-content,
+.drawer-body,
+.menu-drawer-body {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.drawer-header,
+.menu-drawer-header,
+.settings-drawer-header,
+.modal-sticky-header {
+  background: rgba(5, 12, 28, 0.92) !important;
+  color: #f8fbff !important;
+  box-shadow: none !important;
+}
+
+.drawer-section-copy,
+.drawer-section-copy *,
+.drawer-collapsible-toggle strong,
+.drawer-collapsible-toggle small,
+.drawer-collapsible-toggle b {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit;
+}
+
+.drawer-collapsible-toggle {
+  grid-template-columns: 42px minmax(0, 1fr) auto !important;
+  border-radius: 16px !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+    rgba(5, 13, 30, 0.74) !important;
+}
+
+.drawer-section-icon {
+  color: #dffbff !important;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.2), transparent 24%),
+    linear-gradient(145deg, rgba(255, 122, 24, 0.16), rgba(0, 216, 255, 0.18)),
+    rgba(6, 14, 30, 0.88) !important;
+  border: 1px solid rgba(121, 233, 255, 0.2) !important;
+}
+
+.forge-overview-card strong,
+.vault-overview-card strong,
+.dashboard-stat-card strong,
+.stat-tile strong {
+  font-size: clamp(1.05rem, 4.2vw, 1.35rem) !important;
+  line-height: 1.08 !important;
+  overflow-wrap: anywhere;
+}
+
+.forge-overview-card p,
+.vault-overview-card p,
+.dashboard-stat-card p {
+  font-size: 0.78rem !important;
+  line-height: 1.25 !important;
+}
+
+@media (min-width: 1024px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  .standard-page-header,
+  .hearth-command-hero {
+    min-height: 238px !important;
+    padding: 18px !important;
+  }
+
+  .standard-page-header-copy h2,
+  .hearth-command-hero h2,
+  .dashboard-hero h2,
+  .page-title,
+  h1 {
+    font-size: clamp(2.1rem, 3vw, 3.35rem) !important;
+    line-height: 0.96 !important;
+  }
+
+  .section-hero-art {
+    width: min(22vw, 230px) !important;
+    height: 190px !important;
+    min-height: 190px !important;
+  }
+
+  .concept-deck {
+    min-height: 122px !important;
+  }
+
+  .hearth-command-hero {
+    min-height: 270px !important;
+  }
+
+  .quick-action-card,
+  .card,
+  .vault-overview-card,
+  .forge-overview-card {
+    min-height: 82px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .main,
+  .auth-main,
+  .app-shell-dark {
+    padding-bottom: calc(var(--bottom-nav-height, 62px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
+  }
+
+  .standard-page-header-copy h2,
+  .hearth-command-hero h2,
+  .signed-out-landing.panel h2 {
+    font-size: clamp(1.7rem, 8vw, 2.2rem) !important;
+  }
+
+  .command-screen-hero .standard-page-header-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .command-hub {
+    min-height: min(520px, calc(100dvh - 150px)) !important;
+  }
+}
