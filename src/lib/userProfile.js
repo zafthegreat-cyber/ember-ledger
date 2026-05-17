@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from "../supabaseClient";
 import { PLAN_TYPES, USER_ROLES, normalizeTier, normalizeUserRole } from "../constants/plans";
+import { normalizeBetaStatus, normalizeLittleSparksStatus } from "../services/shorelineAccessService";
 
 const ADMIN_EMAILS = String(import.meta.env.VITE_ADMIN_EMAILS || import.meta.env.ADMIN_EMAILS || "")
   .split(",")
@@ -66,7 +67,10 @@ export function makeFallbackUserProfile(user = null) {
     subscriptionProvider: metadata.subscription_provider || metadata.subscriptionProvider || "",
     subscriptionProviderId: metadata.subscription_provider_id || metadata.subscriptionProviderId || "",
     preferredRegion: metadata.preferred_region || metadata.preferredRegion || "Hampton Roads / 757",
-    betaAccessStatus: metadata.beta_access_status || metadata.betaAccessStatus || "approved",
+    betaStatus: admin || user?.id === "local-beta" ? "approved" : normalizeBetaStatus(metadata.beta_status || metadata.betaStatus || metadata.beta_access_status || metadata.betaAccessStatus),
+    betaAccessStatus: admin || user?.id === "local-beta" ? "approved" : normalizeBetaStatus(metadata.beta_access_status || metadata.betaAccessStatus || metadata.beta_status || metadata.betaStatus),
+    littleSparksStatus: normalizeLittleSparksStatus(metadata.little_sparks_status || metadata.littleSparksStatus),
+    appAccess: Boolean(admin || user?.id === "local-beta" || metadata.app_access || metadata.appAccess),
     termsAcceptedAt: metadata.terms_accepted_at || metadata.termsAcceptedAt || "",
     privacyAcceptedAt: metadata.privacy_accepted_at || metadata.privacyAcceptedAt || "",
     betaAcknowledgedAt: metadata.beta_acknowledged_at || metadata.betaAcknowledgedAt || "",
@@ -114,7 +118,10 @@ export function mapProfileRow(row = {}, user = null) {
     subscriptionProvider: row.subscription_provider || row.subscriptionProvider || "",
     subscriptionProviderId: row.subscription_provider_id || row.subscriptionProviderId || "",
     preferredRegion: row.preferred_region || row.preferredRegion || "Hampton Roads / 757",
-    betaAccessStatus: row.beta_access_status || row.betaAccessStatus || "approved",
+    betaStatus: admin ? "approved" : normalizeBetaStatus(row.beta_status || row.betaStatus || row.beta_access_status || row.betaAccessStatus),
+    betaAccessStatus: admin ? "approved" : normalizeBetaStatus(row.beta_access_status || row.betaAccessStatus || row.beta_status || row.betaStatus),
+    littleSparksStatus: normalizeLittleSparksStatus(row.little_sparks_status || row.littleSparksStatus || row.kids_program_status || row.kidsProgramStatus),
+    appAccess: Boolean(admin || row.app_access || row.appAccess),
     betaAccessRequestedAt: row.beta_access_requested_at || row.betaAccessRequestedAt || "",
     betaAccessApprovedAt: row.beta_access_approved_at || row.betaAccessApprovedAt || "",
     termsAcceptedAt: row.terms_accepted_at || row.termsAcceptedAt || "",
@@ -160,7 +167,10 @@ export async function createUserProfileIfMissing(user = null) {
     tier: PLAN_TYPES.FREE,
     plan_tier: PLAN_TYPES.FREE,
     subscription_status: "none",
-    beta_access_status: metadata.beta_access_status || metadata.betaAccessStatus || "approved",
+    beta_status: normalizeBetaStatus(metadata.beta_status || metadata.betaStatus || metadata.beta_access_status || metadata.betaAccessStatus),
+    beta_access_status: normalizeBetaStatus(metadata.beta_access_status || metadata.betaAccessStatus || metadata.beta_status || metadata.betaStatus),
+    little_sparks_status: normalizeLittleSparksStatus(metadata.little_sparks_status || metadata.littleSparksStatus),
+    app_access: Boolean(metadata.app_access || metadata.appAccess),
     terms_accepted_at: metadata.terms_accepted_at || metadata.termsAcceptedAt || null,
     privacy_accepted_at: metadata.privacy_accepted_at || metadata.privacyAcceptedAt || null,
     beta_acknowledged_at: metadata.beta_acknowledged_at || metadata.betaAcknowledgedAt || null,

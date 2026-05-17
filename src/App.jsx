@@ -169,6 +169,19 @@ import {
   isPaidUser,
 } from "./constants/plans";
 import { getCurrentUserProfile, makeFallbackUserProfile } from "./lib/userProfile";
+import {
+  BETA_REQUEST_STATUSES,
+  LITTLE_SPARKS_STATUSES,
+  loadShorelineAccessState,
+  loadShorelineAdminRequests,
+  normalizeBetaStatus,
+  normalizeLittleSparksStatus,
+  statusLabel,
+  submitBetaAccessRequest,
+  submitLittleSparksApplication,
+  updateBetaAccessRequestStatus,
+  updateLittleSparksApplicationStatus,
+} from "./services/shorelineAccessService";
 
 const BRAND_ASSETS = {
   mark: "/icon-192.png",
@@ -2959,6 +2972,40 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
+  const [shorelineState, setShorelineState] = useState({
+    loading: false,
+    schemaReady: true,
+    betaRequest: null,
+    littleSparksApplication: null,
+    adminBetaRequests: [],
+    adminLittleSparksApplications: [],
+    message: "",
+    error: "",
+  });
+  const [shorelineSaving, setShorelineSaving] = useState("");
+  const [shorelineBetaForm, setShorelineBetaForm] = useState({
+    fullName: "",
+    email: "",
+    cityArea: "",
+    collectorType: "parent_family",
+    reason: "",
+    localAreaAnswer: "",
+    socialHandle: "",
+    rulesAgreed: false,
+  });
+  const [shorelineSparksForm, setShorelineSparksForm] = useState({
+    guardianName: "",
+    email: "",
+    childNickname: "",
+    childAge: "",
+    cityArea: "",
+    hopedProducts: "",
+    applicationNote: "",
+    guardianConfirmed: false,
+    inventoryLimitedAck: false,
+    quantityLimitAck: false,
+    antiResaleAck: false,
+  });
   const [passwordResetEmail, setPasswordResetEmail] = useState("");
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [passwordResetMessage, setPasswordResetMessage] = useState("");
@@ -4584,17 +4631,135 @@ export default function App() {
   }
 
   function userBetaAccessStatus(profile = currentUserProfile) {
-    if (betaAccessMode() === "open_beta") return "approved";
-    const profileStatus = profile?.betaAccessStatus || profile?.beta_access_status;
+    if (BETA_LOCAL_MODE || profile?.isAdmin || profile?.userRole === USER_ROLES.ADMIN) return "approved";
+    const profileStatus = normalizeBetaStatus(profile?.betaStatus || profile?.beta_status || profile?.betaAccessStatus || profile?.beta_access_status);
+    const requestStatus = normalizeBetaStatus(shorelineState.betaRequest?.status);
     const localStatus = (betaReadinessData.betaAccessUsers || []).find((entry) => {
       const email = String(entry.email || "").toLowerCase();
       return String(entry.userId || "") === String(user?.id || "") || (accountEmail() && email === accountEmail().toLowerCase());
     })?.status;
-    return profileStatus || localStatus || "pending";
+    return requestStatus !== "not_requested" ? requestStatus : profileStatus !== "not_requested" ? profileStatus : normalizeBetaStatus(localStatus);
   }
 
   function betaAccessAllowed(profile = currentUserProfile) {
-    return betaAccessMode() === "open_beta" || userBetaAccessStatus(profile) === "approved" || actualAdminUser;
+    return Boolean(
+      BETA_LOCAL_MODE ||
+      actualAdminUser ||
+      profile?.appAccess ||
+      profile?.app_access ||
+      userBetaAccessStatus(profile) === "approved"
+    );
+  }
+
+  function littleSparksStatus() {
+    return normalizeLittleSparksStatus(
+      shorelineState.littleSparksApplication?.status ||
+      currentUserProfile?.littleSparksStatus ||
+      currentUserProfile?.little_sparks_status
+    );
+  }
+
+  function updateShorelineBetaField(field, value) {
+    setShorelineBetaForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateShorelineSparksField(field, value) {
+    setShorelineSparksForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleSubmitShorelineBetaRequest(event) {
+    event.preventDefault();
+    const fullName = String(shorelineBetaForm.fullName || "").trim();
+    const email = String(shorelineBetaForm.email || accountEmail()).trim();
+    const reason = String(shorelineBetaForm.reason || "").trim();
+    if (!fullName || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setShorelineState((current) => ({ ...current, error: "Add your full name and a valid email before requesting beta access." }));
+      return;
+    }
+    if (!reason) {
+      setShorelineState((current) => ({ ...current, error: "Tell us briefly why you want beta access." }));
+      return;
+    }
+    if (!shorelineBetaForm.rulesAgreed) {
+      setShorelineState((current) => ({ ...current, error: "Please agree to the community rules and fair-use expectations." }));
+      return;
+    }
+    setShorelineSaving("beta");
+    setShorelineState((current) => ({ ...current, error: "", message: "" }));
+    try {
+      const request = await submitBetaAccessRequest(user, { ...shorelineBetaForm, email, fullName });
+      setShorelineState((current) => ({ ...current, betaRequest: request, message: "Beta access request submitted for review." }));
+      setCurrentUserProfile((current) => ({
+        ...current,
+        betaStatus: request.status,
+        betaAccessStatus: request.status,
+      }));
+      setVaultToast("Beta access request submitted.");
+    } catch (error) {
+      logAppError("shoreline_beta_submit", error, { userId: user?.id }, "normal");
+      setShorelineState((current) => ({ ...current, error: error.message || "Could not submit beta access request." }));
+    } finally {
+      setShorelineSaving("");
+    }
+  }
+
+  async function handleSubmitLittleSparksApplication(event) {
+    event.preventDefault();
+    const guardianName = String(shorelineSparksForm.guardianName || "").trim();
+    const email = String(shorelineSparksForm.email || accountEmail()).trim();
+    const childNickname = String(shorelineSparksForm.childNickname || "").trim();
+    if (!guardianName || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setShorelineState((current) => ({ ...current, error: "Add parent or guardian name and a valid email before applying." }));
+      return;
+    }
+    if (!childNickname) {
+      setShorelineState((current) => ({ ...current, error: "Use a child first name or nickname only." }));
+      return;
+    }
+    if (!shorelineSparksForm.guardianConfirmed || !shorelineSparksForm.inventoryLimitedAck || !shorelineSparksForm.quantityLimitAck || !shorelineSparksForm.antiResaleAck) {
+      setShorelineState((current) => ({ ...current, error: "Please confirm the Little Sparks parent and program rules." }));
+      return;
+    }
+    setShorelineSaving("sparks");
+    setShorelineState((current) => ({ ...current, error: "", message: "" }));
+    try {
+      const application = await submitLittleSparksApplication(user, { ...shorelineSparksForm, email, guardianName });
+      setShorelineState((current) => ({ ...current, littleSparksApplication: application, message: "Little Sparks application submitted for review." }));
+      setCurrentUserProfile((current) => ({
+        ...current,
+        littleSparksStatus: application.status,
+      }));
+      setVaultToast("Little Sparks application submitted.");
+    } catch (error) {
+      logAppError("shoreline_sparks_submit", error, { userId: user?.id }, "normal");
+      setShorelineState((current) => ({ ...current, error: error.message || "Could not submit Little Sparks application." }));
+    } finally {
+      setShorelineSaving("");
+    }
+  }
+
+  async function updateShorelineAdminStatus(type, entry, status) {
+    if (!adminToolsVisible || !entry?.id) return;
+    try {
+      if (type === "beta") {
+        const request = await updateBetaAccessRequestStatus(entry.id, status, entry.adminNotes || "");
+        setShorelineState((current) => ({
+          ...current,
+          adminBetaRequests: (current.adminBetaRequests || []).map((item) => item.id === request.id ? request : item),
+        }));
+        setVaultToast(`Beta request marked ${statusLabel(request.status)}.`);
+      } else {
+        const application = await updateLittleSparksApplicationStatus(entry.id, status, entry.adminNotes || "");
+        setShorelineState((current) => ({
+          ...current,
+          adminLittleSparksApplications: (current.adminLittleSparksApplications || []).map((item) => item.id === application.id ? application : item),
+        }));
+        setVaultToast(`Little Sparks application marked ${statusLabel(application.status)}.`);
+      }
+    } catch (error) {
+      logAppError("shoreline_admin_status", error, { type, id: entry.id, status }, "normal");
+      setVaultToast(`Could not update ${type === "beta" ? "beta request" : "Little Sparks application"}.`);
+    }
   }
 
   async function saveProfileSettings(event) {
@@ -8546,8 +8711,10 @@ export default function App() {
                 terms: SIGNUP_TERMS_TEXT,
                 beta: authBetaAcknowledged ? SIGNUP_BETA_ACK_TEXT : "",
               },
-              beta_access_status: (betaReadinessData.readiness?.betaAccessMode || "open_beta") === "open_beta" ? "approved" : "pending",
-              beta_access_requested_at: consentTimestamp,
+              beta_status: "not_requested",
+              beta_access_status: "not_requested",
+              little_sparks_status: "not_applied",
+              app_access: false,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "id" }
@@ -8576,8 +8743,8 @@ export default function App() {
         setAuthTermsAccepted(false);
         setAuthBetaAcknowledged(false);
       }
-      setAuthMessage(authMode === "signup" ? "Account created. You are signed in." : "Signed in.");
-      setVaultToast("Signed in. Beta data remains saved on this device.");
+      setAuthMessage(authMode === "signup" ? "Account created. Request access from the Shoreline screen." : "Signed in.");
+      setVaultToast(authMode === "signup" ? "Account created. Request access from the Shoreline screen." : "Signed in.");
     } catch (error) {
       const message = normalizeAuthErrorMessage(error.message);
       setAuthError(message);
@@ -14903,6 +15070,68 @@ function renderForgeHeader() {
     if (normalized !== "admin") setAdminEditMode(false);
   };
   useEffect(() => {
+    const email = accountEmail();
+    const fullName = currentUserProfile?.fullName || currentUserProfile?.displayName || "";
+    setShorelineBetaForm((current) => ({
+      ...current,
+      fullName: current.fullName || fullName,
+      email: current.email || email,
+    }));
+    setShorelineSparksForm((current) => ({
+      ...current,
+      guardianName: current.guardianName || fullName,
+      email: current.email || email,
+    }));
+  }, [user?.id, currentUserProfile?.fullName, currentUserProfile?.displayName, currentUserProfile?.email]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadAccessState() {
+      if (!user?.id || user.id === "local-beta" || guestPreviewActive) {
+        setShorelineState((current) => ({ ...current, loading: false, error: "", betaRequest: null, littleSparksApplication: null }));
+        return;
+      }
+      setShorelineState((current) => ({ ...current, loading: true, error: "" }));
+      try {
+        const next = await loadShorelineAccessState(user);
+        if (!active) return;
+        setShorelineState((current) => ({ ...current, ...next, loading: false, error: "" }));
+      } catch (error) {
+        if (!active) return;
+        setShorelineState((current) => ({ ...current, loading: false, error: "Access request tables are not available yet. An admin needs to apply the Shoreline migration." }));
+        logAppError("shoreline_access_load", error, { userId: user.id }, "normal");
+      }
+    }
+    loadAccessState();
+    return () => {
+      active = false;
+    };
+  }, [user?.id, guestPreviewActive]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadAdminRequests() {
+      if (!adminToolsVisible) return;
+      try {
+        const next = await loadShorelineAdminRequests();
+        if (!active) return;
+        setShorelineState((current) => ({
+          ...current,
+          adminBetaRequests: next.betaRequests,
+          adminLittleSparksApplications: next.littleSparksApplications,
+        }));
+      } catch (error) {
+        if (!active) return;
+        logAppError("shoreline_admin_load", error, {}, "normal");
+      }
+    }
+    loadAdminRequests();
+    return () => {
+      active = false;
+    };
+  }, [adminToolsVisible]);
+
+  useEffect(() => {
     if (!adminEditModeAvailable && adminEditMode) {
       setAdminEditMode(false);
     }
@@ -20745,12 +20974,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (!adminToolsVisible) return null;
     const blockers = betaReadinessData.readiness?.blockers || [];
     const reviewCounts = {
-      "Kids Program Applications": (betaReadinessData.kidsApplications || []).filter((entry) => entry.status === "pending_review").length,
+      "Kids Program Applications": (shorelineState.adminLittleSparksApplications || []).filter((entry) => entry.status === "pending").length + (betaReadinessData.kidsApplications || []).filter((entry) => entry.status === "pending_review").length,
       "Data Requests": (betaReadinessData.dataRequests || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
       "User Management": 1,
       "App Error Logs": (betaReadinessData.appErrorLogs || []).length,
       "Sponsor Interest": (betaReadinessData.sponsorInterest || []).filter((entry) => ["new", "pending"].includes(entry.status || "new")).length,
       "Beta Feedback": (betaReadinessData.betaFeedback || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
+      "Beta Access": (shorelineState.adminBetaRequests || []).filter((entry) => ["pending", "waitlist"].includes(entry.status)).length,
       "Store Reports": scoutNeedsReviewReports.length,
       "Catalog Corrections": suggestions.filter((entry) => getSuggestionReviewSection(entry) === "catalog").length,
     };
@@ -20907,6 +21137,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderBetaAdminReviewQueues() {
     if (!adminToolsVisible) return null;
+    const showBetaAccess = adminReviewFilter === "All" || adminReviewFilter === "Beta Access";
     const showKids = adminReviewFilter === "All" || adminReviewFilter === "Kids Program Applications";
     const showSponsor = adminReviewFilter === "All" || adminReviewFilter === "Sponsor Interest";
     const showFeedback = adminReviewFilter === "All" || adminReviewFilter === "Beta Feedback";
@@ -20996,6 +21227,47 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           </section>
         ) : null}
+        {showBetaAccess ? (
+          <section className="settings-subsection beta-review-queue">
+            <div className="compact-card-header">
+              <div>
+                <h3>Beta Access Requests</h3>
+                <p>Approve, deny, waitlist, or reset requests. Approval unlocks the full app.</p>
+              </div>
+              <span className="status-badge">{(shorelineState.adminBetaRequests || []).length} total</span>
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {(shorelineState.adminBetaRequests || []).length ? shorelineState.adminBetaRequests.map((entry) => (
+                <article className="inventory-card compact-card" key={entry.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{entry.fullName || entry.email}</strong>
+                      <p>{maskEmail(entry.email)} | {entry.cityArea || "Area not provided"} | {entry.collectorType || "collector"}</p>
+                    </div>
+                    <span className={`status-badge ${entry.status}`}>{statusLabel(entry.status)}</span>
+                  </div>
+                  <p className="compact-subtitle">{entry.reason || "No beta access note."}</p>
+                  <div className="detail-grid compact-detail-grid">
+                    <DetailItem label="Local" value={entry.localAreaAnswer || "Not answered"} />
+                    <DetailItem label="Social" value={entry.socialHandle || "None"} />
+                    <DetailItem label="Rules" value={entry.rulesAgreed ? "Agreed" : "Missing"} />
+                    <DetailItem label="Submitted" value={entry.createdAt ? shortDate(entry.createdAt) : "No date"} />
+                  </div>
+                  <div className="quick-actions">
+                    {BETA_REQUEST_STATUSES.filter((status) => status !== "not_requested").map((status) => (
+                      <button type="button" className="secondary-button" key={status} onClick={() => void updateShorelineAdminStatus("beta", entry, status)}>{statusLabel(status)}</button>
+                    ))}
+                  </div>
+                </article>
+              )) : (
+                <div className="empty-state">
+                  <h3>No beta requests yet</h3>
+                  <p>Signed-in users submit requests from the Shoreline Access screen.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
         {showKids ? (
           <section className="settings-subsection beta-review-queue">
             <div className="compact-card-header">
@@ -21006,6 +21278,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <span className="status-badge">{(betaReadinessData.kidsApplications || []).length} total</span>
             </div>
             <div className="inventory-list compact-inventory-list">
+              {(shorelineState.adminLittleSparksApplications || []).length ? shorelineState.adminLittleSparksApplications.map((entry) => (
+                <article className="inventory-card compact-card" key={entry.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{entry.guardianName || entry.email}</strong>
+                      <p>{maskEmail(entry.email)} | {entry.cityArea || "Area not provided"} | Child: {entry.childNickname || "Nickname hidden"}</p>
+                    </div>
+                    <span className={`status-badge ${entry.status}`}>{statusLabel(entry.status)}</span>
+                  </div>
+                  <p className="compact-subtitle">{entry.applicationNote || entry.hopedProducts || "No Little Sparks note."}</p>
+                  <div className="detail-grid compact-detail-grid">
+                    <DetailItem label="Age" value={entry.childAge ? String(entry.childAge) : "Not provided"} />
+                    <DetailItem label="Products" value={entry.hopedProducts || "Not provided"} />
+                    <DetailItem label="Parent confirmed" value={entry.guardianConfirmed ? "Yes" : "No"} />
+                    <DetailItem label="Submitted" value={entry.createdAt ? shortDate(entry.createdAt) : "No date"} />
+                  </div>
+                  <div className="quick-actions">
+                    {LITTLE_SPARKS_STATUSES.filter((status) => status !== "not_applied").map((status) => (
+                      <button type="button" className="secondary-button" key={status} onClick={() => void updateShorelineAdminStatus("sparks", entry, status)}>{statusLabel(status)}</button>
+                    ))}
+                  </div>
+                </article>
+              )) : null}
               {(betaReadinessData.kidsApplications || []).length ? betaReadinessData.kidsApplications.map((entry) => (
                 <article className="inventory-card compact-card" key={entry.id}>
                   <div className="compact-card-header">
@@ -21023,12 +21318,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     ))}
                   </div>
                 </article>
-              )) : (
+              )) : !(shorelineState.adminLittleSparksApplications || []).length ? (
                 <div className="empty-state">
                   <h3>No Kids Program applications pending</h3>
                   <p>Applications appear here after a signed-in user submits the Kids Program form.</p>
                 </div>
-              )}
+              ) : null}
             </div>
           </section>
         ) : null}
@@ -21275,8 +21570,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderAdminOperationsDashboard() {
     const openSuggestions = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status));
     const listingReviewItems = workspaceMarketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
-    const betaRequests = (betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused"].includes(entry.status || "pending"));
-    const kidsApplications = betaReadinessData.kidsApplications || [];
+    const betaRequests = [
+      ...(shorelineState.adminBetaRequests || []).filter((entry) => ["pending", "waitlist"].includes(entry.status || "pending")),
+      ...(betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused"].includes(entry.status || "pending")),
+    ];
+    const kidsApplications = [...(shorelineState.adminLittleSparksApplications || []), ...(betaReadinessData.kidsApplications || [])];
     const sponsorRows = betaReadinessData.sponsorInterest || [];
     const auditLogs = betaReadinessData.auditLogs || [];
     const announcementCount = (betaReadinessData.notifications || []).filter((entry) => entry.type === "announcement").length;
@@ -21287,7 +21585,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       { title: "Announcements / New Stuff", value: announcementCount, helper: "Launch notes and app updates", filter: "Announcements / New Stuff" },
       { title: "Users & Usernames", value: 1 + (betaReadinessData.betaFeedback || []).length, helper: "Search users, usernames, badges", filter: "User Management" },
       { title: "Family / Kid Accounts", value: kidsApplications.length, helper: "Parent links and kid safety review", filter: "Family / Kid Accounts" },
-      { title: "Kids Program", value: kidsApplications.filter((entry) => entry.status === "pending_review").length, helper: "Applications and fair-access status", filter: "Kids Program Applications" },
+      { title: "Kids Program", value: kidsApplications.filter((entry) => ["pending", "pending_review"].includes(entry.status)).length, helper: "Applications and fair-access status", filter: "Kids Program Applications" },
       { title: "Marketplace", value: listingReviewItems.length, helper: "Listings, reports, fair trade review", filter: "Marketplace Listings" },
       { title: "Memberships / Billing", value: subscriptionProfile?.subscriptionPlan || "free", helper: "Modeled membership status only", filter: "Memberships / Billing" },
       { title: "Shops / Seller Verification", value: sponsorRows.length + shopWorkspaces.length, helper: "Card shops, sponsors, sellers", filter: "Shops / Seller Verification" },
@@ -24690,26 +24988,124 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
-  if (user && !guestPreviewActive && !betaAccessAllowed()) {
+  function renderShorelineAccessGate() {
+    const betaStatus = normalizeBetaStatus(shorelineState.betaRequest?.status || currentUserProfile?.betaStatus || currentUserProfile?.betaAccessStatus);
+    const sparksStatus = littleSparksStatus();
     return (
-      <div className="app app-beta-waitlist">
-        <header className="header app-shell-header app-shell-header--full">
-          <h1>E&amp;T TCG</h1>
-          <p>Ember &amp; Tide beta access</p>
-        </header>
-        <main className="main auth-main">
-          <section className="panel auth-panel">
-            <h2>Beta access pending</h2>
-            <p>You&apos;re on the Ember &amp; Tide beta waitlist. We&apos;ll let you know when your access is approved.</p>
-            <p className="compact-subtitle">Current mode: {betaAccessMode().replace(/_/g, " ")}. Status: {userBetaAccessStatus()}.</p>
-            <div className="quick-actions">
-              <button type="button" onClick={startGuestPreview}>Preview App</button>
-              <button type="button" className="secondary-button" onClick={signOut}>Log Out</button>
+      <div className="app app-shoreline-access">
+        <main className="main shoreline-access-main">
+          <section className="shoreline-hero glass-panel">
+            <div className="shoreline-brand-mark" aria-hidden="true">
+              <span>◆</span>
             </div>
+            <div>
+              <p className="section-kicker">Ember &amp; Tide access</p>
+              <h1>You&apos;re on the shoreline 🔥🌊</h1>
+              <p>
+                Request beta access or apply for the Little Sparks Kids Program. Once approved, you&apos;ll unlock the full Ember &amp; Tide app experience.
+              </p>
+            </div>
+            <div className="shoreline-status-grid" aria-label="Access status">
+              <article className="glass-card compact-card">
+                <span className={`status-badge ${betaStatus}`}>{statusLabel(betaStatus)}</span>
+                <strong>Beta access</strong>
+                <small>{shorelineState.betaRequest?.updatedAt ? `Updated ${shortDate(shorelineState.betaRequest.updatedAt)}` : "No approved beta access yet"}</small>
+              </article>
+              <article className="glass-card compact-card">
+                <span className={`status-badge ${sparksStatus}`}>{statusLabel(sparksStatus)}</span>
+                <strong>Little Sparks</strong>
+                <small>{shorelineState.littleSparksApplication?.updatedAt ? `Updated ${shortDate(shorelineState.littleSparksApplication.updatedAt)}` : "No application yet"}</small>
+              </article>
+            </div>
+            <button type="button" className="secondary-button" onClick={signOut}>Log out</button>
+          </section>
+
+          {shorelineState.loading ? <div className="glass-card shoreline-message">Loading access status...</div> : null}
+          {shorelineState.message ? <div className="glass-card shoreline-message" role="status">{shorelineState.message}</div> : null}
+          {shorelineState.error ? <div className="glass-card shoreline-message shoreline-error" role="alert">{shorelineState.error}</div> : null}
+
+          <section className="shoreline-form-grid">
+            <form className="shoreline-form glass-card" onSubmit={handleSubmitShorelineBetaRequest}>
+              <div className="compact-card-header">
+                <div>
+                  <p className="section-kicker">Beta access</p>
+                  <h2>Request full app access</h2>
+                </div>
+                <span className={`status-badge ${betaStatus}`}>{statusLabel(betaStatus)}</span>
+              </div>
+              <label>Full name<input value={shorelineBetaForm.fullName} onChange={(event) => updateShorelineBetaField("fullName", event.target.value)} /></label>
+              <label>Email<input type="email" value={shorelineBetaForm.email} onChange={(event) => updateShorelineBetaField("email", event.target.value)} /></label>
+              <label>City / area<input value={shorelineBetaForm.cityArea} onChange={(event) => updateShorelineBetaField("cityArea", event.target.value)} placeholder="Hampton Roads, Fredericksburg, Virginia..." /></label>
+              <label>Collector type
+                <select value={shorelineBetaForm.collectorType} onChange={(event) => updateShorelineBetaField("collectorType", event.target.value)}>
+                  <option value="parent_family">Parent / family</option>
+                  <option value="kid_collector">Kid collector</option>
+                  <option value="casual_collector">Casual collector</option>
+                  <option value="seller">Seller</option>
+                  <option value="local_shop">Local shop</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label>Why do you want beta access?<textarea value={shorelineBetaForm.reason} onChange={(event) => updateShorelineBetaField("reason", event.target.value)} /></label>
+              <label>Are you local to Hampton Roads, Fredericksburg, or Virginia?
+                <select value={shorelineBetaForm.localAreaAnswer} onChange={(event) => updateShorelineBetaField("localAreaAnswer", event.target.value)}>
+                  <option value="">Choose one</option>
+                  <option value="hampton_roads">Hampton Roads</option>
+                  <option value="fredericksburg">Fredericksburg</option>
+                  <option value="virginia">Virginia</option>
+                  <option value="not_local">Not local</option>
+                </select>
+              </label>
+              <label>Optional social handle<input value={shorelineBetaForm.socialHandle} onChange={(event) => updateShorelineBetaField("socialHandle", event.target.value)} /></label>
+              <label className="checkbox-row">
+                <input type="checkbox" checked={shorelineBetaForm.rulesAgreed} onChange={(event) => updateShorelineBetaField("rulesAgreed", event.target.checked)} />
+                <span>I agree to the community rules and fair-use expectations.</span>
+              </label>
+              <button type="submit" className="ember-gradient-button" disabled={shorelineSaving === "beta"}>{shorelineSaving === "beta" ? "Submitting..." : "Request Beta Access"}</button>
+            </form>
+
+            <form className="shoreline-form glass-card" onSubmit={handleSubmitLittleSparksApplication}>
+              <div className="compact-card-header">
+                <div>
+                  <p className="section-kicker">Little Sparks</p>
+                  <h2>Apply for Kids Program access</h2>
+                </div>
+                <span className={`status-badge ${sparksStatus}`}>{statusLabel(sparksStatus)}</span>
+              </div>
+              <label>Parent / guardian name<input value={shorelineSparksForm.guardianName} onChange={(event) => updateShorelineSparksField("guardianName", event.target.value)} /></label>
+              <label>Email<input type="email" value={shorelineSparksForm.email} onChange={(event) => updateShorelineSparksField("email", event.target.value)} /></label>
+              <label>Child first name or nickname only<input value={shorelineSparksForm.childNickname} onChange={(event) => updateShorelineSparksField("childNickname", event.target.value)} /></label>
+              <label>Child age<input type="number" min="0" max="17" value={shorelineSparksForm.childAge} onChange={(event) => updateShorelineSparksField("childAge", event.target.value)} /></label>
+              <label>City / area<input value={shorelineSparksForm.cityArea} onChange={(event) => updateShorelineSparksField("cityArea", event.target.value)} /></label>
+              <label>What Pokémon products is the child hoping to find?<textarea value={shorelineSparksForm.hopedProducts} onChange={(event) => updateShorelineSparksField("hopedProducts", event.target.value)} /></label>
+              <label>Short note about why they are applying<textarea value={shorelineSparksForm.applicationNote} onChange={(event) => updateShorelineSparksField("applicationNote", event.target.value)} /></label>
+              {[
+                ["guardianConfirmed", "Parent / guardian is submitting the application."],
+                ["inventoryLimitedAck", "Program access depends on inventory."],
+                ["quantityLimitAck", "Products may be limited to kid/family-focused quantities."],
+                ["antiResaleAck", "Ember & Tide may deny or remove access for abuse or reselling behavior."],
+              ].map(([field, label]) => (
+                <label className="checkbox-row" key={field}>
+                  <input type="checkbox" checked={Boolean(shorelineSparksForm[field])} onChange={(event) => updateShorelineSparksField(field, event.target.checked)} />
+                  <span>{label}</span>
+                </label>
+              ))}
+              <button type="submit" className="tide-gradient-button" disabled={shorelineSaving === "sparks"}>{shorelineSaving === "sparks" ? "Submitting..." : "Apply for Little Sparks"}</button>
+            </form>
           </section>
         </main>
+        {vaultToast ? (
+          <div className="vault-toast" role="status">
+            <span>{vaultToast}</span>
+            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
+          </div>
+        ) : null}
       </div>
     );
+  }
+
+  if (user && !guestPreviewActive && !betaAccessAllowed()) {
+    return renderShorelineAccessGate();
   }
 
   return (
@@ -25601,6 +25997,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("adminReview"))}>Open Admin Dashboard</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("betaReadiness"))}>Beta Readiness Dashboard</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("All"); setActiveTab("adminReview"); })}>Import Status & Review Queue</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); })}>Beta Access Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); })}>Kids Program Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); })}>Beta Feedback Review</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Sponsor Interest"); setActiveTab("adminReview"); })}>Sponsor Interest Review</button>
