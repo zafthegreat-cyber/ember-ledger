@@ -1099,6 +1099,81 @@ const BLANK_MULTI_DESTINATION_FORM = {
     correctionNotes: "",
   },
 };
+const MULTI_DESTINATION_STEPS = ["item", "destination", "details", "review"];
+const MULTI_DESTINATION_STEP_LABELS = {
+  item: "Select Item",
+  destination: "Choose Where",
+  details: "Add Details",
+  review: "Review",
+};
+const INVENTORY_ITEMS_SUPABASE_COLUMNS = new Set([
+  "user_id",
+  "workspace_id",
+  "owner_user_id",
+  "visibility",
+  "name",
+  "sku",
+  "buyer",
+  "category",
+  "store",
+  "quantity",
+  "unit_cost",
+  "sale_price",
+  "purchase_price",
+  "receipt_image",
+  "item_image",
+  "item_image_source",
+  "item_image_status",
+  "item_image_source_url",
+  "item_image_last_updated",
+  "item_image_needs_review",
+  "barcode",
+  "catalog_product_id",
+  "catalog_variant_id",
+  "catalog_product_name",
+  "external_product_source",
+  "external_product_id",
+  "tcgplayer_product_id",
+  "tcgplayer_url",
+  "market_price",
+  "market_value",
+  "market_value_source",
+  "market_value_updated_at",
+  "low_price",
+  "mid_price",
+  "high_price",
+  "msrp_price",
+  "last_price_checked",
+  "status",
+  "listing_platform",
+  "listing_url",
+  "listed_price",
+  "platform_fee",
+  "shipping_cost",
+  "estimated_profit",
+  "action_notes",
+  "condition_name",
+  "language",
+  "finish",
+  "printing",
+  "updated_at",
+  "created_at",
+  "archived_at",
+  "archived_by",
+]);
+const INVENTORY_ITEMS_METADATA_FIELDS = [
+  ["purchaser_id", "Purchaser ID"],
+  ["purchaser_name", "Purchaser"],
+  ["set_code", "Set code"],
+  ["set_name", "Set"],
+  ["expansion", "Expansion"],
+  ["product_line", "Product line"],
+  ["product_type", "Product type"],
+  ["pack_count", "Pack count"],
+  ["vault_status", "Vault status"],
+  ["storage_location", "Storage"],
+  ["notes", "Notes"],
+];
 const BLANK_QUICK_FIND_FORM = {
   lookup: "",
 };
@@ -3674,6 +3749,7 @@ export default function App() {
   const [activeFlowModal, setActiveFlowModal] = useState(null);
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
+  const [multiDestinationStep, setMultiDestinationStep] = useState("item");
   const [multiDestinationSaving, setMultiDestinationSaving] = useState(false);
   const [multiDestinationMessage, setMultiDestinationMessage] = useState("");
   const [marketAddChooserProductId, setMarketAddChooserProductId] = useState("");
@@ -6253,6 +6329,7 @@ export default function App() {
       forge,
       tidetradr,
       catalogSearchQuery,
+      initialStep,
       ...rest
     } = overrides;
 
@@ -6294,6 +6371,7 @@ export default function App() {
     flowModalBaselineRef.current.multiDestinationAdd = nextForm;
     setMultiDestinationMessage("");
     setMultiDestinationSaving(false);
+    setMultiDestinationStep(MULTI_DESTINATION_STEPS.includes(initialStep) ? initialStep : "item");
     setMultiDestinationForm(nextForm);
   };
   const updateMultiDestinationField = (field, value) => {
@@ -6329,6 +6407,96 @@ export default function App() {
     }
     return next;
   });
+
+  const selectedMultiDestinationKeys = (form = multiDestinationForm) =>
+    Object.entries(form.destinations || {})
+      .filter(([, enabled]) => Boolean(enabled))
+      .map(([key]) => key);
+
+  const multiDestinationDestinationLabel = (destination) => ({
+    vault: "Vault",
+    wishlist: "Wishlist",
+    forge: "Forge",
+    tidetradr: "Market",
+  }[destination] || destination);
+
+  function validatePositiveQuantity(label, value) {
+    const quantity = Number(value);
+    if (!Number.isFinite(quantity) || quantity < 1) return `${label} must be at least 1.`;
+    return "";
+  }
+
+  function validateOptionalMoney(label, value) {
+    if (value === "" || value === null || value === undefined) return "";
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount < 0) return `${label} must be 0 or higher.`;
+    return "";
+  }
+
+  function validateMultiDestinationStep(step = multiDestinationStep, form = multiDestinationForm) {
+    const itemName = String(form.itemName || "").trim();
+    const selectedDestinations = selectedMultiDestinationKeys(form);
+    if (step === "item" || step === "review") {
+      if (!itemName) return "Item name is required.";
+    }
+    if (step === "destination" || step === "details" || step === "review") {
+      if (!selectedDestinations.length) return "Destination is required. Choose Forge, Vault, Market, or Wishlist.";
+    }
+    if (step === "details" || step === "review") {
+      if (form.destinations?.forge) {
+        const forgeError = validatePositiveQuantity("Forge quantity", form.forge?.quantity)
+          || validateOptionalMoney("Forge cost basis", form.forge?.unitCost)
+          || validateOptionalMoney("Forge planned sell price", form.forge?.plannedSellPrice);
+        if (forgeError) return forgeError;
+      }
+      if (form.destinations?.vault) {
+        const vaultError = validatePositiveQuantity("Vault quantity", form.vault?.quantity)
+          || validateOptionalMoney("Vault cost basis", form.vault?.unitCost);
+        if (vaultError) return vaultError;
+      }
+      if (form.destinations?.wishlist) {
+        const wishlistError = validatePositiveQuantity("Wishlist quantity", form.wishlist?.quantity)
+          || validateOptionalMoney("Wishlist target price", form.wishlist?.targetPrice);
+        if (wishlistError) return wishlistError;
+      }
+      if (form.destinations?.tidetradr) {
+        const marketError = validateOptionalMoney("Market MSRP", form.tidetradr?.msrpPrice || form.msrpPrice);
+        if (marketError) return marketError;
+      }
+    }
+    return "";
+  }
+
+  function advanceMultiDestinationStep(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const validationMessage = validateMultiDestinationStep(multiDestinationStep, multiDestinationForm);
+    if (validationMessage) {
+      setMultiDestinationMessage(validationMessage);
+      return;
+    }
+    const currentIndex = MULTI_DESTINATION_STEPS.indexOf(multiDestinationStep);
+    setMultiDestinationMessage("");
+    setMultiDestinationStep(MULTI_DESTINATION_STEPS[Math.min(MULTI_DESTINATION_STEPS.length - 1, currentIndex + 1)] || "review");
+  }
+
+  function goBackMultiDestinationStep(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const currentIndex = MULTI_DESTINATION_STEPS.indexOf(multiDestinationStep);
+    setMultiDestinationMessage("");
+    setMultiDestinationStep(MULTI_DESTINATION_STEPS[Math.max(0, currentIndex - 1)] || "item");
+  }
+
+  function multiDestinationFailureMessage(failures = []) {
+    const firstFailure = String(failures[0] || "").trim();
+    if (!firstFailure) return "Could not save item.";
+    const compactFailure = firstFailure
+      .replace(/\s*\|\s*/g, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 180);
+    return `Could not save item: ${compactFailure}`;
+  }
 
   function selectMultiDestinationCatalogProduct(productOrId) {
     const product = typeof productOrId === "object"
@@ -7482,29 +7650,63 @@ export default function App() {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "")) ? value : null;
   }
 
+  function sanitizeInventorySupabaseRow(row = {}) {
+    const metadata = [];
+    INVENTORY_ITEMS_METADATA_FIELDS.forEach(([key, label]) => {
+      const value = row[key];
+      if (value === null || value === undefined || value === "" || value === 0) return;
+      metadata.push(`${label}: ${value}`);
+    });
+    const next = {};
+    Object.entries(row).forEach(([key, value]) => {
+      if (!INVENTORY_ITEMS_SUPABASE_COLUMNS.has(key) || value === undefined) return;
+      next[key] = value;
+    });
+    if (!next.buyer && row.purchaser_name) next.buyer = row.purchaser_name;
+    if (metadata.length) {
+      next.action_notes = [next.action_notes, `Catalog/details: ${metadata.join("; ")}`].filter(Boolean).join(" | ");
+    }
+    return next;
+  }
+
   function inventoryRecordToSupabaseRow(record = {}) {
-    return {
+    const marketValue = Number(record.marketValue ?? record.market_value ?? record.marketPrice ?? record.market_price ?? 0);
+    const unitCost = Number(record.unitCost ?? record.unit_cost ?? record.purchasePrice ?? record.purchase_price ?? 0);
+    return sanitizeInventorySupabaseRow({
       user_id: user?.id,
       workspace_id: uuidOrNull(record.workspaceId || record.workspace_id || activeWorkspace?.id),
+      owner_user_id: uuidOrNull(record.ownerUserId || record.owner_user_id || user?.id),
+      visibility: record.visibility || defaultVisibilityForWorkspace(activeWorkspace),
       name: record.name || record.itemName || "",
+      sku: record.sku || "",
       buyer: record.buyer || record.purchaserName || "",
       purchaser_id: uuidOrNull(record.purchaserId || record.purchaser_id),
       purchaser_name: record.purchaserName || record.purchaser_name || record.buyer || "",
       category: record.category || "Pokemon",
       store: record.store || record.location || "",
       quantity: Number(record.quantity || 1),
-      unit_cost: Number(record.unitCost || record.unit_cost || 0),
+      unit_cost: unitCost,
+      purchase_price: Number(record.purchasePrice ?? record.purchase_price ?? unitCost ?? 0),
       sale_price: Number(record.salePrice || record.plannedSalePrice || record.sale_price || 0),
       receipt_image: record.receiptImage || record.receipt_image || "",
       item_image: record.itemImage || record.item_image || "",
+      item_image_source: record.itemImageSource || record.item_image_source || (record.itemImage || record.item_image ? "user" : "placeholder"),
+      item_image_status: record.itemImageStatus || record.item_image_status || (record.itemImage || record.item_image ? "user" : "placeholder"),
+      item_image_source_url: record.itemImageSourceUrl || record.item_image_source_url || "",
+      item_image_last_updated: record.itemImageLastUpdated || record.item_image_last_updated || null,
+      item_image_needs_review: Boolean(record.itemImageNeedsReview || record.item_image_needs_review),
       barcode: record.barcode || record.upc || "",
       catalog_product_id: uuidOrNull(record.catalogProductId || record.catalog_product_id),
       catalog_variant_id: uuidOrNull(record.catalogVariantId || record.catalog_variant_id),
       catalog_product_name: record.catalogProductName || record.catalog_product_name || "",
       external_product_source: record.externalProductSource || record.external_product_source || "TideTradr",
       external_product_id: record.externalProductId || record.external_product_id || "",
+      tcgplayer_product_id: record.tcgplayerProductId || record.tcgplayer_product_id || record.externalProductId || record.external_product_id || "",
       tcgplayer_url: record.tideTradrUrl || record.tcgplayer_url || "",
       market_price: Number(record.marketPrice || record.marketValue || 0),
+      market_value: marketValue,
+      market_value_source: record.marketValueSource || record.market_value_source || record.externalProductSource || record.external_product_source || "TideTradr",
+      market_value_updated_at: record.marketPrice || record.marketValue ? new Date().toISOString() : null,
       low_price: Number(record.lowPrice || 0),
       mid_price: Number(record.midPrice || 0),
       high_price: Number(record.highPrice || 0),
@@ -7524,7 +7726,7 @@ export default function App() {
       language: record.language || "English",
       finish: record.finish || "",
       printing: record.printing || "",
-    };
+    });
   }
 
   async function saveInventoryRecords(records = []) {
@@ -11511,17 +11713,14 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (multiDestinationSaving) return;
     if (blockGuestSave()) return;
     const saveMode = event.nativeEvent?.submitter?.value === "add-more" ? "add-more" : "close";
+    const reviewValidationMessage = validateMultiDestinationStep("review", multiDestinationForm);
+    if (reviewValidationMessage) {
+      setMultiDestinationStep(reviewValidationMessage.toLowerCase().includes("destination") ? "destination" : reviewValidationMessage.toLowerCase().includes("quantity") || reviewValidationMessage.toLowerCase().includes("price") || reviewValidationMessage.toLowerCase().includes("cost") ? "details" : "item");
+      setMultiDestinationMessage(reviewValidationMessage);
+      return;
+    }
     const itemName = String(multiDestinationForm.itemName || "").trim();
     const destinations = multiDestinationForm.destinations || {};
-    const selectedDestinationCount = Object.values(destinations).filter(Boolean).length;
-    if (!itemName) {
-      setMultiDestinationMessage("Enter an item name before adding.");
-      return;
-    }
-    if (!selectedDestinationCount) {
-      setMultiDestinationMessage("Choose at least one destination: Vault, Forge, Wishlist, or Market.");
-      return;
-    }
 
     setMultiDestinationSaving(true);
     setMultiDestinationMessage("Saving item...");
@@ -11768,13 +11967,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (uniqueSuccesses.length) setVaultToast(uniqueFailures.length ? `${uniqueSuccesses.join(" | ")}. Could not save item.` : uniqueSuccesses.join(" | "));
     if (!successes.length && uniqueFailures.length) setVaultToast("Could not save item.");
     if (failures.length) {
-      setMultiDestinationMessage("Could not save item. Check the destination details and try again.");
+      setMultiDestinationMessage(multiDestinationFailureMessage(uniqueFailures));
       setMultiDestinationSaving(false);
       return;
     }
     setMultiDestinationSaving(false);
     if (saveMode === "add-more") {
-      resetMultiDestinationForm();
+      resetMultiDestinationForm({ destinations });
       setMultiDestinationMessage("Saved. Ready for the next item.");
       return;
     }
@@ -12486,7 +12685,7 @@ function mapCatalog(row) {
           : existing.lastPriceChecked || null,
         updated_at: new Date().toISOString(),
       };
-      const { data, error } = await supabase.from("inventory_items").update(row).eq("id", existing.id).select().single();
+      const { data, error } = await supabase.from("inventory_items").update(sanitizeInventorySupabaseRow(row)).eq("id", existing.id).select().single();
       if (error) {
         console.error("Could not merge inventory restock", error);
         return showAppMessage("Could not save item.");
@@ -12551,7 +12750,7 @@ function mapCatalog(row) {
       printing: itemForm.printing || "",
     };
 
-    const { data, error } = await supabase.from("inventory_items").insert(row).select().single();
+    const { data, error } = await supabase.from("inventory_items").insert(sanitizeInventorySupabaseRow(row)).select().single();
     if (error) {
       console.error("Could not add inventory item", error);
       return showAppMessage("Could not save item.");
@@ -12710,7 +12909,7 @@ function mapCatalog(row) {
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase.from("inventory_items").update(row).eq("id", editingItemId).select().single();
+    const { data, error } = await supabase.from("inventory_items").update(sanitizeInventorySupabaseRow(row)).eq("id", editingItemId).select().single();
     if (error) {
       console.error("Could not update inventory item", error);
       return showAppMessage("Could not save item.");
@@ -12872,11 +13071,11 @@ function mapCatalog(row) {
 
     const { data, error } = await supabase
       .from("inventory_items")
-      .update({
+      .update(sanitizeInventorySupabaseRow({
         status: nextStatus,
         ...(vaultOption ? { vault_status: vaultOption.value } : {}),
         updated_at: new Date().toISOString(),
-      })
+      }))
       .eq("id", item.id)
       .select()
       .single();
@@ -24610,6 +24809,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         helper: "Catalog, watchlist, or product suggestion.",
       },
     ];
+    const selectedDestinations = selectedMultiDestinationKeys(multiDestinationForm);
+    const selectedDestinationOptions = destinationOptions.filter((option) => selectedDestinations.includes(option.key));
+    const currentStepIndex = Math.max(0, MULTI_DESTINATION_STEPS.indexOf(multiDestinationStep));
+    const reviewValidationMessage = validateMultiDestinationStep("review", multiDestinationForm);
+    const selectedItemSummary = selectedCatalog
+      ? `${catalogTitle(selectedCatalog)}${catalogExpansionName(selectedCatalog) ? ` | ${catalogExpansionName(selectedCatalog)}` : ""}`
+      : String(multiDestinationForm.itemName || "No item selected").trim();
     const renderDestinationWorkspaceField = (destination, label) => {
       const options = destinationWorkspaceOptions[destination] || workspaceSelectorOptions;
       return (
@@ -24630,9 +24836,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd} noValidate>
         <div className="universal-review-banner">
-          <strong>Review before save</strong>
-          <span>Search and scanner matches are drafts here. Choose Vault, Forge, Wishlist, or TideTradr, then submit to save.</span>
+          <strong>{MULTI_DESTINATION_STEP_LABELS[multiDestinationStep] || "Review and Add"}</strong>
+          <span>Step {currentStepIndex + 1} of {MULTI_DESTINATION_STEPS.length}: select the item, choose where it belongs, add only the needed details, then review.</span>
         </div>
+        <div className="multi-destination-wizard-stepper" aria-label="Add item progress">
+          {MULTI_DESTINATION_STEPS.map((step, index) => (
+            <span
+              key={step}
+              className={`wizard-step-pill ${index === currentStepIndex ? "is-active" : ""} ${index < currentStepIndex ? "is-complete" : ""}`}
+            >
+              <small>{index + 1}</small>
+              {MULTI_DESTINATION_STEP_LABELS[step]}
+            </span>
+          ))}
+        </div>
+        {multiDestinationStep === "item" ? (
         <section className="flow-form-section">
           <h3>Shared Item Details</h3>
           <div className="flow-form-grid">
@@ -24838,7 +25056,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             />
           </Field>
         </section>
+        ) : null}
 
+        {multiDestinationStep === "destination" ? (
         <section className="flow-form-section">
           <h3>Destinations</h3>
           <div className="destination-checkbox-grid">
@@ -24856,7 +25076,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             })}
           </div>
         </section>
+        ) : null}
 
+        {multiDestinationStep === "details" ? (
+        <>
         {multiDestinationForm.destinations.vault ? (
           <section className="flow-form-section destination-settings">
             <h3>Vault Settings</h3>
@@ -25023,13 +25246,73 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           </section>
         ) : null}
+        {!selectedDestinationOptions.length ? (
+          <section className="flow-form-section destination-settings">
+            <h3>No destination selected</h3>
+            <p className="compact-subtitle">Go back to Choose Where and select Forge, Vault, Market, or Wishlist before adding details.</p>
+          </section>
+        ) : null}
+        </>
+        ) : null}
+
+        {multiDestinationStep === "review" ? (
+          <section className="flow-form-section wizard-review-section">
+            <h3>Review and Add</h3>
+            <div className="wizard-review-grid">
+              <div className="wizard-summary-card">
+                <span>Item</span>
+                <strong>{selectedItemSummary}</strong>
+                <small>
+                  {[multiDestinationForm.productType || selectedCatalog?.productType || "Type not set", multiDestinationForm.variant, multiDestinationForm.marketPrice ? `Market ${money(Number(multiDestinationForm.marketPrice))}` : ""].filter(Boolean).join(" | ")}
+                </small>
+              </div>
+              <div className="wizard-summary-card">
+                <span>Destination</span>
+                <strong>{selectedDestinationOptions.length ? selectedDestinationOptions.map((option) => option.title).join(", ") : "Missing"}</strong>
+                <small>{selectedDestinationOptions.length ? "Only selected destination fields will be saved." : "Choose where this item belongs before saving."}</small>
+              </div>
+              {multiDestinationForm.destinations.forge ? (
+                <div className="wizard-summary-card">
+                  <span>Forge</span>
+                  <strong>Qty {multiDestinationForm.forge.quantity || 1}</strong>
+                  <small>{[multiDestinationForm.forge.source, multiDestinationForm.forge.unitCost ? `Cost ${money(Number(multiDestinationForm.forge.unitCost))}` : "", multiDestinationForm.forge.plannedSellPrice ? `List ${money(Number(multiDestinationForm.forge.plannedSellPrice))}` : ""].filter(Boolean).join(" | ") || "Business inventory draft"}</small>
+                </div>
+              ) : null}
+              {multiDestinationForm.destinations.vault ? (
+                <div className="wizard-summary-card">
+                  <span>Vault</span>
+                  <strong>Qty {multiDestinationForm.vault.quantity || 1}</strong>
+                  <small>{[vaultStatusLabel(multiDestinationForm.vault.vaultStatus), multiDestinationForm.vault.storageLocation, multiDestinationForm.vault.unitCost ? `Cost ${money(Number(multiDestinationForm.vault.unitCost))}` : ""].filter(Boolean).join(" | ")}</small>
+                </div>
+              ) : null}
+              {multiDestinationForm.destinations.wishlist ? (
+                <div className="wizard-summary-card">
+                  <span>Wishlist</span>
+                  <strong>{multiDestinationForm.wishlist.priority || "Medium"} priority</strong>
+                  <small>{[multiDestinationForm.wishlist.quantity ? `Wanted ${multiDestinationForm.wishlist.quantity}` : "", multiDestinationForm.wishlist.targetPrice ? `Target ${money(Number(multiDestinationForm.wishlist.targetPrice))}` : "", multiDestinationForm.wishlist.desiredCondition || "Any condition"].filter(Boolean).join(" | ")}</small>
+                </div>
+              ) : null}
+              {multiDestinationForm.destinations.tidetradr ? (
+                <div className="wizard-summary-card">
+                  <span>Market</span>
+                  <strong>{selectedCatalog ? "Add to watchlist" : adminToolsVisible ? "Create catalog item" : "Submit suggestion"}</strong>
+                  <small>{multiDestinationForm.tidetradr.sourceUrl || "Market details can be completed later."}</small>
+                </div>
+              ) : null}
+            </div>
+            {reviewValidationMessage ? (
+              <p className="flow-inline-message is-warning" role="alert">{reviewValidationMessage}</p>
+            ) : (
+              <p className="flow-inline-message is-info" role="status">Ready to save. Use Save and Add More to keep this wizard open for another item.</p>
+            )}
+          </section>
+        ) : null}
 
         {multiDestinationMessage ? (
-          <p className={`flow-inline-message ${/could not|choose|enter/i.test(multiDestinationMessage) ? "is-warning" : "is-info"}`} role="status">
+          <p className={`flow-inline-message ${/could not|choose|enter|required|must/i.test(multiDestinationMessage) ? "is-warning" : "is-info"}`} role="status">
             {multiDestinationMessage}
           </p>
         ) : null}
-        <p className="compact-subtitle">Cancel and Add Item stay available in the modal footer.</p>
       </form>
     );
   }
@@ -26822,14 +27105,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </button>
               )}
               {activeFlowModal?.type === "multiDestinationAdd" ? (
-                <>
-                  <button type="submit" form="multi-destination-add-form" name="saveMode" value="add-more" className="secondary-button" disabled={multiDestinationSaving}>
-                    {multiDestinationSaving ? "Saving..." : "Save and Add More"}
-                  </button>
-                  <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" aria-label="Save and Close" disabled={multiDestinationSaving}>
-                    {multiDestinationSaving ? "Saving..." : "Save and Close"}
-                  </button>
-                </>
+                multiDestinationStep === "review" ? (
+                  <>
+                    <button type="button" className="secondary-button" onClick={goBackMultiDestinationStep} disabled={multiDestinationSaving}>
+                      Back
+                    </button>
+                    <button type="submit" form="multi-destination-add-form" name="saveMode" value="add-more" className="secondary-button" disabled={multiDestinationSaving}>
+                      {multiDestinationSaving ? "Saving..." : "Save and Add More"}
+                    </button>
+                    <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" aria-label="Save and Close" disabled={multiDestinationSaving}>
+                      {multiDestinationSaving ? "Saving..." : "Save and Close"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {multiDestinationStep !== "item" ? (
+                      <button type="button" className="secondary-button" onClick={goBackMultiDestinationStep}>
+                        Back
+                      </button>
+                    ) : null}
+                    <button type="button" onClick={advanceMultiDestinationStep}>
+                      Next
+                    </button>
+                  </>
+                )
               ) : null}
             </div>
           </section>

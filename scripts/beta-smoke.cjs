@@ -171,6 +171,19 @@ async function main() {
     await scope.getByLabel(label, { exact: true }).fill(String(value));
   }
 
+  function addWizardModal() {
+    return page.locator('.flow-modal[data-flow="multiDestinationAdd"]').first();
+  }
+
+  async function clickAddWizardNext() {
+    await addWizardModal().getByRole("button", { name: "Next", exact: true }).click();
+  }
+
+  async function ensureAddWizardDestination(form, destinationLabel) {
+    const destination = form.locator("label.destination-checkbox").filter({ hasText: new RegExp(destinationLabel, "i") }).locator("input");
+    if (!(await destination.isChecked())) await destination.check();
+  }
+
   async function openOverflowMenu(scope) {
     const candidates = scope.locator(".overflow-menu-button");
     const count = await candidates.count();
@@ -635,18 +648,20 @@ async function main() {
     await nav("Forge");
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form#multi-destination-add-form").first();
-    const forgeDestination = form.locator("label.destination-checkbox").filter({ hasText: /Forge/ }).locator("input");
-    if (!(await forgeDestination.isChecked())) await forgeDestination.check();
     await fillByLabel(form, "Item Name", "Smoke Forge ETB");
     await fillByLabel(form, "Type / Category", "Elite Trainer Box");
     await fillByLabel(form, "UPC / SKU if known", "098765432109");
+    await fillByLabel(form, "MSRP", "49.99");
+    await fillByLabel(form, "Market Price", "60");
+    await clickAddWizardNext();
+    await ensureAddWizardDestination(form, "Forge");
+    await clickAddWizardNext();
     await fillByLabel(form, "Quantity for Forge", "2");
     await fillByLabel(form, "Cost Basis", "40");
     await fillByLabel(form, "Planned Sell Price", "55");
     await fillByLabel(form, "Source / Purchase Location", "Smoke Shared Target");
-    await fillByLabel(form, "MSRP", "49.99");
-    await fillByLabel(form, "Market Price", "60");
-    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close|Add Item/ }).click();
+    await clickAddWizardNext();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
     await assertVisibleText("Smoke Forge ETB");
     const smokeForgeCard = page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }).first();
     await smokeForgeCard.getByRole("button", { name: "View" }).click();
@@ -711,12 +726,15 @@ async function main() {
     const vaultForm = page.locator("form#multi-destination-add-form").first();
     await fillByLabel(vaultForm, "Item Name", "Smoke Vault Binder");
     await fillByLabel(vaultForm, "Type / Category", "Binder");
-    await vaultForm.getByRole("checkbox", { name: /Vault/ }).check();
+    await fillByLabel(vaultForm, "Market Price", "30");
+    await clickAddWizardNext();
+    await ensureAddWizardDestination(vaultForm, "Vault");
+    await clickAddWizardNext();
     await fillByLabel(vaultForm, "Quantity for Vault", "1");
     await fillByLabel(vaultForm, "Collection Category", "Smoke Set");
     await fillByLabel(vaultForm, "Cost Basis", "20");
-    await fillByLabel(vaultForm, "Market Price", "30");
-    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close|Add Item/ }).click();
+    await clickAddWizardNext();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
     await assertVisibleText("Smoke Vault Binder");
 
     await nav("Forge");
@@ -743,9 +761,13 @@ async function main() {
     const wishlistForm = page.locator("form#multi-destination-add-form").first();
     await fillByLabel(wishlistForm, "Item Name", "Smoke Wishlist Box");
     await fillByLabel(wishlistForm, "Type / Category", "Collection Box");
+    await clickAddWizardNext();
+    await ensureAddWizardDestination(wishlistForm, "Wishlist");
+    await clickAddWizardNext();
     await fillByLabel(wishlistForm, "Quantity Wanted", "1");
     await fillByLabel(wishlistForm, "Target Price", "25");
-    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close|Add Item/ }).click();
+    await clickAddWizardNext();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
     await page.waitForTimeout(300);
     const wishlistRecord = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
