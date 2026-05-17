@@ -22701,3 +22701,877 @@ textarea::placeholder {
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   }
 }
+
+/* Combined mobile, desktop, and auth command-center polish.
+   This last layer tightens the older beta dashboard without touching data,
+   Supabase payloads, migrations, or feature logic. */
+:root {
+  --cmd-bg: #020511;
+  --cmd-panel: rgba(6, 13, 29, 0.76);
+  --cmd-line: rgba(121, 233, 255, 0.2);
+  --cmd-text: #f8fbff;
+  --cmd-muted: rgba(213, 230, 255, 0.68);
+  --cmd-ember: #ff7a18;
+  --cmd-pink: #ff3f9c;
+  --cmd-purple: #8b5cff;
+  --cmd-tide: #00d8ff;
+  --cmd-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+body {
+  background:
+    radial-gradient(circle at 9% 7%, rgba(255, 122, 24, 0.25), transparent 25rem),
+    radial-gradient(circle at 90% 9%, rgba(0, 216, 255, 0.24), transparent 28rem),
+    radial-gradient(circle at 52% 88%, rgba(255, 63, 156, 0.17), transparent 34rem),
+    linear-gradient(142deg, #020511 0%, #06152b 47%, #030612 100%) !important;
+  color: var(--cmd-text) !important;
+}
+
+.app {
+  color: var(--cmd-text);
+}
+
+.app-shell-header,
+.topbar,
+.main-tabs.app-main-tabs,
+.mobile-bottom-nav,
+.panel,
+.card,
+.section-card,
+.feature-card,
+.compact-card,
+.glass-card,
+.glass-panel,
+.standard-page-header,
+.auth-panel,
+.signed-out-landing,
+.drawer,
+.flow-modal,
+.quick-add-menu,
+.quick-add-sheet,
+.store-map-card,
+.marketplace-listing-card,
+.catalog-result-card,
+.tidepool-post-card,
+.empty-state {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
+    var(--cmd-panel) !important;
+  border: 1px solid var(--cmd-line) !important;
+  color: var(--cmd-text) !important;
+  box-shadow: var(--cmd-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(20px) saturate(1.28);
+}
+
+.panel p,
+.card p,
+.section-card p,
+.compact-card p,
+.standard-page-header p,
+.auth-panel p,
+.signed-out-landing p,
+.compact-subtitle,
+small {
+  color: var(--cmd-muted) !important;
+}
+
+.panel h2,
+.panel h3,
+.card h2,
+.card h3,
+.standard-page-header h2,
+.auth-panel h2,
+.signed-out-landing h2,
+.signed-out-landing strong {
+  color: var(--cmd-text) !important;
+}
+
+button,
+.secondary-button,
+.ghost-button,
+.auth-text-button,
+.inline-text-button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab),
+.gradient-button,
+.ember-gradient-button,
+.tide-gradient-button {
+  border-radius: 16px !important;
+}
+
+button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not([disabled]) {
+  background: linear-gradient(135deg, var(--cmd-ember), var(--cmd-pink) 52%, var(--cmd-purple)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  box-shadow: 0 16px 38px rgba(255, 63, 156, 0.2), 0 0 18px rgba(0, 216, 255, 0.12) !important;
+}
+
+.secondary-button,
+.ghost-button,
+.auth-text-button,
+.inline-text-button,
+button[disabled] {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    rgba(4, 10, 24, 0.72) !important;
+  border: 1px solid rgba(121, 233, 255, 0.2) !important;
+  color: var(--cmd-text) !important;
+  text-decoration: none !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 18px rgba(0, 216, 255, 0.08) !important;
+}
+
+button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+input,
+select,
+textarea,
+.search-input,
+.concept-search {
+  background: rgba(2, 6, 16, 0.78) !important;
+  border: 1px solid rgba(121, 233, 255, 0.18) !important;
+  color: var(--cmd-text) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(213, 230, 255, 0.48) !important;
+}
+
+.app-shell-header {
+  min-height: auto !important;
+  padding: 16px 22px !important;
+  border-radius: 28px !important;
+}
+
+.topbar {
+  padding: 10px !important;
+  border-radius: 26px !important;
+}
+
+.main-tabs.app-main-tabs,
+.mobile-bottom-nav {
+  background: rgba(3, 8, 20, 0.78) !important;
+  border-color: rgba(121, 233, 255, 0.18) !important;
+}
+
+.main-tab,
+.mobile-bottom-nav button {
+  color: rgba(248, 251, 255, 0.72) !important;
+}
+
+.main-tab.active,
+.mobile-bottom-nav button.active,
+.mobile-bottom-nav button[aria-current="page"] {
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 122, 24, 0.38), transparent 38%),
+    linear-gradient(135deg, rgba(255, 122, 24, 0.24), rgba(0, 216, 255, 0.13)) !important;
+  color: #fff !important;
+  border-color: rgba(255, 122, 24, 0.42) !important;
+}
+
+.floating-up-button {
+  display: none !important;
+}
+
+.standard-page-header,
+.hearth-command-hero,
+.forge-command-center,
+.vault-command-center,
+.tidepool-community-header,
+.kids-spark-header {
+  position: relative;
+  overflow: hidden;
+}
+
+.standard-page-header::after,
+.hearth-command-hero::after,
+.forge-command-center::after,
+.vault-command-center::after,
+.tidepool-community-header::after,
+.kids-spark-header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 44%, rgba(255, 255, 255, 0.055) 48%, transparent 53%),
+    radial-gradient(circle at 76% 26%, rgba(0, 216, 255, 0.12), transparent 22rem);
+}
+
+.section-hero-art {
+  min-height: 180px !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 38% 34%, rgba(255, 255, 255, 0.14), transparent 12%),
+    radial-gradient(circle at 70% 50%, rgba(0, 216, 255, 0.24), transparent 34%),
+    radial-gradient(circle at 30% 72%, rgba(255, 122, 24, 0.2), transparent 28%),
+    linear-gradient(145deg, rgba(255, 63, 156, 0.16), rgba(5, 12, 28, 0.9)) !important;
+  border: 1px solid rgba(121, 233, 255, 0.18) !important;
+}
+
+.section-hero-symbol {
+  font-size: 0 !important;
+}
+
+.section-hero-symbol::before {
+  font-size: clamp(1.4rem, 4vw, 3rem) !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 20px currentColor;
+}
+
+.section-hero-art--hearth .section-hero-symbol::before { content: "ET"; color: #ffb45f; }
+.section-hero-art--scout .section-hero-symbol::before { content: "SIG"; color: #85f4ff; }
+.section-hero-art--vault .section-hero-symbol::before { content: "DEEP"; color: #7be7ff; }
+.section-hero-art--market .section-hero-symbol::before { content: "EX"; color: #ff79d7; }
+.section-hero-art--forge .section-hero-symbol::before { content: "WRK"; color: #ffb45f; }
+.section-hero-art--tidepool .section-hero-symbol::before { content: "POOL"; color: #73d9ff; }
+.section-hero-art--spark .section-hero-symbol::before { content: "SPARK"; color: #ffd66b; }
+.section-hero-art--newstuff .section-hero-symbol::before { content: "NEW"; color: #ff79d7; }
+.section-hero-art--daily .section-hero-symbol::before { content: "DAY"; color: #8feaff; }
+
+/* Decorative concept decks keep the visual direction but no longer expose fake
+   user/business values as production data. */
+.concept-deck {
+  position: relative;
+  min-height: 168px;
+  overflow: hidden;
+  border-radius: 24px !important;
+}
+
+.concept-deck > * {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.concept-deck::before,
+.concept-deck::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.concept-deck::before {
+  inset: 18px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.2), transparent 9%),
+    radial-gradient(circle at 68% 58%, rgba(0, 216, 255, 0.28), transparent 33%),
+    radial-gradient(circle at 38% 72%, rgba(255, 122, 24, 0.24), transparent 26%),
+    linear-gradient(145deg, rgba(255, 63, 156, 0.22), rgba(5, 12, 28, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 38px rgba(255, 255, 255, 0.06), 0 0 28px rgba(0, 216, 255, 0.16);
+}
+
+.concept-deck::after {
+  width: 44%;
+  aspect-ratio: 0.72;
+  top: 20%;
+  right: 15%;
+  border-radius: 16px;
+  transform: rotate(10deg);
+  background:
+    linear-gradient(135deg, rgba(255, 122, 24, 0.22), rgba(255, 63, 156, 0.22), rgba(0, 216, 255, 0.22)),
+    rgba(3, 8, 20, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 26px rgba(255, 63, 156, 0.28), 0 0 30px rgba(0, 216, 255, 0.2);
+}
+
+.concept-deck--workshop::after {
+  clip-path: polygon(15% 58%, 68% 58%, 82% 46%, 88% 58%, 100% 58%, 100% 74%, 52% 74%, 52% 100%, 35% 100%, 35% 74%, 0 74%, 0 64%);
+  background: linear-gradient(135deg, rgba(255, 122, 24, 0.62), rgba(255, 63, 156, 0.18)) !important;
+}
+
+.concept-deck--spark::after {
+  width: 34%;
+  right: 20%;
+  border-radius: 48% 48% 42% 42%;
+  clip-path: none;
+  background:
+    radial-gradient(circle at 36% 42%, #201429 0 5%, transparent 6%),
+    radial-gradient(circle at 64% 42%, #201429 0 5%, transparent 6%),
+    linear-gradient(180deg, #ffe08a, #ff9a1f 58%, #ff3f7c) !important;
+}
+
+.concept-deck--signals::after {
+  border-radius: 999px;
+  aspect-ratio: 1;
+  background:
+    repeating-radial-gradient(circle, rgba(0, 216, 255, 0.12) 0 10px, transparent 11px 23px),
+    radial-gradient(circle, rgba(0, 216, 255, 0.28), transparent 64%) !important;
+}
+
+.concept-deck--deep::after {
+  clip-path: polygon(12% 38%, 82% 38%, 94% 56%, 84% 86%, 18% 86%, 4% 56%);
+  background: linear-gradient(145deg, rgba(0, 216, 255, 0.34), rgba(255, 122, 24, 0.36)) !important;
+}
+
+.concept-deck--exchange::after,
+.concept-deck--newstuff::after {
+  transform: rotate(-10deg);
+  background: linear-gradient(135deg, rgba(255, 63, 156, 0.48), rgba(139, 92, 255, 0.32), rgba(0, 216, 255, 0.22)) !important;
+}
+
+.daily-tide-compact-status,
+.profile-mini-list span,
+.profile-stat-list div,
+.profile-badge-card {
+  background: rgba(7, 15, 32, 0.76) !important;
+  border-color: rgba(121, 233, 255, 0.16) !important;
+  color: var(--cmd-text) !important;
+}
+
+.daily-tide-progress-preview span,
+.pill,
+.badge,
+.status-chip,
+.confidence-badge,
+.trust-badge {
+  border-radius: 999px !important;
+  background: rgba(6, 14, 30, 0.72) !important;
+  border: 1px solid rgba(121, 233, 255, 0.2) !important;
+  color: var(--cmd-text) !important;
+}
+
+.quick-add-menu,
+.command-quick-add {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 63, 156, 0.22), transparent 16rem),
+    radial-gradient(circle at 72% 28%, rgba(0, 216, 255, 0.18), transparent 14rem),
+    rgba(4, 9, 22, 0.94) !important;
+}
+
+.command-hub {
+  min-height: min(74vh, 560px) !important;
+  padding: 24px !important;
+}
+
+.command-hub-core {
+  background: conic-gradient(from 210deg, var(--cmd-ember), var(--cmd-pink), var(--cmd-purple), var(--cmd-tide), var(--cmd-ember)) !important;
+  box-shadow:
+    0 0 38px rgba(255, 63, 156, 0.5),
+    0 0 44px rgba(0, 216, 255, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+.command-hub-node {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
+    rgba(5, 12, 28, 0.86) !important;
+  border: 1px solid rgba(121, 233, 255, 0.18) !important;
+}
+
+.signed-out-landing.panel {
+  position: relative;
+  grid-template-columns: minmax(0, 1.04fr) minmax(320px, 0.96fr);
+  align-items: stretch;
+  gap: 22px;
+  padding: clamp(22px, 3vw, 42px) !important;
+  max-width: 1180px;
+  min-height: 560px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 11% 12%, rgba(255, 122, 24, 0.34), transparent 19rem),
+    radial-gradient(circle at 86% 18%, rgba(0, 216, 255, 0.26), transparent 22rem),
+    linear-gradient(135deg, rgba(8, 16, 34, 0.92), rgba(3, 8, 19, 0.96)) !important;
+}
+
+.signed-out-landing.panel::after {
+  content: "";
+  position: absolute;
+  right: 6%;
+  bottom: -8%;
+  width: 360px;
+  height: 360px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: conic-gradient(from 220deg, rgba(255, 122, 24, 0.32), rgba(255, 63, 156, 0.26), rgba(0, 216, 255, 0.28), rgba(255, 122, 24, 0.32));
+  filter: blur(28px);
+  opacity: 0.58;
+}
+
+.landing-hero {
+  position: relative;
+  z-index: 1;
+  align-content: center;
+  gap: 14px !important;
+}
+
+.signed-out-landing.panel .landing-brand-mark {
+  width: 104px !important;
+  height: 104px !important;
+  filter: drop-shadow(0 0 24px rgba(255, 122, 24, 0.42)) drop-shadow(0 0 24px rgba(0, 216, 255, 0.25));
+}
+
+.signed-out-landing.panel .section-kicker {
+  display: none;
+}
+
+.signed-out-landing.panel h2 {
+  max-width: 560px;
+  font-size: clamp(2.45rem, 5vw, 5.4rem) !important;
+  line-height: 0.9 !important;
+  letter-spacing: -0.055em !important;
+}
+
+.signed-out-landing.panel p {
+  max-width: 620px;
+  font-size: clamp(0.98rem, 1vw, 1.12rem) !important;
+  line-height: 1.55 !important;
+}
+
+.signed-out-landing .quick-actions {
+  grid-template-columns: repeat(auto-fit, minmax(170px, max-content)) !important;
+  justify-content: start;
+  gap: 10px !important;
+  margin-top: 4px;
+}
+
+.landing-promo-art {
+  position: relative;
+  z-index: 1;
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 48% 44%, rgba(255, 63, 156, 0.25), transparent 13rem),
+    radial-gradient(circle at 68% 36%, rgba(0, 216, 255, 0.18), transparent 15rem),
+    rgba(4, 10, 24, 0.62) !important;
+  border: 1px solid rgba(121, 233, 255, 0.18);
+  box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.05), 0 0 30px rgba(0, 216, 255, 0.12);
+}
+
+.landing-promo-art img {
+  width: min(92%, 520px) !important;
+  height: auto !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.45));
+}
+
+.signed-out-landing .landing-feature-grid {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.signed-out-landing .landing-feature-card {
+  min-height: 112px;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  background: rgba(5, 13, 30, 0.7) !important;
+}
+
+.signed-out-landing .landing-feature-card::before {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.25), transparent 24%),
+    linear-gradient(145deg, rgba(255, 122, 24, 0.28), rgba(0, 216, 255, 0.18)),
+    rgba(3, 8, 20, 0.9);
+  border: 1px solid rgba(121, 233, 255, 0.2);
+  box-shadow: 0 0 18px rgba(0, 216, 255, 0.14);
+}
+
+.landing-link-row {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px !important;
+  padding-top: 4px;
+}
+
+.landing-link-row .auth-text-button {
+  min-height: 34px;
+  padding: 7px 11px !important;
+  font-size: 0.78rem !important;
+}
+
+.brand-legal-footer {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  max-width: 840px;
+  font-size: 0.72rem;
+}
+
+.signed-out-auth-card {
+  width: min(100%, 520px);
+  margin: -42px auto 0 !important;
+  position: relative;
+  z-index: 3;
+  padding: 22px !important;
+}
+
+.auth-form {
+  gap: 12px !important;
+}
+
+.auth-link-stack {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px !important;
+}
+
+@media (min-width: 1024px) {
+  .app {
+    width: min(100%, 1560px);
+    padding-inline: 28px !important;
+  }
+
+  .main.app-shell-dark,
+  .main,
+  .auth-main,
+  .app-shell-dark,
+  .app-shell-header,
+  .topbar,
+  .main-tabs.app-main-tabs {
+    width: min(100%, 1400px) !important;
+    max-width: 1400px !important;
+  }
+
+  .auth-main:has(.signed-out-landing) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.38fr);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .auth-main:has(.signed-out-landing) .signed-out-landing {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .auth-main:has(.signed-out-landing) .signed-out-auth-card {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0 !important;
+    position: sticky;
+    top: 104px;
+    width: 100%;
+  }
+
+  .dashboard-layout,
+  .screen,
+  .marketplace-section,
+  .forge-page,
+  .vault-page,
+  .scout-page,
+  .tidepool-community {
+    width: min(100%, 1400px) !important;
+    max-width: 1400px !important;
+  }
+
+  .standard-page-header {
+    min-height: 330px !important;
+    padding: 24px !important;
+  }
+
+  .standard-page-header-copy h2,
+  .hearth-command-hero h2,
+  .kids-spark-header h2 {
+    font-size: clamp(2.6rem, 4.2vw, 4.8rem) !important;
+    line-height: 0.92 !important;
+  }
+
+  .section-hero-art {
+    min-height: 300px !important;
+  }
+
+  .concept-deck {
+    min-height: 250px !important;
+  }
+
+  .hearth-command-layout {
+    grid-template-columns: minmax(0, 1.3fr) minmax(360px, 0.58fr) !important;
+    gap: 20px !important;
+  }
+
+  .hearth-command-hero {
+    min-height: 420px !important;
+  }
+
+  .home-preview-grid,
+  .cards,
+  .stat-grid,
+  .mini-cards,
+  .vault-command-overview,
+  .forge-command-overview {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important;
+  }
+
+  .quick-action-card,
+  .card,
+  .vault-overview-card,
+  .forge-overview-card {
+    min-height: 118px !important;
+  }
+
+  .scout-page,
+  .forge-page,
+  .vault-page,
+  .marketplace-section {
+    grid-template-columns: minmax(0, 1.42fr) minmax(360px, 0.72fr) !important;
+    gap: 18px !important;
+  }
+
+  .inventory-list,
+  .compact-inventory-list,
+  .marketplace-browse-panel .inventory-list,
+  .forge-page .inventory-list,
+  .vault-page .inventory-list {
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)) !important;
+  }
+
+  .tidepool-community {
+    grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.64fr) !important;
+  }
+
+  .drawer.open,
+  .drawer,
+  .menu-drawer,
+  .settings-drawer {
+    width: min(1120px, calc(100vw - 64px)) !important;
+    max-width: 1120px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .app {
+    padding-inline: 38px !important;
+  }
+
+  .standard-page-header,
+  .hearth-command-hero {
+    min-height: 380px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell-header {
+    padding: 12px 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .topbar {
+    grid-template-columns: auto auto auto !important;
+  }
+
+  .topbar .app-search,
+  .topbar:not(.topbar-search-open) .app-search {
+    min-width: 0 !important;
+  }
+
+  .main,
+  .auth-main,
+  .app-shell-dark {
+    padding-inline: 10px !important;
+    padding-bottom: calc(var(--bottom-nav-height, 78px) + env(safe-area-inset-bottom) + 28px) !important;
+  }
+
+  .standard-page-header,
+  .hearth-command-hero {
+    padding: 14px !important;
+    min-height: auto !important;
+  }
+
+  .standard-page-header-copy h2,
+  .hearth-command-hero h2,
+  .signed-out-landing.panel h2 {
+    font-size: clamp(2rem, 11vw, 2.9rem) !important;
+  }
+
+  .section-hero-art {
+    min-height: 128px !important;
+  }
+
+  .concept-deck {
+    min-height: 150px !important;
+  }
+
+  .command-hub {
+    min-height: 560px !important;
+    padding: 18px 10px 78px !important;
+  }
+
+  .command-hub-core {
+    width: 104px !important;
+    height: 104px !important;
+    font-size: 4rem !important;
+  }
+
+  .command-hub-node {
+    width: 94px !important;
+    min-height: 78px !important;
+  }
+
+  .quick-add-menu {
+    max-height: calc(100dvh - var(--bottom-nav-height, 78px) - 22px) !important;
+    overflow-y: auto !important;
+    padding-bottom: calc(var(--bottom-nav-height, 78px) + 16px) !important;
+  }
+
+  .signed-out-landing.panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 18px !important;
+    min-height: 0;
+  }
+
+  .landing-promo-art {
+    min-height: 260px;
+  }
+
+  .signed-out-landing .landing-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .signed-out-auth-card {
+    margin: 12px auto 0 !important;
+  }
+
+  .mobile-bottom-nav {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    border-radius: 22px !important;
+    padding: 8px !important;
+    min-height: 72px !important;
+  }
+
+  .mobile-bottom-nav button {
+    min-width: 0 !important;
+    padding: 4px 2px !important;
+    gap: 3px !important;
+  }
+
+  .mobile-tab-icon,
+  .main-tab-icon {
+    width: 34px !important;
+    height: 34px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .signed-out-landing .landing-feature-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .command-hub-node {
+    width: 86px !important;
+    font-size: 0.7rem !important;
+  }
+}
+
+.forge-overview-card,
+.vault-overview-card,
+.dashboard-stat-card,
+.hearth-stat-card,
+.tidepool-stat-card,
+.daily-tide-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)),
+    rgba(5, 12, 28, 0.78) !important;
+  border: 1px solid rgba(121, 233, 255, 0.18) !important;
+  color: var(--cmd-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 20px rgba(0, 216, 255, 0.07) !important;
+}
+
+.forge-overview-card.is-active,
+.vault-overview-card.is-active,
+.dashboard-stat-card.is-active {
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 122, 24, 0.24), transparent 44%),
+    rgba(7, 15, 32, 0.86) !important;
+  border-color: rgba(255, 122, 24, 0.42) !important;
+  box-shadow: 0 0 24px rgba(255, 122, 24, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.forge-overview-card strong,
+.vault-overview-card strong,
+.forge-daily-card strong,
+.card h2 {
+  color: var(--cmd-text) !important;
+}
+
+.forge-command-overview,
+.vault-command-overview,
+.home-preview-grid,
+.stat-grid,
+.mini-cards {
+  align-items: stretch;
+}
+
+.forge-command-center .standard-page-header-summary,
+.vault-command-center .standard-page-header-summary,
+.hearth-command-hero .standard-page-header-summary {
+  position: relative;
+  z-index: 1;
+}
+
+html body .standard-page-header .forge-command-overview .forge-overview-card,
+html body .standard-page-header .vault-command-overview .vault-overview-card,
+html body .standard-page-header .home-preview-grid .card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)),
+    rgba(5, 12, 28, 0.78) !important;
+  border: 1px solid rgba(121, 233, 255, 0.18) !important;
+  color: var(--cmd-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 20px rgba(0, 216, 255, 0.07) !important;
+}
+
+html body .standard-page-header .forge-command-overview button.forge-overview-card:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not([disabled]),
+html body .standard-page-header .vault-command-overview button.vault-overview-card:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not([disabled]) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)),
+    rgba(5, 12, 28, 0.78) !important;
+  border: 1px solid rgba(121, 233, 255, 0.18) !important;
+  color: var(--cmd-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 20px rgba(0, 216, 255, 0.07) !important;
+}
+
+html body .standard-page-header .forge-command-overview .forge-overview-card.is-active,
+html body .standard-page-header .vault-command-overview .vault-overview-card.is-active {
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 122, 24, 0.24), transparent 44%),
+    rgba(7, 15, 32, 0.86) !important;
+  border-color: rgba(255, 122, 24, 0.42) !important;
+}
+
+html body .standard-page-header .forge-command-overview button.forge-overview-card.is-active:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not([disabled]),
+html body .standard-page-header .vault-command-overview button.vault-overview-card.is-active:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not([disabled]) {
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 122, 24, 0.24), transparent 44%),
+    rgba(7, 15, 32, 0.86) !important;
+  border-color: rgba(255, 122, 24, 0.42) !important;
+}
+
+.vault-toast {
+  pointer-events: none !important;
+}
+
+.vault-toast button,
+.vault-toast .ghost-button {
+  pointer-events: auto !important;
+}

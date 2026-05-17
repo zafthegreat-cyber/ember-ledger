@@ -24512,7 +24512,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <p>Built for collectors. Powered by community.</p>
               <p>Ember & Tide started after a child was pushed out of the hobby by scalpers who cleared shelves and said Pokemon was not for kids anymore. We believe Pokemon collecting should still be fun, fair, and family-friendly.</p>
               <div className="quick-actions">
-                <button type="button" onClick={() => setAuthMode("signup")}>Get Started</button>
+                <button type="button" onClick={() => setAuthMode("signup")}>Request Beta Access</button>
                 <button type="button" className="secondary-button" onClick={startGuestPreview}>Preview App</button>
                 <button type="button" className="secondary-button" onClick={() => { startGuestPreview(); setActiveTab("kidsProgram"); }}>Learn About the Kids Program</button>
               </div>
@@ -27257,8 +27257,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="daily-progress-track"><i style={{ width: `${dailyCompletionPercent}%` }} /></div>
                 <small>{dailyTideComplete ? "Today's Tide is ready." : "Task order: Scout, Vault, Market, Forge."}</small>
                 <div className="daily-tide-progress-preview" aria-label="Daily Tide progress preview">
-                  <span>{dailyTidePointsToday ? `+${dailyTidePointsToday} points earned today` : "+10 points available today"}</span>
-                  <span>{dailyTideStreak ? `${dailyTideStreak}-day streak continued` : "Start a streak today"}</span>
+                  <span>{dailyTidePointsToday ? `+${dailyTidePointsToday} points earned today` : "No points earned yet"}</span>
+                  <span>{dailyTideStreak ? `${dailyTideStreak}-day streak continued` : "No streak yet"}</span>
                   <button type="button" className="ghost-button" onClick={() => setActiveTab("profileProgress")}>View Progress</button>
                 </div>
               </div>
