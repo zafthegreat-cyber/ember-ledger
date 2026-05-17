@@ -4651,6 +4651,31 @@ export default function App() {
     );
   }
 
+  function currentProfileLoadedForUser(profile = currentUserProfile) {
+    if (!user?.id || user.id === "local-beta") return true;
+    const profileUserId = profile?.userId || profile?.user_id || profile?.id || "";
+    return String(profileUserId) === String(user.id);
+  }
+
+  function protectedAppDataAccessReady(profile = currentUserProfile) {
+    if (BETA_LOCAL_MODE || guestPreviewActive) return true;
+    if (!user?.id) return false;
+    if (!currentProfileLoadedForUser(profile)) return false;
+    return betaAccessAllowed(profile);
+  }
+
+  function isExpectedShorelineAccessDenial(error) {
+    const message = String(error?.message || error?.details || error || "").toLowerCase();
+    return Boolean(
+      error?.status === 401 ||
+      error?.status === 403 ||
+      error?.code === "42501" ||
+      message.includes("permission denied") ||
+      message.includes("row-level security") ||
+      message.includes("rls")
+    );
+  }
+
   function littleSparksStatus() {
     return normalizeLittleSparksStatus(
       shorelineState.littleSparksApplication?.status ||
@@ -8055,6 +8080,16 @@ export default function App() {
     if (BETA_LOCAL_MODE) return;
     if (user) {
       setGuestPreview(false);
+      if (!currentProfileLoadedForUser()) return;
+      if (!betaAccessAllowed()) {
+        setItems([]);
+        setCatalogProducts([]);
+        setExpenses([]);
+        setSales([]);
+        setVehicles([]);
+        setMileageTrips([]);
+        return;
+      }
       loadAllData();
     }
     else {
@@ -8065,10 +8100,30 @@ export default function App() {
       setVehicles([]);
       setMileageTrips([]);
     }
-  }, [user]);
+  }, [
+    user?.id,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    shorelineState.betaRequest?.status,
+  ]);
 
   useEffect(() => {
     if (BETA_LOCAL_MODE || !user || user.id === "local-beta" || !isSupabaseConfigured || !supabase) return undefined;
+    if (!currentProfileLoadedForUser() || !betaAccessAllowed()) {
+      const fallbackForUser = createDefaultWorkspaceBundle(user);
+      setWorkspaces(fallbackForUser.workspaces);
+      setWorkspaceMembers(fallbackForUser.members);
+      setActiveWorkspaceId(fallbackForUser.activeWorkspaceId);
+      setWorkspaceInviteForm((current) => ({ ...current, workspaceId: fallbackForUser.activeWorkspaceId }));
+      setWorkspaceMessage("");
+      return undefined;
+    }
     let cancelled = false;
 
     async function loadCloudWorkspaceState() {
@@ -8141,7 +8196,9 @@ export default function App() {
         setActiveWorkspaceId(fallbackForUser.activeWorkspaceId);
         setWorkspaceInviteForm((current) => ({ ...current, workspaceId: fallbackForUser.activeWorkspaceId }));
         setWorkspaceMessage("Cloud workspace metadata could not load. Saves will use your user-owned cloud rows when available.");
-        setVaultToast(`Workspace sync unavailable: ${error.message || "check workspace tables/RLS"}`);
+        if (!isExpectedShorelineAccessDenial(error)) {
+          setVaultToast(`Workspace sync unavailable: ${error.message || "check workspace tables/RLS"}`);
+        }
       }
     }
 
@@ -8149,13 +8206,35 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, user?.email]);
+  }, [
+    user?.id,
+    user?.email,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    shorelineState.betaRequest?.status,
+  ]);
 
   useEffect(() => {
     if (!localDataLoaded) return undefined;
     if (guestPreviewActive) {
       setPhase2Data(createEmptyPhase2Data());
       setPhase2SyncStatus({ source: "guest", message: "Preview mode is read-only. Sign up to save your progress." });
+      return undefined;
+    }
+    if (user?.id && user.id !== "local-beta" && (!currentProfileLoadedForUser() || !betaAccessAllowed())) {
+      setPhase2Data(createEmptyPhase2Data());
+      setPhase2SyncStatus({
+        source: "shoreline",
+        kind: "access_pending",
+        label: "Shoreline access",
+        message: "Full app sync waits until beta access is approved.",
+      });
       return undefined;
     }
     let cancelled = false;
@@ -8167,7 +8246,21 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [localDataLoaded, user?.id, activeWorkspaceId, guestPreviewActive]);
+  }, [
+    localDataLoaded,
+    user?.id,
+    activeWorkspaceId,
+    guestPreviewActive,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    shorelineState.betaRequest?.status,
+  ]);
 
   useEffect(() => {
     const preferences = phase2Data.notificationPreferences || {};
@@ -8185,6 +8278,7 @@ export default function App() {
   useEffect(() => {
     if (!localDataLoaded) return undefined;
     if (guestPreviewActive) return undefined;
+    if (user?.id && user.id !== "local-beta" && (!currentProfileLoadedForUser() || !betaAccessAllowed())) return undefined;
     const timeout = window.setTimeout(() => {
       saveAppPreferences(phase2Context(), {
         dashboardPreset,
@@ -8195,7 +8289,24 @@ export default function App() {
       }).then((result) => updatePhase2Status(result, "Dashboard preferences saved locally."));
     }, 700);
     return () => window.clearTimeout(timeout);
-  }, [localDataLoaded, user?.id, activeWorkspaceId, dashboardPreset, homeStatsEnabled, dashboardLayout, guestPreviewActive]);
+  }, [
+    localDataLoaded,
+    user?.id,
+    activeWorkspaceId,
+    dashboardPreset,
+    homeStatsEnabled,
+    dashboardLayout,
+    guestPreviewActive,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    shorelineState.betaRequest?.status,
+  ]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -11765,6 +11876,10 @@ function mapCatalog(row) {
 
   async function loadInventory() {
     const { data, error } = await supabase.from("inventory_items").select("*").order("created_at", { ascending: false });
+    if (error && isExpectedShorelineAccessDenial(error) && !protectedAppDataAccessReady()) {
+      setItems([]);
+      return;
+    }
     if (error) return showAppMessage("Could not load inventory: " + error.message);
     setItems((data || []).filter((row) => !isDemoLikeRecord(row)).map(mapItem).filter((item) => !isDemoLikeRecord(item)));
   }
@@ -11784,30 +11899,50 @@ function mapCatalog(row) {
         .order("name", { ascending: true })
         .limit(50);
     }
+    if (result.error && isExpectedShorelineAccessDenial(result.error) && !protectedAppDataAccessReady()) {
+      setCatalogProducts([]);
+      return;
+    }
     if (result.error) return showAppMessage("Could not load catalog: " + result.error.message);
     setCatalogProducts((result.data || []).map(mapCatalog));
   }
 
   async function loadExpenses() {
     const { data, error } = await supabase.from("business_expenses").select("*").order("created_at", { ascending: false });
+    if (error && isExpectedShorelineAccessDenial(error) && !protectedAppDataAccessReady()) {
+      setExpenses([]);
+      return;
+    }
     if (error) return showAppMessage("Could not load expenses: " + error.message);
     setExpenses(data.map(mapExpense));
   }
 
   async function loadSales() {
     const { data, error } = await supabase.from("sales_records").select("*").order("created_at", { ascending: false });
+    if (error && isExpectedShorelineAccessDenial(error) && !protectedAppDataAccessReady()) {
+      setSales([]);
+      return;
+    }
     if (error) return showAppMessage("Could not load sales: " + error.message);
     setSales(data.map(mapSale));
   }
 
   async function loadVehicles() {
     const { data, error } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
+    if (error && isExpectedShorelineAccessDenial(error) && !protectedAppDataAccessReady()) {
+      setVehicles([]);
+      return;
+    }
     if (error) return showAppMessage("Could not load vehicles: " + error.message);
     setVehicles(data.map(mapVehicle));
   }
 
   async function loadTrips() {
     const { data, error } = await supabase.from("mileage_trips").select("*").order("created_at", { ascending: false });
+    if (error && isExpectedShorelineAccessDenial(error) && !protectedAppDataAccessReady()) {
+      setMileageTrips([]);
+      return;
+    }
     if (error) return showAppMessage("Could not load mileage trips: " + error.message);
     setMileageTrips(data.map(mapTrip));
   }
