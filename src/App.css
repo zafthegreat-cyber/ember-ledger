@@ -24302,3 +24302,215 @@ label,
     margin-inline: auto;
   }
 }
+
+.scout-subtoggle {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 14px;
+}
+
+.vault-set-card-button {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  appearance: none;
+  cursor: pointer;
+}
+
+.vault-set-card-button:hover,
+.vault-set-card-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(58, 202, 255, 0.58);
+  box-shadow: 0 0 22px rgba(58, 202, 255, 0.16);
+}
+
+.vault-set-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.vault-set-detail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(58, 202, 255, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(37, 211, 255, 0.22), transparent 34%),
+    radial-gradient(circle at 12% 100%, rgba(164, 83, 255, 0.18), transparent 36%),
+    rgba(5, 15, 31, 0.7);
+}
+
+.vault-set-detail-hero h3 {
+  margin: 4px 0;
+  font-size: clamp(1.8rem, 7vw, 3rem);
+}
+
+.vault-set-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.vault-set-subsection {
+  display: grid;
+  gap: 10px;
+}
+
+.vault-set-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+  gap: 10px;
+}
+
+.vault-set-mini-card {
+  display: grid;
+  gap: 7px;
+  align-content: start;
+  min-height: 100%;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(8, 18, 34, 0.72);
+}
+
+.vault-set-mini-card img,
+.vault-set-mini-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.vault-set-mini-thumb {
+  display: grid;
+  place-items: center;
+  color: rgba(230, 244, 255, 0.72);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+}
+
+.vault-set-mini-card strong,
+.vault-set-mini-card span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.vault-set-mini-card span {
+  color: rgba(230, 244, 255, 0.7);
+  font-size: 0.82rem;
+}
+
+.watch-month-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.watch-month-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(5, 13, 26, 0.62);
+}
+
+.watch-month-toolbar > div {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.watch-month-toolbar span {
+  color: rgba(230, 244, 255, 0.7);
+  font-size: 0.82rem;
+}
+
+.watch-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.watch-month-day {
+  min-height: 132px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(7, 17, 31, 0.7);
+}
+
+.watch-month-day.is-today {
+  border-color: rgba(255, 139, 49, 0.58);
+  box-shadow: 0 0 18px rgba(255, 139, 49, 0.14);
+}
+
+.watch-month-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.watch-month-day-header span {
+  color: rgba(230, 244, 255, 0.58);
+  font-size: 0.72rem;
+}
+
+.watch-month-events {
+  display: grid;
+  gap: 6px;
+}
+
+.watch-month-event {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 0;
+  padding: 6px;
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid rgba(58, 202, 255, 0.18);
+  background: rgba(10, 31, 50, 0.74);
+}
+
+.watch-month-event strong {
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.watch-month-event span,
+.watch-month-event small,
+.watch-month-more {
+  color: rgba(230, 244, 255, 0.68);
+  font-size: 0.68rem;
+}
+
+.watch-month-event--confirmed,
+.watch-month-event--high {
+  border-color: rgba(30, 224, 154, 0.42);
+}
+
+.watch-month-event--medium {
+  border-color: rgba(58, 202, 255, 0.38);
+}
+
+.watch-month-event--low,
+.watch-month-event--needs-data {
+  border-color: rgba(255, 199, 92, 0.32);
+}
+
+@media (max-width: 640px) {
+  .watch-month-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .watch-month-day {
+    min-height: 112px;
+  }
+}

@@ -673,6 +673,7 @@ const SCOUT_GUESS_VISIBILITY_OPTIONS = [
 const WATCH_CALENDAR_VIEW_OPTIONS = [
   { value: "today", label: "Today" },
   { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
   { value: "stores", label: "Stores" },
   { value: "watchlist", label: "Watchlist" },
 ];
@@ -2882,7 +2883,10 @@ export default function App() {
   const [whatDidISeeSeedProduct, setWhatDidISeeSeedProduct] = useState(null);
   const [scoutReportFilter, setScoutReportFilter] = useState(initialRouteState.scoutReportFilter || "Latest");
   const [scoutReportSort, setScoutReportSort] = useState(initialRouteState.scoutReportSort || "Newest first");
+  const [scoutForecastMode, setScoutForecastMode] = useState("forecast");
+  const [scoutStoresMode, setScoutStoresMode] = useState("list");
   const [watchCalendarView, setWatchCalendarView] = useState("today");
+  const [watchCalendarMonthDate, setWatchCalendarMonthDate] = useState(() => new Date());
   const [watchCalendarArea, setWatchCalendarArea] = useState("hampton_roads");
   const [watchCalendarLayers, setWatchCalendarLayers] = useState(WATCH_CALENDAR_DEFAULT_LAYERS);
   const [selectedWatchCalendarEvent, setSelectedWatchCalendarEvent] = useState(null);
@@ -2899,6 +2903,7 @@ export default function App() {
   const [scoutScoreModalOpen, setScoutScoreModalOpen] = useState(false);
   const [selectedScoutReport, setSelectedScoutReport] = useState(null);
   const [scoutReportModerationTarget, setScoutReportModerationTarget] = useState(null);
+  const [selectedVaultSetId, setSelectedVaultSetId] = useState("");
   const scoutReportsRef = useRef(null);
   const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
   const [forgeSubTab, setForgeSubTab] = useState(initialRouteState.forgeSubTab || "overview");
@@ -3790,7 +3795,10 @@ export default function App() {
         if (!featureAllowed("restock_predictions")) return openLockedFeatureNotice("restock_predictions");
         setScoutView("predictions");
       }
-      else if (action === "Store Map") setScoutView("storeMap");
+      else if (action === "Store Map") {
+        setScoutView("stores");
+        setScoutStoresMode("map");
+      }
       else if (action === "Alerts" || action === "Ember Watch") setScoutView("alerts");
       else setScoutView("overview");
       setScoutSubTabTarget({ tab: action === "Alerts" || action === "Ember Watch" ? "alerts" : action === "Store Map" ? "storeMap" : "overview", id: Date.now() });
@@ -3903,12 +3911,12 @@ export default function App() {
     ];
     const commandQuickActions = [
       { key: "report", label: "Quick Scout Report", category: "activity", onClick: () => openCommandCenterAction("scout", "Submit Report") },
-      { key: "add", label: "Quick Add Item", category: "tools", onClick: () => openCommandCenterQuickAdd("vaultItem") },
+      { key: "add", label: "Add Item", category: "tools", onClick: () => openCommandCenterQuickAdd("vaultItem") },
       { key: "scan", label: "Scan / Review Item", category: "tools", onClick: () => openCommandCenterQuickAdd("scanProduct") },
       { key: "search", label: "Search", category: "tools", onClick: () => openCommandCenterAction("catalog", "Search Catalog") },
       { key: "import", label: "Import / Bulk Add", category: "manage", onClick: () => openCommandCenterBulkAdd() },
       { key: "watch", label: "Ember Watch", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
-      { key: "map", label: "Store Map", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
+      { key: "map", label: "Stores", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
       ...(adminToolsVisible ? [{ key: "admin", label: "Admin Edit", category: "manage", onClick: () => openCommandCenterAction("admin") }] : []),
     ];
     const overviewStats = [
@@ -3926,7 +3934,7 @@ export default function App() {
       { label: "Badges", value: dailyTideToday.badges?.length || 0 },
     ];
     const smartTools = [
-      { key: "store-map", label: "Store Map", helper: "Find and review store intel.", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
+      { key: "store-map", label: "Stores", helper: "List and map store intel.", category: "tools", onClick: () => openCommandCenterAction("scout", "Store Map") },
       { key: "ember-watch", label: "Ember Watch", helper: "Restock windows, reports, and watched stores.", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
       { key: "watchlist", label: "Watchlist", helper: "Track wants and market changes.", category: "activity", onClick: () => openCommandCenterAction("market", "Watchlist") },
       { key: "daily-tide", label: "Daily Tide Report", helper: "Review today's quick loop.", category: "activity", onClick: () => closeFlowModal({ force: true }) },
@@ -4352,7 +4360,7 @@ export default function App() {
           <button type="button" className="secondary-button" onClick={() => {
             openProductAddFlow({ product: result.source, source: "global-search-vault", destinations: { vault: true } });
             setSearchExpanded(false);
-          }}>Add to Vault</button>
+          }}>Add Item</button>
           <button type="button" className="secondary-button" onClick={() => {
             openProductAddFlow({
               product: result.source,
@@ -10585,7 +10593,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function openVaultQuickAddFlow() {
     setActiveTab("vault");
-    openFlowModal("vaultQuickAdd", { size: "small", source: "vault" });
+    openProductAddFlow({ source: "vault", destinations: { vault: true } });
   }
 
   function openVaultCatalogSearchFlow(options = {}) {
@@ -11064,8 +11072,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (action === "receipt") return openReceiptScanWorkflow();
     if (action === "multiDestination") return openProductAddFlow({ source: "quick-add" });
     if (action === "bulkAdd") return openBulkAddFlow("Mixed");
-    if (action === "card") return openProductAddFlow({ source: "quick-add-card", seed: { productType: "Individual Card" }, destinations: { vault: true } });
-    if (action === "sealed") return openProductAddFlow({ source: "quick-add-sealed", seed: { productType: "Sealed Product" }, destinations: { vault: true } });
+    if (action === "card") return openProductAddFlow({ source: "quick-add-card", seed: { productType: "Individual Card" } });
+    if (action === "sealed") return openProductAddFlow({ source: "quick-add-sealed", seed: { productType: "Sealed Product" } });
     if (action === "vaultItem") return openProductAddFlow({ source: "quick-add-vault", destinations: { vault: true } });
     if (action === "searchVaultCatalog") return openVaultCatalogSearchFlow({ source: "quick-add" });
     if (action === "importCollection") return openVaultImportCollectionFlow();
@@ -11216,6 +11224,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     event.preventDefault();
     if (multiDestinationSaving) return;
     if (blockGuestSave()) return;
+    const saveMode = event.nativeEvent?.submitter?.value === "add-more" ? "add-more" : "close";
     const itemName = String(multiDestinationForm.itemName || "").trim();
     const destinations = multiDestinationForm.destinations || {};
     const selectedDestinationCount = Object.values(destinations).filter(Boolean).length;
@@ -11224,7 +11233,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     if (!selectedDestinationCount) {
-      setMultiDestinationMessage("Choose Add to Vault, Add to Forge, Wishlist, or TideTradr before adding.");
+      setMultiDestinationMessage("Choose at least one destination: Vault, Forge, Wishlist, or Market.");
       return;
     }
 
@@ -11478,6 +11487,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     setMultiDestinationSaving(false);
+    if (saveMode === "add-more") {
+      resetMultiDestinationForm();
+      setMultiDestinationMessage("Saved. Ready for the next item.");
+      return;
+    }
     closeFlowModal({ force: true, reset: false });
     resetMultiDestinationForm();
   }
@@ -13716,33 +13730,33 @@ function renderScoutHeader() {
   const scoutTrustScore = scoutSnapshot.scoutProfile?.trustScore || 72;
   const scoutTabs = [
     { key: "overview", label: "Overview" },
-    { key: "storeMap", label: "Store Map" },
-    { key: "reports", label: "Reports" },
-    { key: "guesses", label: "Guesses Planner" },
+    { key: "reports", label: "Scout Reports" },
+    { key: "forecast", label: "Tide Forecast" },
     { key: "stores", label: "Stores" },
     { key: "alerts", label: "Ember Watch" },
-    { key: "predictions", label: "Forecast Windows" },
-    { key: "myReports", label: "My Reports" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
   ].filter(Boolean);
 
   const changeScoutPage = (nextPage) => {
-    if (nextPage === "predictions" && !featureAllowed("restock_predictions")) {
+    const normalizedNextPage = nextPage === "myReports" ? "reports" : nextPage === "predictions" || nextPage === "guesses" ? "forecast" : nextPage === "storeMap" ? "stores" : nextPage;
+    if (normalizedNextPage === "forecast" && !featureAllowed("restock_predictions")) {
       openLockedFeatureNotice("restock_predictions");
       return;
     }
-    setScoutView(nextPage);
-    if (nextPage === "reports") {
-      setScoutReportFilter("Latest");
+    setScoutView(normalizedNextPage);
+    if (nextPage === "predictions") setScoutForecastMode("forecast");
+    if (nextPage === "guesses") setScoutForecastMode("guesses");
+    if (nextPage === "storeMap") setScoutStoresMode("map");
+    if (nextPage === "stores") setScoutStoresMode("list");
+    if (normalizedNextPage === "reports") {
+      if (nextPage === "myReports") setScoutReportFilter("My Reports");
+      else if (scoutReportFilter === "My Reports") setScoutReportFilter("Latest");
       setScoutReportsPage(1);
     }
-    if (nextPage === "stores") {
+    if (normalizedNextPage === "stores") {
       setScoutSubTabTarget({ tab: "stores", id: Date.now() });
     }
-    if (nextPage === "storeMap") {
-      setScoutSubTabTarget({ tab: "storeMap", id: Date.now() });
-    }
-    if (nextPage === "alerts") {
+    if (normalizedNextPage === "alerts") {
       setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
     }
   };
@@ -13753,7 +13767,7 @@ function renderScoutHeader() {
       title="Scout / Signals"
       subtitle="Watch the shelves. Catch the signals."
       tabs={scoutTabs}
-      activeTab={activeScoutPage}
+      activeTab={activeScoutPage === "myReports" ? "reports" : activeScoutPage === "predictions" || activeScoutPage === "guesses" ? "forecast" : activeScoutPage === "storeMap" ? "stores" : activeScoutPage}
       onTabChange={changeScoutPage}
       actions={(
         <>
@@ -13777,12 +13791,13 @@ function renderScoutHeader() {
         actions={[
           {
             key: "scout-map",
-            title: "Store Map",
-            subtitle: "Pins, reports, and watchlist",
+            title: "Stores",
+            subtitle: "List, map, reports, and watchlist",
             className: "scout-hero-nav-tile",
             onClick: () => {
               setScoutSubTabTarget({ tab: "storeMap", id: Date.now() });
-              setScoutView("storeMap");
+              setScoutStoresMode("map");
+              setScoutView("stores");
             },
           },
           {
@@ -15041,15 +15056,35 @@ function renderForgeHeader() {
     { key: "duplicates", label: "Duplicates", value: activeVaultItems.filter((item) => Number(item.quantity || 0) > 1).length },
     { key: "trade", label: "Trade / Sell", value: activeVaultItems.filter((item) => ["trade_pile", "listed", "ready_for_forge"].includes(normalizeVaultStatus(item))).length },
   ];
-  const vaultSetCompletionRows = POKEMON_SETS.map((set) => {
+  const catalogSetNames = [...new Set(catalogProducts.map((product) => catalogExpansionName(product) || product.setName || product.expansion || product.series || "").filter(Boolean))];
+  const knownSetKeys = new Set(POKEMON_SETS.flatMap((set) => [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase())));
+  const vaultSetSourceRows = [
+    ...POKEMON_SETS,
+    ...catalogSetNames
+      .filter((name) => !knownSetKeys.has(String(name).toLowerCase()))
+      .map((name) => ({ name, code: name, series: "Catalog", total: 0, setAliases: [] })),
+  ];
+  const vaultSetCompletionRows = vaultSetSourceRows.map((set) => {
     const aliases = [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase());
+    const setMatches = (value = "") => {
+      const setName = String(value || "").toLowerCase();
+      return setName && aliases.some((alias) => setName === alias || setName.includes(alias) || alias.includes(setName));
+    };
     const owned = activeVaultItems.filter((item) => {
-      const setName = String(item.setName || item.expansion || item.setCode || "").toLowerCase();
-      return setName && aliases.some((alias) => setName === alias || setName.includes(alias));
+      return setMatches(item.setName || item.expansion || item.setCode || "");
     });
-    const ownedCards = new Set(owned.map((item) => item.cardNumber || item.card_number || item.name).filter(Boolean));
-    const totalCards = Number(set.total || set.printedTotal || 0);
+    const catalogInSet = catalogProducts.filter((product) => setMatches(catalogExpansionName(product) || product.setName || product.expansion || product.series || ""));
+    const catalogCards = catalogInSet.filter((product) => isCatalogCardProduct(product) && !isCatalogCodeCardProduct(product));
+    const catalogSealedProducts = catalogInSet.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product));
+    const ownedCards = new Set(owned.filter(isInventoryCardProduct).map((item) => item.cardNumber || item.card_number || item.catalogProductId || item.name).filter(Boolean));
+    const ownedProductKeys = new Set(owned.map((item) => String(item.catalogProductId || item.catalog_product_id || item.name || "").toLowerCase()).filter(Boolean));
+    const totalCards = Number(set.total || set.printedTotal || catalogCards.length || 0);
     const ownedCount = ownedCards.size || owned.length;
+    const missingCards = catalogCards.filter((product) => {
+      const key = String(product.id || catalogTitle(product) || "").toLowerCase();
+      const fallback = String(catalogTitle(product) || "").toLowerCase();
+      return key ? !ownedProductKeys.has(key) && !ownedProductKeys.has(fallback) : true;
+    });
     return {
       id: set.setId || set.code || set.name,
       name: set.name,
@@ -15057,11 +15092,15 @@ function renderForgeHeader() {
       totalCards,
       ownedCount,
       percent: totalCards > 0 ? Math.min(100, Math.round((ownedCount / totalCards) * 100)) : 0,
+      ownedItems: owned,
+      catalogCards,
+      sealedProducts: catalogSealedProducts,
+      missingCards,
     };
   })
-    .filter((row) => row.ownedCount > 0 || row.totalCards > 0)
-    .sort((a, b) => b.ownedCount - a.ownedCount || String(a.name).localeCompare(String(b.name)))
-    .slice(0, 12);
+    .filter((row) => row.ownedCount > 0 || row.totalCards > 0 || row.catalogCards.length || row.sealedProducts.length)
+    .sort((a, b) => b.ownedCount - a.ownedCount || String(a.name).localeCompare(String(b.name)));
+  const selectedVaultSet = vaultSetCompletionRows.find((set) => String(set.id) === String(selectedVaultSetId)) || null;
   const dashboardStats = [
     { key: "collection_value", label: "Collection Value", value: money(vaultValue) },
     { key: "monthly_spending", label: "Monthly Spending", value: money(monthlySpending) },
@@ -16223,10 +16262,15 @@ function renderForgeHeader() {
   });
   const watchCalendarTodayKey = getLocalDateKey();
   const watchCalendarWeekEndKey = addLocalDays(watchCalendarTodayKey, 7);
+  const watchCalendarMonthStart = new Date(watchCalendarMonthDate.getFullYear(), watchCalendarMonthDate.getMonth(), 1);
+  const watchCalendarMonthEnd = new Date(watchCalendarMonthDate.getFullYear(), watchCalendarMonthDate.getMonth() + 1, 0);
+  const watchCalendarMonthStartKey = getLocalDateKey(watchCalendarMonthStart);
+  const watchCalendarMonthEndKey = getLocalDateKey(watchCalendarMonthEnd);
+  const watchCalendarRangeEndKey = watchCalendarView === "month" ? watchCalendarMonthEndKey : watchCalendarWeekEndKey;
   const releaseProductRows = catalogProducts
     .filter((product) => {
       const releaseDate = String(product.releaseDate || product.release_date || product.launchDate || product.launch_date || "").slice(0, 10);
-      return releaseDate && releaseDate >= watchCalendarTodayKey && releaseDate <= addLocalDays(watchCalendarTodayKey, 30);
+      return releaseDate && releaseDate >= watchCalendarTodayKey && releaseDate <= addLocalDays(watchCalendarTodayKey, 45);
     })
     .slice(0, 80);
   const releaseEventsByKey = releaseProductRows.reduce((events, product) => {
@@ -16293,7 +16337,7 @@ function renderForgeHeader() {
       const store = getScoutReportStore(report);
       const rawDate = String(report.reportDate || report.report_date || report.createdAt || report.created_at || report.reportedAt || report.reported_at || "").slice(0, 10);
       const dateKey = rawDate || watchCalendarTodayKey;
-      if (dateKey < watchCalendarTodayKey || dateKey > watchCalendarWeekEndKey) return null;
+      if (dateKey < watchCalendarTodayKey || dateKey > watchCalendarRangeEndKey) return null;
       const items = normalizeScoutReportItems(report);
       const status = scoutReportStatusLabel(report);
       const stockLabel = scoutStockStatusLabel(report.stockStatus || report.stock_status) || report.reportType || report.report_type || "Store report";
@@ -16353,12 +16397,13 @@ function renderForgeHeader() {
     ...watchCalendarForecastEvents,
     ...watchCalendarOnlineEvents,
     ...Object.values(releaseEventsByKey),
-  ].filter((event) => event.dateKey >= watchCalendarTodayKey && event.dateKey <= watchCalendarWeekEndKey);
+  ].filter((event) => event.dateKey >= watchCalendarTodayKey && event.dateKey <= watchCalendarRangeEndKey);
   const filteredWatchCalendarEvents = watchCalendarEvents
     .filter((event) => watchCalendarEventLayerEnabled(event))
     .filter((event) => watchCalendarAreaMatches(event))
     .filter((event) => {
       if (watchCalendarView === "today") return event.dateKey === watchCalendarTodayKey;
+      if (watchCalendarView === "month") return event.dateKey >= watchCalendarMonthStartKey && event.dateKey <= watchCalendarMonthEndKey;
       return event.dateKey >= watchCalendarTodayKey && event.dateKey <= watchCalendarWeekEndKey;
     })
     .sort((a, b) => {
@@ -16373,6 +16418,17 @@ function renderForgeHeader() {
     return groups;
   }, []);
   const watchCalendarTodayEvents = watchCalendarEvents.filter((event) => event.dateKey === watchCalendarTodayKey && watchCalendarEventLayerEnabled(event) && watchCalendarAreaMatches(event));
+  const watchCalendarMonthCells = Array.from({ length: watchCalendarMonthEnd.getDate() }, (_, index) => {
+    const date = new Date(watchCalendarMonthDate.getFullYear(), watchCalendarMonthDate.getMonth(), index + 1);
+    const dateKey = getLocalDateKey(date);
+    return {
+      dateKey,
+      day: index + 1,
+      label: date.toLocaleDateString(undefined, { weekday: "short" }),
+      events: filteredWatchCalendarEvents.filter((event) => event.dateKey === dateKey),
+      isToday: dateKey === watchCalendarTodayKey,
+    };
+  });
   const watchCalendarHomeCounts = {
     local: watchCalendarTodayEvents.filter((event) => event.layerKeys.includes("localRestocks")).length,
     online: watchCalendarTodayEvents.filter((event) => event.layerKeys.includes("onlineRestocks")).length,
@@ -17837,7 +17893,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       return;
     }
     document.querySelector(".catalog-version-picker")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setVaultToast("Choose a version, then use Add to Vault, Forge, or Wishlist.");
+    setVaultToast("Choose a version, then use Add Item and select its destination.");
   }
 
   function focusCatalogDetailConditionEditor() {
@@ -18109,10 +18165,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <span>Known details will be copied into a draft you can finish later.</span>
             <div className="market-result-destination-actions">
               <button type="button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "forge")}>
-                {forgeSaving ? "Adding..." : "Add to Forge"}
+                {forgeSaving ? "Adding..." : "Save to Forge"}
               </button>
               <button type="button" className="secondary-button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "vault")}>
-                {vaultSaving ? "Adding..." : "Add to Vault"}
+                {vaultSaving ? "Adding..." : "Save to Vault"}
               </button>
               <button type="button" className="ghost-button" onClick={() => setMarketAddChooserProductId("")}>
                 Keep searching
@@ -18908,7 +18964,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <p>Track predicted restock windows, confirmed Scout reports, watched stores, and upcoming TCG drops. Signals are never guarantees.</p>
           </div>
           <div className="summary-pill-row">
-            <button type="button" className="secondary-button" onClick={() => setScoutView("storeMap")}>Open Store Map</button>
+            <button type="button" className="secondary-button" onClick={() => { setScoutView("stores"); setScoutStoresMode("map"); }}>Open Stores</button>
             <button type="button" onClick={() => openScoutSubmitFlow({ source: "ember-watch-header" })}>Quick Report</button>
           </div>
         </div>
@@ -19005,8 +19061,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {watchedStoreRows.length ? watchedStoreRows.map(renderEmberWatchStoreRow) : (
               <div className="empty-state">
                 <h3>No watched stores yet</h3>
-                <p>Open Store Map and watch stores you care about. Ember Watch will keep their signals together here.</p>
-                <button type="button" onClick={() => setScoutView("storeMap")}>Open Store Map</button>
+                <p>Open Stores and watch locations you care about. Ember Watch will keep their signals together here.</p>
+                <button type="button" onClick={() => { setScoutView("stores"); setScoutStoresMode("map"); }}>Open Stores</button>
               </div>
             )}
           </div>
@@ -19020,13 +19076,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <section className="panel scout-subpage-panel" ref={scoutReportsRef} tabIndex={-1}>
         <div className="compact-card-header">
           <div>
-            <h2>Reports</h2>
-            <p>Recent restock sightings, photos, calls, and quick reports.</p>
+            <h2>Scout Reports</h2>
+            <p>Community and personal restock sightings live together here.</p>
           </div>
           <div className="summary-pill-row">
             <span className="status-badge">{filteredScoutReports.length} shown</span>
             <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-reports" })}>Submit Report</button>
           </div>
+        </div>
+        <div className="segmented-control scout-subtoggle" role="tablist" aria-label="Scout report view">
+          <button type="button" className={scoutReportFilter !== "My Reports" ? "active" : ""} onClick={() => { setScoutReportFilter("Latest"); setScoutReportsPage(1); }}>
+            Community Reports
+          </button>
+          <button type="button" className={scoutReportFilter === "My Reports" ? "active" : ""} onClick={() => { setScoutReportFilter("My Reports"); setScoutReportsPage(1); }}>
+            My Reports
+          </button>
         </div>
         {renderScoutFilterControls()}
         <div className="scout-report-card-grid">
@@ -21653,7 +21717,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <h3>Store Management</h3>
             <p>Manage store records, nicknames, retailer data, city/address details, coordinates, duplicate records, notes, and current status through existing review flows.</p>
           </div>
-          <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("storeMap"); }}>Open Store Map</button>
+          <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); }}>Open Stores</button>
         </div>
         <div className="admin-store-management-grid">
           {storeRows.map((row) => (
@@ -23039,8 +23103,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       { key: "listing", title: "Add Listing", helper: "Create a marketplace draft.", action: "listing" },
       { key: "mileage", title: "Add Mileage", helper: "Track business travel.", action: "mileage" },
       { key: "inventory", title: "Add Inventory", helper: "Review, then send to Forge.", action: "inventory" },
-      { key: "card", title: "Add Vault Item", helper: "Card, sealed, slab, or wishlist.", action: "card" },
-      { key: "sealed", title: "Add Sealed Product", helper: "ETB, box, tin, bundle, or blister.", action: "sealed" },
+      { key: "card", title: "Add Item", helper: "Card, sealed, slab, or wishlist.", action: "card" },
+      { key: "sealed", title: "Add Item", helper: "Start with sealed product details.", action: "sealed" },
       { key: "sale", title: "Add Sale", helper: "Record sale and profit.", action: "sale" },
       { key: "expense", title: "Add Expense", helper: "Track costs and receipts.", action: "expense" },
       { key: "catalog-update", title: "Suggest Catalog Update", helper: "Send an admin-reviewed correction.", action: "suggestCatalogCorrection" },
@@ -23078,6 +23142,41 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           ))}
         </div>
       </div>
+    );
+  }
+
+  function renderScoutStoresPanel() {
+    return (
+      <section className="scout-combined-section scout-stores-combined">
+        <div className="panel scout-subpage-panel scout-combined-header">
+          <div className="compact-card-header">
+            <div>
+              <h2>Stores</h2>
+              <p>Store list and Store Map are consolidated here. Open a store from either view for details.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Suggest Store</button>
+          </div>
+          <div className="segmented-control scout-subtoggle" role="tablist" aria-label="Store views">
+            <button type="button" className={scoutStoresMode === "list" ? "active" : ""} onClick={() => setScoutStoresMode("list")}>List</button>
+            <button type="button" className={scoutStoresMode === "map" ? "active" : ""} onClick={() => setScoutStoresMode("map")}>Map</button>
+          </div>
+        </div>
+        {scoutStoresMode === "map" ? renderStoreMapPanel() : (
+          <section className="embedded-page">
+            <Scout
+              targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }}
+              compact
+              onLocationRequired={requestScoutLocation}
+              adminMode={adminEditModeActive}
+              supabase={supabase}
+              isSupabaseConfigured={isSupabaseConfigured}
+              mapCatalogRow={mapCatalog}
+              money={money}
+              onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-store-card" })}
+            />
+          </section>
+        )}
+      </section>
     );
   }
 
@@ -23229,7 +23328,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <select value={expenseForm.receiptSplitMode || "expense_only"} onChange={(e) => updateExpenseForm("receiptSplitMode", e.target.value)}>
             <option value="expense_only">Create expense only</option>
             <option value="forge">Create / attach Forge inventory later</option>
-            <option value="vault">Add to Vault later</option>
+            <option value="vault">Send to Vault later</option>
             <option value="split_business_personal">Split business / personal</option>
             <option value="attach_existing">Attach to existing item</option>
           </select>
@@ -24119,22 +24218,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const destinationOptions = [
       {
         key: "vault",
-        title: "Add to Vault",
+        title: "Vault",
         helper: "Owned collection or stored item.",
       },
       {
         key: "wishlist",
-        title: "Add to Wishlist",
+        title: "Wishlist",
         helper: "Wanted item, not owned yet.",
       },
       {
         key: "forge",
-        title: "Add to Forge",
+        title: "Forge",
         helper: "Business inventory or seller tracking.",
       },
       {
         key: "tidetradr",
-        title: "Add / Suggest to TideTradr",
+        title: "Market",
         helper: "Catalog, watchlist, or product suggestion.",
       },
     ];
@@ -24549,7 +24648,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             if (!closeFlowModal({ force: true })) return;
             openVaultQuickAdd({ category: "Personal collection", subTab: "collection" });
           }}>
-            Add Item to Vault
+            Add Item
           </button>
         </div>
       );
@@ -25242,7 +25341,81 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
           </div>
         ) : null}
+
+        {watchCalendarView === "month" ? (
+          <div className="watch-month-panel">
+            <div className="watch-month-toolbar">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setWatchCalendarMonthDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+              >
+                Previous
+              </button>
+              <div>
+                <strong>{watchCalendarMonthDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</strong>
+                <span>{filteredWatchCalendarEvents.length} drop signal{filteredWatchCalendarEvents.length === 1 ? "" : "s"}</span>
+              </div>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setWatchCalendarMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+              >
+                Next
+              </button>
+              {adminEditModeActive ? (
+                <button type="button" onClick={() => openScoutSubmitFlow({ source: "ember-watch-admin-drop" })}>Add/Edit Drop</button>
+              ) : null}
+            </div>
+            <div className="watch-month-grid" role="grid" aria-label="Ember Watch monthly calendar">
+              {watchCalendarMonthCells.map((cell) => (
+                <article className={cell.isToday ? "watch-month-day is-today" : "watch-month-day"} key={cell.dateKey}>
+                  <div className="watch-month-day-header">
+                    <strong>{cell.day}</strong>
+                    <span>{cell.label}</span>
+                  </div>
+                  <div className="watch-month-events">
+                    {cell.events.slice(0, 3).map((event) => (
+                      <button
+                        type="button"
+                        className={`watch-month-event watch-month-event--${event.confidenceKey || "medium"}`}
+                        key={`${cell.dateKey}-${event.id}`}
+                        onClick={() => setSelectedWatchCalendarEvent(event)}
+                      >
+                        <span>{event.retailer || event.locationType || "Signal"}</span>
+                        <strong>{event.title}</strong>
+                        <small>{event.confidenceLabel || "Needs Data"}</small>
+                      </button>
+                    ))}
+                    {cell.events.length > 3 ? <span className="watch-month-more">+{cell.events.length - 3} more</span> : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
+    );
+  }
+
+  function renderScoutForecastPanel() {
+    return (
+      <section className="scout-combined-section">
+        <div className="panel scout-subpage-panel scout-combined-header">
+          <div className="compact-card-header">
+            <div>
+              <h2>Tide Forecast</h2>
+              <p>Forecast Windows and Guess Planner are combined here so planning stays in one place.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
+          </div>
+          <div className="segmented-control scout-subtoggle" role="tablist" aria-label="Tide Forecast views">
+            <button type="button" className={scoutForecastMode === "forecast" ? "active" : ""} onClick={() => setScoutForecastMode("forecast")}>Forecast Windows</button>
+            <button type="button" className={scoutForecastMode === "guesses" ? "active" : ""} onClick={() => setScoutForecastMode("guesses")}>Guess Planner</button>
+          </div>
+        </div>
+        {scoutForecastMode === "guesses" ? renderScoutGuessesPanel() : renderScoutPredictionsPanel()}
+      </section>
     );
   }
 
@@ -26235,9 +26408,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "scoutSubmit", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
               </button>
               {activeFlowModal?.type === "multiDestinationAdd" ? (
-                <button type="submit" form="multi-destination-add-form" disabled={multiDestinationSaving}>
-                  {multiDestinationSaving ? "Saving..." : "Add Item"}
-                </button>
+                <>
+                  <button type="submit" form="multi-destination-add-form" name="saveMode" value="add-more" className="secondary-button" disabled={multiDestinationSaving}>
+                    {multiDestinationSaving ? "Saving..." : "Save and Add More"}
+                  </button>
+                  <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" disabled={multiDestinationSaving}>
+                    {multiDestinationSaving ? "Saving..." : "Save and Close"}
+                  </button>
+                </>
               ) : null}
             </div>
           </section>
@@ -26640,10 +26818,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <section className="location-modal vault-add-modal" role="dialog" aria-modal="true" aria-labelledby="vault-add-title" onClick={(event) => event.stopPropagation()}>
             <div className="compact-card-header">
               <div>
-                <h2 id="vault-add-title">Add Item to Vault</h2>
+                <h2 id="vault-add-title">Add Item</h2>
                 <p>Search TideTradr, scan, import, or enter a card/product manually.</p>
               </div>
-              <button type="button" className="modal-icon-close" aria-label="Close Add Item to Vault" onClick={() => closeVaultAddModal()}>X</button>
+              <button type="button" className="modal-icon-close" aria-label="Close Add Item" onClick={() => closeVaultAddModal()}>X</button>
             </div>
             <div className="quick-action-rail vault-add-tabs">
               {[
@@ -26732,7 +26910,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                             </div>
                           </button>
                           <div className="vault-catalog-product-actions">
-                            <button type="button" onClick={() => applyCatalogProductToVault(product.id)}>Add selected item to Vault</button>
+                            <button type="button" onClick={() => applyCatalogProductToVault(product.id)}>Use selected item</button>
                             <button type="button" className="secondary-button" onClick={() => { applyCatalogProductToVault(product.id); setVaultAddMode("manual"); }}>Review in Manual Form</button>
                           </div>
                         </article>
@@ -26777,7 +26955,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           </div>
                         </button>
                         <div className="vault-catalog-product-actions">
-                          <button type="button" onClick={() => applyCatalogProductToVault(product.id)}>Add selected item to Vault</button>
+                          <button type="button" onClick={() => applyCatalogProductToVault(product.id)}>Use selected item</button>
                           <button type="button" className="secondary-button" onClick={() => { applyCatalogProductToVault(product.id); setVaultAddMode("manual"); }}>Review in Manual Form</button>
                         </div>
                       </article>
@@ -26792,7 +26970,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 ) : null}
                 <div className="vault-form-actions">
                   <button type="button" disabled={!vaultForm.catalogProductId || !isVaultDraftReady(vaultForm) || vaultSaving} onClick={addVaultItem}>
-                    {vaultSaving ? "Saving..." : "Add selected item to Vault"}
+                    {vaultSaving ? "Saving..." : "Save selected item"}
                   </button>
                   <button type="button" className="secondary-button" onClick={() => setVaultAddMode("manual")}>Review in Manual Form</button>
                 </div>
@@ -26986,7 +27164,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
               <div className="vault-form-actions">
                 <button type="submit" disabled={!isVaultDraftReady(vaultForm) || vaultSaving}>
-                  {vaultSaving ? "Saving..." : "Add Item to Vault"}
+                  {vaultSaving ? "Saving..." : "Save Item"}
                 </button>
                 <button type="button" className="secondary-button" onClick={() => closeVaultAddModal()}>Cancel</button>
               </div>
@@ -27592,8 +27770,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <button type="button" className={item.verified ? "primary" : "secondary-button"} onClick={() => updateReceiptDraftItem(item.id, "verified", !item.verified)}>
                           {item.verified ? "Verified" : "Verify Items"}
                         </button>
-                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "vault")}>Add to Vault</button>
-                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "forge")}>Add to Forge</button>
+                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "vault")}>Destination: Vault</button>
+                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "forge")}>Destination: Forge</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "expense_only")}>Expense Only</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "wishlist")}>Wishlist</button>
                         <button type="button" className="secondary-button" onClick={() => splitReceiptDraftItem(item.id)}>Split line</button>
@@ -27739,6 +27917,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   Report
                 </button>
               ) : null}
+              {adminEditModeActive ? (
+                <button type="button" className="secondary-button" onClick={() => {
+                  const event = selectedWatchCalendarEvent;
+                  setSelectedWatchCalendarEvent(null);
+                  openScoutSubmitFlow({
+                    source: "watch-calendar-admin-edit",
+                    store: event.store || { name: event.title, retailer: event.retailer, city: event.city, address: event.address },
+                  });
+                }}>
+                  Add/Edit Drop
+                </button>
+              ) : null}
               <button type="button" className="ghost-button" onClick={() => setSelectedWatchCalendarEvent(null)}>Close</button>
             </div>
           </section>
@@ -27819,10 +28009,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 ariaLabel="Home quick actions"
                 actions={[
                   { key: "submit-scout-report", title: "Submit Scout Report", subtitle: "Log a store check", onClick: () => openQuickAddAction("storeReport") },
-                  { key: "add-to-vault", title: "Add to Vault", subtitle: "Save collection item", onClick: () => openQuickAddAction("vaultItem") },
+                  { key: "add-to-vault", title: "Add Item", subtitle: "Default destination: Vault", onClick: () => openQuickAddAction("vaultItem") },
                   { key: "search-tidetradr", title: "Search TideTradr", subtitle: "Find values and products", onClick: () => { setActiveTab("market"); setTideTradrSubTab("overview"); } },
                   { key: "check-deal", title: "Check Deal", subtitle: "Compare asking price", onClick: () => { setActiveTab("market"); openDealFinderModal(); } },
-                  { key: "add-to-forge", title: "Add to Forge", subtitle: "Create business inventory", onClick: () => openQuickAddAction("inventory") },
+                  { key: "add-to-forge", title: "Add Item", subtitle: "Default destination: Forge", onClick: () => openQuickAddAction("inventory") },
                   { key: "export-backup", title: "Export Backup", subtitle: "Save private beta data", onClick: () => { setMenuSectionsOpen({ data: true }); setMenuOpen(true); } },
                 ]}
               />
@@ -28066,7 +28256,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <section className="panel dashboard-section" style={dashboardSectionStyle("quick_actions")}>
               <h2>Quick Actions</h2>
               <div className="quick-actions home-inline-actions">
-                <button type="button" onClick={() => openProductAddFlow({ source: "home-forge-item", destinations: { forge: true } })}>Add Forge Item</button>
+                <button type="button" onClick={() => openProductAddFlow({ source: "home-forge-item", destinations: { forge: true } })}>Add Item</button>
                 <button type="button" onClick={() => {
                   openScoutSubmitFlow({ source: "home-inline-action" });
                 }}>Submit Scout Report</button>
@@ -28982,7 +29172,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                               },
                             })}
                           >
-                            Add Owned Copy
+                            Add Item
                           </button>
                         </div>
                       </article>
@@ -28996,30 +29186,126 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <section className="panel vault-sets-panel">
                 <div className="compact-card-header">
                   <div>
-                    <h2>Set Completion</h2>
-                    <p>Pokemon set progress from your Vault items. Variants and master-set rules can deepen from here.</p>
+                    <h2>{selectedVaultSet ? selectedVaultSet.name : "Pokemon Sets"}</h2>
+                    <p>{selectedVaultSet ? "Cards, sealed products, owned items, and missing cards for this set." : "Browse every known set, then open a set to review cards, sealed products, owned items, and completion."}</p>
                   </div>
-                  <button type="button" className="secondary-button" onClick={() => openVaultCatalogSearchFlow({ source: "vault-sets" })}>Search Set</button>
+                  <div className="summary-pill-row">
+                    {selectedVaultSet ? <button type="button" className="secondary-button" onClick={() => setSelectedVaultSetId("")}>All Sets</button> : null}
+                    <button type="button" className="secondary-button" onClick={() => openVaultCatalogSearchFlow({ source: "vault-sets" })}>Search Set</button>
+                  </div>
                 </div>
-                <div className="vault-set-grid">
-                  {vaultSetCompletionRows.length ? vaultSetCompletionRows.map((set) => (
-                    <article className="vault-set-card" key={set.id}>
-                      <span>{set.series || "Pokemon set"}</span>
-                      <h3>{set.name}</h3>
-                      <div className="vault-progress-track" aria-label={`${set.name} completion`}>
-                        <i style={{ width: `${set.percent}%` }} />
+                {selectedVaultSet ? (
+                  <div className="vault-set-detail">
+                    <div className="vault-set-detail-hero">
+                      <div>
+                        <span>{selectedVaultSet.series || "Pokemon set"}</span>
+                        <h3>{selectedVaultSet.percent}% complete</h3>
+                        <p>{selectedVaultSet.ownedCount} owned of {selectedVaultSet.totalCards || selectedVaultSet.catalogCards.length || "unknown"} cards.</p>
                       </div>
-                      <p>{set.ownedCount} owned{set.totalCards ? ` of ${set.totalCards}` : ""}</p>
-                      <strong>{set.totalCards ? `${set.percent}% complete` : "Tracking started"}</strong>
-                    </article>
-                  )) : (
-                    <div className="empty-state small-empty-state">
-                      <h3>No set progress yet.</h3>
-                      <p>Add cards with set names and card numbers to start tracking master set completion.</p>
-                      <button type="button" onClick={openVaultQuickAddFlow}>Add Vault Item</button>
+                      <div className="vault-progress-track" aria-label={`${selectedVaultSet.name} completion`}>
+                        <i style={{ width: `${selectedVaultSet.percent}%` }} />
+                      </div>
                     </div>
-                  )}
-                </div>
+                    <div className="vault-set-detail-grid">
+                      <div className="stat-tile"><span>Cards in set</span><strong>{selectedVaultSet.totalCards || selectedVaultSet.catalogCards.length || 0}</strong></div>
+                      <div className="stat-tile"><span>Owned items</span><strong>{selectedVaultSet.ownedItems.length}</strong></div>
+                      <div className="stat-tile"><span>Missing cards</span><strong>{selectedVaultSet.missingCards.length}</strong></div>
+                      <div className="stat-tile"><span>Sealed products</span><strong>{selectedVaultSet.sealedProducts.length}</strong></div>
+                    </div>
+
+                    <div className="vault-set-subsection">
+                      <div className="compact-card-header">
+                        <div>
+                          <h3>Owned from this set</h3>
+                          <p>Items already in your Vault.</p>
+                        </div>
+                      </div>
+                      <div className="vault-set-product-grid">
+                        {selectedVaultSet.ownedItems.length ? selectedVaultSet.ownedItems.slice(0, 24).map((item) => (
+                          <article className="vault-set-mini-card" key={`set-owned-${item.id || item.name}`}>
+                            {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <span className="vault-set-mini-thumb">{isInventorySealedProduct(item) ? "Box" : "Card"}</span>}
+                            <strong>{item.name}</strong>
+                            <span>{item.productType || item.setName || "Vault item"}</span>
+                          </article>
+                        )) : (
+                          <div className="small-empty-state">
+                            <strong>No owned items from this set yet.</strong>
+                            <span>Add a card or sealed product and keep the set selected in details.</span>
+                            <button type="button" onClick={() => openProductAddFlow({ source: "vault-set-owned-empty", seed: { setName: selectedVaultSet.name }, destinations: { vault: true } })}>Add Item</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="vault-set-subsection">
+                      <div className="compact-card-header">
+                        <div>
+                          <h3>Missing cards</h3>
+                          <p>Catalog cards not yet matched to your Vault. Variant filters can deepen later.</p>
+                        </div>
+                      </div>
+                      <div className="vault-set-product-grid">
+                        {selectedVaultSet.missingCards.length ? selectedVaultSet.missingCards.slice(0, 24).map((product) => (
+                          <article className="vault-set-mini-card" key={`set-missing-${product.id || catalogTitle(product)}`}>
+                            {getCatalogImage(product) ? <img src={getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Card</span>}
+                            <strong>{catalogTitle(product)}</strong>
+                            <span>{product.cardNumber || product.card_number || product.rarity || "Missing"}</span>
+                            <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-missing", destinations: { vault: true } })}>Add Item</button>
+                          </article>
+                        )) : (
+                          <div className="small-empty-state">
+                            <strong>No missing catalog cards found.</strong>
+                            <span>This set may need more catalog data, or your collection is complete for known cards.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="vault-set-subsection">
+                      <div className="compact-card-header">
+                        <div>
+                          <h3>Sealed products</h3>
+                          <p>ETBs, tins, boxes, bundles, and other sealed products tied to this set stay separate from card completion.</p>
+                        </div>
+                      </div>
+                      <div className="vault-set-product-grid">
+                        {selectedVaultSet.sealedProducts.length ? selectedVaultSet.sealedProducts.slice(0, 16).map((product) => (
+                          <article className="vault-set-mini-card" key={`set-sealed-${product.id || catalogTitle(product)}`}>
+                            {getCatalogImage(product) ? <img src={getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Box</span>}
+                            <strong>{catalogTitle(product)}</strong>
+                            <span>{product.productType || product.product_type || "Sealed Product"}</span>
+                            <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-sealed", destinations: { vault: true } })}>Add Item</button>
+                          </article>
+                        )) : (
+                          <div className="small-empty-state">
+                            <strong>No sealed products connected yet.</strong>
+                            <span>Sealed catalog rows will appear here when available.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="vault-set-grid">
+                    {vaultSetCompletionRows.length ? vaultSetCompletionRows.map((set) => (
+                      <button type="button" className="vault-set-card vault-set-card-button" key={set.id} onClick={() => setSelectedVaultSetId(set.id)}>
+                        <span>{set.series || "Pokemon set"}</span>
+                        <h3>{set.name}</h3>
+                        <div className="vault-progress-track" aria-label={`${set.name} completion`}>
+                          <i style={{ width: `${set.percent}%` }} />
+                        </div>
+                        <p>{set.ownedCount} owned{set.totalCards ? ` of ${set.totalCards}` : ""}</p>
+                        <strong>{set.totalCards ? `${set.percent}% complete` : "Open set"}</strong>
+                      </button>
+                    )) : (
+                      <div className="empty-state small-empty-state">
+                        <h3>No sets found yet.</h3>
+                        <p>Add cards with set names or load catalog products to start tracking set completion.</p>
+                        <button type="button" onClick={openVaultQuickAddFlow}>Add Item</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
             ) : null}
 
@@ -29074,30 +29360,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               renderScoutReportsPanel()
             ) : activeScoutPage === "alerts" ? (
               renderEmberWatchPanel()
-            ) : activeScoutPage === "storeMap" ? (
-              renderStoreMapPanel()
-            ) : activeScoutPage === "stores" ? (
-              <>
-                <section className="embedded-page">
-              <Scout
-                targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }}
-                compact
-                onLocationRequired={requestScoutLocation}
-                adminMode={adminEditModeActive}
-                supabase={supabase}
-                isSupabaseConfigured={isSupabaseConfigured}
-                mapCatalogRow={mapCatalog}
-                money={money}
-                onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-store-card" })}
-              />
-                </section>
-              </>
-            ) : activeScoutPage === "guesses" ? (
-              renderScoutGuessesPanel()
-            ) : activeScoutPage === "predictions" ? (
-              renderScoutPredictionsPanel()
+            ) : activeScoutPage === "storeMap" || activeScoutPage === "stores" ? (
+              renderScoutStoresPanel()
+            ) : activeScoutPage === "guesses" || activeScoutPage === "predictions" || activeScoutPage === "forecast" ? (
+              renderScoutForecastPanel()
             ) : activeScoutPage === "myReports" ? (
-              renderScoutMyReportsPanel()
+              renderScoutReportsPanel()
             ) : activeScoutPage === "review" ? (
               renderScoutReviewPanel()
             ) : (
@@ -29842,8 +30110,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   {tideTradrMarketInfo.needsReview ? " | Needs Review" : ""}
                 </p>
                 <div className="quick-actions">
-                  {tideTradrLookupProduct ? <button type="button" onClick={() => openProductAddFlow({ product: tideTradrLookupProduct, source: "tidetradr-preview-forge", destinations: { forge: true } })}>Add to Forge</button> : null}
-                  {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: tideTradrLookupProduct, source: "tidetradr-preview-vault", destinations: { vault: true } })}>Add to Vault</button> : null}
+                  {tideTradrLookupProduct ? <button type="button" onClick={() => openProductAddFlow({ product: tideTradrLookupProduct, source: "tidetradr-preview", destinations: { vault: true } })}>Add Item</button> : null}
                   {tideTradrLookupProduct ? <button type="button" className="secondary-button" onClick={() => openProductAddFlow({
                     product: tideTradrLookupProduct,
                     source: "tidetradr-preview-wishlist",
@@ -30574,7 +30841,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <p>{match.explanation || explainCatalogMatch(match)} | Confidence: {match.confidencePercent}%</p>
                 <div className="quick-actions">
                   <button type="button" onClick={() => confirmScanMatch(match.item.id)}>Confirm Match</button>
-                  <button type="button" className="secondary-button" onClick={() => applyCatalogProductToVault(match.item.id)}>Add to Vault</button>
+                  <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: match.item, source: "catalog-search-result", destinations: { vault: true } })}>Add Item</button>
                   <button type="button" className="secondary-button" onClick={() => useCatalogProductInDeal(match.item.id)}>Check Deal</button>
                 </div>
               </div>
@@ -30780,7 +31047,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <h3>No Forge items found</h3>
                   <p>Add inventory, import a receipt/list, or select a TideTradr catalog item to start tracking seller inventory.</p>
                   <button type="button" className="edit-button" onClick={() => openProductAddFlow({ source: "forge-empty-inventory", destinations: { forge: true } })}>
-                    Add Forge Item
+                    Add Item
                   </button>
                 </div>
               ) : pagedForgeInventory.items.map((item) => (
@@ -31391,9 +31658,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   </div>
                 </section>
 	                <div className="catalog-detail-action-group catalog-detail-primary-actions">
-	                  <button type="button" onClick={() => addCatalogDetailToVault(selectedCatalogDetailProduct)}>Add to Vault</button>
-	                  <button type="button" onClick={() => addCatalogDetailToForge(selectedCatalogDetailProduct)}>Add to Forge</button>
-	                  <button type="button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Add to Wishlist</button>
+	                  <button type="button" onClick={() => openProductAddFlow({ product: selectedCatalogDetailProduct, source: "catalog-detail", destinations: { vault: true } })}>Add Item</button>
+	                  <button type="button" className="secondary-button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Watchlist</button>
 	                  <button type="button" onClick={() => markCatalogDetailOwned(selectedCatalogDetailProduct)}>Mark Owned</button>
 	                  <button type="button" onClick={() => markCatalogDetailMissing(selectedCatalogDetailProduct)}>Mark Missing</button>
 	                  <button type="button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
