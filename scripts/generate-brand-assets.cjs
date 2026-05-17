@@ -82,7 +82,7 @@ function brandMarkSvg({ size = 512, maskable = false, transparent = false } = {}
       <path d="M36 0h216l18 26-10 18 10 18-10 18 10 18-10 18 10 18-10 18 10 18-10 18 10 18-10 18 10 18-18 26H36L18 252l10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18 10-18-10-18z" fill="url(#packGrad)" stroke="url(#neonEdge)" stroke-width="10" filter="url(#neonGlow)"/>
       <path d="M50 34h188v206H50z" fill="url(#packGlow)" opacity=".92"/>
       <path d="M72 56h144v158H72z" rx="28" fill="#050b1c" stroke="url(#neonEdge)" stroke-width="6"/>
-      <g transform="translate(44 34) scale(.52)">
+      <g transform="translate(44 22) scale(.5)">
         <path fill="url(#emberGrad)" d="M223 28c-40 43-36 82-31 107-26-22-42-49-40-82-59 54-86 112-78 171 10 76 76 124 158 126 78 2 143-42 158-113 10-47-4-89-44-129 3 32-8 56-31 72 3-49-21-96-92-152Z"/>
         <path fill="#ffb34f" opacity=".95" d="M210 146c-24 27-26 55-13 83-22-12-35-29-38-52-31 31-41 62-31 93 13 39 55 61 104 57 45-4 80-31 86-70 4-25-5-49-29-73-1 21-12 38-31 50 2-35-12-63-48-88Z"/>
         <path fill="url(#tideGrad)" d="M55 279c50 42 105 58 162 45 57-14 101-55 162-55-47 79-118 122-202 112-58-7-101-39-122-102Z"/>
@@ -90,6 +90,7 @@ function brandMarkSvg({ size = 512, maskable = false, transparent = false } = {}
         <path fill="${COLORS.navy}" opacity=".78" d="M118 329c47 15 89 12 127-9 22-12 48-20 77-19-35 24-72 42-116 45-32 2-61-4-88-17Z"/>
         <path fill="${COLORS.tide}" opacity=".72" d="M77 258c64 23 120 18 168-15 41-28 83-38 129-28-54 6-94 35-135 59-48 29-102 23-162-16Z"/>
       </g>
+      <text x="144" y="246" text-anchor="middle" fill="#f8fafc" font-family="Georgia, Times New Roman, serif" font-size="50" font-weight="700" letter-spacing="6" filter="url(#neonGlow)">TCG</text>
       <path d="M54 18h178M54 262h178" stroke="#ff2fb3" stroke-opacity=".6" stroke-width="4"/>
       <path d="M54 28h178M54 252h178" stroke="#38bdf8" stroke-opacity=".5" stroke-width="3"/>
     </g>
@@ -121,12 +122,12 @@ function promoHeroSvg({ width = 1536, height = 1024 } = {}) {
     <text x="266" y="238" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">In Stock</text>
     <rect x="44" y="330" width="332" height="126" rx="16" fill="#0c233a" stroke="#173c5c"/>
     <text x="66" y="372" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Your Vault</text>
-    <text x="66" y="418" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="900">$2,543.21</text>
+    <text x="66" y="418" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="900">$0.00</text>
     <path d="M242 420c24-16 36-4 50-18 22-22 43 11 69-14" fill="none" stroke="#ff6a13" stroke-width="5"/>
     <rect x="44" y="480" width="332" height="118" rx="16" fill="#0c233a" stroke="#173c5c"/>
     <text x="66" y="522" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Your Forge</text>
     <text x="74" y="570" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="18">Active listings</text>
-    <text x="238" y="570" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="900">+$412</text>
+    <text x="238" y="570" fill="#22c55e" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="900">$0.00</text>
     <rect x="44" y="622" width="332" height="92" rx="16" fill="#0c233a" stroke="#173c5c"/>
     <text x="118" y="662" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="900">AI Assistant</text>
     <text x="118" y="694" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="18">Drafts. Summaries. Review.</text>
@@ -218,7 +219,7 @@ async function main() {
     appIcon: {
       source: "/assets/brand/ember-tide-icon-source.svg",
       mark: "/assets/brand/ember-tide-mark.svg",
-      rule: "Use the neon booster-pack/card-stack icon with the Ember & Tide flame-wave mark. No text in app icons.",
+      rule: "Use the neon booster-pack/card-stack icon with the Ember & Tide flame-wave mark and TCG lettering.",
     },
     promoHero: {
       source: "/assets/brand/ember-tide-promo-hero.svg",

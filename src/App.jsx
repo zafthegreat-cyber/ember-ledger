@@ -405,6 +405,13 @@ function AppNavIcon({ kind, className = "" }) {
           <path d="m9 12 2 2 4-5" />
         </svg>
       );
+    case "spark":
+      return (
+        <svg {...common}>
+          <path d="M12 2c-2.5 2.7-2.3 5.2-1.8 6.8C8.7 7.5 7.8 5.9 8 4.1 4.8 7 3.5 10.2 4 13.5 4.7 18 8.2 21 12.6 21c4.2 0 7.7-2.6 8.3-6.6.4-2.5-.5-4.8-2.7-6.9.1 1.8-.5 3.2-1.8 4.1.1-2.9-1.1-5.7-4.4-9.6Z" />
+          <path d="M8 15c2.2 1.4 4.4 1.8 6.6 1.1 1.4-.4 2.8-1.2 4.2-1.2" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -2508,7 +2515,7 @@ function QuickActionGrid({ actions = [], className = "", ariaLabel = "Quick acti
             disabled={action.disabled}
             aria-label={action.ariaLabel || title}
           >
-            <span className="command-icon" aria-hidden="true">{commandGlyph(iconKey)}</span>
+            <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={iconKey} /></span>
             <span className="quick-action-copy">
               <span>{title}</span>
               {action.subtitle ? <small>{action.subtitle}</small> : null}
@@ -2518,6 +2525,27 @@ function QuickActionGrid({ actions = [], className = "", ariaLabel = "Quick acti
       })}
     </div>
   );
+}
+
+function commandIconKind(seed = "") {
+  const key = String(seed).toLowerCase();
+  if (/home|hearth/.test(key)) return "home";
+  if (/newstuff|announcement|update/.test(key)) return "clipboard";
+  if (/scan|camera|barcode/.test(key)) return "scan";
+  if (/search|find/.test(key)) return "search";
+  if (/import|bulk|receipt|clipboard/.test(key)) return "clipboard";
+  if (/kid|spark|family|giveaway/.test(key)) return "spark";
+  if (/tidepool|post|community|comment|pool/.test(key)) return "pool";
+  if (/scout|signal|report|map|store/.test(key)) return "scout";
+  if (/vault|card|collection|sealed|wishlist/.test(key)) return "vault";
+  if (/market|trade|deal|listing|watch|exchange/.test(key)) return "market";
+  if (/forge|inventory|sale|expense|mileage|product|workshop/.test(key)) return "forge";
+  if (/daily|calendar/.test(key)) return "calendar";
+  return "plus";
+}
+
+function CommandGlyphIcon({ seed = "" }) {
+  return <AppNavIcon kind={commandIconKind(seed)} />;
 }
 
 function commandGlyph(seed = "") {
@@ -2573,6 +2601,7 @@ function SectionHeroArt({ title, className }) {
         {kind === "daily" ? "≈" : null}
       </div>
       <div className="section-hero-lines" />
+      <span className="section-hero-svg"><CommandGlyphIcon seed={kind} /></span>
     </div>
   );
 }
@@ -2631,7 +2660,9 @@ function SectionStatusDeck({ title, className }) {
       <div className="concept-deck concept-deck--workshop concept-deck--empty">
         <div className="concept-profit-card"><span>Profit This Month</span><strong>$0.00</strong><small>Sales and expenses will populate this.</small></div>
         <div className="concept-tool-grid">
-          {["Expenses", "Receipts", "Mileage", "Inventory", "Products", "Sales"].map((label) => <span key={label}><b>{commandGlyph(label)}</b>{label}</span>)}
+          {["Expenses", "Receipts", "Mileage", "Inventory", "Products", "Sales"].map((label) => (
+            <span key={label}><b className="concept-tool-icon"><CommandGlyphIcon seed={label} /></b>{label}</span>
+          ))}
         </div>
       </div>
     );
@@ -2661,7 +2692,9 @@ function SectionStatusDeck({ title, className }) {
     return (
       <div className="concept-deck concept-deck--newstuff">
         <div className="concept-pack-art"><span /></div>
-        {["Kids Program Updates", "Scout Improvements", "Daily Tide Refresh", "Bug Fixes & Performance"].map((item) => <div className="concept-update-row" key={item}><b>{commandGlyph(item)}</b><span>{item}</span></div>)}
+        {["Kids Program Updates", "Scout Improvements", "Daily Tide Refresh", "Bug Fixes & Performance"].map((item) => (
+          <div className="concept-update-row" key={item}><b className="concept-tool-icon"><CommandGlyphIcon seed={item} /></b><span>{item}</span></div>
+        ))}
       </div>
     );
   }
@@ -3208,6 +3241,15 @@ export default function App() {
     area: "",
   });
   const [selectedStoreMapStore, setSelectedStoreMapStore] = useState(null);
+  const [storeMapSightingOpen, setStoreMapSightingOpen] = useState(false);
+  const [storeMapSightingForm, setStoreMapSightingForm] = useState({
+    category: "Pokemon",
+    name: "",
+    retailerItemNumber: "",
+    sku: "",
+    upc: "",
+    productUrl: "",
+  });
   const [locationPromptOpen, setLocationPromptOpen] = useState(false);
   const [locationPromptZip, setLocationPromptZip] = useState("");
   const [importAssistantOpen, setImportAssistantOpen] = useState(false);
@@ -8505,6 +8547,10 @@ export default function App() {
         closeFlowModal();
         return;
       }
+      if (selectedStoreMapStore) {
+        setSelectedStoreMapStore(null);
+        return;
+      }
       if (feedbackDialog) {
         setFeedbackDialog(null);
         return;
@@ -8546,7 +8592,7 @@ export default function App() {
     }
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [quickAddMenuOpen, activeFlowModal, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showVaultAddForm, showInventoryScanner, receiptScanOpen, vaultForm, scanReview]);
+  }, [quickAddMenuOpen, activeFlowModal, selectedStoreMapStore, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showVaultAddForm, showInventoryScanner, receiptScanOpen, vaultForm, scanReview]);
 
   function getPasswordResetRedirectTo() {
     const appUrl = String(import.meta.env.VITE_PUBLIC_APP_URL || PRODUCTION_APP_URL).replace(/\/$/, "");
@@ -10850,6 +10896,38 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function quickScoutReportReady() {
     return Boolean(quickScoutReportForm.reportType && (quickScoutReportForm.storeId || quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName.trim()));
+  }
+
+  function getScoutWizardSteps() {
+    return [
+      { key: "what", label: "What" },
+      { key: "where", label: "Where" },
+      { key: "proof", label: "Proof" },
+      { key: "product", label: "Product" },
+      { key: "review", label: "Review" },
+    ];
+  }
+
+  function canAdvanceScoutWizard(stepKey = quickScoutReportStep) {
+    const currentType = quickScoutReportTypeMeta();
+    if (stepKey === "what") return Boolean(quickScoutReportForm.reportType);
+    if (stepKey === "where") return Boolean(quickScoutReportForm.storeId || quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName.trim());
+    if (stepKey === "product") return Boolean(quickScoutReportForm.productCategory || currentType.isGuess);
+    if (stepKey === "review") return quickScoutReportReady();
+    return true;
+  }
+
+  function goNextScoutWizardStep() {
+    if (!canAdvanceScoutWizard()) return;
+    const wizardSteps = getScoutWizardSteps();
+    const activeStepIndex = Math.max(0, wizardSteps.findIndex((step) => step.key === quickScoutReportStep));
+    setQuickScoutReportStep(wizardSteps[Math.min(activeStepIndex + 1, wizardSteps.length - 1)].key);
+  }
+
+  function goBackScoutWizardStep() {
+    const wizardSteps = getScoutWizardSteps();
+    const activeStepIndex = Math.max(0, wizardSteps.findIndex((step) => step.key === quickScoutReportStep));
+    setQuickScoutReportStep(wizardSteps[Math.max(activeStepIndex - 1, 0)].key);
   }
 
   function buildQuickScoutReportRecord() {
@@ -19329,6 +19407,79 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     });
   }
 
+  function getStoreMapSightings(row = selectedStoreMapStore) {
+    if (!row) return [];
+    const targetId = getStoreMapStoreId(row.store);
+    const targetName = String(row.name || getScoutQuickStoreName(row.store)).toLowerCase();
+    return (scoutSnapshot.items || []).filter((item) => {
+      const itemStoreId = item.storeId || item.store_id || item.store?.id || "";
+      const itemStoreName = String(item.storeName || item.store_name || item.store?.name || "").toLowerCase();
+      return (targetId && String(itemStoreId) === String(targetId)) || (targetName && itemStoreName === targetName);
+    });
+  }
+
+  function openStoreMapSightingForm() {
+    setStoreMapSightingForm({
+      category: "Pokemon",
+      name: "",
+      retailerItemNumber: "",
+      sku: "",
+      upc: "",
+      productUrl: "",
+    });
+    setStoreMapSightingOpen(true);
+  }
+
+  function updateStoreMapSightingForm(field, value) {
+    setStoreMapSightingForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function saveStoreMapSighting(event) {
+    event.preventDefault();
+    if (!selectedStoreMapStore) return;
+    const itemName = storeMapSightingForm.name.trim();
+    if (!itemName) {
+      setVaultToast("Item name is required.");
+      return;
+    }
+    const now = new Date().toISOString();
+    const storeId = getStoreMapStoreId(selectedStoreMapStore.store);
+    const sighting = {
+      id: makeId("scout-sighting"),
+      category: storeMapSightingForm.category.trim() || "Pokemon",
+      name: itemName,
+      productName: itemName,
+      product_name: itemName,
+      retailerItemNumber: storeMapSightingForm.retailerItemNumber.trim(),
+      retailer_item_number: storeMapSightingForm.retailerItemNumber.trim(),
+      sku: storeMapSightingForm.sku.trim(),
+      upc: storeMapSightingForm.upc.trim(),
+      productUrl: storeMapSightingForm.productUrl.trim(),
+      product_url: storeMapSightingForm.productUrl.trim(),
+      storeId,
+      store_id: storeId,
+      storeName: selectedStoreMapStore.name,
+      store_name: selectedStoreMapStore.name,
+      retailer: selectedStoreMapStore.retailer,
+      sourceType: "manual_store_sighting",
+      source_type: "manual_store_sighting",
+      createdAt: now,
+      updatedAt: now,
+    };
+    const scoutData = getSharedScoutData();
+    const nextItems = [sighting, ...(scoutData.items || scoutSnapshot.items || [])];
+    saveSharedScoutData({ ...scoutData, items: nextItems });
+    setStoreMapSightingOpen(false);
+    setVaultToast(`${itemName} added to Scout sightings.`);
+  }
+
+  function deleteStoreMapSighting(itemId) {
+    const scoutData = getSharedScoutData();
+    const nextItems = (scoutData.items || scoutSnapshot.items || []).filter((item) => String(item.id) !== String(itemId));
+    saveSharedScoutData({ ...scoutData, items: nextItems });
+    setVaultToast("Product sighting removed.");
+  }
+
   function renderStoreMapStatusBadge(row) {
     return <span className={`status-badge store-map-status store-map-status--${row.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{row.status}</span>;
   }
@@ -19360,6 +19511,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </article>
 
         <article className="store-map-filters panel">
+          <div className="store-map-retailer-chips" aria-label="Retailer quick filters">
+            {["All", "Target", "Walmart", "GameStop", "Best Buy", "Local Card Shops"].map((retailer) => (
+              <button
+                type="button"
+                key={retailer}
+                className={storeMapFilters.retailer === retailer ? "active" : ""}
+                onClick={() => updateStoreMapFilter("retailer", retailer)}
+              >
+                {retailer}
+              </button>
+            ))}
+          </div>
           <label>
             <span>Search stores</span>
             <input value={storeMapFilters.query} onChange={(event) => updateStoreMapFilter("query", event.target.value)} placeholder="Store, city, ZIP, nickname" />
@@ -19425,7 +19588,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
           <div className="store-map-card-list">
             {rows.slice(0, 12).map((row) => (
-              <article className="store-map-card" key={row.id}>
+              <article className="store-map-card scout-store-card" key={row.id}>
                 <button type="button" className="store-map-card-main" onClick={() => setSelectedStoreMapStore(row)}>
                   <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
                   <span>
@@ -19442,7 +19605,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="store-map-card-actions">
                   <button type="button" className="secondary-button" onClick={() => openStoreMapReport(row, "stock_on_shelf")}>Report Stock</button>
                   <button type="button" className="ghost-button" onClick={() => toggleStoreMapWatch(row)}>{row.watchlisted ? "Unwatch" : "Watch"}</button>
-                  <button type="button" className="ghost-button" onClick={() => setSelectedStoreMapStore(row)}>Details</button>
+                  <button type="button" className="ghost-button" onClick={() => setSelectedStoreMapStore(row)}>Open Store</button>
                 </div>
               </article>
             ))}
@@ -23096,7 +23259,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderAddActionSheetContent() {
     const actions = [
       { key: "tcg-command", title: "Open TCG Command Center", helper: "Jump to the collector command hub.", action: "tcgCommand" },
-      { key: "scan-item", title: "Scan Item", helper: "Match first, then choose destination.", action: "scanProduct" },
+      { key: "scan-item", title: "Scan / Review Item", helper: "Match first, then choose destination.", action: "scanProduct" },
       { key: "store-report", title: "Add Scout Report", helper: "Log a restock or store check.", action: "storeReport" },
       { key: "receipt", title: "Import Receipt", helper: "Review lines before saving.", action: "receipt" },
       { key: "bulk", title: "Bulk Add", helper: "Import or transfer a list.", action: "bulkAdd" },
@@ -23104,14 +23267,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       { key: "mileage", title: "Add Mileage", helper: "Track business travel.", action: "mileage" },
       { key: "inventory", title: "Add Inventory", helper: "Review, then send to Forge.", action: "inventory" },
       { key: "card", title: "Add Item", helper: "Card, sealed, slab, or wishlist.", action: "card" },
-      { key: "sealed", title: "Add Item", helper: "Start with sealed product details.", action: "sealed" },
-      { key: "sale", title: "Add Sale", helper: "Record sale and profit.", action: "sale" },
-      { key: "expense", title: "Add Expense", helper: "Track costs and receipts.", action: "expense" },
-      { key: "catalog-update", title: "Suggest Catalog Update", helper: "Send an admin-reviewed correction.", action: "suggestCatalogCorrection" },
-      { key: "store-update", title: "Suggest Store Update", helper: "Add or fix a store for review.", action: "storeSuggestion" },
     ];
     const hubActions = actions.filter((entry) => ["scan-item", "store-report", "receipt", "bulk", "listing", "mileage", "inventory", "card"].includes(entry.key));
-    const extraActions = actions.filter((entry) => !hubActions.includes(entry));
     return (
       <div className="add-action-sheet command-quick-add">
         <div className="command-hub" aria-label="Quick Add command hub">
@@ -23125,15 +23282,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               className={`command-hub-node command-hub-node-${index + 1}`}
               onClick={() => runAddSheetAction(entry.action)}
             >
-              <span className="command-icon" aria-hidden="true">{commandGlyph(entry.key)}</span>
+              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={entry.key} /></span>
               <span>{entry.title}</span>
             </button>
           ))}
         </div>
         <div className="add-action-grid command-action-list">
-          {extraActions.map((entry) => (
-            <button key={entry.key} type="button" className="add-action-card icon-action-tile" onClick={() => runAddSheetAction(entry.action)}>
-              <span className="command-icon" aria-hidden="true">{commandGlyph(entry.key)}</span>
+          {actions.map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              className={`add-action-card icon-action-tile ${hubActions.includes(entry) ? "command-list-hub-action" : "command-list-extra-action"}`}
+              onClick={() => runAddSheetAction(entry.action)}
+            >
+              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={entry.key} /></span>
               <span className="quick-action-copy">
                 <span>{entry.title}</span>
                 <small>{entry.helper}</small>
@@ -23600,6 +23762,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
     return (
       <form
+        id="quick-scout-report-form"
         className="scout-report-flow scout-quick-report-v2 scout-report-wizard"
         onSubmit={submitQuickScoutReport}
         onTouchStart={handleScoutWizardTouchStart}
@@ -24218,22 +24381,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const destinationOptions = [
       {
         key: "vault",
-        title: "Vault",
+        title: "Add to Vault",
         helper: "Owned collection or stored item.",
       },
       {
         key: "wishlist",
-        title: "Wishlist",
+        title: "Add to Wishlist",
         helper: "Wanted item, not owned yet.",
       },
       {
         key: "forge",
-        title: "Forge",
+        title: "Add to Forge",
         helper: "Business inventory or seller tracking.",
       },
       {
         key: "tidetradr",
-        title: "Market",
+        title: "Add to Market",
         helper: "Catalog, watchlist, or product suggestion.",
       },
     ];
@@ -24329,6 +24492,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <p className="compact-subtitle">{AI_REVIEW_DISCLAIMER} Global catalog changes require admin review.</p>
                   <div className="catalog-selector-actions match-tools">
                     <button type="button" className="secondary-button" onClick={() => {
+                      updateMultiDestinationToggle("vault", true);
+                      setMultiDestinationMatchSearchOpen(false);
+                    }}>
+                      Manual Add
+                    </button>
+                    <button type="button" className="secondary-button" onClick={() => {
+                      setMultiDestinationForm((current) => ({
+                        ...current,
+                        destinations: destinationDefaults({ wishlist: true }),
+                        wishlist: {
+                          ...current.wishlist,
+                          workspaceId: current.wishlist?.workspaceId || defaultWorkspaceIdForDestination("wishlist"),
+                        },
+                      }));
+                      setMultiDestinationMatchSearchOpen(false);
+                    }}>
+                      Add Wishlist Item
+                    </button>
+                    <button type="button" className="secondary-button" onClick={() => {
                       const query = String(multiDestinationCatalogQuery || multiDestinationForm.itemName || multiDestinationForm.upcSku || "").trim();
                       if (!query) {
                         setVaultToast("Enter a product name, UPC, SKU, or visible text first.");
@@ -24354,6 +24536,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       }
                     }}>
                       Enter UPC/SKU
+                    </button>
+                    <button type="button" className="secondary-button" onClick={() => {
+                      closeFlowModal({ force: true, reset: false });
+                      openVaultScanFlow();
+                    }}>
+                      Scan / Review Item
                     </button>
                     <button type="button" className="secondary-button" onClick={() => {
                       const destination = multiDestinationForm.destinations.forge ? "forge" : multiDestinationForm.destinations.wishlist ? "wishlist" : multiDestinationForm.destinations.vault ? "vault" : "none";
@@ -25652,7 +25840,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <aside className="drawer open">
             <div className="drawer-header">
               <div><p>Ember & Tide</p><h3>Menu</h3></div>
-              <button type="button" className="secondary-button" onClick={() => setMenuOpen(false)}>Close</button>
+              <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>X</button>
             </div>
             <div className="drawer-menu-stack">
               {renderMenuPullDown("account", "Account", "App version, sign-in, private beta status, and account actions", (
@@ -26404,15 +26592,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {renderFlowModalContent()}
             </div>
             <div className="location-modal-actions modal-sticky-footer flow-modal-footer">
-              <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
-                {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "scoutSubmit", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
-              </button>
+              {activeFlowModal?.type === "scoutSubmit" ? (
+                <>
+                  <button type="button" className="secondary-button" onClick={quickScoutReportStep === "what" ? () => closeFlowModal() : goBackScoutWizardStep}>
+                    {quickScoutReportStep === "what" ? "Cancel" : "Back"}
+                  </button>
+                  {quickScoutReportStep === "review" ? (
+                    <button type="submit" form="quick-scout-report-form" disabled={!quickScoutReportReady()}>
+                      {quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Submit Report"}
+                    </button>
+                  ) : (
+                    <button type="button" disabled={!canAdvanceScoutWizard()} onClick={goNextScoutWizardStep}>Next</button>
+                  )}
+                </>
+              ) : (
+                <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
+                  {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
+                </button>
+              )}
               {activeFlowModal?.type === "multiDestinationAdd" ? (
                 <>
                   <button type="submit" form="multi-destination-add-form" name="saveMode" value="add-more" className="secondary-button" disabled={multiDestinationSaving}>
                     {multiDestinationSaving ? "Saving..." : "Save and Add More"}
                   </button>
-                  <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" disabled={multiDestinationSaving}>
+                  <button type="submit" form="multi-destination-add-form" name="saveMode" value="close" aria-label="Add Item" disabled={multiDestinationSaving}>
                     {multiDestinationSaving ? "Saving..." : "Save and Close"}
                   </button>
                 </>
@@ -26658,6 +26861,47 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <div className="small-empty-state">
                       <strong>No reports for this store yet</strong>
                       <span>Submit a stock or empty shelf report after your next check.</span>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="store-map-detail-reports">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>Product Sightings</h3>
+                    <p>Track products seen at this store without duplicating store records.</p>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={openStoreMapSightingForm}>Add Product Sighting</button>
+                </div>
+                {storeMapSightingOpen ? (
+                  <form className="store-map-sighting-form" onSubmit={saveStoreMapSighting}>
+                    <input value={storeMapSightingForm.category} onChange={(event) => updateStoreMapSightingForm("category", event.target.value)} placeholder="Category" />
+                    <input value={storeMapSightingForm.name} onChange={(event) => updateStoreMapSightingForm("name", event.target.value)} placeholder="Item name" />
+                    <input value={storeMapSightingForm.retailerItemNumber} onChange={(event) => updateStoreMapSightingForm("retailerItemNumber", event.target.value)} placeholder="Retailer item number" />
+                    <input value={storeMapSightingForm.sku} onChange={(event) => updateStoreMapSightingForm("sku", event.target.value)} placeholder="SKU" />
+                    <input value={storeMapSightingForm.upc} onChange={(event) => updateStoreMapSightingForm("upc", event.target.value)} placeholder="UPC" />
+                    <input value={storeMapSightingForm.productUrl} onChange={(event) => updateStoreMapSightingForm("productUrl", event.target.value)} placeholder="Product URL" />
+                    <div className="summary-pill-row">
+                      <button type="submit">Add Product Sighting</button>
+                      <button type="button" className="secondary-button" onClick={() => setStoreMapSightingOpen(false)}>Cancel</button>
+                    </div>
+                  </form>
+                ) : null}
+                <div className="scout-preview-list">
+                  {getStoreMapSightings(selectedStoreMapStore).map((item) => (
+                    <article className="scout-tracked-item-card compact-card" key={item.id}>
+                      <div>
+                        <strong>{item.name || item.productName || item.product_name}</strong>
+                        <p>{item.category || "Pokemon"}{item.sku ? ` | SKU ${item.sku}` : ""}{item.upc ? ` | UPC ${item.upc}` : ""}</p>
+                      </div>
+                      <button type="button" className="ghost-button" onClick={() => deleteStoreMapSighting(item.id)}>Delete</button>
+                    </article>
+                  ))}
+                  {!getStoreMapSightings(selectedStoreMapStore).length && !storeMapSightingOpen ? (
+                    <div className="small-empty-state">
+                      <strong>No product sightings yet</strong>
+                      <span>Add an item if you saw a specific product, SKU, UPC, or retailer listing.</span>
                     </div>
                   ) : null}
                 </div>
