@@ -90,11 +90,12 @@ function brandMarkSvg({ size = 512, maskable = false, transparent = false } = {}
         <path fill="${COLORS.navy}" opacity=".78" d="M118 329c47 15 89 12 127-9 22-12 48-20 77-19-35 24-72 42-116 45-32 2-61-4-88-17Z"/>
         <path fill="${COLORS.tide}" opacity=".72" d="M77 258c64 23 120 18 168-15 41-28 83-38 129-28-54 6-94 35-135 59-48 29-102 23-162-16Z"/>
       </g>
-      <text x="144" y="246" text-anchor="middle" fill="#f8fafc" font-family="Georgia, Times New Roman, serif" font-size="50" font-weight="700" letter-spacing="6" filter="url(#neonGlow)">TCG</text>
+      <text x="144" y="246" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="4" filter="url(#neonGlow)">E&amp;T</text>
       <path d="M54 18h178M54 262h178" stroke="#ff2fb3" stroke-opacity=".6" stroke-width="4"/>
       <path d="M54 28h178M54 252h178" stroke="#38bdf8" stroke-opacity=".5" stroke-width="3"/>
     </g>
   </g>
+  <text x="256" y="454" text-anchor="middle" fill="#f8fafc" font-family="Georgia, Times New Roman, serif" font-size="82" font-weight="700" letter-spacing="10" filter="url(#neonGlow)">TCG</text>
 </svg>`;
 }
 

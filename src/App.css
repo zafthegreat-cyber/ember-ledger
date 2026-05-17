@@ -26513,3 +26513,467 @@ button.secondary-button,
     min-height: 82px !important;
   }
 }
+
+/* Focused QA polish: keep command-center surfaces dark, scrollable, and readable. */
+.topbar .app-search.expanded,
+.app-search.expanded,
+.app-search-results,
+.smart-catalog-suggestions,
+.quick-add-menu {
+  color: #f8fbff !important;
+  background:
+    radial-gradient(circle at 14% 10%, rgba(255, 122, 48, 0.14), transparent 18rem),
+    radial-gradient(circle at 90% 12%, rgba(36, 214, 255, 0.14), transparent 16rem),
+    linear-gradient(145deg, rgba(8, 17, 34, 0.96), rgba(3, 8, 19, 0.98)) !important;
+  border: 1px solid rgba(121, 233, 255, 0.2) !important;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.42), 0 0 34px rgba(0, 216, 255, 0.12) !important;
+}
+
+.topbar .app-search.expanded input,
+.app-search.expanded input {
+  color: #f8fbff !important;
+  background: rgba(4, 11, 24, 0.86) !important;
+  border-color: rgba(121, 233, 255, 0.24) !important;
+}
+
+.app-search-mobile-header,
+.app-search-mobile-header *,
+.app-search-result,
+.app-search-result *,
+.smart-catalog-suggestion,
+.smart-catalog-suggestion * {
+  color: #f8fbff !important;
+  background: transparent !important;
+  text-shadow: none !important;
+}
+
+.app-search-result,
+.smart-catalog-suggestion {
+  border: 1px solid rgba(121, 233, 255, 0.14) !important;
+  border-radius: 14px !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.014)),
+    rgba(6, 15, 31, 0.72) !important;
+}
+
+.flow-modal[data-flow="addActionSheet"] {
+  height: auto !important;
+  min-height: 0 !important;
+  grid-template-rows: auto minmax(0, auto) !important;
+}
+
+.flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+.flow-modal[data-flow="forgeQuickAdd"] .flow-modal-body,
+.flow-modal[data-flow="vaultQuickAdd"] .flow-modal-body {
+  max-height: min(70dvh, 620px) !important;
+  padding-bottom: 14px !important;
+}
+
+.command-quick-add,
+.add-action-sheet {
+  min-height: 0 !important;
+}
+
+.command-action-list,
+.add-action-grid {
+  align-items: stretch;
+}
+
+.command-hub {
+  min-height: 180px !important;
+}
+
+.location-modal,
+.flow-modal,
+.scanner-review-modal,
+.receipt-scan-modal,
+.vault-add-modal,
+.vault-transfer-modal,
+.marketplace-review-modal,
+.catalog-detail-drawer,
+.deal-finder-modal,
+.feedback-modal,
+.scout-score-modal {
+  color: #f8fbff !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 122, 48, 0.12), transparent 20rem),
+    radial-gradient(circle at 92% 12%, rgba(36, 214, 255, 0.13), transparent 20rem),
+    linear-gradient(145deg, rgba(8, 17, 34, 0.98), rgba(3, 8, 19, 0.99)) !important;
+  border: 1px solid rgba(121, 233, 255, 0.2) !important;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.52), 0 0 34px rgba(0, 216, 255, 0.12) !important;
+}
+
+.modal-title-row,
+.modal-sticky-header,
+.scanner-modal-header,
+.receipt-scan-modal > .modal-title-row {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  color: #f8fbff !important;
+  background:
+    linear-gradient(180deg, rgba(7, 16, 32, 0.98), rgba(7, 16, 32, 0.9)) !important;
+  border-bottom: 1px solid rgba(121, 233, 255, 0.14) !important;
+}
+
+.modal-title-row *,
+.modal-sticky-header *,
+.scanner-modal-header * {
+  color: inherit !important;
+  background: transparent !important;
+  text-shadow: none !important;
+}
+
+.modal-close-button,
+.modal-close-icon,
+.drawer-close-button {
+  flex: 0 0 auto !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border-radius: 14px !important;
+}
+
+.flow-modal-body,
+.location-modal-content,
+.scanner-review-modal,
+.catalog-detail-drawer,
+.deal-finder-modal,
+.feedback-modal {
+  overflow-x: hidden !important;
+}
+
+.receipt-scan-modal {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: calc(100dvh - 22px) !important;
+  padding: 0 !important;
+}
+
+.receipt-scan-modal > * {
+  flex: 0 0 auto;
+}
+
+.receipt-progress-steps {
+  position: sticky !important;
+  top: 64px !important;
+  z-index: 9 !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  background: rgba(5, 12, 28, 0.95) !important;
+  border-bottom: 1px solid rgba(121, 233, 255, 0.12) !important;
+}
+
+.receipt-progress-steps span {
+  color: rgba(238, 247, 255, 0.76) !important;
+  background: rgba(9, 19, 37, 0.8) !important;
+  border-color: rgba(121, 233, 255, 0.16) !important;
+}
+
+.receipt-progress-steps span.active,
+.receipt-progress-steps span.complete {
+  color: #fff8ee !important;
+  background: linear-gradient(135deg, rgba(255, 122, 48, 0.28), rgba(30, 199, 255, 0.18)) !important;
+  border-color: rgba(255, 143, 74, 0.42) !important;
+}
+
+.receipt-scan-layout,
+.receipt-review-panel {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  overflow: visible !important;
+}
+
+.receipt-upload-panel,
+.receipt-details-panel,
+.receipt-review-panel,
+.receipt-draft-card,
+.receipt-report-summary,
+.receipt-preview,
+.scanner-review-card,
+.scanner-start-state,
+.scanner-search-status,
+.scanner-correction-panel,
+.market-history-chart.empty,
+.catalog-detail-core-panel,
+.catalog-detail-pricing-panel {
+  color: #f8fbff !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.014)),
+    rgba(6, 15, 31, 0.74) !important;
+  border: 1px solid rgba(121, 233, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
+}
+
+.receipt-upload-panel *,
+.receipt-details-panel *,
+.receipt-review-panel *,
+.receipt-draft-card *,
+.receipt-report-summary *,
+.scanner-review-card *,
+.catalog-detail-core-panel *,
+.catalog-detail-pricing-panel * {
+  min-width: 0;
+}
+
+.receipt-scan-modal input,
+.receipt-scan-modal textarea,
+.receipt-scan-modal select,
+.scanner-review-modal input,
+.scanner-review-modal textarea,
+.scanner-review-modal select {
+  width: 100%;
+  color: #f8fbff !important;
+  background: rgba(3, 10, 23, 0.82) !important;
+  border-color: rgba(121, 233, 255, 0.22) !important;
+}
+
+.receipt-scan-modal .location-modal-actions,
+.scanner-modal-footer,
+.modal-sticky-footer,
+.flow-modal-footer,
+.location-modal-actions {
+  background:
+    linear-gradient(180deg, rgba(5, 12, 28, 0), rgba(5, 12, 28, 0.96) 28%),
+    rgba(5, 12, 28, 0.92) !important;
+}
+
+.flow-modal[data-flow="scoutSubmit"] {
+  height: min(92dvh, 760px) !important;
+  min-height: min(92dvh, 760px) !important;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+  max-height: none !important;
+  padding-bottom: 18px !important;
+  overflow-y: auto !important;
+}
+
+.scout-report-wizard {
+  min-height: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.scout-report-step-card,
+.scout-report-choice-card,
+.scout-stock-status-button {
+  color: #f8fbff !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.016)),
+    rgba(7, 18, 34, 0.74) !important;
+  border-color: rgba(121, 233, 255, 0.16) !important;
+}
+
+.scout-wizard-footer {
+  margin-bottom: 0 !important;
+}
+
+.drawer-link strong,
+.drawer-link span,
+.drawer-link small,
+.drawer-collapsible-toggle strong,
+.drawer-collapsible-toggle small,
+.drawer-collapsible-toggle b,
+.settings-row strong,
+.settings-row span,
+.settings-group strong,
+.settings-group p,
+.drawer-info-card strong,
+.drawer-info-card p {
+  display: block;
+  max-width: 100%;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.28 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.drawer-link,
+.drawer-collapsible-toggle,
+.settings-row,
+.settings-group,
+.drawer-info-card {
+  align-items: start !important;
+}
+
+.watch-calendar-summary-grid > *,
+.ember-watch-route-list span,
+.watch-calendar-day,
+.watch-month-day {
+  color: #f8fbff !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.014)),
+    rgba(6, 15, 31, 0.72) !important;
+  border-color: rgba(121, 233, 255, 0.16) !important;
+}
+
+.watch-calendar-day-heading,
+.watch-month-day-header {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px 8px !important;
+  min-width: 0 !important;
+}
+
+.watch-calendar-day-heading *,
+.watch-month-day-header * {
+  min-width: 0;
+  white-space: normal !important;
+}
+
+.catalog-detail-drawer {
+  color: #f8fbff !important;
+}
+
+.catalog-detail-drawer .catalog-detail-body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.catalog-detail-drawer .catalog-detail-actions,
+.catalog-detail-secondary-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.catalog-detail-drawer .catalog-detail-actions button,
+.catalog-detail-secondary-actions button {
+  flex: 1 1 148px;
+  min-width: 0 !important;
+  white-space: normal !important;
+}
+
+@media (max-width: 720px) {
+  .topbar .app-search.expanded {
+    top: calc(70px + env(safe-area-inset-top, 0px)) !important;
+    left: max(10px, env(safe-area-inset-left, 0px)) !important;
+    right: max(10px, env(safe-area-inset-right, 0px)) !important;
+    max-height: min(66dvh, 560px) !important;
+    overflow: hidden !important;
+  }
+
+  .topbar .app-search.expanded .app-search-results {
+    max-height: calc(66dvh - 82px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .flow-modal[data-flow="forgeQuickAdd"] .flow-modal-body,
+  .flow-modal[data-flow="vaultQuickAdd"] .flow-modal-body {
+    max-height: calc(100dvh - 126px) !important;
+    padding-bottom: 12px !important;
+  }
+
+  .command-hub {
+    min-height: 74px !important;
+    padding: 10px !important;
+  }
+
+  .command-action-list,
+  .add-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .command-hub-node,
+  .add-action-card,
+  .icon-action-tile {
+    min-height: 58px !important;
+  }
+
+  .flow-modal[data-flow="scoutSubmit"] {
+    width: calc(100vw - 16px) !important;
+    height: calc(100dvh - 16px) !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 16px) !important;
+  }
+
+  .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    padding-bottom: 12px !important;
+  }
+
+  .receipt-scan-modal,
+  .scanner-review-modal {
+    width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 20px !important;
+  }
+
+  .receipt-progress-steps {
+    top: 62px !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .receipt-progress-steps span {
+    min-width: 0 !important;
+    padding-inline: 8px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .receipt-scan-layout,
+  .receipt-review-panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 10px !important;
+  }
+
+  .mobile-bottom-nav {
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .main,
+  .app-shell-dark,
+  .auth-main,
+  .screen-content,
+  .embedded-page {
+    padding-bottom: calc(var(--bottom-nav-height, 58px) + env(safe-area-inset-bottom, 0px) + 42px) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app {
+    width: min(100% - 64px, 1380px) !important;
+  }
+
+  .hearth-command-layout,
+  .forge-dashboard-grid,
+  .vault-dashboard-grid,
+  .marketplace-section,
+  .tidepool-feed-grid,
+  .settings-page-layout,
+  .drawer-menu-stack {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr) !important;
+    gap: 18px !important;
+    align-items: start !important;
+  }
+
+  .catalog-results-grid,
+  .marketplace-listings-grid,
+  .cards,
+  .inventory-grid,
+  .vault-set-product-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  }
+
+  .flow-modal[data-flow="scoutSubmit"] {
+    width: min(840px, calc(100vw - 72px)) !important;
+  }
+
+  .receipt-scan-modal,
+  .scanner-review-modal {
+    width: min(1120px, calc(100vw - 72px)) !important;
+  }
+}
