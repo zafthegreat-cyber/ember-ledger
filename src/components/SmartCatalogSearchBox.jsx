@@ -44,6 +44,8 @@ export default function SmartCatalogSearchBox({
   emptyMessage = "No matches found.",
   renderEmptyActions = null,
   money = (amount) => `$${Number(amount || 0).toFixed(2)}`,
+  autoFocus = false,
+  inputLabel = "",
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -230,6 +232,8 @@ export default function SmartCatalogSearchBox({
         onFocus={() => suggestions.length && setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         placeholder={placeholder}
+        autoFocus={autoFocus}
+        aria-label={inputLabel || placeholder}
         role="combobox"
         aria-expanded={open && suggestions.length > 0}
         aria-autocomplete="list"

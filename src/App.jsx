@@ -1106,6 +1106,16 @@ const MULTI_DESTINATION_STEP_LABELS = {
   details: "Add Details",
   review: "Review",
 };
+const ADD_ITEM_QUICK_SEARCH_CHIPS = [
+  "ETB",
+  "Elite Trainer Box",
+  "Booster Bundle",
+  "Tin",
+  "Blister",
+  "Collection Box",
+  "Booster Box",
+  "Sleeved Booster",
+];
 const INVENTORY_ITEMS_SUPABASE_COLUMNS = new Set([
   "user_id",
   "workspace_id",
@@ -5963,6 +5973,30 @@ export default function App() {
   ]);
 
   useEffect(() => {
+    if (activeFlowModal?.type !== "multiDestinationAdd") return undefined;
+    if (multiDestinationStep !== "item" || !multiDestinationMatchSearchOpen) return undefined;
+    const lookup = String(multiDestinationCatalogQuery || "").trim();
+    const exactIdentifier = /^\d{6,}$/.test(lookup);
+    if (!lookup || (lookup.length < 2 && !exactIdentifier)) return undefined;
+    const timer = window.setTimeout(() => {
+      void loadImportedPokemonCatalog(lookup, {
+        page: 1,
+        pageSize: Math.min(24, catalogPageSize || 24),
+        mode: exactIdentifier ? "barcode" : "general",
+        barcode: exactIdentifier ? lookup : "",
+        forceSearch: true,
+      });
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [
+    activeFlowModal?.type,
+    multiDestinationStep,
+    multiDestinationMatchSearchOpen,
+    multiDestinationCatalogQuery,
+    catalogPageSize,
+  ]);
+
+  useEffect(() => {
     let frameId = 0;
     const lastScrollY = { current: window.scrollY || 0 };
     const downDistance = { current: 0 };
@@ -6559,6 +6593,64 @@ export default function App() {
         ...current.tidetradr,
         existingProductId: "",
       },
+    }));
+  }
+
+  function runMultiDestinationCatalogSearch(value, options = {}) {
+    const lookup = String(value || "").trim();
+    setMultiDestinationCatalogQuery(lookup);
+    setMultiDestinationMatchSearchOpen(true);
+    if (!lookup) return;
+    const exactIdentifier = /^\d{6,}$/.test(lookup);
+    void loadImportedPokemonCatalog(lookup, {
+      page: 1,
+      pageSize: Math.min(24, catalogPageSize || 24),
+      mode: exactIdentifier ? "barcode" : "general",
+      barcode: exactIdentifier ? lookup : "",
+      forceSearch: true,
+      ...options,
+    });
+  }
+
+  function startMultiDestinationManualEntry(seed = {}) {
+    setMultiDestinationMatchSearchOpen(false);
+    setMultiDestinationMessage("Manual item mode. Enter an item name, then continue to choose where it belongs.");
+    setMultiDestinationForm((current) => ({
+      ...current,
+      ...seed,
+      itemName: seed.itemName ?? current.itemName ?? multiDestinationCatalogQuery,
+      productType: seed.productType ?? current.productType,
+      setName: seed.setName ?? current.setName,
+      upcSku: seed.upcSku ?? current.upcSku,
+      msrpPrice: seed.msrpPrice ?? current.msrpPrice,
+      marketPrice: seed.marketPrice ?? current.marketPrice,
+      catalogProductId: "",
+      catalogVariantId: "",
+      tidetradr: {
+        ...current.tidetradr,
+        existingProductId: "",
+      },
+    }));
+  }
+
+  function selectRecentMultiDestinationItem(item = {}) {
+    const name = item.name || item.itemName || item.catalogProductName || "";
+    if (!name) return;
+    setMultiDestinationCatalogQuery(name);
+    setMultiDestinationMatchSearchOpen(false);
+    setMultiDestinationMessage("Recent item copied. Review the details, then continue.");
+    setMultiDestinationForm((current) => ({
+      ...current,
+      itemName: name,
+      productType: item.productType || item.product_type || current.productType,
+      setName: item.setName || item.set_name || item.expansion || current.setName,
+      variant: item.variant || current.variant,
+      upcSku: item.barcode || item.upc || item.sku || current.upcSku,
+      msrpPrice: item.msrpPrice || item.msrp_price || current.msrpPrice,
+      marketPrice: item.marketPrice || item.market_price || item.marketValue || item.market_value || current.marketPrice,
+      notes: current.notes || item.notes || "",
+      catalogProductId: item.catalogProductId || item.catalog_product_id || current.catalogProductId,
+      catalogVariantId: item.catalogVariantId || item.catalog_variant_id || current.catalogVariantId,
     }));
   }
 
@@ -11699,13 +11791,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       selectMultiDestinationCatalogProduct(suggestion.product);
       return;
     }
-    loadImportedPokemonCatalog(value, {
-      page: 1,
-      pageSize: Math.min(24, catalogPageSize || 24),
-      mode: "general",
-      barcode: "",
-      forceSearch: true,
-    });
+    runMultiDestinationCatalogSearch(value);
   }
 
   async function submitMultiDestinationAdd(event) {
@@ -24812,10 +24898,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const selectedDestinations = selectedMultiDestinationKeys(multiDestinationForm);
     const selectedDestinationOptions = destinationOptions.filter((option) => selectedDestinations.includes(option.key));
     const currentStepIndex = Math.max(0, MULTI_DESTINATION_STEPS.indexOf(multiDestinationStep));
+    const currentStepValidationMessage = validateMultiDestinationStep(multiDestinationStep, multiDestinationForm);
     const reviewValidationMessage = validateMultiDestinationStep("review", multiDestinationForm);
+    const manualItemSelected = !selectedCatalog && !multiDestinationMatchSearchOpen && String(multiDestinationForm.itemName || "").trim();
     const selectedItemSummary = selectedCatalog
       ? `${catalogTitle(selectedCatalog)}${catalogExpansionName(selectedCatalog) ? ` | ${catalogExpansionName(selectedCatalog)}` : ""}`
       : String(multiDestinationForm.itemName || "No item selected").trim();
+    const itemSearchQuery = String(multiDestinationCatalogQuery || "").trim();
+    const itemSearchResults = itemSearchQuery ? getCatalogPickerResults(itemSearchQuery, 10) : [];
+    const recentAddItems = [...items]
+      .filter((item) => item?.name || item?.itemName || item?.catalogProductName)
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+      .slice(0, 4);
     const renderDestinationWorkspaceField = (destination, label) => {
       const options = destinationWorkspaceOptions[destination] || workspaceSelectorOptions;
       return (
@@ -24852,9 +24946,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
         {multiDestinationStep === "item" ? (
         <section className="flow-form-section">
-          <h3>Shared Item Details</h3>
+          <div className="add-item-step-heading">
+            <h3>Select the item first</h3>
+            <p>Search TideTradr, pick a recent item, or use manual add when the product is not in the catalog yet.</p>
+          </div>
           <div className="flow-form-grid">
-            <div className="catalog-selector-panel">
+            <div className="catalog-selector-panel add-item-search-panel">
               {selectedCatalog && !multiDestinationMatchSearchOpen ? (
                 <div className="selected-product-card selected-match-card">
                   <div className="catalog-thumb selected-match-thumb">
@@ -24863,6 +24960,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     )}
                   </div>
                   <div className="selected-match-copy">
+                    <span className="neon-chip add-item-selected-chip">Selected item</span>
                     <strong>{catalogTitle(selectedCatalog)}</strong>
                     <span>{catalogExpansionName(selectedCatalog) || "Expansion unavailable"} | {catalogProductTypeLabel(selectedCatalog)}</span>
                     <small>{hasCatalogMarketPrice(selectedCatalog) ? `Market: ${money(getTideTradrMarketInfo(selectedCatalog).currentMarketValue)}` : "Market data unavailable"}</small>
@@ -24876,53 +24974,129 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </button>
                   </div>
                 </div>
+              ) : manualItemSelected ? (
+                <div className="selected-product-card selected-match-card manual-selected-card">
+                  <div className="catalog-thumb selected-match-thumb manual-selected-thumb">
+                    <span>Manual</span>
+                  </div>
+                  <div className="selected-match-copy">
+                    <span className="neon-chip add-item-selected-chip">Manual item</span>
+                    <strong>{multiDestinationForm.itemName}</strong>
+                    <span>{[multiDestinationForm.productType || "Type not set", multiDestinationForm.setName || "Set optional"].filter(Boolean).join(" | ")}</span>
+                    <small>{multiDestinationForm.upcSku ? `UPC/SKU: ${multiDestinationForm.upcSku}` : "You can add UPC/SKU, price, and notes below."}</small>
+                  </div>
+                  <div className="selected-match-actions">
+                    <button type="button" className="secondary-button" onClick={() => setMultiDestinationMatchSearchOpen(true)}>
+                      Search catalog
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => {
+                      setMultiDestinationMatchSearchOpen(true);
+                      setMultiDestinationCatalogQuery("");
+                      updateMultiDestinationField("itemName", "");
+                    }}>
+                      Clear
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <>
-                  <Field label="Product / Card Match">
-                    <SmartCatalogSearchBox
-                      value={multiDestinationCatalogQuery}
-                      onChange={setMultiDestinationCatalogQuery}
-                      onSearch={(value) => {
-                        setMultiDestinationCatalogQuery(value);
-                        if (String(value || "").trim()) {
-                          loadImportedPokemonCatalog(value, {
-                            page: 1,
-                            pageSize: Math.min(24, catalogPageSize || 24),
-                            mode: "general",
-                            barcode: "",
-                            forceSearch: true,
-                          });
-                        }
-                      }}
-                      onSelectSuggestion={selectMultiDestinationCatalogSuggestion}
-                      supabase={supabase}
-                      isSupabaseConfigured={isSupabaseConfigured}
-                      mapRow={mapCatalog}
-                      productGroup="All"
-                      dataFilter="All"
-                      placeholder="Search TideTradr by product, set, UPC, SKU, or shorthand..."
-                      maxSuggestions={8}
-                      inlineResults
-                      emptyMessage="No TideTradr match found. Continue manual entry or suggest a missing product."
-                      renderEmptyActions={() => (
-                        <div className="catalog-selector-actions">
-                          <button type="button" className="secondary-button" onClick={() => setMultiDestinationCatalogQuery("")}>
-                            Continue manual entry
-                          </button>
-                          <button type="button" onClick={markMultiDestinationMissingCatalog}>
-                            Suggest Missing Product
-                          </button>
+                  <div className="add-item-search-card">
+                    <Field label="Search product, card, UPC, or set">
+                      <SmartCatalogSearchBox
+                        value={multiDestinationCatalogQuery}
+                        onChange={(value) => {
+                          setMultiDestinationMessage("");
+                          setMultiDestinationCatalogQuery(value);
+                        }}
+                        onSearch={runMultiDestinationCatalogSearch}
+                        onSelectSuggestion={selectMultiDestinationCatalogSuggestion}
+                        supabase={supabase}
+                        isSupabaseConfigured={isSupabaseConfigured}
+                        mapRow={mapCatalog}
+                        productGroup="All"
+                        dataFilter="All"
+                        placeholder="Search Pokemon product, set, UPC, or card name"
+                        maxSuggestions={8}
+                        inputClassName="add-item-search-input"
+                        autoFocus
+                        inputLabel="Search Pokemon product, set, UPC, or card name"
+                        inlineResults
+                        emptyMessage="No TideTradr match found. Try fewer words, a UPC/SKU, or add it manually."
+                        renderEmptyActions={() => (
+                          <div className="catalog-selector-actions">
+                            <button type="button" className="secondary-button" onClick={() => startMultiDestinationManualEntry()}>
+                              Can't find it? Add manually
+                            </button>
+                            <button type="button" onClick={markMultiDestinationMissingCatalog}>
+                              Suggest Missing Product
+                            </button>
+                          </div>
+                        )}
+                        money={money}
+                      />
+                    </Field>
+                    <p className="compact-subtitle">Partial names, set names, UPCs, SKUs, and sealed-product terms work here. {AI_REVIEW_DISCLAIMER}</p>
+                  </div>
+                  {!itemSearchQuery ? (
+                    <div className="add-item-picker-start">
+                      <div className="add-item-quick-section">
+                        <span>Common sealed searches</span>
+                        <div className="catalog-chip-row add-item-chip-row">
+                          {ADD_ITEM_QUICK_SEARCH_CHIPS.map((value) => (
+                            <button key={value} type="button" className="secondary-button" onClick={() => runMultiDestinationCatalogSearch(value)}>
+                              {value}
+                            </button>
+                          ))}
                         </div>
-                      )}
-                      money={money}
-                    />
-                  </Field>
-                  <p className="compact-subtitle">{AI_REVIEW_DISCLAIMER} Global catalog changes require admin review.</p>
+                      </div>
+                      {recentAddItems.length ? (
+                        <div className="add-item-quick-section">
+                          <span>Recently added</span>
+                          <div className="add-item-recent-grid">
+                            {recentAddItems.map((item) => (
+                              <button key={item.id || item.name || item.itemName} type="button" className="add-item-recent-card" onClick={() => selectRecentMultiDestinationItem(item)}>
+                                <strong>{item.name || item.itemName || item.catalogProductName}</strong>
+                                <small>{[item.productType, item.setName || item.expansion, item.barcode || item.upc || item.sku].filter(Boolean).join(" | ") || "Copy item details"}</small>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {itemSearchQuery && itemSearchResults.length ? (
+                    <div className="add-item-results-block">
+                      <div className="add-item-results-heading">
+                        <strong>Best matches</strong>
+                        <span>{itemSearchResults.length} result{itemSearchResults.length === 1 ? "" : "s"}</span>
+                      </div>
+                      <div className="catalog-selector-results">
+                        {itemSearchResults.map((product) => renderCatalogPickerCard(product, selectMultiDestinationCatalogProduct))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {itemSearchQuery && supabaseCatalogStatus.loading ? (
+                    <div className="small-empty-state add-item-search-status">
+                      <strong>Searching TideTradr...</strong>
+                      <span>Looking for product names, sets, UPCs, SKUs, and sealed-product terms.</span>
+                    </div>
+                  ) : null}
+                  {itemSearchQuery && !supabaseCatalogStatus.loading && !itemSearchResults.length ? (
+                    <div className="empty-state small-empty-state add-item-no-results">
+                      <h3>No results found</h3>
+                      <p>Try a shorter search like ETB, tin, booster bundle, a set name, UPC, or SKU.</p>
+                      <div className="catalog-selector-actions">
+                        <button type="button" className="secondary-button" onClick={() => startMultiDestinationManualEntry({ itemName: multiDestinationCatalogQuery })}>
+                          Can't find it? Add manually
+                        </button>
+                        <button type="button" onClick={markMultiDestinationMissingCatalog}>
+                          Suggest Missing Product
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="catalog-selector-actions match-tools">
-                    <button type="button" className="secondary-button" onClick={() => {
-                      updateMultiDestinationToggle("vault", true);
-                      setMultiDestinationMatchSearchOpen(false);
-                    }}>
+                    <button type="button" className="secondary-button manual-add-fallback-card" onClick={() => startMultiDestinationManualEntry()}>
                       Manual Add
                     </button>
                     <button type="button" className="secondary-button" onClick={() => {
@@ -24959,8 +25133,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <button type="button" className="secondary-button" onClick={() => {
                       const lookup = String(multiDestinationForm.upcSku || multiDestinationCatalogQuery || "").trim();
                       if (lookup) {
-                        setMultiDestinationCatalogQuery(lookup);
-                        loadImportedPokemonCatalog(lookup, { page: 1, pageSize: Math.min(24, catalogPageSize || 24), mode: "barcode", barcode: lookup, forceSearch: true });
+                        runMultiDestinationCatalogSearch(lookup, { mode: "barcode", barcode: lookup });
                       }
                     }}>
                       Enter UPC/SKU
@@ -25311,6 +25484,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {multiDestinationMessage ? (
           <p className={`flow-inline-message ${/could not|choose|enter|required|must/i.test(multiDestinationMessage) ? "is-warning" : "is-info"}`} role="status">
             {multiDestinationMessage}
+          </p>
+        ) : multiDestinationStep !== "review" && currentStepValidationMessage ? (
+          <p className="flow-inline-message is-warning" role="status">
+            {currentStepValidationMessage}
           </p>
         ) : null}
       </form>
@@ -27124,8 +27301,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         Back
                       </button>
                     ) : null}
-                    <button type="button" onClick={advanceMultiDestinationStep}>
-                      Next
+                    <button
+                      type="button"
+                      onClick={advanceMultiDestinationStep}
+                      disabled={Boolean(validateMultiDestinationStep(multiDestinationStep, multiDestinationForm))}
+                      title={validateMultiDestinationStep(multiDestinationStep, multiDestinationForm) || ""}
+                    >
+                      {multiDestinationStep === "item" ? "Next: Choose Where" : multiDestinationStep === "destination" ? "Next: Add Details" : "Next: Review"}
                     </button>
                   </>
                 )

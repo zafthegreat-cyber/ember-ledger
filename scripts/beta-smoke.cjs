@@ -135,6 +135,25 @@ async function main() {
       ],
       workspaceInvites: [],
       activeWorkspaceId: "workspace-personal-local-beta",
+      catalogProducts: [
+        {
+          id: "catalog-smoke-search-etb",
+          name: "Smoke Search Elite Trainer Box",
+          productName: "Smoke Search Elite Trainer Box",
+          category: "Pokemon",
+          catalogType: "sealed",
+          productType: "Elite Trainer Box",
+          setName: "Smoke Search Set",
+          barcode: "098765432109",
+          sku: "SMOKE-ETB-1",
+          marketPrice: 60,
+          msrpPrice: 49.99,
+          sourceType: "smoke",
+          marketSource: "Smoke Catalog",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
       items: [],
       expenses: [],
       sales: [],
@@ -176,7 +195,7 @@ async function main() {
   }
 
   async function clickAddWizardNext() {
-    await addWizardModal().getByRole("button", { name: "Next", exact: true }).click();
+    await addWizardModal().getByRole("button", { name: /^Next/ }).click();
   }
 
   async function ensureAddWizardDestination(form, destinationLabel) {
@@ -648,11 +667,11 @@ async function main() {
     await nav("Forge");
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form#multi-destination-add-form").first();
-    await fillByLabel(form, "Item Name", "Smoke Forge ETB");
-    await fillByLabel(form, "Type / Category", "Elite Trainer Box");
-    await fillByLabel(form, "UPC / SKU if known", "098765432109");
-    await fillByLabel(form, "MSRP", "49.99");
-    await fillByLabel(form, "Market Price", "60");
+    await form.getByPlaceholder("Search Pokemon product, set, UPC, or card name").fill("Smoke Search");
+    const smokeCatalogResult = form.locator(".catalog-picker-card").filter({ hasText: "Smoke Search Elite Trainer Box" }).first();
+    await smokeCatalogResult.waitFor({ state: "visible", timeout: 5000 });
+    await smokeCatalogResult.click();
+    await assertVisibleText("Selected item");
     await clickAddWizardNext();
     await ensureAddWizardDestination(form, "Forge");
     await clickAddWizardNext();
@@ -662,20 +681,20 @@ async function main() {
     await fillByLabel(form, "Source / Purchase Location", "Smoke Shared Target");
     await clickAddWizardNext();
     await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
-    await assertVisibleText("Smoke Forge ETB");
-    const smokeForgeCard = page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }).first();
+    await assertVisibleText("Smoke Search Elite Trainer Box");
+    const smokeForgeCard = page.locator(".compact-card").filter({ hasText: "Smoke Search Elite Trainer Box" }).first();
     await smokeForgeCard.getByRole("button", { name: "View" }).click();
     await assertVisibleText("Smoke Shared Target");
     await page.getByRole("button", { name: "Close" }).click();
 
     await nav("Vault");
-    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }).count(), 0);
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Search Elite Trainer Box" }).count(), 0);
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForTimeout(500);
     await nav("Forge");
-    await assertVisibleText("Smoke Forge ETB");
+    await assertVisibleText("Smoke Search Elite Trainer Box");
 
-    await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB" }), "Edit");
+    await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Search Elite Trainer Box" }), "Edit");
     const editForm = page.locator("form.form").last();
     await fillByLabel(editForm, "Item Name", "Smoke Forge ETB Edited");
     await editForm.getByRole("button", { name: "Save Changes" }).click();
@@ -724,6 +743,8 @@ async function main() {
     await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
     await page.locator(".flow-modal").getByRole("button", { name: /Manual Add/ }).click();
     const vaultForm = page.locator("form#multi-destination-add-form").first();
+    const manualFallback = vaultForm.getByRole("button", { name: "Can't find it? Add manually" }).first();
+    if (await manualFallback.isVisible().catch(() => false)) await manualFallback.click();
     await fillByLabel(vaultForm, "Item Name", "Smoke Vault Binder");
     await fillByLabel(vaultForm, "Type / Category", "Binder");
     await fillByLabel(vaultForm, "Market Price", "30");
