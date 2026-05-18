@@ -1585,6 +1585,68 @@ function money(value) {
   return `$${toNumber(value).toFixed(2)}`;
 }
 
+const EXPENSE_VENDOR_EMPTY_LABEL = "No vendor";
+const EXPENSE_VENDOR_RULES = [
+  { label: "Walmart", pattern: /^wal\s*-?\s*mart\b|^walmart\b/ },
+  { label: "Target", pattern: /^target\b/ },
+  { label: "GameStop", pattern: /^game\s*stop\b|^gamestop\b/ },
+  { label: "Best Buy", pattern: /^best\s*buy\b/ },
+  { label: "Costco", pattern: /^costco\b/ },
+  { label: "Sam's Club", pattern: /^sam'?s\s+club\b/ },
+  { label: "Dollar General", pattern: /^dollar\s+general\b/ },
+  { label: "Barnes & Noble", pattern: /^barnes\s*(and|&)\s*noble\b/ },
+  { label: "Pokemon Center", pattern: /^pokemon\s+center\b|^pok[eé]mon\s+center\b/ },
+  { label: "TCGplayer", pattern: /^tcg\s*player\b|^tcgplayer\b/ },
+  { label: "eBay", pattern: /^e\s*-?\s*bay\b|^ebay\b/ },
+  { label: "Amazon", pattern: /^amazon\b/ },
+  { label: "USPS", pattern: /^usps\b|^united\s+states\s+postal\b/ },
+  { label: "UPS", pattern: /^ups\b/ },
+  { label: "FedEx", pattern: /^fed\s*ex\b|^fedex\b/ },
+];
+
+function titleCaseVendor(value = "") {
+  const cleaned = String(value || "").replace(/\s+/g, " ").trim();
+  if (!cleaned) return EXPENSE_VENDOR_EMPTY_LABEL;
+  return cleaned
+    .split(" ")
+    .map((part) => {
+      if (/^(tcg|usps|ups)$/i.test(part)) return part.toUpperCase();
+      if (/^ebay$/i.test(part)) return "eBay";
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+function normalizeExpenseVendor(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return { key: "__missing_vendor__", label: EXPENSE_VENDOR_EMPTY_LABEL, cleaned: "" };
+  const cleaned = raw
+    .normalize("NFKD")
+    .replace(/[^\w\s&'-]/g, " ")
+    .replace(/\b(store|st|location|loc|number|no)\.?\s*#?\s*\d+\b/gi, " ")
+    .replace(/#\s*\d+\b/g, " ")
+    .replace(/\b\d{3,}\b/g, " ")
+    .replace(/\bsuper\s*center\b|\bsupercenter\b|\bneighborhood\s+market\b|\bmarketplace\b|\bstore\b|\blocation\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  const rule = EXPENSE_VENDOR_RULES.find((entry) => entry.pattern.test(cleaned));
+  const label = rule?.label || titleCaseVendor(cleaned || raw);
+  const key = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "__missing_vendor__";
+  return { key, label, cleaned };
+}
+
+function expenseDateValue(expense = {}) {
+  return expense.date || String(expense.createdAt || expense.created_at || "").slice(0, 10) || "";
+}
+
+function formatExpenseDate(value) {
+  if (!value) return "No date";
+  const date = new Date(String(value).includes("T") ? value : `${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: date.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined });
+}
+
 const PRODUCT_TYPE_ALIASES = {
   "Elite Trainer Box": ["etb", "trainer box"],
   "Pokemon Center Elite Trainer Box": ["pc etb", "pokemon center etb"],
@@ -3844,6 +3906,15 @@ export default function App() {
   const [itemForm, setItemForm] = useState(blankItem);
   const [catalogForm, setCatalogForm] = useState(blankCatalog);
   const [expenseForm, setExpenseForm] = useState(blankExpense);
+  const [expenseViewMode, setExpenseViewMode] = useState("grouped");
+  const [expenseSearchQuery, setExpenseSearchQuery] = useState("");
+  const [expenseSortMode, setExpenseSortMode] = useState("highest_total");
+  const [expenseFilterCategory, setExpenseFilterCategory] = useState("all");
+  const [expenseFilterBuyer, setExpenseFilterBuyer] = useState("all");
+  const [expenseFilterPayment, setExpenseFilterPayment] = useState("all");
+  const [expenseDateFrom, setExpenseDateFrom] = useState("");
+  const [expenseDateTo, setExpenseDateTo] = useState("");
+  const [selectedExpenseVendorKey, setSelectedExpenseVendorKey] = useState("");
   const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
   const [tripForm, setTripForm] = useState(blankTrip);
   const [saleForm, setSaleForm] = useState(blankSale);
@@ -15328,17 +15399,71 @@ function renderForgeHeader() {
   async function deleteExpense(id) {
     const expense = expenses.find((entry) => entry.id === id);
     if (!ensureWorkspaceEditor(expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id)) return;
+    const expenseVendorKey = normalizeExpenseVendor(expense?.vendor).key;
+    const remainingInGroup = expenses.filter((entry) =>
+      entry.id !== id &&
+      recordBelongsToWorkspace(entry, expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id) &&
+      normalizeExpenseVendor(entry.vendor).key === expenseVendorKey
+    ).length;
     if (BETA_LOCAL_MODE || user?.id === "local-beta") {
       setExpenses(expenses.filter((expense) => expense.id !== id));
       if (editingExpenseId === id) {
         setEditingExpenseId(null);
         setExpenseForm(blankExpense);
       }
+      if (selectedExpenseVendorKey === expenseVendorKey && remainingInGroup <= 0) setSelectedExpenseVendorKey("");
       return;
     }
     const { error } = await supabase.from("business_expenses").delete().eq("id", id);
     if (error) return showAppMessage("Could not delete expense: " + error.message);
     setExpenses(expenses.filter((expense) => expense.id !== id));
+    if (selectedExpenseVendorKey === expenseVendorKey && remainingInGroup <= 0) setSelectedExpenseVendorKey("");
+  }
+
+  function clearExpenseFilters() {
+    setExpenseSearchQuery("");
+    setExpenseFilterCategory("all");
+    setExpenseFilterBuyer("all");
+    setExpenseFilterPayment("all");
+    setExpenseDateFrom("");
+    setExpenseDateTo("");
+  }
+
+  function expenseLinkedItemLabel(expense = {}) {
+    if (!expense.linkedItemId) return "";
+    return forgeInventoryItems.find((item) => String(item.id) === String(expense.linkedItemId))?.name || "Linked Forge item";
+  }
+
+  function renderExpenseRecordCard(expense, options = {}) {
+    const linkedItemLabel = expenseLinkedItemLabel(expense);
+    return (
+      <div className={`expense-record-card${options.compact ? " is-compact" : ""}`} key={expense.id}>
+        <div className="expense-record-main">
+          <div>
+            <h3>{expense.vendor || EXPENSE_VENDOR_EMPTY_LABEL}</h3>
+            <p>{[formatExpenseDate(expenseDateValue(expense)), expense.category || "Supplies", expense.subcategory].filter(Boolean).join(" | ")}</p>
+          </div>
+          <strong>{money(expense.amount)}</strong>
+        </div>
+        <div className="expense-record-meta">
+          {expense.buyer ? <span>Paid by {expense.buyer}</span> : null}
+          {expense.paymentMethod ? <span>{expense.paymentMethod}</span> : null}
+          {expense.taxDeductible ? <span>Tax deductible</span> : null}
+          {expense.receiptImage ? <span>Receipt attached</span> : null}
+          {linkedItemLabel ? <span>{linkedItemLabel}</span> : null}
+        </div>
+        {expense.notes ? <p className="compact-subtitle">{expense.notes}</p> : null}
+        <div className="expense-record-actions">
+          {expense.receiptImage ? <a href={expense.receiptImage} target="_blank" rel="noreferrer">View Receipt</a> : null}
+          <OverflowMenu
+            onEdit={() => startEditingExpense(expense)}
+            onDelete={() => deleteExpense(expense.id)}
+            editLabel="Edit Expense"
+            deleteLabel="Delete Expense"
+          />
+        </div>
+      </div>
+    );
   }
 
   async function addVehicle(event) {
@@ -15926,6 +16051,117 @@ function renderForgeHeader() {
   const workspaceWatchlist = tideTradrWatchlist.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
   const workspaceMarketplaceListings = marketplaceListings.filter((listing) => recordBelongsToWorkspace(listing, activeWorkspace?.id));
   const forgeInventoryItems = forgeWorkspaceItems.filter(isForgeInventoryItem);
+  const expenseCategoryOptions = useMemo(
+    () => [...new Set(workspaceExpenses.map((expense) => expense.category || "Supplies"))].sort((a, b) => a.localeCompare(b)),
+    [workspaceExpenses]
+  );
+  const expenseBuyerOptions = useMemo(
+    () => [...new Set(workspaceExpenses.map((expense) => expense.buyer || "Unassigned"))].sort((a, b) => a.localeCompare(b)),
+    [workspaceExpenses]
+  );
+  const expensePaymentOptions = useMemo(
+    () => [...new Set(workspaceExpenses.map((expense) => expense.paymentMethod || "Unspecified"))].sort((a, b) => a.localeCompare(b)),
+    [workspaceExpenses]
+  );
+  const filteredExpenses = useMemo(() => {
+    const query = expenseSearchQuery.trim().toLowerCase();
+    return workspaceExpenses.filter((expense) => {
+      const vendorMeta = normalizeExpenseVendor(expense.vendor);
+      const expenseDate = expenseDateValue(expense);
+      if (expenseFilterCategory !== "all" && (expense.category || "Supplies") !== expenseFilterCategory) return false;
+      if (expenseFilterBuyer !== "all" && (expense.buyer || "Unassigned") !== expenseFilterBuyer) return false;
+      if (expenseFilterPayment !== "all" && (expense.paymentMethod || "Unspecified") !== expenseFilterPayment) return false;
+      if ((expenseDateFrom || expenseDateTo) && !expenseDate) return false;
+      if (expenseDateFrom && expenseDate && expenseDate < expenseDateFrom) return false;
+      if (expenseDateTo && expenseDate && expenseDate > expenseDateTo) return false;
+      if (!query) return true;
+      return [
+        vendorMeta.label,
+        vendorMeta.cleaned,
+        expense.vendor,
+        expense.category,
+        expense.subcategory,
+        expense.buyer,
+        expense.paymentMethod,
+        expense.notes,
+        expense.campaignName,
+        expense.platform,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+  }, [workspaceExpenses, expenseSearchQuery, expenseFilterCategory, expenseFilterBuyer, expenseFilterPayment, expenseDateFrom, expenseDateTo]);
+  const groupedExpenses = useMemo(() => {
+    const groups = new Map();
+    filteredExpenses.forEach((expense) => {
+      const vendorMeta = normalizeExpenseVendor(expense.vendor);
+      if (!groups.has(vendorMeta.key)) {
+        groups.set(vendorMeta.key, {
+          key: vendorMeta.key,
+          vendorName: vendorMeta.label,
+          originalVendors: new Set(),
+          expenses: [],
+          total: 0,
+          count: 0,
+          mostRecentDate: "",
+          lastAmount: 0,
+          categoryTotals: {},
+        });
+      }
+      const group = groups.get(vendorMeta.key);
+      group.originalVendors.add(expense.vendor || EXPENSE_VENDOR_EMPTY_LABEL);
+      group.expenses.push(expense);
+      group.total += Number(expense.amount || 0);
+      group.count += 1;
+      const expenseDate = expenseDateValue(expense);
+      if (!group.mostRecentDate || (expenseDate && expenseDate > group.mostRecentDate)) {
+        group.mostRecentDate = expenseDate;
+        group.lastAmount = Number(expense.amount || 0);
+      }
+      const category = expense.category || "Supplies";
+      group.categoryTotals[category] = (group.categoryTotals[category] || 0) + Number(expense.amount || 0);
+    });
+    return [...groups.values()].map((group) => {
+      const sortedExpenses = [...group.expenses].sort((a, b) => String(expenseDateValue(b)).localeCompare(String(expenseDateValue(a))));
+      const categorySummary = Object.entries(group.categoryTotals)
+        .sort((a, b) => Math.abs(Number(b[1] || 0)) - Math.abs(Number(a[1] || 0)))
+        .slice(0, 2)
+        .map(([category, amount]) => `${category} ${money(amount)}`)
+        .join(" | ");
+      return {
+        ...group,
+        expenses: sortedExpenses,
+        originalVendorNames: [...group.originalVendors].filter(Boolean).sort((a, b) => a.localeCompare(b)),
+        averageAmount: group.count ? group.total / group.count : 0,
+        categorySummary,
+      };
+    }).sort((a, b) => {
+      if (expenseSortMode === "recent") return String(b.mostRecentDate).localeCompare(String(a.mostRecentDate));
+      if (expenseSortMode === "vendor_az") return a.vendorName.localeCompare(b.vendorName);
+      if (expenseSortMode === "transactions") return b.count - a.count || a.vendorName.localeCompare(b.vendorName);
+      return Math.abs(b.total) - Math.abs(a.total) || a.vendorName.localeCompare(b.vendorName);
+    });
+  }, [filteredExpenses, expenseSortMode]);
+  const sortedFilteredExpenses = useMemo(() => {
+    return [...filteredExpenses].sort((a, b) => {
+      if (expenseSortMode === "vendor_az") {
+        return normalizeExpenseVendor(a.vendor).label.localeCompare(normalizeExpenseVendor(b.vendor).label)
+          || String(expenseDateValue(b)).localeCompare(String(expenseDateValue(a)));
+      }
+      if (expenseSortMode === "highest_total") return Math.abs(Number(b.amount || 0)) - Math.abs(Number(a.amount || 0));
+      return String(expenseDateValue(b)).localeCompare(String(expenseDateValue(a)));
+    });
+  }, [filteredExpenses, expenseSortMode]);
+  const selectedExpenseVendorGroup = groupedExpenses.find((group) => group.key === selectedExpenseVendorKey) || null;
+  const filteredExpenseTotal = filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const expenseFiltersActive = Boolean(
+    expenseSearchQuery.trim() ||
+    expenseFilterCategory !== "all" ||
+    expenseFilterBuyer !== "all" ||
+    expenseFilterPayment !== "all" ||
+    expenseDateFrom ||
+    expenseDateTo
+  );
 
   const storageStatus = [
     { label: "Mode", value: BETA_LOCAL_MODE ? "Private beta mode" : "Cloud sync mode" },
@@ -27956,6 +28192,47 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
+      {selectedExpenseVendorGroup ? (
+        <div className="location-modal-backdrop flow-modal-backdrop" role="presentation" onClick={() => setSelectedExpenseVendorKey("")}>
+          <section
+            className="location-modal flow-modal flow-modal-large expense-vendor-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="expense-vendor-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="expense-vendor-detail-title">{selectedExpenseVendorGroup.vendorName}</h2>
+                <p>{selectedExpenseVendorGroup.count} transaction{selectedExpenseVendorGroup.count === 1 ? "" : "s"} · {money(selectedExpenseVendorGroup.total)} total</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close vendor expense details" onClick={() => setSelectedExpenseVendorKey("")}>
+                X
+              </button>
+            </div>
+            <div className="flow-modal-body">
+              <div className="expense-vendor-detail-summary">
+                <div><span>Total spent</span><strong>{money(selectedExpenseVendorGroup.total)}</strong></div>
+                <div><span>Average expense</span><strong>{money(selectedExpenseVendorGroup.averageAmount)}</strong></div>
+                <div><span>Last expense</span><strong>{formatExpenseDate(selectedExpenseVendorGroup.mostRecentDate)}</strong></div>
+                <div><span>Last purchase</span><strong>{money(selectedExpenseVendorGroup.lastAmount)}</strong></div>
+              </div>
+              {selectedExpenseVendorGroup.categorySummary ? <p className="compact-subtitle">Category summary: {selectedExpenseVendorGroup.categorySummary}</p> : null}
+              {selectedExpenseVendorGroup.originalVendorNames.length > 1 ? (
+                <p className="compact-subtitle">Original vendor names: {selectedExpenseVendorGroup.originalVendorNames.join(", ")}</p>
+              ) : null}
+              <div className="expense-record-list">
+                {selectedExpenseVendorGroup.expenses.map((expense) => renderExpenseRecordCard(expense, { compact: true }))}
+              </div>
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={() => setSelectedExpenseVendorKey("")}>Close</button>
+              <button type="button" onClick={() => openAddExpenseFlow()}>Add Expense</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       {activeFlowModal ? (
         <div className="location-modal-backdrop flow-modal-backdrop" role="presentation" onClick={() => closeFlowModal()}>
           <section
@@ -32855,9 +33132,75 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <div className="compact-card-header">
                 <div>
                   <h2>Business Expenses</h2>
-                  <p>Review expenses here. Add or edit expense records in a focused popout.</p>
+                  <p>Grouped by vendor/store so repeat purchases stay easy to scan. Filters update the totals below.</p>
                 </div>
                 <button type="button" onClick={() => openAddExpenseFlow()}>Add Expense</button>
+              </div>
+              <div className="expense-summary-grid">
+                <div>
+                  <span>Total shown</span>
+                  <strong>{money(filteredExpenseTotal)}</strong>
+                </div>
+                <div>
+                  <span>Vendor groups</span>
+                  <strong>{groupedExpenses.length}</strong>
+                </div>
+                <div>
+                  <span>Transactions</span>
+                  <strong>{filteredExpenses.length}</strong>
+                </div>
+                <div>
+                  <span>All expenses</span>
+                  <strong>{workspaceExpenses.length}</strong>
+                </div>
+              </div>
+              <div className="expense-toolbar" aria-label="Expense search and filters">
+                <Field label="Search expenses">
+                  <input
+                    value={expenseSearchQuery}
+                    placeholder="Search vendor, notes, category, payment..."
+                    onChange={(event) => setExpenseSearchQuery(event.target.value)}
+                  />
+                </Field>
+                <Field label="Category">
+                  <select value={expenseFilterCategory} onChange={(event) => setExpenseFilterCategory(event.target.value)}>
+                    <option value="all">All categories</option>
+                    {expenseCategoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                </Field>
+                <Field label="Paid by">
+                  <select value={expenseFilterBuyer} onChange={(event) => setExpenseFilterBuyer(event.target.value)}>
+                    <option value="all">Everyone</option>
+                    {expenseBuyerOptions.map((buyer) => <option key={buyer} value={buyer}>{buyer}</option>)}
+                  </select>
+                </Field>
+                <Field label="Payment">
+                  <select value={expenseFilterPayment} onChange={(event) => setExpenseFilterPayment(event.target.value)}>
+                    <option value="all">All methods</option>
+                    {expensePaymentOptions.map((method) => <option key={method} value={method}>{method}</option>)}
+                  </select>
+                </Field>
+                <Field label="From">
+                  <input type="date" value={expenseDateFrom} onChange={(event) => setExpenseDateFrom(event.target.value)} />
+                </Field>
+                <Field label="To">
+                  <input type="date" value={expenseDateTo} onChange={(event) => setExpenseDateTo(event.target.value)} />
+                </Field>
+              </div>
+              <div className="expense-list-controls">
+                <div className="segmented-control" role="group" aria-label="Expense view mode">
+                  <button type="button" className={expenseViewMode === "grouped" ? "active" : ""} onClick={() => setExpenseViewMode("grouped")}>Grouped</button>
+                  <button type="button" className={expenseViewMode === "all" ? "active" : ""} onClick={() => setExpenseViewMode("all")}>All expenses</button>
+                </div>
+                <Field label="Sort">
+                  <select value={expenseSortMode} onChange={(event) => setExpenseSortMode(event.target.value)}>
+                    <option value="highest_total">Highest total spent</option>
+                    <option value="recent">Most recent</option>
+                    <option value="vendor_az">Vendor A-Z</option>
+                    <option value="transactions">Most transactions</option>
+                  </select>
+                </Field>
+                {expenseFiltersActive ? <button type="button" className="secondary-button" onClick={clearExpenseFilters}>Clear filters</button> : null}
               </div>
             </section>
             {false && (
@@ -32896,35 +33239,43 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </form>
             </section>
             )}
-            <ListPanel title="Business Expenses" emptyText="No expenses added yet.">
-              {workspaceExpenses.map((expense) => (
-                <div className="inventory-card" key={expense.id}>
-                  <h3>{expense.vendor}</h3>
-                  {expense.date && <p>Date: {expense.date}</p>}
-                  <p>Category: {expense.category}</p>
-                  {expense.subcategory && <p>Subcategory: {expense.subcategory}</p>}
-                  <p>Paid By: {expense.buyer}</p>
-                  <p>Amount: {money(expense.amount)}</p>
-                  {expense.paymentMethod && <p>Payment: {expense.paymentMethod}</p>}
-                  {expense.taxDeductible && <p>Tax Deductible: Yes</p>}
-                  {expense.category === "Marketing" && (
-                    <>
-                      {expense.campaignName && <p>Campaign: {expense.campaignName}</p>}
-                      {expense.platform && <p>Platform: {expense.platform}</p>}
-                      {expense.goal && <p>Goal: {expense.goal}</p>}
-                      {(expense.startDate || expense.endDate) && <p>Campaign Dates: {expense.startDate || "?"} to {expense.endDate || "?"}</p>}
-                      {expense.resultsNotes && <p>Results: {expense.resultsNotes}</p>}
-                    </>
-                  )}
-                  {expense.notes && <p>Notes: {expense.notes}</p>}
-                  {expense.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={expense.receiptImage} alt="Receipt" /></div>}
-                  <OverflowMenu
-                    onEdit={() => startEditingExpense(expense)}
-                    onDelete={() => deleteExpense(expense.id)}
-                  />
+            <section className="panel expense-list-panel">
+              <h2>{expenseViewMode === "grouped" ? "Expenses by Vendor / Store" : "All Expense Records"}</h2>
+              {!filteredExpenses.length ? (
+                <div className="small-empty-state">
+                  <strong>{workspaceExpenses.length ? "No expenses match those filters." : "No expenses added yet."}</strong>
+                  <p>{workspaceExpenses.length ? "Clear filters or adjust the search to see more records." : "Add your first receipt, fee, supply purchase, or shipping cost."}</p>
+                  {workspaceExpenses.length ? <button type="button" className="secondary-button" onClick={clearExpenseFilters}>Clear filters</button> : <button type="button" onClick={() => openAddExpenseFlow()}>Add Expense</button>}
                 </div>
-              ))}
-            </ListPanel>
+              ) : expenseViewMode === "grouped" ? (
+                <div className="expense-group-list">
+                  {groupedExpenses.map((group) => (
+                    <button type="button" className="expense-vendor-card" key={group.key} onClick={() => setSelectedExpenseVendorKey(group.key)}>
+                      <div className="expense-vendor-card-header">
+                        <div>
+                          <h3>{group.vendorName}</h3>
+                          <p>{group.count} expense{group.count === 1 ? "" : "s"} · Last {formatExpenseDate(group.mostRecentDate)}</p>
+                        </div>
+                        <strong>{money(group.total)}</strong>
+                      </div>
+                      <div className="expense-vendor-card-stats">
+                        <span>Average {money(group.averageAmount)}</span>
+                        <span>Last purchase {money(group.lastAmount)}</span>
+                        {group.categorySummary ? <span>{group.categorySummary}</span> : null}
+                      </div>
+                      {group.originalVendorNames.length > 1 ? (
+                        <p className="compact-subtitle">Includes: {group.originalVendorNames.slice(0, 3).join(", ")}{group.originalVendorNames.length > 3 ? "..." : ""}</p>
+                      ) : null}
+                      <span className="expense-vendor-card-action">View details</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="expense-record-list">
+                  {sortedFilteredExpenses.map((expense) => renderExpenseRecordCard(expense))}
+                </div>
+              )}
+            </section>
           </>
         )}
 

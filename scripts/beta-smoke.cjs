@@ -1025,6 +1025,107 @@ async function main() {
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Receipt Pack" }).count(), 0);
   });
 
+  await step("Expenses: grouped vendor view summarizes and opens records", async () => {
+    await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const now = new Date().toISOString();
+      data.expenses = [
+        ...(data.expenses || []).filter((expense) => !String(expense.id || "").startsWith("expense-group-smoke-")),
+        {
+          id: "expense-group-smoke-walmart-1",
+          expenseId: "expense-group-smoke-walmart-1",
+          date: "2026-05-17",
+          vendor: "Walmart #1234",
+          category: "Supplies",
+          subcategory: "Top loaders",
+          buyer: "Zena",
+          amount: 100,
+          paymentMethod: "Card",
+          notes: "Grouped expense smoke test one",
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "expense-group-smoke-walmart-2",
+          expenseId: "expense-group-smoke-walmart-2",
+          date: "2026-05-18",
+          vendor: "WALMART SUPERCENTER",
+          category: "Supplies",
+          subcategory: "Sleeves",
+          buyer: "Zena",
+          amount: 50,
+          paymentMethod: "Card",
+          notes: "Grouped expense smoke test two",
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "expense-group-smoke-target",
+          expenseId: "expense-group-smoke-target",
+          date: "2026-05-16",
+          vendor: "Target",
+          category: "Shipping",
+          subcategory: "Boxes",
+          buyer: "Zena",
+          amount: 20,
+          paymentMethod: "Cash",
+          notes: "Grouped expense smoke target",
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(data));
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
+    await nav("Forge");
+    await page.locator(".forge-overview-card").filter({ hasText: "Expenses" }).first().click();
+
+    const walmartGroup = page.locator(".expense-vendor-card").filter({ hasText: "Walmart" });
+    await walmartGroup.first().waitFor({ state: "visible", timeout: 5000 });
+    assert.equal(await walmartGroup.count(), 1, "Walmart variants should group into one vendor card");
+    await assertVisibleText("$170.00");
+    await assertVisibleText("$150.00");
+    await assertVisibleText("2 expenses");
+    await walmartGroup.first().click();
+    const vendorModal = page.locator(".expense-vendor-detail-modal").first();
+    await vendorModal.waitFor({ state: "visible", timeout: 5000 });
+    await assertVisibleText("Walmart #1234");
+    await assertVisibleText("WALMART SUPERCENTER");
+    assert.equal(await vendorModal.locator(".expense-record-card").count(), 2);
+
+    await overflowAction(vendorModal.locator(".expense-record-card").filter({ hasText: "Walmart #1234" }).first(), "Edit Expense");
+    const editExpenseModal = page.locator('.flow-modal[data-flow="addExpense"]').last();
+    await editExpenseModal.waitFor({ state: "visible", timeout: 5000 });
+    await fillByLabel(editExpenseModal, "Amount", "111.11");
+    await editExpenseModal.getByRole("button", { name: "Save Expense" }).click();
+    await assertVisibleText("$111.11");
+    const editedExpense = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.expenses || []).find((expense) => expense.id === "expense-group-smoke-walmart-1");
+    });
+    assert.equal(Number(editedExpense?.amount), 111.11);
+
+    await overflowAction(vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).first(), "Delete Expense");
+    await page.waitForTimeout(300);
+    assert.equal(await vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).count(), 0);
+    await vendorModal.getByRole("button", { name: "Close", exact: true }).click();
+
+    await fillByLabel(page.locator(".expense-toolbar"), "Search expenses", "walmart");
+    assert.equal(await page.locator(".expense-vendor-card").filter({ hasText: "Walmart" }).count(), 1);
+    assert.equal(await page.locator(".expense-vendor-card").filter({ hasText: "Target" }).count(), 0);
+    await page.getByRole("button", { name: "Clear filters" }).click();
+    await page.locator(".expense-toolbar").getByLabel("Category").selectOption("Shipping");
+    await assertVisibleText("Target");
+    await assertVisibleText("$20.00");
+  });
+
   await step("Vault: add/edit/delete Vault item", async () => {
     await nav("Vault");
     await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
