@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   analyzeCatalogSearch,
   describeSetAliasCoverage,
@@ -8,6 +11,13 @@ import {
 const rows = [
   product("Prismatic Evolutions Pokemon Center Elite Trainer Box", "Prismatic Evolutions", "Pokemon Center Elite Trainer Box"),
   product("Prismatic Evolutions Elite Trainer Box", "Prismatic Evolutions", "Elite Trainer Box"),
+  product("Prismatic Evolutions Mini Portfolio", "Prismatic Evolutions", "Mini Portfolio"),
+  product("Prismatic Evolutions Collector's Chest", "Prismatic Evolutions", "Collector's Chest"),
+  product("Prismatic Evolutions Poster Collection", "Prismatic Evolutions", "Poster Collection"),
+  product("Prismatic Evolutions Tech Sticker Collection", "Prismatic Evolutions", "Tech Sticker Collection"),
+  product("Prismatic Evolutions Binder Collection", "Prismatic Evolutions", "Binder Collection"),
+  product("Pokemon Mini Portfolio & Booster Pack", "Assorted", "Mini Portfolio"),
+  product("Pokemon Collector's Chest", "Assorted", "Collector's Chest"),
   product("Paldea Evolved Elite Trainer Box", "Paldea Evolved", "Elite Trainer Box"),
   product("Scarlet & Violet 151 Ultra-Premium Collection", "Scarlet & Violet 151", "Ultra Premium Collection"),
   product("Scarlet & Violet 151 Elite Trainer Box", "Scarlet & Violet 151", "Elite Trainer Box"),
@@ -86,6 +96,14 @@ expectTop("cz etb", "Crown Zenith Elite Trainer Box");
 expectTop("evs bb", "Evolving Skies Booster Box");
 expectTop("evolving skies booster box", "Evolving Skies Booster Box");
 expectTop("pc etb", "Prismatic Evolutions Pokemon Center Elite Trainer Box");
+expectTop("prismatic mini portfolio", "Prismatic Evolutions Mini Portfolio");
+expectTopType("mini portfolio", "Mini Portfolio");
+expectTop("collector chest", "Prismatic Evolutions Collector's Chest");
+expectTop("collectors chest", "Prismatic Evolutions Collector's Chest");
+expectTopType("chest", "Collector's Chest");
+expectTop("prismatic poster collection", "Prismatic Evolutions Poster Collection");
+expectTop("tech sticker", "Prismatic Evolutions Tech Sticker Collection");
+expectTop("binder collection", "Prismatic Evolutions Binder Collection");
 expectTop("3pk blister", "Paldea Evolved 3-Pack Blister");
 expectTop("checklane", "Temporal Forces Checklane Blister");
 expectTopType("mini tin", "Mini Tin");
@@ -98,8 +116,16 @@ assert.deepEqual(peAnalysis.didYouMean.map((item) => item.label).slice(0, 2), ["
 const coverage = describeSetAliasCoverage();
 assert.ok(coverage.length >= 10, `expected broad set-era coverage, got ${coverage.length} eras`);
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const sealedProducts = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "data", "generated", "sealedProducts.json"), "utf8"));
+assert.ok(sealedProducts.some((item) => item.productType === "Mini Portfolio"), "generated catalog should include Mini Portfolio product type");
+assert.ok(sealedProducts.some((item) => item.productType === "Collector's Chest"), "generated catalog should include Collector's Chest product type");
+assert.ok(sealedProducts.some((item) => item.productName === "Prismatic Evolutions Collector's Chest"), "generated catalog should include Prismatic Evolutions Collector's Chest");
+assert.ok(sealedProducts.some((item) => item.productName === "Prismatic Evolutions 4-Pocket Portfolio"), "generated catalog should include Prismatic Evolutions portfolio product");
+assert.ok(sealedProducts.some((item) => item.productName.includes("Prismatic Evolutions")), "generated catalog should include Prismatic Evolutions sealed products");
+
 console.log(JSON.stringify({
   ok: true,
-  tests: 22,
+  tests: 36,
   coveredEras: coverage,
 }, null, 2));

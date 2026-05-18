@@ -1,10 +1,10 @@
 {
-  "lastImportedAt": "2026-05-08T20:41:42.530Z",
+  "lastImportedAt": "2026-05-18T03:49:56.616Z",
   "setsImported": 0,
   "cardsImported": 0,
-  "sealedProductsImported": 0,
+  "sealedProductsImported": 24,
   "marketPricesImported": 0,
-  "aliasesImported": 0,
+  "aliasesImported": 59,
   "source": "local-json-csv-import",
   "notes": "Generated from seeds/catalog local files. Empty counts mean no source export has been dropped in yet."
 }

@@ -19,6 +19,11 @@ function numberOrEmpty(value) {
   return Number.isFinite(next) ? next : "";
 }
 
+function blankIfUnknown(value) {
+  const next = String(value ?? "").trim();
+  return /^unknown$/i.test(next) ? "" : next;
+}
+
 function asArray(value) {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.data)) return value.data;
@@ -189,10 +194,10 @@ function normalizeSealedProduct(row = {}) {
     era: row.era || row.series || "",
     releaseDate: row.releaseDate || row.release_date || "",
     releaseYear: row.releaseYear || row.release_year || "",
-    msrp: row.MSRP || row.msrp || "Unknown",
-    upc: row.UPC || row.upc || "Unknown",
-    sku: row.SKU || row.sku || "Unknown",
-    packCount: row.packCount || row.pack_count || "Unknown",
+    msrp: blankIfUnknown(row.MSRP || row.msrp),
+    upc: blankIfUnknown(row.UPC || row.upc),
+    sku: blankIfUnknown(row.SKU || row.sku),
+    packCount: blankIfUnknown(row.packCount || row.pack_count),
     imageUrl: row.imageUrl || row.image_url || "",
     imageSmall: row.imageSmall || "",
     imageLarge: row.imageLarge || row.imageUrl || row.image_url || "",

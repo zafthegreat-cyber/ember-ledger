@@ -6,6 +6,8 @@ import {
   isCatalogSearchDebugEnabled,
   normalizeCatalogQuery,
 } from "../services/pokemonCatalogSearch";
+import { POKEMON_PRODUCTS } from "../data/pokemonProductCatalog";
+import { searchCatalog } from "../utils/catalogSearchUtils";
 
 function renderHighlighted(label, query) {
   const text = String(label || "");
@@ -46,6 +48,7 @@ export default function SmartCatalogSearchBox({
   money = (amount) => `$${Number(amount || 0).toFixed(2)}`,
   autoFocus = false,
   inputLabel = "",
+  localCatalogProducts = POKEMON_PRODUCTS,
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -59,6 +62,51 @@ export default function SmartCatalogSearchBox({
   const cleanedValue = normalizeCatalogQuery(value);
   const showTiming = isCatalogSearchDebugEnabled();
 
+  function titleForProduct(product = {}) {
+    return product.name || product.productName || product.product_name || product.cardName || product.card_name || "Catalog item";
+  }
+
+  function typeForProduct(product = {}) {
+    return product.productType || product.product_type || product.catalogType || product.catalog_type || "Product";
+  }
+
+  function buildLocalSuggestions(queryValue = "") {
+    if (!Array.isArray(localCatalogProducts) || !localCatalogProducts.length) return [];
+    return searchCatalog(queryValue, localCatalogProducts, Math.max(maxSuggestions, 8))
+      .map((result, index) => {
+        const product = result.item || {};
+        const label = titleForProduct(product);
+        const productType = typeForProduct(product);
+        return {
+          id: `local-${product.id || label}-${index}`,
+          section: "Catalog Seeds",
+          type: productType,
+          label,
+          description: [
+            product.setName || product.set_name || product.expansion || "Set optional",
+            productType,
+            result.reason,
+          ].filter(Boolean).join(" | "),
+          badge: productType,
+          searchValue: label,
+          imageUrl: product.imageUrl || product.image_url || product.imageSmall || product.image_small || "",
+          marketPrice: product.marketPrice || product.market_price || product.marketValue || product.market_value || 0,
+          product,
+        };
+      });
+  }
+
+  function dedupeSuggestionList(list = []) {
+    const seen = new Set();
+    return list.filter((suggestion) => {
+      const product = suggestion.product || {};
+      const key = String(product.id || suggestion.id || `${suggestion.label}-${suggestion.description}`).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   useEffect(() => {
     mapRowRef.current = mapRow;
   }, [mapRow]);
@@ -71,12 +119,23 @@ export default function SmartCatalogSearchBox({
   useEffect(() => {
     const mode = detectCatalogSearchMode(value);
     const exactIdentifier = ["barcode", "id"].includes(mode);
-    if (!isSupabaseConfigured || !supabase || (!cleanedValue || (cleanedValue.length < 2 && !exactIdentifier))) {
+    if (!cleanedValue || (cleanedValue.length < 2 && !exactIdentifier)) {
       setSuggestions([]);
       setLoading(false);
       setErrorMessage("");
       setOpen(false);
       setActiveIndex(-1);
+      return;
+    }
+
+    if (!isSupabaseConfigured || !supabase) {
+      const localSuggestions = buildLocalSuggestions(value).slice(0, maxSuggestions);
+      setSuggestions(localSuggestions);
+      setLoading(false);
+      setErrorMessage("");
+      setOpen(true);
+      setActiveIndex(localSuggestions.length ? 0 : -1);
+      setLastTiming({ sourceName: "catalog seed", cacheState: "local", searchPhase: "local" });
       return;
     }
 
@@ -96,7 +155,7 @@ export default function SmartCatalogSearchBox({
       const filteredSuggestions = typeof suggestionFilter === "function"
         ? (cached.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
         : (cached.suggestions || []);
-      const nextSuggestions = filteredSuggestions.slice(0, maxSuggestions);
+      const nextSuggestions = dedupeSuggestionList([...buildLocalSuggestions(value), ...filteredSuggestions]).slice(0, maxSuggestions);
       setSuggestions(nextSuggestions);
       setLoading(false);
       setErrorMessage("");
@@ -127,7 +186,7 @@ export default function SmartCatalogSearchBox({
         const filteredSuggestions = typeof suggestionFilter === "function"
           ? (result.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
           : (result.suggestions || []);
-        const nextSuggestions = filteredSuggestions.slice(0, maxSuggestions);
+        const nextSuggestions = dedupeSuggestionList([...buildLocalSuggestions(value), ...filteredSuggestions]).slice(0, maxSuggestions);
         setSuggestions(nextSuggestions);
         setOpen(true);
         setActiveIndex(nextSuggestions.length ? 0 : -1);
@@ -149,7 +208,7 @@ export default function SmartCatalogSearchBox({
       window.clearTimeout(timer);
       controller?.abort?.();
     };
-  }, [cleanedValue, dataFilter, isSupabaseConfigured, maxSuggestions, productGroup, supabase, suggestionFilter, value]);
+  }, [cleanedValue, dataFilter, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, supabase, suggestionFilter, value]);
 
   const groupedSuggestions = useMemo(() => {
     return suggestions.reduce((groups, suggestion, index) => {
@@ -215,13 +274,15 @@ export default function SmartCatalogSearchBox({
             limit: maxSuggestions,
           });
           const cachedSuggestions = cached?.suggestions || [];
+          const localSuggestions = buildLocalSuggestions(nextValue);
           setSuggestions([]);
           setErrorMessage("");
           setActiveIndex(-1);
           if (cached) {
-            setSuggestions(cachedSuggestions.slice(0, maxSuggestions));
+            const nextSuggestions = dedupeSuggestionList([...localSuggestions, ...cachedSuggestions]).slice(0, maxSuggestions);
+            setSuggestions(nextSuggestions);
             setLoading(false);
-            setActiveIndex(cachedSuggestions.length ? 0 : -1);
+            setActiveIndex(nextSuggestions.length ? 0 : -1);
           } else {
             setLoading(Boolean(nextCleanedValue && (nextCleanedValue.length >= 2 || nextExactIdentifier)));
           }

@@ -216,12 +216,32 @@ const SEALED_PRODUCT_DB_OR_CLAUSE = [
   "product_type.ilike.%blister%",
   "name.ilike.%mini tin%",
   "product_type.ilike.%mini tin%",
+  "name.ilike.%mini portfolio%",
+  "product_type.ilike.%mini portfolio%",
+  "name.ilike.%portfolio%",
+  "product_type.ilike.%portfolio%",
   "name.ilike.% tin%",
   "product_type.ilike.% tin%",
+  "name.ilike.%collector chest%",
+  "name.ilike.%collectors chest%",
+  "name.ilike.%chest%",
+  "name.ilike.%lunchbox%",
+  "product_type.ilike.%collector chest%",
+  "product_type.ilike.%collectors chest%",
+  "product_type.ilike.%chest%",
+  "product_type.ilike.%lunchbox%",
   "name.ilike.%collection box%",
   "product_type.ilike.%collection box%",
   "name.ilike.%premium collection%",
   "product_type.ilike.%premium collection%",
+  "name.ilike.%poster collection%",
+  "product_type.ilike.%poster collection%",
+  "name.ilike.%binder collection%",
+  "product_type.ilike.%binder collection%",
+  "name.ilike.%tech sticker%",
+  "product_type.ilike.%tech sticker%",
+  "name.ilike.%surprise box%",
+  "product_type.ilike.%surprise box%",
   "name.ilike.%special collection%",
   "product_type.ilike.%special collection%",
   "name.ilike.%ultra-premium collection%",
@@ -303,7 +323,7 @@ function rowSourceSuggestsSealed(row = {}) {
   ].filter(Boolean).join(" "));
   return (
     isRowMarkedSealed(row) ||
-    /\bsealed\b|\bbooster\s*(box|bundle|pack)?\b|\belite\s+trainer\b|\bcollection\s+box\b|\bpremium\s+collection\b|\bspecial\s+collection\b|\bultra\s?premium\b|\bmini\s+tin\b|\btin\b|\bblister\b|\bbuild\s*&?\s*battle\b|\btrainer'?s?\s+toolkit\b|\bleague\s+battle\s+deck\b|\btheme\s+deck\b|\bstarter\s+deck\b/.test(typeText)
+    /\bsealed\b|\bbooster\s*(box|bundle|pack)?\b|\belite\s+trainer\b|\bcollection\s+box\b|\bpremium\s+collection\b|\bspecial\s+collection\b|\bposter\s+collection\b|\bbinder\s+collection\b|\btech\s+sticker\b|\bsurprise\s+box\b|\bultra\s?premium\b|\bmini\s+tin\b|\bmini\s+portfolio\b|\bportfolio\b|\bcollector'?s?\s+chest\b|\blunchbox\b|\btin\b|\bblister\b|\bbuild\s*&?\s*battle\b|\btrainer'?s?\s+toolkit\b|\bleague\s+battle\s+deck\b|\btheme\s+deck\b|\bstarter\s+deck\b/.test(typeText)
   );
 }
 

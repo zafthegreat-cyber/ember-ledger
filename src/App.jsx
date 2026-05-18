@@ -22,7 +22,7 @@ import {
   UNIVERSAL_DATA_ENTITIES,
 } from "./data/tcgOperatingSystem";
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
-import { POKEMON_PRODUCT_UPCS } from "./data/pokemonProductCatalog";
+import { POKEMON_PRODUCTS, POKEMON_PRODUCT_UPCS } from "./data/pokemonProductCatalog";
 import { VIRGINIA_STORES_SEED } from "./data/virginiaStoresSeed";
 import { VIRGINIA_RETAILERS } from "./data/storeGroups";
 import { SCOUT_HISTORICAL_INTEL_SEED, buildScoutRestockPatterns } from "./data/scoutRestockIntelSeed";
@@ -189,6 +189,32 @@ const BRAND_ASSETS = {
   linkBioHeader: "/assets/brand/link-bio-header.png",
   pwaInstallPromo: "/assets/brand/pwa-install-promo.png",
 };
+
+const LOCAL_CATALOG_SEED_SOURCE = "local_catalog_seed";
+const LOCAL_CATALOG_SEED_PRODUCTS = POKEMON_PRODUCTS.map((product) => ({
+  ...product,
+  sourceType: product.sourceType || LOCAL_CATALOG_SEED_SOURCE,
+  source: product.source || LOCAL_CATALOG_SEED_SOURCE,
+}));
+
+function catalogProductMergeKey(product = {}) {
+  const sourceId = product.externalProductId || product.external_product_id || product.tcgplayerProductId || product.tcgplayer_product_id || "";
+  return String(
+    product.id ||
+      (sourceId ? `${product.marketSource || product.market_source || ""}-${sourceId}` : "") ||
+      `${product.catalogType || product.catalog_type || "sealed"}-${product.name || product.productName || product.product_name || product.cardName || product.card_name || ""}-${product.setName || product.set_name || product.expansion || ""}-${product.productType || product.product_type || ""}`
+  ).toLowerCase();
+}
+
+function mergeCatalogProductLists(...lists) {
+  const seen = new Set();
+  return lists.flat().filter(Boolean).filter((product) => {
+    const key = catalogProductMergeKey(product);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 const NAV_ICON_SIZE = 20;
 
@@ -1005,6 +1031,9 @@ const ACTIVE_VAULT_STATUSES = new Set(["personal_collection", "at_home", "at_sto
 const VAULT_STORAGE_LOCATIONS = ["", "Binder", "ETB", "Shelf", "Box", "Display case", "Closet", "Other"];
 const VAULT_CONDITIONS = ["", "Mint", "Near Mint", "Lightly Played", "Damaged", "Sealed", "Box damage", "Missing wrap", "Unknown"];
 const VAULT_SOURCE_OPTIONS = ["Manual", "TideTradr", "Barcode scan", "Receipt/photo", "Import", "Forge copy"];
+const FORGE_PHYSICAL_LOCATION_OPTIONS = ["At Home", "At Store", "In Transit", "Storage", "Event / Pop-Up", "With Partner", "Other"];
+const DEFAULT_FORGE_PHYSICAL_LOCATION = "At Home";
+const WORKSPACE_NAME_MAX_LENGTH = 50;
 const BLANK_VAULT_FORM = {
   name: "",
   vaultCategory: "Personal collection",
@@ -1082,6 +1111,8 @@ const BLANK_MULTI_DESTINATION_FORM = {
     unitCost: "",
     plannedSellPrice: "",
     source: "",
+    physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION,
+    physicalLocationNotes: "",
     businessCategory: "Pokemon",
     conditionName: "",
     notes: "",
@@ -1161,6 +1192,8 @@ const INVENTORY_ITEMS_SUPABASE_COLUMNS = new Set([
   "platform_fee",
   "shipping_cost",
   "estimated_profit",
+  "physical_location",
+  "physical_location_notes",
   "action_notes",
   "condition_name",
   "language",
@@ -2118,6 +2151,20 @@ function workspaceTypeLabel(type = "personal") {
 function workspaceRoleLabel(role = "viewer") {
   const normalizedRole = role === "editor" ? "contributor" : role;
   return WORKSPACE_ROLES.find((option) => option.value === normalizedRole)?.label || "Viewer";
+}
+
+function normalizeWorkspaceDisplayName(value = "") {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, WORKSPACE_NAME_MAX_LENGTH);
+}
+
+function normalizeForgePhysicalLocation(value = "", fallback = "") {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return fallback;
+  return FORGE_PHYSICAL_LOCATION_OPTIONS.includes(trimmed) ? trimmed : "Other";
+}
+
+function forgePhysicalLocationLabel(item = {}) {
+  return String(item.physicalLocation || item.physical_location || "").trim();
 }
 
 function normalizeWorkspaceRoleValue(role = "viewer", fallback = "viewer") {
@@ -3378,6 +3425,9 @@ export default function App() {
     role: "viewer",
     note: "",
   });
+  const [workspaceRenameTarget, setWorkspaceRenameTarget] = useState(null);
+  const [workspaceRenameName, setWorkspaceRenameName] = useState("");
+  const [workspaceRenameSaving, setWorkspaceRenameSaving] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState("");
 
   const [items, setItems] = useState([]);
@@ -3439,6 +3489,7 @@ export default function App() {
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
+  const [inventoryPhysicalLocationFilter, setInventoryPhysicalLocationFilter] = useState("All");
   const [inventorySort, setInventorySort] = useState("newest");
   const [forgeInventoryPage, setForgeInventoryPage] = useState(1);
   const [catalogSearch, setCatalogSearch] = useState(initialRouteState.catalogSearch || "");
@@ -3684,6 +3735,8 @@ export default function App() {
   listedPrice: "",
   actionNotes: "",
   storageLocation: "",
+  physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION,
+  physicalLocationNotes: "",
   condition: "",
   conditionName: "Near Mint",
   language: "English",
@@ -3781,11 +3834,12 @@ export default function App() {
   const marketAddLastActionRef = useRef({ key: "", time: 0 });
 
   const mainTabs = [
-    { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
+    { key: "home", label: "Hearth Home", icon: "home", target: "dashboard" },
+    { key: "today", label: "Today's Tide", icon: "calendar", target: "dailyTide" },
+    { key: "scout", label: "Scout Signals", icon: "scout", target: "scout" },
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
-    { key: "tideTradr", label: "TideTradr", icon: "market", mobileLabel: "Market", target: "market" },
-    { key: "scout", label: "Scout", icon: "scout", target: "scout" },
+    { key: "tideTradr", label: "Market", icon: "market", target: "market" },
+    { key: "forge", label: "Forge Workshop", icon: "forge", target: "inventory" },
     { key: "tidepool", label: "Tidepool", icon: "pool", mobileLabel: "Pool", target: "tidepool" },
   ];
 
@@ -3797,21 +3851,22 @@ export default function App() {
       ],
     },
     { title: "Main Tabs", items: [
-      { key: "home", label: "Home", target: "dashboard" },
+      { key: "home", label: "Hearth Home", target: "dashboard" },
+      { key: "today", label: "Today's Tide", target: "dailyTide" },
+      { key: "scout-main", label: "Scout Signals", target: "scout" },
       { key: "vault", label: "Vault" },
-      { key: "forge", label: "Forge", target: "inventory" },
-      { key: "tideTradr-main", label: "TideTradr", target: "market" },
-      { key: "scout-main", label: "Scout", target: "scout" },
+      { key: "tideTradr-main", label: "Market", target: "market" },
+      { key: "forge", label: "Forge Workshop", target: "inventory" },
       { key: "tidepool-main", label: "Tidepool", target: "tidepool" },
     ] },
   ];
 
   const activeBetaPageLabels = {
-    kidsProgram: "Kids Program",
+    kidsProgram: "Kids Program: The Spark",
     sponsor: "Sponsor Interest",
     trust: "Trust Pages",
     links: "Links",
-    whatsNew: "What's New",
+    whatsNew: "Announcements",
     knownLimitations: "Known Limitations",
     membership: "Membership",
     profileProgress: "Profile Progress",
@@ -3839,13 +3894,38 @@ export default function App() {
       : activeTab === "market" || activeTab === "catalog"
           ? "tideTradr"
           : "forge";
+  const isSellerExperience =
+    normalizeUserType(currentUserProfile?.userType || currentUserProfile?.user_type) === "seller" ||
+    normalizeDashboardPreset(currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset) === "seller";
   const mobileBottomTabs = [
     { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     { key: "scout", label: "Scout", icon: "scout", target: "scout" },
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
+    { key: "quickAdd", label: "Add", icon: "plus", center: true, action: () => openAddActionSheet("mobile-dock") },
     { key: "tideTradr", label: "Market", icon: "market", target: "market" },
-    { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
-    { key: "tidepool", label: "Tidepool", icon: "pool", target: "tidepool" },
+    { key: "menu", label: "Menu", icon: "settings", action: () => {
+      setQuickAddMenuOpen(false);
+      setSearchExpanded(false);
+      setMenuOpen(true);
+      setActiveTab("menu");
+    } },
+  ];
+  const desktopSidebarItems = [
+    { key: "home", label: "Hearth Home", helper: "What should I do next?", icon: "home", target: "dashboard" },
+    { key: "today", label: "Today's Tide", helper: "Today's attention list", icon: "calendar", action: startDailyTideFlow },
+    { key: "scout", label: "Scout Signals", helper: "Nearby verified restocks", icon: "scout", target: "scout" },
+    { key: "vault", label: "Vault", helper: "Your collection", icon: "vault", target: "vault" },
+    { key: "tideTradr", label: "Market", helper: "Fair prices and deals", icon: "market", target: "market" },
+    { key: "forge", label: "Forge Workshop", helper: isSellerExperience ? "Business command desk" : "Seller tools", icon: "forge", target: "inventory" },
+    { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
+    { key: "spark", label: "Kids Program", helper: "The Spark", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
+    { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => {
+      setQuickAddMenuOpen(false);
+      setSearchExpanded(false);
+      setMenuOpen(true);
+      setActiveTab("menu");
+    } },
   ];
   const topbarSectionOptions = [
     ...mainTabs,
@@ -4030,6 +4110,12 @@ export default function App() {
 
   function navigateMainTab(tab) {
     if (!confirmLeaveVaultWork()) return;
+    if (tab.key === "today") {
+      setQuickAddMenuOpen(false);
+      setSearchExpanded(false);
+      startDailyTideFlow();
+      return;
+    }
     if (tab.key === "scout") {
       setScoutView("overview");
       setScoutSubTabTarget({ tab: "overview", id: Date.now() });
@@ -4072,6 +4158,71 @@ export default function App() {
       return;
     }
     navigateMainTab(tab);
+  }
+
+  function runDesktopSidebarAction(item) {
+    if (!item) return;
+    if (!confirmLeaveVaultWork()) return;
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    if (item.action) {
+      item.action();
+      return;
+    }
+    navigateMainTab(item);
+  }
+
+  function isDesktopSidebarItemActive(item) {
+    if (!item) return false;
+    if (item.key === "today") return Boolean(dailyTideModalTask);
+    if (item.key === "spark") return activeTab === "kidsProgram";
+    if (item.key === "announcements") return activeTab === "whatsNew";
+    if (item.key === "settings") return activeTab === "menu" || menuOpen;
+    return activeMainTab === item.key;
+  }
+
+  function renderDesktopCommandSidebar() {
+    return (
+      <aside className="web-command-sidebar" aria-label="Ember & Tide command desk navigation">
+        <div className="web-command-brand">
+          <img src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
+          <div>
+            <strong>Ember &amp; Tide</strong>
+            <span>Protect the spark. Follow the tide.</span>
+          </div>
+        </div>
+        <div className="web-command-promise" aria-label="Product promise">
+          <span>Find it.</span>
+          <span>Track it.</span>
+          <span>Trade fairly.</span>
+          <span>Protect the spark.</span>
+        </div>
+        <nav className="web-command-nav" aria-label="Command desk sections">
+          {desktopSidebarItems.map((item) => (
+            <button
+              type="button"
+              key={item.key}
+              className={isDesktopSidebarItemActive(item) ? "web-command-nav-item active" : "web-command-nav-item"}
+              aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
+              onClick={() => runDesktopSidebarAction(item)}
+            >
+              <span className="web-command-nav-icon" aria-hidden="true">
+                <AppNavIcon kind={item.icon || "home"} />
+              </span>
+              <span>
+                <strong>{item.label}</strong>
+                <small>{item.helper}</small>
+              </span>
+            </button>
+          ))}
+        </nav>
+        <div className="web-command-status">
+          <span className="trust-badge trust-badge--verified">Family friendly</span>
+          <span className="trust-badge trust-badge--fair">Fair access</span>
+          <span className="trust-badge trust-badge--secure">Secure data</span>
+        </div>
+      </aside>
+    );
   }
 
   function renderPageChrome({ title, subtitle, primary, secondary, quickActions = [], tabs = [], activeSubTab, setActiveSubTab }) {
@@ -5631,9 +5782,28 @@ export default function App() {
     setSupabaseImportStatus({ ...nextStatus, loading: false });
   }
 
+  function getLocalCatalogSeedMatches(query = "", limit = 16) {
+    const cleaned = String(query || "").trim();
+    if (!cleaned) return [];
+    return getBestCatalogMatches(cleaned, LOCAL_CATALOG_SEED_PRODUCTS)
+      .map((match) => mapCatalog(match.item))
+      .slice(0, limit);
+  }
+
   async function loadImportedPokemonCatalog(searchTerm = catalogSearch, options = {}) {
     const pageSize = clampPageSize(options.pageSize || catalogPageSize || supabaseCatalogStatus.pageSize, SUPABASE_CATALOG_PAGE_SIZE);
+    const localHasCriteria = hasCatalogSearchCriteria({
+      query: searchTerm,
+      barcode: options.barcode ?? catalogBarcodeSearch,
+      productGroup: currentCatalogProductGroup(),
+      productType: catalogTypeFilter,
+      setName: catalogSetFilter,
+      dataFilter: catalogDataFilter,
+      rarity: catalogRarityFilter,
+    });
     if (!isSupabaseConfigured || !supabase) {
+      setCatalogSearchHasRun(localHasCriteria);
+      setCatalogPagedResultIds([]);
       setSupabaseCatalogStatus({
         loading: false,
         loadedCount: 0,
@@ -5641,7 +5811,7 @@ export default function App() {
         pageSize,
         totalCount: null,
         hasMore: false,
-        message: "",
+        message: localHasCriteria ? "Showing saved local catalog matches. Connect Supabase for the full catalog." : "",
         error: "Supabase anon client is not configured. Imported catalog rows can still be loaded through server/import scripts later.",
       });
       return;
@@ -5814,43 +5984,35 @@ export default function App() {
     if (requestId !== supabaseCatalogRequestId.current) return;
 
     const importedProducts = (result.rows || []).map(mapCatalog);
-    setCatalogPagedResultIds(importedProducts.map((product) => String(product.id)));
+    const localSeedMatches = getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize);
+    const combinedProducts = mergeCatalogProductLists(localSeedMatches, importedProducts);
+    setCatalogPagedResultIds(combinedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
-      const seen = new Set();
-      return [...importedProducts, ...baseline].filter((product) => {
-        const sourceId = product.externalProductId || product.tcgplayerProductId || "";
-        const key = String(
-          product.id ||
-            (sourceId ? `${product.marketSource || ""}-${sourceId}` : "") ||
-            `${product.catalogType || "sealed"}-${product.name || product.productName || product.cardName || ""}-${product.setName || product.expansion || ""}`
-        ).toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      return mergeCatalogProductLists(combinedProducts, baseline, LOCAL_CATALOG_SEED_PRODUCTS);
     });
     setCatalogSearchHasRun(true);
     const totalCount = result.count ?? null;
     const coverageWarning = buildCatalogSealedCoverageWarning({
       query: cleanedSearch || searchTerm,
       productGroup,
-      products: importedProducts,
+      products: combinedProducts,
       totalCount,
       result,
     });
     const from = (page - 1) * pageSize;
-    const loadedEnd = totalCount === null ? from + importedProducts.length : Math.min(from + importedProducts.length, totalCount);
+    const visibleMatchCount = combinedProducts.length;
+    const loadedEnd = totalCount === null ? from + visibleMatchCount : Math.min(from + visibleMatchCount, totalCount);
     const missText = result.exactMiss ? " No exact barcode match found." : "";
     const fallbackText = result.usedFallback ? " Search is using the safe compatibility view for this beta build." : "";
     setSupabaseCatalogStatus({
       loading: false,
-      loadedCount: importedProducts.length,
+      loadedCount: visibleMatchCount,
       page,
       pageSize,
       totalCount,
       hasMore: Boolean(result.hasMore),
-      message: importedProducts.length
+      message: visibleMatchCount
         ? `Showing ${from + 1}-${loadedEnd} of ${totalCount ?? "many"} catalog matches.${result.exactCount ? ` ${result.exactCount} exact match${result.exactCount === 1 ? "" : "es"} prioritized.` : ""}${missText}${fallbackText}`
         : `No matching products found. Try a different name, set, barcode, or product type.${missText}${fallbackText}`,
       error: "",
@@ -6064,7 +6226,7 @@ export default function App() {
 
   useEffect(() => {
     setForgeInventoryPage(1);
-  }, [inventorySearch, inventoryStatusFilter, inventoryPurchaserFilter, inventorySort]);
+  }, [inventorySearch, inventoryStatusFilter, inventoryPurchaserFilter, inventoryPhysicalLocationFilter, inventorySort]);
 
   useEffect(() => {
     setScoutReportsPage(1);
@@ -6739,11 +6901,15 @@ export default function App() {
     const vaultStatusRaw = item.vaultStatus ?? item.vault_status;
     const hasVaultStatus = !isBlankLike(vaultStatusRaw);
     const normalizedVault = hasVaultStatus ? normalizeVaultStatus({ vaultStatus: vaultStatusRaw, status: item.status, actionNotes: item.actionNotes }) : "";
+    const explicitForgeDestination = /\bdestination\s*:\s*forge\b|\bsave(?:d)?\s+to\s+forge\b|\bopen\s+in\s+forge\b|\bforge\s+draft\b/.test(actionNotes);
+    const explicitVaultDestination = /\bdestination\s*:\s*vault\b|\bsave(?:d)?\s+to\s+vault\b|\bopen\s+in\s+vault\b|\bvault\s+draft\b/.test(actionNotes);
 
     if (scopes.includes("expense_only") || recordType === "expense_only" || status.includes("expense only")) return "expense_only";
     if (scopes.includes("wishlist") || recordType === "wishlist_item" || item.isWishlist || item.is_wishlist || normalizedVault === "wishlist" || status === "wishlist") return "wishlist";
     if (scopes.includes("vault") && !scopes.includes("forge")) return "vault";
     if (scopes.includes("forge") && !scopes.includes("vault")) return "forge";
+    if (explicitForgeDestination && !explicitVaultDestination) return "forge";
+    if (explicitVaultDestination && !explicitForgeDestination) return "vault";
     if (recordType === "vault_item") return "vault";
     if (recordType === "forge_inventory") return "forge";
     if (item.businessInventory || item.business_inventory || Number(item.forgeQuantity || item.forge_quantity || 0) > 0) return "forge";
@@ -7730,6 +7896,8 @@ export default function App() {
       purchaseDate: row.purchaseDate || "",
       status,
       vaultStatus: isVaultDestination ? "personal_collection" : isWishlistDestination ? "wishlist" : "",
+      physicalLocation: isForgeDestination ? DEFAULT_FORGE_PHYSICAL_LOCATION : "",
+      physicalLocationNotes: "",
       actionNotes: isVaultDestination ? "Imported collection item" : isWishlistDestination ? "Imported wishlist item" : "Imported Forge item",
       notes: [row.notes, `Imported from ${row.sourceType}. Original: ${row.originalText}`].filter(Boolean).join(" | "),
       createdAt: new Date().toISOString(),
@@ -7813,6 +7981,8 @@ export default function App() {
       listing_platform: record.listingPlatform || "",
       listing_url: record.listingUrl || "",
       listed_price: Number(record.listedPrice || 0),
+      physical_location: record.physicalLocation || record.physical_location || "",
+      physical_location_notes: record.physicalLocationNotes || record.physical_location_notes || "",
       action_notes: record.actionNotes || record.notes || "",
       condition_name: record.conditionName || record.condition || "Near Mint",
       language: record.language || "English",
@@ -8588,7 +8758,7 @@ export default function App() {
       const localCatalogProducts = Array.isArray(saved.catalogProducts)
         ? saved.catalogProducts.filter((product) => product.sourceType !== "supabase")
         : [];
-      setCatalogProducts(localCatalogProducts);
+      setCatalogProducts(mergeCatalogProductLists(LOCAL_CATALOG_SEED_PRODUCTS, localCatalogProducts));
       setTideTradrWatchlist(migrateRecordsToWorkspace(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
       setMarketplaceListings(migrateRecordsToWorkspace(Array.isArray(saved.marketplaceListings) ? saved.marketplaceListings : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
       setMarketplaceReports(migrateRecordsToWorkspace(Array.isArray(saved.marketplaceReports) ? saved.marketplaceReports : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
@@ -9527,6 +9697,80 @@ export default function App() {
     setActiveWorkspaceId(workspace.id);
     setWorkspaceInviteForm((current) => ({ ...current, workspaceId: workspace.id }));
     setWorkspaceMessage(`${workspace.name} created. Personal data was not moved or shared.`);
+  }
+
+  function openWorkspaceRename(workspace = activeWorkspace) {
+    if (!workspace?.id) return;
+    if (!canEditWorkspaceId(workspace.id)) {
+      setWorkspaceMessage("You do not have permission to rename this collection.");
+      return;
+    }
+    setWorkspaceRenameTarget(workspace);
+    setWorkspaceRenameName(workspace.name || "");
+    setWorkspaceMessage("");
+  }
+
+  function closeWorkspaceRename() {
+    if (workspaceRenameSaving) return;
+    setWorkspaceRenameTarget(null);
+    setWorkspaceRenameName("");
+  }
+
+  async function submitWorkspaceRename(event) {
+    event?.preventDefault?.();
+    if (!workspaceRenameTarget?.id || workspaceRenameSaving) return;
+    const rawName = String(workspaceRenameName || "");
+    const name = normalizeWorkspaceDisplayName(rawName);
+    if (!name) {
+      setWorkspaceMessage("Collection name cannot be blank.");
+      return;
+    }
+    if (rawName.trim().replace(/\s+/g, " ").length > WORKSPACE_NAME_MAX_LENGTH) {
+      setWorkspaceMessage(`Collection name must be ${WORKSPACE_NAME_MAX_LENGTH} characters or fewer.`);
+      return;
+    }
+    if (!canEditWorkspaceId(workspaceRenameTarget.id)) {
+      setWorkspaceMessage("You do not have permission to rename this collection.");
+      return;
+    }
+
+    setWorkspaceRenameSaving(true);
+    const now = new Date().toISOString();
+    const applyRenamedWorkspace = (updatedWorkspace) => {
+      setWorkspaces((current) => current.map((workspace) =>
+        String(workspace.id) === String(updatedWorkspace.id) ? normalizeWorkspace(updatedWorkspace, workspace) : workspace
+      ));
+      setItems((current) => current.map((item) =>
+        String(item.workspaceId || item.workspace_id) === String(updatedWorkspace.id)
+          ? { ...item, workspaceName: name }
+          : item
+      ));
+      setWorkspaceMessage(`Renamed collection to ${name}.`);
+      setVaultToast("Collection renamed.");
+    };
+
+    try {
+      if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from("workspaces")
+          .update({ name, updated_at: now })
+          .eq("id", workspaceRenameTarget.id)
+          .select()
+          .single();
+        if (error) throw error;
+        applyRenamedWorkspace(data || { ...workspaceRenameTarget, name, updatedAt: now });
+      } else {
+        applyRenamedWorkspace({ ...workspaceRenameTarget, name, updatedAt: now, updated_at: now });
+      }
+      setWorkspaceRenameTarget(null);
+      setWorkspaceRenameName("");
+    } catch (error) {
+      console.error("Could not rename collection", error);
+      setWorkspaceMessage(`Could not rename collection: ${error.message || "Try again."}`);
+      setVaultToast("Could not rename collection.");
+    } finally {
+      setWorkspaceRenameSaving(false);
+    }
   }
 
   async function sendWorkspaceInvite(event) {
@@ -11323,6 +11567,15 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         if (value === "today") next.reportDate = getLocalDateKey();
         if (value === "yesterday") next.reportDate = getYesterdayDateKey();
       }
+      if (field === "reportDate") {
+        next.dateMode = value === getLocalDateKey()
+          ? "today"
+          : value === getYesterdayDateKey()
+            ? "yesterday"
+            : "pick_date";
+        const parsedDate = new Date(`${value}T00:00:00`);
+        if (!Number.isNaN(parsedDate.getTime())) next.dayOfWeek = SCOUT_WEEKDAYS[parsedDate.getDay()];
+      }
       if (field === "reportType") {
         const nextType = SCOUT_QUICK_REPORT_TYPES.find((option) => option.value === value);
         next.visibility = nextType?.isGuess ? normalizeScoutGuessVisibility(current.visibility || "private") : normalizeScoutReportVisibility(current.visibility || "public");
@@ -11330,6 +11583,20 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       }
       return next;
     });
+  }
+
+  function applyQuickScoutReportTimePreset(preset = "now") {
+    const date = new Date();
+    if (preset === "earlier_today") date.setHours(Math.max(0, date.getHours() - 2));
+    if (preset === "yesterday") date.setDate(date.getDate() - 1);
+    setQuickScoutReportMessage("");
+    setQuickScoutReportForm((current) => ({
+      ...current,
+      dateMode: preset === "yesterday" ? "yesterday" : "today",
+      reportDate: getLocalDateKey(date),
+      reportTime: getLocalTimeKey(date),
+      dayOfWeek: SCOUT_WEEKDAYS[date.getDay()],
+    }));
   }
 
   function selectQuickScoutReportStore(store = {}) {
@@ -11941,6 +12208,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           salePrice: Number(multiDestinationForm.forge.plannedSellPrice || 0),
           category: multiDestinationForm.forge.businessCategory || shared.category,
           store: multiDestinationForm.forge.source || "",
+          physicalLocation: multiDestinationForm.forge.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION,
+          physicalLocationNotes: multiDestinationForm.forge.physicalLocation === "Other" ? multiDestinationForm.forge.physicalLocationNotes || "" : "",
           status: "In Stock",
           buyer: "",
           purchaserId: "purchaser-default-1",
@@ -12124,6 +12393,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       listedPrice: Number(row.listedPrice ?? row.listed_price ?? 0),
       actionNotes: row.actionNotes || row.action_notes || "",
       storageLocation: row.storageLocation || row.storage_location || "",
+      physicalLocation: row.physicalLocation || row.physical_location || "",
+      physicalLocationNotes: row.physicalLocationNotes || row.physical_location_notes || "",
       condition: row.condition || "",
       conditionName: row.conditionName || row.condition_name || row.condition || "Near Mint",
       language: row.language || "English",
@@ -12496,7 +12767,7 @@ function mapCatalog(row) {
       return;
     }
     if (result.error) return showAppMessage("Could not load catalog: " + result.error.message);
-    setCatalogProducts((result.data || []).map(mapCatalog));
+    setCatalogProducts(mergeCatalogProductLists((result.data || []).map(mapCatalog), LOCAL_CATALOG_SEED_PRODUCTS));
   }
 
   async function loadExpenses() {
@@ -12685,6 +12956,8 @@ function mapCatalog(row) {
         packCount: Number(itemForm.packCount || 0),
         notes: itemForm.notes || "",
         storageLocation: itemForm.storageLocation || "",
+        physicalLocation: itemForm.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION,
+        physicalLocationNotes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
         condition: itemForm.condition || "",
         conditionName: itemForm.conditionName || itemForm.condition || "Near Mint",
         language: itemForm.language || "English",
@@ -12761,6 +13034,8 @@ function mapCatalog(row) {
         listing_platform: itemForm.listingPlatform || existing.listingPlatform || "",
         listing_url: itemForm.listingUrl || existing.listingUrl || "",
         listed_price: Number(itemForm.listedPrice || existing.listedPrice || 0),
+        physical_location: itemForm.physicalLocation || existing.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION,
+        physical_location_notes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || existing.physicalLocationNotes || "" : "",
         action_notes: itemForm.actionNotes || existing.actionNotes || "",
         condition_name: itemForm.conditionName || existing.conditionName || existing.condition || "Near Mint",
         language: itemForm.language || existing.language || "English",
@@ -12829,6 +13104,8 @@ function mapCatalog(row) {
       listing_platform: itemForm.listingPlatform,
       listing_url: itemForm.listingUrl,
       listed_price: Number(itemForm.listedPrice || 0),
+      physical_location: itemForm.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION,
+      physical_location_notes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
       action_notes: itemForm.actionNotes,
       condition_name: itemForm.conditionName || itemForm.condition || "Near Mint",
       language: itemForm.language || "English",
@@ -12928,6 +13205,8 @@ function mapCatalog(row) {
         listedPrice: Number(itemForm.listedPrice || 0),
         actionNotes: itemForm.actionNotes,
         storageLocation: itemForm.storageLocation || "",
+        physicalLocation: itemForm.physicalLocation || currentEditingItem?.physicalLocation || "",
+        physicalLocationNotes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
         condition: itemForm.condition || "",
         conditionName: itemForm.conditionName || itemForm.condition || "Near Mint",
         language: itemForm.language || "English",
@@ -12988,6 +13267,8 @@ function mapCatalog(row) {
       listed_price: Number(itemForm.listedPrice || 0),
       action_notes: itemForm.actionNotes,
       vault_status: itemForm.vaultStatus || null,
+      physical_location: itemForm.physicalLocation || currentEditingItem?.physicalLocation || "",
+      physical_location_notes: itemForm.physicalLocation === "Other" ? itemForm.physicalLocationNotes || "" : "",
       condition_name: itemForm.conditionName || itemForm.condition || "Near Mint",
       language: itemForm.language || "English",
       finish: itemForm.finish || "",
@@ -13058,6 +13339,8 @@ function mapCatalog(row) {
       listingUrl: item.listingUrl,
       listedPrice: item.listedPrice,
       actionNotes: item.actionNotes,
+      physicalLocation: item.physicalLocation || "",
+      physicalLocationNotes: item.physicalLocationNotes || "",
       tradedDate: item.tradedDate || "",
       tradeNotes: item.tradeNotes || "",
       receivedItemName: item.receivedItemName || "",
@@ -13104,6 +13387,8 @@ function mapCatalog(row) {
       listingUrl: item.listingUrl,
       listedPrice: item.listedPrice,
       actionNotes: item.actionNotes,
+      physicalLocation: item.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION,
+      physicalLocationNotes: item.physicalLocationNotes || "",
       conditionName: item.conditionName || item.condition || "Near Mint",
       language: item.language || "English",
       finish: item.finish || "",
@@ -14490,11 +14775,14 @@ function renderVaultHeader() {
     <PageHeader
       className={getHeaderCardClass("panel vault-command-center")}
       title="Vault / The Deep"
-      subtitle="Your collection. Protected in the deep."
+      subtitle={`${activeWorkspace?.name || "My Personal Space"} collection. Protected in the deep.`}
       actions={(
         <>
         <button type="button" className="vault-command-quick-add" onClick={openVaultQuickAddFlow}>
           Quick Add
+        </button>
+        <button type="button" className="secondary-button" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>
+          Rename Collection
         </button>
         {renderAiAssistActions([
           { label: "Summarize Vault", onClick: () => void runVaultAiSummary() },
@@ -16090,6 +16378,18 @@ function renderForgeHeader() {
     setDailyTideModalTask("");
   }
 
+  function advanceDailyTideTask(taskKey) {
+    const task = DAILY_TIDE_TASKS.find((entry) => entry.key === taskKey);
+    if (!task) return;
+    const nextCompletedActions = {
+      ...(dailyTideToday.completedActions || {}),
+      [task.key]: true,
+    };
+    completeDailyAction(task.key, { badge: task.badge, points: task.points });
+    const nextTask = DAILY_TIDE_TASKS.find((entry) => !nextCompletedActions[entry.key]);
+    setDailyTideModalTask(nextTask?.key || "");
+  }
+
   function openDailyTideTaskDestination(taskKey) {
     const task = DAILY_TIDE_TASKS.find((entry) => entry.key === taskKey);
     if (!task) return;
@@ -17284,6 +17584,8 @@ function renderForgeHeader() {
       itemPurchaserName(item).toLowerCase().includes(search) ||
       item.category.toLowerCase().includes(search) ||
       String(item.store || "").toLowerCase().includes(search) ||
+      forgePhysicalLocationLabel(item).toLowerCase().includes(search) ||
+      String(item.physicalLocationNotes || "").toLowerCase().includes(search) ||
       String(item.barcode || "").toLowerCase().includes(search) ||
       String(item.status || "").toLowerCase().includes(search);
 
@@ -17293,7 +17595,12 @@ function renderForgeHeader() {
       (inventoryPurchaserFilter === "Unassigned" && itemPurchaserName(item) === "Unassigned") ||
       item.purchaserId === inventoryPurchaserFilter ||
       itemPurchaserName(item) === inventoryPurchaserFilter;
-    return matchesSearch && matchesStatus && matchesPurchaser;
+    const itemPhysicalLocation = forgePhysicalLocationLabel(item);
+    const matchesPhysicalLocation =
+      inventoryPhysicalLocationFilter === "All" ||
+      (inventoryPhysicalLocationFilter === "No Location" && !itemPhysicalLocation) ||
+      itemPhysicalLocation === inventoryPhysicalLocationFilter;
+    return matchesSearch && matchesStatus && matchesPurchaser && matchesPhysicalLocation;
   });
 const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const aQty = Number(a.quantity || 0);
@@ -18528,7 +18835,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       sourceType: "Market search",
       source: "Market search",
       notes: ["Draft created from Market search.", product.rarity ? `Rarity: ${product.rarity}` : "", product.variant ? `Variant: ${product.variant}` : ""].filter(Boolean).join(" "),
-      actionNotes: "Draft created from Market search. Open in Forge or Vault to complete details.",
+      actionNotes: "Draft created from Market search.",
       lastPriceChecked: now,
       createdAt: now,
       updatedAt: now,
@@ -18549,6 +18856,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         vaultStatus: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "sealed" : "personal_collection",
         vaultCategory: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "Sealed / Holding" : "Personal collection",
         storageLocation: "",
+        actionNotes: "Destination: Vault. Draft created from Market search. Open in Vault to complete collection details.",
         conditionName: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "Sealed" : "Near Mint",
         language: "English",
       }, workspace);
@@ -18566,11 +18874,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       unitCost: 0,
       salePrice: Number(marketInfo.currentMarketValue || product.marketPrice || product.midPrice || 0),
       status: "Draft",
+      physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION,
+      physicalLocationNotes: "",
       buyer: currentUserProfile?.displayName || "",
       purchaserId: "purchaser-default-1",
       purchaserName: currentUserProfile?.displayName || "",
       conditionName: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "Sealed" : "Near Mint",
       language: "English",
+      actionNotes: "Destination: Forge. Draft created from Market search. Open in Forge to complete inventory details.",
     }, workspace);
   }
 
@@ -18656,7 +18967,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const forgeSaving = marketAddSavingKey === `forge:${productId}`;
     const vaultSaving = marketAddSavingKey === `vault:${productId}`;
     return (
-      <div className="catalog-result-card" key={product.id}>
+      <div className={`catalog-result-card ${chooserOpen || confirmation ? "market-result-card-expanded" : ""}`} key={product.id}>
         <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(product)}>
           <div className="catalog-thumb">
             {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
@@ -18732,8 +19043,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
         {chooserOpen ? (
           <div className="market-result-destination-panel">
-            <strong>Add this Market result</strong>
-            <span>Known details will be copied into a draft you can finish later.</span>
+            <div className="market-result-destination-copy">
+              <strong>Add this Market result</strong>
+              <span>Known details will be copied into a draft you can finish later.</span>
+            </div>
             <div className="market-result-destination-actions">
               <button type="button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "forge")}>
                 {forgeSaving ? "Adding..." : "Save to Forge"}
@@ -24475,9 +24788,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <input inputMode="decimal" value={quickScoutReportForm.price} onChange={(event) => updateQuickScoutReportForm("price", event.target.value)} placeholder="Optional" />
               </label>
               <label>
-                When
+                Report date
+                <input type="date" value={quickScoutReportForm.reportDate} onChange={(event) => updateQuickScoutReportForm("reportDate", event.target.value)} />
+              </label>
+              <label>
+                Report time
                 <input type="time" value={quickScoutReportForm.reportTime} onChange={(event) => updateQuickScoutReportForm("reportTime", event.target.value)} />
               </label>
+            </div>
+            <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
+              <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} onClick={() => applyQuickScoutReportTimePreset("now")}>Now</button>
+              <button type="button" onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
+              <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
             </div>
             {!currentType.isGuess ? (
               <div className="scout-stock-status-grid" role="group" aria-label="Stock left after purchase">
@@ -25018,6 +25340,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         placeholder="Search Pokemon product, set, UPC, or card name"
                         maxSuggestions={8}
                         inputClassName="add-item-search-input"
+                        localCatalogProducts={catalogProducts}
                         autoFocus
                         inputLabel="Search Pokemon product, set, UPC, or card name"
                         inlineResults
@@ -25350,6 +25673,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <Field label="Source / Purchase Location">
                 <input value={multiDestinationForm.forge.source} onChange={(event) => updateMultiDestinationSection("forge", "source", event.target.value)} placeholder="Target, Best Buy, show, trade..." />
               </Field>
+              <Field label="Where is this inventory?">
+                <select value={multiDestinationForm.forge.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION} onChange={(event) => updateMultiDestinationSection("forge", "physicalLocation", event.target.value)}>
+                  {FORGE_PHYSICAL_LOCATION_OPTIONS.map((location) => (
+                    <option key={location} value={location}>{location}</option>
+                  ))}
+                </select>
+              </Field>
+              {multiDestinationForm.forge.physicalLocation === "Other" ? (
+                <Field label="Custom location notes">
+                  <input value={multiDestinationForm.forge.physicalLocationNotes || ""} onChange={(event) => updateMultiDestinationSection("forge", "physicalLocationNotes", event.target.value)} placeholder="Black tote 2, back office, partner shelf..." />
+                </Field>
+              ) : null}
               <Field label="Business Category">
                 <input value={multiDestinationForm.forge.businessCategory} onChange={(event) => updateMultiDestinationSection("forge", "businessCategory", event.target.value)} />
               </Field>
@@ -25448,7 +25783,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="wizard-summary-card">
                   <span>Forge</span>
                   <strong>Qty {multiDestinationForm.forge.quantity || 1}</strong>
-                  <small>{[multiDestinationForm.forge.source, multiDestinationForm.forge.unitCost ? `Cost ${money(Number(multiDestinationForm.forge.unitCost))}` : "", multiDestinationForm.forge.plannedSellPrice ? `List ${money(Number(multiDestinationForm.forge.plannedSellPrice))}` : ""].filter(Boolean).join(" | ") || "Business inventory draft"}</small>
+                  <small>{[multiDestinationForm.forge.source, multiDestinationForm.forge.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION, multiDestinationForm.forge.unitCost ? `Cost ${money(Number(multiDestinationForm.forge.unitCost))}` : "", multiDestinationForm.forge.plannedSellPrice ? `List ${money(Number(multiDestinationForm.forge.plannedSellPrice))}` : ""].filter(Boolean).join(" | ") || "Business inventory draft"}</small>
                 </div>
               ) : null}
               {multiDestinationForm.destinations.vault ? (
@@ -26283,7 +26618,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   return (
-    <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
+    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -26415,6 +26750,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     ) : null}
   </div>
 </div>
+
+      {renderDesktopCommandSidebar()}
 
       {guestPreviewActive ? (
         <section className="guest-preview-banner" role="status">
@@ -26737,6 +27074,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <div><dt>Vault items</dt><dd>{vaultItems.length}</dd></div>
                       <div><dt>Forge items</dt><dd>{forgeInventoryItems.length}</dd></div>
                     </dl>
+                    <button type="button" className="drawer-link" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>
+                      Rename Collection
+                    </button>
                   </div>
 
                   <form className="drawer-info-card" onSubmit={createWorkspace}>
@@ -27222,20 +27562,59 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
             <div className="daily-tide-modal-body">
               <span className="status-badge">{activeDailyTideTask.label}</span>
-              <p>Mark this step done when you are finished, or open the section if you want to take action now.</p>
+              <p>{dailyCompletedCount}/{DAILY_TIDE_ACTIONS.length} complete. Next marks this step done and moves forward.</p>
             </div>
             <div className="location-modal-actions modal-sticky-footer">
               <button type="button" onClick={() => openDailyTideTaskDestination(activeDailyTideTask.key)}>
                 {activeDailyTideTask.actionLabel}
               </button>
-              <button type="button" className="secondary-button" onClick={() => markDailyTideTaskDone(activeDailyTideTask.key)}>
-                Mark Done
+              <button type="button" className="secondary-button" onClick={() => advanceDailyTideTask(activeDailyTideTask.key)}>
+                Next
               </button>
               <button type="button" className="ghost-button" onClick={() => setDailyTideModalTask("")}>
                 Close
               </button>
             </div>
           </section>
+        </div>
+      ) : null}
+
+      {workspaceRenameTarget ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={closeWorkspaceRename}>
+          <form
+            className="location-modal workspace-rename-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workspace-rename-title"
+            onSubmit={submitWorkspaceRename}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="workspace-rename-title">Rename Collection</h2>
+                <p>Updates the display name only. IDs and inventory links stay unchanged.</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close rename collection" onClick={closeWorkspaceRename}>
+                X
+              </button>
+            </div>
+            <div className="flow-modal-body">
+              <Field label="Collection name">
+                <input
+                  value={workspaceRenameName}
+                  onChange={(event) => setWorkspaceRenameName(event.target.value)}
+                  maxLength={WORKSPACE_NAME_MAX_LENGTH}
+                  autoFocus
+                />
+              </Field>
+              <p className="compact-subtitle">{workspaceRenameName.trim().length}/{WORKSPACE_NAME_MAX_LENGTH} characters</p>
+              {workspaceMessage ? <p className="flow-inline-message is-info" role="status">{workspaceMessage}</p> : null}
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={closeWorkspaceRename} disabled={workspaceRenameSaving}>Cancel</button>
+              <button type="submit" disabled={workspaceRenameSaving}>{workspaceRenameSaving ? "Saving..." : "Save Name"}</button>
+            </div>
+          </form>
         </div>
       ) : null}
 
@@ -31922,12 +32301,22 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     ))}
                   </select>
                 </Field>
+                <Field label="Physical location">
+                  <select value={inventoryPhysicalLocationFilter} onChange={(event) => setInventoryPhysicalLocationFilter(event.target.value)}>
+                    <option value="All">All locations</option>
+                    {FORGE_PHYSICAL_LOCATION_OPTIONS.map((location) => (
+                      <option key={location} value={location}>{location}</option>
+                    ))}
+                    <option value="No Location">No location</option>
+                  </select>
+                </Field>
               </div>
             </details>
 
             <div className="filter-summary">
               <p>Current filter: {inventoryStatusFilter}</p>
               <p>Purchaser: {inventoryPurchaserFilter === "All" ? "All" : purchasers.find((purchaser) => purchaser.id === inventoryPurchaserFilter)?.name || inventoryPurchaserFilter}</p>
+              <p>Physical location: {inventoryPhysicalLocationFilter === "All" ? "All" : inventoryPhysicalLocationFilter}</p>
 
               <p>
               Showing {pagedForgeInventory.start || 0}-{pagedForgeInventory.end || 0} of {sortedFilteredItems.length} filtered inventory records
@@ -32799,9 +33188,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           <button
             key={tab.key}
             type="button"
-            className={activeMainTab === tab.key ? "active" : ""}
-            aria-current={activeMainTab === tab.key ? "page" : undefined}
-            onClick={() => navigateMainTab(tab)}
+            className={`${tab.center ? "mobile-dock-add" : "mobile-dock-item"} ${activeMainTab === tab.key || (tab.key === "menu" && menuOpen) ? "active" : ""}`.trim()}
+            aria-current={activeMainTab === tab.key || (tab.key === "menu" && menuOpen) ? "page" : undefined}
+            onClick={() => tab.action ? tab.action() : navigateMainTab(tab)}
+            aria-label={tab.center ? "Open Quick Add command center" : tab.label}
           >
             <span className="mobile-tab-icon" aria-hidden="true">
               <AppNavIcon kind={tab.icon || "home"} />
@@ -32830,6 +33220,8 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
     ["SKU", item.sku],
     ["Purchase Date", item.purchaseDate ? String(item.purchaseDate).slice(0, 10) : ""],
     ["Store", item.store],
+    ["Physical Location", forgePhysicalLocationLabel(item)],
+    ["Location Notes", item.physicalLocationNotes],
     ["Purchaser", itemPurchaserName(item)],
     ["Notes", item.notes],
     ["Planned Selling Price", hasValue(item.salePrice) ? money(item.salePrice) : ""],
@@ -32962,6 +33354,7 @@ function CompactInventoryCard({
     unitCost > 0 ? ((marketPrice - unitCost) / unitCost) * 100 : 0;
   const isVault = variant === "vault";
   const packCount = Number(item.packCount || 0);
+  const physicalLocation = forgePhysicalLocationLabel(item);
   if (isVault) {
     return (
       <div className="inventory-card compact-card vault-item-card">
@@ -33051,6 +33444,8 @@ function CompactInventoryCard({
       <div className="compact-details">
         <p><strong>SKU:</strong> {item.sku}</p>
         <p><strong>Store:</strong> {item.store || "Not listed"}</p>
+        <p><strong>Physical Location:</strong> {physicalLocation || "Not set"}</p>
+        {item.physicalLocationNotes ? <p><strong>Location Notes:</strong> {item.physicalLocationNotes}</p> : null}
         <p><strong>Purchased By:</strong> {itemPurchaserName(item)}</p>
         <p><strong>Type:</strong> {item.productType || "Not listed"}</p>
         <p><strong>Expansion:</strong> {item.expansion || "Not listed"}</p>
@@ -33068,6 +33463,7 @@ function CompactInventoryCard({
       </div>
 
       <div className="compact-links">
+        {physicalLocation ? <span className="neon-chip forge-location-pill">{physicalLocation}</span> : null}
         {item.tideTradrUrl && <a href={item.tideTradrUrl} target="_blank" rel="noreferrer">TideTradr</a>}
         {item.listingUrl && <a href={item.listingUrl} target="_blank" rel="noreferrer">Listing</a>}
         {item.receiptImage && <a href={item.receiptImage} target="_blank" rel="noreferrer">Receipt</a>}
@@ -33669,7 +34065,19 @@ function InventoryForm({
       </section>
       <details className="forge-form-step forge-optional-details">
         <summary>Step 4: Optional Details</summary>
-      <Field label="Location"><input value={form.storageLocation || ""} onChange={(e) => setForm("storageLocation", e.target.value)} placeholder="Shelf, tote, case, storage bin..." /></Field>
+      <Field label="Where is this inventory?">
+        <select value={form.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION} onChange={(e) => setForm("physicalLocation", e.target.value)}>
+          {FORGE_PHYSICAL_LOCATION_OPTIONS.map((location) => (
+            <option key={location} value={location}>{location}</option>
+          ))}
+        </select>
+      </Field>
+      {form.physicalLocation === "Other" ? (
+        <Field label="Custom physical location notes">
+          <input value={form.physicalLocationNotes || ""} onChange={(e) => setForm("physicalLocationNotes", e.target.value)} placeholder="Black tote 2, partner shelf, back office..." />
+        </Field>
+      ) : null}
+      <Field label="Shelf / bin label"><input value={form.storageLocation || ""} onChange={(e) => setForm("storageLocation", e.target.value)} placeholder="Shelf, tote, case, storage bin..." /></Field>
       <Field label="Notes"><input value={form.notes || ""} onChange={(e) => setForm("notes", e.target.value)} /></Field>
       <Field label="Condition"><input value={form.condition || ""} onChange={(e) => setForm("condition", e.target.value)} placeholder="Sealed, damaged box, NM, LP..." /></Field>
       <Field label="Tags"><input value={form.tags || ""} onChange={(e) => setForm("tags", e.target.value)} placeholder="restock, promo, hold, bundle..." /></Field>

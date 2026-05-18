@@ -55,11 +55,35 @@ async function main() {
       label === "TideTradr"
         ? "(TideTradr|Market)"
         : label === "Home"
-          ? "(Home|Hearth)"
+          ? "(Home|Hearth|Hearth Home)"
+          : label === "Scout"
+            ? "(Scout|Scout Signals)"
+            : label === "Forge"
+              ? "(Forge|Forge Workshop)"
           : label;
-    const tab = page.locator(".main-tabs button").filter({ hasText: new RegExp(`^${visibleLabel}$`) });
-    if (await tab.count()) {
-      await tab.click();
+    const navName = new RegExp(`^${visibleLabel}\\b`, "i");
+    const navSelectors = [
+      ".web-command-nav button",
+      ".mobile-bottom-nav button",
+      ".main-tabs button",
+    ];
+    for (const selector of navSelectors) {
+      const targets = page.locator(selector).filter({ hasText: navName });
+      const count = await targets.count();
+      for (let index = 0; index < count; index += 1) {
+        const target = targets.nth(index);
+        if (await target.isVisible()) {
+          await target.click();
+          return;
+        }
+      }
+    }
+    const legacyTab = page.locator(".main-tabs button").filter({ hasText: navName }).first();
+    if (await legacyTab.count()) {
+      // Desktop users now navigate with the command sidebar, while the hidden legacy tab strip
+      // remains wired for app routing. Use it only as a test fallback when the dev server is
+      // running a cached shell before the sidebar styles hydrate.
+      await legacyTab.evaluate((button) => button.click());
       return;
     }
     const topbarSection = page.locator(".topbar-section-select");
@@ -148,6 +172,23 @@ async function main() {
           sku: "SMOKE-ETB-1",
           marketPrice: 60,
           msrpPrice: 49.99,
+          sourceType: "smoke",
+          marketSource: "Smoke Catalog",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "catalog-smoke-market-action",
+          name: "Smoke Market Action Booster Box",
+          productName: "Smoke Market Action Booster Box",
+          category: "Pokemon",
+          catalogType: "sealed",
+          productType: "Booster Box",
+          setName: "Smoke Market Set",
+          barcode: "123456789012",
+          sku: "SMOKE-BB-1",
+          marketPrice: 119.99,
+          msrpPrice: 99.99,
           sourceType: "smoke",
           marketSource: "Smoke Catalog",
           createdAt: now,
@@ -359,6 +400,40 @@ async function main() {
     await reloadWithAppData(cleanedWorkspaceData);
   });
 
+  await step("Workspace: collection rename persists", async () => {
+    await nav("Vault");
+    await page.getByRole("button", { name: "Rename Collection" }).first().click();
+    const renameModal = page.locator(".workspace-rename-modal").first();
+    await renameModal.waitFor({ state: "visible", timeout: 5000 });
+    await fillByLabel(renameModal, "Collection name", "Smoke Renamed Collection");
+    await renameModal.getByRole("button", { name: "Save Name" }).click();
+    await assertVisibleText("Smoke Renamed Collection");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
+    await nav("Vault");
+    await assertVisibleText("Smoke Renamed Collection");
+    const renamedWorkspace = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.workspaces || []).find((workspace) => workspace.id === "workspace-personal-local-beta") || null;
+    });
+    assert.equal(renamedWorkspace?.name, "Smoke Renamed Collection");
+  });
+
+  await step("Catalog: Add Item search finds seeded sealed products", async () => {
+    await nav("Forge");
+    await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
+    const form = page.locator("form#multi-destination-add-form").first();
+    const searchInput = form.getByPlaceholder("Search Pokemon product, set, UPC, or card name");
+    await searchInput.fill("mini portfolio");
+    await form.locator(".catalog-picker-card").filter({ hasText: /Mini Portfolio|Portfolio/i }).first().waitFor({ state: "visible", timeout: 7000 });
+    await searchInput.fill("collector chest");
+    await form.locator(".catalog-picker-card").filter({ hasText: /Collector/i }).first().waitFor({ state: "visible", timeout: 7000 });
+    await searchInput.fill("prismatic");
+    await form.locator(".catalog-picker-card").filter({ hasText: "Prismatic Evolutions" }).first().waitFor({ state: "visible", timeout: 7000 });
+    await page.keyboard.press("Escape");
+    await page.locator('.flow-modal[data-flow="multiDestinationAdd"]').first().waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+  });
+
   async function assertVisibleText(text) {
     try {
       await page.waitForFunction(
@@ -398,6 +473,8 @@ async function main() {
       price = "",
       note = "",
       stockLeft = "",
+      reportDate = "",
+      reportTime = "",
     } = options;
 
     const reportTypeButton = form.getByRole("button", { name: new RegExp(reportType, "i") }).first();
@@ -406,6 +483,11 @@ async function main() {
       throw new Error(`Scout wizard did not open at the report type step.\n${bodyText.slice(0, 1600)}`);
     }
     await reportTypeButton.click();
+    await page.waitForFunction(
+      (button) => button?.classList?.contains("selected"),
+      await reportTypeButton.elementHandle(),
+      { timeout: 3000 }
+    );
     if (note) {
       await form.getByPlaceholder(/Optional quick note/i).fill(note);
     }
@@ -445,8 +527,24 @@ async function main() {
     if (price) {
       await form.getByLabel("Price / MSRP").fill(price);
     }
+    if (reportDate) {
+      const reportDateInput = form.getByRole("textbox", { name: "Report date" });
+      await reportDateInput.fill(reportDate);
+      assert.equal(await reportDateInput.inputValue(), reportDate);
+    }
+    if (reportTime) {
+      const reportTimeInput = form.getByRole("textbox", { name: "Report time" });
+      await reportTimeInput.fill(reportTime);
+      assert.equal(await reportTimeInput.inputValue(), reportTime);
+    }
     if (stockLeft) {
-      await form.getByRole("button", { name: new RegExp(stockLeft, "i") }).first().click();
+      const stockButton = form.getByRole("button", { name: new RegExp(stockLeft, "i") }).first();
+      await stockButton.click();
+      await page.waitForFunction(
+        (button) => button?.classList?.contains("selected"),
+        await stockButton.elementHandle(),
+        { timeout: 3000 }
+      );
     }
     await form.getByRole("button", { name: "Next" }).click();
     await form.getByText("Review and submit").waitFor({ state: "visible", timeout: 5000 }).catch(async (error) => {
@@ -508,9 +606,18 @@ async function main() {
       productName: "Smoke ETB",
       quantity: "2",
       note: "Two ETBs on the shelf.",
+      reportDate: "2026-05-16",
+      reportTime: "09:30",
     });
     await submitScoutWizardIfNeeded(reportForm);
     await assertVisibleText("Smoke ETB");
+    const savedScoutReport = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-scout") || "{}");
+      return (data.reports || []).find((report) => report.productName === "Smoke ETB" || report.itemName === "Smoke ETB") || null;
+    });
+    assert.ok(savedScoutReport, "Scout report should be saved to local beta storage");
+    assert.equal(savedScoutReport.reportDate, "2026-05-16");
+    assert.equal(savedScoutReport.reportTime, "09:30");
     await closeReportSuccess();
 
     const reportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB" }).first();
@@ -679,12 +786,14 @@ async function main() {
     await fillByLabel(form, "Cost Basis", "40");
     await fillByLabel(form, "Planned Sell Price", "55");
     await fillByLabel(form, "Source / Purchase Location", "Smoke Shared Target");
+    await form.getByLabel("Where is this inventory?").selectOption("Storage");
     await clickAddWizardNext();
     await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
     await assertVisibleText("Smoke Search Elite Trainer Box");
     const smokeForgeCard = page.locator(".compact-card").filter({ hasText: "Smoke Search Elite Trainer Box" }).first();
     await smokeForgeCard.getByRole("button", { name: "View" }).click();
     await assertVisibleText("Smoke Shared Target");
+    await assertVisibleText("Storage");
     await page.getByRole("button", { name: "Close" }).click();
 
     await nav("Vault");
@@ -696,9 +805,18 @@ async function main() {
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Search Elite Trainer Box" }), "Edit");
     const editForm = page.locator("form.form").last();
+    await editForm.getByText("Step 4: Optional Details").click();
+    await editForm.getByLabel("Where is this inventory?").selectOption("Other");
+    await fillByLabel(editForm, "Custom physical location notes", "Black tote 2");
     await fillByLabel(editForm, "Item Name", "Smoke Forge ETB Edited");
     await editForm.getByRole("button", { name: "Save Changes" }).click();
     await assertVisibleText("Smoke Forge ETB Edited");
+    const editedForgeRecord = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.items || []).find((item) => item.name === "Smoke Forge ETB Edited") || null;
+    });
+    assert.equal(editedForgeRecord?.physicalLocation, "Other");
+    assert.equal(editedForgeRecord?.physicalLocationNotes, "Black tote 2");
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB Edited" }), "Delete");
     await assertVisibleText("No Forge items found");
@@ -832,12 +950,107 @@ async function main() {
     await page.getByRole("button", { name: /Close Deal Finder/i }).click();
   });
 
+  await step("Market: search result saves to Forge and Vault destinations", async () => {
+    await nav("TideTradr");
+    const searchForm = page.locator(".catalog-search-form").first();
+    await searchForm.locator("input").first().fill("Smoke Market Action");
+    await searchForm.getByRole("button", { name: /Search Catalog|Search TideTradr|Search/i }).first().click();
+    const resultCard = page.locator(".catalog-result-card").filter({ hasText: "Smoke Market Action Booster Box" }).first();
+    await resultCard.waitFor({ state: "visible", timeout: 10000 });
+    await resultCard.getByRole("button", { name: /\+ Add|Add/i }).first().click();
+    await resultCard.getByRole("button", { name: "Save to Forge" }).click();
+    await assertVisibleText("Added to Forge as a draft");
+    await resultCard.getByRole("button", { name: /\+ Add|Add/i }).first().click();
+    await resultCard.getByRole("button", { name: "Save to Vault" }).click();
+    await assertVisibleText("Added to Vault as a draft");
+
+    const marketDrafts = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.items || [])
+        .filter((item) => item.name === "Smoke Market Action Booster Box")
+        .map((item) => ({
+          destinationScope: item.destinationScope,
+          recordType: item.recordType,
+          businessInventory: item.businessInventory,
+          vaultStatus: item.vaultStatus,
+          physicalLocation: item.physicalLocation,
+        }));
+    });
+    assert.ok(marketDrafts.some((item) => (item.destinationScope || []).includes("forge") && item.businessInventory === true && item.physicalLocation === "At Home"), "Market Save to Forge should create a Forge draft");
+    assert.ok(marketDrafts.some((item) => (item.destinationScope || []).includes("vault") && item.businessInventory !== true && item.vaultStatus), "Market Save to Vault should create a Vault draft");
+
+    await nav("Forge");
+    await assertVisibleText("Smoke Market Action Booster Box");
+    await nav("Vault");
+    await page.getByRole("button", { name: "Collection", exact: true }).click();
+    await assertVisibleText("Smoke Market Action Booster Box");
+    await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.items = (data.items || []).filter((item) => (item.name || item.itemName) !== "Smoke Market Action Booster Box");
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(data));
+    });
+  });
+
   await step("Home: totals update", async () => {
     await nav("Home");
     await assertVisibleText("Daily Tide Check");
     await assertVisibleText(/Start Daily Tide|Next:|Daily Tide Complete/);
     await assertNotVisibleText("Today / Overview");
     await assertNotVisibleText("Recent Activity");
+  });
+
+  await step("Home: Daily Tide Next marks done and Close only closes", async () => {
+    await page.evaluate(() => localStorage.removeItem("et-tcg-daily-tide"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await nav("Home");
+    const dailyButton = page.locator(".daily-tide-main-button").first();
+    await dailyButton.waitFor({ state: "visible", timeout: 5000 });
+    await dailyButton.click();
+    const dailyModal = page.locator(".daily-tide-modal").first();
+    await dailyModal.waitFor({ state: "visible", timeout: 5000 });
+    await dailyModal.getByRole("button", { name: "Close", exact: true }).click();
+    await dailyModal.waitFor({ state: "hidden", timeout: 5000 });
+    const afterCloseState = await page.evaluate(() => JSON.parse(localStorage.getItem("et-tcg-daily-tide") || "{}"));
+    assert.equal(Boolean(afterCloseState.completedActions?.scout), false, "Close should not complete the first Daily Tide task");
+
+    await dailyButton.click();
+    await dailyModal.waitFor({ state: "visible", timeout: 5000 });
+    await dailyModal.getByRole("button", { name: "Next" }).click();
+    await assertVisibleText("Check Vault");
+    const afterNextState = await page.evaluate(() => JSON.parse(localStorage.getItem("et-tcg-daily-tide") || "{}"));
+    assert.ok(afterNextState.completedActions?.scout, "Next should mark the current Daily Tide task done");
+    await page.getByRole("button", { name: "Close Daily Tide" }).click();
+  });
+
+  await step("Command Center: fits desktop and mobile viewports", async () => {
+    async function openCommandCenterAtViewport(width, height) {
+      await closeOpenModals();
+      await page.setViewportSize({ width, height });
+      if (width >= 640) {
+        await nav("Home");
+      } else {
+        await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
+      }
+      await page.locator(".hearth-command-hero").getByRole("button", { name: "Quick Add", exact: true }).click();
+      const quickAddModal = page.locator('.flow-modal[data-flow="addActionSheet"]').first();
+      await quickAddModal.waitFor({ state: "visible", timeout: 5000 });
+      await quickAddModal.getByRole("button", { name: "Open TCG Command Center" }).click();
+      const commandModal = page.locator('.flow-modal[data-flow="tcgCommandCenter"]').first();
+      await commandModal.waitFor({ state: "visible", timeout: 5000 });
+      const box = await commandModal.boundingBox();
+      assert.ok(box, "Command Center modal should have a layout box");
+      assert.ok(box.x >= -1 && box.y >= -1, `Command Center should stay inside viewport origin at ${width}x${height}`);
+      assert.ok(box.x + box.width <= width + 1, `Command Center should not overflow horizontally at ${width}x${height}`);
+      assert.ok(box.y + box.height <= height + 1, `Command Center should not overflow vertically at ${width}x${height}`);
+      const hasHorizontalOverflow = await commandModal.evaluate((element) => element.scrollWidth > element.clientWidth + 2);
+      assert.equal(hasHorizontalOverflow, false, `Command Center should not require horizontal scrolling at ${width}x${height}`);
+      await commandModal.getByRole("button", { name: "Close", exact: true }).click();
+      await commandModal.waitFor({ state: "hidden", timeout: 5000 });
+    }
+
+    await openCommandCenterAtViewport(1440, 900);
+    await openCommandCenterAtViewport(390, 844);
+    await page.setViewportSize({ width: 1366, height: 1600 });
   });
 
   await browser.close();

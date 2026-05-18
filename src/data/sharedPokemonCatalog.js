@@ -1,6 +1,8 @@
-// Shared Pokemon catalog metadata only.
-// Runtime catalog products must come from Supabase. Do not bundle demo/sample
-// product rows into the production app.
+import importedCatalogStatus from "./generated/catalogImportStatus.json";
+
+// Shared Pokemon catalog metadata and local seed import status.
+// Full catalog search still comes from Supabase when configured; vetted sealed
+// seed rows are bundled as a small fallback for common Add Item searches.
 
 export const SEALED_PRODUCT_TYPES = [
   "Elite Trainer Box",
@@ -12,8 +14,10 @@ export const SEALED_PRODUCT_TYPES = [
   "Build & Battle Stadium",
   "Collection Box",
   "Premium Collection",
+  "Tech Sticker Collection",
   "Tin",
   "Mini Tin",
+  "Mini Portfolio",
   "Blister Pack",
   "Checklane Blister",
   "Sleeved Booster",
@@ -30,6 +34,8 @@ export const SEALED_PRODUCT_TYPES = [
   "Special Collection",
   "Poster Collection",
   "Binder Collection",
+  "Collector's Chest",
+  "Surprise Box",
   "Figure Collection",
   "Promo Box",
   "Theme Deck",
@@ -82,7 +88,8 @@ export const SET_SEARCH_METADATA = {
 
 export const CATALOG_IMPORT_STATUS = {
   source: "supabase",
-  totalCards: 0,
-  totalSealedProducts: 0,
-  generatedAt: "",
+  totalCards: importedCatalogStatus.cardsImported || 0,
+  totalSealedProducts: importedCatalogStatus.sealedProductsImported || 0,
+  generatedAt: importedCatalogStatus.lastImportedAt || "",
+  ...importedCatalogStatus,
 };
