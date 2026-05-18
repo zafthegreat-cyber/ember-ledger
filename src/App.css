@@ -130,6 +130,188 @@
   background: var(--cream);
 }
 
+/* Focused Forge inventory repair: keep cards readable and prevent More menus from clipping. */
+.forge-page .compact-inventory-list,
+.forge-home-inventory-section .compact-inventory-list,
+.forge-page .inventory-list,
+.forge-home-inventory-section .inventory-list,
+.forge-page .inventory-card,
+.forge-home-inventory-section .inventory-card,
+.forge-page .compact-card,
+.forge-home-inventory-section .compact-card,
+.forge-inventory-card,
+.forge-card-actions,
+.forge-card-actions .overflow-menu {
+  overflow: visible !important;
+}
+
+.forge-page .compact-inventory-list,
+.forge-home-inventory-section .compact-inventory-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)) !important;
+  gap: 16px !important;
+  align-items: start;
+}
+
+.forge-inventory-card {
+  display: grid;
+  gap: 12px !important;
+  min-height: auto !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),
+    rgba(6, 13, 29, 0.78) !important;
+  border-color: rgba(255, 167, 80, 0.24) !important;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+.forge-inventory-card .compact-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.forge-inventory-card .compact-title-block {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.forge-inventory-card h3 {
+  color: #fff7ed !important;
+  font-size: 0.98rem !important;
+  line-height: 1.24 !important;
+  margin: 0;
+  -webkit-line-clamp: 3 !important;
+}
+
+.forge-card-status-stack {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 44%;
+}
+
+.forge-card-status-stack .status-badge {
+  max-width: 100%;
+  padding: 5px 8px;
+  font-size: 0.68rem;
+  line-height: 1.05;
+  white-space: normal;
+}
+
+.forge-card-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.forge-card-quantity,
+.forge-inventory-card .forge-location-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(133, 224, 255, 0.18);
+  background: rgba(4, 12, 27, 0.72);
+  color: rgba(248, 251, 255, 0.86);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.forge-inventory-card .forge-location-pill {
+  border-color: rgba(32, 215, 255, 0.24);
+  color: #bdf3ff;
+}
+
+.forge-inventory-card .compact-image-wrap {
+  width: 104px !important;
+  height: 104px !important;
+  min-height: 104px !important;
+  align-self: start;
+  border-radius: 15px !important;
+  background: rgba(2, 8, 20, 0.62) !important;
+  border-color: rgba(133, 224, 255, 0.2) !important;
+}
+
+.forge-inventory-card .compact-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.forge-inventory-card .compact-image-wrap span {
+  display: none;
+}
+
+.forge-inventory-card .compact-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.forge-inventory-card .compact-metrics > div {
+  min-height: 58px;
+  padding: 10px !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+  border: 1px solid rgba(255, 255, 255, 0.055) !important;
+}
+
+.forge-inventory-card .compact-metrics span {
+  color: rgba(248, 251, 255, 0.62) !important;
+  font-size: 0.67rem !important;
+  letter-spacing: 0.04em;
+}
+
+.forge-inventory-card .compact-metrics strong {
+  color: #fff7ed !important;
+  font-size: 0.88rem !important;
+}
+
+.forge-card-actions {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin-top: 0 !important;
+}
+
+.forge-card-actions > button,
+.forge-card-actions .overflow-menu-button {
+  min-height: 42px !important;
+  border-radius: 12px !important;
+}
+
+.forge-card-actions .overflow-menu-list {
+  right: 0;
+  left: auto;
+  min-width: 210px;
+  max-width: min(260px, calc(100vw - 28px));
+  z-index: 2800 !important;
+}
+
+@media (max-width: 720px) {
+  .forge-page .compact-inventory-list,
+  .forge-home-inventory-section .compact-inventory-list {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .forge-card-actions {
+    grid-template-columns: 1fr 1fr 1fr !important;
+  }
+
+  .forge-card-status-stack {
+    max-width: 48%;
+  }
+}
+
 /* Dark glass command-center redesign */
 :root {
   --et-bg: #02050d;
@@ -7652,6 +7834,32 @@ textarea {
   gap: 10px;
 }
 
+.forge-mode-settings-card {
+  border-color: rgba(255, 145, 77, 0.28);
+  background:
+    linear-gradient(145deg, rgba(255, 111, 48, 0.08), rgba(0, 194, 255, 0.05)),
+    rgba(7, 15, 28, 0.74);
+}
+
+.forge-mode-toggle {
+  align-items: center;
+}
+
+.forge-mode-toggle span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.forge-mode-toggle small,
+.forge-mode-summary dd {
+  color: var(--color-text-muted);
+}
+
+.forge-workspace-unavailable {
+  border-color: rgba(255, 94, 94, 0.28);
+}
+
 .workspace-member-list {
   display: grid;
   gap: 8px;
@@ -10512,6 +10720,20 @@ button.home-metric-card h2 {
   font-size: var(--text-helper);
   font-weight: 650;
   line-height: 1.25;
+}
+
+.destination-checkbox.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+  box-shadow: none;
+}
+
+.destination-checkbox.is-disabled:hover,
+.destination-checkbox.is-disabled:focus-within {
+  transform: none;
+  border-color: var(--color-border);
+  box-shadow: none;
 }
 
 .flow-checkbox-stack {

@@ -570,6 +570,7 @@ const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
+const FORGE_MODE_SETTINGS_STORAGE_KEY = "et-tcg-forge-mode-settings";
 const ADMIN_MODE_STORAGE_PREFIX = "et-tcg-admin-mode";
 const PRIVATE_UPLOAD_BUCKET = "receipt-images";
 const PRIVATE_UPLOAD_SIGNED_URL_SECONDS = 60 * 60 * 24 * 7;
@@ -579,6 +580,11 @@ const LONG_LIST_PAGE_SIZE = 12;
 const DEFAULT_PURCHASER_NAMES = ["Personal", "Business", "Kids", "Other"];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
 const DEFAULT_PERSONAL_WORKSPACE_ID = "workspace-personal-local-beta";
+const DEFAULT_FORGE_MODE_SETTINGS = {
+  personalForgeEnabled: true,
+  defaultForgeWorkspaceId: "",
+  lockToEmberTide: false,
+};
 const DAILY_TIDE_TASKS = [
   {
     key: "scout",
@@ -2157,6 +2163,37 @@ function normalizeWorkspaceDisplayName(value = "") {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, WORKSPACE_NAME_MAX_LENGTH);
 }
 
+function normalizeForgeModeSettings(value = {}) {
+  return {
+    ...DEFAULT_FORGE_MODE_SETTINGS,
+    personalForgeEnabled: value.personalForgeEnabled !== false,
+    defaultForgeWorkspaceId: String(value.defaultForgeWorkspaceId || value.defaultForgeWorkspace || "").trim(),
+    lockToEmberTide: Boolean(value.lockToEmberTide || value.alwaysUseEmberTideForge || value.lockForgeToEmberTide),
+    updatedAt: value.updatedAt || "",
+  };
+}
+
+function loadForgeModeSettings(fallback = {}) {
+  if (typeof localStorage === "undefined") return normalizeForgeModeSettings(fallback);
+  try {
+    return normalizeForgeModeSettings({
+      ...fallback,
+      ...JSON.parse(localStorage.getItem(FORGE_MODE_SETTINGS_STORAGE_KEY) || "{}"),
+    });
+  } catch {
+    return normalizeForgeModeSettings(fallback);
+  }
+}
+
+function isPersonalForgeWorkspace(workspace = {}) {
+  return workspace.id === DEFAULT_PERSONAL_WORKSPACE_ID || workspace.type === "personal";
+}
+
+function isEmberTideForgeWorkspace(workspace = {}) {
+  const name = String(workspace.name || "").toLowerCase().replace(/\s+/g, " ").trim();
+  return /\bember\s*(?:&|and)\s*tide\b/.test(name);
+}
+
 function normalizeForgePhysicalLocation(value = "", fallback = "") {
   const trimmed = String(value || "").trim();
   if (!trimmed) return fallback;
@@ -3429,6 +3466,7 @@ export default function App() {
   const [workspaceRenameName, setWorkspaceRenameName] = useState("");
   const [workspaceRenameSaving, setWorkspaceRenameSaving] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState("");
+  const [forgeModeSettings, setForgeModeSettings] = useState(() => loadForgeModeSettings(initialRouteState.forgeModeSettings));
 
   const [items, setItems] = useState([]);
   const [purchasers, setPurchasers] = useState(createDefaultPurchasers);
@@ -3992,25 +4030,72 @@ export default function App() {
     ),
     [workspaces, workspaceMembers, currentWorkspaceUserId, currentWorkspaceEmail]
   );
+  const visibleWorkspaceOptions = workspaceSelectorOptions.length ? workspaceSelectorOptions : workspaces;
+  const emberTideForgeWorkspace = useMemo(
+    () => visibleWorkspaceOptions.find(isEmberTideForgeWorkspace) || null,
+    [visibleWorkspaceOptions]
+  );
+  const forgeWorkspaceOptions = useMemo(
+    () => visibleWorkspaceOptions.filter((workspace) => forgeModeSettings.personalForgeEnabled || !isPersonalForgeWorkspace(workspace)),
+    [visibleWorkspaceOptions, forgeModeSettings.personalForgeEnabled]
+  );
+  const forgeDefaultWorkspace = useMemo(
+    () => forgeWorkspaceOptions.find((workspace) => String(workspace.id) === String(forgeModeSettings.defaultForgeWorkspaceId)) || null,
+    [forgeWorkspaceOptions, forgeModeSettings.defaultForgeWorkspaceId]
+  );
+  const activeForgeWorkspace = useMemo(() => {
+    if (forgeModeSettings.lockToEmberTide) return emberTideForgeWorkspace || null;
+    if (forgeDefaultWorkspace) return forgeDefaultWorkspace;
+    const activeOption = forgeWorkspaceOptions.find((workspace) => String(workspace.id) === String(activeWorkspace?.id));
+    return activeOption || forgeWorkspaceOptions[0] || null;
+  }, [forgeModeSettings.lockToEmberTide, emberTideForgeWorkspace, forgeDefaultWorkspace, forgeWorkspaceOptions, activeWorkspace]);
+  const activeForgeTransferLabel = activeForgeWorkspace && isEmberTideForgeWorkspace(activeForgeWorkspace)
+    ? activeForgeWorkspace.name || "Ember & Tide"
+    : "Forge";
+  const forgeWorkspaceUnavailableMessage = forgeModeSettings.lockToEmberTide && !emberTideForgeWorkspace
+    ? "Ember & Tide Forge is unavailable. Create or request access to an Ember & Tide workspace, or turn off Always use Ember & Tide Forge."
+    : "No Forge workspace is available. Enable Personal Forge or create a business workspace.";
   const destinationWorkspaceOptions = useMemo(() => {
-    const visible = workspaceSelectorOptions.length ? workspaceSelectorOptions : workspaces;
+    const visible = visibleWorkspaceOptions;
     const personalish = visible.filter((workspace) => ["personal", "personal_shared", "shared_collection", "family", "team"].includes(workspace.type));
-    const business = visible.filter((workspace) => ["business", "card_shop_partner", "team"].includes(workspace.type));
     return {
       vault: personalish.length ? personalish : visible,
       wishlist: personalish.length ? personalish : visible,
-      forge: business.length ? business : visible,
+      forge: forgeWorkspaceOptions,
     };
-  }, [workspaceSelectorOptions, workspaces]);
+  }, [visibleWorkspaceOptions, forgeWorkspaceOptions]);
   const defaultWorkspaceIdForDestination = (destination) => {
     if (destination === "forge") {
-      return destinationWorkspaceOptions.forge[0]?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+      return activeForgeWorkspace?.id || destinationWorkspaceOptions.forge[0]?.id || "";
     }
     if (["vault", "wishlist"].includes(destination)) {
       const matchingActive = destinationWorkspaceOptions[destination]?.find((workspace) => workspace.id === activeWorkspace?.id);
       return matchingActive?.id || destinationWorkspaceOptions[destination]?.[0]?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
     }
     return activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+  };
+  const updateForgeModeSettings = (updates = {}) => {
+    setForgeModeSettings((current) =>
+      normalizeForgeModeSettings({
+        ...current,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+    );
+  };
+  const setPersonalForgeEnabled = (enabled) => {
+    setForgeModeSettings((current) => {
+      const next = normalizeForgeModeSettings({
+        ...current,
+        personalForgeEnabled: Boolean(enabled),
+        updatedAt: new Date().toISOString(),
+      });
+      if (!next.personalForgeEnabled) {
+        const defaultWorkspace = workspaces.find((workspace) => String(workspace.id) === String(next.defaultForgeWorkspaceId));
+        if (defaultWorkspace && isPersonalForgeWorkspace(defaultWorkspace)) next.defaultForgeWorkspaceId = "";
+      }
+      return next;
+    });
   };
   const forgeTabActive = ["addInventory", "inventory", "addSale", "sales", "expenses", "mileage", "reports"].includes(activeTab);
   const autoHideBlocked = Boolean(
@@ -6549,10 +6634,14 @@ export default function App() {
       workspaceId: defaultWorkspaceIdForDestination("wishlist"),
       ...(wishlist || {}),
     };
+    const seededForgeWorkspaceId = forge?.workspaceId || forge?.workspace_id || "";
+    const validForgeWorkspaceId = forgeWorkspaceOptions.some((workspace) => String(workspace.id) === String(seededForgeWorkspaceId))
+      ? seededForgeWorkspaceId
+      : defaultWorkspaceIdForDestination("forge");
     const nextForge = {
       ...BLANK_MULTI_DESTINATION_FORM.forge,
-      workspaceId: defaultWorkspaceIdForDestination("forge"),
       ...(forge || {}),
+      workspaceId: validForgeWorkspaceId,
     };
 
     const nextForm = {
@@ -6588,6 +6677,11 @@ export default function App() {
     setMultiDestinationMessage("");
     const normalizedDestination = normalizeAddDestinationValue(destination, "", { allowIgnore: false });
     if (!normalizedDestination || !Object.prototype.hasOwnProperty.call(current.destinations, normalizedDestination)) return current;
+    if (checked && normalizedDestination === "forge" && !activeForgeWorkspace) {
+      setMultiDestinationMessage(forgeWorkspaceUnavailableMessage);
+      setVaultToast("Forge workspace is unavailable.");
+      return current;
+    }
     const next = {
       ...current,
       destinations: {
@@ -6598,7 +6692,9 @@ export default function App() {
     if (checked && ["vault", "wishlist", "forge"].includes(normalizedDestination)) {
       next[normalizedDestination] = {
         ...next[normalizedDestination],
-        workspaceId: next[normalizedDestination]?.workspaceId || defaultWorkspaceIdForDestination(normalizedDestination),
+        workspaceId: normalizedDestination === "forge"
+          ? defaultWorkspaceIdForDestination("forge")
+          : next[normalizedDestination]?.workspaceId || defaultWorkspaceIdForDestination(normalizedDestination),
       };
     }
     return next;
@@ -6640,6 +6736,7 @@ export default function App() {
     }
     if (step === "details" || step === "review") {
       if (form.destinations?.forge) {
+        if (!activeForgeWorkspace) return forgeWorkspaceUnavailableMessage;
         const forgeError = validatePositiveQuantity("Forge quantity", form.forge?.quantity)
           || validateOptionalMoney("Forge cost basis", form.forge?.unitCost)
           || validateOptionalMoney("Forge planned sell price", form.forge?.plannedSellPrice);
@@ -6906,6 +7003,8 @@ export default function App() {
 
     if (scopes.includes("expense_only") || recordType === "expense_only" || status.includes("expense only")) return "expense_only";
     if (scopes.includes("wishlist") || recordType === "wishlist_item" || item.isWishlist || item.is_wishlist || normalizedVault === "wishlist" || status === "wishlist") return "wishlist";
+    if (scopes.includes("market") || recordType === "market_listing" || recordType === "market_draft" || status.includes("market listing")) return "market";
+    if (hasVaultStatus && normalizedVault === "moved_to_forge") return "vault_archive";
     if (scopes.includes("vault") && !scopes.includes("forge")) return "vault";
     if (scopes.includes("forge") && !scopes.includes("vault")) return "forge";
     if (explicitForgeDestination && !explicitVaultDestination) return "forge";
@@ -6915,7 +7014,7 @@ export default function App() {
     if (item.businessInventory || item.business_inventory || Number(item.forgeQuantity || item.forge_quantity || 0) > 0) return "forge";
     if (hasVaultStatus && normalizedVault !== "moved_to_forge") return "vault";
     if (["personal collection", "held", "sealed", "sealed / holding", "ripped / opened", "traded"].includes(status)) return "vault";
-    if (["in stock", "ready to list", "listed", "needs photos", "needs market check", "sold", "moved to forge"].includes(status)) return "forge";
+    if (["in stock", "ready to list", "listed", "needs photos", "needs market check", "sold"].includes(status)) return "forge";
     if (actionNotes.includes("wishlist")) return "wishlist";
     if (actionNotes.includes("personal collection") || actionNotes.includes("vault")) return "vault";
     return "forge";
@@ -8738,6 +8837,7 @@ export default function App() {
       setWorkspaceMembers(workspaceState.workspaceMembers);
       setWorkspaceInvites(workspaceState.workspaceInvites);
       setActiveWorkspaceId(workspaceState.activeWorkspaceId);
+      setForgeModeSettings(normalizeForgeModeSettings(saved.forgeModeSettings || saved.settings?.forgeModeSettings || loadForgeModeSettings()));
       setWorkspaceInviteForm((current) => ({ ...current, workspaceId: workspaceState.activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID }));
       setHomeStatsEnabled(normalizeHomeStatsEnabled(saved.homeStatsEnabled, savedUserType));
       setDashboardPreset(savedPreset);
@@ -9038,6 +9138,11 @@ export default function App() {
   ]);
 
   useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(FORGE_MODE_SETTINGS_STORAGE_KEY, JSON.stringify(normalizeForgeModeSettings(forgeModeSettings)));
+  }, [forgeModeSettings]);
+
+  useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
     let persistedLocationSettings = null;
     try {
@@ -9076,6 +9181,7 @@ export default function App() {
         workspaceMembers,
         workspaceInvites,
         activeWorkspaceId,
+        forgeModeSettings: normalizeForgeModeSettings(forgeModeSettings),
         dealForm,
         userType,
         homeStatsEnabled,
@@ -9087,7 +9193,7 @@ export default function App() {
         subscriptionProfile,
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, subscriptionProfile, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, subscriptionProfile, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -11339,6 +11445,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openAddInventoryFlow(options = {}) {
+    if (!activeForgeWorkspace) {
+      showAppMessage(forgeWorkspaceUnavailableMessage);
+      return;
+    }
     if (!options.preserveForm) {
       setEditingItemId(null);
       setItemForm(blankItem);
@@ -11347,6 +11457,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openAddSaleFlow(options = {}) {
+    if (!activeForgeWorkspace) {
+      showAppMessage(forgeWorkspaceUnavailableMessage);
+      return;
+    }
     if (!options.preserveForm) {
       setEditingSaleId(null);
       setSaleForm(blankSale);
@@ -11355,6 +11469,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openAddExpenseFlow(options = {}) {
+    if (!activeForgeWorkspace) {
+      showAppMessage(forgeWorkspaceUnavailableMessage);
+      return;
+    }
     if (!options.preserveForm) {
       setEditingExpenseId(null);
       setExpenseForm(blankExpense);
@@ -11363,6 +11481,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openAddMileageFlow(options = {}) {
+    if (!activeForgeWorkspace) {
+      showAppMessage(forgeWorkspaceUnavailableMessage);
+      return;
+    }
     if (!options.preserveForm) {
       setEditingTripId(null);
       setTripForm(blankTrip);
@@ -11371,6 +11493,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openForgeQuickAddFlow() {
+    if (!activeForgeWorkspace) {
+      showAppMessage(forgeWorkspaceUnavailableMessage);
+      return;
+    }
     openFlowModal("forgeQuickAdd", { size: "small", source: "forge" });
   }
 
@@ -11459,6 +11585,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openProductAddFlow({ product = null, source = "quick-add", seed = {}, destinations = {} } = {}) {
+    if ((destinations.forge || seed.destinations?.forge) && !activeForgeWorkspace) {
+      setVaultToast("Forge workspace is unavailable.");
+      showAppMessage(forgeWorkspaceUnavailableMessage);
+      return;
+    }
     const nextSeed = {
       ...seed,
       destinations: destinationDefaults({ ...(seed.destinations || {}), ...destinations }),
@@ -12083,12 +12214,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const failures = [];
     const pendingInventoryCreates = [];
     const destinationWorkspace = (destination) => {
+      if (destination === "forge") return activeForgeWorkspace;
       const workspaceId = multiDestinationForm[destination]?.workspaceId || defaultWorkspaceIdForDestination(destination);
       return workspaces.find((workspace) => String(workspace.id) === String(workspaceId)) || activeWorkspace;
     };
     const canWriteDestination = (destination) => {
       const workspace = destinationWorkspace(destination);
-      return canEditWorkspaceId(workspace?.id);
+      return Boolean(workspace?.id) && canEditWorkspaceId(workspace.id);
     };
     const shared = {
       name: itemName,
@@ -12192,6 +12324,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
     try {
       if (destinations.forge) {
+        if (!activeForgeWorkspace) throw new Error(forgeWorkspaceUnavailableMessage);
         if (!canWriteDestination("forge")) throw new Error("You do not have permission to edit this workspace.");
         const forgeQuantity = Math.max(1, Number(multiDestinationForm.forge.quantity || 1));
         const forgeWorkspace = destinationWorkspace("forge");
@@ -12858,7 +12991,7 @@ function mapCatalog(row) {
     const cleanProductType = String(form.productType || "").trim().toLowerCase();
 
     return items.find((item) => {
-      if (!recordBelongsToWorkspace(item, activeWorkspace?.id)) return false;
+      if (!recordBelongsToWorkspace(item, activeForgeWorkspace?.id || activeWorkspace?.id)) return false;
       const itemName = String(item.name || "").trim().toLowerCase();
       const itemBarcode = String(item.barcode || "").trim();
       const itemCatalogId = String(item.catalogProductId || "").trim();
@@ -12901,7 +13034,9 @@ function mapCatalog(row) {
   async function addItem(event) {
     event.preventDefault();
     if (blockGuestSave()) return;
-    if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
+    const targetForgeWorkspace = activeForgeWorkspace;
+    if (!targetForgeWorkspace) return showAppMessage(forgeWorkspaceUnavailableMessage);
+    if (!ensureWorkspaceEditor(targetForgeWorkspace.id)) return;
     if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) return showAppMessage("Please fill out item name, quantity, and unit cost.");
 
     if (BETA_LOCAL_MODE) {
@@ -12917,7 +13052,7 @@ function mapCatalog(row) {
         isWishlist: false,
         ownerUserId: currentWorkspaceUserId,
         owner_user_id: currentWorkspaceUserId,
-        visibility: defaultVisibilityForWorkspace(activeWorkspace),
+        visibility: defaultVisibilityForWorkspace(targetForgeWorkspace),
         sku: `ET-${Date.now()}`,
         buyer: purchaser.purchaserName,
         purchaserId: purchaser.purchaserId,
@@ -12974,7 +13109,7 @@ function mapCatalog(row) {
         actionNotes: itemForm.actionNotes,
         lastPriceChecked: itemForm.marketPrice ? now : "",
         createdAt: now,
-      }, activeWorkspace);
+      }, targetForgeWorkspace);
 
       setItems([newItem, ...items]);
       setItemForm(blankItem);
@@ -13067,9 +13202,9 @@ function mapCatalog(row) {
 
     const row = {
       user_id: user.id,
-      workspace_id: uuidOrNull(activeWorkspace?.id),
+      workspace_id: uuidOrNull(targetForgeWorkspace.id),
       owner_user_id: user.id,
-      visibility: defaultVisibilityForWorkspace(activeWorkspace),
+      visibility: defaultVisibilityForWorkspace(targetForgeWorkspace),
       name: itemForm.name,
       buyer: purchaser.purchaserName,
       purchaser_id: purchaser.purchaserId || null,
@@ -13150,8 +13285,20 @@ function mapCatalog(row) {
         setVaultToast(validationMessage);
         return;
       }
-    } else if (!itemForm.name || !itemForm.unitCost || !itemForm.quantity) {
-      return showAppMessage("Please fill out item name, quantity, and unit cost.");
+    } else {
+      const editQuantity = Number(itemForm.quantity);
+      if (!String(itemForm.name || "").trim()) {
+        return showAppMessage("Item name is required.");
+      }
+      if (!Number.isInteger(editQuantity) || editQuantity < 1) {
+        return showAppMessage("Quantity must be a whole number of at least 1.");
+      }
+      if (!isNumericDraft(itemForm.unitCost)) {
+        return showAppMessage("Unit cost must be a number.");
+      }
+      if (!isNumericDraft(itemForm.salePrice)) {
+        return showAppMessage("Planned sale price must be a number.");
+      }
     }
 
     if (BETA_LOCAL_MODE) {
@@ -13228,7 +13375,10 @@ function mapCatalog(row) {
       setEditingItemId(null);
       setItemForm(blankItem);
       if (activeFlowModal?.type === "addInventory") closeFlowModal({ force: true, reset: false });
-      if (updatedItem.vaultStatus) setVaultToast("Vault item saved.");
+      const savedDestination = normalizeInventoryDestination(updatedItem);
+      if (savedDestination === "vault") setVaultToast("Vault item saved.");
+      else if (savedDestination === "forge") showAppMessage("Forge item saved.");
+      else showAppMessage("Item saved.");
       return;
     }
 
@@ -13286,6 +13436,8 @@ function mapCatalog(row) {
     setEditingItemId(null);
     setItemForm(blankItem);
     if (activeFlowModal?.type === "addInventory") closeFlowModal({ force: true, reset: false });
+    if (editingVault) setVaultToast("Vault item saved.");
+    else showAppMessage("Forge item saved.");
   }
 
   function startEditingItem(item) {
@@ -13354,6 +13506,49 @@ function mapCatalog(row) {
     setActiveTab("vault");
   }
 
+  function inventoryDeleteContext(item = {}) {
+    const destination = normalizeInventoryDestination(item);
+    const itemName = item?.name || item?.itemName || "this item";
+    if (destination === "forge") {
+      return {
+        title: "Delete Forge inventory item?",
+        body: `This removes the Forge inventory record for ${itemName}. Vault collection records are not removed.`,
+        toast: "Forge inventory item deleted.",
+        error: "Could not delete Forge inventory item: ",
+      };
+    }
+    if (destination === "wishlist") {
+      return {
+        title: "Remove from Wishlist?",
+        body: `This removes ${itemName} from your Wishlist.`,
+        toast: "Wishlist item removed.",
+        error: "Could not remove Wishlist item: ",
+      };
+    }
+    if (destination === "market") {
+      return {
+        title: "Remove market listing?",
+        body: `This removes the market listing or draft for ${itemName}.`,
+        toast: "Market listing removed.",
+        error: "Could not remove market listing: ",
+      };
+    }
+    if (destination === "vault_archive") {
+      return {
+        title: "Remove transferred Vault record?",
+        body: `This removes the archived Vault transfer record for ${itemName}. The Forge inventory copy is not removed.`,
+        toast: "Transferred Vault record removed.",
+        error: "Could not remove transferred Vault record: ",
+      };
+    }
+    return {
+      title: "Delete vaulted item?",
+      body: `This removes the Vault collection record for ${itemName}. Forge inventory records are not removed.`,
+      toast: "Vault item deleted.",
+      error: "Could not delete Vault item: ",
+    };
+  }
+
   function prepareRestock(item) {
     setEditingItemId(null);
     setItemForm({
@@ -13400,10 +13595,8 @@ function mapCatalog(row) {
   async function deleteItem(id) {
     const itemToDelete = items.find((item) => item.id === id);
     if (!ensureWorkspaceEditor(itemToDelete?.workspaceId || itemToDelete?.workspace_id || activeWorkspace?.id)) return false;
-    const isVaultDelete = Boolean(itemToDelete?.vaultStatus);
-    const confirmed = window.confirm(
-      isVaultDelete ? "Delete this Vault item?" : `Delete ${itemToDelete?.name || "this item"}? This cannot be undone in private beta mode.`
-    );
+    const deleteContext = inventoryDeleteContext(itemToDelete);
+    const confirmed = window.confirm(`${deleteContext.title}\n${deleteContext.body}`);
 
     if (!confirmed) return false;
 
@@ -13413,17 +13606,20 @@ function mapCatalog(row) {
         setEditingItemId(null);
         setItemForm(blankItem);
       }
-      if (isVaultDelete) setVaultToast("Vault item deleted.");
+      if (normalizeInventoryDestination(itemToDelete) === "vault") setVaultToast(deleteContext.toast);
+      else showAppMessage(deleteContext.toast);
       return true;
     }
 
     const { error } = await supabase.from("inventory_items").delete().eq("id", id);
-    if (error) return showAppMessage("Could not delete item: " + error.message);
+    if (error) return showAppMessage(deleteContext.error + error.message);
     setItems(items.filter((item) => item.id !== id));
     if (editingItemId === id) {
       setEditingItemId(null);
       setItemForm(blankItem);
     }
+    if (normalizeInventoryDestination(itemToDelete) === "vault") setVaultToast(deleteContext.toast);
+    else showAppMessage(deleteContext.toast);
     return true;
   }
   async function updateItemStatus(item, newStatus) {
@@ -13465,11 +13661,16 @@ function mapCatalog(row) {
 
   function openVaultForgeTransfer(item, mode = "move") {
     if (!ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
+    if (!activeForgeWorkspace) {
+      setVaultToast("Forge workspace is unavailable.");
+      showAppMessage(forgeWorkspaceUnavailableMessage);
+      return;
+    }
     const quantity = Math.max(1, Number(item.quantity || 1));
     setVaultForgeTransfer({
       item,
       mode,
-      quantityToMove: mode === "copy" ? 1 : quantity,
+      quantityToMove: Math.min(1, quantity),
       costPaid: hasValue(item.unitCost) ? item.unitCost : "",
       duplicateMode: "create",
     });
@@ -13526,18 +13727,28 @@ function mapCatalog(row) {
     if (!vaultForgeTransfer?.item) return;
     const sourceItem = vaultForgeTransfer.item;
     const mode = modeOverride || vaultForgeTransfer.mode || "move";
-    const quantityAvailable = Math.max(0, Number(sourceItem.quantity || 0));
-    const requestedQuantity = Number(quantityOverride || vaultForgeTransfer.quantityToMove || 1);
-    if (quantityAvailable < 1) {
-      setVaultToast("Move to Forge is disabled because quantity is 0.");
+    const targetForgeWorkspace = activeForgeWorkspace;
+    if (!targetForgeWorkspace) {
+      setVaultToast("Forge workspace is unavailable.");
+      showAppMessage(forgeWorkspaceUnavailableMessage);
       return;
     }
-    if (!Number.isFinite(requestedQuantity) || requestedQuantity < 1) {
-      setVaultToast("Quantity must be at least 1.");
+    if (!ensureWorkspaceEditor(targetForgeWorkspace.id)) return;
+    const quantityAvailable = Math.max(0, Number(sourceItem.quantity || 0));
+    const requestedQuantity = Number(quantityOverride ?? vaultForgeTransfer.quantityToMove ?? 1);
+    if (quantityAvailable < 1) {
+      setVaultToast("Move to Forge is disabled because quantity is 0.");
+      showAppMessage("Move to Forge is disabled because quantity is 0.");
+      return;
+    }
+    if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1) {
+      setVaultToast("Quantity to move must be a whole number of at least 1.");
+      showAppMessage("Quantity to move must be a whole number of at least 1.");
       return;
     }
     if (requestedQuantity > quantityAvailable) {
       setVaultToast("Move quantity cannot be higher than owned quantity.");
+      showAppMessage("Move quantity cannot be higher than owned quantity.");
       return;
     }
     const quantityToMove = requestedQuantity;
@@ -13545,17 +13756,22 @@ function mapCatalog(row) {
     const sourceCatalogId = String(sourceItem.catalogProductId || "");
     const duplicate = sourceCatalogId ? items.find((item) =>
       item.id !== sourceItem.id &&
-      !item.vaultStatus &&
+      isForgeInventoryItem(item) &&
+      recordBelongsToWorkspace(item, targetForgeWorkspace.id) &&
       String(item.catalogProductId || "") === sourceCatalogId
     ) : null;
 
-    const forgeItem = {
+    const forgeItem = applyWorkspaceToRecord({
       ...sourceItem,
       id: duplicate && vaultForgeTransfer.duplicateMode === "existing" ? duplicate.id : makeId("forge-vault"),
       quantity: quantityToMove,
       unitCost: Number(vaultForgeTransfer.costPaid || sourceItem.unitCost || 0),
       status: "In Stock",
       vaultStatus: "",
+      destinationScope: ["forge"],
+      recordType: "forge_inventory",
+      businessInventory: true,
+      isWishlist: false,
       source: "vault",
       sourceType: "Forge copy",
       sourceLocation: "vault",
@@ -13566,7 +13782,7 @@ function mapCatalog(row) {
       actionNotes: `Moved from The Vault${sourceItem.actionNotes ? ` | ${sourceItem.actionNotes}` : ""}`,
       createdAt: now,
       updatedAt: now,
-    };
+    }, targetForgeWorkspace);
 
     setVaultMoving(true);
     setItems((currentItems) => {
@@ -13578,6 +13794,10 @@ function mapCatalog(row) {
                 ...item,
                 quantity: Number(item.quantity || 0) + quantityToMove,
                 notes: [item.notes, `Added ${quantityToMove} from Vault item ${sourceItem.id}`].filter(Boolean).join(" | "),
+                destinationScope: ["forge"],
+                recordType: "forge_inventory",
+                businessInventory: true,
+                vaultStatus: "",
                 updatedAt: now,
               }
             : item
@@ -13598,9 +13818,12 @@ function mapCatalog(row) {
           };
           return {
             ...item,
-            quantity: remainingQuantity > 0 ? remainingQuantity : item.quantity,
+            quantity: Math.max(0, remainingQuantity),
             status: remainingQuantity > 0 ? item.status : "Moved to Forge",
             vaultStatus: remainingQuantity > 0 ? normalizeVaultStatus(item) : "moved_to_forge",
+            destinationScope: ["vault"],
+            recordType: "vault_item",
+            businessInventory: false,
             dateMovedToForge: now,
             linkedForgeItemId: historyEntry.forgeItemId,
             vaultHistory: [...(item.vaultHistory || []), historyEntry],
@@ -13627,7 +13850,14 @@ function mapCatalog(row) {
     setVaultForgeTransfer(null);
     setVaultMoving(false);
     setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }));
-    setVaultToast(mode === "copy" ? "Item copied to Forge." : "Item moved to Forge.");
+    if (mode === "copy") {
+      setVaultToast(`Copied ${quantityToMove} to ${activeForgeTransferLabel}. Vault quantity unchanged.`);
+      showAppMessage(`Copied ${quantityToMove} to ${activeForgeTransferLabel}. Vault quantity unchanged.`);
+    } else {
+      const remainingQuantity = quantityAvailable - quantityToMove;
+      setVaultToast(`Moved ${quantityToMove} to ${activeForgeTransferLabel}. ${remainingQuantity} remain in Vault.`);
+      showAppMessage(`Moved ${quantityToMove} to ${activeForgeTransferLabel}. ${remainingQuantity} remain in Vault.`);
+    }
   }
   async function addCatalogProduct(event) {
     event.preventDefault();
@@ -14836,9 +15066,9 @@ function renderVaultHeader() {
 function renderForgeHeader() {
   const activeMarketplaceCount = workspaceMarketplaceListings.filter((listing) => listing.status === "Active").length;
   const forgeReportRecordCount = workspaceSales.length + workspaceExpenses.length + workspaceMileageTrips.length;
-  const forgeWorkspaceContextLabel = activeWorkspace?.type === "personal"
-    ? `Personal business inventory: ${activeWorkspace?.name || "My Personal Space"}`
-    : `Workspace: ${activeWorkspace?.name || "Ember & Tide"}`;
+  const forgeWorkspaceContextLabel = activeForgeWorkspace
+    ? `Forge workspace: ${activeForgeWorkspace.name || "Ember & Tide"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""}`
+    : forgeWorkspaceUnavailableMessage;
   const forgeOverviewCards = [
     {
       key: "inventory",
@@ -15021,7 +15251,9 @@ function renderForgeHeader() {
     event.preventDefault();
     if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in first.");
-    if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
+    const targetForgeWorkspace = activeForgeWorkspace;
+    if (!targetForgeWorkspace) return showAppMessage(forgeWorkspaceUnavailableMessage);
+    if (!ensureWorkspaceEditor(targetForgeWorkspace.id)) return;
     if (!expenseForm.vendor || !expenseForm.amount) return showAppMessage("Please enter vendor and amount.");
 
     if (BETA_LOCAL_MODE || user.id === "local-beta") {
@@ -15031,9 +15263,9 @@ function renderForgeHeader() {
         ...expenseForm,
         id: localId,
         expenseId: localId,
-        workspaceId: activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-        workspace_id: activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-        workspaceName: activeWorkspace?.name || "My Personal Space",
+        workspaceId: targetForgeWorkspace.id,
+        workspace_id: targetForgeWorkspace.id,
+        workspaceName: targetForgeWorkspace.name || "Forge",
         amount: Number(expenseForm.amount),
         receiptPhoto: expenseForm.receiptImage,
         createdAt: expenses.find((expense) => expense.id === editingExpenseId)?.createdAt || new Date().toISOString(),
@@ -15049,7 +15281,7 @@ function renderForgeHeader() {
 
     const row = {
       user_id: user.id,
-      workspace_id: uuidOrNull(activeWorkspace?.id),
+      workspace_id: uuidOrNull(targetForgeWorkspace.id),
       date: expenseForm.date || null,
       vendor: expenseForm.vendor,
       category: expenseForm.category,
@@ -15163,7 +15395,9 @@ function renderForgeHeader() {
     event.preventDefault();
     if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in first.");
-    if (!ensureWorkspaceEditor(activeWorkspace?.id)) return;
+    const targetForgeWorkspace = activeForgeWorkspace;
+    if (!targetForgeWorkspace) return showAppMessage(forgeWorkspaceUnavailableMessage);
+    if (!ensureWorkspaceEditor(targetForgeWorkspace.id)) return;
     if (!tripForm.purpose || !tripForm.startMiles || !tripForm.endMiles) return showAppMessage("Please enter purpose, start miles, and end miles.");
     if (!tripForm.gasPrice) return showAppMessage("Please enter gas price paid.");
 
@@ -15172,7 +15406,7 @@ function renderForgeHeader() {
 
     const row = {
       user_id: user.id,
-      workspace_id: uuidOrNull(activeWorkspace?.id),
+      workspace_id: uuidOrNull(targetForgeWorkspace.id),
       vehicle_id: costs.vehicle?.id || null,
       vehicle_name: costs.vehicle?.name || "",
       purpose: tripForm.purpose,
@@ -15194,8 +15428,9 @@ function renderForgeHeader() {
       const localRow = {
         ...row,
         id: editingTripId || makeId("trip"),
-        workspaceId: activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-        workspaceName: activeWorkspace?.name || "My Personal Space",
+        workspaceId: targetForgeWorkspace.id,
+        workspace_id: targetForgeWorkspace.id,
+        workspaceName: targetForgeWorkspace.name || "Forge",
         created_at: mileageTrips.find((trip) => trip.id === editingTripId)?.createdAt || new Date().toISOString(),
       };
       const mapped = mapTrip(localRow);
@@ -15446,6 +15681,7 @@ function renderForgeHeader() {
           dashboardPreset,
           dashboardLayout,
           dashboardCardStyle,
+          forgeModeSettings: normalizeForgeModeSettings(forgeModeSettings),
           locationSettings,
           userSearchAliases,
           dealForm,
@@ -15497,7 +15733,10 @@ function renderForgeHeader() {
       marketplaceReports: Array.isArray(data.marketplaceReports) ? data.marketplaceReports : [],
       marketplaceSavedIds: Array.isArray(data.marketplaceSavedIds) ? data.marketplaceSavedIds : [],
       marketPriceCache: data.marketPriceCache || {},
-      settings,
+      settings: {
+        ...settings,
+        forgeModeSettings: settings.forgeModeSettings || data.forgeModeSettings || {},
+      },
     };
   }
 
@@ -15657,6 +15896,7 @@ function renderForgeHeader() {
       if (data.settings.dashboardPreset) setDashboardPreset(normalizeDashboardPreset(data.settings.dashboardPreset));
       if (data.settings.dashboardLayout) setDashboardLayout(normalizeDashboardLayout(data.settings.dashboardLayout, data.settings.dashboardPreset || dashboardPreset));
       if (data.settings.dashboardCardStyle) setDashboardCardStyle(normalizeDashboardCardStyle(data.settings.dashboardCardStyle));
+      if (data.settings.forgeModeSettings) setForgeModeSettings(normalizeForgeModeSettings(data.settings.forgeModeSettings));
       if (data.settings.locationSettings) setLocationSettings((current) => ({ ...current, ...data.settings.locationSettings }));
       if (Array.isArray(data.settings.userSearchAliases)) setUserSearchAliases(data.settings.userSearchAliases);
       if (data.settings.dealForm) setDealForm((current) => ({ ...current, ...data.settings.dealForm }));
@@ -15671,18 +15911,28 @@ function renderForgeHeader() {
   }
 
   const workspaceItems = items.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
-  const workspaceExpenses = expenses.filter((expense) => recordBelongsToWorkspace(expense, activeWorkspace?.id));
-  const workspaceSales = sales.filter((sale) => recordBelongsToWorkspace(sale, activeWorkspace?.id));
-  const workspaceMileageTrips = mileageTrips.filter((trip) => recordBelongsToWorkspace(trip, activeWorkspace?.id));
+  const forgeWorkspaceItems = activeForgeWorkspace
+    ? items.filter((item) => recordBelongsToWorkspace(item, activeForgeWorkspace.id))
+    : [];
+  const workspaceExpenses = activeForgeWorkspace
+    ? expenses.filter((expense) => recordBelongsToWorkspace(expense, activeForgeWorkspace.id))
+    : [];
+  const workspaceSales = activeForgeWorkspace
+    ? sales.filter((sale) => recordBelongsToWorkspace(sale, activeForgeWorkspace.id))
+    : [];
+  const workspaceMileageTrips = activeForgeWorkspace
+    ? mileageTrips.filter((trip) => recordBelongsToWorkspace(trip, activeForgeWorkspace.id))
+    : [];
   const workspaceWatchlist = tideTradrWatchlist.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
   const workspaceMarketplaceListings = marketplaceListings.filter((listing) => recordBelongsToWorkspace(listing, activeWorkspace?.id));
-  const forgeInventoryItems = workspaceItems.filter(isForgeInventoryItem);
+  const forgeInventoryItems = forgeWorkspaceItems.filter(isForgeInventoryItem);
 
   const storageStatus = [
     { label: "Mode", value: BETA_LOCAL_MODE ? "Private beta mode" : "Cloud sync mode" },
     { label: "Cloud sync", value: cloudSyncPreference === "cloud" ? "Requested" : "Off" },
     { label: "Forge inventory", value: forgeInventoryItems.length },
     { label: "Workspace", value: activeWorkspace?.name || "My Personal Space" },
+    { label: "Forge workspace", value: activeForgeWorkspace?.name || "Unavailable" },
     { label: "Vault items", value: workspaceItems.filter(isVaultItemRecord).length },
     { label: "Scout stores", value: scoutSnapshot.stores?.length || 0 },
     { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
@@ -18803,7 +19053,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       setName: catalogExpansionName(product),
     });
     const workspaceId = defaultWorkspaceIdForDestination(normalizedDestination);
-    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
+    const workspace = normalizedDestination === "forge"
+      ? activeForgeWorkspace
+      : workspaces.find((entry) => String(entry.id) === String(workspaceId)) || activeWorkspace;
     const shared = {
       id: makeId(normalizedDestination === "vault" ? "vault" : "item"),
       name: title,
@@ -18862,6 +19114,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       }, workspace);
     }
 
+    if (!workspace) throw new Error(forgeWorkspaceUnavailableMessage);
+
     return applyWorkspaceToRecord({
       ...shared,
       destinationScope: ["forge"],
@@ -18901,6 +19155,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     if (blockGuestSave()) return;
     const workspaceId = defaultWorkspaceIdForDestination(normalizedDestination);
+    if (normalizedDestination === "forge" && !activeForgeWorkspace) {
+      setMarketAddConfirmation({
+        productId,
+        destination: normalizedDestination,
+        message: forgeWorkspaceUnavailableMessage,
+        itemId: "",
+      });
+      return;
+    }
     if (!canEditWorkspaceId(workspaceId)) {
       setMarketAddConfirmation({
         productId,
@@ -25209,7 +25472,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       {
         key: "forge",
         title: "Forge",
-        helper: "Business inventory or seller tracking.",
+        helper: activeForgeWorkspace
+          ? `Business inventory in ${activeForgeWorkspace.name || "Forge"}.`
+          : forgeWorkspaceUnavailableMessage,
+        disabled: !activeForgeWorkspace,
       },
       {
         key: "tidetradr",
@@ -25234,6 +25500,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       .slice(0, 4);
     const renderDestinationWorkspaceField = (destination, label) => {
       const options = destinationWorkspaceOptions[destination] || workspaceSelectorOptions;
+      if (!options.length) {
+        return (
+          <div className="small-empty-state forge-workspace-unavailable">
+            <strong>{label}</strong>
+            <span>{destination === "forge" ? forgeWorkspaceUnavailableMessage : "No workspace is available for this destination."}</span>
+          </div>
+        );
+      }
       return (
         <Field label={label}>
           <select
@@ -25561,8 +25835,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {destinationOptions.map((option) => {
               const checked = Boolean(multiDestinationForm.destinations[option.key]);
               return (
-                <label className={`destination-checkbox ${checked ? "is-selected" : ""}`} key={option.key}>
-                  <input type="checkbox" checked={checked} onChange={(event) => updateMultiDestinationToggle(option.key, event.target.checked)} />
+                <label className={`destination-checkbox ${checked ? "is-selected" : ""} ${option.disabled ? "is-disabled" : ""}`} key={option.key}>
+                  <input type="checkbox" checked={checked} disabled={option.disabled} onChange={(event) => updateMultiDestinationToggle(option.key, event.target.checked)} />
                   <span>
                     <strong>{option.title}</strong>
                     <small>{option.helper}</small>
@@ -27079,6 +27353,70 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </button>
                   </div>
 
+                  <div className="drawer-info-card forge-mode-settings-card">
+                    <strong>Forge workspace mode</strong>
+                    <p className="compact-subtitle">Choose whether Forge follows your personal workspace or stays locked to Ember & Tide seller inventory. Personal Forge data is hidden when turned off, not deleted.</p>
+                    <label className="toggle-row forge-mode-toggle">
+                      <span>
+                        <strong>Show Personal Forge</strong>
+                        <small>Keep your personal seller inventory visible as a Forge option.</small>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={forgeModeSettings.personalForgeEnabled}
+                        onChange={(event) => setPersonalForgeEnabled(event.target.checked)}
+                      />
+                    </label>
+                    <label className="toggle-row forge-mode-toggle">
+                      <span>
+                        <strong>Always use Ember & Tide Forge</strong>
+                        <small>Open Forge, Add Item, and Vault-to-Forge transfers directly in Ember & Tide.</small>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={forgeModeSettings.lockToEmberTide}
+                        disabled={!emberTideForgeWorkspace}
+                        onChange={(event) => {
+                          updateForgeModeSettings({
+                            lockToEmberTide: event.target.checked,
+                            defaultForgeWorkspaceId: event.target.checked ? emberTideForgeWorkspace?.id || "" : forgeModeSettings.defaultForgeWorkspaceId,
+                          });
+                        }}
+                      />
+                    </label>
+                    <Field label="Default Forge">
+                      <select
+                        value={forgeModeSettings.lockToEmberTide ? emberTideForgeWorkspace?.id || "__ember_tide_missing__" : forgeModeSettings.defaultForgeWorkspaceId || ""}
+                        disabled={forgeModeSettings.lockToEmberTide || !forgeWorkspaceOptions.length}
+                        onChange={(event) => updateForgeModeSettings({ defaultForgeWorkspaceId: event.target.value })}
+                      >
+                        <option value="">Follow current workspace when possible</option>
+                        {forgeWorkspaceOptions.map((workspace) => (
+                          <option key={workspace.id} value={workspace.id}>
+                            {workspace.name} - {workspaceTypeLabel(workspace.type)}
+                          </option>
+                        ))}
+                        {forgeModeSettings.lockToEmberTide && !emberTideForgeWorkspace ? (
+                          <option value="__ember_tide_missing__">Ember & Tide unavailable</option>
+                        ) : null}
+                      </select>
+                    </Field>
+                    <dl className="drawer-status-list forge-mode-summary">
+                      <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
+                      <div><dt>Personal Forge</dt><dd>{forgeModeSettings.personalForgeEnabled ? "Visible" : "Hidden"}</dd></div>
+                      <div><dt>Locked mode</dt><dd>{forgeModeSettings.lockToEmberTide ? "Ember & Tide" : "Off"}</dd></div>
+                    </dl>
+                    {!emberTideForgeWorkspace ? (
+                      <p className="compact-subtitle">Ember & Tide Forge is not available in your workspace list yet. Create an Ember & Tide business workspace or keep Personal Forge enabled.</p>
+                    ) : null}
+                    {!activeForgeWorkspace ? (
+                      <p className="auth-status-message error" role="status">{forgeWorkspaceUnavailableMessage}</p>
+                    ) : null}
+                    <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("inventory"))}>
+                      Open Forge
+                    </button>
+                  </div>
+
                   <form className="drawer-info-card" onSubmit={createWorkspace}>
                     <strong>Create workspace</strong>
                     <p className="compact-subtitle">New workspaces start empty. Existing personal data stays private until you intentionally add or move items.</p>
@@ -28516,19 +28854,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
       {vaultForgeTransfer?.item ? (
         <div className="location-modal-backdrop" role="presentation" onClick={() => setVaultForgeTransfer(null)}>
-          <form className="location-modal vault-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="vault-forge-transfer-title" onSubmit={(event) => { event.preventDefault(); confirmVaultForgeTransfer(vaultForgeTransfer.mode); }} onClick={(event) => event.stopPropagation()}>
+          <form className="location-modal vault-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="vault-forge-transfer-title" noValidate onSubmit={(event) => { event.preventDefault(); confirmVaultForgeTransfer(vaultForgeTransfer.mode); }} onClick={(event) => event.stopPropagation()}>
             <div>
               <h2 id="vault-forge-transfer-title">{vaultForgeTransfer.mode === "copy" ? "Copy this item to Forge?" : "Move item to Forge?"}</h2>
               <p>{vaultForgeTransfer.mode === "copy" ? "This keeps the Vault item active and creates a Forge inventory copy." : "This will add this Vault item to Forge inventory for business/sales tracking."}</p>
             </div>
             <div className="vault-transfer-summary">
               <strong>{vaultForgeTransfer.item.name}</strong>
-              <span>Owned quantity: {vaultForgeTransfer.item.quantity || 1}</span>
+              <span>Available quantity: {vaultForgeTransfer.item.quantity || 1}</span>
+              <span>Destination: {activeForgeWorkspace?.name || "Forge"} inventory</span>
             </div>
             <Field label={vaultForgeTransfer.mode === "copy" ? "Copy quantity" : "How many do you want to move to Forge?"}>
               <input
                 type="number"
                 min="1"
+                step="1"
                 max={Math.max(1, Number(vaultForgeTransfer.item.quantity || 1))}
                 value={vaultForgeTransfer.quantityToMove}
                 onChange={(event) => setVaultForgeTransfer((current) => ({ ...current, quantityToMove: event.target.value }))}
@@ -28543,7 +28883,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 placeholder="Unknown is okay"
               />
             </Field>
-            {String(vaultForgeTransfer.item.catalogProductId || "") && items.some((item) => item.id !== vaultForgeTransfer.item.id && !item.vaultStatus && String(item.catalogProductId || "") === String(vaultForgeTransfer.item.catalogProductId || "")) ? (
+            {String(vaultForgeTransfer.item.catalogProductId || "") && items.some((item) => item.id !== vaultForgeTransfer.item.id && isForgeInventoryItem(item) && String(item.catalogProductId || "") === String(vaultForgeTransfer.item.catalogProductId || "")) ? (
               <Field label="Duplicate Handling">
                 <select value={vaultForgeTransfer.duplicateMode} onChange={(event) => setVaultForgeTransfer((current) => ({ ...current, duplicateMode: event.target.value }))}>
                   <option value="existing">Add to existing Forge item</option>
@@ -28552,12 +28892,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </Field>
             ) : null}
             <div className="location-modal-actions">
-              <button type="button" disabled={vaultMoving || Number(vaultForgeTransfer.item.quantity || 0) < 1} onClick={() => confirmVaultForgeTransfer("copy", 1)}>
-                {vaultMoving ? "Copying..." : "Copy 1 to Forge"}
+              <button type="button" disabled={vaultMoving || Number(vaultForgeTransfer.item.quantity || 0) < 1} onClick={() => confirmVaultForgeTransfer(vaultForgeTransfer.mode)}>
+                {vaultMoving
+                  ? (vaultForgeTransfer.mode === "copy" ? "Copying..." : "Moving...")
+                  : `${vaultForgeTransfer.mode === "copy" ? "Copy" : "Move"} ${Number(vaultForgeTransfer.quantityToMove || 0) || 0} to ${activeForgeTransferLabel}`}
               </button>
-              <button type="button" disabled={vaultMoving || Number(vaultForgeTransfer.item.quantity || 0) < 1} className="secondary-button" onClick={() => confirmVaultForgeTransfer("move", Math.max(1, Number(vaultForgeTransfer.item.quantity || 1)))}>
-                {vaultMoving ? "Moving..." : "Move Entire Quantity to Forge"}
-              </button>
+              {vaultForgeTransfer.mode === "move" && Number(vaultForgeTransfer.quantityToMove || 0) < Number(vaultForgeTransfer.item.quantity || 0) ? (
+                <button type="button" disabled={vaultMoving || Number(vaultForgeTransfer.item.quantity || 0) < 1} className="secondary-button" onClick={() => confirmVaultForgeTransfer("move", Math.max(1, Number(vaultForgeTransfer.item.quantity || 1)))}>
+                  Move all {Math.max(1, Number(vaultForgeTransfer.item.quantity || 1))}
+                </button>
+              ) : null}
               <button type="button" className="ghost-button" onClick={() => setVaultForgeTransfer(null)}>Cancel</button>
             </div>
           </form>
@@ -32205,10 +32549,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <p>Inventory, sales, expenses, receipts, mileage, listings, and items needing review.</p>
               </div>
               <div className="summary-pill-row">
-                <button type="button" onClick={() => openProductAddFlow({ source: "forge-toolbar-inventory", destinations: { forge: true } })}>Add Inventory</button>
+                <button type="button" disabled={!activeForgeWorkspace} onClick={() => openProductAddFlow({ source: "forge-toolbar-inventory", destinations: { forge: true } })}>Add Inventory</button>
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from TideTradr</button>
               </div>
             </div>
+            {!activeForgeWorkspace ? (
+              <div className="empty-state small-empty-state forge-workspace-unavailable">
+                <h3>Forge workspace unavailable</h3>
+                <p>{forgeWorkspaceUnavailableMessage}</p>
+                <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Open Forge settings</button>
+              </div>
+            ) : null}
             <div className="forge-daily-grid">
               {[
                 { label: "Inventory Value", value: money(totalMarketValue), helper: `${forgeInventoryItems.length} active items` },
@@ -33263,7 +33614,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
         <button type="button" onClick={() => onSell(item)}>Sell</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
-        <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete</button>
+        <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Forge Item</button>
       </div>
     </div>
   );
@@ -33318,7 +33669,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
         <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
-        <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Item</button>
+        <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Vault Item</button>
       </div>
       <details className="vault-status-help">
         <summary>Selling / Forge</summary>
@@ -33391,6 +33742,7 @@ function CompactInventoryCard({
               { label: "Change Status", onClick: () => onEdit(item) },
             ]}
             onDelete={() => onDelete(item.id)}
+            deleteLabel="Remove from Vault"
           />
         </div>
       </div>
@@ -33401,12 +33753,17 @@ function CompactInventoryCard({
       <div className="compact-card-header">
         <div className="compact-title-block">
           <h3>{item.name}</h3>
-          <p className="compact-subtitle forge-card-quantity">Qty {item.quantity || 0}</p>
+          <div className="forge-card-facts">
+            <span className="forge-card-quantity">Qty {item.quantity || 0}</span>
+            {physicalLocation ? <span className="neon-chip forge-location-pill">{physicalLocation}</span> : null}
+          </div>
           <p className="compact-subtitle forge-card-meta-legacy">
             {item.category} • {item.buyer} • Qty {item.quantity}
           </p>
         </div>
-        <span className={statusClass(item.status)}>{item.status || "In Stock"}</span>
+        <div className="forge-card-status-stack">
+          <span className={statusClass(item.status)}>{item.status || "In Stock"}</span>
+        </div>
       </div>
 
       {item.itemImage ? (
@@ -33481,6 +33838,7 @@ function CompactInventoryCard({
             { label: "Change Status", onClick: () => onEdit?.(item) },
           ]}
           onDelete={() => onDelete?.(item.id)}
+          deleteLabel="Delete Forge item"
         />
       </div>
     </div>

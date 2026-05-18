@@ -140,6 +140,14 @@ async function main() {
           createdAt: now,
           updatedAt: now,
         },
+        {
+          id: "workspace-ember-tide",
+          name: "Ember & Tide",
+          type: "business",
+          ownerUserId: "local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
       ],
       workspaceMembers: [
         {
@@ -151,6 +159,13 @@ async function main() {
         },
         {
           workspaceId: "workspace-smoke-shared",
+          userId: "local-beta",
+          role: "owner",
+          status: "active",
+          acceptedAt: now,
+        },
+        {
+          workspaceId: "workspace-ember-tide",
           userId: "local-beta",
           role: "owner",
           status: "active",
@@ -262,6 +277,25 @@ async function main() {
   async function overflowAction(scope, actionLabel) {
     const menu = await openOverflowMenu(scope);
     await menu.getByRole("menuitem", { name: actionLabel }).click();
+  }
+
+  async function withConfirmStub(returnValue, fn) {
+    await page.evaluate((value) => {
+      window.__etSmokeConfirmMessages = [];
+      if (!window.__etSmokeOriginalConfirm) window.__etSmokeOriginalConfirm = window.confirm;
+      window.confirm = (message) => {
+        window.__etSmokeConfirmMessages.push(String(message || ""));
+        return value;
+      };
+    }, returnValue);
+    try {
+      await fn();
+      return await page.evaluate(() => window.__etSmokeConfirmMessages || []);
+    } finally {
+      await page.evaluate(() => {
+        if (window.__etSmokeOriginalConfirm) window.confirm = window.__etSmokeOriginalConfirm;
+      });
+    }
   }
 
   async function assertOverflowActionHidden(scope, actionLabel) {
@@ -417,6 +451,128 @@ async function main() {
       return (data.workspaces || []).find((workspace) => workspace.id === "workspace-personal-local-beta") || null;
     });
     assert.equal(renamedWorkspace?.name, "Smoke Renamed Collection");
+  });
+
+  await step("Forge mode: Ember & Tide lock hides Personal Forge and routes writes", async () => {
+    const lockedForgeData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const now = new Date().toISOString();
+      data.activeWorkspaceId = "workspace-personal-local-beta";
+      data.forgeModeSettings = {
+        personalForgeEnabled: false,
+        defaultForgeWorkspaceId: "workspace-ember-tide",
+        lockToEmberTide: true,
+        updatedAt: now,
+      };
+      localStorage.setItem("et-tcg-forge-mode-settings", JSON.stringify(data.forgeModeSettings));
+      data.items = [
+        {
+          id: "forge-mode-personal-forge",
+          name: "Smoke Personal Forge Item",
+          destinationScope: ["forge"],
+          recordType: "forge_inventory",
+          businessInventory: true,
+          quantity: 3,
+          unitCost: 10,
+          marketPrice: 15,
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          status: "In Stock",
+          createdAt: now,
+        },
+        {
+          id: "forge-mode-ember-forge",
+          name: "Smoke Ember Forge Item",
+          destinationScope: ["forge"],
+          recordType: "forge_inventory",
+          businessInventory: true,
+          quantity: 2,
+          unitCost: 20,
+          marketPrice: 30,
+          workspaceId: "workspace-ember-tide",
+          workspaceName: "Ember & Tide",
+          status: "In Stock",
+          createdAt: now,
+        },
+        {
+          id: "forge-mode-vault-source",
+          name: "Smoke Locked Vault Source",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          vaultStatus: "personal_collection",
+          businessInventory: false,
+          quantity: 4,
+          unitCost: 12,
+          marketPrice: 18,
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          status: "Personal Collection",
+          createdAt: now,
+        },
+      ];
+      return data;
+    });
+    await reloadWithAppData(lockedForgeData);
+    await nav("Forge");
+    await assertVisibleText("Smoke Ember Forge Item");
+    assert.equal(await page.getByText("Smoke Personal Forge Item", { exact: false }).count(), 0, "Personal Forge inventory should be hidden while Personal Forge is disabled");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await nav("Forge");
+    await assertVisibleText("Smoke Ember Forge Item");
+
+    await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
+    const lockedAddForm = page.locator("form#multi-destination-add-form").first();
+    await lockedAddForm.getByRole("button", { name: "Manual Add" }).first().click();
+    await fillByLabel(lockedAddForm, "Item Name", "Smoke Locked Forge Add");
+    await fillByLabel(lockedAddForm, "Type / Category", "Booster Bundle");
+    await clickAddWizardNext();
+    await ensureAddWizardDestination(lockedAddForm, "Forge");
+    await clickAddWizardNext();
+    const forgeWorkspaceSelect = lockedAddForm.getByLabel("Forge Workspace");
+    assert.equal(await forgeWorkspaceSelect.inputValue(), "workspace-ember-tide");
+    const forgeWorkspaceOptions = await forgeWorkspaceSelect.locator("option").allTextContents();
+    assert.equal(forgeWorkspaceOptions.some((option) => /My Personal Space/i.test(option)), false, "Personal Forge should be hidden from Forge workspace choices");
+    await fillByLabel(lockedAddForm, "Quantity for Forge", "1");
+    await fillByLabel(lockedAddForm, "Cost Basis", "10");
+    await clickAddWizardNext();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
+    const lockedAddRecord = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.items || []).find((item) => item.name === "Smoke Locked Forge Add") || null;
+    });
+    assert.equal(lockedAddRecord?.workspaceId, "workspace-ember-tide");
+
+    await nav("Vault");
+    await assertVisibleText("Smoke Locked Vault Source");
+    await page.locator(".compact-card").filter({ hasText: "Smoke Locked Vault Source" }).first().getByRole("button", { name: "Move to Forge" }).click();
+    const lockedTransferModal = page.locator(".vault-transfer-modal").first();
+    await lockedTransferModal.waitFor({ state: "visible", timeout: 5000 });
+    await fillByLabel(lockedTransferModal, "How many do you want to move to Forge?", "2");
+    await lockedTransferModal.getByRole("button", { name: /Move 2 to Ember & Tide/ }).click();
+    await assertVisibleText("Moved 2 to Ember & Tide. 2 remain in Vault.");
+    const lockedTransfer = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const source = (data.items || []).find((item) => item.id === "forge-mode-vault-source");
+      const forge = (data.items || []).find((item) => item.name === "Smoke Locked Vault Source" && (item.destinationScope || []).includes("forge"));
+      return { source, forge };
+    });
+    assert.equal(Number(lockedTransfer.source?.quantity), 2);
+    assert.equal(lockedTransfer.forge?.workspaceId, "workspace-ember-tide");
+    assert.equal(Number(lockedTransfer.forge?.quantity), 2);
+
+    const resetForgeModeData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.items = [];
+      data.activeWorkspaceId = "workspace-personal-local-beta";
+      data.forgeModeSettings = {
+        personalForgeEnabled: true,
+        defaultForgeWorkspaceId: "",
+        lockToEmberTide: false,
+      };
+      localStorage.setItem("et-tcg-forge-mode-settings", JSON.stringify(data.forgeModeSettings));
+      return data;
+    });
+    await reloadWithAppData(resetForgeModeData);
   });
 
   await step("Catalog: Add Item search finds seeded sealed products", async () => {
@@ -808,6 +964,7 @@ async function main() {
     await editForm.getByText("Step 4: Optional Details").click();
     await editForm.getByLabel("Where is this inventory?").selectOption("Other");
     await fillByLabel(editForm, "Custom physical location notes", "Black tote 2");
+    await fillByLabel(editForm, "Unit Cost", "0");
     await fillByLabel(editForm, "Item Name", "Smoke Forge ETB Edited");
     await editForm.getByRole("button", { name: "Save Changes" }).click();
     await assertVisibleText("Smoke Forge ETB Edited");
@@ -817,8 +974,20 @@ async function main() {
     });
     assert.equal(editedForgeRecord?.physicalLocation, "Other");
     assert.equal(editedForgeRecord?.physicalLocationNotes, "Black tote 2");
+    assert.equal(Number(editedForgeRecord?.unitCost), 0, "Forge edit should save a zero unit cost instead of failing validation");
 
-    await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB Edited" }), "Delete");
+    const forgeDeleteCard = page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB Edited" });
+    const cancelledForgeDelete = await withConfirmStub(false, async () => {
+      await overflowAction(forgeDeleteCard, "Delete Forge item");
+    });
+    assert.match(cancelledForgeDelete.join("\n"), /Delete Forge inventory item\?/);
+    assert.match(cancelledForgeDelete.join("\n"), /Vault collection records are not removed/);
+    await assertVisibleText("Smoke Forge ETB Edited");
+
+    const acceptedForgeDelete = await withConfirmStub(true, async () => {
+      await overflowAction(forgeDeleteCard, "Delete Forge item");
+    });
+    assert.match(acceptedForgeDelete.join("\n"), /Delete Forge inventory item\?/);
     await assertVisibleText("No Forge items found");
   });
 
@@ -889,8 +1058,104 @@ async function main() {
     await editVaultForm.getByRole("button", { name: "Save Changes" }).click();
     await assertVisibleText("Smoke Vault Binder Edited");
 
-    await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder Edited" }), "Delete");
+    const vaultDeleteCard = page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder Edited" });
+    const cancelledVaultDelete = await withConfirmStub(false, async () => {
+      await overflowAction(vaultDeleteCard, "Remove from Vault");
+    });
+    assert.match(cancelledVaultDelete.join("\n"), /Delete vaulted item\?/);
+    assert.match(cancelledVaultDelete.join("\n"), /Forge inventory records are not removed/);
+    await assertVisibleText("Smoke Vault Binder Edited");
+
+    const acceptedVaultDelete = await withConfirmStub(true, async () => {
+      await overflowAction(vaultDeleteCard, "Remove from Vault");
+    });
+    assert.match(acceptedVaultDelete.join("\n"), /Delete vaulted item\?/);
     await assert.equal(await page.getByText("Smoke Vault Binder Edited", { exact: false }).count(), 0);
+  });
+
+  await step("Vault: transfer to Forge respects entered quantity", async () => {
+    async function addVaultManualItem(name, quantity) {
+      await nav("Vault");
+      await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
+      await page.locator(".flow-modal").getByRole("button", { name: /Manual Add/ }).click();
+      const vaultForm = page.locator("form#multi-destination-add-form").first();
+      const manualFallback = vaultForm.getByRole("button", { name: "Can't find it? Add manually" }).first();
+      if (await manualFallback.isVisible().catch(() => false)) await manualFallback.click();
+      await fillByLabel(vaultForm, "Item Name", name);
+      await fillByLabel(vaultForm, "Type / Category", "Elite Trainer Box");
+      await fillByLabel(vaultForm, "Market Price", "50");
+      await clickAddWizardNext();
+      await ensureAddWizardDestination(vaultForm, "Vault");
+      await clickAddWizardNext();
+      await fillByLabel(vaultForm, "Quantity for Vault", String(quantity));
+      await fillByLabel(vaultForm, "Collection Category", "Transfer Smoke");
+      await fillByLabel(vaultForm, "Cost Basis", "40");
+      await clickAddWizardNext();
+      await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
+      await assertVisibleText(name);
+    }
+
+    await addVaultManualItem("Smoke Vault Transfer Qty 8", 8);
+    const partialCard = page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).first();
+    await partialCard.getByRole("button", { name: "Move to Forge" }).click();
+    const transferModal = page.locator(".vault-transfer-modal").first();
+    await transferModal.waitFor({ state: "visible", timeout: 5000 });
+    await fillByLabel(transferModal, "How many do you want to move to Forge?", "0");
+    await transferModal.getByRole("button", { name: "Move 0 to Forge" }).click();
+    await assertVisibleText("Quantity to move must be a whole number of at least 1.");
+    await fillByLabel(transferModal, "How many do you want to move to Forge?", "9");
+    await transferModal.getByRole("button", { name: "Move 9 to Forge" }).click();
+    await assertVisibleText("Move quantity cannot be higher than owned quantity.");
+    await fillByLabel(transferModal, "How many do you want to move to Forge?", "2");
+    await transferModal.getByRole("button", { name: "Move 2 to Forge" }).click();
+    await assertVisibleText("Moved 2 to Forge. 6 remain in Vault.");
+
+    const partialTransfer = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const source = (data.items || []).find((item) => item.name === "Smoke Vault Transfer Qty 8" && (item.destinationScope || []).includes("vault"));
+      const forge = (data.items || []).find((item) => item.name === "Smoke Vault Transfer Qty 8" && (item.destinationScope || []).includes("forge"));
+      return { source, forge };
+    });
+    assert.equal(Number(partialTransfer.source?.quantity), 6);
+    assert.equal(partialTransfer.source?.vaultStatus !== "moved_to_forge", true);
+    assert.equal(Number(partialTransfer.forge?.quantity), 2);
+    assert.equal(Boolean(partialTransfer.forge?.businessInventory), true);
+
+    await nav("Forge");
+    await assertVisibleText("Smoke Vault Transfer Qty 8");
+    await nav("Vault");
+    await assertVisibleText("Smoke Vault Transfer Qty 8");
+    const vaultSourceDelete = await withConfirmStub(true, async () => {
+      await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).first(), "Remove from Vault");
+    });
+    assert.match(vaultSourceDelete.join("\n"), /Delete vaulted item\?/);
+    await nav("Forge");
+    await assertVisibleText("Smoke Vault Transfer Qty 8");
+    const forgeCopyDelete = await withConfirmStub(true, async () => {
+      await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).first(), "Delete Forge item");
+    });
+    assert.match(forgeCopyDelete.join("\n"), /Delete Forge inventory item\?/);
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).count(), 0);
+
+    await addVaultManualItem("Smoke Vault Transfer Qty 1", 1);
+    const fullCard = page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 1" }).first();
+    await fullCard.getByRole("button", { name: "Move to Forge" }).click();
+    const fullModal = page.locator(".vault-transfer-modal").first();
+    await fillByLabel(fullModal, "How many do you want to move to Forge?", "1");
+    await fullModal.getByRole("button", { name: "Move 1 to Forge" }).click();
+    await assertVisibleText("Moved 1 to Forge. 0 remain in Vault.");
+    const fullTransfer = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const source = (data.items || []).find((item) => item.name === "Smoke Vault Transfer Qty 1" && item.vaultStatus === "moved_to_forge");
+      const forge = (data.items || []).find((item) => item.name === "Smoke Vault Transfer Qty 1" && (item.destinationScope || []).includes("forge"));
+      return { source, forge };
+    });
+    assert.equal(Number(fullTransfer.source?.quantity), 0);
+    assert.equal(Number(fullTransfer.forge?.quantity), 1);
+    await nav("Vault");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 1" }).count(), 0);
+    await nav("Forge");
+    await assertVisibleText("Smoke Vault Transfer Qty 1");
   });
 
   await step("Vault: wishlist item stays out of Forge inventory", async () => {
