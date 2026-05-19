@@ -577,8 +577,9 @@ const PRIVATE_UPLOAD_SIGNED_URL_SECONDS = 60 * 60 * 24 * 7;
 const SUPABASE_CATALOG_PAGE_SIZE = CATALOG_PAGE_SIZE;
 const CATALOG_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 const LONG_LIST_PAGE_SIZE = 12;
-const DEFAULT_PURCHASER_NAMES = ["Personal", "Business", "Kids", "Other"];
+const DEFAULT_PURCHASER_NAMES = [];
 const PEOPLE = DEFAULT_PURCHASER_NAMES;
+const PURCHASER_NAME_MAX_LENGTH = 40;
 const DEFAULT_PERSONAL_WORKSPACE_ID = "workspace-personal-local-beta";
 const DEFAULT_FORGE_MODE_SETTINGS = {
   personalForgeEnabled: true,
@@ -1117,6 +1118,8 @@ const BLANK_MULTI_DESTINATION_FORM = {
     unitCost: "",
     plannedSellPrice: "",
     source: "",
+    purchaserId: "",
+    purchaserName: "",
     physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION,
     physicalLocationNotes: "",
     businessCategory: "Pokemon",
@@ -1143,6 +1146,10 @@ const MULTI_DESTINATION_STEP_LABELS = {
   details: "Add Details",
   review: "Review",
 };
+const MULTI_DESTINATION_STEP_INDEX = MULTI_DESTINATION_STEPS.reduce((acc, step, index) => {
+  acc[step] = index;
+  return acc;
+}, {});
 const ADD_ITEM_QUICK_SEARCH_CHIPS = [
   "ETB",
   "Elite Trainer Box",
@@ -2124,11 +2131,14 @@ function toNumber(value, fallback = 0) {
 
 function makeTidepoolPost(overrides = {}) {
   const now = new Date().toISOString();
+  const username = normalizePublicUsername(overrides.username || overrides.publicUsername || overrides.displayName || "local_scout");
 
   return {
     postId: overrides.postId || makeId("tidepool-post"),
     userId: overrides.userId || "local-beta",
-    displayName: overrides.displayName || "Local Scout",
+    displayName: overrides.displayName || `@${username}`,
+    username,
+    publicUsername: username,
     postType: overrides.postType || "General post",
     title: overrides.title || "",
     body: overrides.body || "",
@@ -2212,6 +2222,98 @@ function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+const PUBLIC_USERNAME_MIN_LENGTH = 3;
+const PUBLIC_USERNAME_MAX_LENGTH = 24;
+const RESERVED_PUBLIC_USERNAMES = {
+  ember: "Zena",
+  tide: "Dillon",
+};
+const PROTECTED_USERNAME_PATTERNS = [
+  /\bember\s*(?:&|and)?\s*tide\b/i,
+  /\bemberandtide\b/i,
+  /\bember[-_]?tide\b/i,
+  /\bofficial\b/i,
+  /\badmin\b/i,
+  /\bsupport\b/i,
+  /\bmoderator\b/i,
+  /\bmod\b/i,
+  /\bsecurity\b/i,
+  /\bverified\b/i,
+];
+
+function normalizePublicUsername(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, PUBLIC_USERNAME_MAX_LENGTH);
+}
+
+function usernameOwnerMatch(profile = {}, ownerName = "") {
+  const allowedName = String(ownerName || "").trim().toLowerCase();
+  const profileNames = [
+    profile.firstName,
+    profile.first_name,
+    profile.displayName,
+    profile.display_name,
+    profile.fullName,
+    profile.full_name,
+    profile.email,
+  ].map((value) => String(value || "").toLowerCase());
+  return profileNames.some((value) => value === allowedName || value.startsWith(`${allowedName} `) || value.startsWith(`${allowedName}@`));
+}
+
+function publicUsernameFromProfile(profile = {}) {
+  return normalizePublicUsername(
+    profile.publicUsername ||
+    profile.public_username ||
+    profile.username ||
+    profile.handle ||
+    profile.displayName ||
+    profile.display_name ||
+    profile.email ||
+    "local_scout"
+  ) || "local_scout";
+}
+
+function publicUsernameLabel(profile = {}) {
+  return `@${publicUsernameFromProfile(profile)}`;
+}
+
+function publicUsernameLabelFromRecord(record = {}, fallback = "community") {
+  const username = normalizePublicUsername(
+    record.sellerUsername ||
+    record.seller_username ||
+    record.username ||
+    record.publicUsername ||
+    record.public_username ||
+    record.sellerDisplayName ||
+    record.seller_display_name ||
+    record.displayName ||
+    fallback
+  );
+  return `@${username || normalizePublicUsername(fallback) || "community"}`;
+}
+
+function validatePublicUsername(value = "", profile = {}, takenUsernames = []) {
+  const username = normalizePublicUsername(value);
+  if (!username) return "Choose a public username.";
+  if (username.length < PUBLIC_USERNAME_MIN_LENGTH) return "Username must be at least 3 characters.";
+  if (!/^[a-z0-9_]+$/.test(username)) return "Use only letters, numbers, and underscores.";
+  const reservedOwner = RESERVED_PUBLIC_USERNAMES[username];
+  if (reservedOwner && !usernameOwnerMatch(profile, reservedOwner)) {
+    return `@${username} is reserved for Ember & Tide.`;
+  }
+  if (!reservedOwner && PROTECTED_USERNAME_PATTERNS.some((pattern) => pattern.test(username.replace(/_/g, " ")))) {
+    return "Choose a username that does not look like Ember & Tide staff, admin, or official branding.";
+  }
+  if (takenUsernames.map(normalizePublicUsername).includes(username)) return `@${username} is already used in this local workspace.`;
+  return "";
+}
+
 function workspaceTypeLabel(type = "personal") {
   return WORKSPACE_TYPES.find((option) => option.value === type)?.label || "Workspace";
 }
@@ -2223,6 +2325,20 @@ function workspaceRoleLabel(role = "viewer") {
 
 function normalizeWorkspaceDisplayName(value = "") {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, WORKSPACE_NAME_MAX_LENGTH);
+}
+
+function workspaceArchivedAt(workspace = {}) {
+  return workspace.archivedAt || workspace.archived_at || "";
+}
+
+function isWorkspaceArchived(workspace = {}) {
+  return Boolean(workspaceArchivedAt(workspace));
+}
+
+function workspaceTypeValue(value = "personal", fallback = "personal") {
+  const normalized = String(value || "").trim();
+  if (WORKSPACE_TYPES.some((option) => option.value === normalized)) return normalized;
+  return WORKSPACE_TYPES.some((option) => option.value === fallback) ? fallback : "personal";
 }
 
 function normalizeForgeModeSettings(value = {}) {
@@ -2290,6 +2406,8 @@ function createDefaultWorkspaceBundle(user = {}) {
         created_by: userId,
         createdAt: now,
         updatedAt: now,
+        archivedAt: "",
+        archived_at: null,
       },
     ],
     members: [
@@ -2313,16 +2431,34 @@ function createDefaultWorkspaceBundle(user = {}) {
 function normalizeWorkspace(record = {}, fallback = {}) {
   const id = record.id || record.workspaceId || record.workspace_id || fallback.id || makeId("workspace");
   const now = new Date().toISOString();
+  const archivedAtValue = record.archivedAt !== undefined
+    ? record.archivedAt
+    : record.archived_at !== undefined
+      ? record.archived_at
+      : fallback.archivedAt !== undefined
+        ? fallback.archivedAt
+        : fallback.archived_at || "";
+  const archivedByValue = record.archivedBy !== undefined
+    ? record.archivedBy
+    : record.archived_by !== undefined
+      ? record.archived_by
+      : fallback.archivedBy !== undefined
+        ? fallback.archivedBy
+        : fallback.archived_by || "";
   return {
     id,
     name: String(record.name || fallback.name || "My Personal Space").trim() || "My Personal Space",
-    type: record.type || fallback.type || "personal",
+    type: workspaceTypeValue(record.type, fallback.type || "personal"),
     ownerUserId: record.ownerUserId || record.owner_user_id || fallback.ownerUserId || fallback.owner_user_id || "local-beta",
     owner_user_id: record.owner_user_id || record.ownerUserId || fallback.owner_user_id || fallback.ownerUserId || "local-beta",
     createdBy: record.createdBy || record.created_by || record.ownerUserId || record.owner_user_id || fallback.createdBy || fallback.created_by || fallback.ownerUserId || fallback.owner_user_id || "local-beta",
     created_by: record.created_by || record.createdBy || record.owner_user_id || record.ownerUserId || fallback.created_by || fallback.createdBy || fallback.owner_user_id || fallback.ownerUserId || "local-beta",
     createdAt: record.createdAt || record.created_at || fallback.createdAt || now,
     updatedAt: record.updatedAt || record.updated_at || fallback.updatedAt || now,
+    archivedAt: archivedAtValue || "",
+    archived_at: archivedAtValue || null,
+    archivedBy: archivedByValue || "",
+    archived_by: archivedByValue || null,
   };
 }
 
@@ -2384,9 +2520,10 @@ function normalizeWorkspaceState(saved = {}, user = {}) {
     memberMap.set(memberKey(member), member);
   });
 
-  const activeWorkspaceId = workspaces.some((workspace) => workspace.id === saved.activeWorkspaceId)
+  const unarchivedWorkspaces = workspaces.filter((workspace) => !isWorkspaceArchived(workspace));
+  const activeWorkspaceId = unarchivedWorkspaces.some((workspace) => workspace.id === saved.activeWorkspaceId)
     ? saved.activeWorkspaceId
-    : DEFAULT_PERSONAL_WORKSPACE_ID;
+    : unarchivedWorkspaces[0]?.id || workspaces[0]?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
 
   return {
     activeWorkspaceId,
@@ -2438,33 +2575,37 @@ function workspaceCanManage(role = "viewer") {
 }
 
 function createDefaultPurchasers() {
-  const now = new Date().toISOString();
-  return DEFAULT_PURCHASER_NAMES.map((name, index) => ({
-    id: `purchaser-default-${index + 1}`,
-    name,
-    active: true,
-    createdAt: now,
-    updatedAt: now,
-  }));
+  return [];
+}
+
+function purchaserWorkspaceId(purchaser = {}) {
+  return purchaser.workspaceId || purchaser.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID;
 }
 
 function normalizePurchasers(savedPurchasers = []) {
-  const defaults = createDefaultPurchasers();
   const normalized = Array.isArray(savedPurchasers)
     ? savedPurchasers
-        .map((purchaser) => ({
-          id: purchaser.id || makeId("purchaser"),
-          name: String(purchaser.name || "").trim(),
-          active: purchaser.active !== false,
-          createdAt: purchaser.createdAt || purchaser.created_at || new Date().toISOString(),
-          updatedAt: purchaser.updatedAt || purchaser.updated_at || new Date().toISOString(),
-        }))
+        .filter((purchaser) => !String(purchaser?.id || "").startsWith("purchaser-default-"))
+        .map((purchaser) => {
+          const now = new Date().toISOString();
+          const workspaceId = purchaserWorkspaceId(purchaser);
+          return {
+            id: purchaser.id || makeId("purchaser"),
+            name: String(purchaser.name || "").trim(),
+            note: String(purchaser.note || purchaser.label || purchaser.description || "").trim(),
+            active: purchaser.active !== false && purchaser.is_active !== false,
+            workspaceId,
+            workspace_id: workspaceId,
+            createdAt: purchaser.createdAt || purchaser.created_at || now,
+            updatedAt: purchaser.updatedAt || purchaser.updated_at || now,
+          };
+        })
         .filter((purchaser) => purchaser.name)
     : [];
 
   const byName = new Map();
-  [...defaults, ...normalized].forEach((purchaser) => {
-    const key = purchaser.name.toLowerCase();
+  normalized.forEach((purchaser) => {
+    const key = `${purchaserWorkspaceId(purchaser)}:${purchaser.name.toLowerCase()}`;
     if (!byName.has(key)) byName.set(key, purchaser);
   });
 
@@ -2472,7 +2613,193 @@ function normalizePurchasers(savedPurchasers = []) {
 }
 
 function itemPurchaserName(item) {
-  return item.purchaserName || item.purchaser_name || item.buyer || "Unassigned";
+  return item.purchaserName || item.purchaser_name || item.buyer || "Unassigned purchaser";
+}
+
+function itemPurchaserKey(item = {}) {
+  const purchaserId = String(item.purchaserId || item.purchaser_id || "").trim();
+  if (purchaserId) return `id:${purchaserId}`;
+  const name = itemPurchaserName(item);
+  if (name && name !== "Unassigned purchaser") return `name:${normalizeSearchText(name)}`;
+  return "__unassigned_purchaser__";
+}
+
+function inventoryProductGroupKey(item = {}, context = "inventory") {
+  const strongId = [
+    item.catalogProductId,
+    item.catalog_product_id,
+    item.catalogItemId,
+    item.catalog_item_id,
+    item.externalProductId,
+    item.external_product_id,
+    item.tcgplayerProductId,
+    item.tcgplayer_product_id,
+    item.barcode,
+    item.upc,
+    item.sku,
+  ]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .find(Boolean);
+
+  if (strongId) return `${context}:id:${strongId}`;
+
+  const name = normalizeSearchText(item.name || item.itemName || item.catalogProductName || "");
+  if (!name) return `${context}:row:${item.id || makeId("inventory-group")}`;
+  const setName = normalizeSearchText(item.setName || item.set_name || item.expansion || item.productLine || "");
+  const productType = normalizeSearchText(item.productType || item.product_type || item.category || "");
+  const variant = normalizeSearchText([item.variant, item.finish, item.printing, item.language, item.conditionName || item.condition].filter(Boolean).join(" "));
+  return `${context}:name:${name}|set:${setName}|type:${productType}|variant:${variant}`;
+}
+
+function summarizeBreakdownRows(rows = [], options = {}) {
+  const { type = "purchaser", moneyFn = money } = options;
+  const groups = new Map();
+  rows.forEach((row) => {
+    const quantity = Math.max(0, Number(row.quantity || 0));
+    if (quantity <= 0) return;
+    const key = type === "location"
+      ? normalizeSearchText(forgePhysicalLocationLabel(row) || "Unassigned")
+      : itemPurchaserKey(row);
+    const name = type === "location"
+      ? (forgePhysicalLocationLabel(row) || "Unassigned")
+      : itemPurchaserName(row);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        name,
+        quantity: 0,
+        totalCost: 0,
+        entries: [],
+      });
+    }
+    const group = groups.get(key);
+    group.quantity += quantity;
+    group.totalCost += quantity * Number(row.unitCost || row.unit_cost || 0);
+    group.entries.push(row);
+  });
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      averageCost: group.quantity > 0 ? group.totalCost / group.quantity : 0,
+      summary: `${group.name} ${group.quantity}`,
+      costSummary: group.totalCost > 0 ? moneyFn(group.totalCost) : "",
+    }))
+    .sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name));
+}
+
+function buildGroupedInventoryItems(rows = [], context = "inventory") {
+  const groups = new Map();
+  rows.forEach((row) => {
+    const key = inventoryProductGroupKey(row, context);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  });
+
+  return [...groups.entries()].map(([groupId, groupRows]) => {
+    const primary = groupRows[0] || {};
+    const totalQuantity = groupRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+    const safeQuantity = Math.max(0, totalQuantity);
+    const weighted = (field) => {
+      if (safeQuantity <= 0) return Number(primary[field] || 0);
+      return groupRows.reduce((sum, row) => sum + Number(row.quantity || 0) * Number(row[field] || 0), 0) / safeQuantity;
+    };
+    const latestUpdatedAt = groupRows
+      .map((row) => row.updatedAt || row.updated_at || row.createdAt || row.created_at || "")
+      .filter(Boolean)
+      .sort();
+    const latestTimestamp = latestUpdatedAt[latestUpdatedAt.length - 1] || primary.updatedAt || primary.createdAt || "";
+    const purchaserBreakdown = summarizeBreakdownRows(groupRows, { type: "purchaser" });
+    const locationBreakdown = summarizeBreakdownRows(groupRows, { type: "location" });
+    const purchaserSummary = purchaserBreakdown.length <= 2
+      ? purchaserBreakdown.map((entry) => `${entry.name} ${entry.quantity}`).join(" · ")
+      : `${purchaserBreakdown.length} purchasers`;
+    const locationSummary = locationBreakdown.length <= 1
+      ? locationBreakdown[0]?.name || forgePhysicalLocationLabel(primary) || ""
+      : `${locationBreakdown.length} locations`;
+
+    return {
+      ...primary,
+      id: primary.id,
+      groupId,
+      isGroupedInventory: groupRows.length > 1,
+      rawItems: groupRows,
+      groupedEntryCount: groupRows.length,
+      quantity: safeQuantity,
+      unitCost: weighted("unitCost"),
+      marketPrice: weighted("marketPrice"),
+      salePrice: weighted("salePrice"),
+      msrpPrice: weighted("msrpPrice"),
+      purchaserBreakdown,
+      locationBreakdown,
+      purchaserSummary,
+      locationSummary,
+      updatedAt: latestTimestamp,
+    };
+  });
+}
+
+function inventoryGroupEntries(item = {}) {
+  return Array.isArray(item.rawItems) && item.rawItems.length ? item.rawItems : item ? [item] : [];
+}
+
+function inventoryEntryLabel(item = {}) {
+  const pieces = [
+    itemPurchaserName(item),
+    `Qty ${Number(item.quantity || 0)}`,
+    forgePhysicalLocationLabel(item),
+    hasValue(item.unitCost) ? `Cost ${money(item.unitCost)}` : "",
+  ].filter(Boolean);
+  return pieces.join(" - ");
+}
+
+function mileageTripDateValue(trip = {}) {
+  return trip.date || trip.tripDate || trip.createdAt || trip.created_at || "";
+}
+
+function vehicleGroupKeyForTrip(trip = {}, vehicle = {}) {
+  const vehicleId = String(trip.vehicleId || trip.vehicle_id || vehicle.id || "").trim();
+  if (vehicleId) return `vehicle:${vehicleId}`;
+  const name = normalizeSearchText(trip.vehicleName || trip.vehicle_name || vehicle.name || "");
+  return name ? `name:${name}` : "__unassigned_vehicle__";
+}
+
+function buildMileageVehicleGroups(trips = [], vehicles = []) {
+  const vehicleById = new Map(vehicles.map((vehicle) => [String(vehicle.id), vehicle]));
+  const groups = new Map();
+  trips.forEach((trip) => {
+    const vehicle = vehicleById.get(String(trip.vehicleId || trip.vehicle_id || ""));
+    const key = vehicleGroupKeyForTrip(trip, vehicle);
+    const vehicleName = trip.vehicleName || trip.vehicle_name || vehicle?.name || "No vehicle";
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        vehicleId: trip.vehicleId || trip.vehicle_id || vehicle?.id || "",
+        vehicleName,
+        vehicle,
+        trips: [],
+        totalMiles: 0,
+        totalVehicleCost: 0,
+        totalMileageValue: 0,
+        totalFuelCost: 0,
+        totalWearCost: 0,
+        lastTripDate: "",
+      });
+    }
+    const group = groups.get(key);
+    group.trips.push(trip);
+    group.totalMiles += Number(trip.businessMiles || trip.business_miles || 0);
+    group.totalVehicleCost += Number(trip.totalVehicleCost || trip.total_vehicle_cost || 0);
+    group.totalMileageValue += Number(trip.mileageValue || trip.mileage_value || 0);
+    group.totalFuelCost += Number(trip.fuelCost || trip.fuel_cost || 0);
+    group.totalWearCost += Number(trip.wearCost || trip.wear_cost || 0);
+    const tripDate = mileageTripDateValue(trip);
+    if (!group.lastTripDate || (tripDate && tripDate > group.lastTripDate)) group.lastTripDate = tripDate;
+  });
+  return [...groups.values()].map((group) => ({
+    ...group,
+    tripCount: group.trips.length,
+    trips: [...group.trips].sort((a, b) => String(mileageTripDateValue(b)).localeCompare(String(mileageTripDateValue(a)))),
+  })).sort((a, b) => String(b.lastTripDate).localeCompare(String(a.lastTripDate)) || a.vehicleName.localeCompare(b.vehicleName));
 }
 
 function normalizeUserType(userType) {
@@ -2583,12 +2910,98 @@ function statusClass(status) {
     .replace(/^-|-$/g, "")}`;
 }
 
-function Field({ label, children }) {
+function Field({ label, children, error = "", fieldId = "", className = "" }) {
+  const classes = [className, error ? "has-error" : ""].filter(Boolean).join(" ");
   return (
-    <label>
+    <label className={classes || undefined} data-validation-field={fieldId || undefined}>
       {label}
       {children}
+      {error ? <span className="field-error" role="alert">{error}</span> : null}
     </label>
+  );
+}
+
+function PurchaserSelect({
+  label = "Who paid?",
+  purchasers = [],
+  valueId = "",
+  valueName = "",
+  onSelect,
+  onCreatePurchaser,
+  onManagePurchasers,
+}) {
+  const [showNewPurchaser, setShowNewPurchaser] = useState(false);
+  const [newPurchaserName, setNewPurchaserName] = useState("");
+  const [newPurchaserNote, setNewPurchaserNote] = useState("");
+  const currentActive = purchasers.find((purchaser) => String(purchaser.id) === String(valueId));
+  const currentByName = purchasers.find((purchaser) => purchaser.name === valueName);
+  const historicalName = valueName && !currentActive && !currentByName ? valueName : "";
+  const currentValue = currentActive?.id || currentByName?.id || (historicalName ? "__historical__" : "");
+
+  function handleChange(event) {
+    const nextValue = event.target.value;
+    if (nextValue === "__add__") {
+      setShowNewPurchaser(true);
+      return;
+    }
+    if (nextValue === "__manage__") {
+      onManagePurchasers?.();
+      return;
+    }
+    const purchaser = purchasers.find((candidate) => String(candidate.id) === String(nextValue));
+    onSelect?.(purchaser || null);
+  }
+
+  function saveInlinePurchaser() {
+    const created = onCreatePurchaser?.(newPurchaserName, newPurchaserNote);
+    if (!created) return;
+    onSelect?.(created);
+    setNewPurchaserName("");
+    setNewPurchaserNote("");
+    setShowNewPurchaser(false);
+  }
+
+  return (
+    <div className="purchaser-select-field">
+      <Field label={label}>
+        <select value={currentValue} onChange={handleChange}>
+          <option value="">No purchaser selected</option>
+          {historicalName ? <option value="__historical__" disabled>{historicalName} (historical)</option> : null}
+          {purchasers.map((purchaser) => (
+            <option key={purchaser.id} value={purchaser.id}>
+              {purchaser.name}{purchaser.note ? ` - ${purchaser.note}` : ""}
+            </option>
+          ))}
+          <option value="__add__">Add new purchaser...</option>
+          <option value="__manage__">Manage purchasers...</option>
+        </select>
+      </Field>
+      {!purchasers.length ? (
+        <div className="small-empty-state purchaser-empty-state">
+          <p>No purchasers yet. Add one to track who paid.</p>
+          <button type="button" className="secondary-button" onClick={() => setShowNewPurchaser(true)}>
+            Add purchaser
+          </button>
+        </div>
+      ) : null}
+      {showNewPurchaser ? (
+        <div className="inline-form purchaser-inline-form">
+          <input
+            value={newPurchaserName}
+            maxLength={PURCHASER_NAME_MAX_LENGTH}
+            onChange={(event) => setNewPurchaserName(event.target.value)}
+            placeholder="Display name"
+          />
+          <input
+            value={newPurchaserNote}
+            onChange={(event) => setNewPurchaserNote(event.target.value)}
+            placeholder="Optional note, card, partner..."
+          />
+          <button type="button" onClick={saveInlinePurchaser}>Save Purchaser</button>
+          <button type="button" className="secondary-button" onClick={() => setShowNewPurchaser(false)}>Cancel</button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -3501,6 +3914,7 @@ export default function App() {
     firstName: "",
     lastName: "",
     displayName: "",
+    publicUsername: "",
     preferredRegion: "Hampton Roads / 757",
   });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -3526,12 +3940,20 @@ export default function App() {
   });
   const [workspaceRenameTarget, setWorkspaceRenameTarget] = useState(null);
   const [workspaceRenameName, setWorkspaceRenameName] = useState("");
+  const [workspaceRenameType, setWorkspaceRenameType] = useState("personal");
   const [workspaceRenameSaving, setWorkspaceRenameSaving] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState("");
+  const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
+  const [showArchivedCollections, setShowArchivedCollections] = useState(false);
+  const [workspaceArchiveTarget, setWorkspaceArchiveTarget] = useState(null);
+  const [workspaceArchiveSavingId, setWorkspaceArchiveSavingId] = useState("");
+  const [workspaceDeleteTarget, setWorkspaceDeleteTarget] = useState(null);
+  const [workspaceDeleteConfirmText, setWorkspaceDeleteConfirmText] = useState("");
+  const [workspaceDeleteSaving, setWorkspaceDeleteSaving] = useState(false);
   const [forgeModeSettings, setForgeModeSettings] = useState(() => loadForgeModeSettings(initialRouteState.forgeModeSettings));
 
   const [items, setItems] = useState([]);
-  const [purchasers, setPurchasers] = useState(createDefaultPurchasers);
+  const [purchasers, setPurchasers] = useState([]);
   const [catalogProducts, setCatalogProducts] = useState([]);
   const [catalogPagedResultIds, setCatalogPagedResultIds] = useState([]);
   const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
@@ -3796,6 +4218,10 @@ export default function App() {
   const [editingSaleId, setEditingSaleId] = useState(null);
   const [editingPurchaserId, setEditingPurchaserId] = useState(null);
   const [purchaserDraft, setPurchaserDraft] = useState("");
+  const [purchaserNoteDraft, setPurchaserNoteDraft] = useState("");
+  const [purchaserManagerOpen, setPurchaserManagerOpen] = useState(false);
+  const [purchaserManagerWorkspaceId, setPurchaserManagerWorkspaceId] = useState("");
+  const [purchaserMessage, setPurchaserMessage] = useState("");
 
   const blankItem = {
   name: "",
@@ -3915,6 +4341,7 @@ export default function App() {
   const [expenseDateFrom, setExpenseDateFrom] = useState("");
   const [expenseDateTo, setExpenseDateTo] = useState("");
   const [selectedExpenseVendorKey, setSelectedExpenseVendorKey] = useState("");
+  const [selectedMileageVehicleKey, setSelectedMileageVehicleKey] = useState("");
   const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
   const [tripForm, setTripForm] = useState(blankTrip);
   const [saleForm, setSaleForm] = useState(blankSale);
@@ -3924,12 +4351,13 @@ export default function App() {
   const [multiDestinationStep, setMultiDestinationStep] = useState("item");
   const [multiDestinationSaving, setMultiDestinationSaving] = useState(false);
   const [multiDestinationMessage, setMultiDestinationMessage] = useState("");
+  const [multiDestinationValidationAttempted, setMultiDestinationValidationAttempted] = useState(false);
   const [marketAddChooserProductId, setMarketAddChooserProductId] = useState("");
   const [marketAddSavingKey, setMarketAddSavingKey] = useState("");
   const [marketAddConfirmation, setMarketAddConfirmation] = useState(null);
   const [commandCenterTab, setCommandCenterTab] = useState("all");
   const [quickScoutReportForm, setQuickScoutReportForm] = useState(() => createQuickScoutReportDraft());
-  const [quickScoutReportStep, setQuickScoutReportStep] = useState("what");
+  const [quickScoutReportStep, setQuickScoutReportStep] = useState("product");
   const [quickScoutReportMessage, setQuickScoutReportMessage] = useState("");
   const [quickScoutReportSaved, setQuickScoutReportSaved] = useState(null);
   const [vaultCatalogSearchQuery, setVaultCatalogSearchQuery] = useState("");
@@ -4060,7 +4488,11 @@ export default function App() {
     return true;
   };
   const activeWorkspace = useMemo(
-    () => workspaces.find((workspace) => String(workspace.id) === String(activeWorkspaceId)) || workspaces[0] || createDefaultWorkspaceBundle(user).workspaces[0],
+    () => {
+      const selected = workspaces.find((workspace) => String(workspace.id) === String(activeWorkspaceId));
+      if (selected && !isWorkspaceArchived(selected)) return selected;
+      return workspaces.find((workspace) => !isWorkspaceArchived(workspace)) || selected || workspaces[0] || createDefaultWorkspaceBundle(user).workspaces[0];
+    },
     [workspaces, activeWorkspaceId, user]
   );
   const currentWorkspaceUserId = user?.id || "local-beta";
@@ -4091,17 +4523,22 @@ export default function App() {
     return workspaceOwnerMatchesUser(workspace) ? "owner" : "viewer";
   };
   const canEditWorkspaceId = (workspaceId = activeWorkspace?.id) => workspaceCanEdit(workspaceRoleForId(workspaceId));
+  const canManageWorkspaceId = (workspaceId = activeWorkspace?.id) => workspaceCanManage(workspaceRoleForId(workspaceId));
   const ensureWorkspaceEditor = (workspaceId = activeWorkspace?.id) => {
     if (canEditWorkspaceId(workspaceId)) return true;
     return showAppMessage("You do not have permission to edit this workspace.");
   };
-  const workspaceSelectorOptions = useMemo(
+  const accessibleWorkspaceOptions = useMemo(
     () => workspaces.filter((workspace) =>
       workspaceMemberFor(workspace.id) || workspaceOwnerMatchesUser(workspace) || (BETA_LOCAL_MODE && currentWorkspaceUserId === "local-beta")
     ),
     [workspaces, workspaceMembers, currentWorkspaceUserId, currentWorkspaceEmail]
   );
-  const visibleWorkspaceOptions = workspaceSelectorOptions.length ? workspaceSelectorOptions : workspaces;
+  const workspaceSelectorOptions = useMemo(
+    () => accessibleWorkspaceOptions.filter((workspace) => !isWorkspaceArchived(workspace)),
+    [accessibleWorkspaceOptions]
+  );
+  const visibleWorkspaceOptions = workspaceSelectorOptions.length ? workspaceSelectorOptions : accessibleWorkspaceOptions.length ? accessibleWorkspaceOptions : workspaces;
   const emberTideForgeWorkspace = useMemo(
     () => visibleWorkspaceOptions.find(isEmberTideForgeWorkspace) || null,
     [visibleWorkspaceOptions]
@@ -4145,6 +4582,23 @@ export default function App() {
     }
     return activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
   };
+  const collectionNameExists = (name, excludedWorkspaceId = "") => {
+    const normalizedName = normalizeWorkspaceDisplayName(name).toLowerCase();
+    if (!normalizedName) return false;
+    return accessibleWorkspaceOptions.some((workspace) =>
+      String(workspace.id) !== String(excludedWorkspaceId) &&
+      normalizeWorkspaceDisplayName(workspace.name).toLowerCase() === normalizedName
+    );
+  };
+  useEffect(() => {
+    const selected = workspaces.find((workspace) => String(workspace.id) === String(activeWorkspaceId));
+    if (!selected || !isWorkspaceArchived(selected)) return;
+    const fallbackWorkspace = workspaceSelectorOptions.find((workspace) => String(workspace.id) !== String(selected.id));
+    if (!fallbackWorkspace?.id) return;
+    setActiveWorkspaceId(fallbackWorkspace.id);
+    setWorkspaceInviteForm((current) => ({ ...current, workspaceId: fallbackWorkspace.id }));
+    setWorkspaceMessage(`${selected.name || "Collection"} is archived. Switched to ${fallbackWorkspace.name || "another collection"}.`);
+  }, [activeWorkspaceId, workspaces, workspaceSelectorOptions]);
   const updateForgeModeSettings = (updates = {}) => {
     setForgeModeSettings((current) =>
       normalizeForgeModeSettings({
@@ -5284,6 +5738,42 @@ export default function App() {
     return String(user?.email || authEmail || currentUserProfile?.email || "").trim();
   }
 
+  function currentPublicUsername() {
+    return publicUsernameFromProfile(currentUserProfile);
+  }
+
+  function publicProfileLabel(profile = currentUserProfile) {
+    return publicUsernameLabel(profile);
+  }
+
+  function publicProfileForCurrentUser(overrides = {}) {
+    return {
+      ...currentUserProfile,
+      ...overrides,
+      publicUsername: normalizePublicUsername(overrides.publicUsername || overrides.public_username || currentUserProfile.publicUsername || currentUserProfile.public_username || currentUserProfile.username || currentUserProfile.displayName),
+    };
+  }
+
+  function takenPublicUsernames(excludedUserId = currentUserProfile?.userId || user?.id || "") {
+    const values = [
+      ...marketplaceListings.map((listing) => ({
+        username: listing.sellerUsername || listing.seller_username || listing.sellerDisplayName || listing.seller_display_name,
+        userId: listing.sellerUserId || listing.seller_user_id,
+      })),
+      ...tidepoolPosts.map((post) => ({
+        username: post.username || post.publicUsername || post.displayName,
+        userId: post.userId || post.user_id,
+      })),
+      ...tidepoolComments.map((comment) => ({
+        username: comment.username || comment.publicUsername || comment.displayName,
+        userId: comment.userId || comment.user_id,
+      })),
+    ];
+    return values
+      .filter((entry) => entry.username && String(entry.userId || "") !== String(excludedUserId || ""))
+      .map((entry) => entry.username);
+  }
+
   function betaAccessMode() {
     return betaReadinessData.readiness?.betaAccessMode || "open_beta";
   }
@@ -5456,6 +5946,16 @@ export default function App() {
     }
     const fullName = `${firstName} ${lastName}`.trim();
     const displayName = normalizePersonName(profileForm.displayName || fullName);
+    const publicUsername = normalizePublicUsername(profileForm.publicUsername || displayName || firstName || "local_scout");
+    const usernameValidationError = validatePublicUsername(
+      publicUsername,
+      { ...currentUserProfile, firstName, first_name: firstName, displayName, display_name: displayName, fullName, full_name: fullName, email: accountEmail() },
+      takenPublicUsernames()
+    );
+    if (usernameValidationError) {
+      setVaultToast(usernameValidationError);
+      return;
+    }
     const preferredRegion = String(profileForm.preferredRegion || "Hampton Roads / 757").trim();
     setProfileSaving(true);
     try {
@@ -5465,6 +5965,9 @@ export default function App() {
         lastName,
         fullName,
         displayName,
+        username: publicUsername,
+        publicUsername,
+        public_username: publicUsername,
         preferredRegion,
         preferred_region: preferredRegion,
         updatedAt: new Date().toISOString(),
@@ -6726,6 +7229,7 @@ export default function App() {
     };
     flowModalBaselineRef.current.multiDestinationAdd = nextForm;
     setMultiDestinationMessage("");
+    setMultiDestinationValidationAttempted(false);
     setMultiDestinationSaving(false);
     setMultiDestinationStep(MULTI_DESTINATION_STEPS.includes(initialStep) ? initialStep : "item");
     setMultiDestinationForm(nextForm);
@@ -6783,60 +7287,148 @@ export default function App() {
     tidetradr: "Market",
   }[destination] || destination);
 
-  function validatePositiveQuantity(label, value) {
-    const quantity = Number(value);
-    if (!Number.isFinite(quantity) || quantity < 1) return `${label} must be at least 1.`;
-    return "";
+  function multiDestinationValidationError({ id, step, label, message }) {
+    return {
+      id,
+      field: id,
+      step,
+      label,
+      message,
+      stepLabel: MULTI_DESTINATION_STEP_LABELS[step] || "Review",
+    };
   }
 
-  function validateOptionalMoney(label, value) {
-    if (value === "" || value === null || value === undefined) return "";
+  function requiredQuantityError(id, label, value) {
+    const rawValue = String(value ?? "").trim();
+    if (!rawValue) {
+      return multiDestinationValidationError({
+        id,
+        step: "details",
+        label,
+        message: "Enter a quantity.",
+      });
+    }
+    const quantity = Number(rawValue);
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      return multiDestinationValidationError({
+        id,
+        step: "details",
+        label,
+        message: "Quantity must be at least 1.",
+      });
+    }
+    if (!Number.isInteger(quantity)) {
+      return multiDestinationValidationError({
+        id,
+        step: "details",
+        label,
+        message: "Quantity must be a whole number.",
+      });
+    }
+    return null;
+  }
+
+  function optionalMoneyError(id, label, value) {
+    if (value === "" || value === null || value === undefined) return null;
     const amount = Number(value);
-    if (!Number.isFinite(amount) || amount < 0) return `${label} must be 0 or higher.`;
-    return "";
+    if (!Number.isFinite(amount) || amount < 0) {
+      return multiDestinationValidationError({
+        id,
+        step: "details",
+        label,
+        message: "Enter a valid price.",
+      });
+    }
+    return null;
   }
 
-  function validateMultiDestinationStep(step = multiDestinationStep, form = multiDestinationForm) {
+  function getMultiDestinationValidationErrors(step = multiDestinationStep, form = multiDestinationForm) {
+    const scopeIndex = MULTI_DESTINATION_STEP_INDEX[step] ?? MULTI_DESTINATION_STEP_INDEX.review;
+    const includesStep = (targetStep) => (MULTI_DESTINATION_STEP_INDEX[targetStep] ?? 0) <= scopeIndex;
     const itemName = String(form.itemName || "").trim();
     const selectedDestinations = selectedMultiDestinationKeys(form);
-    if (step === "item" || step === "review") {
-      if (!itemName) return "Item name is required.";
+    const errors = [];
+    const push = (error) => {
+      if (error) errors.push(error);
+    };
+
+    if (includesStep("item") && !itemName) {
+      push(multiDestinationValidationError({
+        id: "item-name",
+        step: "item",
+        label: "Item",
+        message: "Choose an item or add one manually.",
+      }));
     }
-    if (step === "destination" || step === "details" || step === "review") {
-      if (!selectedDestinations.length) return "Destination is required. Choose Forge, Vault, Market, or Wishlist.";
+
+    if (includesStep("destination") && !selectedDestinations.length) {
+      push(multiDestinationValidationError({
+        id: "destination",
+        step: "destination",
+        label: "Destination",
+        message: "Choose where this should go.",
+      }));
     }
-    if (step === "details" || step === "review") {
+
+    if (includesStep("details")) {
       if (form.destinations?.forge) {
-        if (!activeForgeWorkspace) return forgeWorkspaceUnavailableMessage;
-        const forgeError = validatePositiveQuantity("Forge quantity", form.forge?.quantity)
-          || validateOptionalMoney("Forge cost basis", form.forge?.unitCost)
-          || validateOptionalMoney("Forge planned sell price", form.forge?.plannedSellPrice);
-        if (forgeError) return forgeError;
+        if (!activeForgeWorkspace) {
+          push(multiDestinationValidationError({
+            id: "forge-workspace",
+            step: "destination",
+            label: "Forge workspace",
+            message: forgeWorkspaceUnavailableMessage,
+          }));
+        }
+        push(requiredQuantityError("forge-quantity", "Forge quantity", form.forge?.quantity));
+        push(optionalMoneyError("forge-unit-cost", "Paid cost", form.forge?.unitCost));
+        push(optionalMoneyError("forge-planned-sell-price", "Planned sell price", form.forge?.plannedSellPrice));
+        if (!String(form.forge?.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION || "").trim()) {
+          push(multiDestinationValidationError({
+            id: "forge-physical-location",
+            step: "details",
+            label: "Forge location",
+            message: "Choose where this inventory is located.",
+          }));
+        }
       }
       if (form.destinations?.vault) {
-        const vaultError = validatePositiveQuantity("Vault quantity", form.vault?.quantity)
-          || validateOptionalMoney("Vault cost basis", form.vault?.unitCost);
-        if (vaultError) return vaultError;
+        push(requiredQuantityError("vault-quantity", "Vault quantity", form.vault?.quantity));
+        push(optionalMoneyError("vault-unit-cost", "Vault cost basis", form.vault?.unitCost));
       }
       if (form.destinations?.wishlist) {
-        const wishlistError = validatePositiveQuantity("Wishlist quantity", form.wishlist?.quantity)
-          || validateOptionalMoney("Wishlist target price", form.wishlist?.targetPrice);
-        if (wishlistError) return wishlistError;
+        push(requiredQuantityError("wishlist-quantity", "Wishlist quantity", form.wishlist?.quantity));
+        push(optionalMoneyError("wishlist-target-price", "Wishlist target price", form.wishlist?.targetPrice));
       }
       if (form.destinations?.tidetradr) {
-        const marketError = validateOptionalMoney("Market MSRP", form.tidetradr?.msrpPrice || form.msrpPrice);
-        if (marketError) return marketError;
+        push(optionalMoneyError("tidetradr-msrp", "Market MSRP", form.tidetradr?.msrpPrice || form.msrpPrice));
       }
     }
-    return "";
+
+    return errors;
+  }
+
+  function focusMultiDestinationValidationError(error) {
+    if (!error) return;
+    const targetStep = MULTI_DESTINATION_STEPS.includes(error.step) ? error.step : "item";
+    setMultiDestinationStep(targetStep);
+    window.setTimeout(() => {
+      const modal = flowModalRef.current;
+      const target = modal?.querySelector?.(`[data-validation-field="${error.field}"]`);
+      target?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+      const focusable = target?.querySelector?.("input, select, textarea, button");
+      focusable?.focus?.({ preventScroll: true });
+    }, 80);
   }
 
   function advanceMultiDestinationStep(event) {
     event?.preventDefault?.();
     event?.stopPropagation?.();
-    const validationMessage = validateMultiDestinationStep(multiDestinationStep, multiDestinationForm);
-    if (validationMessage) {
-      setMultiDestinationMessage(validationMessage);
+    setMultiDestinationValidationAttempted(true);
+    const validationErrors = getMultiDestinationValidationErrors(multiDestinationStep, multiDestinationForm);
+    if (validationErrors.length) {
+      setMultiDestinationMessage("Fix missing fields to continue.");
+      focusMultiDestinationValidationError(validationErrors[0]);
       return;
     }
     const currentIndex = MULTI_DESTINATION_STEPS.indexOf(multiDestinationStep);
@@ -6870,6 +7462,7 @@ export default function App() {
     const defaultVariant = product
       ? (getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null)
       : null;
+    const known = product ? buildCatalogAutofillDetails(product) : {};
 
     if (product) {
       setCatalogProducts((current) => [
@@ -6892,22 +7485,29 @@ export default function App() {
     setMultiDestinationForm((current) => ({
       ...current,
       catalogProductId: productId,
-      itemName: product ? catalogTitle(product) : current.itemName,
-      productType: normalizedInventoryProductType(product || current),
-      category: product?.category || current.category,
-      setName: product ? catalogExpansionName(product) : current.setName,
+      itemName: known.itemName || current.itemName,
+      productType: known.productType || normalizedInventoryProductType(product || current),
+      category: known.category || current.category,
+      setName: known.setName || current.setName,
       variant: defaultVariant?.variantName || current.variant,
-      upcSku: product?.barcode || product?.upc || product?.sku || current.upcSku,
-      msrpPrice: product?.msrpPrice || current.msrpPrice,
-      marketPrice: product?.marketPrice || product?.midPrice || current.marketPrice,
+      upcSku: known.upc || known.sku || current.upcSku,
+      msrpPrice: known.msrpPrice || current.msrpPrice,
+      marketPrice: known.marketPrice || current.marketPrice,
+      forge: {
+        ...current.forge,
+        unitCost: isBlankCatalogField(current.forge?.unitCost) && known.msrpPrice ? known.msrpPrice : current.forge?.unitCost,
+        plannedSellPrice: isBlankCatalogField(current.forge?.plannedSellPrice) && known.marketPrice ? known.marketPrice : current.forge?.plannedSellPrice,
+        businessCategory: known.category || current.forge?.businessCategory || "Pokemon",
+        conditionName: current.forge?.conditionName || (isCatalogCardProduct(product || {}) ? "Near Mint" : "Sealed"),
+      },
       tidetradr: {
         ...current.tidetradr,
         existingProductId: productId,
-        msrpPrice: product?.msrpPrice || current.tidetradr.msrpPrice,
-        upc: product?.barcode || product?.upc || current.tidetradr.upc,
-        sku: product?.sku || current.tidetradr.sku,
-        setName: catalogExpansionName(product || {}) || current.tidetradr.setName,
-        productType: normalizedInventoryProductType(product || current.tidetradr),
+        msrpPrice: known.msrpPrice || current.tidetradr.msrpPrice,
+        upc: known.upc || current.tidetradr.upc,
+        sku: known.sku || current.tidetradr.sku,
+        setName: known.setName || current.tidetradr.setName,
+        productType: known.productType || normalizedInventoryProductType(product || current.tidetradr),
         releaseDate: product?.releaseDate || product?.releaseYear || current.tidetradr.releaseDate,
       },
     }));
@@ -7262,68 +7862,135 @@ export default function App() {
     return true;
   }
 
-  const activePurchasers = purchasers.filter((purchaser) => purchaser.active);
-  const purchaserOptions = activePurchasers.length ? activePurchasers : createDefaultPurchasers();
-  const peopleOptions = purchaserOptions.map((purchaser) => purchaser.name);
+  function purchaserBelongsToWorkspace(purchaser, workspaceId = activeWorkspace?.id) {
+    return String(purchaserWorkspaceId(purchaser)) === String(workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID);
+  }
 
-  function resolvePurchaser(form = itemForm) {
+  function purchasersForWorkspace(workspaceId = activeWorkspace?.id, options = {}) {
+    const includeArchived = Boolean(options.includeArchived);
+    return purchasers
+      .filter((purchaser) => purchaserBelongsToWorkspace(purchaser, workspaceId))
+      .filter((purchaser) => includeArchived || purchaser.active !== false)
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  }
+
+  const purchaserOptions = purchasersForWorkspace(activeWorkspace?.id);
+  const forgePurchaserOptions = activeForgeWorkspace
+    ? purchasersForWorkspace(activeForgeWorkspace.id)
+    : purchaserOptions;
+  const peopleOptions = forgePurchaserOptions.map((purchaser) => purchaser.name);
+  const purchaserManagerWorkspace = visibleWorkspaceOptions.find((workspace) => String(workspace.id) === String(purchaserManagerWorkspaceId)) || activeWorkspace;
+  const purchaserManagerList = purchasersForWorkspace(purchaserManagerWorkspace?.id, { includeArchived: true });
+
+  function openPurchaserManager(workspaceId = activeWorkspace?.id) {
+    setPurchaserManagerWorkspaceId(workspaceId || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID);
+    setPurchaserDraft("");
+    setPurchaserNoteDraft("");
+    setEditingPurchaserId(null);
+    setPurchaserMessage("");
+    setPurchaserManagerOpen(true);
+  }
+
+  function closePurchaserManager() {
+    setPurchaserManagerOpen(false);
+    setEditingPurchaserId(null);
+    setPurchaserDraft("");
+    setPurchaserNoteDraft("");
+    setPurchaserMessage("");
+  }
+
+  function resolvePurchaser(form = itemForm, workspaceId = activeWorkspace?.id) {
+    const workspacePurchasers = purchasersForWorkspace(workspaceId, { includeArchived: true });
     const selected =
-      purchasers.find((purchaser) => purchaser.id === form.purchaserId) ||
-      purchasers.find((purchaser) => purchaser.name === form.purchaserName) ||
-      purchasers.find((purchaser) => purchaser.name === form.buyer);
+      workspacePurchasers.find((purchaser) => purchaser.id === form.purchaserId) ||
+      workspacePurchasers.find((purchaser) => purchaser.name === form.purchaserName) ||
+      workspacePurchasers.find((purchaser) => purchaser.name === form.buyer) ||
+      purchasers.find((purchaser) => purchaser.id === form.purchaserId);
 
     return {
       purchaserId: selected?.id || form.purchaserId || "",
-      purchaserName: selected?.name || form.purchaserName || form.buyer || "Unassigned",
+      purchaserName: selected?.name || form.purchaserName || form.buyer || "",
     };
   }
 
-  function addPurchaserName(name) {
+  function validatePurchaserName(name, workspaceId = activeWorkspace?.id, existingId = "") {
     const trimmed = String(name || "").trim();
-    if (!trimmed) return null;
+    if (!trimmed) return { error: "Purchaser name cannot be blank." };
+    if (trimmed.length > PURCHASER_NAME_MAX_LENGTH) {
+      return { error: `Purchaser name must be ${PURCHASER_NAME_MAX_LENGTH} characters or fewer.` };
+    }
+    const duplicate = purchasers.find((purchaser) =>
+      String(purchaser.id) !== String(existingId) &&
+      purchaserBelongsToWorkspace(purchaser, workspaceId) &&
+      String(purchaser.name || "").trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (duplicate) return { error: "That purchaser already exists for this collection.", duplicate };
+    return { name: trimmed };
+  }
 
-    const existing = purchasers.find((purchaser) => purchaser.name.toLowerCase() === trimmed.toLowerCase());
-    if (existing) {
-      if (!existing.active) {
+  function addPurchaserName(name, options = {}) {
+    const workspaceId = options.workspaceId || purchaserManagerWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+    const result = validatePurchaserName(name, workspaceId);
+    if (result.error) {
+      if (result.duplicate && result.duplicate.active === false) {
         setPurchasers((current) =>
           current.map((purchaser) =>
-            purchaser.id === existing.id
-              ? { ...purchaser, active: true, updatedAt: new Date().toISOString() }
+            purchaser.id === result.duplicate.id
+              ? { ...purchaser, active: true, note: String(options.note || purchaser.note || "").trim(), updatedAt: new Date().toISOString() }
               : purchaser
           )
         );
+        const restored = { ...result.duplicate, active: true };
+        setPurchaserMessage(`${restored.name} is active again.`);
+        showAppMessage(`${restored.name} is active again.`);
+        return restored;
       }
-      return { ...existing, active: true };
+      setPurchaserMessage(result.error);
+      return null;
     }
 
     const now = new Date().toISOString();
     const purchaser = {
       id: makeId("purchaser"),
-      name: trimmed,
+      name: result.name,
+      note: String(options.note || "").trim(),
       active: true,
+      workspaceId,
+      workspace_id: workspaceId,
       createdAt: now,
       updatedAt: now,
     };
     setPurchasers((current) => [...current, purchaser]);
+    setPurchaserMessage(`Added ${purchaser.name}.`);
+    showAppMessage(`Added purchaser: ${purchaser.name}.`);
     return purchaser;
   }
 
-  function savePurchaserName(id, name) {
-    const trimmed = String(name || "").trim();
-    if (!trimmed) return;
+  function savePurchaserName(id, name, note = purchaserNoteDraft) {
+    const purchaser = purchasers.find((candidate) => candidate.id === id);
+    if (!purchaser) return;
+    const workspaceId = purchaserWorkspaceId(purchaser);
+    const result = validatePurchaserName(name, workspaceId, id);
+    if (result.error) {
+      setPurchaserMessage(result.error);
+      return;
+    }
+    const trimmedNote = String(note || "").trim();
 
     setPurchasers((current) =>
       current.map((purchaser) =>
-        purchaser.id === id ? { ...purchaser, name: trimmed, updatedAt: new Date().toISOString() } : purchaser
+        purchaser.id === id ? { ...purchaser, name: result.name, note: trimmedNote, updatedAt: new Date().toISOString() } : purchaser
       )
     );
     setItems((currentItems) =>
       currentItems.map((item) =>
-        item.purchaserId === id ? { ...item, purchaserName: trimmed, buyer: trimmed } : item
+        item.purchaserId === id ? { ...item, purchaserName: result.name, buyer: result.name } : item
       )
     );
     setEditingPurchaserId(null);
     setPurchaserDraft("");
+    setPurchaserNoteDraft("");
+    setPurchaserMessage(`Renamed purchaser to ${result.name}.`);
   }
 
   function archiveOrDeletePurchaser(id) {
@@ -7353,6 +8020,8 @@ export default function App() {
         purchaser.id === id ? { ...purchaser, active: true, updatedAt: new Date().toISOString() } : purchaser
       )
     );
+    const purchaser = purchasers.find((candidate) => candidate.id === id);
+    if (purchaser) setPurchaserMessage(`${purchaser.name} is active again.`);
   }
 
   function updateHomeStatsEnabled(updates) {
@@ -8022,8 +8691,8 @@ export default function App() {
 
   function importedRowToItem(row, destination) {
     const matched = catalogProducts.find((product) => String(product.id) === String(row.matchedCatalogItemId));
-    const defaultPurchaser = purchasers.find((purchaser) => purchaser.active) || purchasers[0] || { id: "", name: "Unassigned" };
     const normalizedDestination = normalizeAddDestinationValue(destination, "forge");
+    const defaultPurchaser = (normalizedDestination === "forge" ? forgePurchaserOptions[0] : purchaserOptions[0]) || { id: "", name: "" };
     const isVaultDestination = normalizedDestination === "vault";
     const isWishlistDestination = normalizedDestination === "wishlist";
     const isForgeDestination = normalizedDestination === "forge";
@@ -8795,7 +9464,9 @@ export default function App() {
     if (!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()) return false;
     const post = makeTidepoolPost({
       ...tidepoolPostForm,
-      displayName: currentUserProfile.displayName || "Local Scout",
+      displayName: publicProfileLabel(),
+      username: currentPublicUsername(),
+      publicUsername: currentPublicUsername(),
       userId: currentUserProfile.userId || "local-beta",
       verificationStatus: ["Restock sighting", "Product sighting"].includes(tidepoolPostForm.postType) ? "pending" : "unverified",
       sourceType: "user",
@@ -8868,7 +9539,9 @@ export default function App() {
       commentId: makeId("comment"),
       postId,
       userId: currentUserProfile.userId || "local-beta",
-      displayName: currentUserProfile.displayName || "Local Scout",
+      displayName: publicProfileLabel(),
+      username: currentPublicUsername(),
+      publicUsername: currentPublicUsername(),
       body,
       parentCommentId,
       createdAt: new Date().toISOString(),
@@ -9077,11 +9750,13 @@ export default function App() {
           if (!createMemberError && createdMember) nextMembers = [normalizeWorkspaceMember(createdMember)];
         }
 
+        const activeWorkspaceRows = nextWorkspaces.filter((workspace) => !isWorkspaceArchived(workspace));
         const personalWorkspace =
-          nextWorkspaces.find((workspace) => workspace.type === "personal" && workspaceOwnerMatchesUser(workspace)) ||
-          nextWorkspaces.find((workspace) => workspaceOwnerMatchesUser(workspace)) ||
+          activeWorkspaceRows.find((workspace) => workspace.type === "personal" && workspaceOwnerMatchesUser(workspace)) ||
+          activeWorkspaceRows.find((workspace) => workspaceOwnerMatchesUser(workspace)) ||
+          activeWorkspaceRows[0] ||
           nextWorkspaces[0];
-        const visibleIds = new Set(nextWorkspaces.map((workspace) => String(workspace.id)));
+        const visibleIds = new Set(activeWorkspaceRows.map((workspace) => String(workspace.id)));
 
         if (cancelled) return;
         setWorkspaces(nextWorkspaces.length ? nextWorkspaces : fallback.workspaces);
@@ -9262,9 +9937,15 @@ export default function App() {
         cloudSyncPreference,
         locationSettings: hasCurrentLocation || !hasPersistedLocation ? locationSettings : persistedLocationSettings,
         subscriptionProfile,
+        profile: {
+          ...currentUserProfile,
+          username: currentPublicUsername(),
+          publicUsername: currentPublicUsername(),
+          public_username: currentPublicUsername(),
+        },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, subscriptionProfile, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -9285,13 +9966,29 @@ export default function App() {
     let active = true;
     async function loadProfile() {
       if (BETA_LOCAL_MODE && user?.id === "local-beta") {
-        const profile = makeFallbackUserProfile(user);
+        let savedProfile = {};
+        try {
+          savedProfile = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}")?.profile || {};
+        } catch {
+          savedProfile = {};
+        }
+        const profile = {
+          ...makeFallbackUserProfile(user),
+          ...savedProfile,
+          userId: "local-beta",
+          email: savedProfile.email || "local beta mode",
+        };
+        const normalizedUsername = publicUsernameFromProfile(profile);
+        profile.username = normalizedUsername;
+        profile.publicUsername = normalizedUsername;
+        profile.public_username = normalizedUsername;
         if (!active) return;
         setCurrentUserProfile(profile);
         setProfileForm({
           firstName: profile.firstName || "",
           lastName: profile.lastName || "",
           displayName: profile.displayName || profile.fullName || "",
+          publicUsername: publicUsernameFromProfile(profile),
           preferredRegion: profile.preferredRegion || profile.preferred_region || "Hampton Roads / 757",
         });
         setSubscriptionProfile((current) => ({
@@ -9312,6 +10009,7 @@ export default function App() {
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",
         displayName: profile.displayName || profile.fullName || "",
+        publicUsername: publicUsernameFromProfile(profile),
         preferredRegion: profile.preferredRegion || profile.preferred_region || "Hampton Roads / 757",
       });
       setSubscriptionProfile((current) => ({
@@ -9791,11 +10489,15 @@ export default function App() {
   }
 
   function changeActiveWorkspace(workspaceId) {
-    if (!workspaces.some((workspace) => String(workspace.id) === String(workspaceId))) return;
+    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId));
+    if (!workspace) return;
+    if (isWorkspaceArchived(workspace)) {
+      setWorkspaceMessage("Restore that collection before switching to it.");
+      return;
+    }
     setActiveWorkspaceId(workspaceId);
     setWorkspaceInviteForm((current) => ({ ...current, workspaceId }));
-    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceId));
-    setWorkspaceMessage(`Switched to ${workspace?.name || "workspace"}.`);
+    setWorkspaceMessage(`Switched to ${workspace?.name || "collection"}.`);
     setVaultPage(1);
     setForgeInventoryPage(1);
     setMarketWatchPage(1);
@@ -9803,9 +10505,13 @@ export default function App() {
 
   async function createWorkspace(event) {
     event?.preventDefault?.();
-    const name = String(workspaceForm.name || "").trim();
+    const name = normalizeWorkspaceDisplayName(workspaceForm.name || "");
     if (!name) {
-      setWorkspaceMessage("Enter a workspace name first.");
+      setWorkspaceMessage("Enter a collection name first.");
+      return;
+    }
+    if (collectionNameExists(name)) {
+      setWorkspaceMessage("A collection with that name already exists.");
       return;
     }
     const now = new Date().toISOString();
@@ -9813,11 +10519,13 @@ export default function App() {
     const workspace = {
       id: makeId("workspace"),
       name,
-      type: workspaceForm.type || "business",
+      type: workspaceTypeValue(workspaceForm.type || "business", "business"),
       ownerUserId: ownerId,
       owner_user_id: ownerId,
       createdAt: now,
       updatedAt: now,
+      archivedAt: "",
+      archived_at: null,
     };
     const ownerMember = normalizeWorkspaceMember({
       workspaceId: workspace.id,
@@ -9837,8 +10545,8 @@ export default function App() {
         .select()
         .single();
       if (workspaceError) {
-        setWorkspaceMessage(`Could not create workspace: ${workspaceError.message}`);
-        setVaultToast("Workspace was not created.");
+        setWorkspaceMessage(`Could not create collection: ${workspaceError.message}`);
+        setVaultToast("Collection was not created.");
         return;
       }
       const { data: createdMember, error: memberError } = await supabase
@@ -9854,8 +10562,8 @@ export default function App() {
         .select()
         .single();
       if (memberError) {
-        setWorkspaceMessage(`Workspace created, but owner role could not be saved: ${memberError.message}`);
-        setVaultToast("Workspace owner role needs admin review.");
+        setWorkspaceMessage(`Collection created, but owner role could not be saved: ${memberError.message}`);
+        setVaultToast("Collection owner role needs admin review.");
       }
       const mappedWorkspace = normalizeWorkspace(createdWorkspace, workspace);
       const mappedMember = createdMember ? normalizeWorkspaceMember(createdMember) : normalizeWorkspaceMember({ ...ownerMember, workspaceId: createdWorkspace.id });
@@ -9879,11 +10587,12 @@ export default function App() {
   function openWorkspaceRename(workspace = activeWorkspace) {
     if (!workspace?.id) return;
     if (!canEditWorkspaceId(workspace.id)) {
-      setWorkspaceMessage("You do not have permission to rename this collection.");
+      setWorkspaceMessage("You do not have permission to edit this collection.");
       return;
     }
     setWorkspaceRenameTarget(workspace);
     setWorkspaceRenameName(workspace.name || "");
+    setWorkspaceRenameType(workspaceTypeValue(workspace.type, "personal"));
     setWorkspaceMessage("");
   }
 
@@ -9891,6 +10600,7 @@ export default function App() {
     if (workspaceRenameSaving) return;
     setWorkspaceRenameTarget(null);
     setWorkspaceRenameName("");
+    setWorkspaceRenameType("personal");
   }
 
   async function submitWorkspaceRename(event) {
@@ -9906,13 +10616,18 @@ export default function App() {
       setWorkspaceMessage(`Collection name must be ${WORKSPACE_NAME_MAX_LENGTH} characters or fewer.`);
       return;
     }
+    if (collectionNameExists(name, workspaceRenameTarget.id)) {
+      setWorkspaceMessage("A collection with that name already exists.");
+      return;
+    }
     if (!canEditWorkspaceId(workspaceRenameTarget.id)) {
-      setWorkspaceMessage("You do not have permission to rename this collection.");
+      setWorkspaceMessage("You do not have permission to edit this collection.");
       return;
     }
 
     setWorkspaceRenameSaving(true);
     const now = new Date().toISOString();
+    const nextType = workspaceTypeValue(workspaceRenameType || workspaceRenameTarget.type, workspaceRenameTarget.type || "personal");
     const applyRenamedWorkspace = (updatedWorkspace) => {
       setWorkspaces((current) => current.map((workspace) =>
         String(workspace.id) === String(updatedWorkspace.id) ? normalizeWorkspace(updatedWorkspace, workspace) : workspace
@@ -9922,31 +10637,206 @@ export default function App() {
           ? { ...item, workspaceName: name }
           : item
       ));
-      setWorkspaceMessage(`Renamed collection to ${name}.`);
-      setVaultToast("Collection renamed.");
+      setWorkspaceMessage(`Saved ${name}.`);
+      setVaultToast("Collection saved.");
     };
 
     try {
       if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
         const { data, error } = await supabase
           .from("workspaces")
-          .update({ name, updated_at: now })
+          .update({ name, type: nextType, updated_at: now })
           .eq("id", workspaceRenameTarget.id)
           .select()
           .single();
         if (error) throw error;
-        applyRenamedWorkspace(data || { ...workspaceRenameTarget, name, updatedAt: now });
+        applyRenamedWorkspace(data || { ...workspaceRenameTarget, name, type: nextType, updatedAt: now });
       } else {
-        applyRenamedWorkspace({ ...workspaceRenameTarget, name, updatedAt: now, updated_at: now });
+        applyRenamedWorkspace({ ...workspaceRenameTarget, name, type: nextType, updatedAt: now, updated_at: now });
       }
       setWorkspaceRenameTarget(null);
       setWorkspaceRenameName("");
+      setWorkspaceRenameType("personal");
     } catch (error) {
       console.error("Could not rename collection", error);
       setWorkspaceMessage(`Could not rename collection: ${error.message || "Try again."}`);
       setVaultToast("Could not rename collection.");
     } finally {
       setWorkspaceRenameSaving(false);
+    }
+  }
+
+  function openWorkspaceArchive(workspace = activeWorkspace) {
+    if (!workspace?.id) return;
+    if (!canManageWorkspaceId(workspace.id)) {
+      setWorkspaceMessage("You need owner or admin access to archive this collection.");
+      return;
+    }
+    if (!isWorkspaceArchived(workspace) && workspaceSelectorOptions.length <= 1) {
+      setWorkspaceMessage("Create another active collection before archiving this one.");
+      return;
+    }
+    setWorkspaceArchiveTarget(workspace);
+    setWorkspaceMessage("");
+  }
+
+  function closeWorkspaceArchive() {
+    if (workspaceArchiveSavingId) return;
+    setWorkspaceArchiveTarget(null);
+  }
+
+  async function archiveWorkspace(workspace = workspaceArchiveTarget) {
+    if (!workspace?.id || workspaceArchiveSavingId) return;
+    if (!canManageWorkspaceId(workspace.id)) {
+      setWorkspaceMessage("You need owner or admin access to archive this collection.");
+      return;
+    }
+    if (!isWorkspaceArchived(workspace) && workspaceSelectorOptions.length <= 1) {
+      setWorkspaceMessage("Create another active collection before archiving this one.");
+      return;
+    }
+    const now = new Date().toISOString();
+    const nextWorkspace = {
+      ...workspace,
+      archivedAt: now,
+      archived_at: now,
+      archivedBy: user?.id || "local-beta",
+      archived_by: user?.id || "local-beta",
+      updatedAt: now,
+      updated_at: now,
+    };
+    const fallbackWorkspace = workspaceSelectorOptions.find((option) => String(option.id) !== String(workspace.id));
+    setWorkspaceArchiveSavingId(workspace.id);
+    try {
+      if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from("workspaces")
+          .update({
+            archived_at: now,
+            archived_by: user.id,
+            updated_at: now,
+          })
+          .eq("id", workspace.id)
+          .select()
+          .single();
+        if (error) throw error;
+        setWorkspaces((current) => current.map((entry) => String(entry.id) === String(workspace.id) ? normalizeWorkspace(data || nextWorkspace, entry) : entry));
+      } else {
+        setWorkspaces((current) => current.map((entry) => String(entry.id) === String(workspace.id) ? normalizeWorkspace(nextWorkspace, entry) : entry));
+      }
+      if (String(activeWorkspaceId) === String(workspace.id) && fallbackWorkspace?.id) {
+        setActiveWorkspaceId(fallbackWorkspace.id);
+        setWorkspaceInviteForm((current) => ({ ...current, workspaceId: fallbackWorkspace.id }));
+      }
+      setWorkspaceArchiveTarget(null);
+      setShowArchivedCollections(true);
+      setWorkspaceMessage(`${workspace.name || "Collection"} archived. Its records are hidden from normal collection switching, not deleted.`);
+      setVaultToast("Collection archived.");
+    } catch (error) {
+      console.error("Could not archive collection", error);
+      setWorkspaceMessage(`Could not archive collection: ${error.message || "Try again."}`);
+      setVaultToast("Could not archive collection.");
+    } finally {
+      setWorkspaceArchiveSavingId("");
+    }
+  }
+
+  async function restoreWorkspace(workspace) {
+    if (!workspace?.id || workspaceArchiveSavingId) return;
+    if (!canManageWorkspaceId(workspace.id)) {
+      setWorkspaceMessage("You need owner or admin access to restore this collection.");
+      return;
+    }
+    const now = new Date().toISOString();
+    setWorkspaceArchiveSavingId(workspace.id);
+    try {
+      if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from("workspaces")
+          .update({ archived_at: null, archived_by: null, updated_at: now })
+          .eq("id", workspace.id)
+          .select()
+          .single();
+        if (error) throw error;
+        setWorkspaces((current) => current.map((entry) => String(entry.id) === String(workspace.id) ? normalizeWorkspace(data || { ...workspace, archivedAt: "", archived_at: null, updatedAt: now, updated_at: now }, entry) : entry));
+      } else {
+        setWorkspaces((current) => current.map((entry) => String(entry.id) === String(workspace.id)
+          ? normalizeWorkspace({ ...entry, archivedAt: "", archived_at: null, archivedBy: "", archived_by: null, updatedAt: now, updated_at: now }, entry)
+          : entry
+        ));
+      }
+      setWorkspaceMessage(`${workspace.name || "Collection"} restored.`);
+      setVaultToast("Collection restored.");
+    } catch (error) {
+      console.error("Could not restore collection", error);
+      setWorkspaceMessage(`Could not restore collection: ${error.message || "Try again."}`);
+      setVaultToast("Could not restore collection.");
+    } finally {
+      setWorkspaceArchiveSavingId("");
+    }
+  }
+
+  function openWorkspaceDelete(workspace) {
+    if (!workspace?.id) return;
+    if (!canManageWorkspaceId(workspace.id)) {
+      setWorkspaceMessage("You need owner or admin access to delete this collection.");
+      return;
+    }
+    setWorkspaceDeleteTarget(workspace);
+    setWorkspaceDeleteConfirmText("");
+    setWorkspaceMessage("");
+  }
+
+  function closeWorkspaceDelete() {
+    if (workspaceDeleteSaving) return;
+    setWorkspaceDeleteTarget(null);
+    setWorkspaceDeleteConfirmText("");
+  }
+
+  async function deleteWorkspace() {
+    const workspace = workspaceDeleteTarget;
+    if (!workspace?.id || workspaceDeleteSaving) return;
+    const counts = workspaceRecordCountsFor(workspace.id);
+    if (counts.total > 0) {
+      setWorkspaceMessage("Permanent delete is blocked because this collection still has records. Archive it instead.");
+      return;
+    }
+    if (workspaceSelectorOptions.length <= 1 && !isWorkspaceArchived(workspace)) {
+      setWorkspaceMessage("Create another active collection before deleting this one.");
+      return;
+    }
+    if (String(workspaceDeleteConfirmText || "").trim().toUpperCase() !== "DELETE") {
+      setWorkspaceMessage("Type DELETE to permanently delete this empty collection.");
+      return;
+    }
+    const fallbackWorkspace = workspaceSelectorOptions.find((option) => String(option.id) !== String(workspace.id))
+      || accessibleWorkspaceOptions.find((option) => String(option.id) !== String(workspace.id) && !isWorkspaceArchived(option));
+    setWorkspaceDeleteSaving(true);
+    try {
+      if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
+        const { error } = await supabase
+          .from("workspaces")
+          .delete()
+          .eq("id", workspace.id);
+        if (error) throw error;
+      }
+      setWorkspaces((current) => current.filter((entry) => String(entry.id) !== String(workspace.id)));
+      setWorkspaceMembers((current) => current.filter((member) => String(member.workspaceId || member.workspace_id) !== String(workspace.id)));
+      setWorkspaceInvites((current) => current.filter((invite) => String(invite.workspaceId || invite.workspace_id) !== String(workspace.id)));
+      if (String(activeWorkspaceId) === String(workspace.id) && fallbackWorkspace?.id) {
+        setActiveWorkspaceId(fallbackWorkspace.id);
+        setWorkspaceInviteForm((current) => ({ ...current, workspaceId: fallbackWorkspace.id }));
+      }
+      setWorkspaceDeleteTarget(null);
+      setWorkspaceDeleteConfirmText("");
+      setWorkspaceMessage(`${workspace.name || "Collection"} deleted.`);
+      setVaultToast("Empty collection deleted.");
+    } catch (error) {
+      console.error("Could not delete collection", error);
+      setWorkspaceMessage(`Could not delete collection: ${error.message || "Try again."}`);
+      setVaultToast("Could not delete collection.");
+    } finally {
+      setWorkspaceDeleteSaving(false);
     }
   }
 
@@ -10075,7 +10965,7 @@ export default function App() {
       alertSettings: {},
     });
     setItems([]);
-    setPurchasers(createDefaultPurchasers());
+    setPurchasers([]);
     setCatalogProducts([]);
     setTideTradrWatchlist([]);
     setMarketplaceListings([]);
@@ -11476,7 +12366,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "scoutSubmit") {
       const draft = createQuickScoutReportDraft();
       setQuickScoutReportForm(draft);
-      setQuickScoutReportStep("what");
+      setQuickScoutReportStep("product");
       setQuickScoutReportMessage("");
       setQuickScoutReportSaved(null);
       flowModalBaselineRef.current.scoutSubmit = draft;
@@ -11705,12 +12595,20 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     };
   }
 
+  function scoutText(value = "") {
+    return String(value || "").trim();
+  }
+
+  function getScoutQuickStoreId(store = {}) {
+    return scoutText(store.id || store.storeId || store.store_id || store.locationId || store.location_id);
+  }
+
   function getScoutQuickStoreName(store = {}) {
-    return store.nickname || store.storeName || store.name || store.locationName || "Store location";
+    return scoutText(store.nickname || store.storeName || store.store_name || store.name || store.locationName || store.location_name) || "Store location";
   }
 
   function getScoutQuickRetailer(store = {}) {
-    return store.retailer || store.chain || store.storeGroup || store.banner || "Retailer";
+    return scoutText(store.retailer || store.chain || store.storeGroup || store.store_group || store.banner) || "Retailer";
   }
 
   function getScoutQuickStores() {
@@ -11731,7 +12629,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     return [...(scoutSnapshot.stores || []), ...reportStores, ...VIRGINIA_STORES_SEED]
       .filter(Boolean)
       .filter((store, index) => {
-        const key = String(store.id || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
+        const key = String(getScoutQuickStoreId(store) || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -11739,25 +12637,95 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function findScoutQuickStore(storeLike = {}) {
-    const explicitId = storeLike.storeId || storeLike.id || "";
-    const storeName = getScoutQuickStoreName(storeLike).toLowerCase();
-    const retailer = getScoutQuickRetailer(storeLike).toLowerCase();
-    return getScoutQuickStores().find((store) => {
-      if (explicitId && String(store.id) === String(explicitId)) return true;
-      return getScoutQuickStoreName(store).toLowerCase() === storeName && getScoutQuickRetailer(store).toLowerCase() === retailer;
-    });
+    const explicitId = getScoutQuickStoreId(storeLike);
+    const storeName = scoutText(storeLike.storeName || storeLike.store_name || storeLike.nickname || storeLike.name || storeLike.locationName || storeLike.location_name).toLowerCase();
+    const retailer = scoutText(storeLike.retailer || storeLike.chain || storeLike.storeGroup || storeLike.store_group || storeLike.banner).toLowerCase();
+    const stores = getScoutQuickStores();
+    if (explicitId) return stores.find((store) => getScoutQuickStoreId(store) === explicitId) || null;
+    if (!storeName) return null;
+    return stores.find((store) => {
+      const candidateName = getScoutQuickStoreName(store).toLowerCase();
+      const candidateRetailer = getScoutQuickRetailer(store).toLowerCase();
+      return candidateName === storeName && (!retailer || candidateRetailer === retailer);
+    }) || null;
   }
 
   function buildQuickScoutStoreDraft(store = {}) {
     if (!store || !Object.keys(store).length) return {};
+    const storeId = getScoutQuickStoreId(store);
     return {
-      storeId: store.id || store.storeId || "",
+      storeId,
       storeName: getScoutQuickStoreName(store),
       retailer: getScoutQuickRetailer(store),
       city: store.city || store.addressCity || store.region || "",
       address: store.address || store.streetAddress || "",
       manualLocation: "",
       storeSearch: "",
+    };
+  }
+
+  function resolveQuickScoutStoreSelection(form = quickScoutReportForm) {
+    const storeId = getScoutQuickStoreId({ id: form.storeId });
+    const manualLocation = scoutText(form.manualLocation);
+    const formStoreName = scoutText(form.storeName);
+    const formRetailer = scoutText(form.retailer);
+    if (storeId) {
+      const matchedStore = findScoutQuickStore({ id: storeId });
+      if (!matchedStore && !formStoreName) {
+        return {
+          valid: false,
+          message: "Selected store could not be found. Choose the store again before submitting.",
+          storeId,
+        };
+      }
+      const store = matchedStore || {
+        id: storeId,
+        storeId,
+        name: formStoreName,
+        nickname: formStoreName,
+        retailer: formRetailer || "Retailer",
+        city: form.city || "",
+        address: form.address || "",
+      };
+      return {
+        valid: true,
+        mode: "known",
+        store,
+        storeId,
+        storeName: getScoutQuickStoreName(store),
+        retailer: getScoutQuickRetailer(store),
+        city: store.city || form.city || "",
+        address: store.address || form.address || "",
+        needsStoreReview: false,
+      };
+    }
+    const manualName = manualLocation || formStoreName;
+    if (manualName) {
+      const store = {
+        id: "",
+        storeId: "",
+        name: manualName,
+        nickname: manualName,
+        retailer: formRetailer || "Manual",
+        city: form.city || "",
+        address: form.address || "",
+      };
+      return {
+        valid: true,
+        mode: "manual",
+        store,
+        storeId: "",
+        storeName: manualName,
+        retailer: formRetailer || "Manual",
+        city: form.city || "",
+        address: form.address || "",
+        needsStoreReview: true,
+      };
+    }
+    return {
+      valid: false,
+      message: "Choose the store or enter a manual store/location before submitting.",
+      storeId: "",
     };
   }
 
@@ -11794,7 +12762,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setQuickScoutReportMessage("");
     setQuickScoutReportForm((current) => ({
       ...current,
-      dateMode: preset === "yesterday" ? "yesterday" : "today",
+      dateMode: preset === "yesterday" ? "yesterday" : preset === "earlier_today" ? "earlier_today" : "today",
       reportDate: getLocalDateKey(date),
       reportTime: getLocalTimeKey(date),
       dayOfWeek: SCOUT_WEEKDAYS[date.getDay()],
@@ -11802,6 +12770,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function selectQuickScoutReportStore(store = {}) {
+    setQuickScoutReportMessage("");
     setQuickScoutReportForm((current) => ({ ...current, ...buildQuickScoutStoreDraft(store) }));
   }
 
@@ -11822,6 +12791,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function quickScoutDateLabel(form = quickScoutReportForm) {
     if (form.dateMode === "not_sure") return "Not sure";
     if (form.dateMode === "day_only") return form.dayOfWeek || "Day not selected";
+    if (form.dateMode === "earlier_today") return `${form.reportDate || getLocalDateKey()} at ${form.reportTime || "earlier today"}`;
     const dateLabel = form.dateMode === "yesterday" ? getYesterdayDateKey() : form.reportDate || getLocalDateKey();
     return `${dateLabel}${form.reportTime ? ` at ${form.reportTime}` : ""}`;
   }
@@ -11866,30 +12836,41 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function quickScoutReportReady() {
-    return Boolean(quickScoutReportForm.reportType && (quickScoutReportForm.storeId || quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName.trim()));
+    return Boolean(quickScoutReportForm.reportType && resolveQuickScoutStoreSelection().valid);
+  }
+
+  function scoutWizardStepError(stepKey = quickScoutReportStep) {
+    const currentType = quickScoutReportTypeMeta();
+    if (stepKey === "details" && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
+    if (stepKey === "where") {
+      const storeSelection = resolveQuickScoutStoreSelection();
+      if (!storeSelection.valid) return storeSelection.message;
+    }
+    if (stepKey === "product" && !quickScoutReportForm.productCategory && !currentType.isGuess) return "Choose a product category before continuing.";
+    if (stepKey === "review" && !quickScoutReportReady()) return scoutWizardStepError("where") || scoutWizardStepError("details") || "Complete the missing Scout report details before submitting.";
+    return "";
   }
 
   function getScoutWizardSteps() {
     return [
-      { key: "what", label: "What" },
+      { key: "product", label: "Item" },
       { key: "where", label: "Where" },
-      { key: "proof", label: "Proof" },
-      { key: "product", label: "Product" },
+      { key: "details", label: "Status" },
       { key: "review", label: "Review" },
     ];
   }
 
   function canAdvanceScoutWizard(stepKey = quickScoutReportStep) {
-    const currentType = quickScoutReportTypeMeta();
-    if (stepKey === "what") return Boolean(quickScoutReportForm.reportType);
-    if (stepKey === "where") return Boolean(quickScoutReportForm.storeId || quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName.trim());
-    if (stepKey === "product") return Boolean(quickScoutReportForm.productCategory || currentType.isGuess);
-    if (stepKey === "review") return quickScoutReportReady();
-    return true;
+    return !scoutWizardStepError(stepKey);
   }
 
   function goNextScoutWizardStep() {
-    if (!canAdvanceScoutWizard()) return;
+    const error = scoutWizardStepError();
+    if (error) {
+      setQuickScoutReportMessage(error);
+      return;
+    }
+    setQuickScoutReportMessage("");
     const wizardSteps = getScoutWizardSteps();
     const activeStepIndex = Math.max(0, wizardSteps.findIndex((step) => step.key === quickScoutReportStep));
     setQuickScoutReportStep(wizardSteps[Math.min(activeStepIndex + 1, wizardSteps.length - 1)].key);
@@ -11903,8 +12884,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function buildQuickScoutReportRecord() {
     const type = quickScoutReportTypeMeta();
-    const knownStore = quickScoutReportForm.storeId ? findScoutQuickStore({ id: quickScoutReportForm.storeId }) : null;
-    const selectedStore = knownStore || quickScoutReportForm;
+    const storeSelection = resolveQuickScoutStoreSelection();
+    if (!storeSelection.valid) return null;
+    const selectedStore = storeSelection.store || {};
     const timestampSourceDate = quickScoutReportForm.dateMode === "yesterday"
       ? getYesterdayDateKey()
       : quickScoutReportForm.dateMode === "pick_date" || quickScoutReportForm.dateMode === "today"
@@ -11912,22 +12894,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         : getLocalDateKey();
     const reportedAt = new Date(`${timestampSourceDate}T${quickScoutReportForm.reportTime || getLocalTimeKey()}`).toISOString();
     const productName = quickScoutReportForm.productName.trim();
-    const storeName = quickScoutReportForm.storeId
-      ? getScoutQuickStoreName(selectedStore)
-      : quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName || "Needs Store Review";
-    const retailer = quickScoutReportForm.storeId
-      ? getScoutQuickRetailer(selectedStore)
-      : quickScoutReportForm.retailer || "Manual";
+    const storeName = storeSelection.storeName;
+    const retailer = storeSelection.retailer;
     const notes = [
       quickScoutReportForm.note.trim(),
       quickScoutReportForm.proofText.trim() ? `Proof/text: ${quickScoutReportForm.proofText.trim()}` : "",
-      quickScoutReportForm.manualLocation.trim() && !quickScoutReportForm.storeId ? `Manual location: ${quickScoutReportForm.manualLocation.trim()}` : "",
+      quickScoutReportForm.manualLocation.trim() && !storeSelection.storeId ? `Manual location: ${quickScoutReportForm.manualLocation.trim()}` : "",
       `Proof source: ${quickScoutProofLabel()}`,
       `Stock left: ${quickScoutStockLeftLabel()}`,
       quickScoutReportForm.dateMode === "day_only" ? `Day reported: ${quickScoutReportForm.dayOfWeek}` : "",
       quickScoutReportForm.dateMode === "not_sure" ? "Date/time not sure" : "",
     ].filter(Boolean).join(" | ");
     const id = makeId("quick-scout-report");
+    const workspaceId = activeWorkspaceId || currentUserProfile?.workspaceId || currentUserProfile?.workspace_id || "";
     return {
       id,
       reportId: id,
@@ -11939,20 +12918,22 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       source_type: type.sourceType,
       confidence: type.confidence,
       confidence_score: scoutConfidenceScore(type.confidence),
-      storeId: quickScoutReportForm.storeId,
-      store_id: quickScoutReportForm.storeId,
+      storeId: storeSelection.storeId,
+      store_id: storeSelection.storeId,
+      selectedStoreId: storeSelection.storeId,
+      selected_store_id: storeSelection.storeId,
       storeName,
       store_name: storeName,
       retailer,
       chain: retailer,
-      city: selectedStore.city || quickScoutReportForm.city || "",
-      address: selectedStore.address || quickScoutReportForm.address || "",
+      city: storeSelection.city || selectedStore.city || quickScoutReportForm.city || "",
+      address: storeSelection.address || selectedStore.address || quickScoutReportForm.address || "",
       manualLocation: quickScoutReportForm.manualLocation.trim(),
-      needsStoreReview: !quickScoutReportForm.storeId,
-      needsReview: Boolean(type.needsReview || !quickScoutReportForm.storeId),
-      verificationStatus: type.needsReview || !quickScoutReportForm.storeId ? "Needs Review" : "User Report",
-      verification_status: type.needsReview || !quickScoutReportForm.storeId ? "pending" : "unverified",
-      status: type.needsReview || !quickScoutReportForm.storeId ? "pending" : "unverified",
+      needsStoreReview: storeSelection.needsStoreReview,
+      needsReview: Boolean(type.needsReview || storeSelection.needsStoreReview),
+      verificationStatus: type.needsReview || storeSelection.needsStoreReview ? "Needs Review" : "User Report",
+      verification_status: type.needsReview || storeSelection.needsStoreReview ? "pending" : "unverified",
+      status: type.needsReview || storeSelection.needsStoreReview ? "pending" : "unverified",
       verified: false,
       visibility: normalizeScoutReportVisibility(quickScoutReportForm.visibility),
       visibilitySelection: quickScoutReportForm.visibility,
@@ -11988,17 +12969,18 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       updatedAt: new Date().toISOString(),
       userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
       displayName: currentUserProfile?.displayName || user?.email || "Local Scout",
+      workspaceId,
+      workspace_id: workspaceId,
       sourceStatus: BETA_LOCAL_MODE ? "local_beta" : "local",
       report_type: quickScoutNormalizedReportType(type),
     };
   }
 
   function buildQuickScoutGuessRecord() {
-    const knownStore = quickScoutReportForm.storeId ? findScoutQuickStore({ id: quickScoutReportForm.storeId }) : null;
-    const selectedStore = knownStore || quickScoutReportForm;
-    const storeName = quickScoutReportForm.storeId
-      ? getScoutQuickStoreName(selectedStore)
-      : quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName || "Needs Store Review";
+    const storeSelection = resolveQuickScoutStoreSelection();
+    if (!storeSelection.valid) return null;
+    const selectedStore = storeSelection.store || {};
+    const storeName = storeSelection.storeName;
     const guessedDay = quickScoutReportForm.dateMode === "day_only"
       ? quickScoutReportForm.dayOfWeek
       : quickScoutReportForm.dateMode === "not_sure"
@@ -12006,18 +12988,21 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         : new Date(`${quickScoutReportForm.reportDate || getLocalDateKey()}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" });
     const id = makeId("store-guess");
     const now = new Date().toISOString();
+    const workspaceId = activeWorkspaceId || currentUserProfile?.workspaceId || currentUserProfile?.workspace_id || "";
     return {
       id,
       recordType: "guess",
       userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
       user_id: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
       displayName: currentUserProfile?.displayName || user?.email || "Local Scout",
-      storeId: quickScoutReportForm.storeId,
-      store_id: quickScoutReportForm.storeId,
+      storeId: storeSelection.storeId,
+      store_id: storeSelection.storeId,
+      selectedStoreId: storeSelection.storeId,
+      selected_store_id: storeSelection.storeId,
       storeName,
       store_name: storeName,
-      retailer: getScoutQuickRetailer(selectedStore),
-      city: selectedStore.city || quickScoutReportForm.city || "",
+      retailer: storeSelection.retailer,
+      city: storeSelection.city || selectedStore.city || quickScoutReportForm.city || "",
       guessedDay,
       guessed_day: guessedDay,
       guessedTimeWindow: quickScoutReportForm.guessedTimeWindow || (quickScoutReportForm.reportTime ? `Around ${quickScoutReportForm.reportTime}` : ""),
@@ -12032,6 +13017,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       sourceType: "manual_prediction",
       source_type: "manual_prediction",
       visibility: normalizeScoutGuessVisibility(quickScoutReportForm.visibility),
+      workspaceId,
+      workspace_id: workspaceId,
       createdAt: now,
       created_at: now,
       updatedAt: now,
@@ -12046,14 +13033,21 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setVaultToast("Create a free account to submit reports and build forecasts.");
       return;
     }
-    if (!quickScoutReportReady()) {
-      setQuickScoutReportMessage("Choose a report type and a store or manual location.");
+    const validationError = scoutWizardStepError("review");
+    if (validationError) {
+      setQuickScoutReportMessage(validationError);
+      if (scoutWizardStepError("where")) setQuickScoutReportStep("where");
       return;
     }
     const currentType = quickScoutReportTypeMeta();
     const scoutData = getSharedScoutData();
     if (currentType.isGuess) {
       const guess = buildQuickScoutGuessRecord();
+      if (!guess) {
+        setQuickScoutReportMessage(scoutWizardStepError("where") || "Choose the store/location before saving this guess.");
+        setQuickScoutReportStep("where");
+        return;
+      }
       const nextGuesses = [guess, ...(scoutData.storeGuesses || scoutSnapshot.storeGuesses || [])]
         .filter((entry, index, list) => list.findIndex((candidate) => String(candidate.id) === String(entry.id)) === index);
       saveSharedScoutData({ ...scoutData, storeGuesses: nextGuesses });
@@ -12066,6 +13060,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     const report = buildQuickScoutReportRecord();
+    if (!report) {
+      setQuickScoutReportMessage(scoutWizardStepError("where") || "Choose the store/location before submitting this report.");
+      setQuickScoutReportStep("where");
+      return;
+    }
     const nextReports = [report, ...(scoutData.reports || scoutSnapshot.reports || [])]
       .filter((entry, index, list) => list.findIndex((candidate) => getScoutReportId(candidate) === getScoutReportId(entry)) === index);
     saveSharedScoutData({ ...scoutData, reports: nextReports });
@@ -12074,6 +13073,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setQuickScoutReportMessage("Report sent. You can add details now or later.");
     setScoutReportFilter("Latest");
     setScoutReportsPage(1);
+    setScoutView("reports");
     completeDailyAction("store", { badge: "restock_reporter", points: 10 });
     setVaultToast("Report sent. You can add details now or later.");
     flowModalBaselineRef.current.scoutSubmit = quickScoutReportForm;
@@ -12099,7 +13099,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       manualLocation: options.manualLocation || "",
     });
     setQuickScoutReportForm(draft);
-    setQuickScoutReportStep("what");
+    setQuickScoutReportStep("product");
     setQuickScoutReportMessage("");
     setQuickScoutReportSaved(null);
     flowModalBaselineRef.current.scoutSubmit = draft;
@@ -12268,10 +13268,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (multiDestinationSaving) return;
     if (blockGuestSave()) return;
     const saveMode = event.nativeEvent?.submitter?.value === "add-more" ? "add-more" : "close";
-    const reviewValidationMessage = validateMultiDestinationStep("review", multiDestinationForm);
-    if (reviewValidationMessage) {
-      setMultiDestinationStep(reviewValidationMessage.toLowerCase().includes("destination") ? "destination" : reviewValidationMessage.toLowerCase().includes("quantity") || reviewValidationMessage.toLowerCase().includes("price") || reviewValidationMessage.toLowerCase().includes("cost") ? "details" : "item");
-      setMultiDestinationMessage(reviewValidationMessage);
+    setMultiDestinationValidationAttempted(true);
+    const reviewValidationErrors = getMultiDestinationValidationErrors("review", multiDestinationForm);
+    if (reviewValidationErrors.length) {
+      setMultiDestinationMessage(`Please fix ${reviewValidationErrors.length} item${reviewValidationErrors.length === 1 ? "" : "s"} before saving.`);
+      focusMultiDestinationValidationError(reviewValidationErrors[0]);
       return;
     }
     const itemName = String(multiDestinationForm.itemName || "").trim();
@@ -12281,6 +13282,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setMultiDestinationMessage("Saving item...");
     const now = new Date().toISOString();
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
+    const selectedCatalogKnown = selectedCatalog ? buildCatalogAutofillDetails(selectedCatalog) : {};
     const successes = [];
     const failures = [];
     const pendingInventoryCreates = [];
@@ -12296,6 +13298,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const shared = {
       name: itemName,
       category: multiDestinationForm.category || "Pokemon",
+      sku: selectedCatalogKnown.sku || "",
       productType: normalizedInventoryProductType({
         ...selectedCatalog,
         name: itemName,
@@ -12306,10 +13309,22 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       catalogProductId: selectedCatalog?.id || "",
       catalogVariantId: multiDestinationForm.catalogVariantId || "",
       catalogProductName: selectedCatalog?.name || "",
+      externalProductId: selectedCatalogKnown.externalProductId || "",
+      tcgplayerProductId: selectedCatalogKnown.tcgplayerProductId || selectedCatalogKnown.externalProductId || "",
+      tideTradrUrl: selectedCatalogKnown.sourceUrl || "",
+      itemImage: selectedCatalogKnown.itemImage || "",
+      itemImageSource: selectedCatalog?.imageSource || getDefaultImageSource(selectedCatalog || {}),
+      itemImageStatus: selectedCatalog?.imageStatus || getDefaultImageStatus(selectedCatalog || {}),
+      itemImageSourceUrl: selectedCatalog?.imageSourceUrl || selectedCatalogKnown.sourceUrl || "",
+      itemImageLastUpdated: selectedCatalog?.imageLastUpdated || selectedCatalog?.lastUpdated || selectedCatalog?.updatedAt || selectedCatalog?.updated_at || "",
+      itemImageNeedsReview: Boolean(selectedCatalog?.imageNeedsReview),
       marketPrice: Number(multiDestinationForm.marketPrice || selectedCatalog?.marketPrice || selectedCatalog?.midPrice || 0),
       msrpPrice: Number(multiDestinationForm.msrpPrice || selectedCatalog?.msrpPrice || 0),
-      setName: multiDestinationForm.setName || (selectedCatalog ? catalogExpansionName(selectedCatalog) : multiDestinationForm.tidetradr.setName),
-      expansion: multiDestinationForm.setName || (selectedCatalog ? catalogExpansionName(selectedCatalog) : multiDestinationForm.tidetradr.setName),
+      setCode: selectedCatalogKnown.setCode || "",
+      setName: multiDestinationForm.setName || selectedCatalogKnown.setName || multiDestinationForm.tidetradr.setName,
+      expansion: multiDestinationForm.setName || selectedCatalogKnown.setName || multiDestinationForm.tidetradr.setName,
+      productLine: selectedCatalogKnown.productLine || "",
+      packCount: selectedCatalogKnown.packCount || "",
       variant: multiDestinationForm.variant || "",
       notes: multiDestinationForm.notes || "",
       sourceType: selectedCatalog ? "TideTradr" : "Multi-destination add",
@@ -12399,6 +13414,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         if (!canWriteDestination("forge")) throw new Error("You do not have permission to edit this workspace.");
         const forgeQuantity = Math.max(1, Number(multiDestinationForm.forge.quantity || 1));
         const forgeWorkspace = destinationWorkspace("forge");
+        const forgePurchaser = resolvePurchaser(multiDestinationForm.forge, forgeWorkspace?.id);
         const forgeItem = applyWorkspaceToRecord({
           id: makeId("item"),
           ...shared,
@@ -12415,9 +13431,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           physicalLocation: multiDestinationForm.forge.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION,
           physicalLocationNotes: multiDestinationForm.forge.physicalLocation === "Other" ? multiDestinationForm.forge.physicalLocationNotes || "" : "",
           status: "In Stock",
-          buyer: "",
-          purchaserId: "purchaser-default-1",
-          purchaserName: "",
+          buyer: forgePurchaser.purchaserName,
+          purchaserId: forgePurchaser.purchaserId,
+          purchaserName: forgePurchaser.purchaserName,
           conditionName: multiDestinationForm.forge.conditionName || "Near Mint",
           language: "English",
           notes: [multiDestinationForm.forge.notes, multiDestinationForm.notes].filter(Boolean).join(" "),
@@ -12534,6 +13550,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (saveMode === "add-more") {
       resetMultiDestinationForm({ destinations });
       setMultiDestinationMessage("Saved. Ready for the next item.");
+      setMultiDestinationValidationAttempted(false);
       return;
     }
     closeFlowModal({ force: true, reset: false });
@@ -13730,6 +14747,47 @@ function mapCatalog(row) {
     );
   }
 
+  function vaultForgeTransferEntries(transfer = vaultForgeTransfer) {
+    return inventoryGroupEntries(transfer?.item).filter((entry) => Number(entry.quantity || 0) > 0);
+  }
+
+  function selectedVaultForgeTransferSource(transfer = vaultForgeTransfer) {
+    const entries = vaultForgeTransferEntries(transfer);
+    return entries.find((entry) => String(entry.id) === String(transfer?.sourceItemId)) || entries[0] || transfer?.item || null;
+  }
+
+  function updateVaultForgeTransferSource(sourceItemId) {
+    setVaultForgeTransfer((current) => {
+      if (!current) return current;
+      const entries = vaultForgeTransferEntries({ ...current, sourceItemId });
+      const source = entries.find((entry) => String(entry.id) === String(sourceItemId)) || entries[0] || current.item;
+      const quantity = Math.max(1, Number(source?.quantity || 1));
+      return {
+        ...current,
+        sourceItemId,
+        quantityToMove: Math.min(Number(current.quantityToMove || 1), quantity),
+        costPaid: hasValue(source?.unitCost) ? source.unitCost : current.costPaid,
+      };
+    });
+  }
+
+  function sameInventoryProduct(a = {}, b = {}) {
+    return inventoryProductGroupKey(a, "product") === inventoryProductGroupKey(b, "product");
+  }
+
+  function findForgeMergeTargetForTransfer(sourceItem, targetForgeWorkspace) {
+    if (!sourceItem || !targetForgeWorkspace?.id) return null;
+    const targetLocation = sourceItem.physicalLocation || sourceItem.physical_location || DEFAULT_FORGE_PHYSICAL_LOCATION;
+    return items.find((item) =>
+      item.id !== sourceItem.id &&
+      isForgeInventoryItem(item) &&
+      recordBelongsToWorkspace(item, targetForgeWorkspace.id) &&
+      sameInventoryProduct(item, sourceItem) &&
+      itemPurchaserKey(item) === itemPurchaserKey(sourceItem) &&
+      (forgePhysicalLocationLabel(item) || DEFAULT_FORGE_PHYSICAL_LOCATION) === targetLocation
+    ) || null;
+  }
+
   function openVaultForgeTransfer(item, mode = "move") {
     if (!ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     if (!activeForgeWorkspace) {
@@ -13737,12 +14795,15 @@ function mapCatalog(row) {
       showAppMessage(forgeWorkspaceUnavailableMessage);
       return;
     }
-    const quantity = Math.max(1, Number(item.quantity || 1));
+    const entries = inventoryGroupEntries(item).filter((entry) => Number(entry.quantity || 0) > 0);
+    const sourceItem = entries[0] || item;
+    const quantity = Math.max(1, Number(sourceItem.quantity || 1));
     setVaultForgeTransfer({
       item,
       mode,
+      sourceItemId: sourceItem?.id || item?.id || "",
       quantityToMove: Math.min(1, quantity),
-      costPaid: hasValue(item.unitCost) ? item.unitCost : "",
+      costPaid: hasValue(sourceItem?.unitCost) ? sourceItem.unitCost : "",
       duplicateMode: "create",
     });
   }
@@ -13796,7 +14857,13 @@ function mapCatalog(row) {
 
   function confirmVaultForgeTransfer(modeOverride, quantityOverride) {
     if (!vaultForgeTransfer?.item) return;
-    const sourceItem = vaultForgeTransfer.item;
+    const groupedSourceItem = vaultForgeTransfer.item;
+    const sourceItem = selectedVaultForgeTransferSource(vaultForgeTransfer);
+    if (!sourceItem?.id) {
+      setVaultToast("Choose which saved entry to move.");
+      showAppMessage("Choose which saved entry to move.");
+      return;
+    }
     const mode = modeOverride || vaultForgeTransfer.mode || "move";
     const targetForgeWorkspace = activeForgeWorkspace;
     if (!targetForgeWorkspace) {
@@ -13824,19 +14891,16 @@ function mapCatalog(row) {
     }
     const quantityToMove = requestedQuantity;
     const now = new Date().toISOString();
-    const sourceCatalogId = String(sourceItem.catalogProductId || "");
-    const duplicate = sourceCatalogId ? items.find((item) =>
-      item.id !== sourceItem.id &&
-      isForgeInventoryItem(item) &&
-      recordBelongsToWorkspace(item, targetForgeWorkspace.id) &&
-      String(item.catalogProductId || "") === sourceCatalogId
-    ) : null;
+    const duplicate = findForgeMergeTargetForTransfer(sourceItem, targetForgeWorkspace);
+    const targetPhysicalLocation = sourceItem.physicalLocation || sourceItem.physical_location || DEFAULT_FORGE_PHYSICAL_LOCATION;
 
     const forgeItem = applyWorkspaceToRecord({
       ...sourceItem,
       id: duplicate && vaultForgeTransfer.duplicateMode === "existing" ? duplicate.id : makeId("forge-vault"),
       quantity: quantityToMove,
       unitCost: Number(vaultForgeTransfer.costPaid || sourceItem.unitCost || 0),
+      physicalLocation: targetPhysicalLocation,
+      physicalLocationNotes: sourceItem.physicalLocationNotes || sourceItem.physical_location_notes || "",
       status: "In Stock",
       vaultStatus: "",
       destinationScope: ["forge"],
@@ -13847,6 +14911,7 @@ function mapCatalog(row) {
       sourceType: "Forge copy",
       sourceLocation: "vault",
       originalVaultItemId: sourceItem.id,
+      originalVaultGroupId: groupedSourceItem.groupId || groupedSourceItem.id,
       movedFromVaultAt: now,
       dateMovedToForge: now,
       acquisitionType: "moved_from_vault",
@@ -14168,7 +15233,7 @@ function applyCatalogProduct(productId) {
   if (!product) return;
   const resolvedProductId = product.id || productId;
   updateItemForm("catalogProductId", resolvedProductId);
-  const marketInfo = getTideTradrMarketInfo(product);
+  const known = buildCatalogAutofillDetails(product);
   const defaultVariant = getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null;
 
   setItemForm((old) => ({
@@ -14176,37 +15241,102 @@ function applyCatalogProduct(productId) {
     catalogProductId: resolvedProductId,
     catalogVariantId: defaultVariant?.id || "",
 
-    name: product.name || "",
-    category: product.category || "Pokemon",
-    barcode: product.barcode || "",
-    externalProductId: product.externalProductId || "",
-    tideTradrUrl: product.marketUrl || "",
-    itemImage: getCatalogImage(product) || "",
+    name: known.itemName || old.name || "",
+    category: known.category || old.category || "Pokemon",
+    barcode: known.upc || old.barcode || "",
+    sku: known.sku || old.sku || "",
+    externalProductId: known.externalProductId || old.externalProductId || "",
+    tcgplayerProductId: known.tcgplayerProductId || old.tcgplayerProductId || "",
+    tideTradrUrl: known.sourceUrl || old.tideTradrUrl || "",
+    itemImage: known.itemImage || old.itemImage || "",
     itemImageSource: product.imageSource || getDefaultImageSource(product),
     itemImageStatus: product.imageStatus || getDefaultImageStatus(product),
-    itemImageSourceUrl: product.imageSourceUrl || product.marketUrl || "",
-    itemImageLastUpdated: product.imageLastUpdated || product.lastUpdated || "",
+    itemImageSourceUrl: product.imageSourceUrl || known.sourceUrl || "",
+    itemImageLastUpdated: product.imageLastUpdated || product.lastUpdated || product.updatedAt || product.updated_at || "",
     itemImageNeedsReview: Boolean(product.imageNeedsReview),
 
-    marketPrice: marketInfo.currentMarketValue || "",
-    lowPrice: product.lowPrice || "",
-    midPrice: product.midPrice || "",
-    highPrice: product.highPrice || "",
-    msrpPrice: product.msrpPrice || "",
+    marketPrice: known.marketPrice || old.marketPrice || "",
+    lowPrice: known.lowPrice || old.lowPrice || "",
+    midPrice: known.midPrice || old.midPrice || "",
+    highPrice: known.highPrice || old.highPrice || "",
+    msrpPrice: known.msrpPrice || old.msrpPrice || "",
 
-    setCode: product.setCode || "",
-    expansion: product.expansion || product.setName || "",
-    productLine: product.productLine || "",
-    productType: product.productType || "",
-    packCount: product.packCount || "",
+    setCode: known.setCode || old.setCode || "",
+    expansion: known.setName || old.expansion || old.setName || "",
+    setName: known.setName || old.setName || old.expansion || "",
+    productLine: known.productLine || old.productLine || "",
+    productType: known.productType || old.productType || "",
+    packCount: known.packCount || old.packCount || "",
     finish: defaultVariant?.finish || product.finish || "",
     printing: defaultVariant?.printing || product.printing || "",
     language: defaultVariant?.language || product.language || old.language || "English",
-    conditionName: product.catalogType === "card" ? old.conditionName || "Near Mint" : old.conditionName || "",
+    conditionName: old.conditionName || (isCatalogCardProduct(product) ? "Near Mint" : isCatalogSealedProduct(product) ? "Sealed" : ""),
 
-    unitCost: marketInfo.msrp || old.unitCost || "",
-    salePrice: marketInfo.currentMarketValue || old.salePrice || "",
+    unitCost: isBlankCatalogField(old.unitCost) && known.msrpPrice ? known.msrpPrice : old.unitCost,
+    salePrice: isBlankCatalogField(old.salePrice) && known.marketPrice ? known.marketPrice : old.salePrice,
   }));
+}
+
+function isBlankCatalogField(value) {
+  return value === "" || value === null || value === undefined;
+}
+
+function firstKnownCatalogValue(...values) {
+  return values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") ?? "";
+}
+
+function knownCatalogNumber(...values) {
+  const value = firstKnownCatalogValue(...values);
+  if (value === "") return "";
+  const number = toNumber(value, NaN);
+  return Number.isFinite(number) ? number : "";
+}
+
+function buildCatalogAutofillDetails(product = {}) {
+  const marketInfo = getTideTradrMarketInfo(product);
+  const explicitMarketPrice = knownCatalogNumber(
+    product.marketPrice,
+    product.market_price,
+    product.marketValue,
+    product.market_value,
+    product.marketValueNearMint,
+    product.market_value_near_mint,
+    product.midPrice,
+    product.mid_price,
+    product.highPrice,
+    product.high_price,
+    product.lowPrice,
+    product.low_price
+  );
+  const msrpPrice = knownCatalogNumber(
+    product.msrpPrice,
+    product.msrp_price,
+    product.msrp,
+    product.retailPrice,
+    product.retail_price,
+    product.marketSummary?.msrp
+  ) || marketInfo.msrp || "";
+  const marketPrice = explicitMarketPrice || "";
+  return {
+    itemName: catalogTitle(product),
+    category: product.category || product.tcgType || product.tcg_type || "Pokemon",
+    productType: catalogProductTypeLabel(product) || normalizedInventoryProductType(product),
+    setName: catalogExpansionName(product),
+    setCode: firstKnownCatalogValue(product.setCode, product.set_code),
+    productLine: firstKnownCatalogValue(product.productLine, product.product_line, product.series),
+    upc: firstKnownCatalogValue(product.barcode, product.upc),
+    sku: firstKnownCatalogValue(product.sku, product.retailSku, product.retail_sku),
+    externalProductId: firstKnownCatalogValue(product.externalProductId, product.external_product_id, product.tcgplayerProductId, product.tcgplayer_product_id),
+    tcgplayerProductId: firstKnownCatalogValue(product.tcgplayerProductId, product.tcgplayer_product_id),
+    packCount: knownCatalogNumber(product.packCount, product.pack_count, product.contents?.packCount, product.contents?.pack_count),
+    itemImage: getCatalogImage(product),
+    sourceUrl: catalogSourceUrl(product),
+    msrpPrice,
+    marketPrice,
+    lowPrice: knownCatalogNumber(product.lowPrice, product.low_price),
+    midPrice: knownCatalogNumber(product.midPrice, product.mid_price),
+    highPrice: knownCatalogNumber(product.highPrice, product.high_price),
+  };
 }
 
 function getTideTradrMarketInfo(product = {}) {
@@ -15082,8 +16212,8 @@ function renderVaultHeader() {
         <button type="button" className="vault-command-quick-add" onClick={openVaultQuickAddFlow}>
           Quick Add
         </button>
-        <button type="button" className="secondary-button" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>
-          Rename Collection
+        <button type="button" className="secondary-button" onClick={() => setCollectionManagerOpen(true)}>
+          Collection Settings
         </button>
         {renderAiAssistActions([
           { label: "Summarize Vault", onClick: () => void runVaultAiSummary() },
@@ -15994,7 +17124,7 @@ function renderForgeHeader() {
 
     const personalWorkspaceId = nextWorkspaces.find((workspace) => workspace.type === "personal")?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
     setItems(migrateRecordsToWorkspace(nextItems, personalWorkspaceId, nextWorkspaces).map(mapItem));
-    setPurchasers(nextPurchasers.length ? nextPurchasers : createDefaultPurchasers());
+    setPurchasers(nextPurchasers);
     setCatalogProducts(nextCatalog);
     setExpenses(migrateRecordsToWorkspace(nextExpenses, personalWorkspaceId, nextWorkspaces).map(mapExpense));
     setSales(migrateRecordsToWorkspace(nextSales, personalWorkspaceId, nextWorkspaces).map(mapSale));
@@ -16051,6 +17181,79 @@ function renderForgeHeader() {
   const workspaceWatchlist = tideTradrWatchlist.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
   const workspaceMarketplaceListings = marketplaceListings.filter((listing) => recordBelongsToWorkspace(listing, activeWorkspace?.id));
   const forgeInventoryItems = forgeWorkspaceItems.filter(isForgeInventoryItem);
+  const workspaceRecordCountsById = useMemo(() => {
+    const counts = new Map();
+    const ensureCounts = (workspaceId) => {
+      const id = String(workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID);
+      if (!counts.has(id)) {
+        counts.set(id, {
+          inventory: 0,
+          vault: 0,
+          forge: 0,
+          wishlist: 0,
+          expenses: 0,
+          sales: 0,
+          mileage: 0,
+          marketListings: 0,
+          marketReports: 0,
+          watchlist: 0,
+          purchasers: 0,
+          vehicles: 0,
+          scoutReports: 0,
+          total: 0,
+        });
+      }
+      return counts.get(id);
+    };
+    const bump = (workspaceId, key, amount = 1) => {
+      const bucket = ensureCounts(workspaceId);
+      bucket[key] = Number(bucket[key] || 0) + amount;
+      bucket.total = Number(bucket.total || 0) + amount;
+    };
+    workspaces.forEach((workspace) => ensureCounts(workspace.id));
+    items.forEach((item) => {
+      const workspaceId = workspaceIdForRecord(item);
+      bump(workspaceId, "inventory");
+      if (isVaultItemRecord(item)) bump(workspaceId, "vault", 0);
+      if (isForgeInventoryItem(item)) bump(workspaceId, "forge", 0);
+      if (isWishlistItemRecord(item)) bump(workspaceId, "wishlist", 0);
+      const bucket = ensureCounts(workspaceId);
+      if (isVaultItemRecord(item)) bucket.vault += 1;
+      if (isForgeInventoryItem(item)) bucket.forge += 1;
+      if (isWishlistItemRecord(item)) bucket.wishlist += 1;
+    });
+    expenses.forEach((expense) => bump(workspaceIdForRecord(expense), "expenses"));
+    sales.forEach((sale) => bump(workspaceIdForRecord(sale), "sales"));
+    mileageTrips.forEach((trip) => bump(workspaceIdForRecord(trip), "mileage"));
+    marketplaceListings.forEach((listing) => bump(workspaceIdForRecord(listing), "marketListings"));
+    marketplaceReports.forEach((report) => bump(workspaceIdForRecord(report), "marketReports"));
+    tideTradrWatchlist.forEach((entry) => bump(workspaceIdForRecord(entry), "watchlist"));
+    purchasers.forEach((purchaser) => bump(purchaserWorkspaceId(purchaser), "purchasers"));
+    vehicles.forEach((vehicle) => bump(workspaceIdForRecord(vehicle), "vehicles"));
+    (scoutSnapshot.reports || []).forEach((report) => {
+      if (report.workspaceId || report.workspace_id || report.workspace) bump(workspaceIdForRecord(report), "scoutReports");
+    });
+    return counts;
+  }, [workspaces, items, expenses, sales, mileageTrips, marketplaceListings, marketplaceReports, tideTradrWatchlist, purchasers, vehicles, scoutSnapshot.reports]);
+
+  function workspaceRecordCountsFor(workspaceId) {
+    return workspaceRecordCountsById.get(String(workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID)) || {
+      inventory: 0,
+      vault: 0,
+      forge: 0,
+      wishlist: 0,
+      expenses: 0,
+      sales: 0,
+      mileage: 0,
+      marketListings: 0,
+      marketReports: 0,
+      watchlist: 0,
+      purchasers: 0,
+      vehicles: 0,
+      scoutReports: 0,
+      total: 0,
+    };
+  }
   const expenseCategoryOptions = useMemo(
     () => [...new Set(workspaceExpenses.map((expense) => expense.category || "Supplies"))].sort((a, b) => a.localeCompare(b)),
     [workspaceExpenses]
@@ -16153,6 +17356,8 @@ function renderForgeHeader() {
     });
   }, [filteredExpenses, expenseSortMode]);
   const selectedExpenseVendorGroup = groupedExpenses.find((group) => group.key === selectedExpenseVendorKey) || null;
+  const groupedMileageVehicles = useMemo(() => buildMileageVehicleGroups(workspaceMileageTrips, vehicles), [workspaceMileageTrips, vehicles]);
+  const selectedMileageVehicleGroup = groupedMileageVehicles.find((group) => group.key === selectedMileageVehicleKey) || null;
   const filteredExpenseTotal = filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const expenseFiltersActive = Boolean(
     expenseSearchQuery.trim() ||
@@ -16251,10 +17456,10 @@ function renderForgeHeader() {
     workspaceMileageTrips.filter((t) => t.driver === person).reduce((s, t) => s + t.totalVehicleCost, 0);
 
   const purchaserSummaryNames = [
-    ...new Set([
+      ...new Set([
       ...purchasers.map((purchaser) => purchaser.name),
       ...forgeInventoryItems.map(itemPurchaserName),
-      "Unassigned",
+      "Unassigned purchaser",
     ]),
   ].filter(Boolean);
 
@@ -17319,17 +18524,18 @@ function renderForgeHeader() {
   }
 
   function isMilitaryWatchCalendarEvent(row = {}, store = {}) {
+    const resolvedStore = store || {};
     const text = [
       row.storeName,
       row.storeAlias,
       row.nickname,
       row.retailer,
       row.chain,
-      store.name,
-      store.nickname,
-      store.retailer,
-      store.chain,
-      store.address,
+      resolvedStore.name,
+      resolvedStore.nickname,
+      resolvedStore.retailer,
+      resolvedStore.chain,
+      resolvedStore.address,
     ].filter(Boolean).join(" ").toLowerCase();
     return /nex|navy exchange|exchange|aafes|commissary|military|base|langley|oceana|norfolk naval/.test(text);
   }
@@ -17684,6 +18890,10 @@ function renderForgeHeader() {
       sourceLabel: row.sourceLabel || "",
       products: row.products || [],
       reason: row.reason || "",
+      basisSummary: row.basisSummary || "",
+      lastConfirmedReportLabel: row.lastConfirmedReportLabel || "",
+      supportingReportCount: row.supportingReportCount || 0,
+      supportingGuessCount: row.supportingGuessCount || 0,
       verified: row.confidenceKey === "confirmed" || /verified|confirmed/.test(sourceText),
       isMilitary: isMilitaryWatchCalendarEvent(row, matchedStore),
       sortWeight: isOnline ? 2 : 1,
@@ -17720,6 +18930,10 @@ function renderForgeHeader() {
         sourceLabel: scoutSourceTypeLabel(report.sourceType || report.source_type || "user_report"),
         products: items.map((item) => item.productName),
         reason: report.notes || report.note || "",
+        basisSummary: "Submitted Scout report",
+        lastConfirmedReportLabel: confidenceKey === "confirmed" ? scoutReportDateTimeLabel(report) : "",
+        supportingReportCount: 1,
+        supportingGuessCount: 0,
         verified: confidenceKey === "confirmed",
         isMilitary: isMilitaryWatchCalendarEvent(report, store),
         sortWeight: 0,
@@ -18078,7 +19292,7 @@ function renderForgeHeader() {
     const matchesStatus = inventoryStatusFilter === "All" || item.status === inventoryStatusFilter;
     const matchesPurchaser =
       inventoryPurchaserFilter === "All" ||
-      (inventoryPurchaserFilter === "Unassigned" && itemPurchaserName(item) === "Unassigned") ||
+      (inventoryPurchaserFilter === "Unassigned" && itemPurchaserName(item) === "Unassigned purchaser") ||
       item.purchaserId === inventoryPurchaserFilter ||
       itemPurchaserName(item) === inventoryPurchaserFilter;
     const itemPhysicalLocation = forgePhysicalLocationLabel(item);
@@ -18127,8 +19341,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
 });
 
-  const pagedVaultItems = getPagedItems(visibleVaultItems, vaultPage, LONG_LIST_PAGE_SIZE);
-  const pagedForgeInventory = getPagedItems(sortedFilteredItems, forgeInventoryPage, LONG_LIST_PAGE_SIZE);
+  const groupedVisibleVaultItems = useMemo(() => buildGroupedInventoryItems(visibleVaultItems, "vault"), [visibleVaultItems]);
+  const groupedSortedFilteredItems = useMemo(() => buildGroupedInventoryItems(sortedFilteredItems, "forge"), [sortedFilteredItems]);
+  const selectedVaultDetailItem = groupedVisibleVaultItems.find((item) => item.id === selectedVaultDetailId)
+    || vaultItems.find((item) => item.id === selectedVaultDetailId);
+  const selectedForgeDetailItem = groupedSortedFilteredItems.find((item) => item.id === selectedForgeDetailId)
+    || forgeInventoryItems.find((item) => item.id === selectedForgeDetailId);
+  const pagedVaultItems = getPagedItems(groupedVisibleVaultItems, vaultPage, LONG_LIST_PAGE_SIZE);
+  const pagedForgeInventory = getPagedItems(groupedSortedFilteredItems, forgeInventoryPage, LONG_LIST_PAGE_SIZE);
   const pagedMarketWatchItems = getPagedItems(workspaceWatchlist, marketWatchPage, LONG_LIST_PAGE_SIZE);
 
   const catalogPagedResultSet = new Set(catalogPagedResultIds.map((id) => String(id)));
@@ -18664,35 +19884,42 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function buildMultiDestinationSeedFromProduct(product = {}, overrides = {}) {
-    const marketInfo = getTideTradrMarketInfo(product);
-    const title = catalogTitle(product);
-    const productType = catalogProductTypeLabel(product);
-    const expansionName = catalogExpansionName(product);
-    const upcSku = product.barcode || product.upc || product.sku || "";
+    const known = buildCatalogAutofillDetails(product);
+    const title = known.itemName || catalogTitle(product);
+    const productType = known.productType || catalogProductTypeLabel(product);
+    const expansionName = known.setName || catalogExpansionName(product);
+    const upcSku = known.upc || known.sku || "";
     const defaultVariant = getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null;
     const base = {
       itemName: title,
-      category: product.category || "Pokemon",
+      category: known.category || product.category || "Pokemon",
       productType,
       setName: expansionName,
       variant: defaultVariant?.variantName || "",
       catalogProductId: product.id || "",
       catalogVariantId: defaultVariant?.id || "",
       upcSku,
-      msrpPrice: marketInfo.msrp || product.msrpPrice || "",
-      marketPrice: marketInfo.currentMarketValue || product.marketPrice || product.midPrice || "",
+      msrpPrice: known.msrpPrice || "",
+      marketPrice: known.marketPrice || "",
       catalogSearchQuery: title,
       destinations: { ...BLANK_MULTI_DESTINATION_FORM.destinations },
+      forge: {
+        ...BLANK_MULTI_DESTINATION_FORM.forge,
+        unitCost: known.msrpPrice || "",
+        plannedSellPrice: known.marketPrice || "",
+        businessCategory: known.category || "Pokemon",
+        conditionName: isCatalogCardProduct(product) ? "Near Mint" : "Sealed",
+      },
       tidetradr: {
         ...BLANK_MULTI_DESTINATION_FORM.tidetradr,
         existingProductId: product.id || "",
-        msrpPrice: marketInfo.msrp || product.msrpPrice || "",
-        upc: product.barcode || product.upc || "",
-        sku: product.sku || "",
+        msrpPrice: known.msrpPrice || "",
+        upc: known.upc || "",
+        sku: known.sku || "",
         setName: expansionName,
         productType,
         releaseDate: product.releaseDate || product.releaseYear || "",
-        sourceUrl: catalogSourceUrl(product),
+        sourceUrl: known.sourceUrl || catalogSourceUrl(product),
       },
     };
 
@@ -18702,7 +19929,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       destinations: { ...base.destinations, ...(overrides.destinations || {}) },
       vault: { ...(overrides.vault || {}) },
       wishlist: { ...(overrides.wishlist || {}) },
-      forge: { ...(overrides.forge || {}) },
+      forge: { ...base.forge, ...(overrides.forge || {}) },
       tidetradr: { ...base.tidetradr, ...(overrides.tidetradr || {}) },
     };
   }
@@ -19351,6 +20578,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
 
     if (!workspace) throw new Error(forgeWorkspaceUnavailableMessage);
+    const defaultPurchaser = purchasersForWorkspace(workspace.id)[0] || { id: "", name: "" };
 
     return applyWorkspaceToRecord({
       ...shared,
@@ -19366,9 +20594,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       status: "Draft",
       physicalLocation: DEFAULT_FORGE_PHYSICAL_LOCATION,
       physicalLocationNotes: "",
-      buyer: currentUserProfile?.displayName || "",
-      purchaserId: "purchaser-default-1",
-      purchaserName: currentUserProfile?.displayName || "",
+      buyer: defaultPurchaser.name,
+      purchaserId: defaultPurchaser.id,
+      purchaserName: defaultPurchaser.name,
       conditionName: isCatalogSealedProduct(product) && !isCatalogCardProduct(product) ? "Sealed" : "Near Mint",
       language: "English",
       actionNotes: "Destination: Forge. Draft created from Market search. Open in Forge to complete inventory details.",
@@ -20123,6 +21351,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {event.city ? ` - ${event.city}` : ""}
             </small>
             {products.length ? <em>{products.slice(0, 3).join(", ")}</em> : null}
+            {event.reason || event.basisSummary ? (
+              <small className="watch-calendar-event-reason">
+                Why: {event.reason || event.basisSummary}
+              </small>
+            ) : null}
           </span>
         </button>
         <div className="watch-calendar-event-meta">
@@ -20343,8 +21576,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <div className="compact-card-header ember-watch-header">
           <div>
             <p className="section-kicker">Ember Watch</p>
-            <h2>Scout Restock Calendar</h2>
-            <p>Track predicted restock windows, confirmed Scout reports, watched stores, and upcoming TCG drops. Signals are never guarantees.</p>
+            <h2>Tide Watch Intelligence</h2>
+            <p>Restock watch windows from Scout reports, past timing patterns, watched stores, and upcoming TCG drops. Signals are likely or possible, never guaranteed.</p>
           </div>
           <SectionHeroArt title="Ember Watch" className="ember-watch-feature-art" />
           <div className="summary-pill-row">
@@ -20391,7 +21624,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         {watchCalendarView === "today" ? (
           <div className="ember-watch-today-grid">
-            {renderEmberWatchSection("Likely Restocks Today", "High and medium Scout signals for today.", todayLikelyRestocks, "No likely restocks today")}
+            {renderEmberWatchSection("Today's Tide Watch", "Likely or possible Scout signals for today's store checks.", todayLikelyRestocks, "No likely restocks today")}
             {renderEmberWatchSection("Recent Confirmed Reports", "Confirmed stock reports in the current watch window.", recentConfirmedReports, "No confirmed reports in this window")}
             {renderEmberWatchSection("Watchlist Alerts", "Signals connected to stores you watch.", watchlistAlerts, "No watchlist alerts yet")}
             <section className="ember-watch-section ember-watch-route-card">
@@ -20480,8 +21713,27 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <div className="scout-report-card-grid">
           {filteredScoutReports.length === 0 ? (
             <div className="empty-state">
-              <h3>No Scout reports yet</h3>
-              <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
+              {scoutReportRows.length ? (
+                <>
+                  <h3>Filters are hiding reports</h3>
+                  <p>{scoutReportRows.length} report{scoutReportRows.length === 1 ? "" : "s"} exist for this Scout feed, but the current filter is hiding them.</p>
+                  <button type="button" className="secondary-button" onClick={() => { setScoutReportFilter("Latest"); setScoutReportSort("Newest first"); setScoutReportsPage(1); }}>Reset filters</button>
+                </>
+              ) : rawScoutReportRows.length ? (
+                <>
+                  <h3>Reports are saved but not visible</h3>
+                  <p>Saved reports may be private, pending review, or blocked by visibility rules. Reset filters or switch to My Reports.</p>
+                  <div className="summary-pill-row">
+                    <button type="button" className="secondary-button" onClick={() => { setScoutReportFilter("Latest"); setScoutReportSort("Newest first"); setScoutReportsPage(1); }}>Reset filters</button>
+                    <button type="button" className="secondary-button" onClick={() => { setScoutReportFilter("My Reports"); setScoutReportsPage(1); }}>My Reports</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3>No Scout reports yet</h3>
+                  <p>Submit a report after checking a store so Scout can learn what matters nearby.</p>
+                </>
+              )}
             </div>
           ) : null}
           {pagedScoutReports.items.map((report) => renderScoutReportCard(report))}
@@ -23636,7 +24888,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return {
       id: marketplaceForm.id || makeId("listing"),
       sellerUserId: currentUserProfile.userId || user?.id || "local-beta",
-      sellerDisplayName: currentUserProfile.displayName || user?.email || "Local Seller",
+      sellerUsername: currentPublicUsername(),
+      sellerDisplayName: publicProfileLabel(),
       listingType: marketplaceForm.listingType,
       title: marketplaceForm.title.trim(),
       description: marketplaceForm.description,
@@ -23913,6 +25166,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {listing.intendedForKids ? <span className="status-badge">Kid-Friendly</span> : null}
             </div>
             <h3>{listing.title}</h3>
+            <p className="marketplace-seller-line">
+              <span>{publicUsernameLabelFromRecord(listing, "seller")}</span>
+              {listing.intendedForKids ? <span>Family-friendly listing</span> : <span>Community listing</span>}
+            </p>
             <p className="compact-subtitle">{listing.condition || "Unknown condition"} | {listing.locationCity || "Local"} {listing.locationState || ""}</p>
             <p><strong>{listing.listingType === "For Trade" ? "Trade value" : "Asking price"}:</strong> {money(listing.listingType === "For Trade" ? listing.tradeValue : listing.askingPrice)}</p>
             {marketInfo.currentMarketValue ? <p className="compact-subtitle">Market reference: {money(marketInfo.currentMarketValue)} {percentOfMarket ? `| ${percentOfMarket.toFixed(0)}% of market` : ""}</p> : null}
@@ -24351,7 +25608,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                   <div className="tidepool-post-copy">
                     <h3>{post.title || post.postType}</h3>
-                    <p className="tidepool-post-meta">{locationLabel} | {postDate}</p>
+                    <p className="tidepool-post-meta">
+                      <span>{publicUsernameLabelFromRecord(post, "community")}</span>
+                      <span>{locationLabel} | {postDate}</span>
+                    </p>
                     <p>{preview}</p>
                     {post.photoUrl ? <img className="tidepool-post-image" src={post.photoUrl} alt="" /> : null}
                   </div>
@@ -24379,9 +25639,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           const replies = tidepoolComments.filter((reply) => reply.parentCommentId === comment.commentId && reply.status !== "removed");
                           return (
                             <div className="tidepool-comment" key={comment.commentId}>
-                              <p><strong>{comment.displayName}</strong>: {comment.body}</p>
+                              <p><strong>{publicUsernameLabelFromRecord(comment, "community")}</strong>: {comment.body}</p>
                               {replies.slice(0, 2).map((reply) => (
-                                <p className="compact-subtitle tidepool-reply" key={reply.commentId}><strong>{reply.displayName}</strong>: {reply.body}</p>
+                                <p className="compact-subtitle tidepool-reply" key={reply.commentId}><strong>{publicUsernameLabelFromRecord(reply, "community")}</strong>: {reply.body}</p>
                               ))}
                             </div>
                           );
@@ -24686,8 +25946,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           form={itemForm}
           setForm={updateItemForm}
           catalogProducts={catalogProducts}
-          purchasers={purchaserOptions}
-          onCreatePurchaser={addPurchaserName}
+          purchasers={forgePurchaserOptions}
+          onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+          onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
           applyCatalogProduct={applyCatalogProduct}
           handleImageUpload={handleImageUpload}
           onSubmit={editingItemId ? saveEditedItem : addItem}
@@ -24767,7 +26028,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <button type="button" className="secondary-button" onClick={() => void runBusinessReportAiSummary()}>Find missing receipts</button>
         </div>
         <Field label="Subcategory"><input value={expenseForm.subcategory} placeholder="Facebook ads, flyers, labels, domain..." onChange={(e) => updateExpenseForm("subcategory", e.target.value)} /></Field>
-        <Field label="Who Paid?"><select value={expenseForm.buyer} onChange={(e) => updateExpenseForm("buyer", e.target.value)}>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
+        <PurchaserSelect
+          label="Who paid?"
+          purchasers={forgePurchaserOptions}
+          valueName={expenseForm.buyer}
+          onSelect={(purchaser) => updateExpenseForm("buyer", purchaser?.name || "")}
+          onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+          onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
+        />
         <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
         <Field label="Payment Method"><input value={expenseForm.paymentMethod} placeholder="Card, cash, PayPal, business account..." onChange={(e) => updateExpenseForm("paymentMethod", e.target.value)} /></Field>
         <Field label="Linked Forge Item"><select value={expenseForm.linkedItemId} onChange={(e) => updateExpenseForm("linkedItemId", e.target.value)}><option value="">None</option>{forgeInventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
@@ -24820,7 +26088,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <span>Purpose suggestions are for tracking only and are not tax advice.</span>
           <button type="button" className="secondary-button" onClick={() => void runMileageAiAssist()}>Suggest purpose</button>
         </div>
-        <Field label="Driver"><select value={tripForm.driver} onChange={(e) => updateTripForm("driver", e.target.value)}>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
+        <Field label="Driver"><select value={tripForm.driver} onChange={(e) => updateTripForm("driver", e.target.value)}><option value="">No driver selected</option>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
         <Field label="Vehicle"><select value={tripForm.vehicleId} onChange={(e) => updateTripForm("vehicleId", e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} - {v.averageMpg} MPG</option>)}</select></Field>
         <Field label="Starting Odometer"><input type="number" value={tripForm.startMiles} onChange={(e) => updateTripForm("startMiles", e.target.value)} /></Field>
         <Field label="Ending Odometer"><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
@@ -24953,8 +26221,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderScoutSubmitFlowContent() {
     const stores = getScoutQuickStores();
     const currentType = quickScoutReportTypeMeta();
-    const selectedStore = quickScoutReportForm.storeId ? stores.find((store) => String(store.id) === String(quickScoutReportForm.storeId)) : null;
-    const selectedStoreContext = selectedStore || (quickScoutReportForm.storeName ? quickScoutReportForm : null);
+    const storeSelection = resolveQuickScoutStoreSelection();
+    const selectedStore = storeSelection.mode === "known" ? storeSelection.store : null;
+    const selectedStoreContext = storeSelection.valid ? storeSelection.store : null;
     const normalizedStoreSearch = quickScoutReportForm.storeSearch.trim().toLowerCase();
     const locationText = String(locationSettings.manualLocation || locationSettings.selectedSavedLocation || "").trim();
     const locationAvailable = Boolean(locationSettings.trackingEnabled || locationText);
@@ -24988,17 +26257,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       .slice(0, 8);
     const recommendedStores = filteredStores.slice(0, 4);
     const wizardSteps = [
-      { key: "what", label: "What" },
+      { key: "product", label: "Item" },
       { key: "where", label: "Where" },
-      { key: "proof", label: "Proof" },
-      { key: "product", label: "Product" },
+      { key: "details", label: "Status" },
       { key: "review", label: "Review" },
     ];
     const activeStepIndex = Math.max(0, wizardSteps.findIndex((step) => step.key === quickScoutReportStep));
     const activeWizardStep = wizardSteps[activeStepIndex] || wizardSteps[0];
     const summaryRows = [
       [currentType.isGuess ? "Planner type" : "Report type", currentType.label],
-      ["Store", selectedStoreContext ? getScoutQuickStoreName(selectedStoreContext) : quickScoutReportForm.manualLocation || "Needs Store Review"],
+      ["Reporting at", storeSelection.valid ? storeSelection.storeName : "Store not selected"],
+      ["Retailer", storeSelection.valid ? storeSelection.retailer : "Not selected"],
       ["Proof/source", quickScoutProofLabel()],
       ["Product/category", [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ") || "Pokemon"],
       ...(currentType.isGuess
@@ -25014,12 +26283,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           ]),
       ["Visibility", scoutVisibilityOptionLabel(quickScoutReportForm.visibility || (currentType.isGuess ? "private" : "public"), currentType.isGuess)],
     ];
+    const selectedTypeOption = quickReportTypeOptions.find((option) => option.value === quickScoutReportForm.reportType);
+    const selectedProductSummary = [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ") || "Product not selected";
+    const selectedStoreSummary = storeSelection.valid ? `${storeSelection.storeName} (${storeSelection.retailer})` : "Store not selected";
+    const selectedStockSummary = currentType.isGuess ? quickScoutDateLabel() : quickScoutStockLeftLabel();
+    const renderScoutSelectionBadge = (label = "Selected") => (
+      <span className="scout-selection-badge" aria-hidden="true">✓ {label}</span>
+    );
     const canAdvanceScoutWizard = (stepKey = activeWizardStep.key) => {
-      if (stepKey === "what") return Boolean(quickScoutReportForm.reportType);
-      if (stepKey === "where") return Boolean(quickScoutReportForm.storeId || quickScoutReportForm.manualLocation.trim() || quickScoutReportForm.storeName.trim());
-      if (stepKey === "product") return Boolean(quickScoutReportForm.productCategory || currentType.isGuess);
-      if (stepKey === "review") return quickScoutReportReady();
-      return true;
+      return !scoutWizardStepError(stepKey);
     };
     const goToScoutWizardStep = (stepKey) => {
       const targetIndex = wizardSteps.findIndex((step) => step.key === stepKey);
@@ -25032,7 +26304,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       setQuickScoutReportStep(stepKey);
     };
     const goNextScoutWizardStep = () => {
-      if (!canAdvanceScoutWizard()) return;
+      const error = scoutWizardStepError(activeWizardStep.key);
+      if (error) {
+        setQuickScoutReportMessage(error);
+        return;
+      }
+      setQuickScoutReportMessage("");
       setQuickScoutReportStep(wizardSteps[Math.min(activeStepIndex + 1, wizardSteps.length - 1)].key);
     };
     const goBackScoutWizardStep = () => {
@@ -25091,35 +26368,90 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               key={step.key}
               type="button"
               className={`scout-report-step-pill ${step.key === activeWizardStep.key ? "active" : ""} ${index < activeStepIndex ? "complete" : ""}`}
+              aria-current={step.key === activeWizardStep.key ? "step" : undefined}
+              aria-pressed={step.key === activeWizardStep.key}
               onClick={() => goToScoutWizardStep(step.key)}
             >
               <span>{index + 1}</span>
               {step.label}
+              {step.key === activeWizardStep.key ? <em>Current</em> : index < activeStepIndex ? <em>Done</em> : null}
             </button>
           ))}
         </div>
+        <div className="scout-current-selection-strip" aria-live="polite">
+          <strong>Current choice</strong>
+          <span>Type: {selectedTypeOption?.title || currentType.label}</span>
+          <span>Store: {selectedStoreSummary}</span>
+          <span>{currentType.isGuess ? "Timing" : "Status"}: {selectedStockSummary}</span>
+          <span>Product: {selectedProductSummary}</span>
+        </div>
 
-        {quickScoutReportStep === "what" ? (
+        {quickScoutReportStep === "product" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
-              <span>What</span>
+              <span>Item</span>
+              <div>
+                <h3>Select item or product</h3>
+                <p>Start with what you saw. Category is enough; exact product, UPC, SKU, quantity, and price are optional.</p>
+              </div>
+            </div>
+            <div className="scout-report-detail-grid scout-report-product-first">
+              <label>
+                Product name/search
+                <input value={quickScoutReportForm.productName} onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)} placeholder="Optional: ETB, booster bundle, UPC, SKU..." />
+              </label>
+            </div>
+            <div className="scout-stock-status-grid">
+              {SCOUT_PRODUCT_CATEGORY_OPTIONS.map((category) => {
+                const isSelected = quickScoutReportForm.productCategory === category;
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    className={`scout-stock-status-button ${isSelected ? "selected" : ""}`}
+                    aria-pressed={isSelected}
+                    data-selected={isSelected ? "true" : "false"}
+                    onClick={() => updateQuickScoutReportForm("productCategory", category)}
+                  >
+                    <span>{category}</span>
+                    {isSelected ? renderScoutSelectionBadge("Selected") : null}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="scout-selected-store-confirmation">
+              {renderScoutSelectionBadge("Item step")}
+              <span>{selectedProductSummary === "Product not selected" ? "Pokemon category selected by default. Add exact product details when useful." : selectedProductSummary}</span>
+            </div>
+          </section>
+        ) : null}
+
+        {quickScoutReportStep === "details" ? (
+          <section className="scout-report-step-card active">
+            <div className="scout-report-step-header">
+              <span>Status</span>
               <div>
                 <h3>What did you find?</h3>
-                <p>Pick the closest TCG stock signal. Add a quick note if it helps.</p>
+                <p>Pick the closest TCG stock signal. Add proof, timing, and notes so the report can feed Tide Watch without pretending it is certain.</p>
               </div>
             </div>
             <div className="scout-report-type-grid">
-              {quickReportTypeOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`scout-report-choice-card ${quickScoutReportForm.reportType === option.value ? "selected" : ""}`}
-                  onClick={() => updateQuickScoutReportForm("reportType", option.value)}
-                >
-                  <strong>{option.title}</strong>
-                  <span>{option.helper}</span>
-                </button>
-              ))}
+              {quickReportTypeOptions.map((option) => {
+                const isSelected = quickScoutReportForm.reportType === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-report-choice-card ${isSelected ? "selected" : ""}`}
+                    aria-pressed={isSelected}
+                    data-selected={isSelected ? "true" : "false"}
+                    onClick={() => updateQuickScoutReportForm("reportType", option.value)}
+                  >
+                    <strong>{option.title}{isSelected ? renderScoutSelectionBadge("Selected") : null}</strong>
+                    <span>{option.helper}</span>
+                  </button>
+                );
+              })}
             </div>
             <textarea
               value={quickScoutReportForm.note}
@@ -25145,10 +26477,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <strong>{getScoutQuickStoreName(selectedStoreContext)}</strong>
                     <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
                   </div>
-                  <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Selected" : "Manual"}</span>
+                  <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Store selected" : "Manual location selected"}</span>
+                </div>
+                <div className="scout-selected-store-confirmation">
+                  {renderScoutSelectionBadge(selectedStore ? "Store selected" : "Manual selected")}
+                  <span>Reporting at this exact location. Suggestions will not replace it.</span>
                 </div>
                 <div className="scout-report-store-actions">
-                  <button type="button" className="secondary-button" onClick={() => setQuickScoutReportForm((current) => ({ ...current, storeId: "", storeName: "", address: "" }))}>Change store</button>
+                  <button type="button" className="secondary-button" onClick={() => setQuickScoutReportForm((current) => ({ ...current, storeId: "", storeName: "", retailer: "", city: "", address: "" }))}>Change store</button>
                 </div>
               </article>
             ) : (
@@ -25184,7 +26520,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <span>Best window: {store.bestCheckWindow || store.restockWindow || "Unknown"}</span>
                       </div>
                       <div className="scout-report-store-actions">
-                        <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(store)}>Report here</button>
+                        <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(store)}>Choose this store</button>
                       </div>
                     </article>
                   )) : (
@@ -25199,7 +26535,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </section>
         ) : null}
 
-        {quickScoutReportStep === "proof" ? (
+        {quickScoutReportStep === "details" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
               <span>Proof</span>
@@ -25209,16 +26545,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             </div>
             <div className="scout-stock-status-grid">
-              {SCOUT_QUICK_PROOF_TYPES.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`scout-stock-status-button ${quickScoutReportForm.proofType === option.value ? "selected" : ""}`}
-                  onClick={() => updateQuickScoutReportForm("proofType", option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
+              {SCOUT_QUICK_PROOF_TYPES.map((option) => {
+                const isSelected = quickScoutReportForm.proofType === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-stock-status-button ${isSelected ? "selected" : ""}`}
+                    aria-pressed={isSelected}
+                    data-selected={isSelected ? "true" : "false"}
+                    onClick={() => updateQuickScoutReportForm("proofType", option.value)}
+                  >
+                    <span>{option.label}</span>
+                    {isSelected ? renderScoutSelectionBadge("Selected") : null}
+                  </button>
+                );
+              })}
             </div>
             <div className="scout-report-detail-grid">
               <label>
@@ -25252,32 +26594,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </section>
         ) : null}
 
-        {quickScoutReportStep === "product" ? (
+        {quickScoutReportStep === "details" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
-              <span>Product</span>
+              <span>Details</span>
               <div>
-                <h3>Product details</h3>
-                <p>Keep it quick. Category is enough; exact product, quantity, and price are optional.</p>
+                <h3>Timing and stock details</h3>
+                <p>Use likely, possible, or verified language. Tide Watch uses these details as signals, not guarantees.</p>
               </div>
             </div>
-            <div className="scout-stock-status-grid">
-              {SCOUT_PRODUCT_CATEGORY_OPTIONS.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  className={`scout-stock-status-button ${quickScoutReportForm.productCategory === category ? "selected" : ""}`}
-                  onClick={() => updateQuickScoutReportForm("productCategory", category)}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
             <div className="scout-report-detail-grid">
-              <label>
-                Product name/search
-                <input value={quickScoutReportForm.productName} onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)} placeholder="Optional: ETB, booster bundle, UPC, SKU..." />
-              </label>
               <label>
                 Quantity estimate
                 <input value={quickScoutReportForm.quantity} onChange={(event) => updateQuickScoutReportForm("quantity", event.target.value)} placeholder="Optional qty or estimate" />
@@ -25296,23 +26622,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </label>
             </div>
             <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
-              <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} onClick={() => applyQuickScoutReportTimePreset("now")}>Now</button>
-              <button type="button" onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
-              <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+              <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Now{quickScoutReportForm.dateMode === "today" ? " ✓" : ""}</button>
+              <button type="button" className={quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today{quickScoutReportForm.dateMode === "earlier_today" ? " ✓" : ""}</button>
+              <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday{quickScoutReportForm.dateMode === "yesterday" ? " ✓" : ""}</button>
             </div>
             {!currentType.isGuess ? (
               <div className="scout-stock-status-grid" role="group" aria-label="Stock left after purchase">
-                {SCOUT_QUICK_STOCK_LEFT_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`scout-stock-status-button ${quickScoutReportForm.stockLeft === option.value ? "selected" : ""}`}
-                    aria-label={option.helper || option.label}
-                    onClick={() => updateQuickScoutReportForm("stockLeft", option.value)}
-                  >
-                    {option.label}{option.helper ? ` | ${option.helper}` : ""}
-                  </button>
-                ))}
+                {SCOUT_QUICK_STOCK_LEFT_OPTIONS.map((option) => {
+                  const isSelected = quickScoutReportForm.stockLeft === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`scout-stock-status-button ${isSelected ? "selected" : ""}`}
+                      aria-label={option.helper || option.label}
+                      aria-pressed={isSelected}
+                      data-selected={isSelected ? "true" : "false"}
+                      onClick={() => updateQuickScoutReportForm("stockLeft", option.value)}
+                    >
+                      <span>{option.label}{option.helper ? ` | ${option.helper}` : ""}</span>
+                      {isSelected ? renderScoutSelectionBadge("Selected") : null}
+                    </button>
+                  );
+                })}
               </div>
             ) : null}
           </section>
@@ -25335,26 +26667,35 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               ))}
             </div>
+            <div className={storeSelection.valid ? "scout-location-trust-note scout-review-location-card" : "form-error"}>
+              <div>
+                <strong>{storeSelection.valid ? `Reporting at: ${storeSelection.storeName}` : "Store required"}</strong>
+                <span>{storeSelection.valid ? `${storeSelection.retailer}${storeSelection.city ? ` | ${storeSelection.city}` : ""}${storeSelection.address ? ` | ${storeSelection.address}` : ""}` : storeSelection.message}</span>
+              </div>
+              {storeSelection.valid ? (
+                <button type="button" className="secondary-button" onClick={() => setQuickScoutReportStep("where")}>Change store</button>
+              ) : null}
+            </div>
             {quickScoutReportForm.note ? (
               <div className="scout-report-review-items">
                 <p>{quickScoutReportForm.note}</p>
               </div>
             ) : null}
             <div className="scout-location-trust-note">
-              <strong>{quickScoutReportForm.storeId || quickScoutReportForm.photoUrl || quickScoutReportForm.proofType !== "manual" ? "Trust signal included" : "Needs Store Review"}</strong>
-              <span>{quickScoutReportForm.storeId ? "Known store selected." : "Manual locations may go through admin review."}</span>
+              <strong>{storeSelection.storeId || quickScoutReportForm.photoUrl || quickScoutReportForm.proofType !== "manual" ? "Trust signal included" : "Needs Store Review"}</strong>
+              <span>{storeSelection.storeId ? "Known store selected." : "Manual locations may go through admin review."}</span>
             </div>
           </section>
         ) : null}
 
         <div className="flow-form-footer scout-wizard-footer">
-          <button type="button" className="secondary-button" onClick={quickScoutReportStep === "what" ? () => closeFlowModal() : goBackScoutWizardStep}>
-            {quickScoutReportStep === "what" ? "Cancel" : "Back"}
+          <button type="button" className="secondary-button" onClick={quickScoutReportStep === "product" ? () => closeFlowModal() : goBackScoutWizardStep}>
+            {quickScoutReportStep === "product" ? "Cancel" : "Back"}
           </button>
           {quickScoutReportStep === "review" ? (
-            <button type="submit" disabled={!quickScoutReportReady()}>{currentType.isGuess ? "Save Guess" : "Submit Report"}</button>
+            <button type="button" onClick={submitQuickScoutReport}>{currentType.isGuess ? "Save Guess" : "Submit Report"}</button>
           ) : (
-            <button type="button" disabled={!canAdvanceScoutWizard()} onClick={goNextScoutWizardStep}>Next</button>
+            <button type="button" onClick={goNextScoutWizardStep}>Next</button>
           )}
         </div>
       </form>
@@ -25694,6 +27035,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const addFlowIsSealed = selectedCatalog
       ? isCatalogSealedProduct(selectedCatalog) && !addFlowIsCard
       : /(sealed|booster|elite trainer|box|tin|collection|bundle|pack|blister|deck)/i.test(itemTypeText) && !addFlowIsCard;
+    const forgeDestinationWorkspaceId = multiDestinationForm.forge?.workspaceId || defaultWorkspaceIdForDestination("forge");
     const destinationOptions = [
       {
         key: "vault",
@@ -25722,8 +27064,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const selectedDestinations = selectedMultiDestinationKeys(multiDestinationForm);
     const selectedDestinationOptions = destinationOptions.filter((option) => selectedDestinations.includes(option.key));
     const currentStepIndex = Math.max(0, MULTI_DESTINATION_STEPS.indexOf(multiDestinationStep));
-    const currentStepValidationMessage = validateMultiDestinationStep(multiDestinationStep, multiDestinationForm);
-    const reviewValidationMessage = validateMultiDestinationStep("review", multiDestinationForm);
+    const currentStepValidationErrors = getMultiDestinationValidationErrors(multiDestinationStep, multiDestinationForm);
+    const reviewValidationErrors = getMultiDestinationValidationErrors("review", multiDestinationForm);
+    const shouldShowValidationErrors = multiDestinationValidationAttempted || multiDestinationStep === "review";
+    const visibleValidationErrors = shouldShowValidationErrors
+      ? (multiDestinationStep === "review" ? reviewValidationErrors : currentStepValidationErrors)
+      : [];
+    const fieldError = (field) => visibleValidationErrors.find((error) => error.field === field)?.message || "";
+    const stepHasVisibleError = (step) => visibleValidationErrors.some((error) => error.step === step);
+    const validationErrorSummary = shouldShowValidationErrors && visibleValidationErrors.length
+      ? `Please fix ${visibleValidationErrors.length} item${visibleValidationErrors.length === 1 ? "" : "s"} before saving.`
+      : "";
     const manualItemSelected = !selectedCatalog && !multiDestinationMatchSearchOpen && String(multiDestinationForm.itemName || "").trim();
     const selectedItemSummary = selectedCatalog
       ? `${catalogTitle(selectedCatalog)}${catalogExpansionName(selectedCatalog) ? ` | ${catalogExpansionName(selectedCatalog)}` : ""}`
@@ -25769,13 +27120,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           {MULTI_DESTINATION_STEPS.map((step, index) => (
             <span
               key={step}
-              className={`wizard-step-pill ${index === currentStepIndex ? "is-active" : ""} ${index < currentStepIndex ? "is-complete" : ""}`}
+              className={`wizard-step-pill ${index === currentStepIndex ? "is-active" : ""} ${index < currentStepIndex ? "is-complete" : ""} ${stepHasVisibleError(step) ? "has-error" : ""}`}
             >
               <small>{index + 1}</small>
               {MULTI_DESTINATION_STEP_LABELS[step]}
+              {stepHasVisibleError(step) ? <em>Needs info</em> : null}
             </span>
           ))}
         </div>
+        {validationErrorSummary ? (
+          <div className="validation-summary" role="alert" aria-live="polite">
+            <strong>{validationErrorSummary}</strong>
+            <ul>
+              {visibleValidationErrors.map((error) => (
+                <li key={`${error.step}-${error.field}`}>
+                  <span>{error.label}: {error.message}</span>
+                  <button type="button" className="ghost-button" onClick={() => focusMultiDestinationValidationError(error)}>
+                    Go to {error.stepLabel}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {multiDestinationStep === "item" ? (
         <section className="flow-form-section">
           <div className="add-item-step-heading">
@@ -25993,7 +27360,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </>
               )}
             </div>
-            <Field label="Item Name">
+            <Field label="Item Name" fieldId="item-name" error={fieldError("item-name")}>
               <input
                 value={multiDestinationForm.itemName}
                 onChange={(event) => updateMultiDestinationField("itemName", event.target.value)}
@@ -26067,11 +27434,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {multiDestinationStep === "destination" ? (
         <section className="flow-form-section">
           <h3>Destinations</h3>
-          <div className="destination-checkbox-grid">
+          {fieldError("destination") ? (
+            <p className="field-error destination-field-error" role="alert" data-validation-field="destination">
+              {fieldError("destination")}
+            </p>
+          ) : null}
+          {fieldError("forge-workspace") ? (
+            <p className="field-error destination-field-error" role="alert" data-validation-field="forge-workspace">
+              {fieldError("forge-workspace")}
+            </p>
+          ) : null}
+          <div className={`destination-checkbox-grid ${fieldError("destination") ? "has-error" : ""}`}>
             {destinationOptions.map((option) => {
               const checked = Boolean(multiDestinationForm.destinations[option.key]);
               return (
-                <label className={`destination-checkbox ${checked ? "is-selected" : ""} ${option.disabled ? "is-disabled" : ""}`} key={option.key}>
+                <label className={`destination-checkbox ${checked ? "is-selected" : ""} ${option.disabled ? "is-disabled" : ""} ${fieldError("destination") ? "has-error" : ""}`} key={option.key}>
                   <input type="checkbox" checked={checked} disabled={option.disabled} onChange={(event) => updateMultiDestinationToggle(option.key, event.target.checked)} />
                   <span>
                     <strong>{option.title}</strong>
@@ -26091,8 +27468,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <h3>Vault Settings</h3>
             <div className="flow-form-grid">
               {renderDestinationWorkspaceField("vault", "Vault Workspace")}
-              <Field label="Quantity for Vault">
-                <input type="number" min="1" value={multiDestinationForm.vault.quantity} onChange={(event) => updateMultiDestinationSection("vault", "quantity", event.target.value)} />
+              <Field label="Quantity for Vault" fieldId="vault-quantity" error={fieldError("vault-quantity")}>
+                <input aria-invalid={Boolean(fieldError("vault-quantity"))} type="number" min="1" value={multiDestinationForm.vault.quantity} onChange={(event) => updateMultiDestinationSection("vault", "quantity", event.target.value)} />
               </Field>
               <Field label="Status / Location">
                 <select value={multiDestinationForm.vault.vaultStatus} onChange={(event) => updateMultiDestinationSection("vault", "vaultStatus", event.target.value)}>
@@ -26104,8 +27481,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <Field label="Collection Category">
                 <input value={multiDestinationForm.vault.vaultCategory} onChange={(event) => updateMultiDestinationSection("vault", "vaultCategory", event.target.value)} />
               </Field>
-              <Field label="Cost Basis">
-                <input type="number" min="0" step="0.01" value={multiDestinationForm.vault.unitCost} onChange={(event) => updateMultiDestinationSection("vault", "unitCost", event.target.value)} placeholder="Optional" />
+              <Field label="Cost Basis" fieldId="vault-unit-cost" error={fieldError("vault-unit-cost")}>
+                <input aria-invalid={Boolean(fieldError("vault-unit-cost"))} type="number" min="0" step="0.01" value={multiDestinationForm.vault.unitCost} onChange={(event) => updateMultiDestinationSection("vault", "unitCost", event.target.value)} placeholder="Optional" />
               </Field>
               <Field label="Purchase Date">
                 <input type="date" value={multiDestinationForm.vault.purchaseDate} onChange={(event) => updateMultiDestinationSection("vault", "purchaseDate", event.target.value)} />
@@ -26128,8 +27505,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </p>
             <div className="flow-form-grid">
               {renderDestinationWorkspaceField("wishlist", "Wishlist Workspace")}
-              <Field label="Quantity Wanted">
-                <input type="number" min="1" value={multiDestinationForm.wishlist.quantity} onChange={(event) => updateMultiDestinationSection("wishlist", "quantity", event.target.value)} />
+              <Field label="Quantity Wanted" fieldId="wishlist-quantity" error={fieldError("wishlist-quantity")}>
+                <input aria-invalid={Boolean(fieldError("wishlist-quantity"))} type="number" min="1" value={multiDestinationForm.wishlist.quantity} onChange={(event) => updateMultiDestinationSection("wishlist", "quantity", event.target.value)} />
               </Field>
               <Field label="Priority">
                 <select value={multiDestinationForm.wishlist.priority} onChange={(event) => updateMultiDestinationSection("wishlist", "priority", event.target.value)}>
@@ -26138,8 +27515,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ))}
                 </select>
               </Field>
-              <Field label="Target Price">
-                <input type="number" min="0" step="0.01" value={multiDestinationForm.wishlist.targetPrice} onChange={(event) => updateMultiDestinationSection("wishlist", "targetPrice", event.target.value)} placeholder="Optional" />
+              <Field label="Target Price" fieldId="wishlist-target-price" error={fieldError("wishlist-target-price")}>
+                <input aria-invalid={Boolean(fieldError("wishlist-target-price"))} type="number" min="0" step="0.01" value={multiDestinationForm.wishlist.targetPrice} onChange={(event) => updateMultiDestinationSection("wishlist", "targetPrice", event.target.value)} placeholder="Optional" />
               </Field>
               <Field label="Desired Condition">
                 <select value={multiDestinationForm.wishlist.desiredCondition} onChange={(event) => updateMultiDestinationSection("wishlist", "desiredCondition", event.target.value)}>
@@ -26171,20 +27548,32 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <h3>Forge Settings</h3>
             <div className="flow-form-grid">
               {renderDestinationWorkspaceField("forge", "Forge Workspace")}
-              <Field label="Quantity for Forge">
-                <input type="number" min="1" value={multiDestinationForm.forge.quantity} onChange={(event) => updateMultiDestinationSection("forge", "quantity", event.target.value)} />
+              <Field label="Quantity for Forge" fieldId="forge-quantity" error={fieldError("forge-quantity")}>
+                <input aria-invalid={Boolean(fieldError("forge-quantity"))} type="number" min="1" value={multiDestinationForm.forge.quantity} onChange={(event) => updateMultiDestinationSection("forge", "quantity", event.target.value)} />
               </Field>
-              <Field label="Cost Basis">
-                <input type="number" min="0" step="0.01" value={multiDestinationForm.forge.unitCost} onChange={(event) => updateMultiDestinationSection("forge", "unitCost", event.target.value)} placeholder="Optional" />
+              <Field label="Cost Basis" fieldId="forge-unit-cost" error={fieldError("forge-unit-cost")}>
+                <input aria-invalid={Boolean(fieldError("forge-unit-cost"))} type="number" min="0" step="0.01" value={multiDestinationForm.forge.unitCost} onChange={(event) => updateMultiDestinationSection("forge", "unitCost", event.target.value)} placeholder="Optional" />
               </Field>
-              <Field label="Planned Sell Price">
-                <input type="number" min="0" step="0.01" value={multiDestinationForm.forge.plannedSellPrice} onChange={(event) => updateMultiDestinationSection("forge", "plannedSellPrice", event.target.value)} placeholder="Optional" />
+              <Field label="Planned Sell Price" fieldId="forge-planned-sell-price" error={fieldError("forge-planned-sell-price")}>
+                <input aria-invalid={Boolean(fieldError("forge-planned-sell-price"))} type="number" min="0" step="0.01" value={multiDestinationForm.forge.plannedSellPrice} onChange={(event) => updateMultiDestinationSection("forge", "plannedSellPrice", event.target.value)} placeholder="Optional" />
               </Field>
               <Field label="Source / Purchase Location">
                 <input value={multiDestinationForm.forge.source} onChange={(event) => updateMultiDestinationSection("forge", "source", event.target.value)} placeholder="Target, Best Buy, show, trade..." />
               </Field>
-              <Field label="Where is this inventory?">
-                <select value={multiDestinationForm.forge.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION} onChange={(event) => updateMultiDestinationSection("forge", "physicalLocation", event.target.value)}>
+              <PurchaserSelect
+                label="Who paid?"
+                purchasers={purchasersForWorkspace(forgeDestinationWorkspaceId || activeForgeWorkspace?.id)}
+                valueId={multiDestinationForm.forge.purchaserId}
+                valueName={multiDestinationForm.forge.purchaserName}
+                onSelect={(purchaser) => {
+                  updateMultiDestinationSection("forge", "purchaserId", purchaser?.id || "");
+                  updateMultiDestinationSection("forge", "purchaserName", purchaser?.name || "");
+                }}
+                onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: forgeDestinationWorkspaceId || activeForgeWorkspace?.id })}
+                onManagePurchasers={() => openPurchaserManager(forgeDestinationWorkspaceId || activeForgeWorkspace?.id)}
+              />
+              <Field label="Where is this inventory?" fieldId="forge-physical-location" error={fieldError("forge-physical-location")}>
+                <select aria-invalid={Boolean(fieldError("forge-physical-location"))} value={multiDestinationForm.forge.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION} onChange={(event) => updateMultiDestinationSection("forge", "physicalLocation", event.target.value)}>
                   {FORGE_PHYSICAL_LOCATION_OPTIONS.map((location) => (
                     <option key={location} value={location}>{location}</option>
                   ))}
@@ -26236,8 +27625,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 )}
               </div>
               {!addFlowIsCard ? (
-                <Field label="MSRP">
-                  <input type="number" min="0" step="0.01" value={multiDestinationForm.tidetradr.msrpPrice} onChange={(event) => updateMultiDestinationSection("tidetradr", "msrpPrice", event.target.value)} placeholder="Optional" />
+                <Field label="MSRP" fieldId="tidetradr-msrp" error={fieldError("tidetradr-msrp")}>
+                  <input aria-invalid={Boolean(fieldError("tidetradr-msrp"))} type="number" min="0" step="0.01" value={multiDestinationForm.tidetradr.msrpPrice} onChange={(event) => updateMultiDestinationSection("tidetradr", "msrpPrice", event.target.value)} placeholder="Optional" />
                 </Field>
               ) : null}
               <Field label="UPC">
@@ -26318,8 +27707,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               ) : null}
             </div>
-            {reviewValidationMessage ? (
-              <p className="flow-inline-message is-warning" role="alert">{reviewValidationMessage}</p>
+            {reviewValidationErrors.length ? (
+              <p className="flow-inline-message is-warning" role="alert">Review needs {reviewValidationErrors.length} fix{reviewValidationErrors.length === 1 ? "" : "es"} before saving.</p>
             ) : (
               <p className="flow-inline-message is-info" role="status">Ready to save. Use Save and Add More to keep this wizard open for another item.</p>
             )}
@@ -26329,10 +27718,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {multiDestinationMessage ? (
           <p className={`flow-inline-message ${/could not|choose|enter|required|must/i.test(multiDestinationMessage) ? "is-warning" : "is-info"}`} role="status">
             {multiDestinationMessage}
-          </p>
-        ) : multiDestinationStep !== "review" && currentStepValidationMessage ? (
-          <p className="flow-inline-message is-warning" role="status">
-            {currentStepValidationMessage}
           </p>
         ) : null}
       </form>
@@ -27123,6 +28508,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  const collectionManagerRows = (showArchivedCollections ? accessibleWorkspaceOptions : workspaceSelectorOptions)
+    .filter((workspace) => showArchivedCollections || !isWorkspaceArchived(workspace))
+    .sort((a, b) => {
+      if (String(a.id) === String(activeWorkspace?.id)) return -1;
+      if (String(b.id) === String(activeWorkspace?.id)) return 1;
+      if (isWorkspaceArchived(a) !== isWorkspaceArchived(b)) return isWorkspaceArchived(a) ? 1 : -1;
+      return String(a.name || "").localeCompare(String(b.name || ""));
+    });
+  const activeCollectionCount = workspaceSelectorOptions.length;
+  const workspaceDeleteCounts = workspaceDeleteTarget ? workspaceRecordCountsFor(workspaceDeleteTarget.id) : null;
+  const workspaceArchiveCounts = workspaceArchiveTarget ? workspaceRecordCountsFor(workspaceArchiveTarget.id) : null;
+
   if (user && !guestPreviewActive && !betaAccessAllowed()) {
     return renderShorelineAccessGate();
   }
@@ -27542,6 +28939,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <input className="drawer-field" value={profileForm.lastName} onChange={(event) => setProfileForm((current) => ({ ...current, lastName: event.target.value }))} placeholder="Last name" autoComplete="family-name" />
                       </div>
                       <input className="drawer-field" value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} placeholder="Display name" />
+                      <label className="settings-field-group">
+                        <span>Public username</span>
+                        <input
+                          className="drawer-field"
+                          value={profileForm.publicUsername}
+                          onChange={(event) => setProfileForm((current) => ({ ...current, publicUsername: normalizePublicUsername(event.target.value) }))}
+                          placeholder="public_username"
+                          autoComplete="nickname"
+                        />
+                        <small>Shown in Marketplace and Tidepool instead of private account details. Ember & Tide staff names are protected.</small>
+                      </label>
                       <select className="drawer-field" value={profileForm.preferredRegion} onChange={(event) => setProfileForm((current) => ({ ...current, preferredRegion: event.target.value }))}>
                         {["Hampton Roads / 757", "Richmond / Central Virginia", "Northern Virginia", "Fredericksburg", "Charlottesville / Albemarle", "Roanoke / Southwest Virginia", "Lynchburg", "Shenandoah Valley", "Eastern Shore", "Southside Virginia", "Other Virginia"].map((region) => (
                           <option key={region} value={region}>{region}</option>
@@ -27564,12 +28972,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ) : null}
                 </div>
               ), "account")}
-              {renderMenuPullDown("workspace", "Workspace", "Switch spaces, invite members, and keep personal data separate", (
+              {renderMenuPullDown("workspace", "Collections", "Switch collections, invite members, and keep personal data separate", (
                 <div className="drawer-links workspace-settings-panel">
                   <div className="drawer-info-card">
-                    <strong>Current workspace</strong>
-                    <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this workspace. Workspace roles are separate from platform Admin Mode.</p>
-                    <Field label="Workspace">
+                    <strong>Current collection</strong>
+                    <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this collection. Archived collections are hidden here by default.</p>
+                    <Field label="Collection">
                       <select value={activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID} onChange={(event) => changeActiveWorkspace(event.target.value)}>
                         {workspaceSelectorOptions.map((workspace) => (
                           <option key={workspace.id} value={workspace.id}>
@@ -27584,9 +28992,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <div><dt>Vault items</dt><dd>{vaultItems.length}</dd></div>
                       <div><dt>Forge items</dt><dd>{forgeInventoryItems.length}</dd></div>
                     </dl>
-                    <button type="button" className="drawer-link" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>
-                      Rename Collection
-                    </button>
+                    <div className="drawer-inline-actions">
+                      <button type="button" className="drawer-link" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>
+                        Edit Collection
+                      </button>
+                      <button type="button" className="secondary-button" onClick={() => setCollectionManagerOpen(true)}>
+                        Manage Collections
+                      </button>
+                    </div>
                   </div>
 
                   <div className="drawer-info-card forge-mode-settings-card">
@@ -27654,13 +29067,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
 
                   <form className="drawer-info-card" onSubmit={createWorkspace}>
-                    <strong>Create workspace</strong>
+                    <strong>Create collection</strong>
                     <p className="compact-subtitle">New workspaces start empty. Existing personal data stays private until you intentionally add or move items.</p>
                     <input
                       className="drawer-field"
                       value={workspaceForm.name}
                       onChange={(event) => setWorkspaceForm((current) => ({ ...current, name: event.target.value }))}
-                      placeholder="Ember & Tide"
+                      placeholder="Collection name"
                     />
                     <select
                       className="drawer-field"
@@ -27671,7 +29084,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <option key={type.value} value={type.value}>{type.label}</option>
                       ))}
                     </select>
-                    <button type="submit" className="drawer-link">Create Workspace</button>
+                    <button type="submit" className="drawer-link">Create Collection</button>
                   </form>
 
                   <form className="drawer-info-card" onSubmit={sendWorkspaceInvite}>
@@ -28165,8 +29578,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           >
             <div className="modal-title-row modal-sticky-header">
               <div>
-                <h2 id="workspace-rename-title">Rename Collection</h2>
-                <p>Updates the display name only. IDs and inventory links stay unchanged.</p>
+                <h2 id="workspace-rename-title">Edit Collection</h2>
+                <p>Updates collection details only. IDs and inventory links stay unchanged.</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close rename collection" onClick={closeWorkspaceRename}>
                 X
@@ -28182,13 +29595,248 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 />
               </Field>
               <p className="compact-subtitle">{workspaceRenameName.trim().length}/{WORKSPACE_NAME_MAX_LENGTH} characters</p>
+              <Field label="Collection type">
+                <select
+                  value={workspaceRenameType}
+                  onChange={(event) => setWorkspaceRenameType(event.target.value)}
+                >
+                  {WORKSPACE_TYPES
+                    .filter((type) => workspaceRenameTarget?.type === "personal" ? type.value === "personal" : type.value !== "personal")
+                    .map((type) => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
+                </select>
+              </Field>
+              <p className="compact-subtitle">Description and icons are not enabled in the current collection schema, so this screen only saves supported fields.</p>
               {workspaceMessage ? <p className="flow-inline-message is-info" role="status">{workspaceMessage}</p> : null}
             </div>
             <div className="location-modal-actions modal-sticky-footer">
               <button type="button" className="secondary-button" onClick={closeWorkspaceRename} disabled={workspaceRenameSaving}>Cancel</button>
-              <button type="submit" disabled={workspaceRenameSaving}>{workspaceRenameSaving ? "Saving..." : "Save Name"}</button>
+              <button type="submit" disabled={workspaceRenameSaving}>{workspaceRenameSaving ? "Saving..." : "Save Collection"}</button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {collectionManagerOpen ? (
+        <div className="location-modal-backdrop collection-manager-backdrop" role="presentation" onClick={() => setCollectionManagerOpen(false)}>
+          <section
+            className="location-modal flow-modal flow-modal-large collection-manager-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="collection-manager-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <p className="section-kicker">Collection Settings</p>
+                <h2 id="collection-manager-title">Manage Collections</h2>
+                <p>Rename, switch, archive, restore, or delete empty collections without changing inventory IDs.</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close manage collections" onClick={() => setCollectionManagerOpen(false)}>
+                X
+              </button>
+            </div>
+            <div className="flow-modal-body collection-manager-body">
+              <div className="collection-manager-toolbar">
+                <label className="toggle-row">
+                  <span>
+                    <strong>Show archived collections</strong>
+                    <small>Archived collections are hidden from normal collection switching.</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showArchivedCollections}
+                    onChange={(event) => setShowArchivedCollections(event.target.checked)}
+                  />
+                </label>
+                <button type="button" className="secondary-button" onClick={() => {
+                  setCollectionManagerOpen(false);
+                  openWorkspaceRename(activeWorkspace);
+                }} disabled={!canEditActiveWorkspace}>
+                  Edit Current Collection
+                </button>
+              </div>
+              <div className="collection-manager-list">
+                {collectionManagerRows.map((workspace) => {
+                  const counts = workspaceRecordCountsFor(workspace.id);
+                  const archived = isWorkspaceArchived(workspace);
+                  const canManageWorkspace = canManageWorkspaceId(workspace.id);
+                  const canEditWorkspace = canEditWorkspaceId(workspace.id);
+                  const isCurrent = String(workspace.id) === String(activeWorkspace?.id);
+                  const deleteDisabled = counts.total > 0 || (!archived && activeCollectionCount <= 1) || !canManageWorkspace;
+                  return (
+                    <article className={`collection-manager-card ${archived ? "is-archived" : ""}`} key={workspace.id}>
+                      <div className="collection-manager-card-header">
+                        <div>
+                          <h3>{workspace.name || "Untitled Collection"}</h3>
+                          <p>{workspaceTypeLabel(workspace.type)}{archived ? ` | Archived ${shortDate(workspaceArchivedAt(workspace))}` : ""}</p>
+                        </div>
+                        <div className="collection-manager-badges">
+                          {isCurrent ? <span className="status-badge success">Current</span> : null}
+                          {archived ? <span className="status-badge warning">Archived</span> : <span className="status-badge">Active</span>}
+                        </div>
+                      </div>
+                      <dl className="collection-manager-stats">
+                        <div><dt>Inventory</dt><dd>{counts.inventory}</dd></div>
+                        <div><dt>Expenses</dt><dd>{counts.expenses}</dd></div>
+                        <div><dt>Mileage</dt><dd>{counts.mileage}</dd></div>
+                        <div><dt>Market</dt><dd>{counts.marketListings}</dd></div>
+                      </dl>
+                      <div className="collection-manager-actions">
+                        {!archived ? (
+                          <button type="button" className="secondary-button" onClick={() => changeActiveWorkspace(workspace.id)} disabled={isCurrent}>
+                            {isCurrent ? "Current" : "Switch"}
+                          </button>
+                        ) : null}
+                        <button type="button" className="secondary-button" onClick={() => {
+                          setCollectionManagerOpen(false);
+                          openWorkspaceRename(workspace);
+                        }} disabled={!canEditWorkspace}>
+                          Edit
+                        </button>
+                        {archived ? (
+                          <button type="button" onClick={() => restoreWorkspace(workspace)} disabled={!canManageWorkspace || workspaceArchiveSavingId === workspace.id}>
+                            {workspaceArchiveSavingId === workspace.id ? "Restoring..." : "Restore"}
+                          </button>
+                        ) : (
+                          <button type="button" className="secondary-button" onClick={() => openWorkspaceArchive(workspace)} disabled={!canManageWorkspace || activeCollectionCount <= 1}>
+                            Archive
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => openWorkspaceDelete(workspace)}
+                          disabled={deleteDisabled}
+                          title={counts.total > 0 ? "Archive collections that still have records." : "Delete empty collection"}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      {deleteDisabled && counts.total > 0 ? (
+                        <p className="compact-subtitle">Permanent delete is blocked because this collection still has records. Archive it instead.</p>
+                      ) : null}
+                    </article>
+                  );
+                })}
+                {!collectionManagerRows.length ? (
+                  <div className="small-empty-state">
+                    <strong>No archived collections.</strong>
+                    <span>Active collections appear in the switcher above.</span>
+                  </div>
+                ) : null}
+              </div>
+              {workspaceMessage ? <p className="flow-inline-message is-info" role="status">{workspaceMessage}</p> : null}
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={() => setCollectionManagerOpen(false)}>Close</button>
+              <button type="button" onClick={() => {
+                setCollectionManagerOpen(false);
+                setMenuOpen(true);
+                setMenuSectionsOpen((current) => ({ ...current, workspace: true }));
+              }}>
+                Create Collection
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {workspaceArchiveTarget ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={closeWorkspaceArchive}>
+          <section
+            className="location-modal collection-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="archive-collection-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="archive-collection-title">Archive {workspaceArchiveTarget.name || "collection"}?</h2>
+                <p>This hides the collection from normal switching. Records stay linked and can be restored later.</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close archive collection" onClick={closeWorkspaceArchive}>X</button>
+            </div>
+            <div className="flow-modal-body">
+              <dl className="collection-manager-stats">
+                <div><dt>Inventory</dt><dd>{workspaceArchiveCounts?.inventory || 0}</dd></div>
+                <div><dt>Expenses</dt><dd>{workspaceArchiveCounts?.expenses || 0}</dd></div>
+                <div><dt>Mileage</dt><dd>{workspaceArchiveCounts?.mileage || 0}</dd></div>
+                <div><dt>Market</dt><dd>{workspaceArchiveCounts?.marketListings || 0}</dd></div>
+              </dl>
+              {String(workspaceArchiveTarget.id) === String(activeWorkspace?.id) ? (
+                <p className="compact-subtitle">Because this is current, Ember & Tide will switch to another active collection after archiving.</p>
+              ) : null}
+              {workspaceMessage ? <p className="flow-inline-message is-info" role="status">{workspaceMessage}</p> : null}
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={closeWorkspaceArchive} disabled={Boolean(workspaceArchiveSavingId)}>Cancel</button>
+              <button type="button" className="danger-button" onClick={() => archiveWorkspace()} disabled={Boolean(workspaceArchiveSavingId)}>
+                {workspaceArchiveSavingId ? "Archiving..." : "Archive Collection"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {workspaceDeleteTarget ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={closeWorkspaceDelete}>
+          <section
+            className="location-modal collection-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-collection-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="delete-collection-title">Delete {workspaceDeleteTarget.name || "collection"}?</h2>
+                <p>Permanent delete is only available for empty collections. Collections with records should be archived.</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close delete collection" onClick={closeWorkspaceDelete}>X</button>
+            </div>
+            <div className="flow-modal-body">
+              <dl className="collection-manager-stats">
+                <div><dt>Inventory</dt><dd>{workspaceDeleteCounts?.inventory || 0}</dd></div>
+                <div><dt>Expenses</dt><dd>{workspaceDeleteCounts?.expenses || 0}</dd></div>
+                <div><dt>Mileage</dt><dd>{workspaceDeleteCounts?.mileage || 0}</dd></div>
+                <div><dt>Market</dt><dd>{workspaceDeleteCounts?.marketListings || 0}</dd></div>
+              </dl>
+              {workspaceDeleteCounts?.total > 0 ? (
+                <div className="validation-summary" role="alert">
+                  <strong>This collection is not empty.</strong>
+                  <p>Archive it instead so inventory, expenses, mileage, and listings stay linked and recoverable.</p>
+                </div>
+              ) : (
+                <Field label="Type DELETE to permanently delete this empty collection">
+                  <input
+                    value={workspaceDeleteConfirmText}
+                    onChange={(event) => setWorkspaceDeleteConfirmText(event.target.value)}
+                    placeholder="DELETE"
+                    autoComplete="off"
+                  />
+                </Field>
+              )}
+              {workspaceMessage ? <p className="flow-inline-message is-info" role="status">{workspaceMessage}</p> : null}
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={closeWorkspaceDelete} disabled={workspaceDeleteSaving}>Cancel</button>
+              {workspaceDeleteCounts?.total > 0 ? (
+                <button type="button" className="danger-button" onClick={() => {
+                  setWorkspaceDeleteTarget(null);
+                  openWorkspaceArchive(workspaceDeleteTarget);
+                }}>
+                  Archive Instead
+                </button>
+              ) : (
+                <button type="button" className="danger-button" onClick={deleteWorkspace} disabled={workspaceDeleteSaving}>
+                  {workspaceDeleteSaving ? "Deleting..." : "Delete Permanently"}
+                </button>
+              )}
+            </div>
+          </section>
         </div>
       ) : null}
 
@@ -28233,6 +29881,195 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
+      {selectedMileageVehicleGroup ? (
+        <div className="location-modal-backdrop flow-modal-backdrop" role="presentation" onClick={() => setSelectedMileageVehicleKey("")}>
+          <section
+            className="location-modal flow-modal flow-modal-large mileage-vehicle-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mileage-vehicle-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="mileage-vehicle-detail-title">{selectedMileageVehicleGroup.vehicleName}</h2>
+                <p>{selectedMileageVehicleGroup.tripCount} trip{selectedMileageVehicleGroup.tripCount === 1 ? "" : "s"} - {selectedMileageVehicleGroup.totalMiles.toFixed(1)} business miles</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close vehicle mileage details" onClick={() => setSelectedMileageVehicleKey("")}>
+                X
+              </button>
+            </div>
+            <div className="flow-modal-body">
+              <div className="expense-vendor-detail-summary mileage-vehicle-summary">
+                <div><span>Total miles</span><strong>{selectedMileageVehicleGroup.totalMiles.toFixed(1)}</strong></div>
+                <div><span>Trips</span><strong>{selectedMileageVehicleGroup.tripCount}</strong></div>
+                <div><span>Last trip</span><strong>{formatExpenseDate(selectedMileageVehicleGroup.lastTripDate)}</strong></div>
+                <div><span>IRS value</span><strong>{money(selectedMileageVehicleGroup.totalMileageValue)}</strong></div>
+              </div>
+              <div className="expense-record-list mileage-trip-list">
+                {selectedMileageVehicleGroup.trips.map((trip) => (
+                  <div className="expense-record-card mileage-trip-card is-compact" key={trip.id}>
+                    <div className="expense-record-main">
+                      <div>
+                        <h3>{trip.purpose || "Mileage trip"}</h3>
+                        <p>{[formatExpenseDate(mileageTripDateValue(trip)), trip.driver, trip.vehicleName || selectedMileageVehicleGroup.vehicleName].filter(Boolean).join(" | ")}</p>
+                      </div>
+                      <strong>{Number(trip.businessMiles || 0).toFixed(1)} mi</strong>
+                    </div>
+                    <div className="expense-record-meta">
+                      <span>Fuel {money(trip.fuelCost)}</span>
+                      <span>Wear {money(trip.wearCost)}</span>
+                      <span>Total {money(trip.totalVehicleCost)}</span>
+                      <span>IRS {money(trip.mileageValue)}</span>
+                      {trip.gasReceiptImage ? <span>Receipt attached</span> : null}
+                    </div>
+                    {trip.notes ? <p className="compact-subtitle">{trip.notes}</p> : null}
+                    <div className="expense-record-actions">
+                      {trip.gasReceiptImage ? <a href={trip.gasReceiptImage} target="_blank" rel="noreferrer">View Receipt</a> : <span />}
+                      <OverflowMenu
+                        onEdit={() => startEditingTrip(trip)}
+                        onDelete={() => deleteTrip(trip.id)}
+                        editLabel="Edit Mileage Trip"
+                        deleteLabel="Delete Mileage Trip"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={() => setSelectedMileageVehicleKey("")}>Close</button>
+              <button type="button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {purchaserManagerOpen ? (
+        <div className="location-modal-backdrop flow-modal-backdrop purchaser-manager-backdrop" role="presentation" onClick={closePurchaserManager}>
+          <section
+            className="location-modal flow-modal flow-modal-medium purchaser-manager-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="purchaser-manager-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="purchaser-manager-title">Manage Purchasers</h2>
+                <p>{purchaserManagerWorkspace?.name || "Current collection"} · Only active purchasers appear on new “Who paid?” fields.</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close purchaser manager" onClick={closePurchaserManager}>
+                X
+              </button>
+            </div>
+            <div className="flow-modal-body">
+              <form
+                className="inline-form purchaser-manager-add"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const added = addPurchaserName(purchaserDraft, {
+                    note: purchaserNoteDraft,
+                    workspaceId: purchaserManagerWorkspace?.id,
+                  });
+                  if (added) {
+                    setPurchaserDraft("");
+                    setPurchaserNoteDraft("");
+                  }
+                }}
+              >
+                <input
+                  value={purchaserDraft}
+                  maxLength={PURCHASER_NAME_MAX_LENGTH}
+                  onChange={(event) => setPurchaserDraft(event.target.value)}
+                  placeholder="Display name"
+                />
+                <input
+                  value={purchaserNoteDraft}
+                  onChange={(event) => setPurchaserNoteDraft(event.target.value)}
+                  placeholder="Optional note, card, partner..."
+                />
+                <button type="submit">Add Purchaser</button>
+              </form>
+              {purchaserMessage ? <p className="flow-inline-message" role="status">{purchaserMessage}</p> : null}
+              <div className="inventory-list compact-inventory-list purchaser-manager-list">
+                {purchaserManagerList.length ? (
+                  purchaserManagerList.map((purchaser) => (
+                    <div className="inventory-card compact-card" key={purchaser.id}>
+                      {editingPurchaserId === purchaser.id ? (
+                        <form
+                          className="inline-form"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            savePurchaserName(purchaser.id, purchaserDraft, purchaserNoteDraft);
+                          }}
+                        >
+                          <input
+                            value={purchaserDraft}
+                            maxLength={PURCHASER_NAME_MAX_LENGTH}
+                            onChange={(event) => setPurchaserDraft(event.target.value)}
+                            placeholder="Purchaser name"
+                          />
+                          <input
+                            value={purchaserNoteDraft}
+                            onChange={(event) => setPurchaserNoteDraft(event.target.value)}
+                            placeholder="Optional note"
+                          />
+                          <button type="submit">Save</button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={() => {
+                              setEditingPurchaserId(null);
+                              setPurchaserDraft("");
+                              setPurchaserNoteDraft("");
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </form>
+                      ) : (
+                        <div className="compact-card-header">
+                          <div>
+                            <h3>{purchaser.name}</h3>
+                            <p className="compact-subtitle">
+                              {purchaser.active ? "Active" : "Archived"}{purchaser.note ? ` · ${purchaser.note}` : ""} · {money(inventorySpendingFor(purchaser.name))} inventory spend
+                            </p>
+                          </div>
+                          {purchaser.active ? (
+                            <OverflowMenu
+                              onEdit={() => {
+                                setEditingPurchaserId(purchaser.id);
+                                setPurchaserDraft(purchaser.name);
+                                setPurchaserNoteDraft(purchaser.note || "");
+                                setPurchaserMessage("");
+                              }}
+                              onDelete={() => archiveOrDeletePurchaser(purchaser.id)}
+                              deleteLabel="Archive"
+                            />
+                          ) : (
+                            <button type="button" className="secondary-button" onClick={() => restorePurchaser(purchaser.id)}>
+                              Restore
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="small-empty-state purchaser-empty-state">
+                    <p>No purchasers yet. Add one to track who paid.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="button" className="secondary-button" onClick={closePurchaserManager}>Close</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       {activeFlowModal ? (
         <div className="location-modal-backdrop flow-modal-backdrop" role="presentation" onClick={() => closeFlowModal()}>
           <section
@@ -28259,15 +30096,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="location-modal-actions modal-sticky-footer flow-modal-footer">
               {activeFlowModal?.type === "scoutSubmit" ? (
                 <>
-                  <button type="button" className="secondary-button" onClick={quickScoutReportStep === "what" ? () => closeFlowModal() : goBackScoutWizardStep}>
-                    {quickScoutReportStep === "what" ? "Cancel" : "Back"}
+                  <button type="button" className="secondary-button" onClick={quickScoutReportStep === "product" ? () => closeFlowModal() : goBackScoutWizardStep}>
+                    {quickScoutReportStep === "product" ? "Cancel" : "Back"}
                   </button>
                   {quickScoutReportStep === "review" ? (
-                    <button type="submit" form="quick-scout-report-form" disabled={!quickScoutReportReady()}>
+                    <button type="button" onClick={submitQuickScoutReport}>
                       {quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Submit Report"}
                     </button>
                   ) : (
-                    <button type="button" disabled={!canAdvanceScoutWizard()} onClick={goNextScoutWizardStep}>Next</button>
+                    <button type="button" onClick={goNextScoutWizardStep}>Next</button>
                   )}
                 </>
               ) : (
@@ -28278,6 +30115,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {activeFlowModal?.type === "multiDestinationAdd" ? (
                 multiDestinationStep === "review" ? (
                   <>
+                    {multiDestinationValidationAttempted && getMultiDestinationValidationErrors("review", multiDestinationForm).length ? (
+                      <span className="modal-footer-hint" role="status">Fix missing fields to continue.</span>
+                    ) : null}
                     <button type="button" className="secondary-button" onClick={goBackMultiDestinationStep} disabled={multiDestinationSaving}>
                       Back
                     </button>
@@ -28290,6 +30130,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </>
                 ) : (
                   <>
+                    {multiDestinationValidationAttempted && getMultiDestinationValidationErrors(multiDestinationStep, multiDestinationForm).length ? (
+                      <span className="modal-footer-hint" role="status">Fix missing fields to continue.</span>
+                    ) : null}
                     {multiDestinationStep !== "item" ? (
                       <button type="button" className="secondary-button" onClick={goBackMultiDestinationStep}>
                         Back
@@ -28298,8 +30141,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <button
                       type="button"
                       onClick={advanceMultiDestinationStep}
-                      disabled={Boolean(validateMultiDestinationStep(multiDestinationStep, multiDestinationForm))}
-                      title={validateMultiDestinationStep(multiDestinationStep, multiDestinationForm) || ""}
+                      disabled={multiDestinationSaving}
                     >
                       {multiDestinationStep === "item" ? "Next: Choose Where" : multiDestinationStep === "destination" ? "Next: Add Details" : "Next: Review"}
                     </button>
@@ -29138,15 +30980,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
             <div className="vault-transfer-summary">
               <strong>{vaultForgeTransfer.item.name}</strong>
-              <span>Available quantity: {vaultForgeTransfer.item.quantity || 1}</span>
+              <span>Available quantity: {selectedVaultForgeTransferSource(vaultForgeTransfer)?.quantity || 1}</span>
+              <span>Move from: {itemPurchaserName(selectedVaultForgeTransferSource(vaultForgeTransfer) || vaultForgeTransfer.item)}</span>
               <span>Destination: {activeForgeWorkspace?.name || "Forge"} inventory</span>
             </div>
+            {vaultForgeTransferEntries(vaultForgeTransfer).length > 1 ? (
+              <Field label="Move from purchaser entry">
+                <select
+                  value={vaultForgeTransfer.sourceItemId || ""}
+                  onChange={(event) => updateVaultForgeTransferSource(event.target.value)}
+                >
+                  {vaultForgeTransferEntries(vaultForgeTransfer).map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {inventoryEntryLabel(entry)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
             <Field label={vaultForgeTransfer.mode === "copy" ? "Copy quantity" : "How many do you want to move to Forge?"}>
               <input
                 type="number"
                 min="1"
                 step="1"
-                max={Math.max(1, Number(vaultForgeTransfer.item.quantity || 1))}
+                max={Math.max(1, Number(selectedVaultForgeTransferSource(vaultForgeTransfer)?.quantity || 1))}
                 value={vaultForgeTransfer.quantityToMove}
                 onChange={(event) => setVaultForgeTransfer((current) => ({ ...current, quantityToMove: event.target.value }))}
               />
@@ -29160,7 +31017,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 placeholder="Unknown is okay"
               />
             </Field>
-            {String(vaultForgeTransfer.item.catalogProductId || "") && items.some((item) => item.id !== vaultForgeTransfer.item.id && isForgeInventoryItem(item) && String(item.catalogProductId || "") === String(vaultForgeTransfer.item.catalogProductId || "")) ? (
+            {findForgeMergeTargetForTransfer(selectedVaultForgeTransferSource(vaultForgeTransfer) || vaultForgeTransfer.item, activeForgeWorkspace) ? (
               <Field label="Duplicate Handling">
                 <select value={vaultForgeTransfer.duplicateMode} onChange={(event) => setVaultForgeTransfer((current) => ({ ...current, duplicateMode: event.target.value }))}>
                   <option value="existing">Add to existing Forge item</option>
@@ -29169,14 +31026,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </Field>
             ) : null}
             <div className="location-modal-actions">
-              <button type="button" disabled={vaultMoving || Number(vaultForgeTransfer.item.quantity || 0) < 1} onClick={() => confirmVaultForgeTransfer(vaultForgeTransfer.mode)}>
+              <button type="button" disabled={vaultMoving || Number(selectedVaultForgeTransferSource(vaultForgeTransfer)?.quantity || 0) < 1} onClick={() => confirmVaultForgeTransfer(vaultForgeTransfer.mode)}>
                 {vaultMoving
                   ? (vaultForgeTransfer.mode === "copy" ? "Copying..." : "Moving...")
                   : `${vaultForgeTransfer.mode === "copy" ? "Copy" : "Move"} ${Number(vaultForgeTransfer.quantityToMove || 0) || 0} to ${activeForgeTransferLabel}`}
               </button>
-              {vaultForgeTransfer.mode === "move" && Number(vaultForgeTransfer.quantityToMove || 0) < Number(vaultForgeTransfer.item.quantity || 0) ? (
-                <button type="button" disabled={vaultMoving || Number(vaultForgeTransfer.item.quantity || 0) < 1} className="secondary-button" onClick={() => confirmVaultForgeTransfer("move", Math.max(1, Number(vaultForgeTransfer.item.quantity || 1)))}>
-                  Move all {Math.max(1, Number(vaultForgeTransfer.item.quantity || 1))}
+              {vaultForgeTransfer.mode === "move" && Number(vaultForgeTransfer.quantityToMove || 0) < Number(selectedVaultForgeTransferSource(vaultForgeTransfer)?.quantity || 0) ? (
+                <button type="button" disabled={vaultMoving || Number(selectedVaultForgeTransferSource(vaultForgeTransfer)?.quantity || 0) < 1} className="secondary-button" onClick={() => confirmVaultForgeTransfer("move", Math.max(1, Number(selectedVaultForgeTransferSource(vaultForgeTransfer)?.quantity || 1)))}>
+                  Move all {Math.max(1, Number(selectedVaultForgeTransferSource(vaultForgeTransfer)?.quantity || 1))}
                 </button>
               ) : null}
               <button type="button" className="ghost-button" onClick={() => setVaultForgeTransfer(null)}>Cancel</button>
@@ -29839,7 +31696,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <DetailItem label="Source" value={selectedWatchCalendarEvent.sourceLabel || "Existing app data"} />
               <DetailItem label="Products" value={selectedWatchCalendarEvent.products?.filter(Boolean).join(", ") || "Product not specified"} />
             </div>
-            {selectedWatchCalendarEvent.reason ? <p className="compact-subtitle">{selectedWatchCalendarEvent.reason}</p> : null}
+            <div className="watch-calendar-why-panel">
+              <strong>Why this is showing</strong>
+              <p>{selectedWatchCalendarEvent.reason || selectedWatchCalendarEvent.basisSummary || "Tide Watch is using available Scout reports, watched-store data, or release dates. Treat this as a watch window, not a guarantee."}</p>
+              <div className="watch-calendar-why-grid">
+                <span>Past reports: {selectedWatchCalendarEvent.supportingReportCount ?? "Unknown"}</span>
+                <span>Guesses/patterns: {selectedWatchCalendarEvent.supportingGuessCount ?? "Unknown"}</span>
+                <span>Last confirmed: {selectedWatchCalendarEvent.lastConfirmedReportLabel || "Not confirmed yet"}</span>
+              </div>
+            </div>
             <div className="location-modal-actions modal-sticky-footer">
               {selectedWatchCalendarEvent.reportable ? (
                 <button type="button" onClick={() => {
@@ -30581,25 +32446,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
               <div className="settings-subsection">
                 <h3>Purchaser Tracking</h3>
-                <p>Track who made each purchase without creating accounts or changing seller platforms.</p>
-                <form
-                  className="inline-form"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const added = addPurchaserName(purchaserDraft);
-                    if (added) setPurchaserDraft("");
-                  }}
-                >
-                  <input
-                    value={purchaserDraft}
-                    onChange={(event) => setPurchaserDraft(event.target.value)}
-                    placeholder="Add purchaser name"
-                  />
-                  <button type="submit">Add Purchaser</button>
-                </form>
-
+                <p>Track who made each purchase. Purchasers are scoped to the current collection/workspace.</p>
+                <button type="button" className="secondary-button" onClick={() => openPurchaserManager(activeWorkspace?.id)}>
+                  Manage Purchasers
+                </button>
                 <div className="inventory-list compact-inventory-list">
-                  {purchasers.map((purchaser) => (
+                  {purchasersForWorkspace(activeWorkspace?.id, { includeArchived: true }).map((purchaser) => (
                     <div className="inventory-card compact-card" key={purchaser.id}>
                       {editingPurchaserId === purchaser.id ? (
                         <form
@@ -30979,7 +32831,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   item={vaultItems.find((item) => item.id === editingItemId)}
                   catalogProducts={catalogProducts}
                   purchasers={purchaserOptions}
-                  onCreatePurchaser={addPurchaserName}
+                  onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeWorkspace?.id })}
+                  onManagePurchasers={() => openPurchaserManager(activeWorkspace?.id)}
                   applyCatalogProduct={applyCatalogProduct}
                   handleImageUpload={handleImageUpload}
                   onSubmit={saveEditedItem}
@@ -30989,7 +32842,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               )}
               {selectedVaultDetailId ? (
                 <VaultItemDetail
-                  item={vaultItems.find((item) => item.id === selectedVaultDetailId)}
+                  item={selectedVaultDetailItem}
                   onClose={() => setSelectedVaultDetailId("")}
                   onEdit={startEditingVaultItem}
                   onDelete={async (item) => { const deleted = await deleteItem(item.id); if (deleted) setSelectedVaultDetailId(""); }}
@@ -32791,8 +34644,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
       form={itemForm}
       setForm={updateItemForm}
       catalogProducts={catalogProducts}
-      purchasers={purchaserOptions}
-      onCreatePurchaser={addPurchaserName}
+      purchasers={forgePurchaserOptions}
+      onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+      onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
       applyCatalogProduct={applyCatalogProduct}
       handleImageUpload={handleImageUpload}
       onSubmit={addItem}
@@ -32922,7 +34776,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <select value={inventoryPurchaserFilter} onChange={(event) => setInventoryPurchaserFilter(event.target.value)}>
                     <option value="All">All purchasers</option>
                     <option value="Unassigned">Unassigned</option>
-                    {purchasers.map((purchaser) => (
+                    {purchasersForWorkspace(activeForgeWorkspace?.id, { includeArchived: true }).map((purchaser) => (
                       <option key={purchaser.id} value={purchaser.id}>
                         {purchaser.name}{purchaser.active ? "" : " (archived)"}
                       </option>
@@ -32931,11 +34785,11 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </Field>
                 <Field label="Physical location">
                   <select value={inventoryPhysicalLocationFilter} onChange={(event) => setInventoryPhysicalLocationFilter(event.target.value)}>
-                    <option value="All">All locations</option>
+                    <option value="All">All Locations</option>
                     {FORGE_PHYSICAL_LOCATION_OPTIONS.map((location) => (
                       <option key={location} value={location}>{location}</option>
                     ))}
-                    <option value="No Location">No location</option>
+                    <option value="No Location">Unassigned</option>
                   </select>
                 </Field>
               </div>
@@ -32944,10 +34798,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="filter-summary">
               <p>Current filter: {inventoryStatusFilter}</p>
               <p>Purchaser: {inventoryPurchaserFilter === "All" ? "All" : purchasers.find((purchaser) => purchaser.id === inventoryPurchaserFilter)?.name || inventoryPurchaserFilter}</p>
-              <p>Physical location: {inventoryPhysicalLocationFilter === "All" ? "All" : inventoryPhysicalLocationFilter}</p>
+              <p>Physical location: {inventoryPhysicalLocationFilter === "All" ? "All" : inventoryPhysicalLocationFilter === "No Location" ? "Unassigned" : inventoryPhysicalLocationFilter}</p>
 
               <p>
-              Showing {pagedForgeInventory.start || 0}-{pagedForgeInventory.end || 0} of {sortedFilteredItems.length} filtered inventory records
+              Showing {pagedForgeInventory.start || 0}-{pagedForgeInventory.end || 0} of {groupedSortedFilteredItems.length} grouped products ({sortedFilteredItems.length} entries)
               </p>
 
               <p>{inventorySearch ? ` - Search: ${inventorySearch}` : ""}</p>
@@ -32967,8 +34821,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   form={itemForm}
                   setForm={updateItemForm}
                   catalogProducts={catalogProducts}
-                  purchasers={purchaserOptions}
-                  onCreatePurchaser={addPurchaserName}
+                  purchasers={forgePurchaserOptions}
+                  onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+                  onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
                   applyCatalogProduct={applyCatalogProduct}
                   handleImageUpload={handleImageUpload}
                   onSubmit={saveEditedItem}
@@ -32978,7 +34833,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             )}
             {selectedForgeDetailId ? (
               <ForgeItemDetail
-                item={forgeInventoryItems.find((item) => item.id === selectedForgeDetailId)}
+                item={selectedForgeDetailItem}
                 onClose={() => setSelectedForgeDetailId("")}
                 onEdit={startEditingItem}
                 onDelete={(item) => { deleteItem(item.id); setSelectedForgeDetailId(""); }}
@@ -32995,7 +34850,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               />
             ) : null}
             <div className="inventory-list compact-inventory-list">
-              {sortedFilteredItems.length === 0 ? (
+              {groupedSortedFilteredItems.length === 0 ? (
                 <div className="inventory-card compact-card">
                   <h3>No Forge items found</h3>
                   <p>Add inventory, import a receipt/list, or select a TideTradr catalog item to start tracking seller inventory.</p>
@@ -33211,7 +35066,14 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <Field label="Vendor / Store"><input value={expenseForm.vendor} onChange={(e) => updateExpenseForm("vendor", e.target.value)} /></Field>
                 <Field label="Expense Category"><select value={expenseForm.category} onChange={(e) => updateExpenseForm("category", e.target.value)}>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
                 <Field label="Subcategory"><input value={expenseForm.subcategory} placeholder="Facebook ads, flyers, labels, domain..." onChange={(e) => updateExpenseForm("subcategory", e.target.value)} /></Field>
-                <Field label="Who Paid?"><select value={expenseForm.buyer} onChange={(e) => updateExpenseForm("buyer", e.target.value)}>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                <PurchaserSelect
+                  label="Who paid?"
+                  purchasers={forgePurchaserOptions}
+                  valueName={expenseForm.buyer}
+                  onSelect={(purchaser) => updateExpenseForm("buyer", purchaser?.name || "")}
+                  onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+                  onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
+                />
                 <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
                 <Field label="Payment Method"><input value={expenseForm.paymentMethod} placeholder="Card, cash, PayPal, business account..." onChange={(e) => updateExpenseForm("paymentMethod", e.target.value)} /></Field>
                 <Field label="Linked Forge Item"><select value={expenseForm.linkedItemId} onChange={(e) => updateExpenseForm("linkedItemId", e.target.value)}><option value="">None</option>{forgeInventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
@@ -33285,7 +35147,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <h2>{editingVehicleId ? "Edit Vehicle" : "Add Vehicle"}</h2>
               <form onSubmit={addVehicle} className="form">
                 <Field label="Vehicle Name"><input value={vehicleForm.name} onChange={(e) => updateVehicleForm("name", e.target.value)} /></Field>
-                <Field label="Owner / Driver"><select value={vehicleForm.owner} onChange={(e) => updateVehicleForm("owner", e.target.value)}>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                <Field label="Owner / Driver"><select value={vehicleForm.owner} onChange={(e) => updateVehicleForm("owner", e.target.value)}><option value="">No owner selected</option>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
                 <Field label="Average MPG"><input type="number" step="0.1" value={vehicleForm.averageMpg} onChange={(e) => updateVehicleForm("averageMpg", e.target.value)} /></Field>
                 <Field label="Wear Cost Per Mile"><input type="number" step="0.01" value={vehicleForm.wearCostPerMile} onChange={(e) => updateVehicleForm("wearCostPerMile", e.target.value)} /></Field>
                 <Field label="Notes"><input value={vehicleForm.notes} onChange={(e) => updateVehicleForm("notes", e.target.value)} /></Field>
@@ -33316,8 +35178,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <section className="panel">
               <div className="compact-card-header">
                 <div>
-                  <h2>Mileage Trips</h2>
-                  <p>Review business miles here. Add or edit mileage records in a focused popout.</p>
+                  <h2>Mileage by Vehicle</h2>
+                  <p>Vehicles stay grouped here. Open a vehicle to review the individual mileage logs underneath.</p>
                 </div>
                 <button type="button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
               </div>
@@ -33327,7 +35189,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <h2>{editingTripId ? "Edit Mileage Trip" : "Add Mileage Trip"}</h2>
               <form onSubmit={addTrip} className="form">
                 <Field label="Trip Purpose"><input value={tripForm.purpose} onChange={(e) => updateTripForm("purpose", e.target.value)} /></Field>
-                <Field label="Driver"><select value={tripForm.driver} onChange={(e) => updateTripForm("driver", e.target.value)}>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                <Field label="Driver"><select value={tripForm.driver} onChange={(e) => updateTripForm("driver", e.target.value)}><option value="">No driver selected</option>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
                 <Field label="Vehicle"><select value={tripForm.vehicleId} onChange={(e) => updateTripForm("vehicleId", e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.averageMpg} MPG</option>)}</select></Field>
                 <Field label="Starting Odometer"><input type="number" value={tripForm.startMiles} onChange={(e) => updateTripForm("startMiles", e.target.value)} /></Field>
                 <Field label="Ending Odometer"><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
@@ -33340,25 +35202,29 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </form>
             </section>
             )}
-            <ListPanel title="Mileage Trips" emptyText="No mileage trips added yet.">
-              {workspaceMileageTrips.map((t) => (
-                <div className="inventory-card" key={t.id}>
-                  <h3>{t.purpose}</h3>
-                  <p>Driver: {t.driver}</p>
-                  <p>Vehicle: {t.vehicleName || "Not selected"}</p>
-                  <p>Business Miles: {t.businessMiles}</p>
-                  <p>Gas Price Paid: {money(t.gasPrice)}</p>
-                  <p>Fuel Cost: {money(t.fuelCost)}</p>
-                  <p>Wear / Maintenance: {money(t.wearCost)}</p>
-                  <p>Total Vehicle Cost: {money(t.totalVehicleCost)}</p>
-                  <p>IRS Mileage Value: {money(t.mileageValue)}</p>
-                  {t.notes && <p>Notes: {t.notes}</p>}
-                  {t.gasReceiptImage && <div className="receipt-preview"><p>Gas Receipt</p><img src={t.gasReceiptImage} alt="Gas Receipt" /></div>}
-                  <OverflowMenu
-                    onEdit={() => startEditingTrip(t)}
-                    onDelete={() => deleteTrip(t.id)}
-                  />
-                </div>
+            <ListPanel title="Mileage Vehicle Summary" emptyText="No mileage trips added yet.">
+              {groupedMileageVehicles.map((group) => (
+                <button
+                  type="button"
+                  className="mileage-vehicle-card"
+                  key={group.key}
+                  onClick={() => setSelectedMileageVehicleKey(group.key)}
+                >
+                  <div className="mileage-vehicle-card-header">
+                    <div>
+                      <h3>{group.vehicleName}</h3>
+                      <p>{group.tripCount} trip{group.tripCount === 1 ? "" : "s"} · Last {formatExpenseDate(group.lastTripDate)}</p>
+                    </div>
+                    <strong>{group.totalMiles.toFixed(1)} mi</strong>
+                  </div>
+                  <div className="expense-vendor-card-stats">
+                    <span>Total cost {money(group.totalVehicleCost)}</span>
+                    <span>IRS value {money(group.totalMileageValue)}</span>
+                    <span>Fuel {money(group.totalFuelCost)}</span>
+                    <span>Wear {money(group.totalWearCost)}</span>
+                  </div>
+                  <span className="expense-vendor-card-action">View all trips</span>
+                </button>
               ))}
             </ListPanel>
           </>
@@ -33906,6 +35772,88 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
   );
 }
 
+function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDeleteEntry, onMoveEntryToForge, onCopyEntryToForge }) {
+  const entries = inventoryGroupEntries(item).filter(Boolean);
+  const purchaserBreakdown = item?.purchaserBreakdown?.length
+    ? item.purchaserBreakdown
+    : summarizeBreakdownRows(entries, { type: "purchaser" });
+  const locationBreakdown = item?.locationBreakdown?.length
+    ? item.locationBreakdown
+    : summarizeBreakdownRows(entries, { type: "location" });
+  if (!entries.length) return null;
+
+  return (
+    <section className="inventory-breakdown-panel">
+      <div className="compact-card-header">
+        <div>
+          <h4>Grouped inventory details</h4>
+          <p className="compact-subtitle">
+            {entries.length === 1
+              ? "One saved entry powers this card."
+              : `${entries.length} saved entries roll up into this one visible card.`}
+          </p>
+        </div>
+        <span className="neon-chip">Total Qty {Number(item.quantity || 0)}</span>
+      </div>
+
+      <div className="breakdown-columns">
+        <div>
+          <h5>Purchased by</h5>
+          <div className="breakdown-row-list">
+            {purchaserBreakdown.map((row) => (
+              <div className="breakdown-row" key={row.key}>
+                <span>{row.name}</span>
+                <strong>Qty {row.quantity}</strong>
+                {row.costSummary ? <small>{row.costSummary} total</small> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+        {variant === "forge" ? (
+          <div>
+            <h5>Inventory locations</h5>
+            <div className="breakdown-row-list">
+              {locationBreakdown.map((row) => (
+                <div className="breakdown-row" key={row.key}>
+                  <span>{row.name}</span>
+                  <strong>Qty {row.quantity}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <details className="individual-entry-details">
+        <summary>Individual entries</summary>
+        <div className="individual-entry-list">
+          {entries.map((entry) => (
+            <div className="individual-entry-card" key={entry.id}>
+              <div>
+                <strong>{itemPurchaserName(entry)}</strong>
+                <p>{inventoryEntryLabel(entry)}</p>
+                {entry.purchaseDate || entry.createdAt || entry.created_at ? (
+                  <small>{shortDate(entry.purchaseDate || entry.createdAt || entry.created_at)}</small>
+                ) : null}
+              </div>
+              <div className="individual-entry-actions">
+                {variant === "vault" ? (
+                  <>
+                    <button type="button" className="secondary-button" disabled={Number(entry.quantity || 0) < 1} onClick={() => onMoveEntryToForge?.(entry)}>Move</button>
+                    <button type="button" className="secondary-button" onClick={() => onCopyEntryToForge?.(entry)}>Copy</button>
+                  </>
+                ) : null}
+                <button type="button" className="secondary-button" onClick={() => onEditEntry?.(entry)}>Edit</button>
+                <button type="button" className="ghost-button" onClick={() => onDeleteEntry?.(entry)}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </details>
+    </section>
+  );
+}
+
 function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateListing }) {
   if (!item) return null;
   const details = [
@@ -33948,6 +35896,12 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
           <DetailItem key={label} label={label} value={value} />
         ))}
       </div>
+      <InventoryBreakdownPanel
+        item={item}
+        variant="forge"
+        onEditEntry={onEdit}
+        onDeleteEntry={onDelete}
+      />
       <MarketPriceHistoryPanel
         compact
         catalogProductId={item.catalogProductId || item.catalogItemId}
@@ -34002,6 +35956,14 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
           <DetailItem key={label} label={label} value={value} />
         ))}
       </div>
+      <InventoryBreakdownPanel
+        item={item}
+        variant="vault"
+        onEditEntry={onEdit}
+        onDeleteEntry={onDelete}
+        onMoveEntryToForge={onMoveToForge}
+        onCopyEntryToForge={onCopyToForge}
+      />
       <MarketPriceHistoryPanel
         compact
         catalogProductId={item.catalogProductId || item.catalogItemId}
@@ -34077,6 +36039,7 @@ function CompactInventoryCard({
         <div className="vault-card-facts">
           {packCount > 0 ? <p><strong>Pack Count:</strong> {packCount}</p> : null}
           <p><strong>Market Value:</strong> {money(quantity * marketPrice)}</p>
+          {item.purchaserSummary ? <p><strong>Purchased By:</strong> {item.purchaserSummary}</p> : null}
           <p><strong>Source:</strong> {item.sourceType || item.source || item.sourceLocation || "Manual"}</p>
         </div>
 
@@ -34106,7 +36069,8 @@ function CompactInventoryCard({
           <h3>{item.name}</h3>
           <div className="forge-card-facts">
             <span className="forge-card-quantity">Qty {item.quantity || 0}</span>
-            {physicalLocation ? <span className="neon-chip forge-location-pill">{physicalLocation}</span> : null}
+            {item.locationSummary || physicalLocation ? <span className="neon-chip forge-location-pill">{item.locationSummary || physicalLocation}</span> : null}
+            {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
           </div>
           <p className="compact-subtitle forge-card-meta-legacy">
             {item.category} • {item.buyer} • Qty {item.quantity}
@@ -34152,9 +36116,9 @@ function CompactInventoryCard({
       <div className="compact-details">
         <p><strong>SKU:</strong> {item.sku}</p>
         <p><strong>Store:</strong> {item.store || "Not listed"}</p>
-        <p><strong>Physical Location:</strong> {physicalLocation || "Not set"}</p>
+        <p><strong>Physical Location:</strong> {item.locationSummary || physicalLocation || "Unassigned"}</p>
         {item.physicalLocationNotes ? <p><strong>Location Notes:</strong> {item.physicalLocationNotes}</p> : null}
-        <p><strong>Purchased By:</strong> {itemPurchaserName(item)}</p>
+        <p><strong>Purchased By:</strong> {item.purchaserSummary || itemPurchaserName(item)}</p>
         <p><strong>Type:</strong> {item.productType || "Not listed"}</p>
         <p><strong>Expansion:</strong> {item.expansion || "Not listed"}</p>
         <p><strong>Set Code:</strong> {item.setCode || "Not listed"}</p>
@@ -34200,8 +36164,9 @@ function VaultEditForm({
   form,
   setForm,
   item,
-  purchasers = createDefaultPurchasers(),
+  purchasers = [],
   onCreatePurchaser,
+  onManagePurchasers,
   handleImageUpload,
   onSubmit,
   onCancel,
@@ -34216,9 +36181,6 @@ function VaultEditForm({
     notes: false,
     advanced: false,
   });
-  const [showNewPurchaser, setShowNewPurchaser] = useState(false);
-  const [newPurchaserName, setNewPurchaserName] = useState("");
-
   const quantity = Number(form.quantity || 0);
   const unitCost = Number(form.unitCost || 0);
   const msrpPrice = Number(form.msrpPrice || 0);
@@ -34238,25 +36200,10 @@ function VaultEditForm({
     setSections((current) => ({ ...current, [section]: !current[section] }));
   }
 
-  function selectPurchaser(purchaserId) {
-    if (purchaserId === "__add__") {
-      setShowNewPurchaser(true);
-      return;
-    }
-    const purchaser = purchasers.find((candidate) => candidate.id === purchaserId);
+  function selectPurchaser(purchaser) {
     setForm("purchaserId", purchaser?.id || "");
-    setForm("purchaserName", purchaser?.name || "Unassigned");
-    setForm("buyer", purchaser?.name || "Unassigned");
-  }
-
-  function createInlinePurchaser() {
-    const created = onCreatePurchaser?.(newPurchaserName);
-    if (!created) return;
-    setForm("purchaserId", created.id);
-    setForm("purchaserName", created.name);
-    setForm("buyer", created.name);
-    setNewPurchaserName("");
-    setShowNewPurchaser(false);
+    setForm("purchaserName", purchaser?.name || "");
+    setForm("buyer", purchaser?.name || "");
   }
 
   function setVaultStatus(value) {
@@ -34329,22 +36276,15 @@ function VaultEditForm({
             <Field label="Store / Source">
               <input value={form.store || ""} onChange={(event) => setForm("store", event.target.value)} />
             </Field>
-            <Field label="Purchased By">
-              <select value={currentPurchaserId} onChange={(event) => selectPurchaser(event.target.value)}>
-                <option value="">Unassigned</option>
-                {purchasers.map((purchaser) => (
-                  <option key={purchaser.id} value={purchaser.id}>{purchaser.name}</option>
-                ))}
-                <option value="__add__">Add New Purchaser</option>
-              </select>
-            </Field>
-            {showNewPurchaser ? (
-              <div className="inline-form">
-                <input value={newPurchaserName} onChange={(event) => setNewPurchaserName(event.target.value)} placeholder="New purchaser name" />
-                <button type="button" onClick={createInlinePurchaser}>Save Purchaser</button>
-                <button type="button" className="secondary-button" onClick={() => setShowNewPurchaser(false)}>Cancel</button>
-              </div>
-            ) : null}
+            <PurchaserSelect
+              label="Who paid?"
+              purchasers={purchasers}
+              valueId={currentPurchaserId}
+              valueName={form.purchaserName || form.buyer || ""}
+              onSelect={selectPurchaser}
+              onCreatePurchaser={onCreatePurchaser}
+              onManagePurchasers={onManagePurchasers}
+            />
           </div>
         ))}
 
@@ -34516,16 +36456,15 @@ function InventoryForm({
   form,
   setForm,
   catalogProducts,
-  purchasers = createDefaultPurchasers(),
+  purchasers = [],
   onCreatePurchaser,
+  onManagePurchasers,
   applyCatalogProduct,
   handleImageUpload,
   onSubmit,
   submitLabel,
   statusOptions = STATUSES,
 }) {
-  const [showNewPurchaser, setShowNewPurchaser] = useState(false);
-  const [newPurchaserName, setNewPurchaserName] = useState("");
   const quantity = Number(form.quantity || 0);
   const unitCost = Number(form.unitCost || 0);
   const msrpPrice = Number(form.msrpPrice || 0);
@@ -34559,27 +36498,10 @@ function InventoryForm({
     ? selectedCatalogProduct.variants.filter((variant) => variant.variantName || variant.variant_name)
     : [];
 
-  function selectPurchaser(purchaserId) {
-    if (purchaserId === "__add__") {
-      setShowNewPurchaser(true);
-      return;
-    }
-
-    const purchaser = purchasers.find((candidate) => candidate.id === purchaserId);
+  function selectPurchaser(purchaser) {
     setForm("purchaserId", purchaser?.id || "");
-    setForm("purchaserName", purchaser?.name || "Unassigned");
-    setForm("buyer", purchaser?.name || "Unassigned");
-  }
-
-  function createInlinePurchaser() {
-    const created = onCreatePurchaser?.(newPurchaserName);
-    if (!created) return;
-
-    setForm("purchaserId", created.id);
-    setForm("purchaserName", created.name);
-    setForm("buyer", created.name);
-    setNewPurchaserName("");
-    setShowNewPurchaser(false);
+    setForm("purchaserName", purchaser?.name || "");
+    setForm("buyer", purchaser?.name || "");
   }
 
   return (
@@ -34680,26 +36602,15 @@ function InventoryForm({
             <p>Track quantity, cost, source, and purchaser.</p>
           </div>
         </div>
-      <Field label="Purchased By">
-        <select value={currentPurchaserId} onChange={(e) => selectPurchaser(e.target.value)}>
-          <option value="">Unassigned</option>
-          {purchasers.map((purchaser) => (
-            <option key={purchaser.id} value={purchaser.id}>{purchaser.name}</option>
-          ))}
-          <option value="__add__">Add New Purchaser</option>
-        </select>
-      </Field>
-      {showNewPurchaser && (
-        <div className="inline-form">
-          <input
-            value={newPurchaserName}
-            onChange={(event) => setNewPurchaserName(event.target.value)}
-            placeholder="New purchaser name"
-          />
-          <button type="button" onClick={createInlinePurchaser}>Save Purchaser</button>
-          <button type="button" className="secondary-button" onClick={() => setShowNewPurchaser(false)}>Cancel</button>
-        </div>
-      )}
+      <PurchaserSelect
+        label="Who paid?"
+        purchasers={purchasers}
+        valueId={currentPurchaserId}
+        valueName={form.purchaserName || form.buyer || ""}
+        onSelect={selectPurchaser}
+        onCreatePurchaser={onCreatePurchaser}
+        onManagePurchasers={onManagePurchasers}
+      />
       <Field label="Category"><select value={form.category} onChange={(e) => setForm("category", e.target.value)}>{CATEGORIES.map((x) => <option key={x}>{x}</option>)}</select></Field>
       <Field label="Store / Source"><input value={form.store} onChange={(e) => setForm("store", e.target.value)} /></Field>
       <Field label="Barcode / UPC"><input value={form.barcode} onChange={(e) => setForm("barcode", e.target.value)} /></Field>
@@ -34774,8 +36685,9 @@ function InventoryForm({
       </section>
       <details className="forge-form-step forge-optional-details">
         <summary>Step 4: Optional Details</summary>
-      <Field label="Where is this inventory?">
-        <select value={form.physicalLocation || DEFAULT_FORGE_PHYSICAL_LOCATION} onChange={(e) => setForm("physicalLocation", e.target.value)}>
+      <Field label="Inventory location">
+        <select value={form.physicalLocation || ""} onChange={(e) => setForm("physicalLocation", e.target.value)}>
+          <option value="">Unassigned</option>
           {FORGE_PHYSICAL_LOCATION_OPTIONS.map((location) => (
             <option key={location} value={location}>{location}</option>
           ))}

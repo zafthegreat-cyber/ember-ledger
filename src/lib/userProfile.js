@@ -25,6 +25,21 @@ function metadataFlag(value) {
   return value === true || ["true", "1", "yes"].includes(String(value || "").toLowerCase());
 }
 
+function normalizePublicUsername(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 24);
+}
+
+function profileUsernameFromValues(...values) {
+  return normalizePublicUsername(values.find((value) => String(value || "").trim()) || "local_scout") || "local_scout";
+}
+
 export function getSupabaseAuthMetadata(user = null) {
   return user?.app_metadata || user?.raw_app_meta_data || user?.rawAppMetaData || {};
 }
@@ -50,13 +65,18 @@ export function makeFallbackUserProfile(user = null) {
   const metadataAccess = getAdminAccessFromAuthMetadata(user);
   const admin = metadataAccess.admin || isAdminEmail(email) || (isLocalhost() && LOCAL_DEV_ADMIN);
   const now = new Date().toISOString();
+  const displayName = fullName || metadata.display_name || metadata.displayName || (email ? email.split("@")[0] : "Local Beta");
+  const publicUsername = profileUsernameFromValues(metadata.username, metadata.public_username, metadata.publicUsername, metadata.handle, displayName, email);
   return {
     userId: user?.id || "local-beta",
     email: email || "local beta mode",
     firstName,
     lastName,
     fullName,
-    displayName: fullName || metadata.display_name || metadata.displayName || (email ? email.split("@")[0] : "Local Beta"),
+    displayName,
+    username: publicUsername,
+    publicUsername,
+    public_username: publicUsername,
     userRole: admin ? USER_ROLES.ADMIN : USER_ROLES.USER,
     tier: admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE,
     planTier: metadata.plan_tier || metadata.planTier || (admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE),
@@ -101,13 +121,18 @@ export function mapProfileRow(row = {}, user = null) {
   const firstName = row.first_name || row.firstName || "";
   const lastName = row.last_name || row.lastName || "";
   const fullName = row.full_name || row.fullName || [firstName, lastName].filter(Boolean).join(" ");
+  const displayName = row.display_name || row.displayName || fullName || email.split("@")[0] || "User";
+  const publicUsername = profileUsernameFromValues(row.username, row.public_username, row.publicUsername, row.handle, displayName, email);
   return {
     userId: row.id || row.userId || user?.id || "",
     email,
     firstName,
     lastName,
     fullName,
-    displayName: row.display_name || row.displayName || fullName || email.split("@")[0] || "User",
+    displayName,
+    username: publicUsername,
+    publicUsername,
+    public_username: publicUsername,
     userRole,
     tier,
     planTier: row.plan_tier || row.planTier || row.tier || PLAN_TYPES.FREE,

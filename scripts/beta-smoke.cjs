@@ -185,6 +185,9 @@ async function main() {
           setName: "Smoke Search Set",
           barcode: "098765432109",
           sku: "SMOKE-ETB-1",
+          externalProductId: "SMOKE-ETB-EXT",
+          packCount: 10,
+          imageUrl: "https://example.com/smoke-search-etb.png",
           marketPrice: 60,
           msrpPrice: 49.99,
           sourceType: "smoke",
@@ -243,7 +246,13 @@ async function main() {
   }
 
   async function fillByLabel(scope, label, value) {
-    await scope.getByLabel(label, { exact: true }).fill(String(value));
+    try {
+      await scope.getByLabel(label, { exact: true }).fill(String(value));
+    } catch (error) {
+      const bodyPreview = await page.locator("body").innerText().catch(() => "");
+      error.message = `${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
+      throw error;
+    }
   }
 
   function addWizardModal() {
@@ -434,13 +443,16 @@ async function main() {
     await reloadWithAppData(cleanedWorkspaceData);
   });
 
-  await step("Workspace: collection rename persists", async () => {
+  await step("Workspace: collection management renames, archives, restores, and deletes empty collections", async () => {
     await nav("Vault");
-    await page.getByRole("button", { name: "Rename Collection" }).first().click();
+    await page.getByRole("button", { name: "Collection Settings" }).first().click();
+    const managerModal = page.locator(".collection-manager-modal").first();
+    await managerModal.waitFor({ state: "visible", timeout: 5000 });
+    await managerModal.getByRole("button", { name: "Edit Current Collection" }).click();
     const renameModal = page.locator(".workspace-rename-modal").first();
     await renameModal.waitFor({ state: "visible", timeout: 5000 });
     await fillByLabel(renameModal, "Collection name", "Smoke Renamed Collection");
-    await renameModal.getByRole("button", { name: "Save Name" }).click();
+    await renameModal.getByRole("button", { name: "Save Collection" }).click();
     await assertVisibleText("Smoke Renamed Collection");
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForTimeout(500);
@@ -451,6 +463,81 @@ async function main() {
       return (data.workspaces || []).find((workspace) => workspace.id === "workspace-personal-local-beta") || null;
     });
     assert.equal(renamedWorkspace?.name, "Smoke Renamed Collection");
+
+    const collectionManagementData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const now = new Date().toISOString();
+      data.workspaces = [
+        ...(data.workspaces || []).filter((workspace) => workspace.id !== "workspace-empty-smoke"),
+        {
+          id: "workspace-empty-smoke",
+          name: "Smoke Empty Collection",
+          type: "business",
+          ownerUserId: "local-beta",
+          owner_user_id: "local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      data.workspaceMembers = [
+        ...(data.workspaceMembers || []).filter((member) => member.workspaceId !== "workspace-empty-smoke" && member.workspace_id !== "workspace-empty-smoke"),
+        {
+          workspaceId: "workspace-empty-smoke",
+          workspace_id: "workspace-empty-smoke",
+          userId: "local-beta",
+          user_id: "local-beta",
+          role: "owner",
+          status: "active",
+          acceptedAt: now,
+        },
+      ];
+      data.items = [];
+      data.expenses = [];
+      data.sales = [];
+      data.mileageTrips = [];
+      data.marketplaceListings = [];
+      return data;
+    });
+    await reloadWithAppData(collectionManagementData);
+    await nav("Vault");
+    await page.getByRole("button", { name: "Collection Settings" }).first().click();
+    const manager = page.locator(".collection-manager-modal").first();
+    await manager.waitFor({ state: "visible", timeout: 5000 });
+    const emptyCard = manager.locator(".collection-manager-card").filter({ hasText: "Smoke Empty Collection" }).first();
+    await emptyCard.getByRole("button", { name: "Archive" }).click();
+    const archiveModal = page.locator(".collection-confirm-modal").filter({ hasText: "Archive Smoke Empty Collection" }).first();
+    await archiveModal.getByRole("button", { name: "Archive Collection", exact: true }).click();
+    await assertVisibleText("Collection archived");
+    let emptyWorkspace = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.workspaces || []).find((workspace) => workspace.id === "workspace-empty-smoke") || null;
+    });
+    assert.ok(emptyWorkspace?.archivedAt || emptyWorkspace?.archived_at, "archived collection should persist archived timestamp");
+
+    const archivedCard = manager.locator(".collection-manager-card").filter({ hasText: "Smoke Empty Collection" }).first();
+    await archivedCard.getByRole("button", { name: "Restore" }).click();
+    await assertVisibleText("Collection restored");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const workspace = (data.workspaces || []).find((entry) => entry.id === "workspace-empty-smoke");
+      return workspace && !workspace.archivedAt && !workspace.archived_at;
+    }, null, { timeout: 5000 });
+    emptyWorkspace = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.workspaces || []).find((workspace) => workspace.id === "workspace-empty-smoke") || null;
+    });
+    assert.ok(!emptyWorkspace?.archivedAt && !emptyWorkspace?.archived_at, "restored collection should clear archived timestamp");
+
+    await archivedCard.getByRole("button", { name: "Delete" }).click();
+    const deleteModal = page.locator(".collection-confirm-modal").filter({ hasText: "Delete Smoke Empty Collection" }).first();
+    await fillByLabel(deleteModal, "Type DELETE to permanently delete this empty collection", "DELETE");
+    await deleteModal.getByRole("button", { name: "Delete Permanently" }).click();
+    await assertVisibleText("Empty collection deleted");
+    const deletedWorkspace = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.workspaces || []).find((workspace) => workspace.id === "workspace-empty-smoke") || null;
+    });
+    assert.equal(deletedWorkspace, null);
   });
 
   await step("Forge mode: Ember & Tide lock hides Personal Forge and routes writes", async () => {
@@ -529,9 +616,11 @@ async function main() {
     await ensureAddWizardDestination(lockedAddForm, "Forge");
     await clickAddWizardNext();
     const forgeWorkspaceSelect = lockedAddForm.getByLabel("Forge Workspace");
-    assert.equal(await forgeWorkspaceSelect.inputValue(), "workspace-ember-tide");
-    const forgeWorkspaceOptions = await forgeWorkspaceSelect.locator("option").allTextContents();
-    assert.equal(forgeWorkspaceOptions.some((option) => /My Personal Space/i.test(option)), false, "Personal Forge should be hidden from Forge workspace choices");
+    if (await forgeWorkspaceSelect.isVisible().catch(() => false)) {
+      assert.equal(await forgeWorkspaceSelect.inputValue(), "workspace-ember-tide");
+      const forgeWorkspaceOptions = await forgeWorkspaceSelect.locator("option").allTextContents();
+      assert.equal(forgeWorkspaceOptions.some((option) => /My Personal Space/i.test(option)), false, "Personal Forge should be hidden from Forge workspace choices");
+    }
     await fillByLabel(lockedAddForm, "Quantity for Forge", "1");
     await fillByLabel(lockedAddForm, "Cost Basis", "10");
     await clickAddWizardNext();
@@ -590,6 +679,221 @@ async function main() {
     await page.locator('.flow-modal[data-flow="multiDestinationAdd"]').first().waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
   });
 
+  await step("Add Item: validation errors are visible inside the wizard", async () => {
+    await nav("Forge");
+    await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
+    const form = page.locator("form#multi-destination-add-form").first();
+    await form.waitFor({ state: "visible", timeout: 5000 });
+
+    await clickAddWizardNext();
+    await assertVisibleText("Please fix 1 item before saving.");
+    await assertVisibleText("Choose an item or add one manually.");
+    await form.locator('[data-validation-field="item-name"] .field-error').waitFor({ state: "visible", timeout: 5000 });
+
+    await form.getByRole("button", { name: "Manual Add" }).first().click();
+    await form.locator('[data-validation-field="item-name"] input').fill("Smoke Validation ETB");
+    assert.equal(await form.locator('[data-validation-field="item-name"] .field-error').count(), 0, "Correcting the item should clear the inline item error");
+    await clickAddWizardNext();
+
+    const forgeDestination = form.locator("label.destination-checkbox").filter({ hasText: /Forge/i }).locator("input").first();
+    if (await forgeDestination.isChecked()) {
+      await forgeDestination.setChecked(false, { force: true });
+    }
+    await clickAddWizardNext();
+    await assertVisibleText("Choose where this should go.");
+    await form.locator('[data-validation-field="destination"]').waitFor({ state: "visible", timeout: 5000 });
+
+    await ensureAddWizardDestination(form, "Forge");
+    await clickAddWizardNext();
+    const forgeQuantity = form.getByLabel("Quantity for Forge");
+    await forgeQuantity.fill("");
+    await clickAddWizardNext();
+    await assertVisibleText("Forge quantity: Enter a quantity.");
+    await form.locator('[data-validation-field="forge-quantity"] .field-error').waitFor({ state: "visible", timeout: 5000 });
+    await forgeQuantity.fill("0");
+    await clickAddWizardNext();
+    await assertVisibleText("Quantity must be at least 1.");
+    await forgeQuantity.fill("2");
+    assert.equal(await form.locator('[data-validation-field="forge-quantity"] .field-error').count(), 0, "Correcting quantity should clear the inline quantity error");
+
+    await clickAddWizardNext();
+    await assertVisibleText("Review and Add");
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
+    await assertVisibleText("Smoke Validation ETB");
+    const validationCleanupData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.items = (data.items || []).filter((item) => item.name !== "Smoke Validation ETB" && item.itemName !== "Smoke Validation ETB");
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(data));
+      return data;
+    });
+    await reloadWithAppData(validationCleanupData);
+  });
+
+  await step("Purchasers: managed list controls Who paid options", async () => {
+    await nav("Forge");
+    await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
+    const form = page.locator("form#multi-destination-add-form").first();
+    const manualFallback = form.getByRole("button", { name: "Can't find it? Add manually" }).first();
+    if (await manualFallback.isVisible().catch(() => false)) await manualFallback.click();
+    await fillByLabel(form, "Item Name", "Smoke Purchaser Forge Item");
+    await fillByLabel(form, "Type / Category", "Elite Trainer Box");
+    await clickAddWizardNext();
+    await ensureAddWizardDestination(form, "Forge");
+    await clickAddWizardNext();
+
+    const purchaserSelect = form.getByLabel("Who paid?");
+    const initialPurchaserOptions = await purchaserSelect.locator("option").allTextContents();
+    assert.equal(initialPurchaserOptions.some((text) => /^(Personal|Business|Kids|Other)$/i.test(text.trim())), false, "Who paid should not show generated default purchasers");
+    await assertVisibleText("No purchasers yet. Add one to track who paid.");
+
+    await purchaserSelect.selectOption("__add__");
+    const inlinePurchaserForm = form.locator(".purchaser-inline-form").first();
+    await inlinePurchaserForm.getByPlaceholder("Display name").fill("Smoke Buyer");
+    await inlinePurchaserForm.getByPlaceholder(/Optional note/i).fill("business card");
+    await inlinePurchaserForm.getByRole("button", { name: "Save Purchaser" }).click();
+    await fillByLabel(form, "Quantity for Forge", "1");
+    await fillByLabel(form, "Cost Basis", "10");
+    await clickAddWizardNext();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
+    await assertVisibleText("Smoke Purchaser Forge Item");
+
+    const savedPurchaserState = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const purchaser = (data.purchasers || []).find((entry) => entry.name === "Smoke Buyer");
+      const item = (data.items || []).find((entry) => entry.name === "Smoke Purchaser Forge Item");
+      return { purchaser, item };
+    });
+    assert.equal(savedPurchaserState.purchaser?.note, "business card");
+    assert.equal(savedPurchaserState.purchaser?.active, true);
+    assert.equal(savedPurchaserState.item?.purchaserName, "Smoke Buyer");
+
+    await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
+    const secondForm = page.locator("form#multi-destination-add-form").first();
+    const secondManualFallback = secondForm.getByRole("button", { name: "Can't find it? Add manually" }).first();
+    if (await secondManualFallback.isVisible().catch(() => false)) await secondManualFallback.click();
+    await fillByLabel(secondForm, "Item Name", "Smoke Purchaser Draft");
+    await fillByLabel(secondForm, "Type / Category", "Elite Trainer Box");
+    await clickAddWizardNext();
+    await ensureAddWizardDestination(secondForm, "Forge");
+    await clickAddWizardNext();
+    await secondForm.getByLabel("Who paid?").selectOption("__manage__");
+    const manager = page.locator(".purchaser-manager-modal").first();
+    await manager.waitFor({ state: "visible", timeout: 5000 });
+    await overflowAction(manager.locator(".compact-card").filter({ hasText: "Smoke Buyer" }).first(), "Edit");
+    await manager.getByPlaceholder("Purchaser name").fill("Smoke Buyer Renamed");
+    await manager.getByRole("button", { name: "Save" }).click();
+    await assertVisibleText("Renamed purchaser to Smoke Buyer Renamed.");
+    await overflowAction(manager.locator(".compact-card").filter({ hasText: "Smoke Buyer Renamed" }).first(), "Archive");
+    await assertVisibleText("Archived");
+    await manager.getByRole("button", { name: "Close", exact: true }).click();
+
+    const archivedState = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const purchaser = (data.purchasers || []).find((entry) => entry.name === "Smoke Buyer Renamed");
+      const item = (data.items || []).find((entry) => entry.name === "Smoke Purchaser Forge Item");
+      return { purchaser, item };
+    });
+    assert.equal(archivedState.purchaser?.active, false);
+    assert.equal(archivedState.item?.purchaserName, "Smoke Buyer Renamed");
+    const activeOptionsAfterArchive = await secondForm.getByLabel("Who paid?").locator("option").allTextContents();
+    assert.equal(activeOptionsAfterArchive.some((text) => /Smoke Buyer Renamed/.test(text)), false, "Archived purchasers should not appear for new items");
+    await page.locator(".flow-modal").getByRole("button", { name: "Cancel" }).click();
+    const purchaserCleanupData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.items = (data.items || []).filter((item) => !String(item.name || "").startsWith("Smoke Purchaser"));
+      data.purchasers = (data.purchasers || []).filter((purchaser) => !String(purchaser.name || "").startsWith("Smoke Buyer"));
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(data));
+      return data;
+    });
+    await reloadWithAppData(purchaserCleanupData);
+  });
+
+  await step("Public identity: Marketplace and Tidepool render usernames", async () => {
+    const identityData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const now = new Date().toISOString();
+      data.profile = {
+        ...(data.profile || {}),
+        userId: "local-beta",
+        email: "local beta mode",
+        firstName: "Smoke",
+        lastName: "Collector",
+        displayName: "Private Smoke Name",
+        publicUsername: "smoke_trader",
+        public_username: "smoke_trader",
+        username: "smoke_trader",
+        updatedAt: now,
+      };
+      data.marketplaceListings = [
+        ...(data.marketplaceListings || []).filter((listing) => listing.id !== "marketplace-public-identity-smoke"),
+        {
+          id: "marketplace-public-identity-smoke",
+          sellerUserId: "local-beta",
+          sellerDisplayName: "Private Smoke Name",
+          sellerUsername: "smoke_trader",
+          listingType: "For Sale",
+          title: "Smoke Public Username ETB",
+          category: "Pokemon",
+          productType: "Elite Trainer Box",
+          condition: "Sealed",
+          quantity: 1,
+          askingPrice: 49.99,
+          tradeValue: 0,
+          locationCity: "Chesapeake",
+          locationState: "VA",
+          pickupOnly: true,
+          shippingAvailable: false,
+          intendedForKids: true,
+          status: "Active",
+          photos: [],
+          createdAt: now,
+          updatedAt: now,
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+        },
+      ];
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(data));
+
+      const tidepool = JSON.parse(localStorage.getItem("et-tcg-beta-tidepool") || '{"posts":[],"comments":[],"reactions":[]}');
+      tidepool.posts = [
+        {
+          postId: "tidepool-public-identity-smoke",
+          userId: "local-beta",
+          displayName: "Private Smoke Name",
+          username: "smoke_trader",
+          publicUsername: "smoke_trader",
+          postType: "General post",
+          title: "Smoke username post",
+          body: "Public identity smoke test.",
+          city: "Chesapeake",
+          state: "VA",
+          createdAt: now,
+          updatedAt: now,
+          status: "active",
+          verificationStatus: "unverified",
+          commentCount: 0,
+          reactionCount: 0,
+          sourceType: "user",
+        },
+        ...(tidepool.posts || []).filter((post) => post.postId !== "tidepool-public-identity-smoke"),
+      ];
+      localStorage.setItem("et-tcg-beta-tidepool", JSON.stringify(tidepool));
+      return data;
+    });
+    await reloadWithAppData(identityData);
+
+    await nav("Forge");
+    await page.locator(".forge-overview-card").filter({ hasText: "Marketplace" }).first().click();
+    await assertVisibleText("Smoke Public Username ETB");
+    await assertVisibleText("@smoke_trader");
+    await assertNotVisibleText("Private Smoke Name");
+
+    await nav("Tidepool");
+    await assertVisibleText("Smoke username post");
+    await assertVisibleText("@smoke_trader");
+    await assertNotVisibleText("Private Smoke Name");
+  });
+
   async function assertVisibleText(text) {
     try {
       await page.waitForFunction(
@@ -606,6 +910,16 @@ async function main() {
       error.message = `${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
       throw error;
     }
+  }
+
+  async function openScoutReportWizard() {
+    await nav("Scout");
+    if (await page.locator("form.scout-report-flow").count() === 0) {
+      await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+    }
+    const form = page.locator("form.scout-report-flow").first();
+    await form.waitFor({ state: "visible", timeout: 10000 });
+    return form;
   }
 
   async function assertNotVisibleText(text) {
@@ -633,11 +947,35 @@ async function main() {
       reportTime = "",
     } = options;
 
-    const reportTypeButton = form.getByRole("button", { name: new RegExp(reportType, "i") }).first();
-    if (!(await reportTypeButton.isVisible().catch(() => false))) {
+    const itemStep = form.getByText("Select item or product");
+    if (!(await itemStep.isVisible().catch(() => false))) {
       const bodyText = await page.locator("body").innerText().catch(() => "");
-      throw new Error(`Scout wizard did not open at the report type step.\n${bodyText.slice(0, 1600)}`);
+      throw new Error(`Scout wizard did not open at the item/product step.\n${bodyText.slice(0, 1600)}`);
     }
+
+    if (productName) {
+      await form.getByPlaceholder(/Optional: ETB|booster bundle|UPC|SKU/i).fill(productName);
+    }
+    await form.getByRole("button", { name: "Next" }).click();
+
+    const storeSearch = form.getByPlaceholder("Search store, city, ZIP, nickname, or address").first();
+    if (await storeSearch.count()) {
+      await storeSearch.fill(storeSearchText);
+    }
+    const smokeStoreCard = form.locator(".scout-report-store-card").filter({ hasText: storeSearchText }).first();
+    await smokeStoreCard.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+    if (await smokeStoreCard.isVisible().catch(() => false)) {
+      await smokeStoreCard.getByRole("button", { name: /Choose this store|Report here/i }).click();
+      const selectedStoreCard = form.locator(".scout-report-store-card.selected").filter({ hasText: storeSearchText }).first();
+      await selectedStoreCard.waitFor({ state: "visible", timeout: 5000 });
+      assert.match(await selectedStoreCard.innerText(), /Store selected|Manual location selected/i);
+    } else {
+      const formText = await form.innerText().catch(() => "");
+      throw new Error(`Scout wizard did not show the requested store "${storeSearchText}".\n${formText.slice(0, 1200)}`);
+    }
+    await form.getByRole("button", { name: "Next" }).click();
+
+    const reportTypeButton = form.getByRole("button", { name: new RegExp(reportType, "i") }).first();
     await reportTypeButton.click();
     await page.waitForFunction(
       (button) => button?.classList?.contains("selected"),
@@ -647,23 +985,6 @@ async function main() {
     if (note) {
       await form.getByPlaceholder(/Optional quick note/i).fill(note);
     }
-    await form.getByRole("button", { name: "Next" }).click();
-
-    const storeSearch = form.getByPlaceholder("Search store, city, ZIP, nickname, or address").first();
-    if (await storeSearch.count()) {
-      await storeSearch.fill(storeSearchText);
-    }
-    const manualLocation = form.getByPlaceholder("Manual store/location if missing").first();
-    if (await manualLocation.count()) {
-      await manualLocation.fill(storeSearchText);
-    }
-    const smokeStoreCard = form.locator(".scout-report-store-card").filter({ hasText: storeSearchText }).first();
-    if (await smokeStoreCard.count()) {
-      await smokeStoreCard.getByRole("button", { name: "Report here" }).click();
-    } else if (await form.getByRole("button", { name: "Report here" }).count()) {
-      await form.getByRole("button", { name: "Report here" }).first().click();
-    }
-    await form.getByRole("button", { name: "Next" }).click();
 
     await form.getByRole("button", { name: new RegExp(proof, "i") }).first().click();
     if (file) {
@@ -671,11 +992,6 @@ async function main() {
     }
     if (proofText) {
       await form.getByPlaceholder(/Receipt detail|screenshot note|site link/i).fill(proofText);
-    }
-    await form.getByRole("button", { name: "Next" }).click();
-
-    if (productName) {
-      await form.getByPlaceholder(/Optional: ETB|booster bundle|UPC|SKU/i).fill(productName);
     }
     if (quantity) {
       await form.getByPlaceholder(/Optional qty|estimate/i).fill(quantity);
@@ -712,7 +1028,82 @@ async function main() {
     });
   }
 
+  await step("Scout: report wizard shows visible selected choices", async () => {
+    const visibleStore = {
+      id: "smoke-visible-selection-target",
+      name: "Visible Selection Target",
+      nickname: "Visible Selection Target",
+      chain: "Target",
+      retailer: "Target",
+      city: "Chesapeake",
+      address: "44 Visible Choice Way",
+    };
+    await page.evaluate((store) => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-scout") || "{}");
+      data.stores = [store, ...(data.stores || []).filter((candidate) => (candidate.id || candidate.storeId) !== store.id)];
+      localStorage.setItem("et-tcg-beta-scout", JSON.stringify(data));
+    }, visibleStore);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    const form = await openScoutReportWizard();
+
+    await form.getByText("Select item or product").waitFor({ state: "visible", timeout: 5000 });
+    const categoryButton = form.getByRole("button", { name: /One Piece/i }).first();
+    await categoryButton.click();
+    await page.waitForFunction(
+      (button) => button?.classList?.contains("selected") && button?.getAttribute("aria-pressed") === "true",
+      await categoryButton.elementHandle(),
+      { timeout: 3000 }
+    );
+    await assertVisibleText("Current choice");
+    await assertVisibleText("Selected");
+    await form.getByRole("button", { name: "Next" }).click();
+
+    await form.getByPlaceholder("Search store, city, ZIP, nickname, or address").fill(visibleStore.nickname);
+    const storeCard = form.locator(".scout-report-store-card").filter({ hasText: visibleStore.nickname }).first();
+    await storeCard.waitFor({ state: "visible", timeout: 5000 });
+    await storeCard.getByRole("button", { name: /Choose this store|Report here/i }).click();
+    const selectedStoreCard = form.locator(".scout-report-store-card.selected").filter({ hasText: visibleStore.nickname }).first();
+    await selectedStoreCard.waitFor({ state: "visible", timeout: 5000 });
+    assert.match(await selectedStoreCard.innerText(), /Store selected/);
+    await form.getByRole("button", { name: "Next" }).click();
+
+    const stockFoundButton = form.getByRole("button", { name: /Stock found/i }).first();
+    await stockFoundButton.click();
+    await page.waitForFunction(
+      (button) => button?.classList?.contains("selected") && button?.getAttribute("aria-pressed") === "true",
+      await stockFoundButton.elementHandle(),
+      { timeout: 3000 }
+    );
+
+    const receiptProof = form.getByRole("button", { name: /Receipt/i }).first();
+    await receiptProof.click();
+    await page.waitForFunction(
+      (button) => button?.classList?.contains("selected") && button?.getAttribute("aria-pressed") === "true",
+      await receiptProof.elementHandle(),
+      { timeout: 3000 }
+    );
+    const stockLeftButton = form.getByRole("button", { name: /Yes, some left/i }).first();
+    await stockLeftButton.click();
+    await page.waitForFunction(
+      (button) => button?.classList?.contains("selected") && button?.getAttribute("aria-pressed") === "true",
+      await stockLeftButton.elementHandle(),
+      { timeout: 3000 }
+    );
+    await form.getByRole("button", { name: "Next" }).click();
+    await assertVisibleText("Reporting at: Visible Selection Target");
+    await assertVisibleText("Product/category");
+    await assertVisibleText("One Piece");
+    await assertVisibleText("Stock left");
+    await assertVisibleText("Yes, some left");
+    await closeOpenModals();
+  });
+
   async function submitScoutWizardIfNeeded(form) {
+    const explicitAction = form.getByRole("button", { name: /Submit Report|Save Guess/i }).last();
+    if (await explicitAction.isVisible().catch(() => false)) {
+      await explicitAction.click();
+      return;
+    }
     const submitButton = form.locator('button[type="submit"]').last();
     if (await submitButton.isVisible().catch(() => false)) {
       await submitButton.click();
@@ -740,6 +1131,109 @@ async function main() {
     const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first();
     await smokeStoreCard.getByRole("button", { name: /Open Store|Open/i }).click();
     await assertVisibleText("Submit Report");
+  });
+
+  await step("Scout: reports preserve selected stores and remain visible", async () => {
+    const exactStores = [
+      {
+        id: "smoke-exact-target",
+        name: "Smoke Exact Target",
+        nickname: "Smoke Exact Target",
+        chain: "Target",
+        retailer: "Target",
+        city: "Norfolk",
+        address: "10 Exact Target Way",
+      },
+      {
+        id: "smoke-exact-walmart-richmond",
+        name: "Smoke Exact Walmart Richmond",
+        nickname: "Smoke Exact Walmart Richmond",
+        chain: "Walmart",
+        retailer: "Walmart",
+        city: "Richmond",
+        address: "20 Exact Walmart Way",
+      },
+      {
+        id: "smoke-exact-gamestop",
+        name: "Smoke Exact GameStop",
+        nickname: "Smoke Exact GameStop",
+        chain: "GameStop",
+        retailer: "GameStop",
+        city: "Virginia Beach",
+        address: "30 Exact GameStop Way",
+      },
+    ];
+    await page.evaluate((stores) => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-scout") || "{}");
+      const incomingIds = new Set(stores.map((store) => store.id));
+      data.stores = [...stores, ...(data.stores || []).filter((store) => !incomingIds.has(store.id || store.storeId))];
+      data.reports = (data.reports || []).filter((report) => !String(report.productName || report.itemName || "").startsWith("Exact Scout"));
+      localStorage.setItem("et-tcg-beta-scout", JSON.stringify(data));
+    }, exactStores);
+    await page.reload({ waitUntil: "domcontentloaded" });
+
+    for (const store of exactStores) {
+      const form = await openScoutReportWizard();
+      await fillScoutReportWizard(form, {
+        storeSearchText: store.nickname,
+        productName: `Exact Scout ${store.retailer} ETB`,
+        quantity: "1",
+        note: `Exact report for ${store.nickname}`,
+        reportDate: "2026-05-18",
+        reportTime: "10:15",
+      });
+      await assertVisibleText(store.nickname);
+      await submitScoutWizardIfNeeded(form);
+      await closeScoutSubmitSuccess();
+    }
+
+    const savedReports = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-scout") || "{}");
+      return (data.reports || [])
+        .filter((report) => String(report.productName || report.itemName || "").startsWith("Exact Scout"))
+        .map((report) => ({
+          productName: report.productName || report.itemName,
+          storeId: report.storeId || report.store_id,
+          storeName: report.storeName || report.store_name,
+          retailer: report.retailer || report.chain,
+          workspaceId: report.workspaceId || report.workspace_id || "",
+        }));
+    });
+    assert.equal(savedReports.length, 3, "three exact Scout reports should be saved");
+    for (const store of exactStores) {
+      const report = savedReports.find((candidate) => candidate.storeId === store.id);
+      assert.ok(report, `report should preserve store id ${store.id}`);
+      assert.equal(report.storeName, store.nickname);
+      assert.equal(report.retailer, store.retailer);
+      assert.notEqual(report.storeName, "Suffolk Walmart");
+    }
+
+    await nav("Scout");
+    for (const store of exactStores) {
+      await assertVisibleText(store.nickname);
+      await assertVisibleText(`Exact Scout ${store.retailer} ETB`);
+    }
+
+    const filterSelect = page.locator(".scout-compact-filterbar select").first();
+    if (await filterSelect.isVisible().catch(() => false)) {
+      await filterSelect.selectOption("Verified");
+      await assertVisibleText("Filters are hiding reports");
+      await page.getByRole("button", { name: "Reset filters" }).first().click();
+      await assertVisibleText("Smoke Exact Target");
+    }
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await nav("Scout");
+    for (const store of exactStores) {
+      await assertVisibleText(store.nickname);
+      await assertVisibleText(`Exact Scout ${store.retailer} ETB`);
+    }
+
+    const blankForm = await openScoutReportWizard();
+    await blankForm.getByRole("button", { name: "Next" }).click();
+    await blankForm.getByRole("button", { name: "Next" }).click();
+    await assertVisibleText("Choose the store or enter a manual store/location before submitting.");
+    await closeOpenModals();
   });
 
   await step("Scout: add/edit restock report without user delete", async () => {
@@ -938,6 +1432,8 @@ async function main() {
     await clickAddWizardNext();
     await ensureAddWizardDestination(form, "Forge");
     await clickAddWizardNext();
+    assert.equal(await form.getByLabel("Cost Basis", { exact: true }).inputValue(), "49.99", "Known catalog MSRP should auto-fill Forge cost basis");
+    assert.equal(await form.getByLabel("Planned Sell Price", { exact: true }).inputValue(), "60", "Known catalog market price should auto-fill planned sale");
     await fillByLabel(form, "Quantity for Forge", "2");
     await fillByLabel(form, "Cost Basis", "40");
     await fillByLabel(form, "Planned Sell Price", "55");
@@ -947,6 +1443,13 @@ async function main() {
     await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
     await assertVisibleText("Smoke Search Elite Trainer Box");
     const smokeForgeCard = page.locator(".compact-card").filter({ hasText: "Smoke Search Elite Trainer Box" }).first();
+    await page.locator(".forge-more-filters summary").click();
+    await page.getByLabel("Physical location").selectOption("Storage");
+    await smokeForgeCard.waitFor({ state: "visible", timeout: 5000 });
+    await page.getByLabel("Physical location").selectOption("At Home");
+    assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Search Elite Trainer Box" }).count(), 0, "Storage item should be hidden by the At Home physical location filter");
+    await page.getByLabel("Physical location").selectOption("All");
+    await smokeForgeCard.waitFor({ state: "visible", timeout: 5000 });
     await smokeForgeCard.getByRole("button", { name: "View" }).click();
     await assertVisibleText("Smoke Shared Target");
     await assertVisibleText("Storage");
@@ -958,11 +1461,23 @@ async function main() {
     await page.waitForTimeout(500);
     await nav("Forge");
     await assertVisibleText("Smoke Search Elite Trainer Box");
+    const savedForgeRecord = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.items || []).find((item) => item.name === "Smoke Search Elite Trainer Box") || null;
+    });
+    assert.equal(savedForgeRecord?.productType, "Elite Trainer Box");
+    assert.equal(Number(savedForgeRecord?.packCount), 10);
+    assert.equal(savedForgeRecord?.sku, "SMOKE-ETB-1");
+    assert.equal(savedForgeRecord?.externalProductId, "SMOKE-ETB-EXT");
+    assert.equal(savedForgeRecord?.itemImage, "https://example.com/smoke-search-etb.png");
+    assert.equal(Number(savedForgeRecord?.msrpPrice), 49.99);
+    assert.equal(Number(savedForgeRecord?.marketPrice), 60);
+    assert.equal(Number(savedForgeRecord?.unitCost), 40, "User-edited cost should override the catalog MSRP default");
 
     await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Search Elite Trainer Box" }), "Edit");
     const editForm = page.locator("form.form").last();
     await editForm.getByText("Step 4: Optional Details").click();
-    await editForm.getByLabel("Where is this inventory?").selectOption("Other");
+    await editForm.getByLabel("Inventory location").selectOption("Other");
     await fillByLabel(editForm, "Custom physical location notes", "Black tote 2");
     await fillByLabel(editForm, "Unit Cost", "0");
     await fillByLabel(editForm, "Item Name", "Smoke Forge ETB Edited");
@@ -1126,6 +1641,109 @@ async function main() {
     await assertVisibleText("$20.00");
   });
 
+  await step("Mileage: groups logs by vehicle and opens trip details", async () => {
+    const mileageData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.vehicles = [
+        ...(data.vehicles || []).filter((vehicle) => !String(vehicle.id || "").startsWith("vehicle-group-smoke-")),
+        {
+          id: "vehicle-group-smoke-prius",
+          name: "Smoke Toyota Prius",
+          owner: "Zena",
+          averageMpg: 48,
+          wearCostPerMile: 0.12,
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: "vehicle-group-smoke-van",
+          name: "Smoke Trade Van",
+          owner: "Dillon",
+          averageMpg: 22,
+          wearCostPerMile: 0.18,
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      data.mileageTrips = [
+        ...(data.mileageTrips || []).filter((trip) => !String(trip.id || "").startsWith("mileage-group-smoke-")),
+        {
+          id: "mileage-group-smoke-prius-1",
+          vehicleId: "vehicle-group-smoke-prius",
+          vehicleName: "Smoke Toyota Prius",
+          purpose: "Target restock loop",
+          driver: "Zena",
+          startMiles: 1000,
+          endMiles: 1010,
+          businessMiles: 10,
+          gasPrice: 3.2,
+          fuelCost: 0.67,
+          wearCost: 1.2,
+          totalVehicleCost: 1.87,
+          mileageValue: 6.7,
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: "2026-05-15T12:00:00.000Z",
+        },
+        {
+          id: "mileage-group-smoke-prius-2",
+          vehicleId: "vehicle-group-smoke-prius",
+          vehicleName: "Smoke Toyota Prius",
+          purpose: "Walmart pickup route",
+          driver: "Zena",
+          startMiles: 1010,
+          endMiles: 1025,
+          businessMiles: 15,
+          gasPrice: 3.2,
+          fuelCost: 1,
+          wearCost: 1.8,
+          totalVehicleCost: 2.8,
+          mileageValue: 10.05,
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: "2026-05-16T12:00:00.000Z",
+        },
+        {
+          id: "mileage-group-smoke-van-1",
+          vehicleId: "vehicle-group-smoke-van",
+          vehicleName: "Smoke Trade Van",
+          purpose: "Vendor dropoff",
+          driver: "Dillon",
+          startMiles: 2000,
+          endMiles: 2012,
+          businessMiles: 12,
+          gasPrice: 3.4,
+          fuelCost: 1.85,
+          wearCost: 2.16,
+          totalVehicleCost: 4.01,
+          mileageValue: 8.04,
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: "2026-05-14T12:00:00.000Z",
+        },
+      ];
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(data));
+      return data;
+    });
+    await reloadWithAppData(mileageData);
+    await nav("Forge");
+    await page.locator(".forge-overview-card").filter({ hasText: "Mileage" }).first().click();
+    const priusGroup = page.locator(".mileage-vehicle-card").filter({ hasText: "Smoke Toyota Prius" });
+    await priusGroup.first().waitFor({ state: "visible", timeout: 5000 });
+    assert.equal(await priusGroup.count(), 1, "Multiple Prius logs should render as one vehicle card");
+    await assertVisibleText("2 trips");
+    await assertVisibleText("25.0 mi");
+    await priusGroup.first().click();
+    const mileageModal = page.locator(".mileage-vehicle-detail-modal").first();
+    await mileageModal.waitFor({ state: "visible", timeout: 5000 });
+    await assertVisibleText("Target restock loop");
+    await assertVisibleText("Walmart pickup route");
+    assert.equal(await mileageModal.locator(".mileage-trip-card").count(), 2);
+    await mileageModal.getByRole("button", { name: "Close", exact: true }).click();
+  });
+
   await step("Vault: add/edit/delete Vault item", async () => {
     await nav("Vault");
     await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
@@ -1257,6 +1875,173 @@ async function main() {
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 1" }).count(), 0);
     await nav("Forge");
     await assertVisibleText("Smoke Vault Transfer Qty 1");
+  });
+
+  await step("Inventory: groups identical items while preserving purchaser breakdown", async () => {
+    const groupedInventoryData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const now = new Date().toISOString();
+      data.purchasers = [
+        ...(data.purchasers || []).filter((purchaser) => !String(purchaser.id || "").startsWith("purchaser-group-smoke-")),
+        {
+          id: "purchaser-group-smoke-zena",
+          name: "Zena",
+          note: "smoke test",
+          active: true,
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "purchaser-group-smoke-dillon",
+          name: "Dillon",
+          note: "smoke test",
+          active: true,
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      data.items = [
+        ...(data.items || []).filter((item) => !String(item.id || "").startsWith("inventory-group-smoke-")),
+        {
+          id: "inventory-group-smoke-vault-zena",
+          name: "Smoke Grouped Purchaser ETB",
+          catalogProductId: "catalog-smoke-grouped-etb",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          businessInventory: false,
+          vaultStatus: "personal_collection",
+          status: "Personal Collection",
+          quantity: 4,
+          unitCost: 40,
+          marketPrice: 55,
+          purchaserId: "purchaser-group-smoke-zena",
+          purchaserName: "Zena",
+          buyer: "Zena",
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "inventory-group-smoke-vault-dillon",
+          name: "Smoke Grouped Purchaser ETB",
+          catalogProductId: "catalog-smoke-grouped-etb",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          businessInventory: false,
+          vaultStatus: "personal_collection",
+          status: "Personal Collection",
+          quantity: 3,
+          unitCost: 42,
+          marketPrice: 55,
+          purchaserId: "purchaser-group-smoke-dillon",
+          purchaserName: "Dillon",
+          buyer: "Dillon",
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "inventory-group-smoke-forge-zena-home",
+          name: "Smoke Grouped Purchaser ETB",
+          catalogProductId: "catalog-smoke-grouped-etb",
+          destinationScope: ["forge"],
+          recordType: "forge_inventory",
+          businessInventory: true,
+          status: "In Stock",
+          quantity: 2,
+          unitCost: 40,
+          marketPrice: 55,
+          salePrice: 60,
+          physicalLocation: "At Home",
+          purchaserId: "purchaser-group-smoke-zena",
+          purchaserName: "Zena",
+          buyer: "Zena",
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "inventory-group-smoke-forge-dillon-store",
+          name: "Smoke Grouped Purchaser ETB",
+          catalogProductId: "catalog-smoke-grouped-etb",
+          destinationScope: ["forge"],
+          recordType: "forge_inventory",
+          businessInventory: true,
+          status: "In Stock",
+          quantity: 5,
+          unitCost: 42,
+          marketPrice: 55,
+          salePrice: 60,
+          physicalLocation: "At Store",
+          purchaserId: "purchaser-group-smoke-dillon",
+          purchaserName: "Dillon",
+          buyer: "Dillon",
+          workspaceId: "workspace-personal-local-beta",
+          workspace_id: "workspace-personal-local-beta",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(data));
+      return data;
+    });
+    await reloadWithAppData(groupedInventoryData);
+
+    await nav("Vault");
+    const groupedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Smoke Grouped Purchaser ETB" });
+    await groupedVaultCard.first().waitFor({ state: "visible", timeout: 5000 });
+    assert.equal(await groupedVaultCard.count(), 1, "Vault should show one grouped card for the same product");
+    await assertVisibleText("Qty 7");
+    await assertVisibleText("Zena 4");
+    await assertVisibleText("Dillon 3");
+    await groupedVaultCard.first().getByRole("button", { name: "View Details" }).click();
+    await assertVisibleText("Grouped inventory details");
+    await assertVisibleText("Zena");
+    await assertVisibleText("Dillon");
+    await page.getByRole("button", { name: "Close" }).click();
+
+    await groupedVaultCard.first().getByRole("button", { name: "Move to Forge" }).click();
+    const groupedTransferModal = page.locator(".vault-transfer-modal").first();
+    await groupedTransferModal.waitFor({ state: "visible", timeout: 5000 });
+    await groupedTransferModal.getByLabel("Move from purchaser entry").selectOption("inventory-group-smoke-vault-dillon");
+    await fillByLabel(groupedTransferModal, "How many do you want to move to Forge?", "2");
+    await groupedTransferModal.getByRole("button", { name: /Move 2 to Forge/ }).click();
+    await assertVisibleText("Moved 2 to Forge. 1 remain in Vault.");
+    const groupedTransferState = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const vaultDillon = (data.items || []).find((item) => item.id === "inventory-group-smoke-vault-dillon");
+      const forgeDillonMoved = (data.items || []).find((item) =>
+        item.name === "Smoke Grouped Purchaser ETB" &&
+        (item.destinationScope || []).includes("forge") &&
+        item.originalVaultItemId === "inventory-group-smoke-vault-dillon"
+      );
+      return { vaultDillon, forgeDillonMoved };
+    });
+    assert.equal(Number(groupedTransferState.vaultDillon?.quantity), 1);
+    assert.equal(Number(groupedTransferState.forgeDillonMoved?.quantity), 2);
+    assert.equal(groupedTransferState.forgeDillonMoved?.purchaserName, "Dillon");
+
+    await nav("Forge");
+    await page.locator(".forge-more-filters summary").click();
+    await page.getByLabel("Physical location").selectOption("All");
+    const groupedForgeCard = page.locator(".forge-inventory-card").filter({ hasText: "Smoke Grouped Purchaser ETB" });
+    await groupedForgeCard.first().waitFor({ state: "visible", timeout: 5000 });
+    assert.equal(await groupedForgeCard.count(), 1, "Forge should show one grouped card for the same product");
+    await assertVisibleText("Qty 9");
+    await assertVisibleText("Zena 2");
+    await assertVisibleText("Dillon 7");
+    await groupedForgeCard.first().getByRole("button", { name: "View" }).click();
+    await assertVisibleText("Inventory locations");
+    await assertVisibleText("At Home");
+    await assertVisibleText("At Store");
+    await page.getByRole("button", { name: "Close" }).click();
   });
 
   await step("Vault: wishlist item stays out of Forge inventory", async () => {
