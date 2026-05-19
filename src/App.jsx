@@ -4370,6 +4370,19 @@ export default function App() {
   const quickScoutWizardTouchRef = useRef(0);
   const marketAddLastActionRef = useRef({ key: "", time: 0 });
 
+  function openMenuDrawer(sectionKey = "") {
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    setMenuOpen(true);
+    if (sectionKey) setMenuSectionsOpen({ [sectionKey]: true });
+  }
+
+  function openEmberWatchSection() {
+    setActiveTab("scout");
+    setScoutView("alerts");
+    setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+  }
+
   const mainTabs = [
     { key: "home", label: "Hearth Home", icon: "home", target: "dashboard" },
     { key: "today", label: "Today's Tide", icon: "calendar", target: "dailyTide" },
@@ -4377,7 +4390,7 @@ export default function App() {
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
     { key: "tideTradr", label: "Market", icon: "market", target: "market" },
     { key: "forge", label: "Forge Workshop", icon: "forge", target: "inventory" },
-    { key: "tidepool", label: "Tidepool", icon: "pool", mobileLabel: "Pool", target: "tidepool" },
+    { key: "tidepool", label: "Tidepool", icon: "pool", target: "tidepool" },
   ];
 
   const navSections = [
@@ -4395,6 +4408,9 @@ export default function App() {
       { key: "tideTradr-main", label: "Market", target: "market" },
       { key: "forge", label: "Forge Workshop", target: "inventory" },
       { key: "tidepool-main", label: "Tidepool", target: "tidepool" },
+      { key: "kids-program", label: "Kids Program: The Spark", target: "kidsProgram" },
+      { key: "announcements", label: "Announcements", target: "whatsNew" },
+      { key: "settings", label: "Settings", target: "menu" },
     ] },
   ];
 
@@ -4434,35 +4450,43 @@ export default function App() {
   const isSellerExperience =
     normalizeUserType(currentUserProfile?.userType || currentUserProfile?.user_type) === "seller" ||
     normalizeDashboardPreset(currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset) === "seller";
+  const sellerMobilePrimaryTab = isSellerExperience
+    ? { key: "forge", label: "Forge", icon: "forge", target: "inventory", ariaLabel: "Forge Workshop" }
+    : { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" };
   const mobileBottomTabs = [
     { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     { key: "scout", label: "Scout", icon: "scout", target: "scout" },
-    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
     { key: "quickAdd", label: "Add", icon: "plus", center: true, action: () => openAddActionSheet("mobile-dock") },
-    { key: "tideTradr", label: "Market", icon: "market", target: "market" },
-    { key: "menu", label: "Menu", icon: "settings", action: () => {
-      setQuickAddMenuOpen(false);
-      setSearchExpanded(false);
-      setMenuOpen(true);
-      setActiveTab("menu");
-    } },
+    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
+    sellerMobilePrimaryTab,
   ];
   const desktopSidebarItems = [
     { key: "home", label: "Hearth Home", helper: "What should I do next?", icon: "home", target: "dashboard" },
     { key: "today", label: "Today's Tide", helper: "Today's attention list", icon: "calendar", action: startDailyTideFlow },
     { key: "scout", label: "Scout Signals", helper: "Nearby verified restocks", icon: "scout", target: "scout" },
     { key: "vault", label: "Vault", helper: "Your collection", icon: "vault", target: "vault" },
-    { key: "tideTradr", label: "Market", helper: "Fair prices and deals", icon: "market", target: "market" },
+    { key: "tideTradr", label: "Market", helper: "TideTradr fair prices and deals", icon: "market", target: "market" },
     { key: "forge", label: "Forge Workshop", helper: isSellerExperience ? "Business command desk" : "Seller tools", icon: "forge", target: "inventory" },
+  ];
+  const desktopMoreItems = [
     { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
-    { key: "spark", label: "Kids Program", helper: "The Spark", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    { key: "spark", label: "Kids Program: The Spark", helper: "Family-safe collecting", icon: "spark", action: () => setActiveTab("kidsProgram") },
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
-    { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => {
-      setQuickAddMenuOpen(false);
-      setSearchExpanded(false);
-      setMenuOpen(true);
-      setActiveTab("menu");
-    } },
+    { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
+    { key: "profile", label: "Profile", helper: "Public username and progress", icon: "settings", action: () => setActiveTab("profileProgress") },
+    { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openMenuDrawer("settings") },
+    { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openMenuDrawer("feedback") },
+  ];
+  const mobileMenuDestinations = [
+    { key: "forge", label: "Forge Workshop", helper: "Seller inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" },
+    ...(isSellerExperience ? [{ key: "market", label: "Market", helper: "Fair prices and TideTradr search.", icon: "market", target: "market" }] : []),
+    { key: "tidepool", label: "Tidepool", helper: "Community posts and trusted trade talk.", icon: "pool", target: "tidepool" },
+    { key: "spark", label: "Kids Program: The Spark", helper: "Parent-safe requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
+    { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
+    { key: "profile", label: "Profile", helper: "Public username and account progress.", icon: "settings", action: () => setActiveTab("profileProgress") },
+    { key: "settings", label: "Settings", helper: "Notifications, collections, and preferences.", icon: "settings", keepOpen: true, action: () => setMenuSectionsOpen({ settings: true }) },
+    { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and Refresh App.", icon: "search", keepOpen: true, action: () => setMenuSectionsOpen({ feedback: true }) },
   ];
   const topbarSectionOptions = [
     ...mainTabs,
@@ -4761,10 +4785,7 @@ export default function App() {
     const tab = topbarSectionOptions.find((option) => option.key === value);
     if (!tab) return;
     if (tab.key === "settings") {
-      setQuickAddMenuOpen(false);
-      setSearchExpanded(false);
-      setMenuOpen(true);
-      setActiveTab("menu");
+      openMenuDrawer("settings");
       return;
     }
     navigateMainTab(tab);
@@ -4787,6 +4808,9 @@ export default function App() {
     if (item.key === "today") return Boolean(dailyTideModalTask);
     if (item.key === "spark") return activeTab === "kidsProgram";
     if (item.key === "announcements") return activeTab === "whatsNew";
+    if (item.key === "ember-watch") return activeTab === "scout" && scoutView === "alerts";
+    if (item.key === "profile") return activeTab === "profileProgress";
+    if (item.key === "help") return menuOpen && Boolean(menuSectionsOpen.feedback);
     if (item.key === "settings") return activeTab === "menu" || menuOpen;
     return activeMainTab === item.key;
   }
@@ -4826,6 +4850,36 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <details className="web-command-more">
+          <summary>
+            <span className="web-command-nav-icon" aria-hidden="true">
+              <AppNavIcon kind="settings" />
+            </span>
+            <span>
+              <strong>More</strong>
+              <small>Tidepool, Spark, settings, and help</small>
+            </span>
+          </summary>
+          <div className="web-command-more-list">
+            {desktopMoreItems.map((item) => (
+              <button
+                type="button"
+                key={item.key}
+                className={isDesktopSidebarItemActive(item) ? "web-command-more-item active" : "web-command-more-item"}
+                aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
+                onClick={() => runDesktopSidebarAction(item)}
+              >
+                <span className="web-command-nav-icon" aria-hidden="true">
+                  <AppNavIcon kind={item.icon || "home"} />
+                </span>
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{item.helper}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </details>
         <div className="web-command-status">
           <span className="trust-badge trust-badge--verified">Family friendly</span>
           <span className="trust-badge trust-badge--fair">Fair access</span>
@@ -28562,22 +28616,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       setActiveTab("dashboard");
     }}
   >
-    E&amp;T TCG
-  </button>
-  <button
-    type="button"
-    className="menu-button"
-    onClick={() => {
-      setQuickAddMenuOpen(false);
-      setMenuOpen(true);
-    }}
-  >
-    <span className="action-icon" aria-hidden="true">
-      <AppNavIcon kind="settings" />
+    <span className="topbar-brand-mark" aria-hidden="true">
+      <img src={BRAND_ASSETS.mark} alt="" />
     </span>
-    Menu
+    <span className="topbar-brand-copy">
+      <strong>Ember &amp; Tide</strong>
+      <small>{activeTabLabel} | E&amp;T TCG</small>
+    </span>
   </button>
-  {renderNotificationCenter()}
 
   <div className={searchExpanded ? "app-search expanded" : "app-search"}>
     {searchExpanded ? (
@@ -28655,6 +28701,39 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <p className="compact-subtitle">Try: pri etb, 151 bundle, zard 199, gengar sir, walmart greenbrier, mini tin.</p>
       </div>
     ) : null}
+  </div>
+  <div className="topbar-command-actions" aria-label="Command desk actions">
+    <button
+      type="button"
+      className="topbar-quick-add-button"
+      onClick={() => openAddActionSheet("topbar")}
+    >
+      <span className="action-icon" aria-hidden="true">
+        <AppNavIcon kind="plus" />
+      </span>
+      Quick Add
+    </button>
+    {renderNotificationCenter()}
+    <button
+      type="button"
+      className="topbar-profile-button"
+      onClick={() => openMenuDrawer("account")}
+    >
+      <span className="action-icon" aria-hidden="true">
+        <AppNavIcon kind="settings" />
+      </span>
+      Profile
+    </button>
+    <button
+      type="button"
+      className="menu-button"
+      onClick={() => openMenuDrawer()}
+    >
+      <span className="action-icon" aria-hidden="true">
+        <AppNavIcon kind="settings" />
+      </span>
+      Menu
+    </button>
   </div>
 </div>
 
@@ -28758,6 +28837,42 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>X</button>
             </div>
             <div className="drawer-menu-stack">
+              <section className="menu-command-links" aria-label="Menu destinations">
+                <div className="menu-command-links-header">
+                  <div>
+                    <strong>Command Menu</strong>
+                    <p>Daily actions stay in the bottom dock. Deeper tools live here.</p>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => openAddActionSheet("menu")}>
+                    Quick Add
+                  </button>
+                </div>
+                <div className="menu-command-grid">
+                  {mobileMenuDestinations.map((item) => (
+                    <button
+                      type="button"
+                      key={item.key}
+                      className={isDesktopSidebarItemActive(item) ? "menu-command-link active" : "menu-command-link"}
+                      aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
+                      onClick={() => {
+                        if (item.keepOpen) {
+                          item.action?.();
+                          return;
+                        }
+                        runMenuAction(() => item.action ? item.action() : navigateMainTab(item));
+                      }}
+                    >
+                      <span className="menu-command-icon" aria-hidden="true">
+                        <AppNavIcon kind={item.icon || "home"} />
+                      </span>
+                      <span>
+                        <strong>{item.label}</strong>
+                        <small>{item.helper}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
               {renderMenuPullDown("account", "Account", "App version, sign-in, private beta status, and account actions", (
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">
@@ -35759,7 +35874,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             className={`${tab.center ? "mobile-dock-add" : "mobile-dock-item"} ${activeMainTab === tab.key || (tab.key === "menu" && menuOpen) ? "active" : ""}`.trim()}
             aria-current={activeMainTab === tab.key || (tab.key === "menu" && menuOpen) ? "page" : undefined}
             onClick={() => tab.action ? tab.action() : navigateMainTab(tab)}
-            aria-label={tab.center ? "Open Quick Add command center" : tab.label}
+            aria-label={tab.center ? "Open Quick Add command center" : tab.ariaLabel || tab.label}
           >
             <span className="mobile-tab-icon" aria-hidden="true">
               <AppNavIcon kind={tab.icon || "home"} />
