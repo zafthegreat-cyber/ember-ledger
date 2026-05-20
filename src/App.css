@@ -35631,3 +35631,151 @@ body,
     width: min(460px, calc(100vw - 18px)) !important;
   }
 }
+
+/* Page consistency pass: common hierarchy, calmer accents, and polished empty states. */
+.app-command-shell .standard-page-header,
+.app-command-shell .hearth-command-hero-compact,
+.app-command-shell .todays-tide-header,
+.app-command-shell .scout-summary-card,
+.app-command-shell .vault-command-center,
+.app-command-shell .tidetradr-summary-card,
+.app-command-shell .forge-command-center,
+.app-command-shell .tidepool-community-header,
+.app-command-shell .announcements-new-stuff-header {
+  overflow: hidden;
+  border-color: rgba(133, 224, 255, 0.2) !important;
+  background:
+    radial-gradient(circle at 10% 8%, rgba(255, 122, 26, 0.12), transparent 28%),
+    radial-gradient(circle at 86% 12%, rgba(32, 215, 255, 0.13), transparent 30%),
+    linear-gradient(145deg, rgba(8, 21, 40, 0.94), rgba(3, 9, 22, 0.94)) !important;
+}
+
+.app-command-shell .forge-command-center,
+.app-command-shell .hearth-command-hero-compact {
+  border-color: rgba(255, 152, 72, 0.28) !important;
+}
+
+.app-command-shell .announcements-new-stuff-header,
+.app-command-shell .kids-spark-header {
+  border-color: rgba(246, 194, 74, 0.32) !important;
+  background:
+    radial-gradient(circle at 10% 8%, rgba(255, 122, 26, 0.14), transparent 28%),
+    radial-gradient(circle at 88% 18%, rgba(246, 194, 74, 0.14), transparent 30%),
+    linear-gradient(145deg, rgba(26, 16, 4, 0.94), rgba(4, 10, 22, 0.95)) !important;
+}
+
+.app-command-shell .standard-page-header-copy,
+.app-command-shell .compact-card-header > div,
+.app-command-shell .page-dashboard-header-main > div {
+  min-width: 0;
+}
+
+.app-command-shell .standard-page-header-copy h2,
+.app-command-shell .compact-card-header h2,
+.app-command-shell .panel h2,
+.app-command-shell .panel h3 {
+  color: var(--et-final-cream) !important;
+  line-height: 1.08 !important;
+}
+
+.app-command-shell .standard-page-header-copy p,
+.app-command-shell .compact-card-header p,
+.app-command-shell .compact-subtitle,
+.app-command-shell .panel p,
+.app-command-shell .card p {
+  color: var(--et-final-muted) !important;
+}
+
+.app-command-shell .standard-page-header-actions,
+.app-command-shell .quick-actions,
+.app-command-shell .catalog-detail-action-group {
+  align-items: center;
+}
+
+.app-command-shell .standard-page-header-actions > button:first-child,
+.app-command-shell .quick-actions > button:first-child,
+.app-command-shell .catalog-detail-action-group > button:first-child {
+  border-color: rgba(255, 196, 102, 0.42) !important;
+}
+
+.app-command-shell .status-badge,
+.app-command-shell .trust-badge,
+.app-command-shell .confidence-badge,
+.app-command-shell .neon-chip,
+.app-command-shell .daily-check-pill,
+.app-command-shell .price-badge,
+.app-command-shell .command-badge {
+  min-height: 28px !important;
+  border-color: rgba(133, 224, 255, 0.18) !important;
+  background: rgba(6, 18, 34, 0.72) !important;
+  color: rgba(248, 251, 255, 0.88) !important;
+  box-shadow: none !important;
+}
+
+.app-command-shell .status-badge.success,
+.app-command-shell .confidence-badge.verified,
+.app-command-shell .trust-badge--verified {
+  border-color: rgba(56, 232, 168, 0.34) !important;
+  background: rgba(11, 85, 67, 0.24) !important;
+  color: #ddfff4 !important;
+}
+
+.app-command-shell .status-badge.warning,
+.app-command-shell .price-badge--near-retail,
+.app-command-shell .price-badge--fair,
+.app-command-shell .trust-badge--likely {
+  border-color: rgba(246, 194, 74, 0.34) !important;
+  background: rgba(98, 67, 12, 0.24) !important;
+  color: #fff4cf !important;
+}
+
+.app-command-shell .status-badge.danger,
+.app-command-shell .price-badge--markup,
+.app-command-shell .trust-badge--unconfirmed {
+  border-color: rgba(255, 95, 118, 0.36) !important;
+  background: rgba(116, 28, 44, 0.23) !important;
+  color: #ffe0e4 !important;
+}
+
+.app-command-shell .empty-state,
+.app-command-shell .small-empty-state,
+.app-command-shell .command-empty-state,
+.app-command-shell .vault-empty-state {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  border: 1px dashed rgba(133, 224, 255, 0.24) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018)),
+    rgba(5, 14, 28, 0.78) !important;
+  color: var(--et-final-cream) !important;
+}
+
+.app-command-shell .empty-state h2,
+.app-command-shell .empty-state h3,
+.app-command-shell .small-empty-state h2,
+.app-command-shell .small-empty-state h3,
+.app-command-shell .vault-empty-state h2,
+.app-command-shell .vault-empty-state h3 {
+  margin: 0;
+  color: var(--et-final-cream) !important;
+}
+
+.app-command-shell .empty-state p,
+.app-command-shell .small-empty-state p,
+.app-command-shell .vault-empty-state p {
+  max-width: 58ch;
+  color: var(--et-final-muted) !important;
+}
+
+.app-command-shell .standard-page-header-tabs button:not(.active),
+.app-command-shell .pill-tabs button:not(.active) {
+  opacity: 0.9;
+}
+
+.app-command-shell .standard-page-header-tabs button.active,
+.app-command-shell .pill-tabs button.active {
+  color: #1a0d06 !important;
+  background: var(--et-final-primary) !important;
+  border-color: rgba(255, 196, 102, 0.44) !important;
+}
