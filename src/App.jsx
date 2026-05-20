@@ -31,6 +31,14 @@ import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } 
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
 import {
+  DROP_RADAR_CONFIRMATION_TEXT,
+  DROP_RADAR_RESET_OPTIONS,
+  applyDropRadarReset,
+  buildDropRadarPredictions,
+  parseDropRadarShorthand,
+  shouldUseDropRadarSeed,
+} from "./utils/dropRadarUtils.mjs";
+import {
   cleanupBrowserBetaStorage,
   emptyTidepoolData,
   isDemoLikeRecord,
@@ -845,6 +853,12 @@ function createEmptyScoutSnapshot() {
     bestBuyAlerts: [],
     restockIntel: [],
     restockPatterns: [],
+    manualRestockTraining: [],
+    dropRadarPredictionCache: [],
+    dropRadarPredictions: [],
+    dropRadarSeedDisabled: false,
+    dropRadarLastResetAt: "",
+    dropRadarBackups: [],
     storeGuesses: [],
     forecastWindows: [],
     intelImportReviews: [],
@@ -3836,6 +3850,30 @@ export default function App() {
   const [scoutReportFilter, setScoutReportFilter] = useState(initialRouteState.scoutReportFilter || "Latest");
   const [scoutReportSort, setScoutReportSort] = useState(initialRouteState.scoutReportSort || "Newest first");
   const [scoutForecastMode, setScoutForecastMode] = useState("forecast");
+  const [dropRadarResetSelections, setDropRadarResetSelections] = useState({
+    predictionCache: true,
+    generatedPredictions: false,
+    historicalBackfill: false,
+    manualTraining: false,
+    full: false,
+  });
+  const [dropRadarResetConfirmation, setDropRadarResetConfirmation] = useState("");
+  const [dropRadarTrainingForm, setDropRadarTrainingForm] = useState({
+    storeId: "",
+    retailer: "",
+    storeNickname: "",
+    date: getLocalDateKey(),
+    time: "",
+    productCategory: "Pokemon restock",
+    quantity: "",
+    proofSource: "manual_admin_entry",
+    confidence: "confirmed",
+    notes: "",
+    shouldTrainPredictions: true,
+    visibility: "private_admin",
+  });
+  const [dropRadarShorthandText, setDropRadarShorthandText] = useState("");
+  const [dropRadarShorthandPreview, setDropRadarShorthandPreview] = useState(null);
   const [scoutStoresMode, setScoutStoresMode] = useState("list");
   const [watchCalendarView, setWatchCalendarView] = useState("today");
   const [watchCalendarMonthDate, setWatchCalendarMonthDate] = useState(() => new Date());
@@ -9671,7 +9709,7 @@ export default function App() {
 
   function loadScoutSnapshot() {
     const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
-    const restockIntel = saved.restockIntel?.length ? saved.restockIntel : SCOUT_HISTORICAL_INTEL_SEED;
+    const restockIntel = saved.restockIntel?.length ? saved.restockIntel : shouldUseDropRadarSeed(saved) ? SCOUT_HISTORICAL_INTEL_SEED : [];
     setScoutSnapshot({
       stores: saved.stores || [],
       reports: saved.reports || [],
@@ -9679,13 +9717,19 @@ export default function App() {
       bestBuyAlerts: saved.bestBuyAlerts || [],
       restockIntel,
       restockPatterns: saved.restockPatterns || buildScoutRestockPatterns(restockIntel),
+      manualRestockTraining: saved.manualRestockTraining || [],
+      dropRadarPredictionCache: saved.dropRadarPredictionCache || [],
+      dropRadarPredictions: saved.dropRadarPredictions || [],
+      dropRadarSeedDisabled: Boolean(saved.dropRadarSeedDisabled),
+      dropRadarLastResetAt: saved.dropRadarLastResetAt || "",
+      dropRadarBackups: saved.dropRadarBackups || [],
       storeGuesses: saved.storeGuesses || saved.guesses || [],
       forecastWindows: saved.forecastWindows || [],
       intelImportReviews: saved.intelImportReviews || [],
       scoutProfile: saved.scoutProfile || {},
       alertSettings: saved.alertSettings || {},
     });
-    if (!saved.restockIntel?.length) {
+    if (!saved.restockIntel?.length && shouldUseDropRadarSeed(saved)) {
       localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({
         ...saved,
         restockIntel,
@@ -19224,8 +19268,18 @@ function renderForgeHeader() {
       return true;
     })
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  const scoutIntelRows = scoutSnapshot.restockIntel?.length ? scoutSnapshot.restockIntel : SCOUT_HISTORICAL_INTEL_SEED;
+  const scoutIntelRows = scoutSnapshot.restockIntel?.length
+    ? scoutSnapshot.restockIntel
+    : shouldUseDropRadarSeed(scoutSnapshot)
+      ? SCOUT_HISTORICAL_INTEL_SEED
+      : [];
   const scoutPatternRows = scoutSnapshot.restockPatterns?.length ? scoutSnapshot.restockPatterns : buildScoutRestockPatterns(scoutIntelRows);
+  const dropRadarPredictionRows = buildDropRadarPredictions({
+    stores: scoutSnapshot.stores || [],
+    reports: scoutSnapshot.reports || [],
+    trainingRestocks: scoutSnapshot.manualRestockTraining || [],
+    restockIntel: scoutIntelRows,
+  });
   const confirmedScoutIntel = scoutIntelRows.filter((row) => ["confirmed", "likely"].includes(row.confidence));
   const predictionScoutIntel = scoutIntelRows.filter((row) => ["guess", "possible", "rumor"].includes(row.confidence) || /guess|prediction|planner/i.test(row.sourceType || ""));
   const scoutGuessRows = [
@@ -19355,7 +19409,43 @@ function renderForgeHeader() {
         dayDistance: scoutForecastDayDistance(guess.guessedDay),
       };
     });
-  const scoutForecastPreviewRows = [...scoutForecastPatternRows, ...scoutGuessForecastRows].sort((a, b) => {
+  const dropRadarForecastRows = dropRadarPredictionRows.map((row) => ({
+    id: row.id,
+    storeId: row.storeId,
+    store: row.store,
+    storeName: row.storeName,
+    retailer: row.retailer,
+    city: row.city,
+    confidence: row.confidenceKey,
+    confidenceKey: row.confidenceKey,
+    confidenceLabel: row.confidenceLabel,
+    confidenceScore: row.confidenceKey === "high" ? 82 : row.confidenceKey === "medium" ? 62 : row.confidenceKey === "low" ? 38 : 15,
+    sourceType: "manual_training_restock",
+    sourceLabel: "Manual Training Restock",
+    badges: [row.patternStrength === "strong" ? "Strong Pattern" : row.patternStrength === "developing" ? "Developing Pattern" : "Needs Data"],
+    days: [row.commonDay].filter(Boolean),
+    groupLabel: row.commonDay || "Needs more data",
+    windowLabel: row.nextLikelyWindow,
+    products: row.products || [],
+    reason: row.dataNeededMessage || row.reason,
+    updatedLabel: row.lastConfirmedRestockLabel,
+    submittedBy: "Admin training",
+    lastConfirmedReportLabel: row.lastConfirmedRestockLabel,
+    supportingReportCount: row.trainingCount,
+    supportingGuessCount: 0,
+    trainingCount: row.trainingCount,
+    patternStrength: row.patternStrength,
+    dataNeededMessage: row.dataNeededMessage,
+    basisSummary: row.dataNeededMessage || `${row.trainingCount} training restock${row.trainingCount === 1 ? "" : "s"} used`,
+    sortRank: row.confidenceKey === "needs-data" ? 5 : 1,
+    dayDistance: row.commonDay ? scoutForecastDayDistance(row.commonDay) : 99,
+  }));
+  const dropRadarForecastKeys = new Set([...scoutForecastPatternRows, ...scoutGuessForecastRows].map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
+  const scoutForecastPreviewRows = [
+    ...scoutForecastPatternRows,
+    ...scoutGuessForecastRows,
+    ...dropRadarForecastRows.filter((row) => !dropRadarForecastKeys.has(`${row.storeName}|${row.retailer}`.toLowerCase())),
+  ].sort((a, b) => {
     if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank;
     if (a.dayDistance !== b.dayDistance) return a.dayDistance - b.dayDistance;
     return String(a.storeName).localeCompare(String(b.storeName));
@@ -21658,6 +21748,185 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setScoutSnapshot((current) => ({ ...current, ...nextScout }));
   }
 
+  function updateDropRadarTrainingForm(field, value) {
+    setDropRadarTrainingForm((current) => {
+      if (field !== "storeId") return { ...current, [field]: value };
+      const store = findScoutQuickStore({ id: value }) || {};
+      return {
+        ...current,
+        storeId: value,
+        retailer: getScoutQuickRetailer(store) || current.retailer,
+        storeNickname: getScoutQuickStoreName(store) || current.storeNickname,
+      };
+    });
+  }
+
+  function selectedDropRadarStore() {
+    return findScoutQuickStore({ id: dropRadarTrainingForm.storeId }) || null;
+  }
+
+  function makeDropRadarTrainingEntry(overrides = {}) {
+    const store = overrides.store || selectedDropRadarStore() || {};
+    const now = new Date().toISOString();
+    const storeName = getScoutQuickStoreName(store) || overrides.storeName || dropRadarTrainingForm.storeNickname || "";
+    const retailer = getScoutQuickRetailer(store) || overrides.retailer || dropRadarTrainingForm.retailer || "";
+    return {
+      id: overrides.id || makeId("drop-radar-restock"),
+      storeId: getScoutQuickStoreId(store) || overrides.storeId || dropRadarTrainingForm.storeId || "",
+      storeName,
+      storeAlias: storeName,
+      storeNickname: overrides.storeNickname || dropRadarTrainingForm.storeNickname || storeName,
+      retailer,
+      city: store.city || overrides.city || "",
+      address: store.address || overrides.address || "",
+      date: overrides.date || dropRadarTrainingForm.date,
+      time: overrides.time ?? dropRadarTrainingForm.time,
+      productCategory: overrides.productCategory || dropRadarTrainingForm.productCategory,
+      quantity: overrides.quantity ?? dropRadarTrainingForm.quantity,
+      proofSource: overrides.proofSource || dropRadarTrainingForm.proofSource,
+      confidence: overrides.confidence || dropRadarTrainingForm.confidence,
+      notes: overrides.notes ?? dropRadarTrainingForm.notes,
+      shouldTrainPredictions: overrides.shouldTrainPredictions ?? dropRadarTrainingForm.shouldTrainPredictions,
+      visibility: overrides.visibility || dropRadarTrainingForm.visibility,
+      source: "admin_manual_training",
+      sourceType: "manual_training_restock",
+      createdBy: "admin",
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  function saveDropRadarTrainingEntry(entry) {
+    if (!adminEditModeActive) {
+      setVaultToast("Admin Edit Mode is required to add Drop Radar training restocks.");
+      return;
+    }
+    if (!entry.storeName || !entry.retailer || !entry.date || !entry.productCategory) {
+      setVaultToast("Add store, retailer, date, and product/category before saving a restock.");
+      return;
+    }
+    const scoutData = getSharedScoutData();
+    const nextTraining = [entry, ...(scoutData.manualRestockTraining || scoutSnapshot.manualRestockTraining || [])];
+    const nextIntel = entry.shouldTrainPredictions
+      ? [
+          {
+            ...entry,
+            rawProductText: entry.productCategory,
+            productsMentioned: [entry.productCategory].filter(Boolean),
+            sourceText: entry.notes || `${entry.storeName} ${entry.date} ${entry.time || ""} ${entry.productCategory}`.trim(),
+            matchedProducts: [],
+            needsCatalogReview: false,
+            adminReviewVisible: true,
+            visibility: entry.visibility === "public" ? "public_cleaned" : "private",
+          },
+          ...(scoutData.restockIntel || scoutSnapshot.restockIntel || []),
+        ]
+      : scoutData.restockIntel || scoutSnapshot.restockIntel || [];
+    const nextPredictions = buildDropRadarPredictions({
+      stores: scoutData.stores || scoutSnapshot.stores || [],
+      reports: scoutData.reports || scoutSnapshot.reports || [],
+      trainingRestocks: nextTraining,
+      restockIntel: nextIntel,
+    });
+    saveSharedScoutData({
+      ...scoutData,
+      manualRestockTraining: nextTraining,
+      restockIntel: nextIntel,
+      restockPatterns: buildScoutRestockPatterns(nextIntel),
+      dropRadarPredictions: nextPredictions,
+      dropRadarPredictionCache: nextPredictions,
+      dropRadarSeedDisabled: scoutData.dropRadarSeedDisabled || false,
+      dropRadarLastTrainedAt: new Date().toISOString(),
+    });
+    setDropRadarTrainingForm((current) => ({
+      ...current,
+      quantity: "",
+      notes: "",
+      time: "",
+      date: getLocalDateKey(),
+      productCategory: "Pokemon restock",
+    }));
+    setDropRadarShorthandPreview(null);
+    setDropRadarShorthandText("");
+    setVaultToast("Drop Radar training restock saved.");
+  }
+
+  function previewDropRadarShorthand() {
+    const preview = parseDropRadarShorthand(dropRadarShorthandText, getScoutQuickStores(), { year: 2026 });
+    setDropRadarShorthandPreview(preview);
+    if (!preview.ok) {
+      setVaultToast(`Could not parse: ${preview.missing?.join(", ") || preview.error || "missing details"}.`);
+      return;
+    }
+    setVaultToast(preview.uncertain ? "Parsed with an uncertain store match. Choose the store before saving." : "Parsed restock shorthand. Review before saving.");
+  }
+
+  function applyDropRadarShorthandPreview() {
+    if (!dropRadarShorthandPreview?.ok) {
+      setVaultToast("Preview a valid restock shorthand before applying it.");
+      return;
+    }
+    const store = dropRadarShorthandPreview.store || {};
+    setDropRadarTrainingForm((current) => ({
+      ...current,
+      storeId: getScoutQuickStoreId(store) || current.storeId,
+      retailer: getScoutQuickRetailer(store) || dropRadarShorthandPreview.retailer || current.retailer,
+      storeNickname: getScoutQuickStoreName(store) || dropRadarShorthandPreview.storeName || current.storeNickname,
+      date: dropRadarShorthandPreview.date || current.date,
+      time: dropRadarShorthandPreview.time || current.time,
+      productCategory: dropRadarShorthandPreview.productCategory || current.productCategory,
+      proofSource: dropRadarShorthandPreview.proofSource || current.proofSource,
+      confidence: dropRadarShorthandPreview.confidence || current.confidence,
+      notes: dropRadarShorthandPreview.notes || current.notes,
+    }));
+    setVaultToast("Parsed restock copied into the training form. Review and save.");
+  }
+
+  function submitDropRadarTraining(event) {
+    event?.preventDefault?.();
+    saveDropRadarTrainingEntry(makeDropRadarTrainingEntry());
+  }
+
+  function toggleDropRadarResetOption(key) {
+    setDropRadarResetSelections((current) => {
+      if (key === "full") {
+        const nextFull = !current.full;
+        return {
+          predictionCache: nextFull,
+          generatedPredictions: nextFull,
+          historicalBackfill: nextFull,
+          manualTraining: nextFull,
+          full: nextFull,
+        };
+      }
+      return { ...current, [key]: !current[key], full: false };
+    });
+  }
+
+  function runDropRadarReset() {
+    if (!adminEditModeActive) {
+      setVaultToast("Admin Edit Mode is required to reset Drop Radar data.");
+      return;
+    }
+    const hasSelection = Object.values(dropRadarResetSelections).some(Boolean);
+    if (!hasSelection) {
+      setVaultToast("Choose at least one Drop Radar reset option.");
+      return;
+    }
+    if (dropRadarResetSelections.full && dropRadarResetConfirmation !== DROP_RADAR_CONFIRMATION_TEXT) {
+      setVaultToast(`Type ${DROP_RADAR_CONFIRMATION_TEXT} before running the full reset.`);
+      return;
+    }
+    if (!dropRadarResetSelections.full && !window.confirm("Reset selected Drop Radar data? Raw Scout reports, stores, follows, Vault, Forge, Market, Kids, and Tidepool data will not be cleared.")) {
+      return;
+    }
+    const scoutData = getSharedScoutData();
+    const nextScout = applyDropRadarReset(scoutData, dropRadarResetSelections);
+    saveSharedScoutData(nextScout);
+    setDropRadarResetConfirmation("");
+    setVaultToast("Drop Radar reset complete. A local backup snapshot was saved inside Scout local data.");
+  }
+
   function toggleScoutSection(key) {
     setScoutSectionsOpen((current) => ({ ...current, [key]: !current[key] }));
   }
@@ -23076,6 +23345,178 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <b>{open ? "Close" : "Open"}</b>
         </button>
         {open ? <div className="scout-accordion-body">{children}</div> : null}
+      </section>
+    );
+  }
+
+  function renderDropRadarAdminPanel() {
+    if (!adminEditModeActive) return null;
+    const storeOptions = getScoutQuickStores().slice(0, 500);
+    const resetSummary = DROP_RADAR_RESET_OPTIONS
+      .filter((option) => dropRadarResetSelections[option.key])
+      .map((option) => option.label);
+    return (
+      <section className="panel scout-subpage-panel drop-radar-admin-panel" aria-label="Admin Drop Radar tools">
+        <div className="compact-card-header">
+          <div>
+            <h2>Drop Radar Admin Training</h2>
+            <p>Reset generated prediction data safely, then enter confirmed restocks so predictions learn from clean signals.</p>
+          </div>
+          <span className="status-badge warning">Admin only</span>
+        </div>
+
+        <div className="drop-radar-admin-grid">
+          <article className="drop-radar-tool-card">
+            <h3>Reset Drop Radar Data</h3>
+            <p className="compact-subtitle">Protected: user accounts, store directory, nicknames, follows, Vault, Forge, Market, Kids, Tidepool, and raw Scout reports are not cleared by these options.</p>
+            <div className="drop-radar-reset-list">
+              {DROP_RADAR_RESET_OPTIONS.map((option) => (
+                <label key={option.key} className={`drop-radar-reset-option${dropRadarResetSelections[option.key] ? " selected" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(dropRadarResetSelections[option.key])}
+                    onChange={() => toggleDropRadarResetOption(option.key)}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>
+                    <small>Clears: {option.clears.join(", ")}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {dropRadarResetSelections.full ? (
+              <label className="form-field">
+                <span>Type {DROP_RADAR_CONFIRMATION_TEXT}</span>
+                <input
+                  value={dropRadarResetConfirmation}
+                  onChange={(event) => setDropRadarResetConfirmation(event.target.value)}
+                  placeholder={DROP_RADAR_CONFIRMATION_TEXT}
+                />
+              </label>
+            ) : null}
+            <div className="drop-radar-warning">
+              <strong>Will clear</strong>
+              <span>{resetSummary.length ? resetSummary.join(" | ") : "No reset option selected"}</span>
+            </div>
+            <button type="button" className="danger-button" onClick={runDropRadarReset}>
+              Reset Selected Drop Radar Data
+            </button>
+          </article>
+
+          <article className="drop-radar-tool-card">
+            <h3>Add Training Restock</h3>
+            <p className="compact-subtitle">These are reports, not predictions. Mark whether each restock should train future store-specific windows.</p>
+            <form className="drop-radar-training-form" onSubmit={submitDropRadarTraining}>
+              <label className="form-field">
+                <span>Store</span>
+                <select value={dropRadarTrainingForm.storeId} onChange={(event) => updateDropRadarTrainingForm("storeId", event.target.value)}>
+                  <option value="">Choose store</option>
+                  {storeOptions.map((store) => (
+                    <option key={getScoutQuickStoreId(store) || `${getScoutQuickStoreName(store)}-${store.city}`} value={getScoutQuickStoreId(store)}>
+                      {getScoutQuickStoreName(store)}{store.city ? ` - ${store.city}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="drop-radar-two-col">
+                <label className="form-field">
+                  <span>Retailer</span>
+                  <input value={dropRadarTrainingForm.retailer} onChange={(event) => updateDropRadarTrainingForm("retailer", event.target.value)} placeholder="Target, Walmart, B&N" />
+                </label>
+                <label className="form-field">
+                  <span>Store nickname</span>
+                  <input value={dropRadarTrainingForm.storeNickname} onChange={(event) => updateDropRadarTrainingForm("storeNickname", event.target.value)} placeholder="Redmill Target" />
+                </label>
+              </div>
+              <div className="drop-radar-two-col">
+                <label className="form-field">
+                  <span>Date</span>
+                  <input type="date" value={dropRadarTrainingForm.date} onChange={(event) => updateDropRadarTrainingForm("date", event.target.value)} />
+                </label>
+                <label className="form-field">
+                  <span>Time if known</span>
+                  <input type="time" value={dropRadarTrainingForm.time} onChange={(event) => updateDropRadarTrainingForm("time", event.target.value)} />
+                </label>
+              </div>
+              <div className="drop-radar-two-col">
+                <label className="form-field">
+                  <span>Product/category</span>
+                  <input value={dropRadarTrainingForm.productCategory} onChange={(event) => updateDropRadarTrainingForm("productCategory", event.target.value)} placeholder="ETBs and blisters" />
+                </label>
+                <label className="form-field">
+                  <span>Quantity if known</span>
+                  <input value={dropRadarTrainingForm.quantity} onChange={(event) => updateDropRadarTrainingForm("quantity", event.target.value)} placeholder="40 bundles, 2 cases" />
+                </label>
+              </div>
+              <div className="drop-radar-two-col">
+                <label className="form-field">
+                  <span>Proof/source</span>
+                  <select value={dropRadarTrainingForm.proofSource} onChange={(event) => updateDropRadarTrainingForm("proofSource", event.target.value)}>
+                    <option value="manual_admin_entry">Manual admin entry</option>
+                    <option value="photo">Photo</option>
+                    <option value="receipt">Receipt</option>
+                    <option value="called_store">Called store</option>
+                    <option value="trusted_reporter">Trusted reporter</option>
+                    <option value="no_proof">No proof</option>
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Confidence</span>
+                  <select value={dropRadarTrainingForm.confidence} onChange={(event) => updateDropRadarTrainingForm("confidence", event.target.value)}>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="likely">Likely</option>
+                    <option value="possible">Possible</option>
+                    <option value="rumor">Rumor</option>
+                  </select>
+                </label>
+              </div>
+              <label className="form-field">
+                <span>Visibility</span>
+                <select value={dropRadarTrainingForm.visibility} onChange={(event) => updateDropRadarTrainingForm("visibility", event.target.value)}>
+                  <option value="private_admin">Private/admin-only</option>
+                  <option value="anonymized">Anonymized</option>
+                  <option value="public">Public cleaned signal</option>
+                </select>
+              </label>
+              <label className="form-field">
+                <span>Notes</span>
+                <textarea value={dropRadarTrainingForm.notes} onChange={(event) => updateDropRadarTrainingForm("notes", event.target.value)} placeholder="Optional training notes, proof context, or source details" />
+              </label>
+              <label className="inline-toggle">
+                <input type="checkbox" checked={dropRadarTrainingForm.shouldTrainPredictions} onChange={(event) => updateDropRadarTrainingForm("shouldTrainPredictions", event.target.checked)} />
+                <span>Use this restock to train predictions</span>
+              </label>
+              <button type="submit">Save Training Restock</button>
+            </form>
+          </article>
+
+          <article className="drop-radar-tool-card drop-radar-tool-card--wide">
+            <h3>Quick Restock Entry</h3>
+            <p className="compact-subtitle">Supported shortcuts: RM T, Pem T, FC, GB, GB B&amp;N. Preview is required before anything is copied into the save form.</p>
+            <div className="drop-radar-shorthand-row">
+              <input
+                value={dropRadarShorthandText}
+                onChange={(event) => setDropRadarShorthandText(event.target.value)}
+                placeholder="RM T 5/12 15:24 Pokemon restock"
+              />
+              <button type="button" className="secondary-button" onClick={previewDropRadarShorthand}>Preview</button>
+            </div>
+            {dropRadarShorthandPreview ? (
+              <div className={`drop-radar-preview${dropRadarShorthandPreview.ok ? " ok" : " needs-review"}`}>
+                <strong>{dropRadarShorthandPreview.ok ? "Parsed restock" : "Needs review"}</strong>
+                <span>Store: {dropRadarShorthandPreview.storeName || "Choose store"}</span>
+                <span>Retailer: {dropRadarShorthandPreview.retailer || "Not found"}</span>
+                <span>Date/time: {[dropRadarShorthandPreview.date, dropRadarShorthandPreview.time || "time unknown"].filter(Boolean).join(" ") || "Missing"}</span>
+                <span>Product: {dropRadarShorthandPreview.productCategory || "Missing"}</span>
+                {dropRadarShorthandPreview.uncertain ? <small>Store match is uncertain. Choose the store before saving.</small> : null}
+                {dropRadarShorthandPreview.missing?.length ? <small>Missing: {dropRadarShorthandPreview.missing.join(", ")}</small> : null}
+                <button type="button" className="secondary-button" disabled={!dropRadarShorthandPreview.ok} onClick={applyDropRadarShorthandPreview}>
+                  Copy to Training Form
+                </button>
+              </div>
+            ) : null}
+          </article>
+        </div>
       </section>
     );
   }
@@ -30967,6 +31408,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <button type="button" className={scoutForecastMode === "guesses" ? "active" : ""} onClick={() => setScoutForecastMode("guesses")}>Guess Planner</button>
           </div>
         </div>
+        {renderDropRadarAdminPanel()}
         {scoutForecastMode === "guesses" ? renderScoutGuessesPanel() : renderScoutPredictionsPanel()}
       </section>
     );

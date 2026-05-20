@@ -27,6 +27,7 @@ import { DEFAULT_VIRGINIA_REGION, POKEMON_STOCK_LIKELIHOOD_OPTIONS, VIRGINIA_REG
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
+import { shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
 import {
   cacheBestBuyStockResult,
   createBestBuyStockAlert,
@@ -1680,7 +1681,7 @@ export default function Scout({
       const savedBestBuyNightlySettings = { ...BEST_BUY_NIGHTLY_DEFAULTS, ...(saved.bestBuyNightlySettings || {}) };
       const savedScoutProfile = saved.scoutProfile || createDefaultScoutProfile();
       const savedAlertSettings = { ...createDefaultAlertSettings(), ...(saved.alertSettings || {}) };
-      const savedRestockIntel = saved.restockIntel?.length ? saved.restockIntel : SCOUT_HISTORICAL_INTEL_SEED;
+      const savedRestockIntel = saved.restockIntel?.length ? saved.restockIntel : shouldUseDropRadarSeed(saved) ? SCOUT_HISTORICAL_INTEL_SEED : [];
       const savedRestockPatterns = saved.restockPatterns?.length ? saved.restockPatterns : buildScoutRestockPatterns(savedRestockIntel);
       if (!saved.stores?.length) {
         localStorage.setItem(
@@ -1706,7 +1707,7 @@ export default function Scout({
             routes: saved.routes || [],
           })
         );
-      } else if (!saved.restockIntel?.length || !saved.restockPatterns?.length) {
+      } else if (shouldUseDropRadarSeed(saved) && (!saved.restockIntel?.length || !saved.restockPatterns?.length)) {
         localStorage.setItem(
           SCOUT_STORAGE_KEY,
           JSON.stringify({
