@@ -32891,3 +32891,239 @@ body,
     min-height: 96px;
   }
 }
+
+/* Scout Signals trust flow */
+.app .scout-product-chip-row,
+.app-command-shell .scout-product-chip-row,
+.app-shell-dark .scout-product-chip-row,
+.app .scout-follow-controls,
+.app-command-shell .scout-follow-controls,
+.app-shell-dark .scout-follow-controls,
+.app .scout-signal-badge-row,
+.app-command-shell .scout-signal-badge-row,
+.app-shell-dark .scout-signal-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.app .scout-product-chip-row button,
+.app-command-shell .scout-product-chip-row button,
+.app-shell-dark .scout-product-chip-row button {
+  min-height: 38px;
+  padding-inline: 12px;
+}
+
+.app .scout-catalog-result-strip,
+.app-command-shell .scout-catalog-result-strip,
+.app-shell-dark .scout-catalog-result-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.app .scout-catalog-mini-card,
+.app-command-shell .scout-catalog-mini-card,
+.app-shell-dark .scout-catalog-mini-card {
+  min-height: 92px;
+  border-color: rgba(124, 231, 255, 0.18) !important;
+  background: rgba(7, 18, 36, 0.92) !important;
+  color: #f8fbff !important;
+}
+
+.app .scout-catalog-mini-card strong,
+.app-command-shell .scout-catalog-mini-card strong,
+.app-shell-dark .scout-catalog-mini-card strong {
+  color: #fff7ed !important;
+}
+
+.app .scout-catalog-mini-card small,
+.app-command-shell .scout-catalog-mini-card small,
+.app-shell-dark .scout-catalog-mini-card small {
+  color: rgba(232, 246, 255, 0.72) !important;
+}
+
+.app .scout-confidence-preview,
+.app-command-shell .scout-confidence-preview,
+.app-shell-dark .scout-confidence-preview {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid rgba(124, 231, 255, 0.18);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(32, 215, 255, 0.14), transparent 9rem),
+    rgba(5, 15, 30, 0.9);
+}
+
+.app .scout-confidence-preview p,
+.app-command-shell .scout-confidence-preview p,
+.app-shell-dark .scout-confidence-preview p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.78);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.app .scout-confidence-pill,
+.app-command-shell .scout-confidence-pill,
+.app-shell-dark .scout-confidence-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fbff;
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.app .scout-confidence-pill--verified,
+.app-command-shell .scout-confidence-pill--verified,
+.app-shell-dark .scout-confidence-pill--verified {
+  border-color: rgba(120, 255, 190, 0.42);
+  background: rgba(6, 78, 59, 0.72);
+  color: #d8ffe5;
+}
+
+.app .scout-confidence-pill--likely,
+.app-command-shell .scout-confidence-pill--likely,
+.app-shell-dark .scout-confidence-pill--likely {
+  border-color: rgba(255, 184, 92, 0.45);
+  background: rgba(92, 48, 12, 0.72);
+  color: #fff3d0;
+}
+
+.app .scout-confidence-pill--unconfirmed,
+.app-command-shell .scout-confidence-pill--unconfirmed,
+.app-shell-dark .scout-confidence-pill--unconfirmed {
+  border-color: rgba(124, 231, 255, 0.32);
+  background: rgba(8, 27, 49, 0.78);
+  color: #dff7ff;
+}
+
+.app .scout-follow-chip,
+.app-command-shell .scout-follow-chip,
+.app-shell-dark .scout-follow-chip {
+  display: grid;
+  gap: 3px;
+  flex: 1 1 145px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(7, 18, 36, 0.9);
+  color: #f8fbff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app .scout-follow-chip strong,
+.app-command-shell .scout-follow-chip strong,
+.app-shell-dark .scout-follow-chip strong {
+  color: #fff7ed;
+  font-size: 0.8rem;
+}
+
+.app .scout-follow-chip span,
+.app-command-shell .scout-follow-chip span,
+.app-shell-dark .scout-follow-chip span {
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.app .scout-follow-chip.active,
+.app-command-shell .scout-follow-chip.active,
+.app-shell-dark .scout-follow-chip.active {
+  border-color: rgba(255, 184, 92, 0.64);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 122, 26, 0.2), transparent 8rem),
+    rgba(13, 43, 62, 0.95);
+  box-shadow: 0 0 22px rgba(255, 122, 26, 0.14);
+}
+
+.app .scout-report-notes-field,
+.app-command-shell .scout-report-notes-field,
+.app-shell-dark .scout-report-notes-field {
+  display: grid;
+  gap: 6px;
+  color: rgba(232, 246, 255, 0.78);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.app .scout-confirm-location-row,
+.app-command-shell .scout-confirm-location-row,
+.app-shell-dark .scout-confirm-location-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(255, 184, 92, 0.34);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 122, 26, 0.18), transparent 10rem),
+    rgba(35, 18, 11, 0.86);
+  color: #fff7ed;
+}
+
+.app .scout-confirm-location-row input,
+.app-command-shell .scout-confirm-location-row input,
+.app-shell-dark .scout-confirm-location-row input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #ff7a1a;
+}
+
+.app .scout-confirm-location-row span,
+.app-command-shell .scout-confirm-location-row span,
+.app-shell-dark .scout-confirm-location-row span {
+  display: grid;
+  gap: 4px;
+}
+
+.app .scout-confirm-location-row strong,
+.app-command-shell .scout-confirm-location-row strong,
+.app-shell-dark .scout-confirm-location-row strong {
+  color: #fff7ed;
+}
+
+.app .scout-confirm-location-row small,
+.app-command-shell .scout-confirm-location-row small,
+.app-shell-dark .scout-confirm-location-row small {
+  color: rgba(255, 247, 237, 0.74);
+}
+
+@media (max-width: 640px) {
+  .app .scout-catalog-result-strip,
+  .app-command-shell .scout-catalog-result-strip,
+  .app-shell-dark .scout-catalog-result-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .app .scout-confidence-preview,
+  .app-command-shell .scout-confidence-preview,
+  .app-shell-dark .scout-confidence-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app .scout-follow-chip,
+  .app-command-shell .scout-follow-chip,
+  .app-shell-dark .scout-follow-chip {
+    flex-basis: 100%;
+  }
+}
