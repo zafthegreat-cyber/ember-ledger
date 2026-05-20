@@ -33886,3 +33886,226 @@ body,
     flex-basis: calc(50% - 4px);
   }
 }
+
+/* Focused Forge Workshop dashboard pass */
+.app .forge-business-dashboard,
+.app-command-shell .forge-business-dashboard,
+.app-shell-dark .forge-business-dashboard,
+.app .forge-recent-activity-panel,
+.app-command-shell .forge-recent-activity-panel,
+.app-shell-dark .forge-recent-activity-panel {
+  display: grid;
+  gap: 14px;
+  margin: 14px 0;
+  padding: clamp(14px, 2.4vw, 18px);
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 122, 26, 0.11), transparent 18rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014)),
+    rgba(5, 15, 32, 0.88);
+  color: #f8fbff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.app .forge-business-dashboard-heading,
+.app-command-shell .forge-business-dashboard-heading,
+.app-shell-dark .forge-business-dashboard-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.app .forge-business-dashboard-heading h3,
+.app-command-shell .forge-business-dashboard-heading h3,
+.app-shell-dark .forge-business-dashboard-heading h3,
+.app .forge-recent-activity-panel h3,
+.app-command-shell .forge-recent-activity-panel h3,
+.app-shell-dark .forge-recent-activity-panel h3 {
+  margin: 0;
+  color: #fff7ed !important;
+  font-size: clamp(1rem, 1.3vw, 1.18rem);
+  line-height: 1.18;
+}
+
+.app .forge-business-dashboard-heading p,
+.app-command-shell .forge-business-dashboard-heading p,
+.app-shell-dark .forge-business-dashboard-heading p,
+.app .forge-recent-activity-panel p,
+.app-command-shell .forge-recent-activity-panel p,
+.app-shell-dark .forge-recent-activity-panel p {
+  margin: 4px 0 0;
+  color: rgba(232, 246, 255, 0.74) !important;
+  line-height: 1.35;
+}
+
+.app .forge-business-grid,
+.app-command-shell .forge-business-grid,
+.app-shell-dark .forge-business-grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin: 0;
+}
+
+.app .forge-business-card,
+.app-command-shell .forge-business-card,
+.app-shell-dark .forge-business-card {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 132px;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid rgba(124, 231, 255, 0.14) !important;
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.016)),
+    rgba(3, 10, 23, 0.74) !important;
+  color: #f8fbff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.052);
+}
+
+.app .forge-business-card:hover,
+.app .forge-business-card:focus-visible,
+.app-command-shell .forge-business-card:hover,
+.app-command-shell .forge-business-card:focus-visible,
+.app-shell-dark .forge-business-card:hover,
+.app-shell-dark .forge-business-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(255, 184, 92, 0.34) !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22), 0 0 20px rgba(255, 122, 26, 0.08);
+}
+
+.app .forge-business-card span,
+.app-command-shell .forge-business-card span,
+.app-shell-dark .forge-business-card span {
+  color: #7ce7ff !important;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app .forge-business-card strong,
+.app-command-shell .forge-business-card strong,
+.app-shell-dark .forge-business-card strong {
+  color: #fff7ed !important;
+  font-size: clamp(1.16rem, 2.3vw, 1.62rem);
+  line-height: 1.08;
+}
+
+.app .forge-business-card small,
+.app-command-shell .forge-business-card small,
+.app-shell-dark .forge-business-card small {
+  color: rgba(232, 246, 255, 0.7) !important;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.app .forge-activity-list,
+.app-command-shell .forge-activity-list,
+.app-shell-dark .forge-activity-list {
+  display: grid;
+  gap: 8px;
+}
+
+.app .forge-activity-row,
+.app-command-shell .forge-activity-row,
+.app-shell-dark .forge-activity-row {
+  display: grid;
+  grid-template-columns: minmax(78px, 0.7fr) minmax(0, 1.25fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(2, 8, 22, 0.55);
+}
+
+.app .forge-activity-row span,
+.app-command-shell .forge-activity-row span,
+.app-shell-dark .forge-activity-row span {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 184, 92, 0.24);
+  border-radius: 999px;
+  color: #fff4cf;
+  background: rgba(98, 67, 12, 0.22);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.app .forge-activity-row strong,
+.app-command-shell .forge-activity-row strong,
+.app-shell-dark .forge-activity-row strong {
+  overflow: hidden;
+  color: #fff7ed;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app .forge-activity-row small,
+.app-command-shell .forge-activity-row small,
+.app-shell-dark .forge-activity-row small,
+.app .forge-activity-row time,
+.app-command-shell .forge-activity-row time,
+.app-shell-dark .forge-activity-row time {
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.app .forge-empty-state,
+.app-command-shell .forge-empty-state,
+.app-shell-dark .forge-empty-state {
+  border-color: rgba(255, 184, 92, 0.24) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.14), transparent 16rem),
+    rgba(7, 18, 36, 0.92) !important;
+  color: #f8fbff !important;
+}
+
+.app .forge-empty-state h3,
+.app-command-shell .forge-empty-state h3,
+.app-shell-dark .forge-empty-state h3 {
+  color: #fff7ed !important;
+}
+
+.app .forge-empty-state p,
+.app-command-shell .forge-empty-state p,
+.app-shell-dark .forge-empty-state p {
+  color: rgba(232, 246, 255, 0.76) !important;
+}
+
+@media (max-width: 760px) {
+  .app .forge-business-dashboard,
+  .app-command-shell .forge-business-dashboard,
+  .app-shell-dark .forge-business-dashboard,
+  .app .forge-recent-activity-panel,
+  .app-command-shell .forge-recent-activity-panel,
+  .app-shell-dark .forge-recent-activity-panel {
+    padding: 13px;
+    border-radius: 18px;
+  }
+
+  .app .forge-business-grid,
+  .app-command-shell .forge-business-grid,
+  .app-shell-dark .forge-business-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app .forge-activity-row,
+  .app-command-shell .forge-activity-row,
+  .app-shell-dark .forge-activity-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .app .forge-activity-row strong,
+  .app-command-shell .forge-activity-row strong,
+  .app-shell-dark .forge-activity-row strong {
+    white-space: normal;
+  }
+}

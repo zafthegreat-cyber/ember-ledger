@@ -16570,17 +16570,25 @@ function renderVaultHeader() {
 }
 
 function renderForgeHeader() {
-  const activeMarketplaceCount = workspaceMarketplaceListings.filter((listing) => listing.status === "Active").length;
   const forgeReportRecordCount = workspaceSales.length + workspaceExpenses.length + workspaceMileageTrips.length;
   const forgeWorkspaceContextLabel = activeForgeWorkspace
     ? `Forge workspace: ${activeForgeWorkspace.name || "Ember & Tide"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""}`
     : forgeWorkspaceUnavailableMessage;
   const forgeOverviewCards = [
     {
+      key: "profit",
+      title: "Profit This Month",
+      value: money(monthlyProfitLoss),
+      secondary: `${money(monthlySalesProfit)} sales profit`,
+      helper: "Monthly sales profit after tracked expenses.",
+      active: false,
+      onClick: () => setActiveTab("reports"),
+    },
+    {
       key: "inventory",
-      title: "Inventory",
+      title: "Inventory Health",
       value: money(totalMarketValue),
-      helper: "Inventory, imports, and sellable items.",
+      helper: `${forgeInventoryReviewCount} item${forgeInventoryReviewCount === 1 ? "" : "s"} need price, photo, or sale review.`,
       active: activeTab === "inventory" && forgeSubTab !== "marketplace",
       onClick: () => {
         setForgeSubTab("overview");
@@ -16602,8 +16610,8 @@ function renderForgeHeader() {
     },
     {
       key: "expenses",
-      title: "Expenses",
-      value: money(totalExpenses),
+      title: "Receipts & Expenses",
+      value: forgeReceiptsNeedingReviewCount ? `${forgeReceiptsNeedingReviewCount} review` : money(totalExpenses),
       helper: "Receipts, fees, supplies, shipping, and events.",
       active: activeTab === "expenses",
       onClick: () => {
@@ -16650,8 +16658,8 @@ function renderForgeHeader() {
   return (
     <PageHeader
       className={getHeaderCardClass("panel forge-hero-panel forge-command-center")}
-      title="Forge / Workshop"
-      subtitle="Build your business. Track the heat."
+      title="Forge Workshop"
+      subtitle="How is my TCG business doing? Your business data stays private to you."
       actions={(
         <>
         <button type="button" className="forge-command-quick-add" onClick={openForgeQuickAddFlow}>
@@ -16665,7 +16673,7 @@ function renderForgeHeader() {
         ])}
         </>
       )}
-      summaryLabel={forgeWorkspaceContextLabel}
+      summaryLabel={`${forgeWorkspaceContextLabel} · Private seller space`}
       summary={(
         <div className="forge-command-overview" aria-label="Forge Business Overview">
         {forgeOverviewCards.map((card) => (
@@ -17826,6 +17834,45 @@ function renderForgeHeader() {
     .reduce((sum, sale) => sum + Number(sale.netProfit || 0), 0);
   const monthlySpending = monthlyItemSpending + monthlyExpenses;
   const monthlyProfitLoss = monthlySalesProfit - monthlyExpenses;
+  const activeMarketplaceCount = workspaceMarketplaceListings.filter((listing) => listing.status === "Active").length;
+  const forgeReceiptsNeedingReviewCount = (phase2RecentReceipts || []).filter((receipt) =>
+    /draft|review|pending|duplicate/i.test(`${receipt.status || ""}`)
+  ).length;
+  const forgeInventoryReviewCount = needsMarketCheckItems.length + needsPhotosItems.length + missingSalePriceItems.length;
+  const forgeTotalProductQuantity = forgeInventoryItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const forgeRecentActivity = [
+    ...forgeInventoryItems.map((item) => ({
+      key: `inventory-${item.id}`,
+      source: "Inventory",
+      title: item.name || "Forge item",
+      detail: `Qty ${item.quantity || 0}${item.physicalLocation || item.physical_location ? ` · ${item.physicalLocation || item.physical_location}` : ""}`,
+      date: item.updatedAt || item.updated_at || item.createdAt || item.created_at,
+    })),
+    ...workspaceSales.map((sale) => ({
+      key: `sale-${sale.id}`,
+      source: "Sale",
+      title: sale.itemName || "Sale recorded",
+      detail: `${money(sale.netProfit || 0)} profit · ${sale.platform || "Sale"}`,
+      date: sale.updatedAt || sale.updated_at || sale.createdAt || sale.created_at,
+    })),
+    ...workspaceExpenses.map((expense) => ({
+      key: `expense-${expense.id}`,
+      source: "Expense",
+      title: expense.vendor || "Expense",
+      detail: `${money(expense.amount || 0)} · ${expense.category || "Expense"}`,
+      date: expense.updatedAt || expense.updated_at || expense.date || expense.createdAt || expense.created_at,
+    })),
+    ...workspaceMileageTrips.map((trip) => ({
+      key: `mileage-${trip.id}`,
+      source: "Mileage",
+      title: trip.vehicleName || trip.vehicle || "Mileage trip",
+      detail: `${Number(trip.businessMiles || 0).toFixed(1)} miles · ${trip.purpose || "Trip"}`,
+      date: trip.updatedAt || trip.updated_at || trip.date || trip.createdAt || trip.created_at,
+    })),
+  ]
+    .filter((entry) => entry.date)
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+    .slice(0, 5);
   const vaultItems = useMemo(() => workspaceItems.filter(isVaultItemRecord), [workspaceItems]);
   const wishlistItems = useMemo(() => workspaceItems.filter(isWishlistItemRecord), [workspaceItems]);
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
@@ -36833,8 +36880,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           <section id="forge-inventory-section" className="panel forge-home-inventory-section">
             <div className="forge-toolbar">
               <div>
-                <h2>Business Command</h2>
-                <p>Inventory, sales, expenses, receipts, mileage, listings, and items needing review.</p>
+                <h2>Forge Business Command</h2>
+                <p>Profit, sales, receipts, mileage, inventory health, and price work in one private seller view.</p>
               </div>
               <div className="summary-pill-row">
                 <button type="button" disabled={!activeForgeWorkspace} onClick={() => openProductAddFlow({ source: "forge-toolbar-inventory", destinations: { forge: true } })}>Add Inventory</button>
@@ -36848,29 +36895,67 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Open Forge settings</button>
               </div>
             ) : null}
-            <div className="forge-daily-grid">
-              {[
-                { label: "Inventory Value", value: money(totalMarketValue), helper: `${forgeInventoryItems.length} active items` },
-                { label: "Planned Sales", value: money(totalPotentialSales), helper: `${readyToListItems.length} ready to list` },
-                { label: "Sales This Month", value: money(monthlySalesProfit), helper: `${totalItemsSold} sold overall` },
-                { label: "Profit", value: money(estimatedProfitAfterExpenses), helper: `${plannedRoiPercent.toFixed(1)}% planned ROI` },
-                { label: "Expenses", value: money(totalExpenses), helper: `${workspaceExpenses.length} records` },
-                { label: "Needs Review", value: needsMarketCheckItems.length + needsPhotosItems.length, helper: "Prices or photos missing" },
-              ].map((card) => (
-                <div className="forge-daily-card" key={card.label}>
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                  <small>{card.helper}</small>
+            <section className="forge-business-dashboard" aria-label="Forge business dashboard">
+              <div className="forge-business-dashboard-heading">
+                <div>
+                  <h3>Business snapshot</h3>
+                  <p>Your business data stays private to you.</p>
                 </div>
-              ))}
-            </div>
+                <span className="trust-badge trust-badge--secure">Private Forge</span>
+              </div>
+              <div className="forge-daily-grid forge-business-grid">
+                {[
+                  { label: "Profit this month", value: money(monthlyProfitLoss), helper: `${money(monthlySalesProfit)} sales profit · ${money(monthlyExpenses)} expenses`, action: () => setActiveTab("reports") },
+                  { label: "Sales", value: money(totalSalesRevenue), helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} · ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`, action: () => setActiveTab("sales") },
+                  { label: "Receipts needing review", value: forgeReceiptsNeedingReviewCount, helper: forgeReceiptsNeedingReviewCount ? "Review receipts before trusting profit reports." : "No receipt review blockers.", action: openReceiptScanWorkflow },
+                  { label: "Mileage", value: `${totalBusinessMiles.toFixed(1)} mi`, helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} · ${money(totalMileageValue)} tracked value`, action: () => setActiveTab("mileage") },
+                  { label: "Inventory health", value: `${forgeInventoryReviewCount} review`, helper: `${lowStockItems.length} low stock · ${needsPhotosItems.length} need photos`, action: () => setInventorySearch("Needs Market Check") },
+                  { label: "Products", value: forgeTotalProductQuantity, helper: `${forgeInventoryItems.length} grouped product${forgeInventoryItems.length === 1 ? "" : "s"} · ${money(totalMarketValue)} market value`, action: () => setInventorySearch("") },
+                  { label: "Price tools", value: missingMarketPriceItems.length + missingMsrpItems.length, helper: `${missingMarketPriceItems.length} missing market · ${missingMsrpItems.length} missing MSRP`, action: () => setInventorySearch("Needs Market Check") },
+                  { label: "Active projects", value: readyToListItems.length + listedItems.length + activeMarketplaceCount, helper: `${readyToListItems.length} ready · ${listedItems.length} listed · ${activeMarketplaceCount} marketplace`, action: () => { setMarketplaceView("browse"); setForgeSubTab("marketplace"); setActiveTab("inventory"); } },
+                  { label: "Recent activity", value: forgeRecentActivity.length, helper: forgeRecentActivity.length ? "Latest seller records are below." : "Add inventory, receipts, mileage, or sales to start.", action: () => setActiveTab("inventory") },
+                ].map((card) => (
+                  <button type="button" className="forge-daily-card forge-business-card" key={card.label} onClick={card.action}>
+                    <span>{card.label}</span>
+                    <strong>{card.value}</strong>
+                    <small>{card.helper}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
             <div className="quick-actions forge-action-strip">
               <button type="button" onClick={() => openAddSaleFlow()}>Add Sale</button>
               <button type="button" className="secondary-button" onClick={openReceiptScanWorkflow}>Scan Receipt</button>
               <button type="button" className="secondary-button" onClick={() => openAddExpenseFlow()}>Add Expense</button>
+              <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
               <button type="button" className="secondary-button" onClick={openVaultMoveToForgeFlow}>Move from Vault</button>
               <button type="button" className="secondary-button" onClick={() => setInventorySearch("Needs Market Check")}>Price Update</button>
             </div>
+            <section className="forge-recent-activity-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Recent activity</h3>
+                  <p>Latest inventory, sales, expense, and mileage records in this Forge workspace.</p>
+                </div>
+              </div>
+              {forgeRecentActivity.length ? (
+                <div className="forge-activity-list">
+                  {forgeRecentActivity.map((entry) => (
+                    <div className="forge-activity-row" key={entry.key}>
+                      <span>{entry.source}</span>
+                      <strong>{entry.title}</strong>
+                      <small>{entry.detail}</small>
+                      <time>{shortDate(entry.date)}</time>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="small-empty-state">
+                  <strong>Ready to track your first sale?</strong>
+                  <span>Add a receipt, product, or mileage trip to build your business history.</span>
+                </div>
+              )}
+            </section>
             {!activeFlowModal && importAssistantContext === "Forge" ? renderInventoryImportAssistant() : null}
             <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search Forge inventory..." />
             <details className="forge-purchaser-totals">
@@ -37008,12 +37093,14 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             ) : null}
             <div className="inventory-list compact-inventory-list">
               {groupedSortedFilteredItems.length === 0 ? (
-                <div className="inventory-card compact-card">
-                  <h3>No Forge items found</h3>
-                  <p>Add inventory, import a receipt/list, or select a TideTradr catalog item to start tracking seller inventory.</p>
-                  <button type="button" className="edit-button" onClick={() => openProductAddFlow({ source: "forge-empty-inventory", destinations: { forge: true } })}>
-                    Add Item
-                  </button>
+                <div className="inventory-card compact-card forge-empty-state">
+                  <h3>Ready to track your first sale?</h3>
+                  <p>Add a receipt, product, or mileage trip to start building a private Forge business history.</p>
+                  <div className="quick-actions">
+                    <button type="button" onClick={openReceiptScanWorkflow}>Add Receipt</button>
+                    <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "forge-empty-inventory", destinations: { forge: true } })}>Add Product</button>
+                    <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
+                  </div>
                 </div>
               ) : pagedForgeInventory.items.map((item) => (
                 <CompactInventoryCard
