@@ -3778,6 +3778,7 @@ export default function App() {
   const [appUpdate, setAppUpdate] = useState({ available: false, latestVersion: "", source: "" });
   const [dismissedUpdateVersion, setDismissedUpdateVersion] = useState("");
   const [appRefreshInProgress, setAppRefreshInProgress] = useState(false);
+  const [isOffline, setIsOffline] = useState(() => (typeof navigator !== "undefined" ? !navigator.onLine : false));
   const quickAddRef = useRef(null);
   const quickAddButtonRef = useRef(null);
   const quickAddMenuRef = useRef(null);
@@ -4804,6 +4805,18 @@ export default function App() {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("ember-tide:update-available", onServiceWorkerUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const updateOnlineState = () => setIsOffline(typeof navigator !== "undefined" ? !navigator.onLine : false);
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
+    updateOnlineState();
+    return () => {
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
     };
   }, []);
 
@@ -33035,8 +33048,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
       ) : null}
 
+      {isOffline ? (
+        <div className="app-state-banner offline-state" role="status">
+          <div>
+            <strong>You&apos;re offline.</strong>
+            <span>Some features may be unavailable until your connection returns.</span>
+          </div>
+          <div className="app-state-banner-actions">
+            <button type="button" className="secondary-button" onClick={() => window.location.reload()}>Retry</button>
+            <button type="button" className="ghost-button" onClick={() => setActiveTab("dashboard")}>Go Home</button>
+          </div>
+        </div>
+      ) : null}
+
       {vaultToast ? (
-        <div className="vault-toast" role="status">
+        <div className={`vault-toast ${/failed|could not|error|unavailable|denied/i.test(vaultToast) ? "toast-warning" : /saved|submitted|complete|success|synced|added/i.test(vaultToast) ? "toast-success" : ""}`} role="status">
           <span>{vaultToast}</span>
           <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
         </div>
