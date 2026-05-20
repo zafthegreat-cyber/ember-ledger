@@ -35623,6 +35623,12 @@ body,
     bottom: 0;
     z-index: 2;
   }
+
+  .app-command-shell:has(.quick-add-sheet) .mobile-bottom-nav,
+  .app-command-shell:has(.flow-modal-backdrop) .mobile-bottom-nav,
+  .app-command-shell:has(.quick-add-backdrop) .mobile-bottom-nav {
+    display: none !important;
+  }
 }
 
 @media (min-width: 521px) and (max-width: 1023px) {
