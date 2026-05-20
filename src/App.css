@@ -35396,3 +35396,149 @@ body,
     display: none;
   }
 }
+
+/* Mobile polish pass: keep the daily dock predictable and prevent dense tools from spilling. */
+@media (max-width: 520px) {
+  html,
+  body,
+  #root,
+  .app-command-shell {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-command-shell {
+    width: 100% !important;
+    padding-inline: 8px !important;
+  }
+
+  .app-command-shell > .topbar,
+  .app-command-shell > .app-shell-header {
+    width: min(100%, 430px) !important;
+    margin-inline: auto !important;
+  }
+
+  .mobile-bottom-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 64px repeat(2, minmax(0, 1fr)) !important;
+    width: min(430px, calc(100vw - 12px)) !important;
+    min-height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: none !important;
+    padding: 7px !important;
+  }
+
+  .mobile-bottom-nav button {
+    justify-self: stretch !important;
+    width: 100% !important;
+    min-height: 52px !important;
+    padding: 5px 3px !important;
+    touch-action: manipulation;
+  }
+
+  .mobile-bottom-nav b {
+    font-size: 0.63rem !important;
+    letter-spacing: 0 !important;
+  }
+
+  .mobile-bottom-nav .mobile-dock-add {
+    transform: translateY(-9px);
+    min-height: 64px !important;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(255, 244, 223, 0.2), transparent 34%),
+      var(--et-final-primary) !important;
+    color: #1a0d06 !important;
+    box-shadow: 0 12px 28px rgba(255, 122, 26, 0.24), 0 0 20px rgba(32, 215, 255, 0.08) !important;
+  }
+
+  .mobile-bottom-nav .mobile-dock-add b,
+  .mobile-bottom-nav .mobile-dock-add .mobile-tab-icon {
+    color: #1a0d06 !important;
+  }
+
+  .standard-page-header,
+  .compact-card,
+  .command-card,
+  .command-panel,
+  .panel,
+  .card {
+    max-width: 100%;
+    border-radius: 18px !important;
+  }
+
+  .standard-page-header-tabs,
+  .pill-tabs,
+  .compact-toggle-row,
+  .vault-filter-row,
+  .market-filter-row {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 6px !important;
+    scroll-snap-type: x proximity;
+  }
+
+  .standard-page-header-tabs button,
+  .pill-tabs button,
+  .compact-toggle-row button,
+  .vault-filter-row button,
+  .market-filter-row button {
+    flex: 0 0 auto;
+    min-height: 40px !important;
+    scroll-snap-align: start;
+  }
+
+  .scout-main-actions,
+  .quick-actions,
+  .vault-command-overview,
+  .forge-command-overview,
+  .tidepool-stat-grid,
+  .cards,
+  .mini-cards {
+    gap: 9px !important;
+  }
+
+  .quick-actions button,
+  .scout-main-actions button,
+  .standard-page-header-actions button,
+  .catalog-detail-action-group button,
+  .catalog-detail-action-group a.secondary-button {
+    min-height: 44px !important;
+  }
+
+  .flow-modal,
+  .location-modal,
+  .modal-sheet-compact,
+  .quick-add-sheet,
+  .menu-drawer,
+  .settings-drawer,
+  .navigation-drawer {
+    width: min(100vw - 14px, 430px) !important;
+    max-width: calc(100vw - 14px) !important;
+    max-height: calc(100dvh - 18px) !important;
+    border-radius: 22px !important;
+  }
+
+  .flow-modal-body,
+  .location-modal-content,
+  .menu-drawer-body,
+  .drawer-body,
+  .quick-add-sheet-body {
+    max-height: calc(100dvh - 170px);
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 28px) !important;
+  }
+
+  .modal-sticky-footer,
+  .flow-modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 1023px) {
+  .mobile-bottom-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 68px repeat(2, minmax(0, 1fr)) !important;
+    width: min(460px, calc(100vw - 18px)) !important;
+  }
+}
