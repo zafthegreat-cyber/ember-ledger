@@ -31674,6 +31674,51 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ), "tcg-os")}
               {renderMenuPullDown("settings", "Settings", "Appearance, location, notifications, and dashboard display", (
                 <div className="drawer-links">
+                  <div className="drawer-info-card settings-command-overview">
+                    <strong>Settings</strong>
+                    <p className="compact-subtitle">Control your Ember & Tide experience without changing private data or workspace ownership.</p>
+                    <div className="settings-section-grid">
+                      {[
+                        ["Profile", "Name, public username, and account identity."],
+                        ["Experience Mode", "Simple, Collector, or Seller view priorities."],
+                        ["Notification Preferences", "Restocks, price drops, Kids Program, offers, announcements, and Daily Tide."],
+                        ["Store Alerts", "Followed stores, verified restocks, all signals, digest, or off."],
+                        ["Privacy & Data", "Business data privacy, Scout location use, exports, and support requests."],
+                        ["Trust & Reputation", "Scout accuracy, fair pricing, community helper badges, and trust rules."],
+                        ["Family & Child Profiles", "Parent controls, Kids Program status, and no child private messaging."],
+                        ["Account/Security", "Password reset and signed-in account controls."],
+                        ["Help & Support", "Report bugs, request features, refresh/update help, and FAQ."],
+                        ["About Ember & Tide", "Protect the spark. Follow the tide."],
+                      ].map(([title, body]) => (
+                        <article className="settings-section-card" key={title}>
+                          <strong>{title}</strong>
+                          <span>{body}</span>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="drawer-info-card experience-mode-settings-card">
+                    <strong>Experience Mode</strong>
+                    <p className="compact-subtitle">This changes what Hearth and Today&apos;s Tide prioritize. Mobile navigation stays stable unless seller personalization is already supported.</p>
+                    <div className="settings-mode-grid">
+                      {[
+                        { key: "budget", title: "Simple", helper: "Parents, families, and new collectors.", active: normalizeUserType(userType) === "budget" || normalizeDashboardPreset(dashboardPreset) === "budget_parent" },
+                        { key: "collector", title: "Collector", helper: "Vault, Scout, Market, and Tidepool.", active: normalizeUserType(userType) === "collector" && normalizeDashboardPreset(dashboardPreset) !== "seller" },
+                        { key: "seller", title: "Seller", helper: "Forge, receipts, mileage, inventory, and sales.", active: normalizeUserType(userType) === "seller" || normalizeDashboardPreset(dashboardPreset) === "seller" },
+                      ].map((mode) => (
+                        <button
+                          key={mode.key}
+                          type="button"
+                          className={mode.active ? "settings-mode-card active" : "settings-mode-card"}
+                          aria-pressed={mode.active}
+                          onClick={() => applyHomeViewPreset(mode.key)}
+                        >
+                          <strong>{mode.title}</strong>
+                          <span>{mode.helper}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="drawer-info-card">
                     <strong>Appearance</strong>
                     <p className="compact-subtitle">Current density: {dashboardCardStyle}. Keep the beta compact on mobile, or switch to a roomier card style.</p>
@@ -31768,6 +31813,40 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         ))}
                       </div>
                     </details>
+                    <div className="settings-frequency-panel">
+                      <strong>Frequency</strong>
+                      <p className="compact-subtitle">Frequency is local-only in this beta until push/email delivery is connected.</p>
+                      <div className="drawer-inline-actions">
+                        {["Immediate", "Daily Digest", "Off"].map((frequency) => (
+                          <button type="button" className="secondary-button" key={frequency} onClick={() => setVaultToast(`${frequency} preference noted locally for beta planning.`)}>{frequency}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="drawer-info-card settings-privacy-trust-card">
+                    <strong>Privacy, Trust & Family</strong>
+                    <div className="settings-section-grid compact">
+                      <article className="settings-section-card">
+                        <strong>Business data privacy</strong>
+                        <span>Your Forge inventory, receipts, sales, and mileage stay private to you and authorized workspace members.</span>
+                      </article>
+                      <article className="settings-section-card">
+                        <strong>Location usage for Scout</strong>
+                        <span>Device location is optional and only used for nearby stores and restock signals.</span>
+                      </article>
+                      <article className="settings-section-card">
+                        <strong>Trust & reputation</strong>
+                        <span>Photos, accurate reports, fair pricing, and helpful community activity improve trust.</span>
+                      </article>
+                      <article className="settings-section-card">
+                        <strong>Family & child profiles</strong>
+                        <span>Parent-approved access only. No private child messaging. Parent-approved trades only.</span>
+                      </article>
+                      <article className="settings-section-card">
+                        <strong>Help & Support</strong>
+                        <span>Use Feedback / Help for bugs, feature requests, refresh/update help, or account support.</span>
+                      </article>
+                    </div>
                   </div>
                   <div className="drawer-info-card">
                     <strong>Dashboard Display Settings</strong>
