@@ -25247,6 +25247,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const auditLogs = betaReadinessData.auditLogs || [];
     const announcementCount = (betaReadinessData.notifications || []).filter((entry) => entry.type === "announcement").length;
     const shopWorkspaces = workspaces.filter((workspace) => ["business", "card_shop_partner", "team"].includes(workspace.type));
+    const tidepoolFlaggedPosts = tidepoolPosts.filter((post) => post.flagged || ["pending", "disputed"].includes(post.verificationStatus) || post.status === "pending");
+    const receiptsNeedingReview = phase2RecentReceipts.filter((receipt) => /draft|review|duplicate|pending|needs/i.test(`${receipt.status || ""} ${receipt.reviewStatus || ""} ${receipt.importStatus || ""}`));
+    const catalogCorrectionCount = suggestions.filter((suggestion) => ["Catalog Suggestions", "SKU / UPC Suggestions", "Store Suggestions"].includes(REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)])).length;
+    const adminQueueRows = [
+      { key: "beta", title: "Beta access requests", count: betaRequests.length, priority: betaRequests.length ? "Today" : "Clear", submittedBy: "Applicants", details: "Approve, waitlist, pause, or deny app access.", filter: "Beta Access" },
+      { key: "kids", title: "Kids Program requests", count: kidsApplications.filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending_review")).length, priority: kidsApplications.length ? "High privacy" : "Clear", submittedBy: "Parents/guardians", details: "Private family requests. No child details are public.", filter: "Kids Program Applications" },
+      { key: "scout", title: "Scout reports needing verification", count: scoutNeedsReviewReports.length, priority: scoutNeedsReviewReports.length ? "High" : "Clear", submittedBy: "Scout reporters", details: "Review store, proof, confidence, and restock impact.", filter: "Reports & Moderation" },
+      { key: "market", title: "Marketplace pricing/scalping flags", count: listingReviewItems.length, priority: listingReviewItems.length ? "High" : "Clear", submittedBy: "Sellers/community", details: "Approve, deny, feature, or remove flagged listings.", filter: "Marketplace Listings" },
+      { key: "tidepool", title: "Reported Tidepool posts", count: tidepoolFlaggedPosts.length, priority: tidepoolFlaggedPosts.length ? "Needs review" : "Clear", submittedBy: "Community", details: "Review reported posts, disputes, and unsafe content.", filter: "Reports & Moderation" },
+      { key: "receipts", title: "Receipts needing review", count: receiptsNeedingReview.length, priority: receiptsNeedingReview.length ? "Today" : "Clear", submittedBy: "Sellers", details: "Review receipt drafts, duplicates, and expense evidence.", filter: "System Health / Logs" },
+      { key: "catalog", title: "Product/catalog corrections", count: catalogCorrectionCount, priority: catalogCorrectionCount ? "Review" : "Clear", submittedBy: "Users/admin", details: "Catalog, SKU, UPC, store, and data corrections.", filter: "Catalog Suggestions" },
+      { key: "feedback", title: "App feedback and bug reports", count: (betaReadinessData.betaFeedback || []).length + (betaReadinessData.appErrorLogs || []).length, priority: ((betaReadinessData.betaFeedback || []).length + (betaReadinessData.appErrorLogs || []).length) ? "Review" : "Clear", submittedBy: "Beta users/app", details: "Feedback, bugs, and safe client error logs.", filter: "Beta Feedback" },
+    ];
     const adminOpsSections = [
       { title: "Reports & Moderation", value: scoutNeedsReviewReports.length, helper: "Scout report approvals, rejects, hides", filter: "Reports & Moderation" },
       { title: "Store Management", value: buildStoreMapRows().length, helper: "Stores, nicknames, duplicate review", filter: "Store Management" },
@@ -25270,6 +25283,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <span className={adminEditModeActive ? "status-badge danger" : "status-badge"}>{adminEditModeActive ? "Admin Edit On" : "View Mode"}</span>
         </div>
+
+        <section className="admin-queue-command-board" aria-label="Admin review queues">
+          <div className="compact-card-header">
+            <div>
+              <h3>Review queues</h3>
+              <p>One command desk for requests, reports, pricing flags, receipts, catalog corrections, and app issues.</p>
+            </div>
+            <div className="summary-pill-row">
+              {["Pending", "Needs Review", "Approved", "Denied", "Flagged"].map((filter) => (
+                <button type="button" className="secondary-button" key={filter} onClick={() => setVaultToast(`${filter} quick filter is represented in each queue section.`)}>{filter}</button>
+              ))}
+            </div>
+          </div>
+          <div className="admin-queue-grid">
+            {adminQueueRows.map((queue) => (
+              <button type="button" className="admin-queue-card" key={queue.key} onClick={() => setAdminReviewFilter(queue.filter)}>
+                <span>{queue.title}</span>
+                <strong>{queue.count}</strong>
+                <small>{queue.priority} | Submitted by {queue.submittedBy}</small>
+                <p>{queue.details}</p>
+              </button>
+            ))}
+          </div>
+        </section>
 
         <div className="admin-ops-grid">
           {adminOpsSections.map((section) => (
@@ -25343,12 +25380,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderAdminReviewPage() {
     if (!adminToolsVisible) {
       return (
-        <PageHeader
-          className={getHeaderCardClass("panel admin-page-header")}
-          title="Admin Review"
-          subtitle="Admin role is required to approve shared data suggestions. Local beta users can submit suggestions, but cannot publish shared data directly."
-          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
-        />
+        <>
+          <PageHeader
+            className={getHeaderCardClass("panel admin-page-header")}
+            title="Permission Denied"
+            subtitle="This area is not available for your account."
+            actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Go to Hearth</button>}
+          />
+          <section className="panel admin-permission-denied">
+            <h2>Admin role required</h2>
+            <p>If you think this is a mistake, contact Ember & Tide support. Local beta users can submit suggestions, but cannot approve shared data, moderate reports, or access admin queues.</p>
+            <div className="quick-actions">
+              <button type="button" onClick={() => setActiveTab("dashboard")}>Go to Hearth</button>
+              <button type="button" className="secondary-button" onClick={() => openMenuDrawer("feedback")}>Open Help & Support</button>
+            </div>
+          </section>
+        </>
       );
     }
     const sections = [...new Set([

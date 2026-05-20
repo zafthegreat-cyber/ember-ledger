@@ -34785,3 +34785,115 @@ body,
     flex: 1 1 100%;
   }
 }
+
+/* Focused Admin Queues and Moderation pass */
+.app .admin-queue-command-board,
+.app-command-shell .admin-queue-command-board,
+.app-shell-dark .admin-queue-command-board,
+.app .admin-permission-denied,
+.app-command-shell .admin-permission-denied,
+.app-shell-dark .admin-permission-denied {
+  display: grid;
+  gap: 14px;
+  padding: clamp(14px, 2.4vw, 18px);
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.12), transparent 14rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.054), rgba(255, 255, 255, 0.012)),
+    rgba(6, 15, 31, 0.88);
+  color: #f8fbff;
+}
+
+.app .admin-queue-command-board h3,
+.app-command-shell .admin-queue-command-board h3,
+.app-shell-dark .admin-queue-command-board h3,
+.app .admin-permission-denied h2,
+.app-command-shell .admin-permission-denied h2,
+.app-shell-dark .admin-permission-denied h2 {
+  margin: 0;
+  color: #fff7ed !important;
+}
+
+.app .admin-queue-command-board p,
+.app-command-shell .admin-queue-command-board p,
+.app-shell-dark .admin-queue-command-board p,
+.app .admin-permission-denied p,
+.app-command-shell .admin-permission-denied p,
+.app-shell-dark .admin-permission-denied p {
+  color: rgba(232, 246, 255, 0.78) !important;
+  line-height: 1.4;
+}
+
+.app .admin-queue-grid,
+.app-command-shell .admin-queue-grid,
+.app-shell-dark .admin-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.app .admin-queue-card,
+.app-command-shell .admin-queue-card,
+.app-shell-dark .admin-queue-card {
+  display: grid;
+  gap: 7px;
+  min-height: 168px;
+  padding: 13px;
+  border: 1px solid rgba(124, 231, 255, 0.16) !important;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 122, 48, 0.1), transparent 10rem),
+    rgba(2, 8, 22, 0.58) !important;
+  color: #f8fbff !important;
+  text-align: left;
+}
+
+.app .admin-queue-card:hover,
+.app-command-shell .admin-queue-card:hover,
+.app-shell-dark .admin-queue-card:hover,
+.app .admin-queue-card:focus-visible,
+.app-command-shell .admin-queue-card:focus-visible,
+.app-shell-dark .admin-queue-card:focus-visible {
+  border-color: rgba(255, 214, 107, 0.38) !important;
+  box-shadow: 0 0 0 3px rgba(255, 214, 107, 0.1);
+}
+
+.app .admin-queue-card span,
+.app-command-shell .admin-queue-card span,
+.app-shell-dark .admin-queue-card span {
+  color: #ffd66b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app .admin-queue-card strong,
+.app-command-shell .admin-queue-card strong,
+.app-shell-dark .admin-queue-card strong {
+  color: #fff7ed;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.app .admin-queue-card small,
+.app-command-shell .admin-queue-card small,
+.app-shell-dark .admin-queue-card small {
+  color: rgba(124, 231, 255, 0.78);
+  font-weight: 800;
+}
+
+.app .admin-queue-card p,
+.app-command-shell .admin-queue-card p,
+.app-shell-dark .admin-queue-card p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .app .admin-queue-grid,
+  .app-command-shell .admin-queue-grid,
+  .app-shell-dark .admin-queue-grid {
+    grid-template-columns: 1fr;
+  }
+}
