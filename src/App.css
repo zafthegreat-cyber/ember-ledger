@@ -32618,3 +32618,276 @@ body,
     display: none !important;
   }
 }
+
+/* Guided Quick Add foundation */
+.app .flow-modal[data-flow="addActionSheet"],
+.app-command-shell .flow-modal[data-flow="addActionSheet"],
+.app-shell-dark .flow-modal[data-flow="addActionSheet"] {
+  max-width: min(720px, calc(100vw - 24px));
+}
+
+.guided-quick-add {
+  display: grid;
+  gap: 14px;
+  color: #fff8e8;
+}
+
+.guided-quick-add-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgba(124, 231, 255, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(124, 231, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 8% 100%, rgba(255, 122, 26, 0.18), transparent 34%),
+    rgba(5, 17, 34, 0.86);
+}
+
+.guided-quick-add-hero strong {
+  color: #fff8e8;
+  font-size: 1.1rem;
+}
+
+.guided-quick-add-hero p {
+  margin: 4px 0 0;
+  color: rgba(229, 240, 255, 0.76);
+  line-height: 1.4;
+}
+
+.guided-quick-add-hero > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 207, 92, 0.42);
+  background: linear-gradient(135deg, #ff7a18, #ff39c8 58%, #1b75ff);
+  color: #fff8e8;
+  font-size: 2rem;
+  font-weight: 900;
+  box-shadow: 0 0 24px rgba(255, 122, 26, 0.28);
+}
+
+.guided-quick-choice-grid,
+.guided-option-grid,
+.guided-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 10px;
+}
+
+.guided-quick-choice,
+.guided-option-card {
+  position: relative;
+  display: grid;
+  min-height: 118px;
+  align-content: start;
+  gap: 7px;
+  padding: 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  background: rgba(6, 20, 38, 0.78);
+  color: #fff8e8;
+  text-align: left;
+  box-shadow: none;
+}
+
+.guided-quick-choice:hover,
+.guided-quick-choice:focus-visible,
+.guided-option-card:hover,
+.guided-option-card:focus-visible {
+  border-color: rgba(124, 231, 255, 0.42);
+  background: rgba(10, 34, 58, 0.94);
+}
+
+.guided-quick-choice.is-disabled,
+.guided-option-card.is-disabled {
+  opacity: 0.58;
+}
+
+.guided-quick-choice strong,
+.guided-option-card strong {
+  color: #fff8e8;
+  line-height: 1.18;
+}
+
+.guided-quick-choice small,
+.guided-option-card small,
+.guided-option-card em {
+  color: rgba(229, 240, 255, 0.72);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.guided-option-card em {
+  color: #fff1c8;
+  font-style: normal;
+}
+
+.guided-quick-choice .command-icon,
+.guided-option-card .command-icon {
+  width: 36px;
+  height: 36px;
+  color: #7ce7ff;
+  background: rgba(124, 231, 255, 0.1);
+  border-color: rgba(124, 231, 255, 0.22);
+}
+
+.guided-option-card.is-selected {
+  border-color: rgba(124, 231, 255, 0.72);
+  background:
+    linear-gradient(135deg, rgba(124, 231, 255, 0.16), rgba(255, 122, 26, 0.08)),
+    rgba(7, 26, 48, 0.96);
+  box-shadow: 0 0 0 1px rgba(124, 231, 255, 0.18), 0 14px 30px rgba(0, 0, 0, 0.22);
+}
+
+.guided-option-card b {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  border: 1px solid rgba(105, 245, 166, 0.32);
+  background: rgba(105, 245, 166, 0.12);
+  color: #a7f3c4;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.guided-quick-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.guided-step-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  background: rgba(6, 20, 38, 0.74);
+  color: rgba(229, 240, 255, 0.76);
+  font-weight: 800;
+}
+
+.guided-step-pill span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 0.74rem;
+}
+
+.guided-step-pill.is-active {
+  border-color: rgba(124, 231, 255, 0.62);
+  background: rgba(124, 231, 255, 0.13);
+  color: #e9fbff;
+}
+
+.guided-step-pill.is-complete {
+  border-color: rgba(105, 245, 166, 0.28);
+  color: #a7f3c4;
+}
+
+.guided-quick-step {
+  display: grid;
+  gap: 12px;
+}
+
+.guided-step-heading h3 {
+  margin: 0;
+  color: #fff8e8;
+  font-size: 1.12rem;
+}
+
+.guided-step-heading p {
+  margin: 4px 0 0;
+  color: rgba(229, 240, 255, 0.72);
+  line-height: 1.42;
+}
+
+.guided-quick-selected-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.guided-quick-selected-strip span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  background: rgba(6, 20, 38, 0.7);
+  color: rgba(229, 240, 255, 0.8);
+  font-size: 0.82rem;
+}
+
+.guided-quick-selected-strip strong {
+  color: #7ce7ff;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.guided-review-grid .wizard-summary-card {
+  min-height: 120px;
+  background: rgba(6, 20, 38, 0.78) !important;
+  border-color: rgba(124, 231, 255, 0.16) !important;
+}
+
+.guided-quick-add-footer {
+  position: sticky;
+  bottom: -1px;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 0.42fr) minmax(0, 1fr);
+  gap: 10px;
+  padding-top: 10px;
+  background: linear-gradient(180deg, transparent, rgba(4, 13, 27, 0.96) 34%);
+}
+
+.guided-quick-message {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .app .flow-modal[data-flow="addActionSheet"],
+  .app-command-shell .flow-modal[data-flow="addActionSheet"],
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] {
+    max-width: calc(100vw - 12px);
+  }
+
+  .guided-quick-add-hero,
+  .guided-quick-selected-strip,
+  .guided-quick-add-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .guided-quick-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .guided-quick-choice-grid,
+  .guided-option-grid,
+  .guided-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guided-quick-choice,
+  .guided-option-card {
+    min-height: 96px;
+  }
+}

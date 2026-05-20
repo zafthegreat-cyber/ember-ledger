@@ -3706,6 +3706,13 @@ export default function App() {
   const [showFullTopbar, setShowFullTopbar] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
+  const [quickAddWizard, setQuickAddWizard] = useState({
+    step: "start",
+    destination: "",
+    itemType: "",
+    detailMethod: "",
+    message: "",
+  });
   const [lockedFeatureKey, setLockedFeatureKey] = useState("");
   const [adminViewMode, setAdminViewMode] = useState("admin");
   const [adminEditMode, setAdminEditMode] = useState(false);
@@ -12564,7 +12571,14 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openAddActionSheet(source = "topbar") {
-    openFlowModal("addActionSheet", { size: "small", source });
+    setQuickAddWizard({
+      step: "start",
+      destination: "",
+      itemType: "",
+      detailMethod: "",
+      message: "",
+    });
+    openFlowModal("addActionSheet", { size: "medium", source });
   }
 
   function runAddSheetAction(action) {
@@ -13208,6 +13222,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (action === "mileage") return openAddMileageFlow();
     if (action === "listing") return openMarketplaceCreate("manual", {});
     if (action === "importFile") return openForgeImportFlow();
+    if (action === "kidsRequest") {
+      setActiveTab("kidsProgram");
+      return;
+    }
     if (action === "storeReport") {
       return openScoutSubmitFlow({ source: "add-action-sheet" });
     }
@@ -25791,9 +25809,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     if (activeFlowModal?.type === "addActionSheet") {
       return {
-        title: "Quick Add / Command Center",
-        description: "Scan, add, report, import, or jump into a core Ember & Tide tool.",
-        size: "small",
+        title: "Quick Add",
+        description: "Choose what you are adding, review the path, then continue to the right save flow.",
+        size: "medium",
       };
     }
     if (activeFlowModal?.type === "vaultQuickAdd") {
@@ -25906,52 +25924,350 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderAddActionSheetContent() {
-    const actions = [
-      { key: "tcg-command", title: "Open TCG Command Center", helper: "Jump to the collector command hub.", action: "tcgCommand" },
-      { key: "scan-item", title: "Scan / Review Item", helper: "Match first, then choose destination.", action: "scanProduct" },
-      { key: "store-report", title: "Add Scout Report", helper: "Log a restock or store check.", action: "storeReport" },
-      { key: "receipt", title: "Import Receipt", helper: "Review lines before saving.", action: "receipt" },
-      { key: "bulk", title: "Bulk Add", helper: "Import or transfer a list.", action: "bulkAdd" },
-      { key: "listing", title: "Add Listing", helper: "Create a marketplace draft.", action: "listing" },
-      { key: "mileage", title: "Add Mileage", helper: "Track business travel.", action: "mileage" },
-      { key: "inventory", title: "Add Inventory", helper: "Review, then send to Forge.", action: "inventory" },
-      { key: "card", title: "Add Item", helper: "Card, sealed, slab, or wishlist.", action: "card" },
+    const normalizedMode = normalizeUserType(userType);
+    const normalizedPreset = normalizeDashboardPreset(dashboardPreset);
+    const sellerModeRequested =
+      ["seller", "all_in_one"].includes(normalizedMode) ||
+      ["seller", "full_business"].includes(normalizedPreset);
+    const simpleModeRequested =
+      ["budget", "parent"].includes(normalizedMode) ||
+      ["simple", "budget_parent"].includes(normalizedPreset);
+    const kidsRelevant = adminToolsVisible || simpleModeRequested || Boolean(shorelineState.littleSparksApplication || (betaReadinessData.kidsApplications || [])[0]);
+    const steps = [
+      { key: "where", label: "Where" },
+      { key: "what", label: "What" },
+      { key: "details", label: "Details" },
+      { key: "review", label: "Review" },
     ];
-    const hubActions = actions.filter((entry) => ["scan-item", "store-report", "receipt", "bulk", "listing", "mileage", "inventory", "card"].includes(entry.key));
+    const destinationOptions = [
+      { key: "vault", title: "Vault", helper: "Personal collection, trade binder, or family collection.", icon: "vault" },
+      { key: "forge", title: "Forge", helper: activeForgeWorkspace ? "Business inventory, receipts, sales, and seller records." : "Forge workspace is unavailable right now.", icon: "forge", disabled: !activeForgeWorkspace },
+      { key: "scout", title: "Scout", helper: "Store report, restock signal, or location observation.", icon: "scout" },
+      { key: "market", title: "Market", helper: "Marketplace listing or fair-price action.", icon: "market" },
+      { key: "kids", title: "Kids Program", helper: "Parent-safe request or Spark update.", icon: "spark" },
+    ];
+    const itemTypeOptions = [
+      { key: "card", title: "Card", helper: "Single, promo, slab, or variant.", destination: "" },
+      { key: "sealed", title: "Sealed product", helper: "ETB, tin, blister, bundle, box, or deck.", destination: "" },
+      { key: "receipt", title: "Receipt", helper: "Upload or review purchase proof.", destination: "forge" },
+      { key: "listing", title: "Listing", helper: "Create a market listing draft.", destination: "market" },
+      { key: "store_report", title: "Store report", helper: "What you saw and where.", destination: "scout" },
+      { key: "mileage", title: "Mileage", helper: "Business trip or store run.", destination: "forge" },
+      { key: "photo_import", title: "Photo/import", helper: "Scan, photo lookup, CSV, or bulk entry.", destination: "" },
+      { key: "kids_request", title: "Kids request", helper: "Parent-approved Spark request.", destination: "kids" },
+    ];
+    const quickChoices = [
+      { key: "vault", title: "Add to Vault", helper: "Search or scan, then save to collection.", destination: "vault", itemType: "sealed", detailMethod: "catalog_search", icon: "vault" },
+      { key: "forge", title: "Add to Forge", helper: "Add business inventory with review first.", destination: "forge", itemType: "sealed", detailMethod: "catalog_search", icon: "forge", disabled: !activeForgeWorkspace },
+      { key: "scout", title: "Scout Report", helper: "Step through item, store, proof, then submit.", destination: "scout", itemType: "store_report", detailMethod: "store_picker", icon: "scout" },
+      { key: "receipt", title: "Add Receipt", helper: "Upload or enter receipt details.", destination: "forge", itemType: "receipt", detailMethod: "receipt_upload", icon: "receipt", disabled: !activeForgeWorkspace },
+      { key: "listing", title: "Add Listing", helper: "Create a marketplace draft.", destination: "market", itemType: "listing", detailMethod: "manual_entry", icon: "market" },
+      { key: "mileage", title: "Add Mileage", helper: "Log a business trip by vehicle.", destination: "forge", itemType: "mileage", detailMethod: "mileage_picker", icon: "mileage", disabled: !activeForgeWorkspace },
+      { key: "scan", title: "Import / Scan", helper: "Scan, photo lookup, or bulk import.", destination: "", itemType: "photo_import", detailMethod: "scan", icon: "scan" },
+      kidsRelevant ? { key: "kids", title: "Kids Request", helper: "Open the Spark path for parent-safe requests.", destination: "kids", itemType: "kids_request", detailMethod: "manual_entry", icon: "spark" } : null,
+    ].filter(Boolean);
+    const detailMethodOptions = [
+      { key: "catalog_search", title: "Search catalog", helper: "Best for cards and sealed Pokemon products.", types: ["card", "sealed", "listing", "photo_import"] },
+      { key: "scan", title: "Scan barcode/card", helper: "Open scanner review before saving.", types: ["card", "sealed", "photo_import"] },
+      { key: "photo_upload", title: "Upload photo", helper: "Use photo lookup; failed uploads show an error before save.", types: ["card", "sealed", "photo_import", "store_report"] },
+      { key: "receipt_upload", title: "Upload receipt", helper: "Receipt review opens before anything is saved.", types: ["receipt", "photo_import"] },
+      { key: "manual_entry", title: "Manual entry", helper: "Fallback when the catalog item is missing.", types: ["card", "sealed", "listing", "kids_request", "photo_import"] },
+      { key: "store_picker", title: "Store/location picker", helper: "Choose an exact store for Scout reports.", types: ["store_report"] },
+      { key: "mileage_picker", title: "Mileage/vehicle picker", helper: "Choose vehicle and trip details.", types: ["mileage"] },
+      { key: "bulk_import", title: "Bulk import", helper: "Paste or import a list for review.", types: ["photo_import"] },
+    ];
+    const currentStepIndex = Math.max(0, steps.findIndex((step) => step.key === quickAddWizard.step));
+    const selectedDestination = destinationOptions.find((option) => option.key === quickAddWizard.destination);
+    const selectedItemType = itemTypeOptions.find((option) => option.key === quickAddWizard.itemType);
+    const availableDetailMethods = detailMethodOptions.filter((option) => !quickAddWizard.itemType || option.types.includes(quickAddWizard.itemType));
+    const selectedDetailMethod = detailMethodOptions.find((option) => option.key === quickAddWizard.detailMethod);
+    const destinationForType = (itemType) => itemTypeOptions.find((option) => option.key === itemType)?.destination || "";
+    const defaultDetailForType = (itemType) => ({
+      card: "catalog_search",
+      sealed: "catalog_search",
+      receipt: "receipt_upload",
+      listing: "manual_entry",
+      store_report: "store_picker",
+      mileage: "mileage_picker",
+      photo_import: "scan",
+      kids_request: "manual_entry",
+    }[itemType] || "");
+    const updateGuidedQuickAdd = (patch) => setQuickAddWizard((current) => ({
+      ...current,
+      ...patch,
+      message: patch.message ?? "",
+    }));
+    const selectQuickChoice = (choice) => {
+      if (choice.disabled) {
+        updateGuidedQuickAdd({ message: `${choice.title} is unavailable until Forge is available.` });
+        return;
+      }
+      setQuickAddWizard({
+        step: "where",
+        destination: choice.destination,
+        itemType: choice.itemType,
+        detailMethod: choice.detailMethod || defaultDetailForType(choice.itemType),
+        message: "",
+      });
+    };
+    const selectDestination = (destination) => {
+      const option = destinationOptions.find((entry) => entry.key === destination);
+      if (option?.disabled) {
+        updateGuidedQuickAdd({ message: option.helper });
+        return;
+      }
+      updateGuidedQuickAdd({ destination });
+    };
+    const selectItemType = (itemType) => {
+      const forcedDestination = destinationForType(itemType);
+      if (forcedDestination === "forge" && !activeForgeWorkspace) {
+        updateGuidedQuickAdd({ message: "Forge is unavailable right now. Choose Vault, Scout, Market, or Kids Program instead." });
+        return;
+      }
+      const nextDetailMethod = defaultDetailForType(itemType);
+      updateGuidedQuickAdd({
+        itemType,
+        destination: forcedDestination || quickAddWizard.destination,
+        detailMethod: nextDetailMethod,
+      });
+    };
+    const canAdvanceQuickAddStep = (step = quickAddWizard.step) => {
+      if (step === "where") return Boolean(quickAddWizard.destination);
+      if (step === "what") return Boolean(quickAddWizard.itemType);
+      if (step === "details") return Boolean(quickAddWizard.detailMethod);
+      return true;
+    };
+    const quickAddStepError = (step = quickAddWizard.step) => {
+      if (step === "where") return "Choose where this should go.";
+      if (step === "what") return "Choose what you are adding.";
+      if (step === "details") return "Choose how you want to add details.";
+      return "";
+    };
+    const goNextQuickAddStep = () => {
+      if (!canAdvanceQuickAddStep()) {
+        updateGuidedQuickAdd({ message: quickAddStepError() });
+        return;
+      }
+      updateGuidedQuickAdd({ step: steps[Math.min(currentStepIndex + 1, steps.length - 1)].key });
+    };
+    const goBackQuickAddStep = () => {
+      if (quickAddWizard.step === "where") {
+        updateGuidedQuickAdd({ step: "start" });
+        return;
+      }
+      updateGuidedQuickAdd({ step: steps[Math.max(currentStepIndex - 1, 0)].key });
+    };
+    const resolveGuidedQuickAddAction = () => {
+      if (quickAddWizard.destination === "kids" || quickAddWizard.itemType === "kids_request") return "kidsRequest";
+      if (quickAddWizard.destination === "scout" || quickAddWizard.itemType === "store_report") return "storeReport";
+      if (quickAddWizard.itemType === "receipt" || quickAddWizard.detailMethod === "receipt_upload") return "receipt";
+      if (quickAddWizard.itemType === "mileage") return "mileage";
+      if (quickAddWizard.destination === "market" || quickAddWizard.itemType === "listing") return "listing";
+      if (quickAddWizard.detailMethod === "scan") return "scanProduct";
+      if (quickAddWizard.detailMethod === "photo_upload") return "pictureLookup";
+      if (quickAddWizard.detailMethod === "bulk_import") return "bulkAdd";
+      if (quickAddWizard.destination === "forge") return "inventory";
+      if (quickAddWizard.destination === "vault") return "vaultItem";
+      return "multiDestination";
+    };
+    const launchGuidedQuickAdd = () => {
+      if (!quickAddWizard.destination) {
+        updateGuidedQuickAdd({ step: "where", message: "Choose where this should go before continuing." });
+        return;
+      }
+      if (!quickAddWizard.itemType) {
+        updateGuidedQuickAdd({ step: "what", message: "Choose what you are adding before continuing." });
+        return;
+      }
+      if (!quickAddWizard.detailMethod) {
+        updateGuidedQuickAdd({ step: "details", message: "Choose how you want to add details before continuing." });
+        return;
+      }
+      runAddSheetAction(resolveGuidedQuickAddAction());
+    };
+    const launchLabel = (() => {
+      if (quickAddWizard.destination === "scout" || quickAddWizard.itemType === "store_report") return "Continue to Scout Review";
+      if (quickAddWizard.itemType === "receipt") return "Continue to Receipt Review";
+      if (quickAddWizard.itemType === "mileage") return "Continue to Mileage Review";
+      if (quickAddWizard.destination === "market" || quickAddWizard.itemType === "listing") return "Continue to Listing Review";
+      if (quickAddWizard.destination === "kids" || quickAddWizard.itemType === "kids_request") return "Continue to Kids Request";
+      return "Continue to Review and Save";
+    })();
+
     return (
-      <div className="add-action-sheet command-quick-add">
-        <div className="command-hub" aria-label="Quick Add command hub">
-          <div className="command-hub-core" aria-hidden="true">
-            <span>+</span>
-          </div>
-          {hubActions.map((entry, index) => (
-            <button
-              key={entry.key}
-              type="button"
-              className={`command-hub-node command-hub-node-${index + 1}`}
-              onClick={() => runAddSheetAction(entry.action)}
-            >
-              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={entry.key} /></span>
-              <span>{entry.title}</span>
-            </button>
-          ))}
-        </div>
-        <div className="add-action-grid command-action-list">
-          {actions.map((entry) => (
-            <button
-              key={entry.key}
-              type="button"
-              className={`add-action-card icon-action-tile ${hubActions.includes(entry) ? "command-list-hub-action" : "command-list-extra-action"}`}
-              onClick={() => runAddSheetAction(entry.action)}
-            >
-              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={entry.key} /></span>
-              <span className="quick-action-copy">
-                <span>{entry.title}</span>
-                <small>{entry.helper}</small>
-              </span>
-            </button>
-          ))}
-        </div>
+      <div className="add-action-sheet guided-quick-add">
+        {quickAddWizard.step === "start" ? (
+          <>
+            <div className="guided-quick-add-hero">
+              <div>
+                <strong>What are you adding?</strong>
+                <p>Pick a starting path. You will review the destination, item type, and details before anything can save.</p>
+              </div>
+              <span aria-hidden="true">+</span>
+            </div>
+            <div className="guided-quick-choice-grid">
+              {quickChoices.map((choice) => (
+                <button
+                  key={choice.key}
+                  type="button"
+                  className={`guided-quick-choice ${choice.disabled ? "is-disabled" : ""}`}
+                  onClick={() => selectQuickChoice(choice)}
+                  aria-disabled={choice.disabled ? "true" : "false"}
+                >
+                  <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={choice.icon || choice.key} /></span>
+                  <strong>{choice.title}</strong>
+                  <small>{choice.helper}</small>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="guided-quick-progress" aria-label="Quick Add progress">
+              {steps.map((step, index) => (
+                <button
+                  key={step.key}
+                  type="button"
+                  className={`guided-step-pill ${quickAddWizard.step === step.key ? "is-active" : ""} ${index < currentStepIndex ? "is-complete" : ""}`}
+                  onClick={() => {
+                    if (index <= currentStepIndex) updateGuidedQuickAdd({ step: step.key });
+                  }}
+                >
+                  <span>{index + 1}</span>
+                  {step.label}
+                </button>
+              ))}
+            </div>
+
+            {quickAddWizard.message ? (
+              <p className="flow-inline-message is-warning guided-quick-message" role="alert">{quickAddWizard.message}</p>
+            ) : null}
+
+            {quickAddWizard.step === "where" ? (
+              <section className="guided-quick-step">
+                <div className="guided-step-heading">
+                  <h3>Where does this go?</h3>
+                  <p>Choose the real destination first so the next save flow opens in the right context.</p>
+                </div>
+                <div className="guided-option-grid">
+                  {destinationOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={`guided-option-card ${quickAddWizard.destination === option.key ? "is-selected" : ""} ${option.disabled ? "is-disabled" : ""}`}
+                      onClick={() => selectDestination(option.key)}
+                      aria-pressed={quickAddWizard.destination === option.key}
+                      aria-disabled={option.disabled ? "true" : "false"}
+                    >
+                      <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={option.icon} /></span>
+                      <strong>{option.title}</strong>
+                      <small>{option.helper}</small>
+                      {quickAddWizard.destination === option.key ? <b>Selected</b> : null}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {quickAddWizard.step === "what" ? (
+              <section className="guided-quick-step">
+                <div className="guided-step-heading">
+                  <h3>What are you adding?</h3>
+                  <p>Some choices have a fixed destination, like Scout reports, receipts, mileage, listings, and Kids requests.</p>
+                </div>
+                <div className="guided-option-grid">
+                  {itemTypeOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={`guided-option-card ${quickAddWizard.itemType === option.key ? "is-selected" : ""}`}
+                      onClick={() => selectItemType(option.key)}
+                      aria-pressed={quickAddWizard.itemType === option.key}
+                    >
+                      <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={option.key} /></span>
+                      <strong>{option.title}</strong>
+                      <small>{option.helper}</small>
+                      {option.destination ? <em>Routes to {destinationOptions.find((destination) => destination.key === option.destination)?.title}</em> : null}
+                      {quickAddWizard.itemType === option.key ? <b>Selected</b> : null}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {quickAddWizard.step === "details" ? (
+              <section className="guided-quick-step">
+                <div className="guided-step-heading">
+                  <h3>Add details</h3>
+                  <p>Pick the best input method. Missing catalog items can still be added manually.</p>
+                </div>
+                <div className="guided-option-grid">
+                  {availableDetailMethods.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={`guided-option-card ${quickAddWizard.detailMethod === option.key ? "is-selected" : ""}`}
+                      onClick={() => updateGuidedQuickAdd({ detailMethod: option.key })}
+                      aria-pressed={quickAddWizard.detailMethod === option.key}
+                    >
+                      <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={option.key} /></span>
+                      <strong>{option.title}</strong>
+                      <small>{option.helper}</small>
+                      {option.key === "manual_entry" ? <em>Catalog fallback</em> : null}
+                      {quickAddWizard.detailMethod === option.key ? <b>Selected</b> : null}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {quickAddWizard.step === "review" ? (
+              <section className="guided-quick-step guided-review-step">
+                <div className="guided-step-heading">
+                  <h3>Review and save</h3>
+                  <p>Nothing saves from Quick Add. The next screen is the destination-specific review form.</p>
+                </div>
+                <div className="guided-review-grid">
+                  <div className="wizard-summary-card">
+                    <span>Destination</span>
+                    <strong>{selectedDestination?.title || "Missing"}</strong>
+                    <small>{selectedDestination?.helper || "Choose where this should go."}</small>
+                  </div>
+                  <div className="wizard-summary-card">
+                    <span>Adding</span>
+                    <strong>{selectedItemType?.title || "Missing"}</strong>
+                    <small>{selectedItemType?.helper || "Choose what you are adding."}</small>
+                  </div>
+                  <div className="wizard-summary-card">
+                    <span>Details</span>
+                    <strong>{selectedDetailMethod?.title || "Missing"}</strong>
+                    <small>{selectedDetailMethod?.helper || "Choose how you want to enter details."}</small>
+                  </div>
+                </div>
+                <p className="flow-inline-message is-info">Save only happens in the review flow after you confirm the item, destination, and required fields.</p>
+              </section>
+            ) : null}
+
+            <div className="guided-quick-selected-strip" aria-label="Current Quick Add selections">
+              <span><strong>Where</strong>{selectedDestination?.title || "Not chosen"}</span>
+              <span><strong>What</strong>{selectedItemType?.title || "Not chosen"}</span>
+              <span><strong>Details</strong>{selectedDetailMethod?.title || "Not chosen"}</span>
+            </div>
+
+            <div className="guided-quick-add-footer">
+              <button type="button" className="secondary-button" onClick={goBackQuickAddStep}>
+                Back
+              </button>
+              {quickAddWizard.step === "review" ? (
+                <button type="button" onClick={launchGuidedQuickAdd}>{launchLabel}</button>
+              ) : (
+                <button type="button" onClick={goNextQuickAddStep}>
+                  Next: {steps[Math.min(currentStepIndex + 1, steps.length - 1)].label}
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     );
   }
