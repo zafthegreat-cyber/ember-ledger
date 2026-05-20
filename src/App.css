@@ -34459,3 +34459,186 @@ body,
     flex: 1 1 100%;
   }
 }
+
+/* Focused Tidepool Community pass */
+.app .tidepool-header-summary,
+.app-command-shell .tidepool-header-summary,
+.app-shell-dark .tidepool-header-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.app .tidepool-header-summary p,
+.app-command-shell .tidepool-header-summary p,
+.app-shell-dark .tidepool-header-summary p {
+  max-width: 760px;
+  margin: 0;
+  color: rgba(232, 246, 255, 0.78) !important;
+  line-height: 1.4;
+}
+
+.app .tidepool-community,
+.app-command-shell .tidepool-community,
+.app-shell-dark .tidepool-community {
+  gap: 16px;
+}
+
+.app .tidepool-community .compact-card-header h2,
+.app-command-shell .tidepool-community .compact-card-header h2,
+.app-shell-dark .tidepool-community .compact-card-header h2 {
+  color: #fff7ed !important;
+}
+
+.app .tidepool-community .compact-card-header p,
+.app-command-shell .tidepool-community .compact-card-header p,
+.app-shell-dark .tidepool-community .compact-card-header p {
+  color: rgba(232, 246, 255, 0.78) !important;
+}
+
+.app .tidepool-author-block,
+.app-command-shell .tidepool-author-block,
+.app-shell-dark .tidepool-author-block {
+  display: flex;
+  min-width: 0;
+  gap: 10px;
+  align-items: center;
+}
+
+.app .tidepool-avatar,
+.app-command-shell .tidepool-avatar,
+.app-shell-dark .tidepool-avatar {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(124, 231, 255, 0.24);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 184, 92, 0.34), transparent 48%),
+    rgba(7, 18, 36, 0.9);
+  color: #fff7ed;
+  font-size: 0.9rem;
+  font-weight: 900;
+  box-shadow: 0 0 0 3px rgba(124, 231, 255, 0.06);
+}
+
+.app .tidepool-author-block strong,
+.app-command-shell .tidepool-author-block strong,
+.app-shell-dark .tidepool-author-block strong {
+  display: block;
+  overflow: hidden;
+  color: #fff7ed !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app .tidepool-trust-badge,
+.app-command-shell .tidepool-trust-badge,
+.app-shell-dark .tidepool-trust-badge {
+  border-color: rgba(53, 211, 153, 0.28) !important;
+  background: rgba(53, 211, 153, 0.12) !important;
+  color: #b7ffe4 !important;
+}
+
+.app .tidepool-post-card,
+.app-command-shell .tidepool-post-card,
+.app-shell-dark .tidepool-post-card {
+  border-color: rgba(124, 231, 255, 0.16) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.1), transparent 13rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.012)),
+    rgba(5, 14, 29, 0.9) !important;
+}
+
+.app .tidepool-post-copy h3,
+.app-command-shell .tidepool-post-copy h3,
+.app-shell-dark .tidepool-post-copy h3 {
+  color: #fff7ed !important;
+}
+
+.app .tidepool-post-copy p,
+.app-command-shell .tidepool-post-copy p,
+.app-shell-dark .tidepool-post-copy p,
+.app .tidepool-comment p,
+.app-command-shell .tidepool-comment p,
+.app-shell-dark .tidepool-comment p {
+  color: rgba(232, 246, 255, 0.82) !important;
+}
+
+.app .tidepool-post-meta,
+.app-command-shell .tidepool-post-meta,
+.app-shell-dark .tidepool-post-meta {
+  color: rgba(232, 246, 255, 0.72) !important;
+}
+
+.app .tidepool-post-actions,
+.app-command-shell .tidepool-post-actions,
+.app-shell-dark .tidepool-post-actions {
+  gap: 8px;
+}
+
+.app .tidepool-post-actions button,
+.app-command-shell .tidepool-post-actions button,
+.app-shell-dark .tidepool-post-actions button {
+  min-height: 40px;
+  color: #f8fbff !important;
+}
+
+.app .tidepool-comment-box input,
+.app-command-shell .tidepool-comment-box input,
+.app-shell-dark .tidepool-comment-box input {
+  color: #f8fbff !important;
+  background: rgba(3, 10, 23, 0.84) !important;
+  border-color: rgba(124, 231, 255, 0.22) !important;
+}
+
+.app .tidepool-guideline-list,
+.app-command-shell .tidepool-guideline-list,
+.app-shell-dark .tidepool-guideline-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.app .tidepool-guideline-list span,
+.app-command-shell .tidepool-guideline-list span,
+.app-shell-dark .tidepool-guideline-list span {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 214, 107, 0.16);
+  border-radius: 14px;
+  background: rgba(2, 8, 22, 0.48);
+  color: rgba(255, 247, 237, 0.88);
+  line-height: 1.35;
+}
+
+.app .tidepool-empty-state,
+.app-command-shell .tidepool-empty-state,
+.app-shell-dark .tidepool-empty-state {
+  border-color: rgba(124, 231, 255, 0.24) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(41, 207, 255, 0.14), transparent 14rem),
+    rgba(6, 15, 31, 0.9) !important;
+}
+
+@media (max-width: 720px) {
+  .app .tidepool-author-block,
+  .app-command-shell .tidepool-author-block,
+  .app-shell-dark .tidepool-author-block {
+    align-items: flex-start;
+  }
+
+  .app .tidepool-post-actions button,
+  .app-command-shell .tidepool-post-actions button,
+  .app-shell-dark .tidepool-post-actions button {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .app .tidepool-guideline-list,
+  .app-command-shell .tidepool-guideline-list,
+  .app-shell-dark .tidepool-guideline-list {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1366,14 +1366,14 @@ const TIDEPOOL_POST_TYPES = [
   "Announcement/admin post",
 ];
 const TIDEPOOL_FEED_FILTERS = [
-  "Latest",
-  "Nearby",
-  "Verified",
-  "Questions",
+  "Feed",
+  "Following",
+  "Local",
+  "Trades",
   "Events",
-  "Deals",
+  "Groups",
+  "Questions",
   "Store Tips",
-  "My Posts",
   "Saved",
   "Needs Review",
 ];
@@ -3823,7 +3823,7 @@ export default function App() {
   const [userSearchAliases, setUserSearchAliases] = useState([]);
   const [aliasDraft, setAliasDraft] = useState({ alias: "", canonical: "", type: "personal" });
   const [tidepoolOpen, setTidepoolOpen] = useState(false);
-  const [tidepoolFilter, setTidepoolFilter] = useState("Latest");
+  const [tidepoolFilter, setTidepoolFilter] = useState("Feed");
   const [tidepoolPage, setTidepoolPage] = useState(1);
   const [tidepoolPosts, setTidepoolPosts] = useState([]);
   const [tidepoolComments, setTidepoolComments] = useState([]);
@@ -5533,7 +5533,7 @@ export default function App() {
 
   function openTidepoolCommunity(filter = "Latest") {
     setTidepoolOpen(true);
-    setTidepoolFilter(filter);
+    setTidepoolFilter(filter === "Latest" || filter === "Nearby" ? "Feed" : filter);
     setActiveTab("tidepool");
     setMenuOpen(false);
     setQuickAddMenuOpen(false);
@@ -9617,7 +9617,7 @@ export default function App() {
     });
     saveTidepoolCommunity({ posts: [post, ...tidepoolPosts] });
     setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
-    setTidepoolFilter("Latest");
+    setTidepoolFilter("Feed");
     if (activeFlowModal?.type === "tidepoolCreatePost") {
       closeFlowModal({ force: true, reset: false });
     }
@@ -19105,6 +19105,11 @@ function renderForgeHeader() {
       if (!adminEditModeActive && ["mock", "demo", "test"].includes(String(post.sourceType || "").toLowerCase())) return false;
       if (post.status === "hidden" && (!adminEditModeActive || tidepoolFilter !== "Needs Review")) return false;
       if (tidepoolFilter === "Needs Review" && !adminEditModeActive) return false;
+      if (tidepoolFilter === "Feed" || tidepoolFilter === "Latest") return true;
+      if (tidepoolFilter === "Following") return post.saved || post.followed || post.userId === (currentUserProfile.userId || "local-beta");
+      if (tidepoolFilter === "Local" || tidepoolFilter === "Nearby") return !post.state || String(post.state).toUpperCase() === "VA" || Boolean(post.city || post.zip);
+      if (tidepoolFilter === "Trades") return ["Looking for item", "Help/request", "Giveaway/donation"].includes(post.postType) || /trade|looking|iso|swap|binder/i.test(`${post.title || ""} ${post.body || ""}`);
+      if (tidepoolFilter === "Groups") return /group|club|league|meetup|community/i.test(`${post.title || ""} ${post.body || ""} ${post.postType || ""}`);
       if (tidepoolFilter === "Verified") return post.verificationStatus === "verified";
       if (tidepoolFilter === "Questions") return post.postType === "Question";
       if (tidepoolFilter === "Events") return post.postType === "Event";
@@ -26391,34 +26396,52 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderTidepoolCommunity() {
     const sourceLabel = BETA_LOCAL_MODE ? "Private Beta" : "Cloud";
+    const visiblePosts = filteredTidepoolPosts.length;
+    const localPosts = tidepoolPosts.filter((post) => !post.state || String(post.state).toUpperCase() === "VA" || Boolean(post.city || post.zip)).length;
+    const trustBadgesForPost = (post) => {
+      const badges = [];
+      if (post.verificationStatus === "verified") badges.push("Verified Collector");
+      if (/giveaway|donation|kid|family/i.test(`${post.postType || ""} ${post.title || ""}`)) badges.push("Parent-Approved");
+      if (post.sourceType === "admin" || post.sourceType === "official") badges.push("Community Helper");
+      if (/deal|trade|looking/i.test(`${post.postType || ""} ${post.title || ""} ${post.body || ""}`)) badges.push("Trusted Seller");
+      return badges;
+    };
+    const communityGuidelines = [
+      "Report content that feels unsafe, misleading, or not community-first.",
+      "No child private messaging. Family and Kids Program activity stays parent-managed.",
+      "Keep trades local, fair, and clearly labeled. Marketplace listings belong in Market.",
+    ];
     const tidepoolStats = [
       { label: "Posts", value: tidepoolPosts.length },
       { label: "Comments", value: tidepoolComments.length },
       { label: "Reactions", value: tidepoolReactions.length },
-      { label: "Source", value: sourceLabel },
+      { label: "Local", value: localPosts },
     ];
 
     return (
       <>
         <PageHeader
           className={getHeaderCardClass("panel tidepool-community-header")}
-          title="Tidepool / Community"
-          subtitle="Community currents. Share. Help. Connect."
+          title="Tidepool Community"
+          subtitle="What is the community saying? Local TCG posts, safe trade talk, events, and collector help."
           actions={(
             <>
-              <button type="button" onClick={openTidepoolCreatePostFlow}>Create Post</button>
+              <button type="button" onClick={openTidepoolCreatePostFlow}>Start a Post</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Close Tidepool</button>
             </>
           )}
           summary={(
-            <div className="tidepool-stat-grid" aria-label="Tidepool stats">
-            {tidepoolStats.map((stat) => (
-              <div className="tidepool-stat-card" key={stat.label}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
+            <div className="tidepool-header-summary">
+              <div className="tidepool-stat-grid" aria-label="Tidepool stats">
+                {tidepoolStats.map((stat) => (
+                  <div className="tidepool-stat-card" key={stat.label}>
+                    <span>{stat.label}</span>
+                    <strong>{stat.value}</strong>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+              <p>No child private messaging. Report unsafe content. Marketplace listings stay clearly labeled in Market.</p>
+            </div>
           )}
           tabs={visibleTidepoolFilters.map((filter) => ({ key: filter, label: filter }))}
           activeTab={tidepoolFilter}
@@ -26428,18 +26451,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <section className="panel tidepool-community">
           <div className="compact-card-header">
             <div>
-              <h2>Community Feed</h2>
-              <p>Browse posts, react, save, flag, and comment without moderation controls crowding the feed.</p>
+              <h2>{tidepoolFilter === "Feed" ? "Community feed" : tidepoolFilter}</h2>
+              <p>Browse local posts, safe trade talk, events, and collector questions without turning Tidepool into a marketplace clone.</p>
             </div>
-            <span className="status-badge">{tidepoolFilter}</span>
+            <span className="status-badge">{visiblePosts} visible</span>
           </div>
 
           <div className="tidepool-feed-grid">
             {filteredTidepoolPosts.length === 0 ? (
               <div className="empty-state tidepool-empty-state">
-                <h3>No posts yet. Create the first private beta post.</h3>
-                <p>Create a post or change filters.</p>
-                <button type="button" onClick={openTidepoolCreatePostFlow}>Create Post</button>
+                <h3>The Tidepool is quiet right now.</h3>
+                <p>Start a post, follow local collectors, or switch back to the main feed.</p>
+                <div className="quick-actions">
+                  <button type="button" onClick={openTidepoolCreatePostFlow}>Start a Post</button>
+                  <button type="button" className="secondary-button" onClick={() => setTidepoolFilter("Feed")}>Open Feed</button>
+                </div>
               </div>
             ) : null}
             {pagedTidepoolPosts.items.map((post) => {
@@ -26449,14 +26475,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               const postDate = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : "No date";
               const preview = post.body || "No post body yet.";
               const sourceBadge = post.sourceType === "mock" || post.sourceType === "demo" ? "Demo" : post.sourceType === "admin" ? "Admin" : "User";
+              const usernameLabel = publicUsernameLabelFromRecord(post, "community");
+              const displayName = post.displayName && !String(post.displayName).startsWith("@") ? post.displayName : "Community member";
+              const trustBadges = trustBadgesForPost(post);
               return (
                 <article className="tidepool-post-card compact-card" key={post.postId}>
                   <div className="tidepool-post-top">
-                    <div className="tidepool-badge-row">
-                      <span className={statusClass(post.postType)}>{post.postType}</span>
-                      <span className={statusClass(post.verificationStatus)}>{post.verificationStatus}</span>
-                      {post.flagged ? <span className="status-badge needs-review">Needs Review</span> : null}
-                      {post.sourceType !== "user" ? <span className={statusClass(sourceBadge)}>{sourceBadge}</span> : null}
+                    <div className="tidepool-author-block">
+                      <div className="tidepool-avatar" aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</div>
+                      <div>
+                        <strong>{displayName}</strong>
+                        <p className="tidepool-post-meta">
+                          <span>{usernameLabel}</span>
+                          <span>{postDate}</span>
+                        </p>
+                      </div>
                     </div>
                     {adminEditModeActive ? (
                       <OverflowMenu
@@ -26473,11 +26506,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       />
                     ) : null}
                   </div>
+                  <div className="tidepool-badge-row">
+                    <span className={statusClass(post.postType)}>{post.postType}</span>
+                    <span className={statusClass(post.verificationStatus)}>{post.verificationStatus}</span>
+                    {trustBadges.map((badge) => <span className="trust-badge tidepool-trust-badge" key={badge}>{badge}</span>)}
+                    {post.flagged ? <span className="status-badge needs-review">Needs Review</span> : null}
+                    {post.sourceType !== "user" ? <span className={statusClass(sourceBadge)}>{sourceBadge}</span> : null}
+                  </div>
                   <div className="tidepool-post-copy">
                     <h3>{post.title || post.postType}</h3>
                     <p className="tidepool-post-meta">
-                      <span>{publicUsernameLabelFromRecord(post, "community")}</span>
-                      <span>{locationLabel} | {postDate}</span>
+                      <span>{locationLabel}</span>
+                      <span>No private child messaging</span>
                     </p>
                     <p>{preview}</p>
                     {post.photoUrl ? <img className="tidepool-post-image" src={post.photoUrl} alt="" /> : null}
@@ -26491,8 +26531,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "helpful")}>Helpful</button>
                     <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "confirmed")}>Confirm</button>
                     <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "disputed")}>Dispute</button>
-                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { saved: !post.saved })}>{post.saved ? "Saved" : "Save"}</button>
-                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { flagged: true, status: "pending" })}>{post.flagged ? "Flagged" : "Flag"}</button>
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { saved: !post.saved })}>{post.saved ? "Saved" : "Save / Follow"}</button>
+                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { flagged: true, status: "pending" })}>{post.flagged ? "Reported" : "Report content"}</button>
+                    <button type="button" className="secondary-button" onClick={() => setVaultToast("Mute/block controls are queued for account settings. Report unsafe content now.")}>Mute</button>
                     <button type="button" className="secondary-button" onClick={() => document.getElementById(`tidepool-comment-${post.postId}`)?.focus()}>Comment</button>
                   </div>
                   <div className="tidepool-comments">
@@ -26521,7 +26562,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <p className="compact-subtitle">Comments are locked for this post.</p>
                     ) : (
                       <div className="tidepool-comment-box">
-                        <input id={`tidepool-comment-${post.postId}`} value={tidepoolCommentDrafts[post.postId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [post.postId]: event.target.value }))} placeholder="Add a comment..." />
+                        <input id={`tidepool-comment-${post.postId}`} value={tidepoolCommentDrafts[post.postId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [post.postId]: event.target.value }))} placeholder="Add a safe community comment..." />
                         <button type="button" onClick={() => addTidepoolComment(post.postId)}>Comment</button>
                       </div>
                     )}
@@ -26544,8 +26585,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           />
 
           <div className="tidepool-rules-card">
-            <strong>Community rules</strong>
-            <p>No fake reports, spam, harassment, or unsafe meetup details. Restock claims can be confirmed or disputed, and flagged posts go to review.</p>
+            <strong>Community guidelines</strong>
+            <div className="tidepool-guideline-list">
+              {communityGuidelines.map((guideline) => <span key={guideline}>{guideline}</span>)}
+            </div>
           </div>
         </section>
       </>
