@@ -1389,6 +1389,23 @@ const BLANK_TIDEPOOL_POST_FORM = {
 const MARKETPLACE_LISTING_TYPES = ["For Sale", "For Trade", "Looking For", "Free / Donation", "Kid-friendly deal"];
 const MARKETPLACE_STATUSES = ["Draft", "Pending Review", "Active", "Sold", "Traded", "Removed", "Flagged", "Archived"];
 const MARKETPLACE_REPORT_REASONS = ["Wrong item", "Fake/scam", "Price gouging", "Inappropriate", "Duplicate", "Sold already", "Other"];
+const MARKETPLACE_DEAL_FILTERS = [
+  { value: "all", label: "All deals" },
+  { value: "nearRetail", label: "Near retail" },
+  { value: "fairPrice", label: "Fair price" },
+  { value: "localPickup", label: "Local pickup" },
+  { value: "shipping", label: "Shipping" },
+  { value: "sealed", label: "Sealed" },
+  { value: "singles", label: "Singles" },
+  { value: "kidsFriendly", label: "Kids-friendly" },
+];
+const MARKET_CATALOG_DEAL_FILTERS = [
+  { value: "all", label: "All results" },
+  { value: "nearRetail", label: "Near retail" },
+  { value: "fairPrice", label: "Fair price" },
+  { value: "sealed", label: "Sealed" },
+  { value: "singles", label: "Singles" },
+];
 const BLANK_MARKETPLACE_FORM = {
   listingType: "For Sale",
   title: "",
@@ -4215,6 +4232,8 @@ export default function App() {
   const [marketplaceSearch, setMarketplaceSearch] = useState("");
   const [marketplaceTypeFilter, setMarketplaceTypeFilter] = useState("All");
   const [marketplaceStatusFilter, setMarketplaceStatusFilter] = useState("Active");
+  const [marketplaceDealFilter, setMarketplaceDealFilter] = useState("all");
+  const [marketCatalogDealFilter, setMarketCatalogDealFilter] = useState("all");
   const [marketplaceForm, setMarketplaceForm] = useState(BLANK_MARKETPLACE_FORM);
   const [marketplaceSourcePicker, setMarketplaceSourcePicker] = useState("manual");
   const [marketplaceView, setMarketplaceView] = useState("browse");
@@ -19863,7 +19882,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             .filter(Boolean)
         : filteredCatalogProducts)
     : [];
-  const tideTradrCatalogResults = buildCatalogParentCardResults(tideTradrCatalogRawResults);
+  const tideTradrCatalogResults = buildCatalogParentCardResults(tideTradrCatalogRawResults)
+    .filter((product) => catalogProductMatchesMarketDealFilter(product, marketCatalogDealFilter));
   const tideTradrCatalogCardResults = tideTradrCatalogResults.filter((product) => isCatalogCardProduct(product));
   const tideTradrCatalogSealedResults = tideTradrCatalogResults.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product));
   const tideTradrCatalogOtherResults = tideTradrCatalogResults.filter((product) => !isCatalogCardProduct(product) && !isCatalogSealedProduct(product));
@@ -19880,6 +19900,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const activeCatalogFilterChips = [
     catalogKindFilter !== "All" ? catalogKindFilter === "card" ? "Cards" : catalogKindFilter === "sealed" ? "Sealed" : "Other" : "",
     catalogDataFilter !== "All" ? catalogDataFilter : "",
+    marketCatalogDealFilter !== "all" ? MARKET_CATALOG_DEAL_FILTERS.find((filter) => filter.value === marketCatalogDealFilter)?.label : "",
     catalogSetFilter !== "All" ? `Set: ${catalogSetFilter}` : "",
     catalogTypeFilter !== "All" ? `Type: ${catalogTypeFilter}` : "",
     catalogRarityFilter !== "All" ? `Rarity: ${catalogRarityFilter}` : "",
@@ -21065,14 +21086,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const variantCount = getCatalogVariantOptions(product).length;
     const ownedCount = getCatalogOwnedCount(product);
     const showRepairMeta = shouldShowCatalogRepairLabels();
-    const marketLabel = hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market: -";
+    const productFairAssessment = getCatalogProductFairAssessment(product);
+    const productReferenceParts = marketplaceReferenceParts({
+      msrp: marketInfo.msrp,
+      currentMarketValue: hasCatalogMarketPrice(product) ? marketInfo.currentMarketValue : 0,
+    });
+    const productMarketLabel = hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Price data unavailable";
     const productId = product.id || catalogTitle(product);
     const chooserOpen = String(marketAddChooserProductId) === String(productId);
     const confirmation = marketAddConfirmation && String(marketAddConfirmation.productId) === String(productId) ? marketAddConfirmation : null;
     const forgeSaving = marketAddSavingKey === `forge:${productId}`;
     const vaultSaving = marketAddSavingKey === `vault:${productId}`;
+    const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
     return (
-      <div className={`catalog-result-card ${chooserOpen || confirmation ? "market-result-card-expanded" : ""}`} key={product.id}>
+      <div className={`catalog-result-card market-fair-card ${chooserOpen || confirmation ? "market-result-card-expanded" : ""}`} key={product.id}>
         <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(product)}>
           <div className="catalog-thumb">
             {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
@@ -21110,7 +21137,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </div>
             ) : null}
             <h3>{catalogTitle(product)}</h3>
-            <p className="catalog-result-price-line">{marketLabel}</p>
+            <p className="market-card-context">{catalogExpansionName(product) || "Set unavailable"} | {catalogProductTypeLabel(product)}</p>
+            <div className="market-card-price-row">
+              <strong>{productMarketLabel}</strong>
+              {renderFairPriceBadge(productFairAssessment)}
+            </div>
+            <p className="market-card-reference-line">
+              {productReferenceParts.length ? productReferenceParts.join(" | ") : "Price data unavailable"}
+            </p>
             {showRepairMeta ? (
               <>
                 <p className="catalog-result-detail-line">
@@ -21142,8 +21176,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           >
             + Add
           </button>
+          <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
+            {watched ? "Watched" : "Watch"}
+          </button>
           <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "market-search-review", destinations: { forge: true, vault: false } })}>
-            Review
+            Review Add
           </button>
         </div>
         {chooserOpen ? (
@@ -25544,35 +25581,235 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function getListingMarketReference(listing = {}) {
     const product = catalogProducts.find((item) => String(item.id) === String(listing.catalogItemId));
-    return product ? getTideTradrMarketInfo(product) : { currentMarketValue: Number(listing.tradeValue || 0), msrp: 0 };
+    return product ? getTideTradrMarketInfo(product) : {
+      currentMarketValue: toNumber(listing.marketValue || listing.marketPrice || listing.referenceMarketValue),
+      msrp: toNumber(listing.msrp || listing.msrpPrice),
+    };
+  }
+
+  function getMarketplaceListingCatalogProduct(listing = {}) {
+    return catalogProducts.find((item) => String(item.id) === String(listing.catalogItemId));
+  }
+
+  function getMarketplacePrimaryPrice(listing = {}) {
+    if (listing.listingType === "For Trade") return toNumber(listing.tradeValue || listing.askingPrice);
+    return toNumber(listing.askingPrice || listing.tradeValue);
+  }
+
+  function getFairPriceAssessment({ price = 0, msrp = 0, marketValue = 0, listingType = "" } = {}) {
+    const numericPrice = toNumber(price);
+    const numericMsrp = toNumber(msrp);
+    const numericMarket = toNumber(marketValue);
+    const freeListing = String(listingType || "").toLowerCase().includes("free");
+    const hasPrice = numericPrice > 0 || freeListing;
+    const hasMsrp = numericMsrp > 0;
+    const hasMarket = numericMarket > 0;
+
+    if (freeListing) {
+      return { label: "Fair Price", tone: "fair", explanation: "Free or donation listing." };
+    }
+
+    if (!hasPrice || (!hasMsrp && !hasMarket)) {
+      return { label: "Price data unavailable", tone: "unknown", explanation: "MSRP or market reference is missing." };
+    }
+
+    if (hasMsrp && numericPrice <= numericMsrp * 1.1) {
+      return { label: "Near Retail", tone: "near-retail", explanation: `Within retail range of ${money(numericMsrp)} MSRP.` };
+    }
+
+    if (hasMarket && numericPrice <= numericMarket * 0.92) {
+      return { label: "Fair Price", tone: "fair", explanation: `Below current market reference of ${money(numericMarket)}.` };
+    }
+
+    if (hasMarket && Math.abs(numericPrice - numericMarket) / numericMarket <= 0.1) {
+      return { label: "Market Match", tone: "market-match", explanation: `Close to current market reference of ${money(numericMarket)}.` };
+    }
+
+    if ((hasMarket && numericPrice > numericMarket * 1.2) || (hasMsrp && numericPrice > numericMsrp * 1.35)) {
+      return { label: "High Markup", tone: "markup", explanation: "Meaningfully above available reference pricing." };
+    }
+
+    if ((hasMarket && numericPrice <= numericMarket * 1.12) || (hasMsrp && numericPrice <= numericMsrp * 1.25)) {
+      return { label: "Fair Price", tone: "fair", explanation: "Within a reasonable range of available reference pricing." };
+    }
+
+    return { label: "Price data unavailable", tone: "unknown", explanation: "Reference pricing is not strong enough to rate this deal." };
+  }
+
+  function getCatalogProductFairAssessment(product = {}) {
+    const marketInfo = getTideTradrMarketInfo(product);
+    const hasMarket = hasCatalogMarketPrice(product);
+    if (!hasMarket && !marketInfo.msrp) {
+      return { label: "Price data unavailable", tone: "unknown", explanation: "No current market or MSRP reference is available." };
+    }
+    if (!hasMarket) {
+      return { label: "Price data unavailable", tone: "unknown", explanation: `MSRP ${money(marketInfo.msrp)} is available, but market data is missing.` };
+    }
+    return getFairPriceAssessment({
+      price: marketInfo.currentMarketValue,
+      msrp: marketInfo.msrp,
+      marketValue: marketInfo.currentMarketValue,
+      listingType: "Market reference",
+    });
+  }
+
+  function getMarketplaceListingFairAssessment(listing = {}) {
+    const marketInfo = getListingMarketReference(listing);
+    return getFairPriceAssessment({
+      price: getMarketplacePrimaryPrice(listing),
+      msrp: marketInfo.msrp,
+      marketValue: marketInfo.currentMarketValue,
+      listingType: listing.listingType,
+    });
+  }
+
+  function renderFairPriceBadge(assessment = {}) {
+    return (
+      <span className={`price-badge price-badge--${assessment.tone || "unknown"}`} title={assessment.explanation || assessment.label}>
+        {assessment.label || "Price data unavailable"}
+      </span>
+    );
+  }
+
+  function marketplaceReferenceParts(marketInfo = {}) {
+    const parts = [];
+    if (toNumber(marketInfo.msrp) > 0) parts.push(`MSRP ${money(marketInfo.msrp)}`);
+    if (toNumber(marketInfo.currentMarketValue) > 0) parts.push(`Market ${money(marketInfo.currentMarketValue)}`);
+    return parts;
+  }
+
+  function isMarketplaceListingKidFriendly(listing = {}) {
+    return Boolean(
+      listing.intendedForKids ||
+      String(listing.listingType || "").toLowerCase().includes("kid") ||
+      String(listing.tags || "").toLowerCase().includes("kid") ||
+      String(listing.tags || "").toLowerCase().includes("family")
+    );
+  }
+
+  function isMarketplaceListingSealed(listing = {}) {
+    const haystack = [listing.productType, listing.title, listing.description, listing.tags, listing.category].filter(Boolean).join(" ").toLowerCase();
+    if (SEALED_PRODUCT_TYPES.some((type) => haystack.includes(String(type).toLowerCase()))) return true;
+    return /\b(sealed|etb|elite trainer|booster|bundle|tin|blister|collection box|premium collection|mini portfolio|binder|poster|chest|battle deck|build & battle)\b/.test(haystack);
+  }
+
+  function isMarketplaceListingSingle(listing = {}) {
+    const haystack = [listing.productType, listing.title, listing.description, listing.tags].filter(Boolean).join(" ").toLowerCase();
+    if (isMarketplaceListingSealed(listing)) return false;
+    return /\b(single|singles|card|graded|slab|holo|reverse|promo)\b/.test(haystack);
+  }
+
+  function getMarketplaceTrustBadges(listing = {}) {
+    const badges = [];
+    if (listing.verified || listing.isVerified || String(listing.verificationStatus || "").toLowerCase() === "verified") {
+      badges.push({ label: "Verified Listing", tone: "verified" });
+    }
+    if (listing.trustedSeller || listing.sellerTrusted || Number(listing.sellerTrustScore || listing.sellerRating || 0) >= 90) {
+      badges.push({ label: "Trusted Seller", tone: "verified" });
+    }
+    if (listing.pickupOnly || listing.localPickup || listing.locationCity) {
+      badges.push({ label: "Local Pickup", tone: "pickup" });
+    }
+    if (listing.shippingAvailable) {
+      badges.push({ label: "Shipping", tone: "shipping" });
+    }
+    if (isMarketplaceListingKidFriendly(listing)) {
+      badges.push({ label: "Kid-Friendly Seller", tone: "kid" });
+    }
+    return badges;
+  }
+
+  function renderTrustBadge(badge = {}) {
+    return <span className={`trust-badge trust-badge--${badge.tone || "secure"}`} key={badge.label}>{badge.label}</span>;
+  }
+
+  function listingMatchesMarketplaceDealFilter(listing = {}, filter = marketplaceDealFilter) {
+    if (filter === "all") return true;
+    const assessment = getMarketplaceListingFairAssessment(listing);
+    if (filter === "nearRetail") return assessment.label === "Near Retail";
+    if (filter === "fairPrice") return assessment.label === "Fair Price" || assessment.label === "Near Retail";
+    if (filter === "localPickup") return Boolean(listing.pickupOnly || listing.localPickup || listing.locationCity);
+    if (filter === "shipping") return Boolean(listing.shippingAvailable);
+    if (filter === "sealed") return isMarketplaceListingSealed(listing);
+    if (filter === "singles") return isMarketplaceListingSingle(listing);
+    if (filter === "kidsFriendly") return isMarketplaceListingKidFriendly(listing);
+    return true;
+  }
+
+  function catalogProductMatchesMarketDealFilter(product = {}, filter = marketCatalogDealFilter) {
+    if (filter === "all") return true;
+    if (filter === "sealed") return isCatalogSealedProduct(product) && !isCatalogCardProduct(product);
+    if (filter === "singles") return isCatalogCardProduct(product);
+    const assessment = getCatalogProductFairAssessment(product);
+    if (filter === "nearRetail") return assessment.label === "Near Retail";
+    if (filter === "fairPrice") return assessment.label === "Fair Price" || assessment.label === "Near Retail";
+    return true;
   }
 
   function renderMarketplaceListingCard(listing, adminMode = false) {
+    const listingCatalogProduct = getMarketplaceListingCatalogProduct(listing);
     const marketInfo = getListingMarketReference(listing);
-    const percentOfMarket = marketInfo.currentMarketValue > 0 ? (Number(listing.askingPrice || 0) / marketInfo.currentMarketValue) * 100 : 0;
+    const primaryPrice = getMarketplacePrimaryPrice(listing);
+    const percentOfMarket = marketInfo.currentMarketValue > 0 && primaryPrice > 0 ? (primaryPrice / marketInfo.currentMarketValue) * 100 : 0;
+    const fairAssessment = getMarketplaceListingFairAssessment(listing);
+    const trustBadges = getMarketplaceTrustBadges(listing);
+    const referenceParts = marketplaceReferenceParts(marketInfo);
+    const imageSrc = listing.photos?.[0] || catalogImage(listingCatalogProduct || {});
+    const priceLabel = listing.listingType === "For Trade" ? "Trade value" : listing.listingType === "Free / Donation" ? "Price" : "Price";
     return (
-      <article className="marketplace-listing-card compact-card" key={listing.id}>
+      <article className="marketplace-listing-card market-fair-card compact-card" key={listing.id}>
         <div className="marketplace-listing-row">
-          {listing.photos?.[0] ? <img className="marketplace-thumb" src={listing.photos[0]} alt="" /> : <div className="marketplace-thumb placeholder">No photo</div>}
-          <div>
+          {imageSrc ? (
+            <img
+              className="marketplace-thumb"
+              src={imageSrc}
+              alt=""
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+                event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+              }}
+            />
+          ) : null}
+          <div className="marketplace-thumb placeholder" hidden={Boolean(imageSrc)}>
+            <strong>{listing.title}</strong>
+            <span>Product photo</span>
+          </div>
+          <div className="market-card-body">
             <div className="marketplace-badges">
               <span className="status-badge">{listing.listingType}</span>
               <span className="status-badge">{listing.status}</span>
-              {listing.intendedForKids ? <span className="status-badge">Kid-Friendly</span> : null}
+              {renderFairPriceBadge(fairAssessment)}
             </div>
             <h3>{listing.title}</h3>
+            <p className="market-card-context">
+              {listing.setName || catalogExpansionName(listingCatalogProduct || {}) || "Set unavailable"} | {listing.productType || catalogProductTypeLabel(listingCatalogProduct || listing) || "TCG item"}
+            </p>
+            <div className="market-card-price-row">
+              <strong>{priceLabel}: {primaryPrice > 0 ? money(primaryPrice) : listing.listingType === "Free / Donation" ? "Free / donation" : "Price data unavailable"}</strong>
+            </div>
+            <p className="market-card-reference-line">
+              {referenceParts.length ? referenceParts.join(" | ") : "Price data unavailable"}
+              {percentOfMarket ? ` | ${percentOfMarket.toFixed(0)}% of market` : ""}
+            </p>
             <p className="marketplace-seller-line">
               <span>{publicUsernameLabelFromRecord(listing, "seller")}</span>
-              {listing.intendedForKids ? <span>Family-friendly listing</span> : <span>Community listing</span>}
+              {isMarketplaceListingKidFriendly(listing) ? <span>Family-friendly listing</span> : <span>Community listing</span>}
             </p>
+            <div className="market-trust-badge-row">
+              {trustBadges.length ? trustBadges.map(renderTrustBadge) : <span className="trust-badge trust-badge--secure">Community Listing</span>}
+            </div>
             <p className="compact-subtitle">{listing.condition || "Unknown condition"} | {listing.locationCity || "Local"} {listing.locationState || ""}</p>
-            <p><strong>{listing.listingType === "For Trade" ? "Trade value" : "Asking price"}:</strong> {money(listing.listingType === "For Trade" ? listing.tradeValue : listing.askingPrice)}</p>
-            {marketInfo.currentMarketValue ? <p className="compact-subtitle">Market reference: {money(marketInfo.currentMarketValue)} {percentOfMarket ? `| ${percentOfMarket.toFixed(0)}% of market` : ""}</p> : null}
           </div>
         </div>
-        <div className="quick-actions">
+        <div className="quick-actions market-card-actions">
           <button type="button" onClick={() => setSelectedListingId(listing.id)}>View</button>
           <button type="button" className="secondary-button" onClick={() => toggleSavedListing(listing.id)}>{marketplaceSavedIds.includes(listing.id) ? "Saved" : "Save"}</button>
+          {listingCatalogProduct ? (
+            <>
+              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-vault", destinations: { vault: true } })}>Add to Vault</button>
+              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-forge", destinations: { forge: true } })}>Add to Forge</button>
+            </>
+          ) : null}
           <button type="button" className="secondary-button" onClick={() => setListingReportTarget(listing)}>Report</button>
           {listing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible ? (
             <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { status: "Sold" })}>Mark Sold</button>
@@ -25613,10 +25850,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ? listing.status === "Active"
             : listing.status === marketplaceStatusFilter;
       const matchesType = marketplaceTypeFilter === "All" || listing.listingType === marketplaceTypeFilter;
-      const matchesSearch = !normalizedSearch || [listing.title, listing.description, listing.productType, listing.setName, listing.upc, listing.sku, listing.locationCity]
+      const matchesSearch = !normalizedSearch || [listing.title, listing.description, listing.productType, listing.setName, listing.upc, listing.sku, listing.locationCity, publicUsernameLabelFromRecord(listing, "seller")]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedSearch));
-      return matchesStatus && matchesType && matchesSearch;
+      const matchesDeal = listingMatchesMarketplaceDealFilter(listing, marketplaceDealFilter);
+      return matchesStatus && matchesType && matchesSearch && matchesDeal;
     });
     const savedListings = visibleMarketplaceListings.filter((listing) => marketplaceSavedIds.includes(listing.id));
     const marketplacePanelTitle =
@@ -25819,10 +26057,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </Field>
           </div>
           ) : null}
+          {marketplaceView === "browse" ? (
+            <div className="market-filter-rail marketplace-deal-filters" aria-label="Marketplace fair deal filters">
+              {MARKETPLACE_DEAL_FILTERS.map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  className={marketplaceDealFilter === filter.value ? "primary" : "secondary-button"}
+                  aria-pressed={marketplaceDealFilter === filter.value}
+                  onClick={() => setMarketplaceDealFilter(filter.value)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="inventory-list compact-inventory-list">
             {panelListings.length ? panelListings.map((listing) => renderMarketplaceListingCard(listing)) : (
-              <div className="empty-state">
-                <h3>No marketplace listings yet</h3>
+              <div className="empty-state market-empty-state">
+                <h3>{marketplaceView === "browse" ? "No matching deals yet." : "No marketplace listings yet"}</h3>
                 <p>
                   {marketplaceView === "saved"
                     ? "Saved listings will appear here."
@@ -25832,8 +26085,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         ? "Saved drafts will appear here."
                         : marketplaceView === "pending"
                           ? "Listings submitted for admin review will appear here."
-                          : "Approved listings will appear here after admin review."}
+                          : "Try a different search, remove a fair-price filter, or create a listing for the community."}
                 </p>
+                {marketplaceView === "browse" ? (
+                  <div className="quick-actions">
+                    <button type="button" onClick={() => setVaultToast("Market alert saved for beta. Watchlist alerts are coming next.")}>Create Alert</button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => {
+                        setMarketplaceSearch("");
+                        setMarketplaceTypeFilter("All");
+                        setMarketplaceStatusFilter("Active");
+                        setMarketplaceDealFilter("all");
+                      }}
+                    >
+                      Browse Market
+                    </button>
+                    <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("manual", {})}>Add Listing</button>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -25859,6 +26130,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => setSelectedListingId("")}>Close</button>
             </div>
             {selectedListing.photos?.[0] ? <img className="catalog-detail-image" src={selectedListing.photos[0]} alt={selectedListing.title} /> : null}
+            <div className="market-trust-badge-row market-detail-badges">
+              {renderFairPriceBadge(getMarketplaceListingFairAssessment(selectedListing))}
+              {getMarketplaceTrustBadges(selectedListing).map(renderTrustBadge)}
+            </div>
             <div className="catalog-detail-grid">
               <DetailItem label="Price" value={money(selectedListing.askingPrice)} />
               <DetailItem label="Market Value" value={money(getListingMarketReference(selectedListing).currentMarketValue)} />
@@ -35401,6 +35676,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       {adminEditModeActive ? "Add Catalog Item" : "Suggest Missing Product"}
                     </button>
                   </div>
+                  ) : null}
+
+                  {catalogSearchHasRun ? (
+                    <div className="market-filter-rail" aria-label="Market fair price filters">
+                      {MARKET_CATALOG_DEAL_FILTERS.map((filter) => (
+                        <button
+                          key={filter.value}
+                          type="button"
+                          className={marketCatalogDealFilter === filter.value ? "primary" : "secondary-button"}
+                          aria-pressed={marketCatalogDealFilter === filter.value}
+                          onClick={() => setMarketCatalogDealFilter(filter.value)}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
                   ) : null}
 
                   {catalogSearchHasRun && activeCatalogFilterChips.length ? (
