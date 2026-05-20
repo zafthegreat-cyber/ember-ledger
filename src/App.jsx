@@ -929,6 +929,13 @@ const VAULT_FILTER_OPTIONS = [
   { value: "wishlist", label: "Held" },
   { value: "sold_archived", label: "Sold / Archived" },
 ];
+const VAULT_VALUE_FILTER_OPTIONS = [
+  { value: "all", label: "All values" },
+  { value: "under25", label: "Under $25" },
+  { value: "25to100", label: "$25-$100" },
+  { value: "100plus", label: "$100+" },
+  { value: "missing", label: "Missing value" },
+];
 const BATCH_INTAKE_MODES = {
   TRANSFER: "transfer",
   BULK_ADD: "bulk_add",
@@ -1912,6 +1919,39 @@ function isInventoryCardProduct(value = {}) {
     catalogHasStrongCardIndicators(value) ||
     /\bsingle[_\s-]?card\b|\bindividual\s+card\b|\bpromo\s+card\b|\bgraded\s+card\b|\bslab\b/.test(text)
   );
+}
+
+function vaultItemDisplayImage(item = {}) {
+  return item.itemImage || item.item_image || item.imageUrl || item.image_url || getCatalogImage(item);
+}
+
+function vaultItemTypeLabel(item = {}) {
+  if (item.graded || item.grade || item.gradingCompany || item.grading_company) return "Graded card";
+  if (isInventorySealedProduct(item)) return item.productType || item.product_type || "Sealed product";
+  if (isInventoryCardProduct(item)) return item.productType || item.product_type || "Single card";
+  return item.productType || item.product_type || item.category || "Other";
+}
+
+function vaultItemSetLabel(item = {}) {
+  return String(item.setName || item.set_name || item.expansion || item.productLine || item.product_line || "").trim();
+}
+
+function vaultItemLocationLabel(item = {}) {
+  return String(item.storageLocation || item.storage_location || item.locationSummary || item.location || "").trim();
+}
+
+function vaultItemTotalMarketValue(item = {}) {
+  return Number(item.quantity || 0) * Number(item.marketPrice || item.market_value || item.marketValue || 0);
+}
+
+function vaultItemLastUpdatedLabel(item = {}) {
+  const raw = item.updatedAt || item.updated_at || item.lastPriceChecked || item.marketLastUpdated || item.createdAt || item.created_at || "";
+  return raw ? shortDate(raw) : "Not updated";
+}
+
+function uniqueSortedLabels(values = []) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function catalogHasStrongCardIndicators(value = {}) {
@@ -3809,6 +3849,11 @@ export default function App() {
   const [vaultSubTab, setVaultSubTab] = useState(initialRouteState.vaultSubTab || "overview");
   const [vaultFilter, setVaultFilter] = useState(initialRouteState.vaultFilter || "all");
   const [vaultSearch, setVaultSearch] = useState(initialRouteState.vaultSearch || "");
+  const [vaultTypeFilter, setVaultTypeFilter] = useState("all");
+  const [vaultSetFilter, setVaultSetFilter] = useState("all");
+  const [vaultLocationFilter, setVaultLocationFilter] = useState("all");
+  const [vaultOwnerFilter, setVaultOwnerFilter] = useState("all");
+  const [vaultValueFilter, setVaultValueFilter] = useState("all");
   const [vaultSort, setVaultSort] = useState(initialRouteState.vaultSort || "newest");
   const [vaultPage, setVaultPage] = useState(1);
   const [selectedVaultDetailId, setSelectedVaultDetailId] = useState(initialRouteState.selectedVaultDetailId || "");
@@ -6946,7 +6991,7 @@ export default function App() {
 
   useEffect(() => {
     setVaultPage(1);
-  }, [vaultFilter, vaultSearch, vaultSort]);
+  }, [vaultFilter, vaultSearch, vaultSort, vaultTypeFilter, vaultSetFilter, vaultLocationFilter, vaultOwnerFilter, vaultValueFilter]);
 
   useEffect(() => {
     setForgeInventoryPage(1);
@@ -7852,6 +7897,15 @@ export default function App() {
         item.notes,
         item.productType,
         item.storageLocation,
+        item.storage_location,
+        item.location,
+        item.sourceLocation,
+        item.buyer,
+        item.purchaserName,
+        item.purchaser_name,
+        item.conditionName,
+        item.condition,
+        item.sourceType,
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedQuery))
@@ -16300,57 +16354,105 @@ function renderScoutHeader() {
 }
 
 function renderVaultHeader() {
-  const personalCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "personal_collection" && !isInventorySealedProduct(item)).length;
-  const sealedHoldingCount = vaultItems.filter((item) => activeVaultSealedItems.includes(item) || ["sealed", "held"].includes(normalizeVaultStatus(item))).length;
+  const totalOwnedQuantity = activeVaultItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const sealedHoldingCount = activeVaultSealedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const singleCardCount = activeVaultCardItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const gradedCount = activeVaultItems.filter((item) => item.graded || item.grade || item.gradingCompany || item.grading_company).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const favoriteCount = activeVaultItems.filter((item) => /favorite|fav/i.test([item.vaultCategory, item.actionNotes, item.notes, item.tags].filter(Boolean).join(" "))).length;
+  const recentCutoff = Date.now() - 1000 * 60 * 60 * 24 * 30;
+  const recentAdditionsCount = activeVaultItems.filter((item) => {
+    const timestamp = new Date(item.createdAt || item.created_at || item.updatedAt || item.updated_at || 0).getTime();
+    return Number.isFinite(timestamp) && timestamp >= recentCutoff;
+  }).length;
+  const priceUpdateCount = activeVaultItems.filter((item) => item.lastPriceChecked || item.marketLastUpdated || item.market_value_updated_at).length;
+  const topSetProgress = vaultSetCompletionRows.find((row) => row.ownedCount > 0 && (row.totalCards > 0 || row.catalogCards.length));
   const wishlistHeldCount = wishlistItems.length;
   const movedToForgeCount = vaultItems.filter((item) => normalizeVaultStatus(item) === "moved_to_forge").length;
   const activeVaultPage = vaultSubTab === "overview" ? "collection" : vaultSubTab;
 
-  const openVaultItems = (filter = "all") => {
+  const openVaultItems = (filter = "all", refinements = {}) => {
     setVaultSubTab("collection");
     setVaultFilter(filter);
+    setVaultTypeFilter(refinements.type || "all");
+    setVaultSetFilter(refinements.set || "all");
+    setVaultLocationFilter(refinements.location || "all");
+    setVaultOwnerFilter(refinements.owner || "all");
+    setVaultValueFilter(refinements.value || "all");
+    setVaultSearch(refinements.search || "");
     setActiveTab("vault");
     setTimeout(() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
   const vaultOverviewCards = [
     {
-      key: "total-items",
-      title: "Total Items",
-      value: activeVaultItems.length,
-      helper: `${activeVaultCardItems.length} cards, ${activeVaultSealedItems.length} sealed.`,
+      key: "total-market",
+      title: "Collection Value",
+      value: money(vaultValue),
+      helper: "Tracked market value across owned Vault items.",
       active: vaultFilter === "all",
       onClick: () => openVaultItems("all"),
     },
     {
-      key: "total-market",
-      title: "Total Market",
-      value: money(vaultValue),
-      helper: "Current tracked collection value.",
+      key: "total-quantity",
+      title: "Owned Quantity",
+      value: totalOwnedQuantity,
+      helper: `${activeVaultItems.length} grouped records in this collection.`,
       active: false,
       onClick: () => openVaultItems("all"),
     },
     {
-      key: "personal",
-      title: "Personal Collection",
-      value: personalCount,
-      helper: "Items you plan to keep.",
-      active: vaultFilter === "personal_collection",
-      onClick: () => openVaultItems("personal_collection"),
-    },
-    {
       key: "sealed",
-      title: "Sealed / Holding",
+      title: "Sealed Items",
       value: sealedHoldingCount,
-      helper: "Sealed items or long-term holds.",
+      helper: "Unopened products and sealed holdings.",
       active: vaultFilter === "sealed",
       onClick: () => openVaultItems("sealed"),
+    },
+    {
+      key: "singles",
+      title: "Singles",
+      value: singleCardCount,
+      helper: "Cards and card-like records.",
+      active: false,
+      onClick: () => openVaultItems("all"),
+    },
+    {
+      key: "graded",
+      title: "Graded",
+      value: gradedCount,
+      helper: "Slabs or graded card records.",
+      active: false,
+      onClick: () => openVaultItems("all"),
+    },
+    {
+      key: "favorites",
+      title: "Favorites",
+      value: favoriteCount,
+      helper: favoriteCount ? "Marked through category, tags, or notes." : "No favorites marked yet.",
+      active: false,
+      onClick: () => openVaultItems("all", { search: "favorite" }),
+    },
+    {
+      key: "recent",
+      title: "Recent Additions",
+      value: recentAdditionsCount,
+      helper: "Added or updated in the last 30 days.",
+      active: false,
+      onClick: () => openVaultItems("all"),
+    },
+    {
+      key: "prices",
+      title: "Price Updates",
+      value: priceUpdateCount,
+      helper: priceUpdateCount ? "Items with a saved market check." : "Refresh market data as prices move.",
+      active: false,
+      onClick: () => openVaultItems("all"),
     },
     {
       key: "wishlist",
       title: "Wishlist",
       value: wishlistHeldCount,
-      helper: "Wanted items only.",
+      helper: "Wanted items stay separate from owned collection.",
       active: activeVaultPage === "wishlist",
       onClick: () => {
         setVaultSubTab("wishlist");
@@ -16358,6 +16460,22 @@ function renderVaultHeader() {
       },
     },
   ];
+
+  if (topSetProgress) {
+    vaultOverviewCards.splice(8, 0, {
+      key: "set-progress",
+      title: "Set Progress",
+      value: topSetProgress.totalCards > 0 ? `${topSetProgress.percent}%` : topSetProgress.ownedCount,
+      helper: `${topSetProgress.name}: ${topSetProgress.ownedCount}${topSetProgress.totalCards > 0 ? ` / ${topSetProgress.totalCards}` : ""} tracked.`,
+      active: activeVaultPage === "sets",
+      onClick: () => {
+        if (!featureAllowed("set_completion")) return openLockedFeatureNotice("set_completion");
+        setVaultSubTab("sets");
+        setSelectedVaultSetId(topSetProgress.id);
+        setActiveTab("vault");
+      },
+    });
+  }
 
   if (movedToForgeCount > 0) {
     vaultOverviewCards.push({
@@ -16374,7 +16492,7 @@ function renderVaultHeader() {
     <PageHeader
       className={getHeaderCardClass("panel vault-command-center")}
       title="Vault / The Deep"
-      subtitle={`${activeWorkspace?.name || "My Personal Space"} collection. Protected in the deep.`}
+      subtitle={`What do I own? ${activeWorkspace?.name || "My Personal Space"} collection, protected and organized.`}
       actions={(
         <>
         <button type="button" className="vault-command-quick-add" onClick={openVaultQuickAddFlow}>
@@ -17694,6 +17812,10 @@ function renderForgeHeader() {
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const activeVaultCardItems = useMemo(() => activeVaultItems.filter(isInventoryCardProduct), [activeVaultItems]);
   const activeVaultSealedItems = useMemo(() => activeVaultItems.filter(isInventorySealedProduct), [activeVaultItems]);
+  const vaultTypeOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(vaultItemTypeLabel)), [activeVaultItems]);
+  const vaultSetOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(vaultItemSetLabel)), [activeVaultItems]);
+  const vaultLocationOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map((item) => vaultItemLocationLabel(item) || "Unassigned")), [activeVaultItems]);
+  const vaultOwnerOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(itemPurchaserName)), [activeVaultItems]);
   const vaultCatalogSearchTerm = String(vaultForm.tideTradrSearch || vaultForm.name || "").trim().toLowerCase();
   const vaultSuggestedCatalogItems = useMemo(() => catalogProducts
     .filter((product) => {
@@ -17712,6 +17834,23 @@ function renderForgeHeader() {
     })
     .slice(0, 4), [catalogProducts, vaultCatalogSearchTerm]);
   const visibleVaultItems = useMemo(() => searchVaultItems(filterVaultItems(vaultItems, vaultFilter), vaultSearch)
+    .filter((item) => {
+      if (vaultTypeFilter !== "all" && vaultItemTypeLabel(item) !== vaultTypeFilter) return false;
+      if (vaultSetFilter !== "all" && vaultItemSetLabel(item) !== vaultSetFilter) return false;
+      if (vaultLocationFilter !== "all") {
+        const location = vaultItemLocationLabel(item) || "Unassigned";
+        if (location !== vaultLocationFilter) return false;
+      }
+      if (vaultOwnerFilter !== "all" && itemPurchaserName(item) !== vaultOwnerFilter) return false;
+      if (vaultValueFilter !== "all") {
+        const value = vaultItemTotalMarketValue(item);
+        if (vaultValueFilter === "under25" && !(value > 0 && value < 25)) return false;
+        if (vaultValueFilter === "25to100" && !(value >= 25 && value < 100)) return false;
+        if (vaultValueFilter === "100plus" && value < 100) return false;
+        if (vaultValueFilter === "missing" && value > 0) return false;
+      }
+      return true;
+    })
     .sort((a, b) => {
       const aMarket = Number(a.marketPrice || 0) * Number(a.quantity || 0);
       const bMarket = Number(b.marketPrice || 0) * Number(b.quantity || 0);
@@ -17726,7 +17865,7 @@ function renderForgeHeader() {
       if (vaultSort === "highestRoi") return bRoi - aRoi;
       if (vaultSort === "quantity") return Number(b.quantity || 0) - Number(a.quantity || 0);
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    }), [vaultItems, vaultFilter, vaultSearch, vaultSort]);
+    }), [vaultItems, vaultFilter, vaultSearch, vaultSort, vaultTypeFilter, vaultSetFilter, vaultLocationFilter, vaultOwnerFilter, vaultValueFilter]);
   const vaultValue = useMemo(() => activeVaultItems.reduce(
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || 0),
     0
@@ -19569,6 +19708,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const pagedVaultItems = getPagedItems(groupedVisibleVaultItems, vaultPage, LONG_LIST_PAGE_SIZE);
   const pagedForgeInventory = getPagedItems(groupedSortedFilteredItems, forgeInventoryPage, LONG_LIST_PAGE_SIZE);
   const pagedMarketWatchItems = getPagedItems(workspaceWatchlist, marketWatchPage, LONG_LIST_PAGE_SIZE);
+  const vaultActiveFilterCount = [
+    vaultSearch.trim(),
+    vaultFilter !== "all",
+    vaultTypeFilter !== "all",
+    vaultSetFilter !== "all",
+    vaultLocationFilter !== "all",
+    vaultOwnerFilter !== "all",
+    vaultValueFilter !== "all",
+  ].filter(Boolean).length;
+
+  function clearVaultFilters() {
+    setVaultSearch("");
+    setVaultFilter("all");
+    setVaultTypeFilter("all");
+    setVaultSetFilter("all");
+    setVaultLocationFilter("all");
+    setVaultOwnerFilter("all");
+    setVaultValueFilter("all");
+    setVaultSort("newest");
+  }
 
   const catalogPagedResultSet = new Set(catalogPagedResultIds.map((id) => String(id)));
   const catalogProductsForFiltering = catalogSearchHasRun && catalogPagedResultSet.size
@@ -34403,19 +34562,93 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {renderVaultHeader()}
 
             {(vaultSubTab === "overview" || vaultSubTab === "collection") ? (
-            <section id="vault-items-section" className="panel">
-              <div className="compact-card-header">
+            <section id="vault-items-section" className="panel vault-collection-panel">
+              <div className="compact-card-header vault-collection-heading">
                 <div>
-                  <h2>Collection Binder</h2>
-                  <p>Grid, list, binder, set completion, and value views for personal collection records.</p>
+                  <p className="eyebrow">Vault Collection</p>
+                  <h2>What do I own?</h2>
+                  <p>Search, filter, and open grouped collection items without losing purchaser or location details.</p>
                 </div>
-                <div className="vault-toolbar">
-                  <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search by name, set, UPC, SKU, or notes." />
+                <div className="vault-heading-actions">
+                  <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
+                  <button type="button" className="secondary-button" onClick={() => beginScanProduct("vault")}>Scan Card</button>
+                </div>
+              </div>
+
+              <div className="vault-collection-summary" aria-label="Vault owned item summary">
+                <div>
+                  <span>Collection value</span>
+                  <strong>{money(vaultValue)}</strong>
+                  <small>{activeVaultItems.length} unique record{activeVaultItems.length === 1 ? "" : "s"}</small>
+                </div>
+                <div>
+                  <span>Total quantity</span>
+                  <strong>{activeVaultItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</strong>
+                  <small>Grouped by product on this page</small>
+                </div>
+                <div>
+                  <span>Sealed</span>
+                  <strong>{activeVaultSealedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</strong>
+                  <small>Products and sealed holdings</small>
+                </div>
+                <div>
+                  <span>Singles</span>
+                  <strong>{activeVaultCardItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</strong>
+                  <small>Cards, promos, and slabs</small>
+                </div>
+              </div>
+
+              <div className="vault-toolbar vault-filter-panel">
+                <label className="vault-filter-field vault-search-field">
+                  <span>Search items</span>
+                  <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search name, set, UPC, SKU, purchaser, notes..." />
+                </label>
+                <label className="vault-filter-field">
+                  <span>Status</span>
                   <select className="vault-filter-select" value={vaultFilter} onChange={(event) => setVaultFilter(event.target.value)}>
                     {VAULT_FILTER_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
+                </label>
+                <label className="vault-filter-field">
+                  <span>Category / type</span>
+                  <select className="vault-filter-select" value={vaultTypeFilter} onChange={(event) => setVaultTypeFilter(event.target.value)}>
+                    <option value="all">All types</option>
+                    {vaultTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+                <label className="vault-filter-field">
+                  <span>Set</span>
+                  <select className="vault-filter-select" value={vaultSetFilter} onChange={(event) => setVaultSetFilter(event.target.value)}>
+                    <option value="all">All sets</option>
+                    {vaultSetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+                <label className="vault-filter-field">
+                  <span>Location</span>
+                  <select className="vault-filter-select" value={vaultLocationFilter} onChange={(event) => setVaultLocationFilter(event.target.value)}>
+                    <option value="all">All locations</option>
+                    {vaultLocationOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+                <label className="vault-filter-field">
+                  <span>Owner / purchaser</span>
+                  <select className="vault-filter-select" value={vaultOwnerFilter} onChange={(event) => setVaultOwnerFilter(event.target.value)}>
+                    <option value="all">All purchasers</option>
+                    {vaultOwnerOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+                <label className="vault-filter-field">
+                  <span>Value range</span>
+                  <select className="vault-filter-select" value={vaultValueFilter} onChange={(event) => setVaultValueFilter(event.target.value)}>
+                    {VAULT_VALUE_FILTER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="vault-filter-field">
+                  <span>Sort</span>
                   <select className="vault-filter-select" value={vaultSort} onChange={(event) => setVaultSort(event.target.value)}>
                     <option value="newest">Newest</option>
                     <option value="oldest">Oldest</option>
@@ -34425,41 +34658,33 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <option value="highestRoi">Highest ROI</option>
                     <option value="quantity">Quantity</option>
                   </select>
-                </div>
+                </label>
+                {vaultActiveFilterCount ? (
+                  <button type="button" className="secondary-button vault-clear-filters" onClick={clearVaultFilters}>
+                    Clear {vaultActiveFilterCount} filter{vaultActiveFilterCount === 1 ? "" : "s"}
+                  </button>
+                ) : null}
               </div>
-              <details className="vault-status-help">
-                <summary>Status definitions</summary>
-                <div>
-                  {VAULT_STATUS_OPTIONS.filter((status) => status.description).map((status) => (
-                    <p key={status.value}><strong>{status.label}:</strong> {status.description}</p>
-                  ))}
-                </div>
-              </details>
+
               <div className="vault-view-strip" aria-label="Vault view choices">
-                {["Grid view", "List view", "Binder view", "Set completion", "Value view"].map((label) => (
+                {[
+                  { label: "Collection", tab: "collection" },
+                  { label: "Set Completion", tab: "sets", feature: "set_completion" },
+                  { label: "Value View", tab: "portfolio", feature: "portfolio_value" },
+                ].map((item) => (
                   <button
-                    key={label}
+                    key={item.label}
                     type="button"
-                    className={label === "Set completion" && vaultSubTab === "sets" ? "active" : label === "Value view" && vaultSubTab === "portfolio" ? "active" : label === "Grid view" && vaultSubTab !== "sets" && vaultSubTab !== "portfolio" ? "active" : ""}
+                    className={vaultSubTab === item.tab || (item.tab === "collection" && vaultSubTab === "overview") ? "active" : ""}
                     onClick={() => {
-                      if (label === "Set completion") {
-                        if (!featureAllowed("set_completion")) return openLockedFeatureNotice("set_completion");
-                        setVaultSubTab("sets");
-                      } else if (label === "Value view") {
-                        if (!featureAllowed("portfolio_value")) return openLockedFeatureNotice("portfolio_value");
-                        setVaultSubTab("portfolio");
-                      }
-                      else setVaultSubTab("collection");
+                      if (item.feature && !featureAllowed(item.feature)) return openLockedFeatureNotice(item.feature);
+                      setVaultSubTab(item.tab);
                     }}
                   >
-                    {label}
+                    {item.label}
                   </button>
                 ))}
               </div>
-              <details className="vault-status-help">
-                <summary>Bulk edit later</summary>
-                <p>Select multiple items, move selected to Forge, change status, delete selected, and export selected are structured as future beta workflow controls.</p>
-              </details>
               {editingItemId && vaultItems.some((item) => item.id === editingItemId) && (
                 <VaultEditForm
                   form={itemForm}
@@ -34492,11 +34717,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="inventory-list compact-inventory-list">
                 {vaultItems.length === 0 ? (
                   <div className="empty-state vault-empty-state">
-                    <h3>Your Vault is ready.</h3>
-                    <p>Scan your first card or sealed product to start tracking your collection.</p>
+                    <h3>Your collection starts here.</h3>
+                    <p>Scan a card, add a sealed product, or enter an item manually. Manual add stays available even when catalog search misses something.</p>
                     <div className="quick-actions">
-                      <button type="button" onClick={() => beginScanProduct("none")}>Scan first item</button>
-                      <button type="button" className="secondary-button" onClick={openVaultQuickAddFlow}>Add manually</button>
+                      <button type="button" onClick={() => beginScanProduct("vault")}>Scan Card</button>
+                      <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "vault-empty-sealed", seed: { productType: "Sealed Product" }, destinations: { vault: true } })}>Add Sealed Product</button>
+                      <button type="button" className="secondary-button" onClick={openVaultQuickAddFlow}>Manual Add</button>
                     </div>
                   </div>
                 ) : (
@@ -34518,8 +34744,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 )}
                 {vaultItems.length > 0 && visibleVaultItems.length === 0 ? (
                   <div className="empty-state">
-                    <h3>No {VAULT_FILTER_OPTIONS.find((option) => option.value === vaultFilter)?.label || "Vault"} items yet</h3>
-                    <p>Switch filters or add an item with this Vault status.</p>
+                    <h3>No matching Vault items.</h3>
+                    <p>Filters are hiding items, or this search term is not in your collection yet.</p>
+                    <div className="quick-actions">
+                      <button type="button" className="secondary-button" onClick={clearVaultFilters}>Reset Filters</button>
+                      <button type="button" onClick={openVaultQuickAddFlow}>Manual Add</button>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -37563,17 +37793,21 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
 
 function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onRefreshMarket }) {
   if (!item) return null;
+  const detailImage = vaultItemDisplayImage(item);
   const details = [
     ["Quantity", item.quantity],
+    ["Owner / Purchaser", item.purchaserSummary || itemPurchaserName(item)],
+    ["Vault Location", item.locationSummary || vaultItemLocationLabel(item) || "Unassigned"],
     ["Cost Paid", hasValue(item.unitCost) ? money(item.unitCost) : ""],
     ["MSRP", hasValue(item.msrpPrice) ? money(item.msrpPrice) : ""],
-    ["Market Value", hasValue(item.marketPrice) ? money(item.marketPrice) : ""],
-    ["Set / Collection", item.expansion],
-    ["Product Type", item.productType],
+    ["Market Value", hasValue(item.marketPrice) ? money(vaultItemTotalMarketValue(item)) : ""],
+    ["Set / Collection", vaultItemSetLabel(item)],
+    ["Product Type", vaultItemTypeLabel(item)],
     ["Planned Selling Price", hasValue(item.salePrice) ? money(item.salePrice) : ""],
     ["Source", item.sourceType || item.source || item.sourceLocation || item.externalProductSource],
     ["SKU", item.sku],
     ["UPC / Barcode", item.barcode],
+    ["Last Updated", vaultItemLastUpdatedLabel(item)],
     ["Status", vaultStatusLabel(normalizeVaultStatus(item))],
   ].filter(([, value]) => hasValue(value));
 
@@ -37582,11 +37816,11 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
       <div className="compact-card-header">
         <div>
           <h3>{item.name}</h3>
-          <p className="compact-subtitle">Full Vault details and Forge transfer actions.</p>
+          <p className="compact-subtitle">Purchaser, location, value, and Forge transfer details.</p>
         </div>
         <button type="button" className="secondary-button" onClick={onClose}>Close</button>
       </div>
-      {item.itemImage ? <img className="vault-detail-image" src={item.itemImage} alt={item.name} /> : null}
+      {detailImage ? <img className="vault-detail-image" src={detailImage} alt={item.name} /> : null}
       <div className="catalog-detail-grid">
         {details.map(([label, value]) => (
           <DetailItem key={label} label={label} value={value} />
@@ -37656,31 +37890,48 @@ function CompactInventoryCard({
   const packCount = Number(item.packCount || 0);
   const physicalLocation = forgePhysicalLocationLabel(item);
   if (isVault) {
+    const image = vaultItemDisplayImage(item);
+    const itemType = vaultItemTypeLabel(item);
+    const setLabel = vaultItemSetLabel(item);
+    const locationLabel = vaultItemLocationLabel(item) || "Unassigned";
+    const totalMarket = vaultItemTotalMarketValue(item);
+    const lastUpdated = vaultItemLastUpdatedLabel(item);
+    const ownerSummary = item.purchaserSummary || itemPurchaserName(item);
     return (
       <div className="inventory-card compact-card vault-item-card">
-        <div className="compact-card-header">
+        <div className="compact-card-header vault-card-topline">
           <div className="compact-title-block">
             <h3>{item.name}</h3>
-            <p className="compact-subtitle">Qty {quantity || 1}</p>
+            <p className="compact-subtitle">{[setLabel, itemType].filter(Boolean).join(" - ") || "Collection item"}</p>
           </div>
           <span className={statusClass(vaultStatusLabel(normalizeVaultStatus(item)))}>{vaultStatusLabel(normalizeVaultStatus(item))}</span>
         </div>
 
-        {item.itemImage ? (
-          <div className="compact-image-wrap vault-image-wrap">
-            <img src={item.itemImage} alt={item.name} />
+        <div className="vault-card-main">
+          <div className={image ? "compact-image-wrap vault-image-wrap" : "compact-image-wrap vault-image-wrap placeholder"}>
+            {image ? (
+              <img src={image} alt={item.name} />
+            ) : (
+              <>
+                <strong>{item.name}</strong>
+                <small>{setLabel || itemType || "Vault item"}</small>
+                <b>Photo needed</b>
+              </>
+            )}
           </div>
-        ) : null}
 
-        <div className="vault-card-facts">
-          {packCount > 0 ? <p><strong>Pack Count:</strong> {packCount}</p> : null}
-          <p><strong>Market Value:</strong> {money(quantity * marketPrice)}</p>
-          {item.purchaserSummary ? <p><strong>Purchased By:</strong> {item.purchaserSummary}</p> : null}
-          <p><strong>Source:</strong> {item.sourceType || item.source || item.sourceLocation || "Manual"}</p>
+          <div className="vault-card-facts">
+            <p><span>Qty</span><strong>{quantity || 1}</strong></p>
+            <p><span>Market value</span><strong>{money(totalMarket)}</strong></p>
+            <p><span>Owner / purchaser</span><strong>{ownerSummary}</strong></p>
+            <p><span>Location</span><strong>{locationLabel}</strong></p>
+            {packCount > 0 ? <p><span>Pack count</span><strong>{packCount}</strong></p> : null}
+            <p><span>Last updated</span><strong>{lastUpdated}</strong></p>
+          </div>
         </div>
 
         <div className="compact-actions vault-card-actions">
-          <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View Details</button>
+          <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
           <button type="button" className="secondary-button" disabled={quantity < 1} onClick={() => onMoveToForge?.(item)}>Move to Forge</button>
           <OverflowMenu
             buttonLabel="More"
