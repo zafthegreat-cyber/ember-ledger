@@ -28540,6 +28540,428 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderHearthHomeCommandView() {
+    const normalizedMode = normalizeUserType(userType);
+    const normalizedPreset = normalizeDashboardPreset(dashboardPreset);
+    const sellerModeRequested =
+      ["seller", "all_in_one"].includes(normalizedMode) ||
+      ["seller", "full_business"].includes(normalizedPreset);
+    const simpleModeRequested =
+      ["budget", "parent"].includes(normalizedMode) ||
+      ["simple", "budget_parent"].includes(normalizedPreset);
+    const sellerAccessVisible = adminToolsVisible || sellerModeRequested || featureAllowed("seller_tools");
+    const hearthMode = adminToolsVisible
+      ? "admin"
+      : sellerAccessVisible
+        ? "seller"
+        : simpleModeRequested
+          ? "simple"
+          : "collector";
+    const hearthModeLabel = {
+      admin: "Admin command view",
+      seller: "Seller command view",
+      simple: "Simple family view",
+      collector: "Collector command view",
+    }[hearthMode];
+    const activeAnnouncements = (betaReadinessData.notifications || [])
+      .filter((entry) => !entry.dismissedAt && (entry.type === "announcement" || /new|update|announcement/i.test(`${entry.title || ""} ${entry.type || ""}`)))
+      .slice(0, 3);
+    const pendingBetaRequests = (shorelineState.adminBetaRequests || [])
+      .filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length +
+      (betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length;
+    const pendingKidsRequests = (shorelineState.adminLittleSparksApplications || [])
+      .filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending")).length +
+      (betaReadinessData.kidsApplications || []).filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending_review")).length;
+    const pendingFeedbackCount = (betaReadinessData.betaFeedback || [])
+      .filter((entry) => ["new", "reviewing", "pending"].includes(entry.status || "new")).length +
+      (betaReadinessData.appErrorLogs || []).length;
+    const pendingSuggestionCount = suggestions.filter((entry) =>
+      ["Submitted", "Under Review", "Needs More Info"].includes(entry.status)
+    ).length;
+    const marketReviewCount = workspaceMarketplaceListings.filter((listing) =>
+      listing.flagged ||
+      /pending|review|flag|reported/i.test(`${listing.status || ""} ${listing.moderationStatus || ""} ${listing.reviewStatus || ""}`)
+    ).length;
+    const latestVaultItem = [...activeVaultItems]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+    const latestScoutReport = (scoutSnapshot.reports || [])
+      .find((report) => report.verified || report.confidence === "verified" || /verified|confirmed/i.test(`${report.status || ""} ${report.confidence || ""}`)) ||
+      (scoutSnapshot.reports || [])[0];
+    const latestScoutStore = latestScoutReport ? getScoutReportStore(latestScoutReport) : bestScoutStore;
+    const latestScoutStoreName = latestScoutStore?.name || latestScoutReport?.storeName || latestScoutReport?.store_name || bestScoutStore?.name || "your followed stores";
+    const latestScoutItem = latestScoutReport?.itemName || latestScoutReport?.item_name || latestScoutReport?.productName || latestScoutReport?.product_name || "Pokemon stock";
+    const latestScoutTime = latestScoutReport
+      ? shortDate(latestScoutReport.reportedAt || latestScoutReport.reported_at || latestScoutReport.createdAt || latestScoutReport.created_at)
+      : "";
+    const receiptsNeedingReviewCount = (phase2RecentReceipts || []).filter((receipt) =>
+      /draft|review|pending|duplicate/i.test(`${receipt.status || ""}`)
+    ).length;
+    const forgeReviewCount = receiptsNeedingReviewCount + needsMarketCheckItems.length + missingSalePriceItems.length;
+    const kidsApplication = (betaReadinessData.kidsApplications || [])[0] || shorelineState.littleSparksApplication || null;
+    const getStartedCards = [
+      {
+        key: "start-collection",
+        eyebrow: "Vault",
+        title: "Start your collection",
+        detail: "Add your first card or sealed product so the app can track what you own.",
+        cta: "Add to Vault",
+        onClick: () => openQuickAddAction("vaultItem"),
+        accent: "vault",
+      },
+      {
+        key: "follow-stores",
+        eyebrow: "Scout",
+        title: "Follow stores near you",
+        detail: "Scout gets smarter when your nearby stores and reports are in one place.",
+        cta: "Open Scout",
+        onClick: () => setActiveTab("scout"),
+        accent: "scout",
+      },
+      {
+        key: "market-alert",
+        eyebrow: "Market",
+        title: "Create your first market alert",
+        detail: "Watch fair prices and keep chase items from slipping by.",
+        cta: "Open Market",
+        onClick: () => {
+          setActiveTab("market");
+          setTideTradrSubTab("watch");
+        },
+        accent: "market",
+      },
+      {
+        key: "kids-access",
+        eyebrow: "Spark",
+        title: "Request Kids Program access",
+        detail: "Parent-safe requests and kid-focused collecting stay separate from selling tools.",
+        cta: "Open Kids Program",
+        onClick: () => setActiveTab("kidsProgram"),
+        accent: "spark",
+      },
+      {
+        key: "first-receipt",
+        eyebrow: "Forge",
+        title: "Add your first receipt",
+        detail: "Receipts keep profit, inventory cost, and seller reporting accurate.",
+        cta: "Add Receipt",
+        onClick: () => openQuickAddAction("receipt"),
+        accent: "forge",
+        sellerOnly: true,
+      },
+    ].filter((card) => !card.sellerOnly || sellerAccessVisible);
+    const bestAction = (() => {
+      if (hearthMode === "admin") {
+        if (pendingBetaRequests) return {
+          badge: "Admin",
+          title: `${pendingBetaRequests} beta access request${pendingBetaRequests === 1 ? "" : "s"} need review`,
+          reason: "Approvals should be handled before regular app tasks.",
+          primaryLabel: "Open Admin Review",
+          onPrimary: () => {
+            setAdminReviewFilter("Beta Access");
+            setActiveTab("adminReview");
+          },
+          secondaryLabel: "Go Home",
+          onSecondary: () => setActiveTab("dashboard"),
+        };
+        if (pendingKidsRequests) return {
+          badge: "Kids Program",
+          title: `${pendingKidsRequests} Kids Program request${pendingKidsRequests === 1 ? "" : "s"} need review`,
+          reason: "Family-safe access requests are waiting for an admin decision.",
+          primaryLabel: "Review Requests",
+          onPrimary: () => {
+            setAdminReviewFilter("Kids Program Applications");
+            setActiveTab("adminReview");
+          },
+          secondaryLabel: "Open Spark",
+          onSecondary: () => setActiveTab("kidsProgram"),
+        };
+        if (scoutNeedsReviewReports.length) return {
+          badge: "Scout",
+          title: `${scoutNeedsReviewReports.length} Scout report${scoutNeedsReviewReports.length === 1 ? "" : "s"} need verification`,
+          reason: "Verified reports protect store history and restock predictions.",
+          primaryLabel: "Review Scout",
+          onPrimary: () => {
+            setAdminReviewFilter("Scout Report Review");
+            setActiveTab("adminReview");
+          },
+          secondaryLabel: "Open Scout",
+          onSecondary: () => setActiveTab("scout"),
+        };
+      }
+      if (hearthMode === "seller") {
+        if (receiptsNeedingReviewCount) return {
+          badge: "Forge",
+          title: `${receiptsNeedingReviewCount} receipt${receiptsNeedingReviewCount === 1 ? "" : "s"} need review`,
+          reason: "Profit and inventory cost stay accurate when receipts are reviewed.",
+          primaryLabel: "Review Receipts",
+          onPrimary: () => setActiveTab("expenses"),
+          secondaryLabel: "Open Forge",
+          onSecondary: () => setActiveTab("inventory"),
+        };
+        if (needsMarketCheckItems.length || missingSalePriceItems.length) return {
+          badge: "Forge",
+          title: `${needsMarketCheckItems.length + missingSalePriceItems.length} inventory item${needsMarketCheckItems.length + missingSalePriceItems.length === 1 ? "" : "s"} need pricing`,
+          reason: "Market value and planned sale prices keep seller decisions current.",
+          primaryLabel: "Open Forge",
+          onPrimary: () => setActiveTab("inventory"),
+          secondaryLabel: "Check Market",
+          onSecondary: () => setActiveTab("market"),
+        };
+      }
+      if (hearthMode === "simple") {
+        if (latestScoutReport) return {
+          badge: latestScoutReport.verified ? "Verified" : "Scout",
+          title: `${latestScoutStoreName} has a recent Scout signal`,
+          reason: `${latestScoutItem}${latestScoutTime ? ` was reported ${latestScoutTime}` : " was reported recently"}.`,
+          primaryLabel: "Open Scout",
+          onPrimary: () => setActiveTab("scout"),
+          secondaryLabel: "Submit Report",
+          onSecondary: () => openQuickAddAction("storeReport"),
+        };
+        if (!kidsApplication) return {
+          badge: "Spark",
+          title: "Request Kids Program access",
+          reason: "Keep kid-focused requests and safety rules in one parent-friendly place.",
+          primaryLabel: "Open Kids Program",
+          onPrimary: () => setActiveTab("kidsProgram"),
+          secondaryLabel: "Add to Vault",
+          onSecondary: () => openQuickAddAction("vaultItem"),
+        };
+      }
+      if (hearthMode === "collector") {
+        if (bestMarketMover) return {
+          badge: "Market",
+          title: `${bestMarketMover.name || bestMarketMover.productName || bestMarketMover.cardName || "A watched item"} needs a price check`,
+          reason: "Open Market to compare fair value before buying, selling, or trading.",
+          primaryLabel: "Open Market",
+          onPrimary: () => setActiveTab("market"),
+          secondaryLabel: "Add to Vault",
+          onSecondary: () => openQuickAddAction("vaultItem"),
+        };
+        if (latestScoutReport) return {
+          badge: latestScoutReport.verified ? "Verified" : "Scout",
+          title: `${latestScoutStoreName} has a recent Scout signal`,
+          reason: `${latestScoutItem}${latestScoutTime ? ` was reported ${latestScoutTime}` : " was reported recently"}.`,
+          primaryLabel: "Open Scout",
+          onPrimary: () => setActiveTab("scout"),
+          secondaryLabel: "Add Item",
+          onSecondary: () => openAddActionSheet("hearth-best-action"),
+        };
+        if (!activeVaultItems.length) return {
+          badge: "Vault",
+          title: "Start your collection",
+          reason: "Add the first item to your Vault so Hearth can surface smarter priorities.",
+          primaryLabel: "Add to Vault",
+          onPrimary: () => openQuickAddAction("vaultItem"),
+          secondaryLabel: "Search Market",
+          onSecondary: () => setActiveTab("market"),
+        };
+      }
+      if (activeAnnouncements.length) return {
+        badge: "New Stuff",
+        title: activeAnnouncements[0].title || "New Ember & Tide update",
+        reason: activeAnnouncements[0].body || activeAnnouncements[0].message || "There is a new app update or announcement to review.",
+        primaryLabel: "View Details",
+        onPrimary: () => setActiveTab("whatsNew"),
+        secondaryLabel: "Quick Add",
+        onSecondary: () => openAddActionSheet("hearth-announcement"),
+      };
+      return {
+        badge: "Calm Tide",
+        title: "No urgent actions today",
+        reason: "Check Scout Signals or add the next item to your Vault when you are ready.",
+        primaryLabel: "Open Scout",
+        onPrimary: () => setActiveTab("scout"),
+        secondaryLabel: "Quick Add",
+        onSecondary: () => openAddActionSheet("hearth-calm"),
+      };
+    })();
+    const quickActions = [
+      { key: "quick-add", label: "Quick Add", helper: "Search, scan, or add an item.", icon: "plus", onClick: () => openAddActionSheet("hearth") },
+      { key: "scout-report", label: "Scout Report", helper: "Log a store signal.", icon: "scout", onClick: () => openQuickAddAction("storeReport") },
+      { key: "vault", label: "Add to Vault", helper: "Save to collection.", icon: "vault", onClick: () => openQuickAddAction("vaultItem") },
+      { key: "market", label: "Open Market", helper: "Check fair value.", icon: "market", onClick: () => setActiveTab("market") },
+      sellerAccessVisible ? { key: "forge", label: "Open Forge", helper: "Inventory and receipts.", icon: "forge", onClick: () => setActiveTab("inventory") } : null,
+      hearthMode === "simple" || kidsApplication ? { key: "kids", label: "Kids Request", helper: "Open The Spark.", icon: "spark", onClick: () => setActiveTab("kidsProgram") } : null,
+    ].filter(Boolean);
+    const modePriorityCards = {
+      admin: [
+        { key: "beta", eyebrow: "Beta Access", title: "Access requests", value: pendingBetaRequests, detail: "Pending or paused beta access rows.", cta: "Review", onClick: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); }, accent: "admin" },
+        { key: "kids", eyebrow: "Kids Program", title: "Family requests", value: pendingKidsRequests, detail: "Little Sparks and family access review.", cta: "Review", onClick: () => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); }, accent: "spark" },
+        { key: "scout-review", eyebrow: "Scout", title: "Reports needing verification", value: scoutNeedsReviewReports.length, detail: "Review community reports before they shape predictions.", cta: "Open Queue", onClick: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); }, accent: "scout" },
+        { key: "market-flags", eyebrow: "Market", title: "Marketplace review", value: marketReviewCount, detail: "Flagged or pending listing review.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
+        { key: "feedback", eyebrow: "Support", title: "Feedback and bugs", value: pendingFeedbackCount + pendingSuggestionCount, detail: "Feedback, app errors, and shared data suggestions.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "tide" },
+      ],
+      seller: [
+        { key: "forge", eyebrow: "Forge Workshop", title: "Inventory health", value: `${forgeInventoryItems.length} items`, detail: `${forgeReviewCount} item${forgeReviewCount === 1 ? "" : "s"} need receipt, price, or listing review.`, cta: "Open Forge", onClick: () => setActiveTab("inventory"), accent: "forge" },
+        { key: "receipts", eyebrow: "Receipts", title: "Receipt review", value: receiptsNeedingReviewCount, detail: "Review receipts to keep cost basis accurate.", cta: "Add Receipt", onClick: () => openQuickAddAction("receipt"), accent: "forge" },
+        { key: "mileage", eyebrow: "Mileage", title: "Business miles", value: totalBusinessMiles.toFixed(1), detail: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} logged.`, cta: "Open Mileage", onClick: () => setActiveTab("mileage"), accent: "tide" },
+        { key: "sales", eyebrow: "Sales", title: "Profit snapshot", value: money(monthlyProfitLoss), detail: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} and ${workspaceExpenses.length} expense${workspaceExpenses.length === 1 ? "" : "s"} in this workspace.`, cta: "Open Reports", onClick: () => setActiveTab("reports"), accent: "gold" },
+      ],
+      simple: [
+        { key: "scout", eyebrow: "Scout Signals", title: latestScoutStoreName || "Nearby signals", value: scoutSnapshot.reports?.length || 0, detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` reported ${latestScoutTime}` : " reported recently"}.` : "No verified signals nearby yet.", cta: "Open Scout", onClick: () => setActiveTab("scout"), accent: "scout" },
+        { key: "spark", eyebrow: "Kids Program", title: "The Spark", value: kidsApplication?.status || "Ready", detail: kidsApplication ? "Your Kids Program request is tracked here." : "Parent-approved access, requests, and safety rules.", cta: "Open Spark", onClick: () => setActiveTab("kidsProgram"), accent: "spark" },
+        { key: "vault", eyebrow: "Vault", title: "Collection basics", value: `${activeVaultItems.length} items`, detail: activeVaultItems.length ? "Keep owned items organized for fair trades and family planning." : "Start with one saved card or sealed product.", cta: "Add Item", onClick: () => openQuickAddAction("vaultItem"), accent: "vault" },
+      ],
+      collector: [
+        { key: "vault", eyebrow: "Vault", title: "Collection summary", value: money(vaultValue), detail: `${activeVaultItems.length} active item${activeVaultItems.length === 1 ? "" : "s"} tracked.`, cta: activeVaultItems.length ? "Open Vault" : "Add Item", onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"), accent: "vault" },
+        { key: "recent", eyebrow: "Recent Additions", title: latestVaultItem?.name || "No additions yet", value: latestVaultItem ? `Qty ${latestVaultItem.quantity || 1}` : "0", detail: latestVaultItem ? `${vaultStatusLabel(normalizeVaultStatus(latestVaultItem))} in your Vault.` : "Add items to build your collection history.", cta: "Open Vault", onClick: () => setActiveTab("vault"), accent: "vault" },
+        { key: "sets", eyebrow: "Sets", title: "Missing set cards", value: missingSetCardCount, detail: missingSetCardCount ? "Open Vault Sets to continue completion tracking." : "Set completion will appear as your collection grows.", cta: "Open Sets", onClick: () => { setActiveTab("vault"); setVaultSubTab("sets"); }, accent: "tide" },
+        { key: "market", eyebrow: "Market Watch", title: bestMarketMover?.name || bestMarketMover?.productName || "No watched deals yet", value: bestMarketMover ? money(bestMarketMover.marketPrice || bestMarketMover.marketValue || 0) : workspaceWatchlist.length, detail: bestMarketMover ? "Compare current market value before buying or trading." : "Create a watchlist to track fair prices.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
+      ],
+    };
+    const priorityCards = modePriorityCards[hearthMode] || modePriorityCards.collector;
+    const fallbackCards = getStartedCards.filter((card) => {
+      if (card.key === "start-collection") return !activeVaultItems.length;
+      if (card.key === "follow-stores") return !(scoutSnapshot.reports || []).length;
+      if (card.key === "market-alert") return !workspaceWatchlist.length;
+      if (card.key === "kids-access") return hearthMode === "simple" && !kidsApplication;
+      if (card.key === "first-receipt") return sellerAccessVisible && !workspaceExpenses.length && !phase2RecentReceipts.length;
+      return false;
+    });
+    const recentRows = homeRecentActivity.length ? homeRecentActivity : [];
+    return (
+      <div className={`dashboard-layout home-clean-layout hearth-command-layout hearth-command-view hearth-mode-${hearthMode}`}>
+        <PageHeader
+          className={getHeaderCardClass("panel page-summary-card home-summary-card hearth-command-hero hearth-command-hero-compact")}
+          title="Hearth Home"
+          subtitle="What should I do next?"
+          actions={<button type="button" onClick={() => openAddActionSheet("home")}>Quick Add</button>}
+        />
+
+        {!betaReadinessData.onboarding?.completedAt ? renderOnboardingPanel() : null}
+
+        <section className={`panel hearth-best-action-card hearth-best-action-${hearthMode}`} aria-label="Today's best action">
+          <div className="hearth-best-action-copy">
+            <div className="hearth-card-kicker-row">
+              <p className="section-kicker">Today&apos;s Best Action</p>
+              <span className="hearth-mode-badge">{hearthModeLabel}</span>
+            </div>
+            <span className="hearth-trust-badge">{bestAction.badge}</span>
+            <h2>{bestAction.title}</h2>
+            <p>{bestAction.reason}</p>
+            <div className="hearth-best-action-buttons">
+              <button type="button" onClick={bestAction.onPrimary}>{bestAction.primaryLabel}</button>
+              {bestAction.secondaryLabel ? <button type="button" className="secondary-button" onClick={bestAction.onSecondary}>{bestAction.secondaryLabel}</button> : null}
+            </div>
+          </div>
+          <div className="hearth-best-action-art" aria-hidden="true">
+            <span className="hearth-art-flame" />
+            <span className="hearth-art-wave" />
+            <span className="hearth-art-card hearth-art-card-one" />
+            <span className="hearth-art-card hearth-art-card-two" />
+          </div>
+        </section>
+
+        <section className="panel hearth-quick-actions-panel" aria-label="Hearth quick actions">
+          <div className="compact-card-header">
+            <div>
+              <h2>Quick Actions</h2>
+              <p>The common moves, kept close.</p>
+            </div>
+          </div>
+          <div className="hearth-quick-action-grid">
+            {quickActions.map((action) => (
+              <button type="button" className="hearth-quick-action" key={action.key} onClick={action.onClick}>
+                <span className="hearth-quick-action-icon" aria-hidden="true"><AppNavIcon kind={action.icon} /></span>
+                <span>
+                  <strong>{action.label}</strong>
+                  <small>{action.helper}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="hearth-priority-grid" aria-label="Personalized priorities">
+          {priorityCards.map((card) => (
+            <article className={`panel hearth-priority-card hearth-accent-${card.accent || "tide"}`} key={card.key}>
+              <div>
+                <p className="section-kicker">{card.eyebrow}</p>
+                <h3>{card.title}</h3>
+                <p>{card.detail}</p>
+              </div>
+              <div className="hearth-priority-card-footer">
+                <strong>{card.value}</strong>
+                <button type="button" className="secondary-button" onClick={card.onClick}>{card.cta}</button>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        {fallbackCards.length ? (
+          <section className="panel hearth-start-panel" aria-label="Helpful next steps">
+            <div className="compact-card-header">
+              <div>
+                <h2>Helpful Next Steps</h2>
+                <p>These unlock better Hearth recommendations as your data grows.</p>
+              </div>
+            </div>
+            <div className="hearth-start-grid">
+              {fallbackCards.map((card) => (
+                <button type="button" className={`hearth-start-card hearth-accent-${card.accent || "tide"}`} key={card.key} onClick={card.onClick}>
+                  <span>{card.eyebrow}</span>
+                  <strong>{card.title}</strong>
+                  <small>{card.detail}</small>
+                  <b>{card.cta}</b>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="panel hearth-recent-panel" aria-label="Recent activity">
+          <div className="compact-card-header">
+            <div>
+              <h2>Recent Activity</h2>
+              <p>Latest meaningful movement across Scout, Vault, Market, and Forge.</p>
+            </div>
+          </div>
+          <div className="home-list compact-home-list hearth-recent-list">
+            {recentRows.length ? recentRows.map((activity) => (
+              <button type="button" className="home-list-row hearth-recent-row" key={activity.id} onClick={activity.action}>
+                <span>
+                  <strong>{activity.title}</strong>
+                  <small>{activity.label} | {activity.detail}</small>
+                </span>
+                <b>Open</b>
+              </button>
+            )) : (
+              <div className="small-empty-state hearth-empty-state">
+                <strong>No recent activity yet.</strong>
+                <p>Add a Vault item, submit a Scout report, or create a market watch to start building your Hearth.</p>
+                <button type="button" className="secondary-button" onClick={() => openAddActionSheet("hearth-empty")}>Quick Add</button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {activeAnnouncements.length ? (
+          <section className="panel hearth-announcements-panel" aria-label="Announcements and new stuff">
+            <div className="compact-card-header">
+              <div>
+                <h2>New Stuff</h2>
+                <p>Small app updates that matter today.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("whatsNew")}>View All</button>
+            </div>
+            <div className="hearth-announcement-list">
+              {activeAnnouncements.map((entry) => (
+                <button type="button" className="hearth-announcement-row" key={entry.id || entry.title} onClick={() => setActiveTab("whatsNew")}>
+                  <span>
+                    <strong>{entry.title || "Ember & Tide update"}</strong>
+                    <small>{entry.body || entry.message || "Open announcements for details."}</small>
+                  </span>
+                  <b>{entry.readAt ? "Seen" : "New"}</b>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
+    );
+  }
+
   function renderScoutForecastPanel() {
     return (
       <section className="scout-combined-section">
@@ -31867,7 +32289,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         {!activeTabLocked && activeTab === "profileProgress" && renderProfileProgressPage()}
         {!activeTabLocked && activeTab === "membership" && renderMembershipFoundation()}
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
-        {!activeTabLocked && activeTab === "dashboard" && (
+        {!activeTabLocked && activeTab === "dashboard" && renderHearthHomeCommandView()}
+        {!activeTabLocked && false && activeTab === "dashboard" && (
           <div className="dashboard-layout home-clean-layout hearth-command-layout">
             <PageHeader
               className={getHeaderCardClass("panel page-summary-card home-summary-card hearth-command-hero")}

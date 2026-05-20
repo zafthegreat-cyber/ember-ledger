@@ -130,6 +130,444 @@
   background: var(--cream);
 }
 
+/* Hearth Home command view */
+.app .hearth-command-view,
+.app-command-shell .hearth-command-view,
+.app-shell-dark .hearth-command-view {
+  display: grid;
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto;
+  color: #fff8e8;
+}
+
+.app .hearth-command-hero-compact,
+.app-command-shell .hearth-command-hero-compact,
+.app-shell-dark .hearth-command-hero-compact {
+  min-height: 0 !important;
+  padding: 18px !important;
+  border: 1px solid rgba(255, 184, 92, 0.22) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 122, 26, 0.12), rgba(6, 25, 46, 0.88) 44%, rgba(12, 37, 62, 0.86)),
+    rgba(5, 13, 28, 0.92) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.app .hearth-command-hero-compact::after,
+.app-command-shell .hearth-command-hero-compact::after,
+.app-shell-dark .hearth-command-hero-compact::after {
+  display: none !important;
+}
+
+.app .hearth-command-hero-compact h1,
+.app .hearth-command-hero-compact h2,
+.app-command-shell .hearth-command-hero-compact h1,
+.app-command-shell .hearth-command-hero-compact h2,
+.app-shell-dark .hearth-command-hero-compact h1,
+.app-shell-dark .hearth-command-hero-compact h2 {
+  color: #fff8e8 !important;
+}
+
+.app .hearth-command-hero-compact p,
+.app-command-shell .hearth-command-hero-compact p,
+.app-shell-dark .hearth-command-hero-compact p {
+  color: rgba(236, 246, 255, 0.78) !important;
+}
+
+.hearth-best-action-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+  gap: 18px;
+  overflow: hidden;
+  min-height: 260px;
+  border-color: rgba(255, 184, 92, 0.28) !important;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(0, 210, 255, 0.2), transparent 28%),
+    radial-gradient(circle at 72% 86%, rgba(255, 88, 42, 0.22), transparent 26%),
+    linear-gradient(135deg, rgba(8, 21, 42, 0.96), rgba(5, 14, 31, 0.96) 58%, rgba(13, 35, 56, 0.92)) !important;
+}
+
+.hearth-best-action-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  max-width: 720px;
+}
+
+.hearth-card-kicker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hearth-mode-badge,
+.hearth-trust-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  border: 1px solid rgba(124, 231, 255, 0.26);
+  background: rgba(5, 18, 34, 0.72);
+  color: #e9f8ff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.hearth-trust-badge {
+  border-color: rgba(255, 184, 92, 0.32);
+  color: #fff1c8;
+  background: rgba(255, 135, 42, 0.12);
+}
+
+.hearth-best-action-card h2 {
+  margin: 0;
+  color: #fff8e8;
+  font-size: clamp(1.65rem, 3vw, 3rem);
+  line-height: 1.04;
+  letter-spacing: 0;
+}
+
+.hearth-best-action-card p {
+  margin: 0;
+  color: rgba(236, 246, 255, 0.82);
+  line-height: 1.5;
+  max-width: 660px;
+}
+
+.hearth-best-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.hearth-best-action-art {
+  position: relative;
+  min-height: 220px;
+  border-radius: 22px;
+  border: 1px solid rgba(124, 231, 255, 0.18);
+  background:
+    radial-gradient(circle at 48% 35%, rgba(255, 166, 46, 0.22), transparent 24%),
+    radial-gradient(circle at 60% 72%, rgba(0, 195, 255, 0.18), transparent 30%),
+    rgba(3, 12, 26, 0.5);
+  box-shadow: inset 0 0 48px rgba(124, 231, 255, 0.06);
+}
+
+.hearth-art-flame,
+.hearth-art-wave,
+.hearth-art-card {
+  position: absolute;
+  display: block;
+}
+
+.hearth-art-flame {
+  width: 92px;
+  height: 132px;
+  left: 48%;
+  top: 18%;
+  transform: translateX(-50%) rotate(8deg);
+  border-radius: 64% 36% 58% 42% / 72% 34% 66% 28%;
+  background: linear-gradient(160deg, #ffd36b 0%, #ff7a1a 44%, #e93f5e 100%);
+  box-shadow: 0 0 36px rgba(255, 122, 26, 0.5);
+}
+
+.hearth-art-wave {
+  width: 168px;
+  height: 62px;
+  left: 50%;
+  top: 53%;
+  transform: translateX(-50%) rotate(-8deg);
+  border-radius: 999px 999px 42px 42px;
+  border-bottom: 16px solid rgba(0, 210, 255, 0.9);
+  border-left: 14px solid rgba(55, 124, 255, 0.68);
+  background: linear-gradient(160deg, rgba(0, 210, 255, 0.35), rgba(54, 95, 255, 0.08));
+  box-shadow: 0 0 32px rgba(0, 210, 255, 0.36);
+}
+
+.hearth-art-card {
+  width: 58px;
+  height: 82px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(145deg, rgba(255, 248, 232, 0.08), rgba(12, 34, 58, 0.7));
+}
+
+.hearth-art-card-one {
+  left: 18%;
+  bottom: 16%;
+  transform: rotate(-12deg);
+}
+
+.hearth-art-card-two {
+  right: 17%;
+  top: 18%;
+  transform: rotate(14deg);
+}
+
+.hearth-quick-actions-panel,
+.hearth-start-panel,
+.hearth-recent-panel,
+.hearth-announcements-panel {
+  background: rgba(5, 15, 31, 0.88) !important;
+  border-color: rgba(124, 231, 255, 0.16) !important;
+  color: #fff8e8 !important;
+}
+
+.hearth-quick-action-grid,
+.hearth-start-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(156px, 1fr));
+  gap: 10px;
+}
+
+.hearth-quick-action,
+.hearth-start-card,
+.hearth-announcement-row {
+  width: 100%;
+  min-height: 74px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 231, 255, 0.17);
+  background: rgba(7, 22, 42, 0.78);
+  color: #fff8e8;
+  text-align: left;
+  box-shadow: none;
+}
+
+.hearth-quick-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+}
+
+.hearth-quick-action:hover,
+.hearth-start-card:hover,
+.hearth-announcement-row:hover,
+.hearth-recent-row:hover {
+  border-color: rgba(124, 231, 255, 0.42);
+  background: rgba(10, 34, 58, 0.92);
+}
+
+.hearth-quick-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  color: #7ce7ff;
+  background: rgba(124, 231, 255, 0.1);
+  border: 1px solid rgba(124, 231, 255, 0.18);
+}
+
+.hearth-quick-action strong,
+.hearth-start-card strong,
+.hearth-announcement-row strong,
+.hearth-recent-row strong {
+  display: block;
+  color: #fff8e8;
+  line-height: 1.2;
+}
+
+.hearth-quick-action small,
+.hearth-start-card small,
+.hearth-announcement-row small,
+.hearth-recent-row small {
+  display: block;
+  color: rgba(229, 240, 255, 0.72);
+  line-height: 1.35;
+  margin-top: 3px;
+}
+
+.hearth-priority-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.hearth-priority-card {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(5, 15, 31, 0.88) !important;
+  color: #fff8e8 !important;
+}
+
+.hearth-priority-card h3 {
+  margin: 2px 0 8px;
+  color: #fff8e8;
+  font-size: 1.08rem;
+  line-height: 1.22;
+}
+
+.hearth-priority-card p {
+  margin: 0;
+  color: rgba(229, 240, 255, 0.74);
+  line-height: 1.42;
+}
+
+.hearth-priority-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hearth-priority-card-footer strong {
+  color: #fff1c8;
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.hearth-accent-scout { border-color: rgba(124, 231, 255, 0.28) !important; }
+.hearth-accent-vault { border-color: rgba(68, 128, 255, 0.3) !important; }
+.hearth-accent-market { border-color: rgba(220, 92, 255, 0.28) !important; }
+.hearth-accent-forge { border-color: rgba(255, 122, 26, 0.3) !important; }
+.hearth-accent-spark,
+.hearth-accent-gold { border-color: rgba(255, 207, 92, 0.32) !important; }
+.hearth-accent-admin,
+.hearth-accent-tide { border-color: rgba(124, 231, 255, 0.28) !important; }
+
+.hearth-start-card {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 12px;
+}
+
+.hearth-start-card span {
+  color: #7ce7ff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hearth-start-card b {
+  color: #fff1c8;
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.hearth-recent-list,
+.hearth-announcement-list {
+  display: grid;
+  gap: 8px;
+}
+
+.hearth-recent-row,
+.hearth-announcement-row {
+  border-color: rgba(124, 231, 255, 0.14) !important;
+  background: rgba(6, 20, 38, 0.78) !important;
+  color: #fff8e8 !important;
+}
+
+.hearth-recent-row b,
+.hearth-announcement-row b {
+  color: #7ce7ff;
+}
+
+.hearth-empty-state {
+  color: #fff8e8;
+  border: 1px dashed rgba(124, 231, 255, 0.24);
+  background: rgba(6, 20, 38, 0.72);
+}
+
+.hearth-empty-state p {
+  color: rgba(229, 240, 255, 0.75);
+}
+
+@media (min-width: 980px) {
+  .hearth-command-view {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .hearth-command-view > .hearth-command-hero-compact,
+  .hearth-command-view > .hearth-best-action-card,
+  .hearth-command-view > .hearth-quick-actions-panel,
+  .hearth-command-view > .hearth-priority-grid,
+  .hearth-command-view > .hearth-start-panel,
+  .hearth-command-view > .hearth-recent-panel,
+  .hearth-command-view > .hearth-announcements-panel,
+  .hearth-command-view > .beta-onboarding-panel {
+    grid-column: 1 / -1;
+  }
+
+  .hearth-command-view > .hearth-recent-panel {
+    grid-column: span 8;
+  }
+
+  .hearth-command-view > .hearth-announcements-panel {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 780px) {
+  .hearth-command-view {
+    gap: 12px;
+  }
+
+  .hearth-best-action-card {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .hearth-best-action-art {
+    min-height: 132px;
+    order: -1;
+  }
+
+  .hearth-art-flame {
+    width: 62px;
+    height: 92px;
+    top: 13%;
+  }
+
+  .hearth-art-wave {
+    width: 128px;
+    height: 44px;
+    top: 55%;
+    border-bottom-width: 11px;
+  }
+
+  .hearth-best-action-card h2 {
+    font-size: 1.55rem;
+  }
+
+  .hearth-best-action-buttons,
+  .hearth-priority-card-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .hearth-best-action-buttons button,
+  .hearth-priority-card-footer button {
+    width: 100%;
+  }
+
+  .hearth-quick-action-grid,
+  .hearth-priority-grid,
+  .hearth-start-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hearth-quick-action {
+    min-height: 68px;
+  }
+}
+
 /* Focused Forge inventory repair: keep cards readable and prevent More menus from clipping. */
 .forge-page .compact-inventory-list,
 .forge-home-inventory-section .compact-inventory-list,
