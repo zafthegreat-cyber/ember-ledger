@@ -34109,3 +34109,353 @@ body,
     white-space: normal;
   }
 }
+
+/* Focused Kids Program: The Spark pass */
+.app .spark-program-layout,
+.app-command-shell .spark-program-layout,
+.app-shell-dark .spark-program-layout {
+  display: grid;
+  gap: 16px;
+  color: #f8fbff;
+}
+
+.app .spark-section-grid,
+.app-command-shell .spark-section-grid,
+.app-shell-dark .spark-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.app .spark-section-card,
+.app-command-shell .spark-section-card,
+.app-shell-dark .spark-section-card,
+.app .spark-parent-safe-panel,
+.app-command-shell .spark-parent-safe-panel,
+.app-shell-dark .spark-parent-safe-panel,
+.app .spark-safety-rules-panel,
+.app-command-shell .spark-safety-rules-panel,
+.app-shell-dark .spark-safety-rules-panel,
+.app .spark-request-flow,
+.app-command-shell .spark-request-flow,
+.app-shell-dark .spark-request-flow,
+.app .spark-private-request-card,
+.app-command-shell .spark-private-request-card,
+.app-shell-dark .spark-private-request-card {
+  border: 1px solid rgba(255, 214, 107, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 184, 92, 0.12), transparent 12rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.014)),
+    rgba(6, 15, 31, 0.84);
+  color: #f8fbff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 32px rgba(0, 0, 0, 0.18);
+}
+
+.app .spark-section-card,
+.app-command-shell .spark-section-card,
+.app-shell-dark .spark-section-card {
+  display: grid;
+  gap: 7px;
+  min-height: 138px;
+  padding: 14px;
+}
+
+.app .spark-section-card span,
+.app-command-shell .spark-section-card span,
+.app-shell-dark .spark-section-card span,
+.app .spark-rule-card span,
+.app-command-shell .spark-rule-card span,
+.app-shell-dark .spark-rule-card span {
+  color: #ffd66b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app .spark-section-card strong,
+.app-command-shell .spark-section-card strong,
+.app-shell-dark .spark-section-card strong {
+  color: #fff7ed;
+  font-size: 1.08rem;
+  line-height: 1.15;
+}
+
+.app .spark-section-card p,
+.app-command-shell .spark-section-card p,
+.app-shell-dark .spark-section-card p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.74);
+  line-height: 1.34;
+}
+
+.app .spark-parent-safe-panel,
+.app-command-shell .spark-parent-safe-panel,
+.app-shell-dark .spark-parent-safe-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.9fr);
+  gap: 14px;
+  padding: clamp(14px, 2.4vw, 18px);
+  align-items: start;
+}
+
+.app .spark-parent-safe-panel h3,
+.app-command-shell .spark-parent-safe-panel h3,
+.app-shell-dark .spark-parent-safe-panel h3,
+.app .spark-safety-rules-panel h3,
+.app-command-shell .spark-safety-rules-panel h3,
+.app-shell-dark .spark-safety-rules-panel h3,
+.app .spark-request-flow h3,
+.app-command-shell .spark-request-flow h3,
+.app-shell-dark .spark-request-flow h3,
+.app .spark-request-flow h4,
+.app-command-shell .spark-request-flow h4,
+.app-shell-dark .spark-request-flow h4,
+.app .spark-private-request-card h3,
+.app-command-shell .spark-private-request-card h3,
+.app-shell-dark .spark-private-request-card h3 {
+  margin: 0;
+  color: #fff7ed !important;
+  line-height: 1.16;
+}
+
+.app .spark-parent-safe-panel p,
+.app-command-shell .spark-parent-safe-panel p,
+.app-shell-dark .spark-parent-safe-panel p,
+.app .spark-safety-rules-panel p,
+.app-command-shell .spark-safety-rules-panel p,
+.app-shell-dark .spark-safety-rules-panel p,
+.app .spark-private-request-card p,
+.app-command-shell .spark-private-request-card p,
+.app-shell-dark .spark-private-request-card p {
+  margin: 6px 0 0;
+  color: rgba(232, 246, 255, 0.76) !important;
+  line-height: 1.36;
+}
+
+.app .spark-safety-rules-panel,
+.app-command-shell .spark-safety-rules-panel,
+.app-shell-dark .spark-safety-rules-panel,
+.app .spark-request-flow,
+.app-command-shell .spark-request-flow,
+.app-shell-dark .spark-request-flow {
+  display: grid;
+  gap: 14px;
+  padding: clamp(14px, 2.4vw, 18px);
+}
+
+.app .spark-rule-grid,
+.app-command-shell .spark-rule-grid,
+.app-shell-dark .spark-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.app .spark-rule-grid.compact,
+.app-command-shell .spark-rule-grid.compact,
+.app-shell-dark .spark-rule-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.app .spark-rule-card,
+.app-command-shell .spark-rule-card,
+.app-shell-dark .spark-rule-card {
+  display: grid;
+  gap: 5px;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid rgba(255, 214, 107, 0.18);
+  border-radius: 14px;
+  background: rgba(2, 8, 22, 0.58);
+}
+
+.app .spark-rule-card strong,
+.app-command-shell .spark-rule-card strong,
+.app-shell-dark .spark-rule-card strong {
+  color: #fff4cf;
+  line-height: 1.22;
+}
+
+.app .spark-empty-state,
+.app-command-shell .spark-empty-state,
+.app-shell-dark .spark-empty-state {
+  border-color: rgba(255, 184, 92, 0.28) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 184, 92, 0.16), transparent 16rem),
+    rgba(7, 18, 36, 0.9) !important;
+  color: #f8fbff !important;
+}
+
+.app .spark-private-request-card,
+.app-command-shell .spark-private-request-card,
+.app-shell-dark .spark-private-request-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: start;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.app .spark-private-request-card span:first-child,
+.app-command-shell .spark-private-request-card span:first-child,
+.app-shell-dark .spark-private-request-card span:first-child {
+  color: #ffd66b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app .spark-request-heading,
+.app-command-shell .spark-request-heading,
+.app-shell-dark .spark-request-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.app .spark-request-heading p,
+.app-command-shell .spark-request-heading p,
+.app-shell-dark .spark-request-heading p {
+  margin: 5px 0 0;
+  color: rgba(232, 246, 255, 0.74);
+}
+
+.app .spark-stepper,
+.app-command-shell .spark-stepper,
+.app-shell-dark .spark-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app .spark-stepper button,
+.app-command-shell .spark-stepper button,
+.app-shell-dark .spark-stepper button {
+  display: grid;
+  gap: 5px;
+  justify-items: start;
+  min-height: 62px;
+  min-width: 0;
+  padding: 9px;
+  border-color: rgba(124, 231, 255, 0.14) !important;
+  border-radius: 14px;
+  background: rgba(2, 8, 22, 0.58) !important;
+  color: rgba(232, 246, 255, 0.76) !important;
+  text-align: left;
+}
+
+.app .spark-stepper button.active,
+.app-command-shell .spark-stepper button.active,
+.app-shell-dark .spark-stepper button.active {
+  border-color: rgba(255, 214, 107, 0.44) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 184, 92, 0.22), transparent 6rem),
+    rgba(74, 38, 8, 0.44) !important;
+  color: #fff7ed !important;
+}
+
+.app .spark-stepper span,
+.app-command-shell .spark-stepper span,
+.app-shell-dark .spark-stepper span {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 214, 107, 0.16);
+  color: #ffd66b;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.app .spark-stepper strong,
+.app-command-shell .spark-stepper strong,
+.app-shell-dark .spark-stepper strong {
+  max-width: 100%;
+  color: inherit;
+  font-size: 0.74rem;
+  line-height: 1.15;
+}
+
+.app .spark-flow-panel,
+.app-command-shell .spark-flow-panel,
+.app-shell-dark .spark-flow-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(2, 8, 22, 0.45);
+}
+
+.app .spark-flow-actions,
+.app-command-shell .spark-flow-actions,
+.app-shell-dark .spark-flow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.app .spark-flow-actions button,
+.app-command-shell .spark-flow-actions button,
+.app-shell-dark .spark-flow-actions button {
+  min-width: 132px;
+}
+
+.app .spark-request-flow input,
+.app .spark-request-flow select,
+.app .spark-request-flow textarea,
+.app-command-shell .spark-request-flow input,
+.app-command-shell .spark-request-flow select,
+.app-command-shell .spark-request-flow textarea,
+.app-shell-dark .spark-request-flow input,
+.app-shell-dark .spark-request-flow select,
+.app-shell-dark .spark-request-flow textarea {
+  color: #f8fbff !important;
+  background: rgba(3, 10, 23, 0.82) !important;
+  border-color: rgba(255, 214, 107, 0.18) !important;
+}
+
+@media (max-width: 820px) {
+  .app .spark-parent-safe-panel,
+  .app-command-shell .spark-parent-safe-panel,
+  .app-shell-dark .spark-parent-safe-panel,
+  .app .spark-stepper,
+  .app-command-shell .spark-stepper,
+  .app-shell-dark .spark-stepper {
+    grid-template-columns: 1fr;
+  }
+
+  .app .spark-stepper,
+  .app-command-shell .spark-stepper,
+  .app-shell-dark .spark-stepper {
+    max-width: 100%;
+  }
+
+  .app .spark-stepper button,
+  .app-command-shell .spark-stepper button,
+  .app-shell-dark .spark-stepper button {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    min-height: 46px;
+  }
+
+  .app .spark-flow-actions,
+  .app-command-shell .spark-flow-actions,
+  .app-shell-dark .spark-flow-actions {
+    justify-content: stretch;
+  }
+
+  .app .spark-flow-actions button,
+  .app-command-shell .spark-flow-actions button,
+  .app-shell-dark .spark-flow-actions button {
+    flex: 1 1 100%;
+  }
+}

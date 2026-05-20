@@ -3805,6 +3805,7 @@ export default function App() {
     agreesNoResale: false,
     consentContact: false,
   });
+  const [kidsProgramRequestStep, setKidsProgramRequestStep] = useState(1);
   const [sponsorForm, setSponsorForm] = useState({
     name: "",
     businessName: "",
@@ -6233,6 +6234,10 @@ export default function App() {
 
   function submitKidsProgramApplication(event) {
     event.preventDefault();
+    if (kidsProgramRequestStep !== 5) {
+      setKidsProgramRequestStep((current) => Math.min(5, current + 1));
+      return;
+    }
     if (guestPreviewActive || !user) {
       setVaultToast("Create a free account to apply for Kids Program access.");
       return;
@@ -6284,6 +6289,7 @@ export default function App() {
       actionUrl: "/kids-program",
     });
     setVaultToast("Kids Program application submitted for review.");
+    setKidsProgramRequestStep(5);
   }
 
   function updateKidsProgramApplicationStatus(applicationId, status) {
@@ -23838,17 +23844,47 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       const entryEmail = String(entry.email || "").toLowerCase();
       return (user?.id && entryUser === String(user.id)) || (email && entryEmail === email.toLowerCase());
     });
+    const sparkSafetyRules = [
+      "Parent-approved access only.",
+      "No private child messaging.",
+      "Parent-approved trades only.",
+      "No scalper pricing.",
+      "Retail-first access when inventory allows.",
+    ];
+    const sparkSections = [
+      {
+        key: "parent-requests",
+        title: "Parent Requests",
+        value: activeApplication ? statusLabel(activeApplication.status || "pending_review") : "No open requests",
+        detail: activeApplication ? "Your family request is private and waiting for review." : "Parent or guardian starts every Kids Program request.",
+      },
+      { key: "missions", title: "Kid Missions", value: "Coming soon", detail: "Simple collecting goals that teach care, fairness, and patience." },
+      { key: "giveaways", title: "Giveaways", value: "Inventory based", detail: "Retail-first, parent-approved opportunities when stock allows." },
+      { key: "events", title: "Events", value: "Family safe", detail: "Local and community events stay supervised and clearly announced." },
+      { key: "rewards", title: "Rewards", value: "Spark points", detail: "Positive collecting habits, not pressure to spend or flip." },
+      { key: "rules", title: "Safety Rules", value: "Always on", detail: "No private child messaging, no scalper pricing, and parent-approved trades only." },
+    ];
+    const requestSteps = [
+      "Child/family request",
+      "Product wanted",
+      "Parent contact",
+      "Review rules",
+      "Submit",
+    ];
+    const requestAccessSummary = kidsProgramForm.requestedAccess.length ? kidsProgramForm.requestedAccess.join(", ") : "Not selected yet";
+    const scrollToSparkRequest = () => document.getElementById("spark-request-flow")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const scrollToSparkRules = () => document.getElementById("spark-safety-rules")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return (
       <>
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card kids-spark-header")}
-          title="Kids Program / The Spark"
-          subtitle="For the next generation of collectors."
+          title="Kids Program: The Spark"
+          subtitle="How do we help young collectors safely? Parent-safe first, cute second."
           actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
           summary={(
             <div className="settings-header-summary">
+              <span>Protect the spark. Bring Pokemon back to kids.</span>
               <span>{KIDS_PROGRAM_ANTI_RESALE_COPY}</span>
-              <span>Checkout is not built in this beta task.</span>
             </div>
           )}
         />
@@ -23859,16 +23895,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <div className="spark-mascot-copy">
             <h2>The Spark</h2>
-            <p>Warm, fair collecting support for kids and families. No resale pressure, no gambling feel, just a safer way to gather and collect.</p>
+            <p>Parent-approved requests, safe collecting missions, fair access, and supervised family updates. No private child messaging. No resale pressure.</p>
             <div className="spark-status-grid">
-              <div><span>Open Requests</span><strong>{activeApplication ? "1" : "0"}</strong></div>
-              <div><span>Next Retail Drop</span><strong>When inventory allows</strong></div>
+              <div><span>Parent Requests</span><strong>{activeApplication ? "1 private" : "0 open"}</strong></div>
+              <div><span>Fair Access</span><strong>Retail-first</strong></div>
             </div>
             <div className="quick-actions spark-action-row">
-              <button type="button" className="secondary-button" onClick={() => setVaultToast("Kids Program details are included below.")}>How It Works</button>
-              <button type="button" onClick={() => document.querySelector(".beta-form-card")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Request Access</button>
-              <button type="button" className="secondary-button" onClick={() => setVaultToast("Giveaways will appear when active.")}>Giveaways</button>
-              <button type="button" className="secondary-button" onClick={() => setVaultToast("Family events are coming soon.")}>Events</button>
+              <button type="button" onClick={scrollToSparkRequest}>Request Kid Access</button>
+              <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
             </div>
           </div>
         </section>
@@ -23885,83 +23919,199 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           </section>
         ) : null}
-        <section className="panel kids-program-layout">
-          <div className="beta-info-card">
-            <h3>Program status</h3>
-            {activeApplication ? (
-              <>
-                <span className="status-badge">{activeApplication.status || "pending_review"}</span>
-                <p>No Kids Program drops are available right now. We'll post opportunities as inventory allows.</p>
-              </>
-            ) : (
-              <p>{BETA_EMPTY_STATES.kids.body}</p>
-            )}
+        <section className="panel kids-program-layout spark-program-layout">
+          <div className="spark-section-grid" aria-label="Kids Program sections">
+            {sparkSections.map((section) => (
+              <article className="spark-section-card" key={section.key}>
+                <span>{section.title}</span>
+                <strong>{section.value}</strong>
+                <p>{section.detail}</p>
+              </article>
+            ))}
           </div>
-          <div className="beta-info-card for-parents-card">
-            <h3>For Parents</h3>
-            <p>Ember & Tide is built with families in mind. Kids Program participation should be managed by a parent or guardian. We keep child information minimal, use age ranges instead of birthdates, and do not create public child profiles.</p>
+
+          <div className="spark-parent-safe-panel">
+            <div>
+              <h3>Parent-safe by design</h3>
+              <p>Ember & Tide is built with families in mind. Kids Program participation is managed by a parent or guardian. We keep child information minimal, use age ranges instead of birthdates, and do not create public child profiles.</p>
+            </div>
             <ul className="clean-bullet-list">
               {FOR_PARENTS_COPY.map((point) => <li key={point}>{point}</li>)}
             </ul>
           </div>
-          <form className="form beta-form-card" onSubmit={submitKidsProgramApplication} noValidate>
-            <h3>Apply for Kids Program access</h3>
-            <p className="compact-subtitle">We collect minimal child information: no full child names, exact birthdates, IDs, or addresses.</p>
-            <Field label="Parent/guardian name">
-              <input value={kidsProgramForm.parentName} onChange={(event) => updateKidsProgramField("parentName", event.target.value)} placeholder="Parent or guardian" />
-            </Field>
-            <Field label="Email">
-              <input type="email" value={kidsProgramForm.email || email} onChange={(event) => updateKidsProgramField("email", event.target.value)} placeholder="you@example.com" />
-            </Field>
-            <div className="inline-input-grid">
-              <Field label="ZIP code">
-                <input value={kidsProgramForm.zipCode} onChange={(event) => updateKidsProgramField("zipCode", event.target.value)} inputMode="numeric" />
-              </Field>
-              <Field label="Child age range">
-                <select value={kidsProgramForm.childAgeRange} onChange={(event) => updateKidsProgramField("childAgeRange", event.target.value)}>
-                  <option value="">Choose range</option>
-                  <option value="under_6">Under 6</option>
-                  <option value="6_8">6-8</option>
-                  <option value="9_12">9-12</option>
-                  <option value="13_17">13-17</option>
-                </select>
-              </Field>
-            </div>
-            <Field label="Child first name optional">
-              <input value={kidsProgramForm.childFirstName} onChange={(event) => updateKidsProgramField("childFirstName", event.target.value)} />
-            </Field>
-            <Field label="Favorite Pokemon">
-              <input value={kidsProgramForm.favoritePokemon} onChange={(event) => updateKidsProgramField("favoritePokemon", event.target.value)} />
-            </Field>
-            <Field label="What are they collecting right now?">
-              <textarea value={kidsProgramForm.collectingInterest} onChange={(event) => updateKidsProgramField("collectingInterest", event.target.value)} />
-            </Field>
-            <Field label="What are you hoping to access?">
-              <div className="checkbox-grid">
-                {KIDS_PROGRAM_ACCESS_OPTIONS.map((option) => (
-                  <label key={option}>
-                    <input
-                      type="checkbox"
-                      checked={kidsProgramForm.requestedAccess.includes(option)}
-                      onChange={() => updateKidsProgramField("requestedAccess", toggleArrayValue(kidsProgramForm.requestedAccess, option))}
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
+
+          <section id="spark-safety-rules" className="spark-safety-rules-panel" aria-label="Kids Program safety rules">
+            <div className="compact-card-header">
+              <div>
+                <h3>Safety Rules</h3>
+                <p>These rules apply before any request, mission, giveaway, event, reward, or trade can move forward.</p>
               </div>
-            </Field>
-            <Field label="Reason optional">
-              <textarea value={kidsProgramForm.reason} onChange={(event) => updateKidsProgramField("reason", event.target.value)} />
-            </Field>
-            <label className="checkbox-row">
-              <input type="checkbox" checked={kidsProgramForm.agreesNoResale} onChange={(event) => updateKidsProgramField("agreesNoResale", event.target.checked)} />
-              <span>I understand Kids Program items are intended for children and families, not resale.</span>
-            </label>
-            <label className="checkbox-row">
-              <input type="checkbox" checked={kidsProgramForm.consentContact} onChange={(event) => updateKidsProgramField("consentContact", event.target.checked)} />
-              <span>I agree Ember & Tide may contact me about Kids Program opportunities.</span>
-            </label>
-            <button type="submit">{guestPreviewActive ? "Create account to apply" : "Submit application"}</button>
+              <span className="trust-badge trust-badge--kid">Parent approved</span>
+            </div>
+            <div className="spark-rule-grid">
+              {sparkSafetyRules.map((rule) => (
+                <div className="spark-rule-card" key={rule}>
+                  <span>Rule</span>
+                  <strong>{rule}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {!activeApplication ? (
+            <div className="empty-state spark-empty-state">
+              <h3>No open requests yet.</h3>
+              <p>Start with a parent-approved request, or review the rules before submitting anything.</p>
+              <div className="quick-actions">
+                <button type="button" onClick={scrollToSparkRequest}>Request Kid Access</button>
+                <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
+              </div>
+            </div>
+          ) : (
+            <div className="spark-private-request-card">
+              <div>
+                <span>Parent Requests</span>
+                <h3>Your request is private</h3>
+                <p>Status: {statusLabel(activeApplication.status || "pending_review")}. Child/family request details are not public.</p>
+              </div>
+              <span className="status-badge">{activeApplication.status || "pending_review"}</span>
+            </div>
+          )}
+
+          <form id="spark-request-flow" className="form beta-form-card spark-request-flow" onSubmit={submitKidsProgramApplication} noValidate>
+            <div className="spark-request-heading">
+              <div>
+                <h3>Kids request flow</h3>
+                <p>Step {kidsProgramRequestStep} of 5: {requestSteps[kidsProgramRequestStep - 1]}</p>
+              </div>
+              <span className="status-badge">Parent managed</span>
+            </div>
+            <div className="spark-stepper" aria-label="Kids request steps">
+              {requestSteps.map((step, index) => {
+                const stepNumber = index + 1;
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    className={kidsProgramRequestStep === stepNumber ? "active" : ""}
+                    aria-pressed={kidsProgramRequestStep === stepNumber}
+                    onClick={() => setKidsProgramRequestStep(stepNumber)}
+                  >
+                    <span>{stepNumber}</span>
+                    <strong>{step}</strong>
+                  </button>
+                );
+              })}
+            </div>
+
+            {kidsProgramRequestStep === 1 ? (
+              <div className="spark-flow-panel">
+                <h4>Child/family request</h4>
+                <p className="compact-subtitle">Use a first name or nickname only. We do not ask for exact birthdates, IDs, or public child profiles.</p>
+                <Field label="Parent/guardian name">
+                  <input value={kidsProgramForm.parentName} onChange={(event) => updateKidsProgramField("parentName", event.target.value)} placeholder="Parent or guardian" />
+                </Field>
+                <div className="inline-input-grid">
+                  <Field label="ZIP code">
+                    <input value={kidsProgramForm.zipCode} onChange={(event) => updateKidsProgramField("zipCode", event.target.value)} inputMode="numeric" />
+                  </Field>
+                  <Field label="Child age range">
+                    <select value={kidsProgramForm.childAgeRange} onChange={(event) => updateKidsProgramField("childAgeRange", event.target.value)}>
+                      <option value="">Choose range</option>
+                      <option value="under_6">Under 6</option>
+                      <option value="6_8">6-8</option>
+                      <option value="9_12">9-12</option>
+                      <option value="13_17">13-17</option>
+                    </select>
+                  </Field>
+                </div>
+                <Field label="Child first name or nickname optional">
+                  <input value={kidsProgramForm.childFirstName} onChange={(event) => updateKidsProgramField("childFirstName", event.target.value)} placeholder="First name or nickname only" />
+                </Field>
+              </div>
+            ) : null}
+
+            {kidsProgramRequestStep === 2 ? (
+              <div className="spark-flow-panel">
+                <h4>Product wanted</h4>
+                <Field label="Favorite Pokemon or product">
+                  <input value={kidsProgramForm.favoritePokemon} onChange={(event) => updateKidsProgramField("favoritePokemon", event.target.value)} placeholder="Pikachu, ETB, binder, starter deck..." />
+                </Field>
+                <Field label="What are they collecting right now?">
+                  <textarea value={kidsProgramForm.collectingInterest} onChange={(event) => updateKidsProgramField("collectingInterest", event.target.value)} placeholder="Tell us what would help them collect safely." />
+                </Field>
+                <Field label="What are you hoping to access?">
+                  <div className="checkbox-grid">
+                    {KIDS_PROGRAM_ACCESS_OPTIONS.map((option) => (
+                      <label key={option}>
+                        <input
+                          type="checkbox"
+                          checked={kidsProgramForm.requestedAccess.includes(option)}
+                          onChange={() => updateKidsProgramField("requestedAccess", toggleArrayValue(kidsProgramForm.requestedAccess, option))}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+              </div>
+            ) : null}
+
+            {kidsProgramRequestStep === 3 ? (
+              <div className="spark-flow-panel">
+                <h4>Parent contact/settings</h4>
+                <Field label="Parent email">
+                  <input type="email" value={kidsProgramForm.email || email} onChange={(event) => updateKidsProgramField("email", event.target.value)} placeholder="you@example.com" />
+                </Field>
+                <Field label="Parent note optional">
+                  <textarea value={kidsProgramForm.reason} onChange={(event) => updateKidsProgramField("reason", event.target.value)} placeholder="Anything we should know before review?" />
+                </Field>
+                <p className="compact-subtitle">We do not expose child/family request details publicly.</p>
+              </div>
+            ) : null}
+
+            {kidsProgramRequestStep === 4 ? (
+              <div className="spark-flow-panel">
+                <h4>Review rules</h4>
+                <div className="spark-rule-grid compact">
+                  {sparkSafetyRules.map((rule) => <div className="spark-rule-card" key={rule}><strong>{rule}</strong></div>)}
+                </div>
+                <label className="checkbox-row">
+                  <input type="checkbox" checked={kidsProgramForm.agreesNoResale} onChange={(event) => updateKidsProgramField("agreesNoResale", event.target.checked)} />
+                  <span>I understand Kids Program items are intended for children and families, not resale.</span>
+                </label>
+                <label className="checkbox-row">
+                  <input type="checkbox" checked={kidsProgramForm.consentContact} onChange={(event) => updateKidsProgramField("consentContact", event.target.checked)} />
+                  <span>I agree Ember & Tide may contact me about Kids Program opportunities.</span>
+                </label>
+              </div>
+            ) : null}
+
+            {kidsProgramRequestStep === 5 ? (
+              <div className="spark-flow-panel spark-review-panel">
+                <h4>Review and submit</h4>
+                <div className="catalog-detail-grid">
+                  <DetailItem label="Parent" value={kidsProgramForm.parentName || "Missing"} />
+                  <DetailItem label="Contact" value={kidsProgramForm.email || email || "Missing"} />
+                  <DetailItem label="Age range" value={kidsProgramForm.childAgeRange || "Not selected"} />
+                  <DetailItem label="Product wanted" value={kidsProgramForm.favoritePokemon || "Not provided"} />
+                  <DetailItem label="Request type" value={requestAccessSummary} />
+                  <DetailItem label="Rules" value={kidsProgramForm.agreesNoResale && kidsProgramForm.consentContact ? "Accepted" : "Needs review"} />
+                </div>
+                <p className="compact-subtitle">Submit sends a private parent/family request for review. No child messaging or public child profile is created.</p>
+              </div>
+            ) : null}
+
+            <div className="spark-flow-actions">
+              {kidsProgramRequestStep > 1 ? (
+                <button type="button" className="secondary-button" onClick={() => setKidsProgramRequestStep((current) => Math.max(1, current - 1))}>Back</button>
+              ) : null}
+              {kidsProgramRequestStep < 5 ? (
+                <button type="button" onClick={() => setKidsProgramRequestStep((current) => Math.min(5, current + 1))}>Next</button>
+              ) : (
+                <button type="submit">{guestPreviewActive ? "Create account to apply" : "Submit request"}</button>
+              )}
+            </div>
           </form>
         </section>
       </>
