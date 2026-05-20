@@ -35391,6 +35391,95 @@ body,
   }
 }
 
+/* Desktop polish pass: make web feel like a command desk instead of a stretched phone layout. */
+@media (min-width: 1024px) {
+  .app-command-shell > .app-shell-header {
+    display: none !important;
+  }
+
+  .app-command-shell {
+    align-items: start !important;
+  }
+
+  .app-command-shell > .topbar {
+    top: 14px !important;
+    min-height: 66px !important;
+    padding: 10px 12px !important;
+  }
+
+  .app-command-shell .topbar-brand {
+    min-width: 190px;
+    max-width: 260px;
+  }
+
+  .app-command-shell .topbar-quick-add-button {
+    background: var(--et-final-primary) !important;
+    color: #1a0d06 !important;
+    border-color: rgba(255, 196, 102, 0.42) !important;
+    box-shadow: 0 12px 26px rgba(255, 122, 26, 0.18) !important;
+  }
+
+  .app-command-shell > .web-command-sidebar {
+    top: 14px !important;
+    gap: 12px !important;
+    max-height: calc(100dvh - 28px) !important;
+  }
+
+  .app-command-shell .web-command-promise {
+    gap: 5px;
+  }
+
+  .app-command-shell .web-command-nav {
+    gap: 6px;
+  }
+
+  .app-command-shell .web-command-nav-item {
+    min-height: 46px !important;
+  }
+
+  .app-command-shell .standard-page-header,
+  .app-command-shell .hearth-command-hero,
+  .app-command-shell .todays-tide-header,
+  .app-command-shell .hearth-command-hero-compact {
+    min-height: clamp(172px, 18vw, 260px) !important;
+  }
+
+  .app-command-shell .standard-page-header,
+  .app-command-shell .compact-card,
+  .app-command-shell .panel,
+  .app-command-shell .card,
+  .app-command-shell .command-card,
+  .app-command-shell .command-panel {
+    box-shadow: var(--et-final-shadow-soft) !important;
+  }
+
+  .app-command-shell .quick-action-grid,
+  .app-command-shell .home-quick-action-grid,
+  .app-command-shell .scout-main-actions,
+  .app-command-shell .vault-command-overview,
+  .app-command-shell .forge-command-overview,
+  .app-command-shell .tidepool-stat-grid,
+  .app-command-shell .settings-section-grid,
+  .app-command-shell .admin-queue-grid,
+  .app-command-shell .marketplace-listings-grid,
+  .app-command-shell .catalog-results-grid {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important;
+    align-items: stretch;
+  }
+
+  .app-command-shell .cards,
+  .app-command-shell .inventory-grid,
+  .app-command-shell .vault-set-product-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  }
+
+  .app-command-shell .main.app-shell-dark,
+  .app-command-shell .main {
+    display: grid;
+    gap: 16px !important;
+  }
+}
+
 @media (max-width: 1023px) {
   .app-command-shell .web-command-tools {
     display: none;
