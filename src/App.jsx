@@ -4458,15 +4458,26 @@ export default function App() {
     setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
   }
 
+  const isSellerExperience =
+    normalizeUserType(currentUserProfile?.userType || currentUserProfile?.user_type) === "seller" ||
+    normalizeDashboardPreset(currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset) === "seller";
+  const hasAdminProfileSignal = Boolean(
+    currentUserProfile?.isAdmin ||
+    currentUserProfile?.is_admin ||
+    currentUserProfile?.adminRole ||
+    currentUserProfile?.admin_role
+  );
+  const commandDeskSellerAccess = isSellerExperience || hasAdminProfileSignal;
+
   const mainTabs = [
     { key: "home", label: "Hearth Home", icon: "home", target: "dashboard" },
     { key: "today", label: "Today's Tide", icon: "calendar", target: "dailyTide" },
     { key: "scout", label: "Scout Signals", icon: "scout", target: "scout" },
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
     { key: "tideTradr", label: "Market", icon: "market", target: "market" },
-    { key: "forge", label: "Forge Workshop", icon: "forge", target: "inventory" },
+    commandDeskSellerAccess ? { key: "forge", label: "Forge Workshop", icon: "forge", target: "inventory" } : null,
     { key: "tidepool", label: "Tidepool", icon: "pool", target: "tidepool" },
-  ];
+  ].filter(Boolean);
 
   const navSections = [
     {
@@ -4524,9 +4535,6 @@ export default function App() {
       : activeTab === "market" || activeTab === "catalog"
           ? "tideTradr"
           : "forge";
-  const isSellerExperience =
-    normalizeUserType(currentUserProfile?.userType || currentUserProfile?.user_type) === "seller" ||
-    normalizeDashboardPreset(currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset) === "seller";
   const sellerMobilePrimaryTab = isSellerExperience
     ? { key: "forge", label: "Forge", icon: "forge", target: "inventory", ariaLabel: "Forge Workshop" }
     : { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" };
@@ -4543,8 +4551,8 @@ export default function App() {
     { key: "scout", label: "Scout Signals", helper: "Nearby verified restocks", icon: "scout", target: "scout" },
     { key: "vault", label: "Vault", helper: "Your collection", icon: "vault", target: "vault" },
     { key: "tideTradr", label: "Market", helper: "TideTradr fair prices and deals", icon: "market", target: "market" },
-    { key: "forge", label: "Forge Workshop", helper: isSellerExperience ? "Business command desk" : "Seller tools", icon: "forge", target: "inventory" },
-  ];
+    commandDeskSellerAccess ? { key: "forge", label: "Forge Workshop", helper: "Business command desk", icon: "forge", target: "inventory" } : null,
+  ].filter(Boolean);
   const desktopMoreItems = [
     { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
     { key: "spark", label: "Kids Program: The Spark", helper: "Family-safe collecting", icon: "spark", action: () => setActiveTab("kidsProgram") },
@@ -4554,8 +4562,16 @@ export default function App() {
     { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openMenuDrawer("settings") },
     { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openMenuDrawer("feedback") },
   ];
+  const desktopCommandDeskTools = [
+    commandDeskSellerAccess ? { key: "receipts", label: "Receipts Review", helper: "Review receipts and expenses", icon: "clipboard", action: () => setActiveTab("expenses") } : null,
+    commandDeskSellerAccess ? { key: "mileage", label: "Mileage Reports", helper: "Trips and vehicle costs", icon: "calendar", action: () => setActiveTab("mileage") } : null,
+    commandDeskSellerAccess ? { key: "sales", label: "Sales & Profit", helper: "Sales, margin, and exports", icon: "forge", action: () => setActiveTab("reports") } : null,
+    commandDeskSellerAccess ? { key: "inventory", label: "Inventory Tools", helper: "Products and bulk review", icon: "vault", target: "inventory" } : null,
+    hasAdminProfileSignal ? { key: "moderation", label: "Review Queues", helper: "Scout, market, kids, and feedback", icon: "settings", target: "adminReview" } : null,
+    hasAdminProfileSignal ? { key: "announcements-admin", label: "Announcement Manager", helper: "Draft and review New Stuff", icon: "bell", target: "adminReview" } : null,
+  ].filter(Boolean);
   const mobileMenuDestinations = [
-    { key: "forge", label: "Forge Workshop", helper: "Seller inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" },
+    commandDeskSellerAccess ? { key: "forge", label: "Forge Workshop", helper: "Seller inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" } : null,
     ...(isSellerExperience ? [{ key: "market", label: "Market", helper: "Fair prices and TideTradr search.", icon: "market", target: "market" }] : []),
     { key: "tidepool", label: "Tidepool", helper: "Community posts and trusted trade talk.", icon: "pool", target: "tidepool" },
     { key: "spark", label: "Kids Program: The Spark", helper: "Parent-safe requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
@@ -4564,7 +4580,7 @@ export default function App() {
     { key: "profile", label: "Profile", helper: "Public username and account progress.", icon: "settings", action: () => setActiveTab("profileProgress") },
     { key: "settings", label: "Settings", helper: "Notifications, collections, and preferences.", icon: "settings", keepOpen: true, action: () => setMenuSectionsOpen({ settings: true }) },
     { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and Refresh App.", icon: "search", keepOpen: true, action: () => setMenuSectionsOpen({ feedback: true }) },
-  ];
+  ].filter(Boolean);
   const topbarSectionOptions = [
     ...mainTabs,
     { key: "settings", label: "Settings", target: "menu" },
@@ -4901,6 +4917,11 @@ export default function App() {
     if (item.key === "profile") return activeTab === "profileProgress";
     if (item.key === "help") return menuOpen && Boolean(menuSectionsOpen.feedback);
     if (item.key === "settings") return activeTab === "menu" || menuOpen;
+    if (item.key === "receipts") return activeTab === "expenses";
+    if (item.key === "mileage") return activeTab === "mileage";
+    if (item.key === "sales") return activeTab === "reports" || activeTab === "sales";
+    if (item.key === "inventory") return activeTab === "inventory";
+    if (item.key === "moderation" || item.key === "announcements-admin") return activeTab === "adminReview";
     return activeMainTab === item.key;
   }
 
@@ -4969,6 +4990,40 @@ export default function App() {
             ))}
           </div>
         </details>
+        {desktopCommandDeskTools.length ? (
+          <section className="web-command-tools" aria-label="Command desk management tools">
+            <div className="web-command-tools-heading">
+              <strong>Command Desk</strong>
+              <span>Deeper work</span>
+            </div>
+            <div className="web-command-tools-list">
+              {desktopCommandDeskTools.map((item) => (
+                <button
+                  type="button"
+                  key={item.key}
+                  className={isDesktopSidebarItemActive(item) ? "web-command-tool active" : "web-command-tool"}
+                  aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
+                  onClick={() => runDesktopSidebarAction(item)}
+                >
+                  <span className="web-command-tool-icon" aria-hidden="true">
+                    <AppNavIcon kind={item.icon || "settings"} />
+                  </span>
+                  <span>
+                    <strong>{item.label}</strong>
+                    <small>{item.helper}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="web-command-tools web-command-tools--quiet" aria-label="Command desk management tools">
+            <div className="web-command-tools-heading">
+              <strong>Command Desk</strong>
+              <span>Seller and admin tools stay private until enabled.</span>
+            </div>
+          </section>
+        )}
         <div className="web-command-status">
           <span className="trust-badge trust-badge--verified">Family friendly</span>
           <span className="trust-badge trust-badge--fair">Fair access</span>

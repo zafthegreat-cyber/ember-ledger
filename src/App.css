@@ -35126,3 +35126,180 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* Focused Web Command Desk pass: desktop gets a deeper management rail while mobile stays simple. */
+.app-command-shell .web-command-tools {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(133, 224, 255, 0.14);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014)),
+    rgba(4, 10, 22, 0.58);
+}
+
+.app-command-shell .web-command-tools--quiet {
+  border-style: dashed;
+  border-color: rgba(246, 194, 74, 0.2);
+  background: rgba(246, 194, 74, 0.055);
+}
+
+.app-command-shell .web-command-tools-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.app-command-shell .web-command-tools-heading strong {
+  color: var(--et-final-cream);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app-command-shell .web-command-tools-heading span {
+  color: var(--et-final-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.app-command-shell .web-command-tools-list {
+  display: grid;
+  gap: 7px;
+}
+
+.app-command-shell .web-command-tool {
+  display: grid !important;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  min-height: 44px !important;
+  padding: 8px !important;
+  border: 1px solid rgba(133, 224, 255, 0.12) !important;
+  border-radius: 14px !important;
+  background: rgba(2, 8, 18, 0.62) !important;
+  color: rgba(248, 251, 255, 0.86) !important;
+  text-align: left;
+  box-shadow: none !important;
+}
+
+.app-command-shell .web-command-tool:hover,
+.app-command-shell .web-command-tool:focus-visible,
+.app-command-shell .web-command-tool.active {
+  border-color: rgba(32, 215, 255, 0.34) !important;
+  background:
+    linear-gradient(135deg, rgba(32, 215, 255, 0.14), rgba(255, 122, 26, 0.08)),
+    rgba(3, 12, 26, 0.78) !important;
+  color: #fff !important;
+  box-shadow: 0 0 22px rgba(32, 215, 255, 0.09) !important;
+}
+
+.app-command-shell .web-command-tool.active {
+  border-color: rgba(255, 152, 72, 0.36) !important;
+}
+
+.app-command-shell .web-command-tool-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(32, 215, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(32, 215, 255, 0.08);
+  color: var(--et-final-tide);
+}
+
+.app-command-shell .web-command-tool.active .web-command-tool-icon {
+  border-color: rgba(255, 152, 72, 0.36);
+  background: rgba(255, 122, 26, 0.12);
+  color: var(--et-final-ember);
+}
+
+.app-command-shell .web-command-tool strong,
+.app-command-shell .web-command-tool small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-command-shell .web-command-tool strong {
+  color: inherit;
+  font-size: 0.78rem;
+}
+
+.app-command-shell .web-command-tool small {
+  color: rgba(226, 238, 255, 0.66);
+  font-size: 0.64rem;
+}
+
+@media (min-width: 1024px) {
+  .app-command-shell > .topbar {
+    min-height: 72px;
+    padding: 12px 14px !important;
+    border-radius: 26px !important;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02)),
+      rgba(3, 9, 20, 0.86) !important;
+    border: 1px solid rgba(133, 224, 255, 0.18) !important;
+    box-shadow: var(--et-final-shadow) !important;
+    backdrop-filter: blur(22px) saturate(1.24);
+  }
+
+  .app-command-shell > .topbar .app-search {
+    max-width: min(52vw, 700px);
+  }
+
+  .app-command-shell > .topbar .app-search input {
+    min-height: 44px;
+    border-color: rgba(133, 224, 255, 0.22) !important;
+    background: rgba(2, 8, 18, 0.68) !important;
+    color: var(--et-final-cream) !important;
+  }
+
+  .app-command-shell .topbar-command-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .app-command-shell .topbar-command-actions > button,
+  .app-command-shell .topbar-command-actions .notification-center-button {
+    min-height: 42px;
+    border-radius: 14px !important;
+  }
+
+  .app-command-shell .topbar-brand {
+    min-width: 210px;
+  }
+
+  .app-command-shell .dashboard-grid,
+  .app-command-shell .dashboard-layout,
+  .app-command-shell .forge-business-grid,
+  .app-command-shell .admin-queue-grid,
+  .app-command-shell .settings-section-grid {
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 1280px) {
+  .app-command-shell {
+    grid-template-columns: 268px minmax(0, 1fr) !important;
+    gap: 20px !important;
+  }
+
+  .app-command-shell > .web-command-sidebar {
+    padding: 16px !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .app-command-shell .web-command-tools {
+    display: none;
+  }
+}
