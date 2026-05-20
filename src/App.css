@@ -32671,6 +32671,41 @@ body,
   line-height: 1.25;
 }
 
+.watch-calendar-event-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(79, 216, 255, 0.22);
+  background: rgba(4, 16, 31, 0.86);
+  flex: 0 0 42px;
+}
+
+.watch-calendar-detail-image {
+  width: min(100%, 240px);
+  max-height: 220px;
+  object-fit: contain;
+  align-self: center;
+  border-radius: 18px;
+  padding: 10px;
+  border: 1px solid rgba(79, 216, 255, 0.22);
+  background: rgba(4, 16, 31, 0.86);
+}
+
+.watch-calendar-source-link {
+  display: inline-flex;
+  margin-top: 12px;
+  color: #7de2ff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.watch-calendar-source-link:hover,
+.watch-calendar-source-link:focus-visible {
+  color: #fff7ea;
+  text-decoration: underline;
+}
+
 .scout-report-wizard .scout-selected-store-confirmation {
   margin-top: 12px;
 }

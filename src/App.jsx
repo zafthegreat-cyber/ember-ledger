@@ -27,9 +27,17 @@ import { VIRGINIA_STORES_SEED } from "./data/virginiaStoresSeed";
 import { VIRGINIA_RETAILERS } from "./data/storeGroups";
 import { SCOUT_HISTORICAL_INTEL_SEED, buildScoutRestockPatterns } from "./data/scoutRestockIntelSeed";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
+import generatedReleaseCalendar from "./data/generated/releaseCalendar.json";
+import generatedDropCalendarSeed from "./data/generated/dropCalendarSeed.json";
+import calendarSyncStatus from "./data/generated/calendarSyncStatus.json";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
+import {
+  filterCalendarEventsForViewer,
+  normalizeDropCalendarEvent,
+  normalizeReleaseCalendarEvent,
+} from "./utils/calendarDataUtils.mjs";
 import {
   DROP_RADAR_CONFIRMATION_TEXT,
   DROP_RADAR_RESET_OPTIONS,
@@ -726,6 +734,11 @@ const WATCH_CALENDAR_VIEW_OPTIONS = [
   { value: "watchlist", label: "Watchlist" },
 ];
 const WATCH_CALENDAR_LAYER_OPTIONS = [
+  { key: "confirmedRestocks", label: "Confirmed restocks" },
+  { key: "predictedDrops", label: "Predicted drops" },
+  { key: "followedStores", label: "My followed stores" },
+  { key: "kidsCommunity", label: "Kids/community" },
+  { key: "adminInternal", label: "Admin/internal", adminOnly: true },
   { key: "localRestocks", label: "Local restocks" },
   { key: "onlineRestocks", label: "Online restocks" },
   { key: "pokemonReleases", label: "Pokémon releases" },
@@ -741,6 +754,11 @@ const WATCH_CALENDAR_DEFAULT_LAYERS = {
   localRestocks: true,
   onlineRestocks: true,
   pokemonReleases: true,
+  confirmedRestocks: true,
+  predictedDrops: true,
+  followedStores: true,
+  kidsCommunity: true,
+  adminInternal: false,
   expansionReleases: true,
   retailDrops: true,
   userGuesses: true,
@@ -19117,9 +19135,12 @@ function renderForgeHeader() {
   }
 
   function watchCalendarEventLayerEnabled(event = {}) {
+    if ((event.adminOnly || event.visibility === "admin_only" || event.visibility === "private_admin") && !adminEditModeActive) return false;
+    if ((event.adminOnly || event.visibility === "admin_only" || event.visibility === "private_admin") && adminEditModeActive && !watchCalendarLayers.adminInternal) return false;
     const layerKeys = event.layerKeys || [];
     const hasEnabledLayer = layerKeys.some((key) => watchCalendarLayers[key]);
     if (!hasEnabledLayer) return false;
+    if (layerKeys.includes("adminInternal") && !adminEditModeActive) return false;
     if (event.isMilitary && !watchCalendarLayers.militaryStores) return false;
     if (watchCalendarLayers.adminVerifiedOnly && !event.verified && event.confidenceKey !== "confirmed") return false;
     if (watchCalendarLayers.highConfidenceOnly && !["confirmed", "high"].includes(event.confidenceKey)) return false;
@@ -19486,18 +19507,38 @@ function renderForgeHeader() {
     events[key].count = Number(events[key].count || 0) + 1;
     return events;
   }, {});
-  const watchCalendarSourceForecastRows = scoutSnapshot.restockPatterns?.length || scoutSnapshot.restockIntel?.length ? scoutForecastPreviewRows : [];
+  const generatedReleaseEvents = generatedReleaseCalendar
+    .map((release) => normalizeReleaseCalendarEvent(release, catalogProducts))
+    .filter((event) => event.dateKey)
+    .map((event) => ({
+      ...event,
+      layerKeys: [...new Set([...(event.layerKeys || []), "pokemonReleases", event.eventType === "Set Release" ? "expansionReleases" : ""])].filter(Boolean),
+    }));
+  const releaseCalendarEvents = [...generatedReleaseEvents, ...Object.values(releaseEventsByKey)]
+    .filter((event, index, list) => {
+      const key = `${event.dateKey}|${event.title}|${event.eventType || ""}`.toLowerCase();
+      return list.findIndex((candidate) => `${candidate.dateKey}|${candidate.title}|${candidate.eventType || ""}`.toLowerCase() === key) === index;
+    });
+  const watchCalendarSourceForecastRows = scoutSnapshot.restockPatterns?.length
+    || scoutSnapshot.restockIntel?.length
+    || scoutSnapshot.manualRestockTraining?.length
+    || dropRadarPredictionRows.length
+    ? scoutForecastPreviewRows
+    : [];
   const watchCalendarForecastEvents = watchCalendarSourceForecastRows.map((row, index) => {
     const dayDistance = Number.isFinite(row.dayDistance) ? Math.min(Math.max(row.dayDistance, 0), 7) : 7;
     const sourceText = `${row.sourceType || ""} ${row.sourceLabel || ""} ${row.badges?.join(" ") || ""}`.toLowerCase();
     const isOnline = /online|website|pokemon center|best buy/.test(sourceText) || /pokemon center/i.test(row.storeName || "");
     const isGuess = /guess|prediction|planner|possible|rumor/.test(sourceText) || ["medium", "low", "needs-data"].includes(row.confidenceKey);
     const matchedStore = !isOnline ? findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer }) : null;
+    const isFollowedStore = Boolean(matchedStore?.favorite || matchedStore?.priority || matchedStore?.watchlisted || matchedStore?.watchlist);
+    const isConfirmedDrop = row.confidenceKey === "confirmed" || /verified|confirmed/.test(sourceText);
+    const isAdminOnlyPrediction = row.confidenceKey === "needs-data" || /needs data/i.test(row.confidenceLabel || row.reason || row.basisSummary || "");
     return {
       id: `forecast-${row.id || index}`,
       dateKey: addLocalDays(watchCalendarTodayKey, dayDistance),
       title: row.storeName || "Watch item",
-      subtitle: `${isOnline ? "Online watch" : "Local watch"} - ${row.confidenceLabel || "Possible"}`,
+      subtitle: `${isOnline ? "Online Drop Watch" : isConfirmedDrop ? "Confirmed Restock" : "Predicted Drop Window"} - ${row.confidenceLabel || "Possible"}`,
       retailer: row.retailer || "",
       city: matchedStore?.city || row.city || "",
       region: matchedStore?.region || "",
@@ -19506,13 +19547,16 @@ function renderForgeHeader() {
       reportable: !isOnline,
       layerKeys: [
         isOnline ? "onlineRestocks" : "localRestocks",
+        isConfirmedDrop ? "confirmedRestocks" : "predictedDrops",
+        isFollowedStore ? "followedStores" : "",
+        isAdminOnlyPrediction ? "adminInternal" : "",
         isGuess ? "userGuesses" : "appPredictions",
-        row.confidenceKey === "confirmed" || row.confidenceKey === "high" ? "retailDrops" : "",
+        isConfirmedDrop || row.confidenceKey === "high" ? "retailDrops" : "",
       ].filter(Boolean),
-      eventType: isOnline ? "online" : "local",
+      eventType: isOnline ? "Online Drop Watch" : isConfirmedDrop ? "Confirmed Restock" : "Predicted Drop Window",
       locationType: isOnline ? "online" : "store",
       timeLabel: row.windowLabel || "Unknown time",
-      confidenceLabel: row.confidenceLabel || "Possible",
+      confidenceLabel: isConfirmedDrop ? "Confirmed Restock" : row.confidenceLabel || "Predicted",
       confidenceKey: row.confidenceKey || "medium",
       sourceLabel: row.sourceLabel || "",
       products: row.products || [],
@@ -19521,7 +19565,9 @@ function renderForgeHeader() {
       lastConfirmedReportLabel: row.lastConfirmedReportLabel || "",
       supportingReportCount: row.supportingReportCount || 0,
       supportingGuessCount: row.supportingGuessCount || 0,
-      verified: row.confidenceKey === "confirmed" || /verified|confirmed/.test(sourceText),
+      visibility: isAdminOnlyPrediction ? "admin_only" : "public",
+      adminOnly: isAdminOnlyPrediction,
+      verified: isConfirmedDrop,
       isMilitary: isMilitaryWatchCalendarEvent(row, matchedStore),
       sortWeight: isOnline ? 2 : 1,
     };
@@ -19536,6 +19582,7 @@ function renderForgeHeader() {
       const status = scoutReportStatusLabel(report);
       const stockLabel = scoutStockStatusLabel(report.stockStatus || report.stock_status) || report.reportType || report.report_type || "Store report";
       const confidenceKey = report.verified || /verified|confirmed/i.test(status) ? "confirmed" : scoutForecastConfidenceKey(report.confidence || report.matchConfidence || "possible");
+      const isFollowedStore = Boolean(store.favorite || store.priority || store.watchlisted || store.watchlist);
       return {
         id: `report-${getScoutReportId(report) || index}`,
         dateKey,
@@ -19548,11 +19595,11 @@ function renderForgeHeader() {
         store: report.storeId || report.store_id ? findScoutQuickStore({ id: report.storeId || report.store_id }) || store : store,
         report,
         reportable: true,
-        layerKeys: ["localRestocks", "retailDrops"],
-        eventType: "report",
+        layerKeys: ["localRestocks", "retailDrops", confidenceKey === "confirmed" ? "confirmedRestocks" : "predictedDrops", isFollowedStore ? "followedStores" : ""].filter(Boolean),
+        eventType: confidenceKey === "confirmed" ? "Confirmed Restock" : "Local Store Watch",
         locationType: "store",
         timeLabel: report.reportTime || report.report_time || "Reported",
-        confidenceLabel: scoutForecastConfidenceLabel(confidenceKey),
+        confidenceLabel: confidenceKey === "confirmed" ? "Confirmed Restock" : scoutForecastConfidenceLabel(confidenceKey),
         confidenceKey,
         sourceLabel: scoutSourceTypeLabel(report.sourceType || report.source_type || "user_report"),
         products: items.map((item) => item.productName),
@@ -19579,7 +19626,7 @@ function renderForgeHeader() {
     retailer: alert.retailer || "Online",
     city: "",
     layerKeys: ["onlineRestocks", "retailDrops"],
-    eventType: "online",
+    eventType: "Online Drop Watch",
     locationType: "online",
     timeLabel: alert.time || alert.checkedTime || "Unknown time",
     confidenceLabel: alert.inStock || alert.status === "in_stock" ? "Confirmed" : "Possible",
@@ -19590,12 +19637,23 @@ function renderForgeHeader() {
     verified: Boolean(alert.inStock || alert.status === "in_stock"),
     sortWeight: 3,
   }));
-  const watchCalendarEvents = [
+  const generatedDropSeedEvents = generatedDropCalendarSeed
+    .map((drop) => normalizeDropCalendarEvent({ ...drop, dateKey: drop.dateKey || watchCalendarTodayKey }))
+    .filter((event) => event.dateKey)
+    .map((event) => ({
+      ...event,
+      layerKeys: [...new Set([...(event.layerKeys || []), "predictedDrops", "adminInternal"])],
+      adminOnly: true,
+      visibility: "admin_only",
+      reason: event.reason || event.notes || "Drop Radar needs confirmed restock entries before public predictions are reliable.",
+    }));
+  const watchCalendarEvents = filterCalendarEventsForViewer([
     ...watchCalendarReportEvents,
     ...watchCalendarForecastEvents,
     ...watchCalendarOnlineEvents,
-    ...Object.values(releaseEventsByKey),
-  ].filter((event) => event.dateKey >= watchCalendarTodayKey && event.dateKey <= watchCalendarRangeEndKey);
+    ...releaseCalendarEvents,
+    ...generatedDropSeedEvents,
+  ], { admin: adminEditModeActive }).filter((event) => event.dateKey >= watchCalendarTodayKey && event.dateKey <= watchCalendarRangeEndKey);
   const filteredWatchCalendarEvents = watchCalendarEvents
     .filter((event) => watchCalendarEventLayerEnabled(event))
     .filter((event) => watchCalendarAreaMatches(event))
@@ -19632,7 +19690,7 @@ function renderForgeHeader() {
     online: watchCalendarTodayEvents.filter((event) => event.layerKeys.includes("onlineRestocks")).length,
     releases: watchCalendarTodayEvents.filter((event) => event.layerKeys.includes("pokemonReleases") || event.layerKeys.includes("expansionReleases")).length,
     week: watchCalendarEvents.filter((event) => watchCalendarEventLayerEnabled(event) && watchCalendarAreaMatches(event)).length,
-    upcomingReleases: Object.values(releaseEventsByKey).length,
+    upcomingReleases: releaseCalendarEvents.length,
   };
   const filteredScoutReports = scoutReportRows.filter((report) => {
     if (scoutReportFilter === "Verified") return Boolean(report.verified || /verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`));
@@ -22198,7 +22256,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <article className="watch-calendar-event-row" key={event.id}>
         <button type="button" className="watch-calendar-event-main" onClick={() => setSelectedWatchCalendarEvent(event)}>
-          <span className={`watch-calendar-dot watch-calendar-dot--${event.confidenceKey || "possible"}`} aria-hidden="true" />
+          {event.imageUrl || event.productImage ? (
+            <img
+              className="watch-calendar-event-thumb"
+              src={event.imageUrl || event.productImage}
+              alt=""
+              loading="lazy"
+              onError={(imageEvent) => {
+                imageEvent.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            <span className={`watch-calendar-dot watch-calendar-dot--${event.confidenceKey || "possible"}`} aria-hidden="true" />
+          )}
           <span>
             <strong>{event.title}</strong>
             <small>
@@ -22252,7 +22322,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <button type="button" onClick={openPokemonWatchCalendar}>
             <span>Upcoming Releases</span>
             <strong>{watchCalendarHomeCounts.upcomingReleases ? `${watchCalendarHomeCounts.upcomingReleases} release event${watchCalendarHomeCounts.upcomingReleases === 1 ? "" : "s"}` : "No release data loaded"}</strong>
-            <small>{watchCalendarHomeCounts.upcomingReleases ? "From loaded catalog release dates" : "Will appear when catalog rows include upcoming dates"}</small>
+            <small>{watchCalendarHomeCounts.upcomingReleases ? "Official release data with catalog photo matching when available" : "Will appear when official release data is loaded"}</small>
           </button>
         </div>
         <div className="watch-calendar-compact-list">
@@ -22293,6 +22363,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <strong>{watchCalendarHomeCounts.upcomingReleases || 0}</strong>
           </div>
         </div>
+        {adminEditModeActive ? (
+          <p className="compact-subtitle">
+            Calendar sync: {calendarSyncStatus.releaseEvents || 0} release rows / {calendarSyncStatus.dropSeedEvents || 0} Drop Radar seed rows. {calendarSyncStatus.scheduling || "No scheduler configured."}
+          </p>
+        ) : null}
 
         <div className="watch-calendar-toolbar">
           <div className="segmented-control">
@@ -22311,7 +22386,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
 
         <div className="watch-calendar-layer-strip" aria-label="Calendar layers">
-          {WATCH_CALENDAR_LAYER_OPTIONS.map((layer) => (
+          {WATCH_CALENDAR_LAYER_OPTIONS.filter((layer) => !layer.adminOnly || adminEditModeActive).map((layer) => (
             <label key={layer.key} className={watchCalendarLayers[layer.key] ? "watch-layer-chip active" : "watch-layer-chip"}>
               <input type="checkbox" checked={Boolean(watchCalendarLayers[layer.key])} onChange={() => toggleWatchCalendarLayer(layer.key)} />
               <span>{layer.label}</span>
@@ -22420,7 +22495,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       event.layerKeys.includes("localRestocks") && ["confirmed", "high", "medium"].includes(event.confidenceKey)
     )).slice(0, 8);
     const recentConfirmedReports = watchCalendarEvents.filter((event) => (
-      event.eventType === "report" && event.confidenceKey === "confirmed"
+      event.eventType === "Confirmed Restock" && event.confidenceKey === "confirmed"
     )).slice(0, 6);
     const watchlistAlerts = watchCalendarEvents
       .filter((event) => eventMatchesWatchedStore(event, watchedStoreRows))
@@ -22465,7 +22540,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
 
         <div className="watch-calendar-layer-strip" aria-label="Ember Watch layers">
-          {WATCH_CALENDAR_LAYER_OPTIONS.map((layer) => (
+          {WATCH_CALENDAR_LAYER_OPTIONS.filter((layer) => !layer.adminOnly || adminEditModeActive).map((layer) => (
             <label key={layer.key} className={watchCalendarLayers[layer.key] ? "watch-layer-chip active" : "watch-layer-chip"}>
               <input type="checkbox" checked={Boolean(watchCalendarLayers[layer.key])} onChange={() => toggleWatchCalendarLayer(layer.key)} />
               <span>{layer.label}</span>
@@ -34747,7 +34822,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 X
               </button>
             </div>
+            {selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage ? (
+              <img
+                className="watch-calendar-detail-image"
+                src={selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage}
+                alt=""
+                loading="lazy"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            ) : null}
             <div className="catalog-detail-grid">
+              <DetailItem label="Event type" value={selectedWatchCalendarEvent.eventType || "Calendar event"} />
               <DetailItem label="When" value={selectedWatchCalendarEvent.timeLabel || "Unknown"} />
               <DetailItem label="Confidence" value={selectedWatchCalendarEvent.confidenceLabel || "Possible"} />
               <DetailItem label="Retailer" value={selectedWatchCalendarEvent.retailer || "Not specified"} />
@@ -34763,8 +34850,41 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <span>Guesses/patterns: {selectedWatchCalendarEvent.supportingGuessCount ?? "Unknown"}</span>
                 <span>Last confirmed: {selectedWatchCalendarEvent.lastConfirmedReportLabel || "Not confirmed yet"}</span>
               </div>
+              {selectedWatchCalendarEvent.sourceUrl ? (
+                <a className="watch-calendar-source-link" href={selectedWatchCalendarEvent.sourceUrl} target="_blank" rel="noreferrer">
+                  View source reference
+                </a>
+              ) : null}
             </div>
             <div className="location-modal-actions modal-sticky-footer">
+              {selectedWatchCalendarEvent.locationType === "release" ? (
+                <>
+                  <button type="button" onClick={() => {
+                    const event = selectedWatchCalendarEvent;
+                    setMarketplaceSearch(event.productName || event.title || "");
+                    setMarketplaceView("browse");
+                    setSelectedWatchCalendarEvent(null);
+                    setActiveTab("market");
+                  }}>
+                    Search Market
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => {
+                    const event = selectedWatchCalendarEvent;
+                    setSelectedWatchCalendarEvent(null);
+                    openAddActionSheet("release-calendar");
+                    setVaultToast(`Use Quick Add to add ${event.productName || event.title} to Vault or Forge.`);
+                  }}>
+                    Add to Vault
+                  </button>
+                  <button type="button" className="ghost-button" onClick={() => {
+                    const event = selectedWatchCalendarEvent;
+                    setVaultToast(`${event.productName || event.title} added to your release watch.`);
+                    setSelectedWatchCalendarEvent(null);
+                  }}>
+                    Follow Release
+                  </button>
+                </>
+              ) : null}
               {selectedWatchCalendarEvent.reportable ? (
                 <button type="button" onClick={() => {
                   const event = selectedWatchCalendarEvent;
@@ -34775,6 +34895,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   });
                 }}>
                   Report
+                </button>
+              ) : null}
+              {selectedWatchCalendarEvent.locationType === "store" && selectedWatchCalendarEvent.store ? (
+                <button type="button" className="secondary-button" onClick={() => {
+                  const event = selectedWatchCalendarEvent;
+                  toggleStoreMapWatch(event.store);
+                }}>
+                  Follow Store
                 </button>
               ) : null}
               {adminEditModeActive ? (

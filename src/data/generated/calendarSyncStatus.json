@@ -1,0 +1,10 @@
+{
+  "source": "Pokemon.com official pages + local Drop Radar runtime data",
+  "releaseCalendarUpdatedAt": "2026-05-20T00:00:00.000Z",
+  "dropCalendarUpdatedAt": "2026-05-20T00:00:00.000Z",
+  "releaseEvents": 4,
+  "releaseFetchSuccesses": 0,
+  "releaseFetchWarnings": 4,
+  "dropSeedEvents": 1,
+  "scheduling": "Scripts are available; no automatic scheduler is configured in this repo. Suggested cadence: release weekly/daily, drop daily or after restock entry."
+}

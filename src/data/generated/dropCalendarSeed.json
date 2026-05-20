@@ -1,0 +1,17 @@
+[
+  {
+    "sourceUpdatedAt": "2026-05-20T00:00:00.000Z",
+    "id": "drop-calendar-seed-needs-training",
+    "dateKey": "",
+    "storeName": "Drop Radar",
+    "retailer": "Scout",
+    "eventType": "Predicted Drop Window",
+    "confidence": "unavailable",
+    "patternStrength": "weak",
+    "trainingCount": 0,
+    "source": "Generated placeholder",
+    "sourceLabel": "Drop Radar training data",
+    "visibility": "admin_only",
+    "notes": "Runtime Drop Radar events are generated from Scout reports and manual training restocks."
+  }
+]
