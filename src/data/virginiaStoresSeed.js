@@ -10,7 +10,8 @@ import easternShore from "../../seeds/stores/virginia-eastern-shore.json";
 import southside from "../../seeds/stores/virginia-southside.json";
 import southwest from "../../seeds/stores/virginia-southwest.json";
 import otherVirginia from "../../seeds/stores/virginia-other.json";
-import { normalizeImportedStoreBatch } from "../utils/storeImportUtils";
+import generatedVirginiaStores from "./generated/virginiaStores.json";
+import { dedupeStoresByChainAddress, normalizeImportedStoreBatch } from "../utils/storeImportUtils";
 import { DEFAULT_VIRGINIA_REGION, VIRGINIA_STORE_STATE } from "./storeGroups";
 
 export const VIRGINIA_STORE_SEED_BATCHES = [
@@ -28,7 +29,7 @@ export const VIRGINIA_STORE_SEED_BATCHES = [
   { ...otherVirginia, region: "Other Virginia", source: "local-seed-other-virginia" },
 ];
 
-export const VIRGINIA_STORES_SEED = VIRGINIA_STORE_SEED_BATCHES.flatMap((batch) =>
+const LOCAL_VIRGINIA_STORES = VIRGINIA_STORE_SEED_BATCHES.flatMap((batch) =>
   normalizeImportedStoreBatch(batch.stores || [], {
     region: batch.region,
     state: batch.state || VIRGINIA_STORE_STATE,
@@ -37,9 +38,28 @@ export const VIRGINIA_STORES_SEED = VIRGINIA_STORE_SEED_BATCHES.flatMap((batch) 
   })
 );
 
-export const VIRGINIA_STORE_SEED_STATUS = VIRGINIA_STORE_SEED_BATCHES.map((batch) => ({
+const GENERATED_VIRGINIA_STORES = normalizeImportedStoreBatch(generatedVirginiaStores, {
+  region: "Virginia statewide",
+  state: VIRGINIA_STORE_STATE,
+  source: "openstreetmap-overpass-cache",
+});
+
+export const VIRGINIA_STORES_SEED = dedupeStoresByChainAddress([
+  ...LOCAL_VIRGINIA_STORES,
+  ...GENERATED_VIRGINIA_STORES,
+]);
+
+export const VIRGINIA_STORE_SEED_STATUS = [
+  ...VIRGINIA_STORE_SEED_BATCHES.map((batch) => ({
   region: batch.region,
   source: batch.source,
   count: (batch.stores || []).length,
   instructions: batch.instructions || "Add only stable public store rows. Do not invent addresses or restock information.",
-}));
+  })),
+  {
+    region: "Virginia statewide",
+    source: "openstreetmap-overpass-cache",
+    count: generatedVirginiaStores.length,
+    instructions: "Cached directory matches only. Scout restock confidence still comes from user reports and history.",
+  },
+];

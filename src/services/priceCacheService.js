@@ -5,8 +5,9 @@ export const MARKET_PRICE_CACHE_KEY = "et-tcg-market-price-cache";
 export function loadPriceCache() {
   try {
     const saved = JSON.parse(localStorage.getItem(MARKET_PRICE_CACHE_KEY) || "{}");
+    const savedPrices = Array.isArray(saved.prices) ? saved.prices : [];
     return {
-      prices: Array.isArray(saved.prices) ? saved.prices : [],
+      prices: savedPrices,
       lastSync: saved.lastSync || "",
       failedMatches: Array.isArray(saved.failedMatches) ? saved.failedMatches : [],
     };

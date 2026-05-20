@@ -6,6 +6,8 @@ function normalizeSeedProduct(product = {}) {
   const upc = product.upc || product.UPC || product.barcode || "";
   const sku = product.sku || product.SKU || "";
   const msrp = product.msrp || product.MSRP || "";
+  const marketPrice = Number(product.marketPrice || product.marketValue || 0);
+  const imageUrl = product.imageUrl || product.photoUrl || product.imageLarge || product.imageSmall || "";
   return {
     ...product,
     id: product.id || product.sourceId || `sealed-${productName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
@@ -26,12 +28,26 @@ function normalizeSeedProduct(product = {}) {
     upc,
     barcode: upc,
     sku,
-    marketPrice: Number(product.marketPrice || product.marketValue || 0),
+    sourceProductId: product.sourceProductId || product.tcgplayerProductId || product.externalProductId || "",
+    tcgplayerProductId: product.tcgplayerProductId || product.sourceProductId || "",
+    productUrl: product.productUrl || product.marketUrl || product.sourceUrl || "",
+    marketPrice,
     marketValue: Number(product.marketValue || product.marketPrice || 0),
-    imageUrl: product.imageUrl || "",
+    lowPrice: Number(product.lowPrice || 0),
+    midPrice: Number(product.midPrice || 0),
+    directLowPrice: Number(product.directLowPrice || product.directLow || 0),
+    imageUrl,
+    photoUrl: product.photoUrl || imageUrl,
+    imageSmall: product.imageSmall || imageUrl,
+    imageLarge: product.imageLarge || imageUrl,
+    imageConfidence: product.imageConfidence || (imageUrl ? "medium" : "unavailable"),
     sourceType: product.sourceType || "local_catalog_seed",
     source: product.source || product.sourceType || "local_catalog_seed",
     marketSource: product.marketSource || "Catalog seed",
+    marketStatus: product.marketStatus || (marketPrice ? "cached" : "unknown"),
+    pricingConfidence: product.pricingConfidence || (marketPrice ? "medium" : "unavailable"),
+    marketLastUpdated: product.marketLastUpdated || product.sourceUpdatedAt || "",
+    sourceUpdatedAt: product.sourceUpdatedAt || product.lastUpdated || "",
     dataConfidenceScore: product.dataConfidenceScore || 0.7,
     adminReviewStatus: product.adminReviewStatus || "seeded",
     notes: product.notes || "",
