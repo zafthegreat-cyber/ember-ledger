@@ -5732,7 +5732,7 @@ export default function App() {
     return entry;
   }
 
-  function addBetaNotification({ type = "account_notice", title, message, actionUrl = "" }) {
+  function addBetaNotification({ type = "account_notice", title, message, actionUrl = "", priority = "normal", audience = "all", startDate = "", endDate = "", dismissible = true, ctaLabel = "", ctaDestination = "" }) {
     updateBetaReadinessData((current) => ({
       ...current,
       notifications: [
@@ -5745,6 +5745,13 @@ export default function App() {
           title,
           message,
           actionUrl,
+          priority,
+          audience,
+          startDate,
+          endDate,
+          dismissible,
+          ctaLabel,
+          ctaDestination,
           createdAt: new Date().toISOString(),
         },
         ...(current.notifications || []),
@@ -6219,6 +6226,11 @@ export default function App() {
       title: "New from Ember & Tide!",
       message: "Admin-created announcement draft. Review copy before making this public in a backend-managed announcement system.",
       actionUrl: "/",
+      priority: "normal",
+      audience: "all beta users",
+      dismissible: true,
+      ctaLabel: "View Details",
+      ctaDestination: "whatsNew",
     });
     addAuditLog("announcement_create_draft", "announcement", "local-draft", { source: "admin_dashboard" });
     setVaultToast("Announcement draft added to local New Stuff notifications.");
@@ -6402,9 +6414,33 @@ export default function App() {
     updateBetaReadinessData((current) => ({
       ...current,
       notifications: (current.notifications || []).map((entry) =>
-        entry.id === notificationId ? { ...entry, dismissedAt: new Date().toISOString() } : entry
+        entry.id === notificationId && entry.dismissible !== false ? { ...entry, dismissedAt: new Date().toISOString() } : entry
       ),
     }));
+  }
+
+  function isAnnouncementNotification(entry = {}) {
+    return entry.type === "announcement" || /new|update|announcement|maintenance|safety|trust|beta/i.test(`${entry.title || ""} ${entry.type || ""}`);
+  }
+
+  function isRequiredAnnouncement(entry = {}) {
+    return entry.dismissible === false || /critical|required|urgent/i.test(`${entry.priority || ""} ${entry.type || ""}`);
+  }
+
+  function announcementWindowState(entry = {}) {
+    const now = Date.now();
+    const start = entry.startDate || entry.startsAt || entry.start_at || "";
+    const end = entry.endDate || entry.endsAt || entry.expiresAt || entry.end_at || "";
+    if (start && Number.isFinite(new Date(start).getTime()) && new Date(start).getTime() > now) return "scheduled";
+    if (end && Number.isFinite(new Date(end).getTime()) && new Date(end).getTime() < now) return "expired";
+    return "active";
+  }
+
+  function canShowAnnouncement(entry = {}) {
+    if (!isAnnouncementNotification(entry)) return false;
+    if (announcementWindowState(entry) !== "active") return false;
+    if (entry.dismissedAt && !isRequiredAnnouncement(entry)) return false;
+    return true;
   }
 
   function completeOnboarding() {
@@ -18288,8 +18324,7 @@ function renderForgeHeader() {
       startupPriorityAppliedRef.current = true;
       return;
     }
-    const activeStartupAnnouncements = (betaReadinessData.notifications || [])
-      .filter((entry) => !entry.dismissedAt && (entry.type === "announcement" || /new|update|announcement/i.test(`${entry.title || ""} ${entry.type || ""}`)));
+    const activeStartupAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement);
     if (activeStartupAnnouncements.length) {
       setActiveTab("whatsNew");
     } else if (activeTab === "dashboard") {
@@ -24273,49 +24308,120 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       if (typeof document === "undefined") return;
       document.getElementById("announcements-detail-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
-    const updates = [
+    const routeAnnouncementCta = (entry = {}) => {
+      const destination = String(entry.ctaDestination || entry.actionUrl || "").toLowerCase();
+      if (destination.includes("daily") || destination.includes("control")) setActiveTab("dailyTide");
+      else if (destination.includes("home") || destination === "/") setActiveTab("dashboard");
+      else if (destination.includes("kid")) setActiveTab("kidsProgram");
+      else if (destination.includes("scout")) setActiveTab("scout");
+      else if (destination.includes("market")) setActiveTab("market");
+      else if (destination.includes("forge")) setActiveTab("forge");
+      else if (destination.includes("vault")) setActiveTab("vault");
+      else setVaultToast("Announcement details are shown below.");
+    };
+    const staticUpdates = [
       {
         title: "Kids Program Updates",
         body: "Easier requests, family-safe wording, and a warmer Spark home for collectors.",
+        type: "Kids Program update",
+        priority: "highlight",
       },
       {
         title: "Scout Improvements",
         body: "Better signals, report flow polish, and stronger store/restock card treatment.",
+        type: "Scout update",
+        priority: "normal",
       },
       {
         title: "Daily Tide Refresh",
         body: "A tighter overview with the Scout, Vault, Market, and Forge daily loop.",
+        type: "New feature",
+        priority: "normal",
       },
       {
         title: "Bug Fixes & Performance",
         body: "Smoother beta flows, safer inventory saves, and cleaner mobile navigation.",
+        type: "App update",
+        priority: "normal",
       },
     ];
+    const activeAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement);
+    const recentAnnouncements = activeAnnouncements.length ? activeAnnouncements : staticUpdates;
+    const heroAnnouncement = recentAnnouncements[0];
+    const heroType = heroAnnouncement?.type || "New feature";
+    const heroPriority = heroAnnouncement?.priority || "normal";
     return (
       <>
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card announcements-new-stuff-header")}
-          title="Hey, new stuff just washed in."
-          subtitle="Check out what's new in Ember & Tide."
+          title={heroAnnouncement?.title || "Announcements"}
+          subtitle={heroAnnouncement?.message || heroAnnouncement?.body || "Important Ember & Tide updates appear here before the daily command view."}
           actions={(
             <>
               {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft changelog</button> : null}
               <button type="button" onClick={() => setActiveTab("dailyTide")}>Open Control Panel</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Go Home</button>
               <button type="button" className="ghost-button" onClick={openAnnouncementsDetail}>View Details</button>
+              {heroAnnouncement?.id && heroAnnouncement.dismissible !== false ? <button type="button" className="ghost-button" onClick={() => dismissNotification(heroAnnouncement.id)}>Dismiss</button> : null}
             </>
           )}
+          summary={(
+            <div className="announcement-hero-summary">
+              <span className={`announcement-type-badge ${statusClass(heroType)}`}>{heroType}</span>
+              <span className={`announcement-priority-badge priority-${String(heroPriority).toLowerCase()}`}>Priority: {heroPriority}</span>
+              <span>{heroAnnouncement?.createdAt ? shortDate(heroAnnouncement.createdAt) : "Current beta update"}</span>
+            </div>
+          )}
         />
-        <section className="panel" id="announcements-detail-list">
-          <div className="beta-foundation-grid announcements-update-grid">
-            {updates.map((entry) => (
-              <article className="beta-readiness-card" key={entry.title}>
-                <span>New Stuff</span>
-                <strong>{entry.title}</strong>
-                <p>{entry.body}</p>
-              </article>
-            ))}
+        <section className="panel announcements-command-panel" id="announcements-detail-list">
+          <div className="compact-card-header">
+            <div>
+              <h2>Announcement details</h2>
+              <p>Active announcements appear before Today&apos;s Tide. Dismissible updates stay hidden after dismissal; required updates remain visible until resolved.</p>
+            </div>
+            <span className="status-badge">{activeAnnouncements.length ? `${activeAnnouncements.length} active` : "No active blockers"}</span>
           </div>
+          <div className="beta-foundation-grid announcements-update-grid">
+            {recentAnnouncements.map((entry) => {
+              const entryType = entry.type || "New feature";
+              const entryPriority = entry.priority || "normal";
+              const entryDate = entry.createdAt || entry.startDate || "";
+              return (
+              <article className="beta-readiness-card announcement-detail-card" key={entry.id || entry.title}>
+                <div className="announcement-card-topline">
+                  <span className={`announcement-type-badge ${statusClass(entryType)}`}>{entryType}</span>
+                  <span className={`announcement-priority-badge priority-${String(entryPriority).toLowerCase()}`}>{entryPriority}</span>
+                </div>
+                <strong>{entry.title}</strong>
+                <p>{entry.message || entry.body}</p>
+                <div className="catalog-detail-grid announcement-detail-grid">
+                  <DetailItem label="Date" value={entryDate ? shortDate(entryDate) : "Current"} />
+                  <DetailItem label="Audience" value={entry.audience || "All users"} />
+                  <DetailItem label="Window" value={announcementWindowState(entry)} />
+                  <DetailItem label="Dismissible" value={entry.dismissible === false ? "Required" : "Yes"} />
+                </div>
+                <div className="quick-actions">
+                  {(entry.ctaLabel || entry.ctaDestination || entry.actionUrl) ? <button type="button" onClick={() => routeAnnouncementCta(entry)}>{entry.ctaLabel || "Open"}</button> : null}
+                  {entry.id && entry.dismissible !== false ? <button type="button" className="secondary-button" onClick={() => dismissNotification(entry.id)}>Dismiss</button> : null}
+                </div>
+              </article>
+              );
+            })}
+          </div>
+          {adminToolsVisible ? (
+            <div className="announcement-admin-structure">
+              <strong>Admin structure ready</strong>
+              <span>Title</span>
+              <span>Message</span>
+              <span>Audience</span>
+              <span>Priority</span>
+              <span>Start date</span>
+              <span>End date</span>
+              <span>Dismissible</span>
+              <span>CTA label</span>
+              <span>CTA destination</span>
+            </div>
+          ) : null}
         </section>
       </>
     );
@@ -25116,7 +25222,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <strong>{entry.title}</strong>
                 <p>{entry.message}</p>
               </div>
-              <span className="status-badge">{entry.dismissedAt ? "dismissed" : "active"}</span>
+              <span className="status-badge">{entry.dismissedAt ? "dismissed" : announcementWindowState(entry)}</span>
             </article>
           )) : (
             <div className="small-empty-state">
@@ -29897,9 +30003,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       simple: "Simple family view",
       collector: "Collector command view",
     }[hearthMode];
-    const activeAnnouncements = (betaReadinessData.notifications || [])
-      .filter((entry) => !entry.dismissedAt && (entry.type === "announcement" || /new|update|announcement/i.test(`${entry.title || ""} ${entry.type || ""}`)))
-      .slice(0, 3);
+    const activeAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement).slice(0, 3);
     const pendingBetaRequests = (shorelineState.adminBetaRequests || [])
       .filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length +
       (betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length;
@@ -30313,9 +30417,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         : simpleModeRequested
           ? "simple"
           : "collector";
-    const activeAnnouncements = (betaReadinessData.notifications || [])
-      .filter((entry) => !entry.dismissedAt && (entry.type === "announcement" || /new|update|announcement/i.test(`${entry.title || ""} ${entry.type || ""}`)))
-      .slice(0, 4);
+    const activeAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement).slice(0, 4);
     const pendingBetaRequests = (shorelineState.adminBetaRequests || [])
       .filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length +
       (betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length;
