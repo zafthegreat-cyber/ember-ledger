@@ -9099,6 +9099,27 @@ textarea {
     rgba(7, 15, 28, 0.74);
 }
 
+.forge-identity-settings-card {
+  border-color: rgba(124, 231, 255, 0.24);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.12), transparent 12rem),
+    linear-gradient(145deg, rgba(255, 111, 48, 0.08), rgba(0, 194, 255, 0.05)),
+    rgba(7, 15, 28, 0.78);
+}
+
+.forge-identity-mode-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.forge-identity-settings-card textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.forge-identity-pill-row {
+  margin-top: 8px;
+}
+
 .forge-mode-toggle {
   align-items: center;
 }

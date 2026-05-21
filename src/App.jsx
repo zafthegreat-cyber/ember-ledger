@@ -231,7 +231,16 @@ import {
   validateSparkApplication,
 } from "./utils/kidsProgramSafety";
 import {
+  FORGE_IDENTITY_MODE_OPTIONS,
+  forgeIdentityModeDescription,
+  forgeIdentityModeFromSettings,
+  forgeIdentityModeLabel,
   forgeModeSummary,
+  forgeModePatchFromIdentityDraft,
+  isProtectedWorkspace,
+  normalizeForgeIdentityMode,
+  validateWorkspaceIdentityDraft,
+  workspaceIdentityDraftFromState,
   sellerModeEnabled,
   workspaceDeleteBlockReason,
 } from "./utils/settingsWorkspaceSafety";
@@ -673,6 +682,12 @@ const DEFAULT_FORGE_MODE_SETTINGS = {
   personalForgeEnabled: true,
   defaultForgeWorkspaceId: "",
   lockToEmberTide: false,
+  forgeIdentityMode: "personal",
+  useEmberTideBranding: false,
+  keepPersonalForgeSeparate: true,
+  businessName: "",
+  shopName: "",
+  publicDisplayName: "",
 };
 const DAILY_TIDE_TASKS = [
   {
@@ -2438,7 +2453,7 @@ function workspaceArchivedAt(workspace = {}) {
 }
 
 function isWorkspaceArchived(workspace = {}) {
-  return Boolean(workspaceArchivedAt(workspace));
+  return Boolean(workspaceArchivedAt(workspace)) || workspace.active === false || String(workspace.status || "").toLowerCase() === "archived";
 }
 
 function workspaceTypeValue(value = "personal", fallback = "personal") {
@@ -2448,11 +2463,24 @@ function workspaceTypeValue(value = "personal", fallback = "personal") {
 }
 
 function normalizeForgeModeSettings(value = {}) {
+  const forgeIdentityMode = normalizeForgeIdentityMode(
+    value.forgeIdentityMode ||
+    (value.lockToEmberTide || value.alwaysUseEmberTideForge || value.lockForgeToEmberTide || value.useEmberTideBranding ? "ember_tide" : value.defaultForgeWorkspaceId ? "business" : "personal")
+  );
+  const keepPersonalForgeSeparate = value.keepPersonalForgeSeparate !== undefined
+    ? Boolean(value.keepPersonalForgeSeparate)
+    : value.personalForgeEnabled !== false;
   return {
     ...DEFAULT_FORGE_MODE_SETTINGS,
     personalForgeEnabled: value.personalForgeEnabled !== false,
     defaultForgeWorkspaceId: String(value.defaultForgeWorkspaceId || value.defaultForgeWorkspace || "").trim(),
     lockToEmberTide: Boolean(value.lockToEmberTide || value.alwaysUseEmberTideForge || value.lockForgeToEmberTide),
+    forgeIdentityMode,
+    useEmberTideBranding: Boolean(value.useEmberTideBranding || value.lockToEmberTide || value.alwaysUseEmberTideForge || value.lockForgeToEmberTide || forgeIdentityMode === "ember_tide"),
+    keepPersonalForgeSeparate,
+    businessName: String(value.businessName || value.business_name || "").trim().replace(/\s+/g, " ").slice(0, 80),
+    shopName: String(value.shopName || value.shop_name || "").trim().replace(/\s+/g, " ").slice(0, 80),
+    publicDisplayName: String(value.publicDisplayName || value.public_display_name || "").trim().replace(/\s+/g, " ").slice(0, 80),
     updatedAt: value.updatedAt || "",
   };
 }
@@ -2565,6 +2593,21 @@ function normalizeWorkspace(record = {}, fallback = {}) {
     archived_at: archivedAtValue || null,
     archivedBy: archivedByValue || "",
     archived_by: archivedByValue || null,
+    active: record.active !== undefined ? Boolean(record.active) : fallback.active !== undefined ? Boolean(fallback.active) : !archivedAtValue,
+    status: record.status || fallback.status || (archivedAtValue ? "archived" : "active"),
+    businessName: String(record.businessName || record.business_name || fallback.businessName || fallback.business_name || "").trim().replace(/\s+/g, " ").slice(0, 80),
+    business_name: String(record.business_name || record.businessName || fallback.business_name || fallback.businessName || "").trim().replace(/\s+/g, " ").slice(0, 80),
+    shopName: String(record.shopName || record.shop_name || fallback.shopName || fallback.shop_name || "").trim().replace(/\s+/g, " ").slice(0, 80),
+    shop_name: String(record.shop_name || record.shopName || fallback.shop_name || fallback.shopName || "").trim().replace(/\s+/g, " ").slice(0, 80),
+    displayLabel: String(record.displayLabel || record.display_label || fallback.displayLabel || fallback.display_label || "").trim().replace(/\s+/g, " ").slice(0, 80),
+    display_label: String(record.display_label || record.displayLabel || fallback.display_label || fallback.displayLabel || "").trim().replace(/\s+/g, " ").slice(0, 80),
+    notes: String(record.notes || record.workspaceNotes || record.workspace_notes || fallback.notes || fallback.workspaceNotes || fallback.workspace_notes || "").trim().slice(0, 240),
+    workspaceNotes: String(record.workspaceNotes || record.workspace_notes || record.notes || fallback.workspaceNotes || fallback.workspace_notes || fallback.notes || "").trim().slice(0, 240),
+    workspace_notes: String(record.workspace_notes || record.workspaceNotes || record.notes || fallback.workspace_notes || fallback.workspaceNotes || fallback.notes || "").trim().slice(0, 240),
+    defaultForgeMode: normalizeForgeIdentityMode(record.defaultForgeMode || record.default_forge_mode || fallback.defaultForgeMode || fallback.default_forge_mode || "personal"),
+    default_forge_mode: normalizeForgeIdentityMode(record.default_forge_mode || record.defaultForgeMode || fallback.default_forge_mode || fallback.defaultForgeMode || "personal"),
+    useEmberTideBranding: Boolean(record.useEmberTideBranding || record.use_ember_tide_branding || fallback.useEmberTideBranding || fallback.use_ember_tide_branding),
+    use_ember_tide_branding: Boolean(record.use_ember_tide_branding || record.useEmberTideBranding || fallback.use_ember_tide_branding || fallback.useEmberTideBranding),
   };
 }
 
@@ -4116,6 +4159,9 @@ export default function App() {
   const [workspaceDeleteConfirmText, setWorkspaceDeleteConfirmText] = useState("");
   const [workspaceDeleteSaving, setWorkspaceDeleteSaving] = useState(false);
   const [forgeModeSettings, setForgeModeSettings] = useState(() => loadForgeModeSettings(initialRouteState.forgeModeSettings));
+  const [workspaceIdentityForm, setWorkspaceIdentityForm] = useState(() => workspaceIdentityDraftFromState({}, loadForgeModeSettings(initialRouteState.forgeModeSettings)));
+  const [workspaceIdentityDirty, setWorkspaceIdentityDirty] = useState(false);
+  const [workspaceIdentityMessage, setWorkspaceIdentityMessage] = useState("");
 
   const [items, setItems] = useState([]);
   const [purchasers, setPurchasers] = useState([]);
@@ -4767,6 +4813,7 @@ export default function App() {
     const activeOption = forgeWorkspaceOptions.find((workspace) => String(workspace.id) === String(activeWorkspace?.id));
     return activeOption || forgeWorkspaceOptions[0] || null;
   }, [forgeModeSettings.lockToEmberTide, emberTideForgeWorkspace, forgeDefaultWorkspace, forgeWorkspaceOptions, activeWorkspace]);
+  const activeForgeIdentityMode = forgeIdentityModeFromSettings(forgeModeSettings, activeForgeWorkspace);
   const activeForgeTransferLabel = activeForgeWorkspace && isEmberTideForgeWorkspace(activeForgeWorkspace)
     ? activeForgeWorkspace.name || "Ember & Tide"
     : "Forge";
@@ -4801,6 +4848,21 @@ export default function App() {
     );
   };
   useEffect(() => {
+    if (workspaceIdentityDirty) return;
+    setWorkspaceIdentityForm(workspaceIdentityDraftFromState(activeWorkspace, forgeModeSettings, { activeForgeWorkspace }));
+  }, [
+    workspaceIdentityDirty,
+    activeWorkspace?.id,
+    activeWorkspace?.name,
+    activeWorkspace?.businessName,
+    activeWorkspace?.shopName,
+    activeWorkspace?.displayLabel,
+    activeWorkspace?.notes,
+    activeWorkspace?.defaultForgeMode,
+    activeForgeWorkspace?.id,
+    forgeModeSettings,
+  ]);
+  useEffect(() => {
     const selected = workspaces.find((workspace) => String(workspace.id) === String(activeWorkspaceId));
     if (!selected || !isWorkspaceArchived(selected)) return;
     const fallbackWorkspace = workspaceSelectorOptions.find((workspace) => String(workspace.id) !== String(selected.id));
@@ -4818,11 +4880,89 @@ export default function App() {
       })
     );
   };
+  const updateWorkspaceIdentityForm = (updates = {}) => {
+    setWorkspaceIdentityDirty(true);
+    setWorkspaceIdentityMessage("");
+    setWorkspaceIdentityForm((current) => ({ ...current, ...updates }));
+  };
+  const resetWorkspaceIdentityForm = () => {
+    setWorkspaceIdentityForm(workspaceIdentityDraftFromState(activeWorkspace, forgeModeSettings, { activeForgeWorkspace }));
+    setWorkspaceIdentityDirty(false);
+    setWorkspaceIdentityMessage("");
+  };
+  const saveWorkspaceIdentitySettings = (event) => {
+    event?.preventDefault?.();
+    const workspace = workspaces.find((entry) => String(entry.id) === String(workspaceIdentityForm.workspaceId || activeWorkspace?.id)) || activeWorkspace;
+    if (!workspace?.id) {
+      setWorkspaceIdentityMessage("Choose a workspace before saving.");
+      return;
+    }
+    if (!canEditWorkspaceId(workspace.id)) {
+      setWorkspaceIdentityMessage("You do not have permission to edit this workspace.");
+      return;
+    }
+    const validationMessage = validateWorkspaceIdentityDraft(workspaceIdentityForm, {
+      maxNameLength: WORKSPACE_NAME_MAX_LENGTH,
+      emberTideAvailable: workspaceIdentityForm.useEmberTideBranding || workspaceIdentityForm.forgeIdentityMode === "ember_tide" ? Boolean(emberTideForgeWorkspace) : true,
+    });
+    if (validationMessage) {
+      setWorkspaceIdentityMessage(validationMessage);
+      return;
+    }
+    const workspaceName = normalizeWorkspaceDisplayName(workspaceIdentityForm.workspaceName);
+    if (collectionNameExists(workspaceName, workspace.id)) {
+      setWorkspaceIdentityMessage("A workspace with that name already exists.");
+      return;
+    }
+    const now = new Date().toISOString();
+    const modePatch = forgeModePatchFromIdentityDraft(workspaceIdentityForm, {
+      personalWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
+      emberTideWorkspaceId: emberTideForgeWorkspace?.id || "",
+      businessWorkspaceId: workspace.id,
+    });
+    const nextWorkspace = normalizeWorkspace({
+      ...workspace,
+      name: workspaceName,
+      businessName: workspaceIdentityForm.businessName,
+      business_name: workspaceIdentityForm.businessName,
+      shopName: workspaceIdentityForm.shopName,
+      shop_name: workspaceIdentityForm.shopName,
+      displayLabel: workspaceIdentityForm.displayLabel,
+      display_label: workspaceIdentityForm.displayLabel,
+      notes: workspaceIdentityForm.notes,
+      workspaceNotes: workspaceIdentityForm.notes,
+      workspace_notes: workspaceIdentityForm.notes,
+      defaultForgeMode: normalizeForgeIdentityMode(workspaceIdentityForm.defaultForgeMode || workspaceIdentityForm.forgeIdentityMode),
+      default_forge_mode: normalizeForgeIdentityMode(workspaceIdentityForm.defaultForgeMode || workspaceIdentityForm.forgeIdentityMode),
+      useEmberTideBranding: Boolean(workspaceIdentityForm.useEmberTideBranding),
+      use_ember_tide_branding: Boolean(workspaceIdentityForm.useEmberTideBranding),
+      updatedAt: now,
+      updated_at: now,
+    }, workspace);
+    setWorkspaces((current) => current.map((entry) => String(entry.id) === String(workspace.id) ? nextWorkspace : entry));
+    if (String(workspace.id) === String(activeWorkspace?.id) && workspaceName !== workspace.name) {
+      setItems((current) => current.map((item) =>
+        String(item.workspaceId || item.workspace_id) === String(workspace.id) ? { ...item, workspaceName } : item
+      ));
+    }
+    setForgeModeSettings((current) => normalizeForgeModeSettings({
+      ...current,
+      ...modePatch,
+      updatedAt: now,
+    }));
+    setWorkspaceIdentityForm(workspaceIdentityDraftFromState(nextWorkspace, normalizeForgeModeSettings({ ...forgeModeSettings, ...modePatch, updatedAt: now }), { activeForgeWorkspace: nextWorkspace }));
+    setWorkspaceIdentityDirty(false);
+    setWorkspaceIdentityMessage("Workspace & Forge identity saved. Business notes are stored with beta workspace data where supported.");
+    setWorkspaceMessage(`${workspaceName} identity settings saved.`);
+    setVaultToast("Workspace identity saved.");
+  };
   const setPersonalForgeEnabled = (enabled) => {
     setForgeModeSettings((current) => {
       const next = normalizeForgeModeSettings({
         ...current,
         personalForgeEnabled: Boolean(enabled),
+        keepPersonalForgeSeparate: Boolean(enabled),
+        forgeIdentityMode: Boolean(enabled) && current.forgeIdentityMode === "business" ? current.forgeIdentityMode : current.forgeIdentityMode,
         updatedAt: new Date().toISOString(),
       });
       if (!next.personalForgeEnabled) {
@@ -11131,6 +11271,12 @@ export default function App() {
 
   function openWorkspaceArchive(workspace = activeWorkspace) {
     if (!workspace?.id) return;
+    if (isProtectedWorkspace(workspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })) {
+      setWorkspaceMessage(workspace.id === DEFAULT_PERSONAL_WORKSPACE_ID
+        ? "The default personal workspace cannot be archived. Hide Personal Forge or archive another workspace instead."
+        : "Protected system or Ember & Tide workspaces cannot be archived from normal settings.");
+      return;
+    }
     if (!canManageWorkspaceId(workspace.id)) {
       setWorkspaceMessage("You need owner or admin access to archive this collection.");
       return;
@@ -11150,6 +11296,12 @@ export default function App() {
 
   async function archiveWorkspace(workspace = workspaceArchiveTarget) {
     if (!workspace?.id || workspaceArchiveSavingId) return;
+    if (isProtectedWorkspace(workspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })) {
+      setWorkspaceMessage(workspace.id === DEFAULT_PERSONAL_WORKSPACE_ID
+        ? "The default personal workspace cannot be archived."
+        : "Protected system or Ember & Tide workspaces cannot be archived from normal settings.");
+      return;
+    }
     if (!canManageWorkspaceId(workspace.id)) {
       setWorkspaceMessage("You need owner or admin access to archive this collection.");
       return;
@@ -11165,6 +11317,8 @@ export default function App() {
       archived_at: now,
       archivedBy: user?.id || "local-beta",
       archived_by: user?.id || "local-beta",
+      active: false,
+      status: "archived",
       updatedAt: now,
       updated_at: now,
     };
@@ -11221,10 +11375,13 @@ export default function App() {
           .select()
           .single();
         if (error) throw error;
-        setWorkspaces((current) => current.map((entry) => String(entry.id) === String(workspace.id) ? normalizeWorkspace(data || { ...workspace, archivedAt: "", archived_at: null, updatedAt: now, updated_at: now }, entry) : entry));
+        setWorkspaces((current) => current.map((entry) => String(entry.id) === String(workspace.id)
+          ? normalizeWorkspace(data || { ...workspace, archivedAt: "", archived_at: null, active: true, status: "active", updatedAt: now, updated_at: now }, { ...entry, active: true, status: "active" })
+          : entry
+        ));
       } else {
         setWorkspaces((current) => current.map((entry) => String(entry.id) === String(workspace.id)
-          ? normalizeWorkspace({ ...entry, archivedAt: "", archived_at: null, archivedBy: "", archived_by: null, updatedAt: now, updated_at: now }, entry)
+          ? normalizeWorkspace({ ...entry, archivedAt: "", archived_at: null, archivedBy: "", archived_by: null, active: true, status: "active", updatedAt: now, updated_at: now }, entry)
           : entry
         ));
       }
@@ -32971,6 +33128,139 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </div>
                   </div>
 
+                  <form className="drawer-info-card forge-identity-settings-card" onSubmit={saveWorkspaceIdentitySettings} noValidate>
+                    <div className="compact-card-header">
+                      <div>
+                        <strong>Workspace &amp; Forge Identity</strong>
+                        <p className="compact-subtitle">Control whether Forge acts like your private seller space, a business workspace, or Ember &amp; Tide branded workspace.</p>
+                      </div>
+                      <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
+                    </div>
+                    <div className="settings-active-workspace-card">
+                      <span>Active workspace</span>
+                      <strong>{activeWorkspace?.name || "My Personal Space"}</strong>
+                      <small>{workspaceTypeLabel(activeWorkspace?.type)} · {workspaceRoleLabel(activeWorkspaceRole)} · {activeForgeWorkspace?.name ? `Forge uses ${activeForgeWorkspace.name}` : "Forge unavailable"}</small>
+                    </div>
+                    <Field label="Workspace name">
+                      <input
+                        value={workspaceIdentityForm.workspaceName}
+                        onChange={(event) => updateWorkspaceIdentityForm({ workspaceName: event.target.value })}
+                        maxLength={WORKSPACE_NAME_MAX_LENGTH}
+                        disabled={!canEditActiveWorkspace}
+                        placeholder="Workspace name"
+                      />
+                    </Field>
+                    <div className="drawer-two-column">
+                      <Field label="Business / shop name">
+                        <input
+                          value={workspaceIdentityForm.businessName}
+                          onChange={(event) => updateWorkspaceIdentityForm({ businessName: event.target.value })}
+                          disabled={!canEditActiveWorkspace}
+                          placeholder="Optional business name"
+                        />
+                      </Field>
+                      <Field label="Public display label">
+                        <input
+                          value={workspaceIdentityForm.displayLabel}
+                          onChange={(event) => updateWorkspaceIdentityForm({ displayLabel: event.target.value })}
+                          disabled={!canEditActiveWorkspace}
+                          placeholder="Optional display label"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Shop nickname">
+                      <input
+                        value={workspaceIdentityForm.shopName}
+                        onChange={(event) => updateWorkspaceIdentityForm({ shopName: event.target.value })}
+                        disabled={!canEditActiveWorkspace}
+                        placeholder="Optional nickname, DBA, or internal label"
+                      />
+                    </Field>
+                    <Field label="Workspace notes">
+                      <textarea
+                        value={workspaceIdentityForm.notes}
+                        onChange={(event) => updateWorkspaceIdentityForm({ notes: event.target.value })}
+                        disabled={!canEditActiveWorkspace}
+                        rows={3}
+                        placeholder="Private notes for this workspace"
+                      />
+                    </Field>
+                    <div className="settings-mode-grid forge-identity-mode-grid" role="group" aria-label="Forge display mode">
+                      {FORGE_IDENTITY_MODE_OPTIONS.map((mode) => {
+                        const disabled = mode.value === "ember_tide" && !emberTideForgeWorkspace;
+                        const active = normalizeForgeIdentityMode(workspaceIdentityForm.forgeIdentityMode) === mode.value;
+                        return (
+                          <button
+                            key={mode.value}
+                            type="button"
+                            className={active ? "settings-mode-card active" : "settings-mode-card"}
+                            aria-pressed={active}
+                            disabled={disabled || !canEditActiveWorkspace}
+                            onClick={() => updateWorkspaceIdentityForm({
+                              forgeIdentityMode: mode.value,
+                              defaultForgeMode: mode.value,
+                              useEmberTideBranding: mode.value === "ember_tide",
+                            })}
+                          >
+                            <strong>{mode.label}</strong>
+                            <span>{mode.description}</span>
+                            {disabled ? <small>Ember &amp; Tide workspace access is not available yet.</small> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="menu-toggle-list">
+                      <label className="toggle-row forge-mode-toggle">
+                        <span>
+                          <strong>Use Ember &amp; Tide branding</strong>
+                          <small>Use Ember &amp; Tide naming in Forge where you have access. This does not overwrite your personal profile.</small>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={workspaceIdentityForm.useEmberTideBranding}
+                          disabled={!canEditActiveWorkspace || !emberTideForgeWorkspace}
+                          onChange={(event) => updateWorkspaceIdentityForm({
+                            useEmberTideBranding: event.target.checked,
+                            forgeIdentityMode: event.target.checked ? "ember_tide" : "business",
+                            defaultForgeMode: event.target.checked ? "ember_tide" : "business",
+                          })}
+                        />
+                      </label>
+                      <label className="toggle-row forge-mode-toggle">
+                        <span>
+                          <strong>Keep personal Forge separate</strong>
+                          <small>Personal Forge stays available as its own private option. Turning this off hides it from Forge choices without deleting data.</small>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={workspaceIdentityForm.keepPersonalForgeSeparate}
+                          disabled={!canEditActiveWorkspace}
+                          onChange={(event) => updateWorkspaceIdentityForm({ keepPersonalForgeSeparate: event.target.checked })}
+                        />
+                      </label>
+                    </div>
+                    <dl className="drawer-status-list forge-mode-summary">
+                      <div><dt>Forge mode</dt><dd>{forgeIdentityModeLabel(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
+                      <div><dt>Mode meaning</dt><dd>{forgeIdentityModeDescription(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
+                      <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
+                      <div><dt>Workspace records</dt><dd>{workspaceRecordCountsFor(activeWorkspace?.id).total} linked</dd></div>
+                    </dl>
+                    <p className="compact-subtitle">Workspace metadata saves with beta workspace data where supported. Cloud schema currently stores name/type; extended identity fields stay in local beta backup until cloud fields are added.</p>
+                    {workspaceIdentityMessage ? <p className="flow-inline-message is-info" role="status">{workspaceIdentityMessage}</p> : null}
+                    <div className="drawer-inline-actions">
+                      <button type="submit" className="drawer-link" disabled={!canEditActiveWorkspace}>Save Workspace Identity</button>
+                      <button type="button" className="secondary-button" onClick={resetWorkspaceIdentityForm}>Cancel / Reset</button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => openWorkspaceArchive(activeWorkspace)}
+                        disabled={!canManageActiveWorkspace || activeCollectionCount <= 1 || isProtectedWorkspace(activeWorkspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })}
+                      >
+                        Archive Workspace
+                      </button>
+                    </div>
+                  </form>
+
                   <div className="drawer-info-card forge-mode-settings-card">
                     <strong>Forge workspace mode</strong>
                     <p className="compact-subtitle">Choose whether Forge follows your personal workspace or stays locked to Ember & Tide seller inventory. Personal Forge data is hidden when turned off, not deleted.</p>
@@ -33189,6 +33479,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <div className="settings-section-grid">
                       {[
                         ["Profile", "Name, public username, and account identity."],
+                        ["Workspace & Forge Identity", "Personal, business, or Ember & Tide Forge behavior."],
                         ["Experience Mode", "Simple, Collector, or Seller view priorities."],
                         ["Notification Preferences", "Restocks, price drops, Kids Program, offers, announcements, and Daily Tide."],
                         ["Store Alerts", "Followed stores, verified restocks, all signals, digest, or off."],
@@ -38941,6 +39232,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <div>
                 <h2>Forge Business Command</h2>
                 <p>Profit, sales, receipts, mileage, inventory health, and price work in one private seller view.</p>
+                <div className="summary-pill-row forge-identity-pill-row">
+                  <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
+                  <span className="status-badge trust-badge--secure">{activeForgeWorkspace?.name || "Forge unavailable"}</span>
+                </div>
               </div>
               <div className="summary-pill-row">
                 <button type="button" disabled={!activeForgeWorkspace} onClick={() => openProductAddFlow({ source: "forge-toolbar-inventory", destinations: { forge: true } })}>Add Inventory</button>
