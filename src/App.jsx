@@ -1,15 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
-import SmartAddInventory from "./components/SmartAddInventory";
-import SmartAddCatalog from "./components/SmartAddCatalog";
 import OverflowMenu from "./components/OverflowMenu";
-import BackupExportImport from "./components/BackupExportImport";
-import MarketPriceHistoryPanel from "./components/MarketPriceHistoryPanel";
 import SmartCatalogSearchBox from "./components/SmartCatalogSearchBox";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
-import Scout from "./pages/Scout";
 import { APP_VERSION, checkForEmberTideUpdate, refreshEmberTideApp } from "./appUpdate";
 import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/sharedPokemonCatalog";
 import {
@@ -22,8 +16,6 @@ import {
   UNIVERSAL_DATA_ENTITIES,
 } from "./data/tcgOperatingSystem";
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
-import { POKEMON_PRODUCTS, POKEMON_PRODUCT_UPCS } from "./data/pokemonProductCatalog";
-import { VIRGINIA_STORES_SEED } from "./data/virginiaStoresSeed";
 import { VIRGINIA_RETAILERS } from "./data/storeGroups";
 import { SCOUT_HISTORICAL_INTEL_SEED, buildScoutRestockPatterns } from "./data/scoutRestockIntelSeed";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
@@ -280,6 +272,12 @@ import {
   updateLittleSparksApplicationStatus,
 } from "./services/shorelineAccessService";
 
+const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
+const SmartAddCatalog = lazy(() => import("./components/SmartAddCatalog"));
+const BackupExportImport = lazy(() => import("./components/BackupExportImport"));
+const MarketPriceHistoryPanel = lazy(() => import("./components/MarketPriceHistoryPanel"));
+const Scout = lazy(() => import("./pages/Scout"));
+
 const BRAND_ASSETS = {
   mark: "/icon-192.png",
   promoHero: "/assets/brand/ember-tide-promo-hero.png",
@@ -288,11 +286,16 @@ const BRAND_ASSETS = {
 };
 
 const LOCAL_CATALOG_SEED_SOURCE = "local_catalog_seed";
-const LOCAL_CATALOG_SEED_PRODUCTS = POKEMON_PRODUCTS.map((product) => ({
-  ...product,
-  sourceType: product.sourceType || LOCAL_CATALOG_SEED_SOURCE,
-  source: product.source || LOCAL_CATALOG_SEED_SOURCE,
-}));
+
+function normalizeLocalCatalogSeedProducts(products = []) {
+  return Array.isArray(products)
+    ? products.map((product) => ({
+      ...product,
+      sourceType: product.sourceType || LOCAL_CATALOG_SEED_SOURCE,
+      source: product.source || LOCAL_CATALOG_SEED_SOURCE,
+    }))
+    : [];
+}
 
 function catalogProductMergeKey(product = {}) {
   const sourceId = product.externalProductId || product.external_product_id || product.tcgplayerProductId || product.tcgplayer_product_id || "";
@@ -3787,6 +3790,24 @@ function CollapsibleFeatureSection({ title, summary, open, onToggle, children })
   );
 }
 
+function RouteChunkFallback({ label = "Loading this Ember & Tide view..." }) {
+  return (
+    <div className="route-loading-card" role="status" aria-live="polite">
+      <span className="route-loading-spinner" aria-hidden="true" />
+      <strong>{label}</strong>
+      <small>Keeping Hearth responsive while this tool loads.</small>
+    </div>
+  );
+}
+
+function LazyToolBoundary({ label, children }) {
+  return (
+    <Suspense fallback={<RouteChunkFallback label={label} />}>
+      {children}
+    </Suspense>
+  );
+}
+
 function BarcodeScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
@@ -3799,6 +3820,8 @@ function BarcodeScanner({ onScan, onClose }) {
     async function start() {
       try {
         setScannerError("");
+        const { BrowserMultiFormatReader } = await import("@zxing/browser");
+        if (!mounted) return;
         const reader = new BrowserMultiFormatReader();
         controlsRef.current = await reader.decodeFromVideoDevice(undefined, videoRef.current, (result) => {
           if (result && mounted) {
@@ -4166,6 +4189,11 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [purchasers, setPurchasers] = useState([]);
   const [catalogProducts, setCatalogProducts] = useState([]);
+  const [localCatalogSeedProducts, setLocalCatalogSeedProducts] = useState([]);
+  const [localCatalogProductUpcs, setLocalCatalogProductUpcs] = useState([]);
+  const [localCatalogSeedStatus, setLocalCatalogSeedStatus] = useState("idle");
+  const [virginiaStoreSeed, setVirginiaStoreSeed] = useState([]);
+  const [virginiaStoreSeedStatus, setVirginiaStoreSeedStatus] = useState("idle");
   const [catalogPagedResultIds, setCatalogPagedResultIds] = useState([]);
   const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
   const [tideTradrLookupId, setTideTradrLookupId] = useState("");
@@ -6943,7 +6971,7 @@ export default function App() {
   function getLocalCatalogSeedMatches(query = "", limit = 16) {
     const cleaned = String(query || "").trim();
     if (!cleaned) return [];
-    return getBestCatalogMatches(cleaned, LOCAL_CATALOG_SEED_PRODUCTS)
+    return getBestCatalogMatches(cleaned, localCatalogSeedProducts)
       .map((match) => mapCatalog(match.item))
       .slice(0, limit);
   }
@@ -7147,7 +7175,7 @@ export default function App() {
     setCatalogPagedResultIds(combinedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
-      return mergeCatalogProductLists(combinedProducts, baseline, LOCAL_CATALOG_SEED_PRODUCTS);
+      return mergeCatalogProductLists(combinedProducts, baseline, localCatalogSeedProducts);
     });
     setCatalogSearchHasRun(true);
     const totalCount = result.count ?? null;
@@ -7960,7 +7988,7 @@ export default function App() {
     const productType = normalizeSearchText(known.productType || catalogProductTypeLabel(product));
     if (!title && !productType) return {};
     let fallbackKnown = {};
-    const searchPool = mergeCatalogProductLists(catalogProducts, LOCAL_CATALOG_SEED_PRODUCTS);
+    const searchPool = mergeCatalogProductLists(catalogProducts, localCatalogSeedProducts);
     for (const candidate of searchPool) {
       if (selectedId && String(candidate.id || "") === selectedId) continue;
       const candidateKnown = buildCatalogAutofillDetails(candidate);
@@ -10156,6 +10184,77 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let scheduledId = null;
+    const loadLocalCatalogSeed = async () => {
+      setLocalCatalogSeedStatus("loading");
+      try {
+        const catalogModule = await import("./data/pokemonProductCatalog");
+        if (cancelled) return;
+        const seededProducts = normalizeLocalCatalogSeedProducts(catalogModule.POKEMON_PRODUCTS || []);
+        setLocalCatalogSeedProducts(seededProducts);
+        setLocalCatalogProductUpcs(Array.isArray(catalogModule.POKEMON_PRODUCT_UPCS) ? catalogModule.POKEMON_PRODUCT_UPCS : []);
+        setCatalogProducts((current) => mergeCatalogProductLists(seededProducts, current));
+        setLocalCatalogSeedStatus("ready");
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("Could not load local catalog seed chunk", error);
+        setLocalCatalogSeedStatus("error");
+      }
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      scheduledId = window.requestIdleCallback(loadLocalCatalogSeed, { timeout: 1500 });
+    } else if (typeof window !== "undefined") {
+      scheduledId = window.setTimeout(loadLocalCatalogSeed, 400);
+    } else {
+      void loadLocalCatalogSeed();
+    }
+
+    return () => {
+      cancelled = true;
+      if (typeof window !== "undefined" && scheduledId !== null) {
+        if ("cancelIdleCallback" in window) window.cancelIdleCallback(scheduledId);
+        else window.clearTimeout(scheduledId);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let scheduledId = null;
+    const loadVirginiaStoreSeed = async () => {
+      setVirginiaStoreSeedStatus("loading");
+      try {
+        const storeModule = await import("./data/virginiaStoresSeed");
+        if (cancelled) return;
+        setVirginiaStoreSeed(Array.isArray(storeModule.VIRGINIA_STORES_SEED) ? storeModule.VIRGINIA_STORES_SEED : []);
+        setVirginiaStoreSeedStatus("ready");
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("Could not load Virginia store directory chunk", error);
+        setVirginiaStoreSeedStatus("error");
+      }
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      scheduledId = window.requestIdleCallback(loadVirginiaStoreSeed, { timeout: 1800 });
+    } else if (typeof window !== "undefined") {
+      scheduledId = window.setTimeout(loadVirginiaStoreSeed, 500);
+    } else {
+      void loadVirginiaStoreSeed();
+    }
+
+    return () => {
+      cancelled = true;
+      if (typeof window !== "undefined" && scheduledId !== null) {
+        if ("cancelIdleCallback" in window) window.cancelIdleCallback(scheduledId);
+        else window.clearTimeout(scheduledId);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (BETA_LOCAL_MODE) {
       if (typeof localStorage !== "undefined") cleanupBrowserBetaStorage(localStorage);
       if (typeof sessionStorage !== "undefined") cleanupBrowserBetaStorage(sessionStorage);
@@ -10191,7 +10290,7 @@ export default function App() {
       const localCatalogProducts = Array.isArray(saved.catalogProducts)
         ? saved.catalogProducts.filter(shouldPersistLocalCatalogProduct)
         : [];
-      setCatalogProducts(mergeCatalogProductLists(LOCAL_CATALOG_SEED_PRODUCTS, localCatalogProducts));
+        setCatalogProducts(mergeCatalogProductLists(localCatalogSeedProducts, localCatalogProducts));
       setTideTradrWatchlist(migrateRecordsToWorkspace(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
       setMarketplaceListings(migrateRecordsToWorkspace(Array.isArray(saved.marketplaceListings) ? saved.marketplaceListings : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
       setMarketplaceReports(migrateRecordsToWorkspace(Array.isArray(saved.marketplaceReports) ? saved.marketplaceReports : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
@@ -13323,7 +13422,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         source: "scout-report",
       }))
       .filter((store) => store.name || store.id);
-    return [...(scoutSnapshot.stores || []), ...reportStores, ...VIRGINIA_STORES_SEED]
+    return [...(scoutSnapshot.stores || []), ...reportStores, ...virginiaStoreSeed]
       .filter(Boolean)
       .filter((store, index) => {
         const key = String(getScoutQuickStoreId(store) || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
@@ -14807,7 +14906,7 @@ function mapCatalog(row) {
       return;
     }
     if (result.error) return showAppMessage("Could not load catalog: " + result.error.message);
-    setCatalogProducts(mergeCatalogProductLists((result.data || []).map(mapCatalog), LOCAL_CATALOG_SEED_PRODUCTS));
+    setCatalogProducts(mergeCatalogProductLists((result.data || []).map(mapCatalog), localCatalogSeedProducts));
   }
 
   async function loadExpenses() {
@@ -16826,6 +16925,7 @@ function renderTideTradrHeader() {
           placeholder="Search by name, set, product type, card number, or scanned barcode..."
           closeSignal={catalogSuggestionCloseSignal}
           maxSuggestions={5}
+          localCatalogProducts={catalogProducts}
           money={money}
         />
         <button type="submit">Search</button>
@@ -16860,7 +16960,7 @@ function renderTideTradrHeader() {
 }
 
 function renderScoutHeader() {
-  const scoutStoreCount = scoutSnapshot.stores?.length || VIRGINIA_STORES_SEED.length;
+  const scoutStoreCount = scoutSnapshot.stores?.length || virginiaStoreSeed.length;
   const scoutRecentReportCount = (scoutSnapshot.reports || []).length || (scoutSnapshot.tidepoolReports || []).length;
   const scoutTrustScore = Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0;
   const scoutTabs = [
@@ -19624,7 +19724,7 @@ function renderForgeHeader() {
   const nextDailyTideTask = DAILY_TIDE_TASKS.find((task) => !dailyTideToday.completedActions?.[task.key]) || null;
   const activeDailyTideTask = DAILY_TIDE_TASKS.find((task) => task.key === dailyTideModalTask) || nextDailyTideTask;
   const dailyTideComplete = dailyCompletedCount >= DAILY_TIDE_ACTIONS.length;
-  const bestScoutStore = scoutSnapshot.stores?.[0] || VIRGINIA_STORES_SEED[0] || {};
+  const bestScoutStore = scoutSnapshot.stores?.[0] || virginiaStoreSeed[0] || {};
   const bestMarketMover = recentMarketUpdates[0] || workspaceWatchlist[0] || null;
   const bestWishlistItem = wishlistItems[0] || workspaceWatchlist[0] || null;
   const suggestedHomeAction = dailyTideComplete
@@ -21017,7 +21117,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const cardCatalogCount = catalogProducts.filter((product) => isCatalogCardProduct(product)).length;
   const catalogDuplicateWarnings = flagCatalogDuplicates(catalogProducts);
   const catalogValidationWarnings = validateCatalogImport(catalogProducts);
-  const catalogUpcCount = catalogProducts.filter((product) => product.upc || product.barcode).length + POKEMON_PRODUCT_UPCS.length;
+  const catalogUpcCount = catalogProducts.filter((product) => product.upc || product.barcode).length + localCatalogProductUpcs.length;
   const catalogMarketPriceCount = catalogProducts.filter((product) => Number(product.marketPrice || product.marketValue || product.marketValueNearMint || 0) > 0).length;
   const cachedMarketPriceCount = marketPriceCache.prices?.length || 0;
   const failedMarketMatches = marketPriceCache.failedMatches || [];
@@ -28784,17 +28884,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
         {scoutStoresMode === "map" ? renderStoreMapPanel() : (
           <section className="embedded-page">
-            <Scout
-              targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }}
-              compact
-              onLocationRequired={requestScoutLocation}
-              adminMode={adminEditModeActive}
-              supabase={supabase}
-              isSupabaseConfigured={isSupabaseConfigured}
-              mapCatalogRow={mapCatalog}
-              money={money}
-              onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-store-card" })}
-            />
+            <LazyToolBoundary label="Loading Scout store tools...">
+              <Scout
+                targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }}
+                compact
+                onLocationRequired={requestScoutLocation}
+                adminMode={adminEditModeActive}
+                supabase={supabase}
+                isSupabaseConfigured={isSupabaseConfigured}
+                mapCatalogRow={mapCatalog}
+                money={money}
+                onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-store-card" })}
+              />
+            </LazyToolBoundary>
           </section>
         )}
       </section>
@@ -28811,28 +28913,31 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
         <details className="forge-form-step forge-optional-details">
           <summary>Quick TideTradr catalog picker</summary>
-          <SmartAddInventory
-            onAddInventory={(newItem) => {
-              const product = newItem.product;
-              setItemForm((old) => ({
-                ...old,
-                name: product?.name || old.name,
-                category: "Pokemon",
-                quantity: newItem.quantity || 1,
-                barcode: product?.upcs?.[0] || old.barcode,
-                marketPrice: product?.marketPrice || old.marketPrice || "",
-                msrpPrice: product?.msrpPrice || old.msrpPrice || "",
-                setCode: product?.setCode || old.setCode || "",
-                expansion: product?.expansion || old.expansion || "",
-                productLine: product?.productLine || old.productLine || "",
-                productType: product?.itemType || old.productType || "",
-                packCount: product?.packCount || old.packCount || "",
-                unitCost: newItem.paidPriceEach || product?.msrpPrice || old.unitCost || "",
-                salePrice: newItem.sellingPriceEach || product?.marketPrice || old.salePrice || "",
-                status: "In Stock",
-              }));
-            }}
-          />
+          <LazyToolBoundary label="Loading catalog picker...">
+            <SmartAddInventory
+              localCatalogProducts={catalogProducts}
+              onAddInventory={(newItem) => {
+                const product = newItem.product;
+                setItemForm((old) => ({
+                  ...old,
+                  name: product?.name || old.name,
+                  category: "Pokemon",
+                  quantity: newItem.quantity || 1,
+                  barcode: product?.upcs?.[0] || old.barcode,
+                  marketPrice: product?.marketPrice || old.marketPrice || "",
+                  msrpPrice: product?.msrpPrice || old.msrpPrice || "",
+                  setCode: product?.setCode || old.setCode || "",
+                  expansion: product?.expansion || old.expansion || "",
+                  productLine: product?.productLine || old.productLine || "",
+                  productType: product?.itemType || old.productType || "",
+                  packCount: product?.packCount || old.packCount || "",
+                  unitCost: newItem.paidPriceEach || product?.msrpPrice || old.unitCost || "",
+                  salePrice: newItem.sellingPriceEach || product?.marketPrice || old.salePrice || "",
+                  status: "In Stock",
+                }));
+              }}
+            />
+          </LazyToolBoundary>
         </details>
         <InventoryForm
           form={itemForm}
@@ -29425,6 +29530,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   dataFilter="All"
                   placeholder="Search product, set, UPC, SKU, or card name"
                   maxSuggestions={6}
+                  localCatalogProducts={catalogProducts}
                   money={money}
                   autoFocus
                 />
@@ -29975,6 +30081,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               dataFilter="All"
               placeholder="Search by product, card, set, UPC, SKU, or shorthand..."
               maxSuggestions={8}
+              localCatalogProducts={catalogProducts}
               money={money}
             />
           </Field>
@@ -33720,15 +33827,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync Access</button>
                     </div>
                   </div>
-                  <BackupExportImport
-                    storageStatus={storageStatus}
-                    importPreview={backupImportPreview}
-                    importMessage={backupImportMessage}
-                    onExport={downloadBackup}
-                    onImportFile={handleBackupFileUpload}
-                    onApplyImport={applyBetaBackupImport}
-                    onClearDemoData={resetBetaLocalData}
-                  />
+                  <LazyToolBoundary label="Loading backup tools...">
+                    <BackupExportImport
+                      storageStatus={storageStatus}
+                      importPreview={backupImportPreview}
+                      importMessage={backupImportMessage}
+                      onExport={downloadBackup}
+                      onImportFile={handleBackupFileUpload}
+                      onApplyImport={applyBetaBackupImport}
+                      onClearDemoData={resetBetaLocalData}
+                    />
+                  </LazyToolBoundary>
                   <div className="drawer-info-card">
                     <strong>Collection transfer and bulk add</strong>
                     <p className="compact-subtitle">Bring in a CSV, copied list, seller list, or manually staged batch. Every row goes through review before anything is saved.</p>
@@ -35029,6 +35138,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     productGroup="All"
                     dataFilter="All"
                     placeholder="Search products, cards, set, UPC, or SKU"
+                    localCatalogProducts={catalogProducts}
                     money={money}
                   />
                 </Field>
@@ -37677,16 +37787,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {normalizedScoutView === "submit" ? (
               <>
                 <section className="embedded-page">
-              <Scout
-                targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }}
-                compact
-                adminMode={adminEditModeActive}
-                supabase={supabase}
-                isSupabaseConfigured={isSupabaseConfigured}
-                mapCatalogRow={mapCatalog}
-                money={money}
-                onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-embedded" })}
-              />
+                  <LazyToolBoundary label="Loading Scout report tools...">
+                    <Scout
+                      targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }}
+                      compact
+                      adminMode={adminEditModeActive}
+                      supabase={supabase}
+                      isSupabaseConfigured={isSupabaseConfigured}
+                      mapCatalogRow={mapCatalog}
+                      money={money}
+                      onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-embedded" })}
+                    />
+                  </LazyToolBoundary>
                 </section>
               </>
             ) : activeScoutPage === "reports" ? (
@@ -37894,6 +38006,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       placeholder="Search by name, set, product type, card number, or scanned barcode..."
                       closeSignal={catalogSuggestionCloseSignal}
                       maxSuggestions={5}
+                      localCatalogProducts={catalogProducts}
                       money={money}
                     />
                     <button type="submit">Search</button>
@@ -38719,7 +38832,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <CollapsibleFeatureSection title={adminToolsVisible ? "Manual Catalog Item" : "Catalog Suggestions"} summary={adminToolsVisible ? "Add or edit missing sealed products and individual cards locally" : "Suggest missing products, UPC/SKU links, and corrections for admin review"} open={isFeatureSectionOpen("catalog_manual")} onToggle={() => toggleFeatureSection("catalog_manual")}>
           {adminToolsVisible ? (
           <>
-          <SmartAddCatalog onUseProduct={useSmartCatalogProduct} />
+          <LazyToolBoundary label="Loading catalog match tools...">
+            <SmartAddCatalog onUseProduct={useSmartCatalogProduct} localCatalogProducts={catalogProducts} />
+          </LazyToolBoundary>
           <section className="panel">
   <h2>Bulk Import Catalog Items</h2>
   <p>
@@ -39099,43 +39214,46 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 
     <details className="forge-form-step forge-optional-details">
       <summary>Quick TideTradr catalog picker</summary>
-    <SmartAddInventory
-  onAddInventory={(newItem) => {
-    const product = newItem.product;
+      <LazyToolBoundary label="Loading catalog picker...">
+        <SmartAddInventory
+          localCatalogProducts={catalogProducts}
+          onAddInventory={(newItem) => {
+            const product = newItem.product;
 
-    setItemForm((old) => ({
-      ...old,
+            setItemForm((old) => ({
+              ...old,
 
-      name: product?.name || old.name,
-      category: "Pokemon",
-      quantity: newItem.quantity || 1,
+              name: product?.name || old.name,
+              category: "Pokemon",
+              quantity: newItem.quantity || 1,
 
-      barcode: product?.upcs?.[0] || old.barcode,
-      marketPrice: product?.marketPrice || old.marketPrice || "",
-      msrpPrice: product?.msrpPrice || old.msrpPrice || "",
+              barcode: product?.upcs?.[0] || old.barcode,
+              marketPrice: product?.marketPrice || old.marketPrice || "",
+              msrpPrice: product?.msrpPrice || old.msrpPrice || "",
 
-      setCode: product?.setCode || old.setCode || "",
-      expansion: product?.expansion || old.expansion || "",
-      productLine: product?.productLine || old.productLine || "",
-      productType: product?.itemType || old.productType || "",
-      packCount: product?.packCount || old.packCount || "",
+              setCode: product?.setCode || old.setCode || "",
+              expansion: product?.expansion || old.expansion || "",
+              productLine: product?.productLine || old.productLine || "",
+              productType: product?.itemType || old.productType || "",
+              packCount: product?.packCount || old.packCount || "",
 
-      unitCost:
-        newItem.paidPriceEach ||
-        product?.msrpPrice ||
-        old.unitCost ||
-        "",
+              unitCost:
+                newItem.paidPriceEach ||
+                product?.msrpPrice ||
+                old.unitCost ||
+                "",
 
-      salePrice:
-        newItem.sellingPriceEach ||
-        product?.marketPrice ||
-        old.salePrice ||
-        "",
+              salePrice:
+                newItem.sellingPriceEach ||
+                product?.marketPrice ||
+                old.salePrice ||
+                "",
 
-      status: "In Stock",
-    }));
-  }}
-/>
+              status: "In Stock",
+            }));
+          }}
+        />
+      </LazyToolBoundary>
     </details>
 
     {false && showInventoryScanner && (
@@ -40384,18 +40502,20 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   </div>
                 </details>
                 <div id="catalog-market-history">
-                  <MarketPriceHistoryPanel
-                  catalogProductId={selectedCatalogDetailPricingProduct?.id || selectedCatalogDetailProduct.id}
-                  tcgplayerProductId={selectedCatalogDetailPricingProduct?.tcgplayerProductId}
-                  externalProductId={selectedCatalogDetailPricingProduct?.externalProductId}
-                  productName={catalogTitle(selectedCatalogDetailProduct)}
-                  currentMarketPrice={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue}
-                  currentLowPrice={selectedCatalogDetailPricingProduct?.lowPrice}
-                  currentMidPrice={selectedCatalogDetailPricingProduct?.midPrice}
-                  currentHighPrice={selectedCatalogDetailPricingProduct?.highPrice}
-                  lastPriceChecked={selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.marketLastUpdated}
-                  money={money}
-                  />
+                  <LazyToolBoundary label="Loading price history...">
+                    <MarketPriceHistoryPanel
+                      catalogProductId={selectedCatalogDetailPricingProduct?.id || selectedCatalogDetailProduct.id}
+                      tcgplayerProductId={selectedCatalogDetailPricingProduct?.tcgplayerProductId}
+                      externalProductId={selectedCatalogDetailPricingProduct?.externalProductId}
+                      productName={catalogTitle(selectedCatalogDetailProduct)}
+                      currentMarketPrice={getTideTradrMarketInfo(selectedCatalogDetailPricingProduct).currentMarketValue}
+                      currentLowPrice={selectedCatalogDetailPricingProduct?.lowPrice}
+                      currentMidPrice={selectedCatalogDetailPricingProduct?.midPrice}
+                      currentHighPrice={selectedCatalogDetailPricingProduct?.highPrice}
+                      lastPriceChecked={selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.marketLastUpdated}
+                      money={money}
+                    />
+                  </LazyToolBoundary>
                 </div>
                 {selectedCatalogDetailProduct.notes ? <p className="compact-subtitle">{selectedCatalogDetailProduct.notes}</p> : null}
               </div>
@@ -40589,19 +40709,21 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
         onEditEntry={onEdit}
         onDeleteEntry={onDelete}
       />
-      <MarketPriceHistoryPanel
-        compact
-        catalogProductId={item.catalogProductId || item.catalogItemId}
-        tcgplayerProductId={item.tcgplayerProductId || item.sku}
-        externalProductId={item.externalProductId || item.sku}
-        productName={item.name}
-        currentMarketPrice={item.marketPrice}
-        currentLowPrice={item.lowPrice}
-        currentMidPrice={item.midPrice}
-        currentHighPrice={item.highPrice}
-        lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
-        money={money}
-      />
+      <LazyToolBoundary label="Loading price history...">
+        <MarketPriceHistoryPanel
+          compact
+          catalogProductId={item.catalogProductId || item.catalogItemId}
+          tcgplayerProductId={item.tcgplayerProductId || item.sku}
+          externalProductId={item.externalProductId || item.sku}
+          productName={item.name}
+          currentMarketPrice={item.marketPrice}
+          currentLowPrice={item.lowPrice}
+          currentMidPrice={item.midPrice}
+          currentHighPrice={item.highPrice}
+          lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
+          money={money}
+        />
+      </LazyToolBoundary>
       <div className="quick-actions">
         <button type="button" onClick={() => onSell(item)}>Sell</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
@@ -40679,19 +40801,21 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
         onMoveEntryToForge={onMoveToForge}
         onCopyEntryToForge={onCopyToForge}
       />
-      <MarketPriceHistoryPanel
-        compact
-        catalogProductId={item.catalogProductId || item.catalogItemId}
-        tcgplayerProductId={item.tcgplayerProductId || item.sku}
-        externalProductId={item.externalProductId || item.sku}
-        productName={item.name}
-        currentMarketPrice={item.marketPrice}
-        currentLowPrice={item.lowPrice}
-        currentMidPrice={item.midPrice}
-        currentHighPrice={item.highPrice}
-        lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
-        money={money}
-      />
+      <LazyToolBoundary label="Loading price history...">
+        <MarketPriceHistoryPanel
+          compact
+          catalogProductId={item.catalogProductId || item.catalogItemId}
+          tcgplayerProductId={item.tcgplayerProductId || item.sku}
+          externalProductId={item.externalProductId || item.sku}
+          productName={item.name}
+          currentMarketPrice={item.marketPrice}
+          currentLowPrice={item.lowPrice}
+          currentMidPrice={item.midPrice}
+          currentHighPrice={item.highPrice}
+          lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
+          money={money}
+        />
+      </LazyToolBoundary>
       <div className="quick-actions">
         <button type="button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button>
         <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button>

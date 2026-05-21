@@ -36803,6 +36803,50 @@ body,
   border-color: rgba(56, 189, 248, 0.26) !important;
 }
 
+.route-loading-card {
+  align-items: center;
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(8, 15, 30, 0.94)),
+    rgba(8, 15, 30, 0.88);
+  border: 1px solid rgba(132, 226, 255, 0.2);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  color: var(--et-readable-text);
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  margin: 1rem auto;
+  max-width: 520px;
+  min-height: 148px;
+  padding: 1.15rem;
+  text-align: center;
+}
+
+.route-loading-card strong {
+  color: var(--et-readable-text);
+  font-size: 1rem;
+}
+
+.route-loading-card small {
+  color: var(--et-muted-readable);
+}
+
+.route-loading-spinner {
+  animation: emberRouteSpin 0.9s linear infinite;
+  border: 3px solid rgba(132, 226, 255, 0.18);
+  border-radius: 999px;
+  border-top-color: rgba(249, 115, 22, 0.82);
+  display: block;
+  height: 34px;
+  width: 34px;
+}
+
+@keyframes emberRouteSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 640px) {
   .app,
   .app-command-shell,

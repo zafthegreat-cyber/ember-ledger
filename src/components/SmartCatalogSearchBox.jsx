@@ -6,7 +6,6 @@ import {
   isCatalogSearchDebugEnabled,
   normalizeCatalogQuery,
 } from "../services/pokemonCatalogSearch";
-import { POKEMON_PRODUCTS } from "../data/pokemonProductCatalog";
 import { searchCatalog } from "../utils/catalogSearchUtils";
 import {
   getProductDisplayTitle,
@@ -83,7 +82,7 @@ export default function SmartCatalogSearchBox({
   money = (amount) => `$${Number(amount || 0).toFixed(2)}`,
   autoFocus = false,
   inputLabel = "",
-  localCatalogProducts = POKEMON_PRODUCTS,
+  localCatalogProducts = [],
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -20,7 +20,7 @@ function mapCatalogProduct(row = {}) {
   };
 }
 
-export default function SmartAddInventory({ onAddInventory }) {
+export default function SmartAddInventory({ onAddInventory, localCatalogProducts = [] }) {
   const [query, setQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -50,6 +50,7 @@ export default function SmartAddInventory({ onAddInventory }) {
           isSupabaseConfigured={isSupabaseConfigured}
           placeholder="Search product, UPC, SKU"
           maxSuggestions={6}
+          localCatalogProducts={localCatalogProducts}
           onSelectSuggestion={(suggestion) => {
             if (!suggestion.product) return;
             const product = mapCatalogProduct(suggestion.product);
