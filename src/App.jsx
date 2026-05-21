@@ -250,6 +250,7 @@ import {
   loadEmberAssistThread,
   makeEmberAssistAdminMessage,
   saveEmberAssistThread,
+  shouldShowEmberAssistEntry,
   shouldOfferAdminEscalation,
 } from "./utils/emberAssist";
 import {
@@ -18957,6 +18958,7 @@ function renderForgeHeader() {
   const emberAssistContext = buildEmberAssistContext({
     activeTab,
     scoutView,
+    route: typeof window === "undefined" ? "" : window.location.pathname,
     routeLabel: activeTabLabel,
     isAdmin: adminToolsVisible,
     isSeller: commandDeskSellerAccess,
@@ -18974,7 +18976,14 @@ function renderForgeHeader() {
   });
   const emberAssistStarterPrompts = getEmberAssistStarterPrompts({ activeTab, scoutView, isAdmin: adminToolsVisible });
   const emberAssistOwnMessages = filterEmberAssistMessagesForUser(suggestions, currentUserProfile, adminToolsVisible);
-  const emberAssistVisible = Boolean((user || BETA_LOCAL_MODE || guestPreviewActive) && !activeTabLocked && !["resetPassword"].includes(activeTab));
+  const emberAssistVisible = shouldShowEmberAssistEntry({
+    hasUser: Boolean(user),
+    betaLocalMode: BETA_LOCAL_MODE,
+    guestPreviewActive,
+    activeTabLocked,
+    activeTab,
+    appAccessAllowed: betaAccessAllowed(),
+  });
 
   useEffect(() => {
     saveEmberAssistThread(emberAssistMessages);
@@ -19100,11 +19109,11 @@ function renderForgeHeader() {
     pushEmberAssistMessage({
       id: makeId("ember-confirm"),
       role: "assistant",
-      text: "Sent to Ember & Tide. We will review it as soon as we can.",
+      text: "Queued for Ember & Tide admin review. It will appear in the admin inbox.",
       actions: [],
       createdAt: new Date().toISOString(),
     });
-    setVaultToast("Sent to Ember & Tide.");
+    setVaultToast("Queued for admin review.");
   }
 
   function renderEmberAssistAdminInbox() {
@@ -19175,15 +19184,15 @@ function renderForgeHeader() {
           onClick={() => setEmberAssistOpen((open) => !open)}
         >
           <span aria-hidden="true">ET</span>
-          <b>Assist</b>
+          <b>Ask Ember</b>
         </button>
         {emberAssistOpen ? (
           <aside className="ember-assist-panel" role="dialog" aria-modal="false" aria-labelledby="ember-assist-title">
             <div className="ember-assist-header">
               <div>
                 <p className="section-kicker">Ember Assist</p>
-                <h2 id="ember-assist-title">I will help you figure this out.</h2>
-                <p>Founder-guided app help. Short, practical, and careful with private data.</p>
+                <h2 id="ember-assist-title">Hi, I&apos;m Ember Assist.</h2>
+                <p>I can help with Vault, Forge, Scout, TideTradr, The Spark, Settings, and app questions.</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close Ember Assist" onClick={() => setEmberAssistOpen(false)}>X</button>
             </div>
@@ -19203,9 +19212,9 @@ function renderForgeHeader() {
                 <article className={`ember-assist-message is-${message.role}`} key={message.id}>
                   <span>{message.role === "user" ? "You" : "Ember Assist"}</span>
                   <p>{message.text}</p>
-                  {message.actions?.length ? (
+                  {message.actions?.filter((action) => !(message.shouldEscalate && /send to admin/i.test(action)))?.length ? (
                     <div className="ember-assist-actions">
-                      {message.actions.slice(0, 4).map((action) => (
+                      {message.actions.filter((action) => !(message.shouldEscalate && /send to admin/i.test(action))).slice(0, 4).map((action) => (
                         <button type="button" key={action} className="secondary-button" onClick={() => runEmberAssistAction(action)}>{action}</button>
                       ))}
                     </div>
@@ -19257,7 +19266,7 @@ function renderForgeHeader() {
                   details: "",
                   category: latestAssistant?.category || "Other",
                   lastResponse: latestAssistant?.text || "",
-                })}>Need more help?</button>
+                })}>Message Admin</button>
                 <button type="button" className="ghost-button" onClick={() => {
                   setEmberAssistMessages(clearEmberAssistThread());
                   setEmberAssistInput("");
@@ -19269,7 +19278,7 @@ function renderForgeHeader() {
                 <div className="compact-card-header">
                   <div>
                     <h3>Send to Ember & Tide</h3>
-                    <p>I am not fully sure on that one. Add anything that would help a real person review it.</p>
+                    <p>I am not fully sure on that one. Add anything that would help a real person review it in the admin inbox.</p>
                   </div>
                   <button type="button" className="ghost-button" onClick={() => setEmberAssistEscalationDraft(null)}>Cancel</button>
                 </div>
@@ -19284,7 +19293,7 @@ function renderForgeHeader() {
                 <Field label="Extra details">
                   <textarea rows={3} value={emberAssistEscalationDraft.details} onChange={(event) => setEmberAssistEscalationDraft((current) => ({ ...current, details: event.target.value }))} placeholder="What did you expect, and what happened?" />
                 </Field>
-                <p className="compact-subtitle">This includes your public username, current page, question, and the assistant response. It does not include private admin notes or other users' data.</p>
+                <p className="compact-subtitle">This queues a local/admin-inbox message with your public username, current page, question, and the assistant response. It does not include private admin notes or other users' data.</p>
                 <button
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}

@@ -36440,7 +36440,7 @@ body,
   pointer-events: none;
   position: fixed;
   right: 1.25rem;
-  z-index: 80;
+  z-index: 1300;
 }
 
 .ember-assist-fab,
@@ -36464,6 +36464,8 @@ body,
   min-height: 52px;
   padding: 0.65rem 0.9rem;
   pointer-events: auto;
+  box-shadow: 0 0 0 1px rgba(255, 176, 77, 0.18), 0 14px 32px rgba(0, 0, 0, 0.38), 0 0 28px rgba(249, 115, 22, 0.16);
+  cursor: pointer;
 }
 
 .ember-assist-fab span {
@@ -36494,6 +36496,7 @@ body,
   position: absolute;
   right: 0;
   width: min(430px, calc(100vw - 2rem));
+  z-index: 1301;
 }
 
 .ember-assist-header,
@@ -36602,6 +36605,7 @@ body,
   background: rgba(3, 8, 18, 0.78) !important;
   border-color: rgba(132, 226, 255, 0.22) !important;
   color: var(--et-readable-text) !important;
+  line-height: 1.35;
   width: 100%;
 }
 
@@ -36659,9 +36663,9 @@ body,
 
   .ember-assist-panel {
     border-radius: 20px 20px 0 0;
-    bottom: calc(-86px - env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     left: 0;
-    max-height: calc(100dvh - 110px);
+    max-height: min(70dvh, calc(100dvh - 128px));
     right: 0;
     width: 100%;
   }

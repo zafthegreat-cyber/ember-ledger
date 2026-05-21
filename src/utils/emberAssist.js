@@ -38,16 +38,32 @@ const PAGE_PROMPTS = {
   spark: ["How does The Spark work?", "Help me submit a kid request", "What does waitlisted mean?", "Are there upcoming kid-friendly events?"],
   settings: ["Help me switch workspaces", "Explain personal Forge vs Ember & Tide Forge", "Help me update my profile", "Explain seller mode"],
   admin: ["What needs review?", "Show admin message queue", "Explain this user status", "What should I check first?"],
-  general: ["What can I do here?", "Help me add an item", "Explain this page", "What should I do next?"],
+  general: ["How do I add inventory?", "What is Forge for?", "How do Scout points work?", "How do I message admin?"],
 };
+
+const CORE_PROMPTS = [
+  "How do I add inventory?",
+  "What is Forge for?",
+  "How do Scout points work?",
+  "How do I submit a restock report?",
+  "How do I message admin?",
+  "How do I join the Kids Program?",
+];
 
 const BUG_WORDS = /\b(broken|wrong|missing|not showing|can't find|cant find|cannot find|disappeared|lost|bug|error|stuck|failed|didn't save|did not save)\b/i;
 const TAX_WORDS = /\b(tax|taxes|deduction|cpa|year[-\s]?end|expense|receipt|mileage)\b/i;
 const SPARK_WORDS = /\b(kid|kids|child|children|spark|giveaway|family|parent)\b/i;
 const DROP_WORDS = /\b(drop radar|prediction|predicted|drop|restock window|confirmed vs predicted|release)\b/i;
 const SCOUT_WORDS = /\b(scout|report|store|verified|confidence|trusted)\b/i;
-const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory)\b/i;
-const MARKET_WORDS = /\b(market|listing|seller|sold|trade|price)\b/i;
+const SCOUT_POINTS_WORDS = /\b(scout points?|points|reputation|trusted reporter|earn points)\b/i;
+const QUICK_ADD_WORDS = /\b(quick add|add inventory|add item|center plus|\+ button|save to vault|save to forge)\b/i;
+const HEARTH_WORDS = /\b(hearth|home|what should i do next|daily command|today's best action)\b/i;
+const SETTINGS_WORDS = /\b(settings|profile|notification|seller mode|workspace|workspaces|personal forge|ember & tide forge|business info)\b/i;
+const CONTACT_WORDS = /\b(message admin|contact admin|send to admin|ask admin|support|help from admin|ember & tide help)\b/i;
+const SHOP_WORDS = /\b(card shop|local shop|family friendly shop|kid friendly shop|where should i buy|shop near me)\b/i;
+const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|help me|where do i start|what is this)\b/i;
+const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
+const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price)\b/i;
 
 function safeJsonParse(value, fallback) {
   try {
@@ -92,9 +108,10 @@ export function emberAssistPageKind(activeTab = "", extra = {}) {
 
 export function getEmberAssistStarterPrompts({ activeTab = "", scoutView = "", isAdmin = false } = {}) {
   const page = emberAssistPageKind(activeTab, { scoutView, isAdminPage: activeTab === "adminReview" });
-  const prompts = [...(PAGE_PROMPTS[page] || PAGE_PROMPTS.general)];
+  const pagePrompts = PAGE_PROMPTS[page] || PAGE_PROMPTS.general;
+  const prompts = [...new Set([...pagePrompts, "How do I message admin?", ...CORE_PROMPTS])];
   if (isAdmin && page !== "admin") prompts.push("What needs admin review?");
-  return prompts.slice(0, 4);
+  return prompts.slice(0, 6);
 }
 
 export function buildEmberAssistContext(input = {}) {
@@ -102,6 +119,7 @@ export function buildEmberAssistContext(input = {}) {
   return {
     page,
     activeTab: input.activeTab || "dashboard",
+    route: input.route || input.path || "",
     routeLabel: input.routeLabel || PAGE_PROMPTS[page]?.[0] || "Ember & Tide",
     isAdmin: Boolean(input.isAdmin),
     isSeller: Boolean(input.isSeller),
@@ -117,6 +135,19 @@ export function buildEmberAssistContext(input = {}) {
       adminOpenItems: input.isAdmin ? Number(input.counts?.adminOpenItems || 0) : 0,
     },
   };
+}
+
+export function shouldShowEmberAssistEntry({
+  hasUser = false,
+  betaLocalMode = false,
+  guestPreviewActive = false,
+  activeTabLocked = false,
+  activeTab = "",
+  appAccessAllowed = true,
+} = {}) {
+  if (activeTab === "resetPassword" || activeTabLocked) return false;
+  if (guestPreviewActive) return false;
+  return Boolean((hasUser || betaLocalMode) && appAccessAllowed);
 }
 
 function response(answer, options = {}) {
@@ -150,52 +181,87 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     });
   }
 
-  if (DROP_WORDS.test(text) || page === "dropRadar") {
+  if (CONTACT_WORDS.test(text)) {
+    return response("Use Message Admin when Ember Assist cannot solve it cleanly. I will include your question, current page, public username, and safe context so Ember & Tide can review it in the admin inbox.", {
+      actions: ["Send to Admin"],
+      category: "Other",
+    });
+  }
+
+  if (QUICK_ADD_WORDS.test(text)) {
+    return response("Use the center plus or Quick Add to save something fast. Choose Vault for your collection, Forge for sellable/business inventory, Scout for a report, or Expenses/Mileage for records. You can add details later.", {
+      actions: ["Open Quick Add", "Go to Vault", "Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+
+  if (SCOUT_POINTS_WORDS.test(text)) {
+    return response("Scout points are trust signals from useful confirmed reports and clean community help. Build points by submitting real store reports with clear store, product, time, and proof when you have it.", {
+      actions: ["Open Scout Report", "Open Drop Radar"],
+      category: "Drop Radar question",
+    });
+  }
+
+  if (DROP_WORDS.test(text) || (page === "dropRadar" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     return response("Drop Radar helps you see what might be coming, what was confirmed, and what stores are worth watching. Predictions are educated guesses, not promises. Confirmed Scout reports matter more.", {
       actions: ["Open Drop Radar", "Open Scout Report", "Follow Store"],
       category: "Drop Radar question",
     });
   }
 
-  if (SCOUT_WORDS.test(text) || page === "scout") {
+  if (SCOUT_WORDS.test(text) || (page === "scout" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     return response("Scout works best when the store, product, time, and confidence are clear. A confirmed recent report should carry more weight than an old report or a prediction.", {
       actions: ["Open Scout Report", "Open Drop Radar"],
       category: "Wrong Scout report/store",
     });
   }
 
-  if (SPARK_WORDS.test(text) || page === "spark") {
+  if (SPARK_WORDS.test(text) || (page === "spark" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     return response("The Spark is where we track kid and family interest. We cannot promise inventory, but when kid-friendly access is available, this helps us keep it fair and parent-approved.", {
       actions: ["Open The Spark", "Follow Announcements"],
       category: "The Spark/Kids Program question",
     });
   }
 
-  if (TAX_WORDS.test(text) || page === "expenses" || page === "mileage") {
+  if (TAX_WORDS.test(text) || ((page === "expenses" || page === "mileage") && GENERAL_PAGE_HELP_WORDS.test(text))) {
     return response("These are organized records for year-end review, not tax advice. I can help you find missing receipts, mileage gaps, and cost records before you review everything with a tax professional.", {
       actions: ["Open Expenses", "Open Mileage", "Open Forge"],
       category: "Expenses/receipts/mileage question",
     });
   }
 
-  if (VAULT_FORGE_WORDS.test(text) || page === "vault" || page === "forge") {
+  if (VAULT_FORGE_WORDS.test(text) || ((page === "vault" || page === "forge") && GENERAL_PAGE_HELP_WORDS.test(text))) {
     return response("If it is for your personal collection, keep it in Vault. If you plan to sell it, prep it in Forge. You can move it later, and purchaser tallies help keep the records clean.", {
       actions: ["Go to Vault", "Go to Forge", "Open Quick Add"],
       category: "Vault/Forge inventory question",
     });
   }
 
-  if (MARKET_WORDS.test(text) || page === "market") {
+  if (MARKET_WORDS.test(text) || (page === "market" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     return response("For Market, the important pieces are the item photo, name, condition, price, seller identity, and status. Fair pricing should be clear, and sold or removed listings should not look active.", {
       actions: ["Open Market", "Create Listing", "Send to Admin"],
       category: "Market/listing question",
     });
   }
 
-  if (page === "settings") {
+  if (SETTINGS_WORDS.test(text) || (page === "settings" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     return response("Settings is where you keep account, workspace, seller mode, notifications, and public identity straight. Personal collection work belongs in Vault; seller or business work belongs in Forge.", {
       actions: ["Open Settings", "Open Forge"],
       category: "Account/beta access question",
+    });
+  }
+
+  if (SHOP_WORDS.test(text)) {
+    return response("Use Scout store search and Tidepool community posts to find local, family-friendly places. If a shop is missing or looks wrong, send it to admin so we can review it without guessing.", {
+      actions: ["Open Scout Report", "Send to Admin"],
+      category: "Other",
+    });
+  }
+
+  if (HEARTH_WORDS.test(text) || (page === "general" && GENERAL_PAGE_HELP_WORDS.test(text))) {
+    return response("Hearth is your starting point: check the best action, then use Quick Add, Scout, Vault, Forge, or Market depending on what needs attention next.", {
+      actions: ["Open Quick Add", "Open Scout Report", "Go to Vault"],
+      category: "Other",
     });
   }
 
@@ -206,8 +272,12 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     });
   }
 
-  return response("Here is what matters: choose the area that matches the job. Quick Add is for saving something fast, Scout is for reports, Vault is for collection, Forge is for business records, and The Spark is for kid/family access.", {
-    actions: ["Open Quick Add", "Go to Vault", "Open Scout Report"],
+  return response("I am not sure yet, and I do not want to guess. You can send this to an admin so a real person can look at it with the right context.", {
+    confidence: "low",
+    shouldEscalate: true,
+    category: "Other",
+    reason: "No local Ember Assist help topic matched.",
+    actions: ["Send to Admin"],
   });
 }
 
@@ -236,6 +306,7 @@ export function makeEmberAssistAdminMessage({
       category: safeCategory,
       page: context.page || "general",
       activeTab: context.activeTab || "",
+      route: context.route || context.path || "",
       routeLabel: context.routeLabel || "",
       publicUsername: profile.publicUsername || context.publicUsername || "",
       profileReference: profile.userId || profile.id || "",
@@ -243,6 +314,7 @@ export function makeEmberAssistAdminMessage({
       details: String(details || "").slice(0, 1800),
       assistantResponse: String(lastResponse || "").slice(0, 1600),
       timestamp: now,
+      deliveryMode: "local_admin_inbox",
     },
     notes: "Submitted from Ember Assist. Admin notes stay private.",
     status: "Submitted",

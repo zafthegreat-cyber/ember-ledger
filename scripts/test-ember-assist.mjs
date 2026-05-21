@@ -6,6 +6,7 @@ import {
   filterEmberAssistMessagesForUser,
   getEmberAssistStarterPrompts,
   makeEmberAssistAdminMessage,
+  shouldShowEmberAssistEntry,
   shouldOfferAdminEscalation,
 } from "../src/utils/emberAssist.js";
 
@@ -14,6 +15,18 @@ assert.ok(scoutPrompts.includes("How do Scout reports work?"), "Scout should sho
 
 const forgePrompts = getEmberAssistStarterPrompts({ activeTab: "inventory" });
 assert.ok(forgePrompts.includes("Help me set a planned sale price"), "Forge should show seller-oriented starter prompts");
+assert.ok(forgePrompts.includes("How do I message admin?"), "Starter prompts should keep admin fallback visible");
+
+const quickAddAnswer = buildEmberAssistFallbackResponse("How do I add inventory?", buildEmberAssistContext({ activeTab: "dashboard" }));
+assert.match(quickAddAnswer.answer, /center plus|Quick Add/i);
+assert.ok(quickAddAnswer.actions.includes("Open Quick Add"));
+
+const scoutPointsAnswer = buildEmberAssistFallbackResponse("How do Scout points work?", buildEmberAssistContext({ activeTab: "scout" }));
+assert.match(scoutPointsAnswer.answer, /confirmed reports|clear store/i);
+
+const adminHelpAnswer = buildEmberAssistFallbackResponse("How do I message admin?", buildEmberAssistContext({ activeTab: "settings" }));
+assert.match(adminHelpAnswer.answer, /admin inbox/i);
+assert.ok(adminHelpAnswer.actions.includes("Send to Admin"));
 
 const dropContext = buildEmberAssistContext({ activeTab: "scout", scoutView: "alerts" });
 const dropAnswer = buildEmberAssistFallbackResponse("What is Drop Radar?", dropContext);
@@ -37,11 +50,16 @@ assert.equal(bugAnswer.shouldEscalate, true);
 assert.equal(shouldOfferAdminEscalation("wrong store", bugAnswer), true);
 assert.equal(bugAnswer.category, "Wrong Scout report/store");
 
+const unknownAnswer = buildEmberAssistFallbackResponse("Can the moon folder sort my cereal?", buildEmberAssistContext({ activeTab: "dashboard" }));
+assert.equal(unknownAnswer.shouldEscalate, true);
+assert.equal(unknownAnswer.confidence, "low");
+assert.match(unknownAnswer.answer, /not sure yet/i);
+
 const adminMessage = makeEmberAssistAdminMessage({
   question: "Product missing",
   details: "I cannot find a Mini Portfolio.",
   category: "Missing product/catalog issue",
-  context: buildEmberAssistContext({ activeTab: "market", routeLabel: "Market", publicUsername: "safe_collector" }),
+  context: buildEmberAssistContext({ activeTab: "market", route: "/market", routeLabel: "Market", publicUsername: "safe_collector" }),
   profile: {
     userId: "user-1",
     publicUsername: "safe_collector",
@@ -56,6 +74,10 @@ assert.equal(adminMessage.suggestionType, "ember_assist_admin_message");
 assert.equal(adminMessage.targetTable, "ember_assist_messages");
 assert.equal(adminMessage.submittedData.publicUsername, "safe_collector");
 assert.equal(adminMessage.submittedData.profileReference, "user-1");
+assert.equal(adminMessage.submittedData.route, "/market");
+assert.equal(adminMessage.submittedData.question, "Product missing");
+assert.ok(adminMessage.submittedData.timestamp);
+assert.equal(adminMessage.submittedData.deliveryMode, "local_admin_inbox");
 assert.equal(JSON.stringify(adminMessage).includes("private@example.com"), false, "Admin message should not include raw email");
 assert.equal(JSON.stringify(adminMessage).includes("private admin-only note"), false, "Admin message should not include private admin notes");
 
@@ -69,5 +91,11 @@ const messages = [
 ];
 assert.equal(filterEmberAssistMessagesForUser(messages, { userId: "user-1", publicUsername: "safe_collector" }, false).length, 1);
 assert.equal(filterEmberAssistMessagesForUser(messages, { userId: "admin" }, true).length, 2);
+
+assert.equal(shouldShowEmberAssistEntry({ hasUser: true, appAccessAllowed: true }), true);
+assert.equal(shouldShowEmberAssistEntry({ hasUser: true, appAccessAllowed: false }), false);
+assert.equal(shouldShowEmberAssistEntry({ hasUser: true, appAccessAllowed: true, activeTabLocked: true }), false);
+assert.equal(shouldShowEmberAssistEntry({ hasUser: false, betaLocalMode: false, guestPreviewActive: true, appAccessAllowed: true }), false);
+assert.equal(shouldShowEmberAssistEntry({ betaLocalMode: true, appAccessAllowed: true }), true);
 
 console.log("Ember Assist tests passed.");
