@@ -236,6 +236,20 @@ import {
   validateTidepoolPostDraft,
 } from "./utils/communitySafety";
 import {
+  TIDETRADR_LISTING_STATUSES,
+  TIDETRADR_MARKETPLACE_RULES,
+  TIDETRADR_REPORT_REASONS,
+  buildMarketplaceListingQualityReport,
+  buildMarketplaceReport,
+  flagMarketplaceListing,
+  listingNeedsMarketplaceReview,
+  moderateMarketplaceListing,
+  normalizeListingModerationStatus,
+  normalizeListingReportReason,
+  normalizeListingStatus,
+  sellerTrustSummaryForListing,
+} from "./utils/tidetradrMarketplaceSafety";
+import {
   SPARK_PROGRAM_STATUS_OPTIONS,
   normalizeSparkProgramStatus,
   sparkProgramStatusLabel,
@@ -1592,8 +1606,8 @@ const BLANK_TIDEPOOL_POST_FORM = {
   photoUrl: "",
 };
 const MARKETPLACE_LISTING_TYPES = ["For Sale", "For Trade", "Looking For", "Free / Donation", "Kid-friendly deal"];
-const MARKETPLACE_STATUSES = ["Draft", "Pending Review", "Active", "Sold", "Traded", "Removed", "Flagged", "Archived"];
-const MARKETPLACE_REPORT_REASONS = ["Wrong item", "Fake/scam", "Price gouging", "Inappropriate", "Duplicate", "Sold already", "Other"];
+const MARKETPLACE_STATUSES = TIDETRADR_LISTING_STATUSES;
+const MARKETPLACE_REPORT_REASONS = TIDETRADR_REPORT_REASONS;
 const MARKETPLACE_DEAL_FILTERS = [
   { value: "all", label: "All deals" },
   { value: "nearRetail", label: "Near retail" },
@@ -4452,7 +4466,8 @@ export default function App() {
   const [listingReviewOpen, setListingReviewOpen] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState("");
   const [listingReportTarget, setListingReportTarget] = useState(null);
-  const [listingReportReason, setListingReportReason] = useState("Wrong item");
+  const [listingReportReason, setListingReportReason] = useState(MARKETPLACE_REPORT_REASONS[0]);
+  const [listingReportDetails, setListingReportDetails] = useState("");
   const [vaultListingDecision, setVaultListingDecision] = useState(null);
   const [supabaseImportStatus, setSupabaseImportStatus] = useState({
     loading: false,
@@ -22182,11 +22197,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function getCatalogPickerResults(query, limit = 12) {
     const cleanQuery = String(query || "").trim();
     if (!cleanQuery) return [];
-    const pickerProducts = catalogPagedResultSet.size
+    const pagedProducts = catalogPagedResultSet.size
       ? catalogPagedResultIds
-          .map((id) => catalogProducts.find((product) => String(product.id) === String(id)))
-          .filter(Boolean)
-      : catalogProducts.slice(0, Math.max(limit * 4, 50));
+        .map((id) => catalogProducts.find((product) => String(product.id) === String(id)))
+        .filter(Boolean)
+      : [];
+    const pickerProducts = [];
+    const pickerProductIds = new Set();
+    [...pagedProducts, ...catalogProducts].forEach((product) => {
+      const key = String(product.id || product.externalProductId || product.tcgplayerProductId || catalogTitle(product)).toLowerCase();
+      if (!key || pickerProductIds.has(key)) return;
+      pickerProductIds.add(key);
+      pickerProducts.push(product);
+    });
 
     const scannedMatches = getBestCatalogMatches(cleanQuery, pickerProducts)
       .map((match) => ({ ...match.item, _matchReason: match.explanation || match.reason || "Best catalog match" }));
@@ -27893,7 +27916,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       feedback: betaReadinessData.betaFeedback || [],
       errors: betaReadinessData.appErrorLogs || [],
     });
-    const listingReviewItems = workspaceMarketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
+    const listingReviewItems = workspaceMarketplaceListings.filter((listing) => listingNeedsMarketplaceReview(listing, getMarketplaceListingQualityContext(listing)));
     const betaRequests = [
       ...(shorelineState.adminBetaRequests || []).filter((entry) => ["pending", "waitlist"].includes(entry.status || "pending")),
       ...(betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused"].includes(entry.status || "pending")),
@@ -27913,7 +27936,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       { key: "guesses", title: "Community guesses / predictions", count: commandSummary.pendingCommunityGuesses, priority: commandSummary.pendingCommunityGuesses ? "Review" : "Clear", submittedBy: "Qualified Scouts", details: "Keep guesses separate from confirmed restock history.", filter: "Community Guess Review" },
       { key: "assist", title: "Ember Assist admin messages", count: commandSummary.openAssistMessages, priority: commandSummary.openAssistMessages ? "Review" : "Clear", submittedBy: "App users", details: "Questions escalated from Ember Assist with safe context.", filter: REVIEW_SECTION_LABELS.assist },
       { key: "shops", title: "Family-friendly shop review", count: commandSummary.shopsNeedingReview, priority: commandSummary.shopsNeedingReview ? "Review" : "Clear", submittedBy: "Admin/store metadata", details: "Approve mission-aligned shop badges without pricing guarantees.", filter: "Family-Friendly Shop Review" },
-      { key: "market", title: "Marketplace pricing/scalping flags", count: listingReviewItems.length, priority: listingReviewItems.length ? "High" : "Clear", submittedBy: "Sellers/community", details: "Approve, deny, feature, or remove flagged listings.", filter: "Marketplace Listings" },
+      { key: "market", title: "Marketplace pricing/scalping flags", count: listingReviewItems.length, priority: listingReviewItems.length ? "High" : "Clear", submittedBy: "Sellers/community", details: "Approve, reject, request edits, pause, archive, or feature flagged listings.", filter: "Marketplace Listings" },
       { key: "tidepool", title: "Tidepool post moderation", count: commandSummary.tidepoolPostsNeedingReview, priority: commandSummary.tidepoolPostsNeedingReview ? "Needs review" : "Clear", submittedBy: "Community", details: "Review pending, flagged, and unsafe community content.", filter: "Reports & Moderation" },
       { key: "receipts", title: "Receipts needing review", count: receiptsNeedingReview.length, priority: receiptsNeedingReview.length ? "Today" : "Clear", submittedBy: "Sellers", details: "Review receipt drafts, duplicates, and expense evidence.", filter: "System Health / Logs" },
       { key: "catalog", title: "Product/catalog corrections", count: catalogCorrectionCount, priority: catalogCorrectionCount ? "Review" : "Clear", submittedBy: "Users/admin", details: "Catalog, SKU, UPC, store, and data corrections.", filter: "Catalog Suggestions" },
@@ -28087,7 +28110,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       return REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)] === adminReviewFilter;
     });
     const openCount = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status)).length;
-    const listingReviewItems = workspaceMarketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
+    const listingReviewItems = workspaceMarketplaceListings.filter((listing) => listingNeedsMarketplaceReview(listing, getMarketplaceListingQualityContext(listing)));
     const trustOpenCount =
       scoutNeedsReviewReports.length +
       scoutGuessRows.filter((guess) => normalizeCommunityGuessModerationStatus(guess) === "Pending").length +
@@ -28248,7 +28271,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="compact-card-header">
               <div>
                 <h3>Marketplace Listing Review</h3>
-                <p>Approve public listings, reject unsafe listings, remove flagged listings, or mark strong listings as featured.</p>
+                <p>Approve, reject, request edits, pause, archive, or feature listings without hard-deleting seller history.</p>
               </div>
               <span className="status-badge">{listingReviewItems.length} listings</span>
             </div>
@@ -28346,12 +28369,49 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     });
   }
 
+  function getMarketplaceListingQualityContext(listing = {}) {
+    const marketInfo = getListingMarketReference(listing);
+    const sellerUsername = normalizePublicUsername(listing.sellerUsername || listing.seller_username || listing.publicUsername || listing.public_username);
+    const currentIdentity = publicIdentityForProfile(currentUserProfile);
+    return {
+      msrp: marketInfo.msrp,
+      marketValue: marketInfo.currentMarketValue,
+      isOfficialAdmin: sellerUsername ? isOfficialCommunityUsername(sellerUsername) : Boolean(currentIdentity.isOfficialAdminIdentity),
+      requirePublicFields: normalizeListingStatus(listing) !== "Draft",
+    };
+  }
+
+  function getMarketplaceListingQualityReport(listing = {}, overrides = {}) {
+    return buildMarketplaceListingQualityReport(listing, {
+      ...getMarketplaceListingQualityContext(listing),
+      ...overrides,
+    });
+  }
+
+  function renderMarketplaceQualitySummary(quality = {}, options = {}) {
+    const notes = [...(quality.blockers || []), ...(quality.warnings || [])].slice(0, options.limit || 4);
+    if (!notes.length && options.hideWhenClear) return null;
+    return (
+      <div className={`marketplace-quality-notes ${quality.blockers?.length ? "has-blockers" : ""}`}>
+        <strong>{quality.blockers?.length ? "Needs review before public listing" : "Listing quality check"}</strong>
+        {notes.length ? (
+          <ul>
+            {notes.map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        ) : (
+          <p className="compact-subtitle">Title, quantity, price, seller identity, and safety language look ready for review.</p>
+        )}
+      </div>
+    );
+  }
+
   function buildMarketplaceListing(status = "Draft") {
     const now = new Date().toISOString();
+    const normalizedStatus = normalizeListingStatus(status === "Submit" ? "Pending Review" : status);
     const photos = marketplaceForm.photoUrl
       ? [marketplaceForm.photoUrl, ...(marketplaceForm.photos || []).filter((photo) => photo !== marketplaceForm.photoUrl)]
       : marketplaceForm.photos || [];
-    return {
+    const listing = {
       id: marketplaceForm.id || makeId("listing"),
       sellerUserId: currentUserProfile.userId || user?.id || "local-beta",
       sellerUsername: currentPublicUsername(),
@@ -28380,11 +28440,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       tags: marketplaceForm.tags || "",
       sourceType: marketplaceForm.sourceType || "manual",
       sourceItemId: marketplaceForm.sourceItemId || "",
-      status,
+      status: normalizedStatus,
+      moderationStatus: normalizedStatus === "Draft" ? "Draft" : normalizedStatus === "Active" ? "Approved" : "Pending Review",
+      moderation_status: normalizedStatus === "Draft" ? "Draft" : normalizedStatus === "Active" ? "Approved" : "Pending Review",
       featured: Boolean(marketplaceForm.featured),
       reportCount: 0,
       createdAt: marketplaceForm.createdAt || now,
       updatedAt: now,
+    };
+    const quality = getMarketplaceListingQualityReport(listing, { requirePublicFields: normalizedStatus !== "Draft" });
+    return {
+      ...listing,
+      qualityScore: quality.score,
+      qualityWarnings: quality.warnings,
+      qualityBlockers: quality.blockers,
+      safetyFlags: quality.labels.map((label) => label.label),
     };
   }
 
@@ -28534,7 +28604,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function saveMarketplaceListing(status = "Draft") {
-    const finalStatus = status === "Submit" ? "Pending Review" : status;
+    const finalStatus = normalizeListingStatus(status === "Submit" ? "Pending Review" : status);
     const validationError = validateMarketplaceListingDraft(marketplaceForm, {
       isOfficialAdmin: publicIdentityForProfile(currentUserProfile).isOfficialAdminIdentity,
       requirePublicFields: finalStatus !== "Draft",
@@ -28544,18 +28614,33 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       return;
     }
     const listing = buildMarketplaceListing(finalStatus);
+    const quality = getMarketplaceListingQualityReport(listing, { requirePublicFields: finalStatus !== "Draft" });
+    if (finalStatus !== "Draft" && quality.blockers.length) {
+      setVaultToast(quality.blockers[0]);
+      return;
+    }
+    const listingForSave = {
+      ...listing,
+      status: finalStatus === "Active" && !adminToolsVisible ? "Pending Review" : finalStatus,
+      moderationStatus: finalStatus === "Draft" ? "Draft" : finalStatus === "Active" && adminToolsVisible ? "Approved" : "Pending Review",
+      moderation_status: finalStatus === "Draft" ? "Draft" : finalStatus === "Active" && adminToolsVisible ? "Approved" : "Pending Review",
+      qualityScore: quality.score,
+      qualityWarnings: quality.warnings,
+      qualityBlockers: quality.blockers,
+      safetyFlags: quality.labels.map((label) => label.label),
+    };
     setMarketplaceListings((current) =>
-      current.some((item) => item.id === listing.id)
-        ? current.map((item) => (item.id === listing.id ? listing : item))
-        : [listing, ...current]
+      current.some((item) => item.id === listingForSave.id)
+        ? current.map((item) => (item.id === listingForSave.id ? listingForSave : item))
+        : [listingForSave, ...current]
     );
     setMarketplaceForm(BLANK_MARKETPLACE_FORM);
     setListingReviewOpen(false);
     setMarketplaceSourcePicker("manual");
     setMarketplaceView("my");
     if (activeFlowModal?.type === "createListing") closeFlowModal({ force: true, reset: false });
-    void persistCrossListingChannels(listing);
-    setVaultToast(finalStatus === "Draft" ? "Listing draft saved." : "Listing submitted for review.");
+    void persistCrossListingChannels(listingForSave);
+    setVaultToast(finalStatus === "Draft" ? "Listing draft saved." : quality.warnings.length ? "Listing submitted for review with quality notes." : "Listing submitted for review.");
   }
 
   function updateMarketplaceListing(listingId, updates = {}) {
@@ -28567,18 +28652,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function updateMarketplaceListingStatus(listingId, status, reason = "") {
-    const now = new Date().toISOString();
     const actor = currentPublicUsername();
-    updateMarketplaceListing(listingId, {
-      status,
-      statusUpdatedAt: now,
-      statusUpdatedBy: actor,
-      moderationReason: reason,
-      ...(status === "Sold" ? { soldAt: now } : {}),
-      ...(status === "Removed" ? { removedAt: now } : {}),
-      ...(status === "Archived" ? { archivedAt: now } : {}),
-      ...(status === "Flagged" ? { flaggedAt: now } : {}),
-    });
+    setMarketplaceListings((current) =>
+      current.map((listing) =>
+        listing.id === listingId
+          ? moderateMarketplaceListing(listing, status, { reason, reviewer: actor })
+          : listing
+      )
+    );
   }
 
   function editMarketplaceListing(listing = {}) {
@@ -28596,35 +28677,54 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function approveMarketplaceListing(listingId) {
-    updateMarketplaceListing(listingId, { status: "Active", reviewedBy: currentPublicUsername(), reviewedAt: new Date().toISOString() });
+    updateMarketplaceListingStatus(listingId, "Active", "admin_approved");
     setVaultToast("Marketplace listing approved.");
   }
 
   function rejectMarketplaceListing(listingId) {
-    updateMarketplaceListing(listingId, { status: "Removed", reviewedBy: currentPublicUsername(), reviewedAt: new Date().toISOString(), removedAt: new Date().toISOString() });
-    setVaultToast("Marketplace listing rejected/removed.");
+    updateMarketplaceListingStatus(listingId, "Rejected", "admin_rejected");
+    setVaultToast("Marketplace listing rejected and kept for review history.");
   }
 
   function reportMarketplaceListing(event) {
     event.preventDefault();
     if (!listingReportTarget) return;
-    const report = {
+    const report = buildMarketplaceReport(listingReportTarget, {
       id: makeId("listing-report"),
-      listingId: listingReportTarget.id,
       reason: listingReportReason,
-      reportedBy: currentUserProfile.userId || "local-beta",
-      createdAt: new Date().toISOString(),
-      status: "Open",
-    };
-    setMarketplaceReports((current) => [report, ...current]);
-    updateMarketplaceListingStatus(listingReportTarget.id, "Flagged", listingReportReason);
-    updateMarketplaceListing(listingReportTarget.id, {
-      status: "Flagged",
-      reportCount: Number(listingReportTarget.reportCount || 0) + 1,
+      details: listingReportDetails,
+      userId: currentUserProfile.userId || user?.id || "local-beta",
+      publicUsername: currentPublicUsername(),
     });
+    setMarketplaceReports((current) => [report, ...current]);
+    setMarketplaceListings((current) =>
+      current.map((listing) =>
+        listing.id === listingReportTarget.id
+          ? flagMarketplaceListing(listing, {
+              reason: listingReportReason,
+              details: listingReportDetails,
+              userId: currentUserProfile.userId || user?.id || "local-beta",
+              publicUsername: currentPublicUsername(),
+            })
+          : listing
+      )
+    );
     setListingReportTarget(null);
-    setListingReportReason("Wrong item");
-    setVaultToast("Listing reported for admin review.");
+    setListingReportReason(MARKETPLACE_REPORT_REASONS[0]);
+    setListingReportDetails("");
+    setVaultToast("Thanks - admins will review this listing.");
+  }
+
+  function openMarketplaceReportFlow(listing = {}) {
+    setListingReportTarget(listing);
+    setListingReportReason(MARKETPLACE_REPORT_REASONS[0]);
+    setListingReportDetails("");
+  }
+
+  function closeMarketplaceReportFlow() {
+    setListingReportTarget(null);
+    setListingReportReason(MARKETPLACE_REPORT_REASONS[0]);
+    setListingReportDetails("");
   }
 
   function toggleSavedListing(listingId) {
@@ -28805,16 +28905,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderMarketplaceListingCard(listing, adminMode = false) {
+    const normalizedStatus = normalizeListingStatus(listing);
+    const moderationStatus = normalizeListingModerationStatus(listing);
     const listingCatalogProduct = getMarketplaceListingCatalogProduct(listing);
     const marketInfo = getListingMarketReference(listing);
     const primaryPrice = getMarketplacePrimaryPrice(listing);
     const percentOfMarket = marketInfo.currentMarketValue > 0 && primaryPrice > 0 ? (primaryPrice / marketInfo.currentMarketValue) * 100 : 0;
     const fairAssessment = getMarketplaceListingFairAssessment(listing);
     const trustBadges = getMarketplaceTrustBadges(listing);
+    const sellerTrust = sellerTrustSummaryForListing(listing, communityProfileContext());
+    const quality = getMarketplaceListingQualityReport(listing);
     const referenceParts = marketplaceReferenceParts(marketInfo);
     const imageSrc = listing.photos?.[0] || catalogImage(listingCatalogProduct || {});
     const priceLabel = listing.listingType === "For Trade" ? "Trade value" : listing.listingType === "Free / Donation" ? "Price" : "Price";
-    const closedListing = isMarketplaceClosedStatus(listing.status);
+    const closedListing = isMarketplaceClosedStatus(normalizedStatus);
+    const showQualityNotes = adminMode || listing.sellerUserId === (currentUserProfile.userId || user?.id) || quality.blockers.length > 0;
     return (
       <article className={`marketplace-listing-card market-fair-card compact-card${closedListing ? " marketplace-listing-card--closed" : ""}`} key={listing.id}>
         <div className="marketplace-listing-row">
@@ -28836,7 +28941,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="market-card-body">
             <div className="marketplace-badges">
               <span className="status-badge">{listing.listingType}</span>
-              <span className={`status-badge ${String(listing.status || "").toLowerCase().replace(/\s+/g, "-")}`}>{listing.status}</span>
+              <span className={`status-badge ${String(normalizedStatus || "").toLowerCase().replace(/\s+/g, "-")}`}>{normalizedStatus}</span>
+              {moderationStatus !== "Approved" && moderationStatus !== "Draft" ? (
+                <span className={`status-badge ${String(moderationStatus || "").toLowerCase().replace(/\s+/g, "-")}`}>{moderationStatus}</span>
+              ) : null}
               {renderFairPriceBadge(fairAssessment)}
             </div>
             <h3>{listing.title}</h3>
@@ -28852,15 +28960,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </p>
             <p className="marketplace-seller-line">
               <span>{publicUsernameLabelFromRecord(listing, "seller")}</span>
-              {isMarketplaceListingKidFriendly(listing) ? <span>Family-friendly listing</span> : <span>Community listing</span>}
+              {isMarketplaceListingKidFriendly(listing) ? <span>Family-friendly listing</span> : <span>{sellerTrust.scoutLevel.label} seller signal</span>}
             </p>
             {renderCommunityProfileSummary(listing, { compact: true, className: "marketplace-seller-profile-card" })}
             <div className="market-trust-badge-row">
               {trustBadges.length ? trustBadges.map(renderTrustBadge) : <span className="trust-badge trust-badge--secure">Community Listing</span>}
             </div>
+            {showQualityNotes ? renderMarketplaceQualitySummary(quality, { hideWhenClear: true, limit: 3 }) : null}
             <p className="compact-subtitle">{listing.condition || "Unknown condition"} | {listing.locationCity || "Local"} {listing.locationState || ""}</p>
             {closedListing ? (
-              <p className="compact-subtitle market-closed-note">Closed listing: {listing.status}. This should not be treated as active inventory.</p>
+              <p className="compact-subtitle market-closed-note">Closed listing: {normalizedStatus}. This should not be treated as active inventory.</p>
             ) : null}
           </div>
         </div>
@@ -28873,7 +28982,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-forge", destinations: { forge: true } })}>Add to Forge</button>
             </>
           ) : null}
-          <button type="button" className="secondary-button" onClick={() => setListingReportTarget(listing)}>Report</button>
+          <button type="button" className="secondary-button" onClick={() => openMarketplaceReportFlow(listing)}>Report</button>
           {!closedListing && (listing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible) ? (
             <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Sold", "seller_marked_sold")}>Mark Sold</button>
           ) : null}
@@ -28881,7 +28990,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <>
               <button type="button" className="secondary-button" onClick={() => approveMarketplaceListing(listing.id)}>Approve</button>
               <button type="button" className="secondary-button" onClick={() => rejectMarketplaceListing(listing.id)}>Reject</button>
-              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Removed", "admin_removed")}>Remove</button>
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Request Edit", "admin_requested_edit")}>Request Edit</button>
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Paused", "admin_paused")}>Pause</button>
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Archived", "admin_archived")}>Archive</button>
               <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Flagged", "admin_flagged")}>Flag</button>
               <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { featured: true })}>Feature</button>
             </>
@@ -28894,24 +29005,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderMarketplaceSection() {
     const normalizedSearch = marketplaceSearch.trim().toLowerCase();
     const currentSellerId = currentUserProfile.userId || user?.id;
-    const publicListings = workspaceMarketplaceListings.filter((listing) => listing.status === "Active");
+    const publicListings = workspaceMarketplaceListings.filter((listing) => normalizeListingStatus(listing) === "Active");
     const myListings = workspaceMarketplaceListings.filter((listing) => listing.sellerUserId === currentSellerId);
     const phase2ChannelDrafts = phase2MarketplaceDraftListings.filter((listing) => listing.status.toLowerCase() === "draft");
     const visibleMyListings = myListings.length ? myListings : phase2MarketplaceDraftListings;
-    const draftListings = myListings.length ? myListings.filter((listing) => listing.status === "Draft") : phase2ChannelDrafts;
+    const draftListings = myListings.length ? myListings.filter((listing) => normalizeListingStatus(listing) === "Draft") : phase2ChannelDrafts;
     const pendingReviewListings = workspaceMarketplaceListings.filter((listing) =>
-      listing.status === "Pending Review" && (listing.sellerUserId === currentSellerId || canReviewSharedData)
+      normalizeListingStatus(listing) === "Pending Review" && (listing.sellerUserId === currentSellerId || canReviewSharedData)
     );
     const visibleMarketplaceListings = workspaceMarketplaceListings.filter((listing) =>
-      listing.status === "Active" || listing.sellerUserId === currentSellerId || canReviewSharedData
+      normalizeListingStatus(listing) === "Active" || listing.sellerUserId === currentSellerId || canReviewSharedData
     );
     const filteredListings = visibleMarketplaceListings.filter((listing) => {
       const matchesStatus =
         marketplaceStatusFilter === "All"
           ? true
           : marketplaceStatusFilter === "Active"
-            ? listing.status === "Active"
-            : listing.status === marketplaceStatusFilter;
+            ? normalizeListingStatus(listing) === "Active"
+            : normalizeListingStatus(listing) === marketplaceStatusFilter;
       const matchesType = marketplaceTypeFilter === "All" || listing.listingType === marketplaceTypeFilter;
       const matchesSearch = !normalizedSearch || [listing.title, listing.description, listing.productType, listing.setName, listing.upc, listing.sku, listing.locationCity, publicUsernameLabelFromRecord(listing, "seller")]
         .filter(Boolean)
@@ -28940,7 +29051,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       filteredListings;
     const selectedListing = marketplaceListings.find((listing) => listing.id === selectedListingId);
     const reviewListing = buildMarketplaceListing("Pending Review");
-    const selectedListingClosed = selectedListing ? isMarketplaceClosedStatus(selectedListing.status) : false;
+    const selectedListingClosed = selectedListing ? isMarketplaceClosedStatus(normalizeListingStatus(selectedListing)) : false;
+    const selectedListingQuality = selectedListing ? getMarketplaceListingQualityReport(selectedListing) : null;
 
     return (
       <div className="marketplace-section">
@@ -28948,9 +29060,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <strong>Marketplace is in beta.</strong>
           <span>Payments and shipping are not handled by the app yet. Meet safely, verify items, and do not send payment outside trusted methods.</span>
         </div>
+        <details className="marketplace-safety-rules marketplace-safety-rules--page">
+          <summary>TideTradr safety rules</summary>
+          <div className="tidepool-guideline-list">
+            {TIDETRADR_MARKETPLACE_RULES.map((rule) => <span key={rule}>{rule}</span>)}
+          </div>
+        </details>
         <div className="cards mini-cards">
           <div className="card"><p>Active Listings</p><h2>{publicListings.length}</h2></div>
-          <div className="card"><p>Pending Review</p><h2>{workspaceMarketplaceListings.filter((listing) => listing.status === "Pending Review").length}</h2></div>
+          <div className="card"><p>Pending Review</p><h2>{workspaceMarketplaceListings.filter((listing) => normalizeListingStatus(listing) === "Pending Review").length}</h2></div>
           <div className="card"><p>My Listings</p><h2>{visibleMyListings.length}</h2></div>
           <div className="card"><p>Saved</p><h2>{marketplaceSavedIds.length}</h2></div>
         </div>
@@ -29083,7 +29201,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </details>
             <details className="marketplace-safety-rules">
               <summary>Community listing rules</summary>
-              <p>No fake/counterfeit items, misleading prices, stolen items, unsafe meetups, harassment, or off-topic items. Admin may remove listings.</p>
+              <div className="tidepool-guideline-list">
+                {TIDETRADR_MARKETPLACE_RULES.map((rule) => <span key={rule}>{rule}</span>)}
+              </div>
             </details>
             <div className="quick-actions marketplace-form-footer">
               <button type="submit" disabled={!marketplaceFormReady()}>Review Listing</button>
@@ -29189,7 +29309,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="compact-card-header">
               <div>
                 <h3>{selectedListing.title}</h3>
-                <p>{selectedListing.listingType} | {selectedListing.status}</p>
+                <p>{selectedListing.listingType} | {normalizeListingStatus(selectedListing)} | {normalizeListingModerationStatus(selectedListing)}</p>
               </div>
               <button type="button" className="secondary-button" onClick={() => setSelectedListingId("")}>Close</button>
             </div>
@@ -29199,6 +29319,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {getMarketplaceTrustBadges(selectedListing).map(renderTrustBadge)}
             </div>
             {renderCommunityProfileSummary(selectedListing, { compact: false, className: "marketplace-detail-profile-card" })}
+            {selectedListingQuality ? renderMarketplaceQualitySummary(selectedListingQuality, { hideWhenClear: true, limit: 5 }) : null}
             <div className="catalog-detail-grid">
               <DetailItem label="Price" value={money(selectedListing.askingPrice)} />
               <DetailItem label="Market Value" value={money(getListingMarketReference(selectedListing).currentMarketValue)} />
@@ -29211,14 +29332,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
             <p>{selectedListing.description || "No description yet."}</p>
             {selectedListingClosed ? (
-              <p className="market-closed-note">This listing is {selectedListing.status}. It is kept for history and review, not as an active public offer.</p>
+              <p className="market-closed-note">This listing is {normalizeListingStatus(selectedListing)}. It is kept for history and review, not as an active public offer.</p>
             ) : null}
-            <p className="compact-subtitle">Meet safely, verify items, and do not send payment outside trusted methods. Message system is coming later.</p>
+            <p className="compact-subtitle">Seller trust uses public username, Scout level, public badges, and contribution history. Private email and admin moderation notes are not shown publicly.</p>
+            <p className="compact-subtitle">Ember & Tide does not provide checkout/payment inside the app yet. Use safe, agreed payment methods and follow community rules.</p>
             <div className="quick-actions">
               <button type="button" disabled={selectedListingClosed} onClick={() => setVaultToast("Contact request saved for beta. Messaging is coming soon.")}>Contact Seller</button>
               <button type="button" className="secondary-button" onClick={() => toggleSavedListing(selectedListing.id)}>Save Listing</button>
               <button type="button" className="secondary-button" disabled>Make Offer Later</button>
-              <button type="button" className="secondary-button" onClick={() => setListingReportTarget(selectedListing)}>Report</button>
+              <button type="button" className="secondary-button" onClick={() => openMarketplaceReportFlow(selectedListing)}>Report</button>
               {!selectedListingClosed && (selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible) ? (
               <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(selectedListing.id, "Sold", "seller_marked_sold")}>Mark Sold</button>
               ) : null}
@@ -29231,8 +29353,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {adminToolsVisible ? (
                 <>
                   <button type="button" className="secondary-button" onClick={() => approveMarketplaceListing(selectedListing.id)}>Approve</button>
-                  <button type="button" className="secondary-button" onClick={() => rejectMarketplaceListing(selectedListing.id)}>Remove</button>
+                  <button type="button" className="secondary-button" onClick={() => rejectMarketplaceListing(selectedListing.id)}>Reject</button>
                   <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(selectedListing.id, "Flagged", "admin_flagged")}>Flag</button>
+                  <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(selectedListing.id, "Request Edit", "admin_requested_edit")}>Request Edit</button>
+                  <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(selectedListing.id, "Paused", "admin_paused")}>Pause</button>
                 </>
               ) : null}
             </div>
@@ -30236,6 +30360,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderMarketplaceCreateFlowContent() {
+    const previewListing = buildMarketplaceListing("Pending Review");
+    const previewQuality = getMarketplaceListingQualityReport(previewListing, { requirePublicFields: false });
     return (
       <div className="marketplace-create-panel flow-create-panel">
         <div className="quick-action-rail">
@@ -30288,6 +30414,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <Field label="Asking Price"><input type="number" step="0.01" value={marketplaceForm.askingPrice} onChange={(event) => updateMarketplaceForm("askingPrice", event.target.value)} /></Field>
           <Field label="Condition"><input value={marketplaceForm.condition} onChange={(event) => updateMarketplaceForm("condition", event.target.value)} placeholder="Near Mint, Sealed, Box damage..." /></Field>
           <Field label="Photo URL"><input value={marketplaceForm.photoUrl} onChange={(event) => updateMarketplaceForm("photoUrl", event.target.value)} placeholder="Optional beta photo URL" /></Field>
+          {renderMarketplaceQualitySummary(previewQuality, { hideWhenClear: false, limit: 4 })}
           <details className="scout-score-guidelines">
             <summary>More Listing Details</summary>
             <div className="form">
@@ -30309,7 +30436,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </details>
           <details className="marketplace-safety-rules">
             <summary>Community listing rules</summary>
-            <p>No fake/counterfeit items, misleading prices, stolen items, unsafe meetups, harassment, or off-topic items. Admin may remove listings.</p>
+            <div className="tidepool-guideline-list">
+              {TIDETRADR_MARKETPLACE_RULES.map((rule) => <span key={rule}>{rule}</span>)}
+            </div>
           </details>
           <div className="quick-actions marketplace-form-footer">
             <button type="submit" disabled={!marketplaceFormReady()}>Review Listing</button>
@@ -35910,7 +36039,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       ) : null}
 
       {listingReportTarget ? (
-        <div className="location-modal-backdrop" role="presentation" onClick={() => setListingReportTarget(null)}>
+        <div className="location-modal-backdrop" role="presentation" onClick={closeMarketplaceReportFlow}>
           <form className="location-modal" role="dialog" aria-modal="true" aria-labelledby="listing-report-title" onSubmit={reportMarketplaceListing} onClick={(event) => event.stopPropagation()}>
             <div>
               <h2 id="listing-report-title">Report Listing</h2>
@@ -35921,13 +36050,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <p className="compact-subtitle">{listingReportTarget.listingType} | {listingReportTarget.status}</p>
             </div>
             <Field label="Reason">
-              <select value={listingReportReason} onChange={(event) => setListingReportReason(event.target.value)}>
+              <select value={listingReportReason} onChange={(event) => setListingReportReason(normalizeListingReportReason(event.target.value))}>
                 {MARKETPLACE_REPORT_REASONS.map((reason) => <option key={reason}>{reason}</option>)}
               </select>
             </Field>
+            <Field label="Details">
+              <textarea value={listingReportDetails} onChange={(event) => setListingReportDetails(event.target.value)} placeholder="Optional context for admins. Do not include private payment or child/family details." />
+            </Field>
             <div className="location-modal-actions">
               <button type="submit">Submit Report</button>
-              <button type="button" className="secondary-button" onClick={() => setListingReportTarget(null)}>Cancel</button>
+              <button type="button" className="secondary-button" onClick={closeMarketplaceReportFlow}>Cancel</button>
             </div>
           </form>
         </div>

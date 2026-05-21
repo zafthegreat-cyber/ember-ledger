@@ -6,7 +6,7 @@ import {
 } from "./publicIdentity.js";
 import { detectTidepoolSafetyReviewReason } from "./tidepoolCommunity.js";
 
-export const MARKETPLACE_CLOSED_STATUSES = new Set(["Sold", "Traded", "Removed", "Archived"]);
+export const MARKETPLACE_CLOSED_STATUSES = new Set(["Sold", "Traded", "Removed", "Archived", "Rejected"]);
 
 const OFFICIAL_CLAIM_PATTERNS = [
   "officialember",

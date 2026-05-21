@@ -55,6 +55,7 @@ assert.equal(containsOfficialImpersonation("official_admin_ember"), true);
 assert.equal(containsOfficialImpersonation("official_admin_ember", { isOfficialAdmin: true }), false);
 assert.equal(containsUnsafeCommunityText("Please use no parents and private kid chat."), true);
 assert.equal(isMarketplaceClosedStatus("Sold"), true);
+assert.equal(isMarketplaceClosedStatus("Rejected"), true);
 assert.equal(isMarketplaceClosedStatus("Active"), false);
 
 console.log("Community safety tests passed.");

@@ -130,6 +130,43 @@
   background: var(--cream);
 }
 
+.marketplace-quality-notes {
+  margin: 0.55rem 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #e5eef8;
+}
+
+.marketplace-quality-notes.has-blockers {
+  border-color: rgba(251, 113, 133, 0.45);
+  background: rgba(127, 29, 29, 0.28);
+}
+
+.marketplace-quality-notes strong {
+  display: block;
+  color: #ffffff;
+  font-size: 0.88rem;
+  margin-bottom: 0.35rem;
+}
+
+.marketplace-quality-notes ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.marketplace-quality-notes li,
+.marketplace-quality-notes p {
+  color: #dbeafe;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.marketplace-safety-rules--page {
+  margin: 0.75rem 0;
+}
+
 /* Hearth Home command view */
 .app .hearth-command-view,
 .app-command-shell .hearth-command-view,

@@ -32,7 +32,7 @@ const PAGE_PROMPTS = {
   dropRadar: ["Explain this drop prediction", "What releases are coming up?", "What does confirmed vs predicted mean?", "Help me follow a store"],
   vault: ["What is my collection worth?", "Help me find an item", "What should I move to Forge?", "Explain my purchaser tallies"],
   forge: ["What should I list for sale?", "Help me set a planned sale price", "Show items missing cost or photos", "What is ready to sell?"],
-  market: ["Help me create a listing", "Explain this price", "What listings need attention?", "How do I mark something sold?"],
+  market: ["Help me create a safe listing", "Why is my listing pending?", "How do I report a listing?", "What does seller trust mean?"],
   expenses: ["What receipts are missing?", "Summarize this year's expenses", "Help me categorize this expense", "What do I need for tax records?"],
   mileage: ["Summarize miles by vehicle", "Help me log a trip", "What mileage records are missing notes?", "Explain this vehicle summary"],
   spark: ["How does The Spark work?", "Help me submit a kid request", "What does waitlisted mean?", "Are there upcoming kid-friendly events?"],
@@ -69,7 +69,7 @@ const CONTACT_WORDS = /\b(message admin|contact admin|send to admin|ask admin|su
 const SHOP_WORDS = /\b(card shop|local shop|family friendly shop|kid friendly shop|where should i buy|shop near me)\b/i;
 const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|what should i do first|what do i do first|help me|where do i start|what is this)\b/i;
 const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
-const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price)\b/i;
+const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price|checkout|payment|pay through|buy through)\b/i;
 const TIDEPOOL_WORDS = /\b(tidepool|community post|post safely|why is my post pending|report a post|flag a post|can kids post|community board)\b/i;
 
 function safeJsonParse(value, fallback) {
@@ -256,7 +256,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     });
   }
 
-  if (SCOUT_WORDS.test(text) || (page === "scout" && GENERAL_PAGE_HELP_WORDS.test(text))) {
+  if ((SCOUT_WORDS.test(text) && page !== "market") || (page === "scout" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     return response("Scout works best when the store, product, time, and confidence are clear. A confirmed recent report should carry more weight than an old report or a prediction.", {
       actions: ["Open Scout Report", "Open Drop Radar"],
       category: "Wrong Scout report/store",
@@ -285,6 +285,36 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (MARKET_WORDS.test(text) || (page === "market" && GENERAL_PAGE_HELP_WORDS.test(text))) {
+    if (/\b(payment|pay|checkout|buy through|purchase through|stripe|paypal)\b/i.test(text)) {
+      return response("Ember & Tide does not provide checkout/payment inside the app yet. Use safe, agreed payment methods and follow community rules.", {
+        actions: ["Open Market", "Send to Admin"],
+        category: "Market/listing question",
+      });
+    }
+    if (/\b(safe listing|make.*listing|create.*listing|quality|rules)\b/i.test(text)) {
+      return response("A safe TideTradr listing needs a clear item name, real condition, quantity, price, photo or clean fallback, and public-safe notes. Do not use official/admin wording, home addresses, fake product claims, or unsafe meetup language.", {
+        actions: ["Create Listing", "Open Market"],
+        category: "Market/listing question",
+      });
+    }
+    if (/\b(pending|review|why.*listing)\b/i.test(text)) {
+      return response("Listings can stay pending while Ember & Tide checks safety, price clarity, seller identity, and public notes. Pending means it is not public yet; it is not a payment or checkout hold.", {
+        actions: ["Open Market", "Send to Admin"],
+        category: "Market/listing question",
+      });
+    }
+    if (/\b(report.*listing|flag.*listing|unsafe listing|scam|counterfeit)\b/i.test(text)) {
+      return response("Use Report on a TideTradr listing if it looks fake, unsafe, sold already, misleading, or not family-friendly. That creates an admin review signal without publicly showing who reported it.", {
+        actions: ["Open Market", "Send to Admin"],
+        category: "Market/listing question",
+      });
+    }
+    if (/\b(seller trust|trusted seller|badges|seller identity)\b/i.test(text)) {
+      return response("Seller trust is based on public username, safe badges, Scout level, and community contribution signals. Private email and admin moderation notes should not appear publicly.", {
+        actions: ["Open Market", "Open Settings"],
+        category: "Market/listing question",
+      });
+    }
     return response("For Market, the important pieces are the item photo, name, condition, price, seller identity, and status. Fair pricing should be clear, and sold or removed listings should not look active.", {
       actions: ["Open Market", "Create Listing", "Send to Admin"],
       category: "Market/listing question",

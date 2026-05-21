@@ -45,6 +45,8 @@
     "test:scout-reputation": "node --no-warnings scripts/test-scout-reputation.mjs",
     "test:tidepool-community": "node --no-warnings scripts/test-tidepool-community.mjs",
     "test:tidepool-moderation": "node --no-warnings scripts/test-tidepool-moderation.mjs",
+    "test:tidetradr-safety": "node --no-warnings scripts/test-tidetradr-safety.mjs",
+    "test:marketplace-listings": "node --no-warnings scripts/test-marketplace-listings.mjs",
     "import:pokemon-tcg-api": "node pokemon_market_ingestion_kit/import_pokemontcg_cards_to_supabase.mjs",
     "import:tcgcsv": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",
     "refresh:pokemon-prices": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",
