@@ -8765,10 +8765,75 @@ textarea {
   border-radius: 12px;
   padding: 12px;
   background: var(--color-surface);
+  display: grid;
+  gap: 8px;
 }
 
 .notification-card.unread {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px rgba(255, 139, 61, 0.18), 0 14px 30px rgba(255, 139, 61, 0.08);
+}
+
+.notification-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.notification-card-heading small,
+.notification-meta {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--color-text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.notification-badge--confirmed-restock,
+.notification-badge--scout-report-status {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(6, 95, 70, 0.38);
+  color: #dcfce7;
+}
+
+.notification-badge--predicted-restock-window,
+.notification-badge--favorite-store-alert {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(12, 74, 110, 0.42);
+  color: #e0f2fe;
+}
+
+.notification-badge--community-guess-update {
+  border-color: rgba(245, 158, 11, 0.48);
+  background: rgba(120, 53, 15, 0.38);
+  color: #fef3c7;
+}
+
+.notification-badge--admin-message-status,
+.notification-badge--family-friendly-shop-update,
+.notification-badge--kids-program-update {
+  border-color: rgba(251, 191, 36, 0.46);
+  background: rgba(113, 63, 18, 0.38);
+  color: #fef9c3;
+}
+
+.notification-badge--business-forge-reminder {
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(127, 29, 29, 0.34);
+  color: #fee2e2;
 }
 
 .choice-pill {

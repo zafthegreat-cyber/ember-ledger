@@ -284,6 +284,17 @@ import {
   shopReviewBadges,
 } from "./utils/adminCommandCenterUtils";
 import {
+  IN_APP_ALERT_DISCLOSURE,
+  NOTIFICATION_PREFERENCE_ROWS,
+  buildNotificationsFromEvents,
+  notificationBadgeClass,
+  notificationCategoryLabel,
+  notificationTrustLabel,
+  normalizeNotificationPreferences,
+  unreadNotificationCount,
+  upsertNotificationState,
+} from "./utils/notificationCenterUtils";
+import {
   BETA_REQUEST_STATUSES,
   LITTLE_SPARKS_STATUSES,
   loadShorelineAccessState,
@@ -6799,9 +6810,20 @@ export default function App() {
         [key]: value,
       },
     }));
+    setVaultToast("In-app alert preference saved.");
   }
 
   function markNotificationRead(notificationId) {
+    const target = notificationCenterRows.find((entry) => entry.id === notificationId || entry.dedupeKey === notificationId);
+    if (target) {
+      updateBetaReadinessData((current) => ({
+        ...current,
+        notifications: upsertNotificationState(current.notifications || [], target, {
+          readAt: target.readAt || new Date().toISOString(),
+        }),
+      }));
+      return;
+    }
     updateBetaReadinessData((current) => ({
       ...current,
       notifications: (current.notifications || []).map((entry) =>
@@ -6811,12 +6833,102 @@ export default function App() {
   }
 
   function dismissNotification(notificationId) {
+    const target = notificationCenterRows.find((entry) => entry.id === notificationId || entry.dedupeKey === notificationId);
+    if (target && target.dismissible !== false) {
+      updateBetaReadinessData((current) => ({
+        ...current,
+        notifications: upsertNotificationState(current.notifications || [], target, {
+          dismissedAt: target.dismissedAt || new Date().toISOString(),
+        }),
+      }));
+      return;
+    }
     updateBetaReadinessData((current) => ({
       ...current,
       notifications: (current.notifications || []).map((entry) =>
         entry.id === notificationId && entry.dismissible !== false ? { ...entry, dismissedAt: new Date().toISOString() } : entry
       ),
     }));
+  }
+
+  function markAllNotificationsRead() {
+    const now = new Date().toISOString();
+    updateBetaReadinessData((current) => ({
+      ...current,
+      notifications: notificationCenterRows.reduce(
+        (rows, entry) => upsertNotificationState(rows, entry, { readAt: entry.readAt || now }),
+        current.notifications || []
+      ),
+    }));
+  }
+
+  function openNotificationTarget(entry = {}) {
+    markNotificationRead(entry.id);
+    setNotificationCenterOpen(false);
+    const route = String(entry.route || entry.actionUrl || entry.ctaDestination || "").trim();
+    if (route.startsWith("/scout/calendar")) {
+      setActiveTab("scout");
+      setScoutView("alerts");
+      setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+      return;
+    }
+    if (route.startsWith("/scout/stores")) {
+      setActiveTab("scout");
+      setScoutView("stores");
+      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+      return;
+    }
+    if (route.startsWith("/scout/reports")) {
+      setActiveTab("scout");
+      setScoutView("reports");
+      setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+      return;
+    }
+    if (route.startsWith("/forge/expenses")) {
+      setActiveTab("expenses");
+      setForgeSubTab("expenses");
+      return;
+    }
+    if (route.startsWith("/forge/sales")) {
+      setActiveTab("inventory");
+      setForgeSubTab("sales");
+      return;
+    }
+    if (route.startsWith("/forge")) {
+      setActiveTab("inventory");
+      return;
+    }
+    if (route.startsWith("/tidetradr")) {
+      setActiveTab("market");
+      return;
+    }
+    if (route.startsWith("/kids-program")) {
+      setActiveTab("kidsProgram");
+      return;
+    }
+    if (route.startsWith("/settings")) {
+      setActiveTab("menu");
+      openMenuDrawer("settings");
+      return;
+    }
+    if (route.startsWith("/whats-new") || route === "whatsNew" || route === "announcements") {
+      setActiveTab("whatsNew");
+      return;
+    }
+    if (route.startsWith("/vault")) {
+      setActiveTab("vault");
+      return;
+    }
+    if (route.startsWith("/admin") && adminToolsVisible) {
+      setActiveTab("adminReview");
+      return;
+    }
+    if (entry.category === "business_forge_reminder") {
+      setActiveTab("expenses");
+      setForgeSubTab("expenses");
+      return;
+    }
+    setActiveTab("dashboard");
   }
 
   function isAnnouncementNotification(entry = {}) {
@@ -20926,6 +21038,32 @@ function renderForgeHeader() {
     week: watchCalendarEvents.filter((event) => watchCalendarEventLayerEnabled(event) && watchCalendarAreaMatches(event)).length,
     upcomingReleases: releaseCalendarEvents.length,
   };
+  const effectiveNotificationPreferences = normalizeNotificationPreferences({
+    ...DEFAULT_NOTIFICATION_SETTINGS,
+    ...(betaReadinessData.notificationPreferences || {}),
+    ...(phase2Data.notificationPreferences || {}),
+  });
+  const notificationCenterRows = buildNotificationsFromEvents({
+    persistedNotifications: betaReadinessData.notifications || [],
+    preferences: effectiveNotificationPreferences,
+    scoutReports: scoutReportRows || [],
+    predictedWindows: watchCalendarForecastEvents || [],
+    communityGuesses: scoutGuessRows || [],
+    stores: scoutSnapshot.stores || [],
+    savedProducts: [...workspaceWatchlist, ...wishlistItems],
+    kidsApplications: [
+      ...(shorelineState.adminLittleSparksApplications || []),
+      ...(betaReadinessData.kidsApplications || []),
+      shorelineState.littleSparksApplication,
+    ].filter(Boolean),
+    emberAssistMessages: emberAssistOwnMessages || [],
+    expenses,
+    sales,
+    isAdmin: adminToolsVisible,
+    currentUserId: currentUserProfile.userId || currentUserProfile.id || user?.id || "local-beta",
+    workspaceId: activeWorkspace?.id || "",
+  });
+  const notificationUnreadCount = unreadNotificationCount(notificationCenterRows);
   const filteredScoutReports = scoutReportRows.filter((report) => {
     if (scoutReportFilter === "Verified") return Boolean(report.verified || /verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`));
     if (scoutReportFilter === "My Reports") return isCurrentUserScoutReport(report);
@@ -25589,8 +25727,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderNotificationCenter() {
-    const notifications = (betaReadinessData.notifications || []).filter((entry) => !entry.dismissedAt);
-    const unreadCount = notifications.filter((entry) => !entry.readAt).length;
+    const notifications = notificationCenterRows;
+    const unreadCount = notificationUnreadCount;
     return (
       <div className="notification-center-shell">
         <button
@@ -25606,32 +25744,40 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <section className="notification-center-panel panel" aria-label="Notification center">
             <div className="compact-card-header">
               <div>
-                <h3>Notifications</h3>
-                <p>In-app alerts are active. SMS is disabled for beta foundation.</p>
+                <h3>Alerts</h3>
+                <p>{IN_APP_ALERT_DISCLOSURE}</p>
               </div>
               <div className="quick-actions">
-                <button type="button" className="secondary-button" onClick={() => void runNotificationCopyAiAssist()}>Draft notification</button>
+                {unreadCount ? <button type="button" className="secondary-button" onClick={markAllNotificationsRead}>Mark all read</button> : null}
                 <button type="button" className="secondary-button" onClick={() => setNotificationCenterOpen(false)}>Close</button>
               </div>
             </div>
             {notifications.length ? (
               <div className="notification-list">
-                {notifications.slice(0, 8).map((entry) => (
+                {notifications.slice(0, 12).map((entry) => (
                   <article className={entry.readAt ? "notification-card" : "notification-card unread"} key={entry.id}>
-                    <span className="status-badge">{entry.type || "notice"}</span>
+                    <div className="notification-card-heading">
+                      <span className={notificationBadgeClass(entry)}>{notificationTrustLabel(entry)}</span>
+                      <small>{entry.priority === "urgent" ? "Urgent" : entry.priority === "high" ? "High priority" : notificationCategoryLabel(entry)}</small>
+                    </div>
                     <strong>{entry.title}</strong>
                     <p>{entry.message}</p>
+                    <small className="notification-meta">
+                      {entry.createdAt ? new Date(entry.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Recent"}
+                      {entry.source ? ` | ${entry.source === "in_app_alerts" ? "in-app" : entry.source}` : ""}
+                    </small>
                     <div className="drawer-inline-actions">
                       {!entry.readAt ? <button type="button" className="secondary-button" onClick={() => markNotificationRead(entry.id)}>Mark read</button> : null}
-                      <button type="button" className="ghost-button" onClick={() => dismissNotification(entry.id)}>Dismiss</button>
+                      {entry.route ? <button type="button" className="secondary-button" onClick={() => openNotificationTarget(entry)}>{entry.actionLabel || "Open"}</button> : null}
+                      <button type="button" className="ghost-button" onClick={() => dismissNotification(entry.id)}>Archive</button>
                     </div>
                   </article>
                 ))}
               </div>
             ) : (
               <div className="empty-state">
-                <h3>No notifications yet</h3>
-                <p>Kids Program updates, receipt reminders, workspace notices, and admin review alerts will appear here.</p>
+                <h3>No in-app alerts yet</h3>
+                <p>Confirmed restocks, possible Drop Radar windows, Kids Program updates, admin message statuses, and Forge reminders will appear here when they are useful.</p>
               </div>
             )}
           </section>
@@ -34180,15 +34326,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </div>
                   </div>
                   <div className="drawer-info-card">
-                    <strong>Notifications</strong>
-                    <p className="compact-subtitle">Push/text notifications are coming soon. These local preferences keep the Scout Alerts flow ready for beta.</p>
+                    <strong>In-app Alert Preferences</strong>
+                    <p className="compact-subtitle">{IN_APP_ALERT_DISCLOSURE} These controls decide what appears in the Ember & Tide alert center.</p>
                     <div className="ai-helper-note">
                       <span>Draft clearer alert copy without sending anything.</span>
                       <button type="button" className="secondary-button" onClick={() => void runNotificationCopyAiAssist()}>Draft notification</button>
                       <button type="button" className="secondary-button" onClick={() => void runSettingsHelpAiAssist()}>Explain alert settings</button>
                     </div>
                     <div className="menu-toggle-list">
-                      {notificationPreferenceRows.map((row) => (
+                      {NOTIFICATION_PREFERENCE_ROWS.map((row) => (
                         <label className="toggle-row" key={row.key}>
                           <span>
                             <strong>{row.label}</strong>
@@ -34196,36 +34342,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           </span>
                           <input
                             type="checkbox"
-                            checked={scoutSnapshot.alertSettings?.[row.key] !== false}
-                            onChange={(event) => updateScoutAlertPreference(row.key, event.target.checked)}
+                            checked={effectiveNotificationPreferences[row.key] !== false}
+                            onChange={(event) => updateNotificationPreference(row.key, event.target.checked)}
                           />
                         </label>
                       ))}
                     </div>
                     <details className="drawer-subdetails">
-                      <summary>Beta notification preferences</summary>
+                      <summary>Scout alert routing preferences</summary>
                       <div className="menu-toggle-list">
-                        {[
-                          ["stock_alerts", "Stock alerts"],
-                          ["restock_predictions", "Restock predictions"],
-                          ["wishlist_matches", "Wishlist matches"],
-                          ["kids_program_updates", "Kids Program updates"],
-                          ["giveaways", "Giveaways"],
-                          ["receipt_review_reminders", "Receipt review reminders"],
-                          ["inventory_value_changes", "Inventory value changes"],
-                          ["catalog_updates", "Catalog updates"],
-                          ["workspace_invites", "Workspace invites"],
-                          ["admin_review_alerts", "Admin review needed"],
-                          ["email_enabled", "Email enabled"],
-                          ["sms_enabled", "SMS later disabled"],
-                        ].map(([key, label]) => (
-                          <label className="toggle-row" key={key}>
-                            <span><strong>{label}</strong></span>
+                        {notificationPreferenceRows.map((row) => (
+                          <label className="toggle-row" key={row.key}>
+                            <span>
+                              <strong>{row.label}</strong>
+                              <small>{row.description}</small>
+                            </span>
                             <input
                               type="checkbox"
-                              disabled={key === "sms_enabled"}
-                              checked={Boolean((betaReadinessData.notificationPreferences || DEFAULT_NOTIFICATION_SETTINGS)[key])}
-                              onChange={(event) => updateNotificationPreference(key, event.target.checked)}
+                              checked={scoutSnapshot.alertSettings?.[row.key] !== false}
+                              onChange={(event) => updateScoutAlertPreference(row.key, event.target.checked)}
                             />
                           </label>
                         ))}
@@ -34233,7 +34368,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </details>
                     <div className="settings-frequency-panel">
                       <strong>Frequency</strong>
-                      <p className="compact-subtitle">Frequency is local-only in this beta until push/email delivery is connected.</p>
+                      <p className="compact-subtitle">Frequency is local-only in this beta. Alerts are grouped and deduped so one useful notice beats a noisy feed.</p>
                       <div className="drawer-inline-actions">
                         {["Immediate", "Daily Digest", "Off"].map((frequency) => (
                           <button type="button" className="secondary-button" key={frequency} onClick={() => setVaultToast(`${frequency} preference noted locally for beta planning.`)}>{frequency}</button>

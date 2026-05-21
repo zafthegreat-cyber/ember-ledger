@@ -223,6 +223,15 @@ export const BETA_TOOLTIPS = {
 };
 
 export const DEFAULT_NOTIFICATION_SETTINGS = {
+  confirmed_restocks: true,
+  predicted_windows: true,
+  community_guesses: true,
+  favorite_stores: true,
+  saved_products: true,
+  family_friendly_shop_updates: true,
+  ember_assist_admin_replies: true,
+  business_forge_reminders: true,
+  system_announcements: true,
   stock_alerts: true,
   restock_predictions: true,
   wishlist_matches: true,
