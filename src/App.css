@@ -35249,10 +35249,56 @@ body,
   margin: 0;
 }
 
+.admin-trust-queue-section,
+.admin-trust-activity {
+  overflow: hidden;
+}
+
+.admin-trust-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.admin-trust-queue-card {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(14, 159, 181, 0.12), transparent 11rem),
+    rgba(2, 8, 22, 0.56);
+  color: #f8fbff;
+}
+
+.admin-trust-queue-card strong,
+.admin-trust-queue-card h3,
+.admin-trust-queue-card h4 {
+  color: #fff7ed;
+}
+
+.admin-trust-queue-card p,
+.admin-trust-queue-card .compact-subtitle,
+.admin-trust-queue-card .detail-grid dd,
+.admin-trust-queue-card .detail-grid dt {
+  color: rgba(232, 246, 255, 0.8);
+}
+
+.admin-trust-queue-card .quick-actions {
+  align-items: stretch;
+}
+
+.admin-trust-queue-card .quick-actions button {
+  min-height: 40px;
+}
+
 @media (max-width: 720px) {
   .app .admin-queue-grid,
   .app-command-shell .admin-queue-grid,
-  .app-shell-dark .admin-queue-grid {
+  .app-shell-dark .admin-queue-grid,
+  .admin-trust-queue-grid {
     grid-template-columns: 1fr;
   }
 }

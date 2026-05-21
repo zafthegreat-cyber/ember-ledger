@@ -35,6 +35,8 @@
     "test:year-end-exports": "node --no-warnings scripts/test-year-end-exports.mjs",
     "test:ember-assist": "node --no-warnings scripts/test-ember-assist.mjs",
     "test:store-expansion": "node --no-warnings scripts/test-store-expansion.mjs",
+    "test:admin-command-center": "node --no-warnings scripts/test-admin-command-center.mjs",
+    "test:moderation-queues": "node --no-warnings scripts/test-moderation-queues.mjs",
     "import:pokemon-tcg-api": "node pokemon_market_ingestion_kit/import_pokemontcg_cards_to_supabase.mjs",
     "import:tcgcsv": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",
     "refresh:pokemon-prices": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",

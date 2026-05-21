@@ -266,6 +266,24 @@ import {
   shouldOfferAdminEscalation,
 } from "./utils/emberAssist";
 import {
+  ADMIN_COMMAND_CENTER_FILTERS,
+  COMMUNITY_GUESS_MODERATION_STATUSES,
+  EMBER_ASSIST_MESSAGE_STATUSES,
+  SCOUT_REPORT_MODERATION_STATUSES,
+  SHOP_REVIEW_STATUSES,
+  applyCommunityGuessModerationStatus,
+  applyEmberAssistMessageStatus,
+  applyScoutReportModerationStatus,
+  applyShopReviewPatch,
+  buildAdminCommandCenterSummary,
+  normalizeCommunityGuessModerationStatus,
+  normalizeEmberAssistMessageStatus,
+  normalizeScoutReportModerationStatus,
+  normalizeShopReviewStatus,
+  scoutReportFeedsPredictions,
+  shopReviewBadges,
+} from "./utils/adminCommandCenterUtils";
+import {
   BETA_REQUEST_STATUSES,
   LITTLE_SPARKS_STATUSES,
   loadShorelineAccessState,
@@ -930,6 +948,7 @@ function routeStateFromPath(pathname = "") {
   if (section === "known-limitations") return { activeTab: "knownLimitations" };
   if (section === "kids-program") return { activeTab: "kidsProgram" };
   if (section === "profile" && subSection === "progress") return { activeTab: "profileProgress" };
+  if (section === "admin" || section === "admin-review") return { activeTab: "adminReview" };
   if (section === "partner" || section === "sponsor") return { activeTab: "sponsor" };
   if (section === "privacy" || section === "terms" || section === "trust") return { activeTab: "trust" };
   if (section === "settings") return { activeTab: "menu" };
@@ -19128,7 +19147,7 @@ function renderForgeHeader() {
   useEffect(() => {
     let active = true;
     async function loadAdminRequests() {
-      if (!adminToolsVisible) return;
+      if (!adminToolsVisible || !signedInWithSupabase) return;
       try {
         const next = await loadShorelineAdminRequests();
         if (!active) return;
@@ -19146,7 +19165,7 @@ function renderForgeHeader() {
     return () => {
       active = false;
     };
-  }, [adminToolsVisible]);
+  }, [adminToolsVisible, signedInWithSupabase]);
 
   useEffect(() => {
     if (!adminEditModeAvailable && adminEditMode) {
@@ -19182,11 +19201,6 @@ function renderForgeHeader() {
       // Local storage can be unavailable in locked-down browsers; mode controls still work for the session.
     }
   }, [actualAdminUser, adminModeStorageReady, adminModeStorageKey, adminViewMode, adminEditMode]);
-  useEffect(() => {
-    if (!adminToolsVisible && activeTab === "adminReview") {
-      setActiveTab("dashboard");
-    }
-  }, [adminToolsVisible, activeTab]);
   useEffect(() => {
     if (startupPriorityAppliedRef.current || typeof window === "undefined") return;
     const pathname = window.location.pathname || "/";
@@ -19560,10 +19574,109 @@ function renderForgeHeader() {
     setVaultToast("Queued for admin review.");
   }
 
+  function adminReviewerName() {
+    return currentUserProfile?.publicUsername || currentUserProfile?.displayName || currentUserProfile?.email || "local-beta-admin";
+  }
+
+  function updateEmberAssistAdminMessageStatus(message, status) {
+    if (!adminEditModeActive) {
+      setVaultToast("Turn on Admin Edit Mode to update Ember Assist messages.");
+      return;
+    }
+    const patched = applyEmberAssistMessageStatus(message, status, { reviewer: adminReviewerName() });
+    setSuggestions(updateSuggestionRecord(message.id, {
+      status: patched.status,
+      adminMessageStatus: patched.adminMessageStatus,
+      admin_message_status: patched.admin_message_status,
+      reviewedBy: patched.reviewedBy,
+      reviewedAt: patched.reviewedAt,
+    }));
+    appendAdminReviewLog({
+      action: `Ember Assist ${patched.status}`,
+      suggestionId: message.id,
+      reviewedBy: adminReviewerName(),
+      notes: "Updated from Admin Command Center.",
+    });
+    setVaultToast(`Ember Assist message marked ${patched.status}.`);
+  }
+
+  function updateCommunityGuessModeration(guess, status) {
+    if (!adminEditModeActive) {
+      setVaultToast("Turn on Admin Edit Mode to moderate community guesses.");
+      return;
+    }
+    const patched = applyCommunityGuessModerationStatus(guess, status, { reviewer: adminReviewerName() });
+    const guessId = String(guess.id || "");
+    const scoutData = getSharedScoutData();
+    const updateList = (list = []) => {
+      let found = false;
+      const next = list.map((entry) => {
+        if (String(entry.id || "") !== guessId) return entry;
+        found = true;
+        return { ...entry, ...patched };
+      });
+      return found ? next : [patched, ...next];
+    };
+    const nextStoreGuesses = updateList(scoutData.storeGuesses || scoutSnapshot.storeGuesses || []);
+    const nextGuesses = (scoutData.guesses || scoutSnapshot.guesses || []).length
+      ? updateList(scoutData.guesses || scoutSnapshot.guesses || [])
+      : scoutData.guesses;
+    const converted = normalizeCommunityGuessModerationStatus(patched) === "Converted to Confirmed";
+    const reports = scoutData.reports || scoutSnapshot.reports || [];
+    const convertedReport = converted ? {
+      ...patched,
+      id: patched.reportId || patched.id || makeId("converted-restock"),
+      reportId: patched.reportId || patched.id || makeId("converted-restock"),
+      reportType: "Store Restock Report",
+      report_type: "Store Restock Report",
+      quickReportType: "admin_converted_guess",
+      sourceType: "admin_verified_report",
+      source_type: "admin_verified_report",
+      stockStatus: "in_stock",
+      stock_status: "in_stock",
+      reportDate: patched.date || patched.reportDate || patched.report_date || "",
+      reportTime: patched.time || patched.reportTime || patched.report_time || "",
+      itemName: patched.productType || patched.product_type || patched.productName || "Pokemon restock",
+      productName: patched.productType || patched.product_type || patched.productName || "Pokemon restock",
+      productCategory: patched.productCategory || patched.product_category || patched.productType || "Pokemon",
+      visibility: patched.visibility || "public",
+      notes: patched.notes || patched.restockPatternNotes || "Converted from a community guess after admin verification.",
+    } : null;
+    const nextReports = convertedReport
+      ? [convertedReport, ...reports.filter((entry) => String(getScoutReportId(entry) || entry.id || "") !== String(convertedReport.id))]
+      : reports;
+    saveSharedScoutData({
+      ...scoutData,
+      storeGuesses: nextStoreGuesses,
+      ...(nextGuesses ? { guesses: nextGuesses } : {}),
+      reports: nextReports,
+    });
+    setVaultToast(`Community guess marked ${normalizeCommunityGuessModerationStatus(patched)}.`);
+  }
+
+  function updateShopReviewStatus(rowOrStore, status, patch = {}) {
+    if (!adminEditModeActive) {
+      setVaultToast("Turn on Admin Edit Mode to update shop review status.");
+      return;
+    }
+    const row = rowOrStore.store ? rowOrStore : { store: rowOrStore };
+    const store = row.store || {};
+    const targetId = getStoreMapStoreId(store);
+    const patched = applyShopReviewPatch(store, { ...patch, reviewStatus: status }, { reviewer: adminReviewerName() });
+    const scoutData = getSharedScoutData();
+    const savedStores = scoutData.stores?.length ? scoutData.stores : scoutSnapshot.stores || [];
+    const exists = savedStores.some((candidate) => getStoreMapStoreId(candidate) === targetId);
+    const nextStores = exists
+      ? savedStores.map((candidate) => getStoreMapStoreId(candidate) === targetId ? { ...candidate, ...patched } : candidate)
+      : [{ ...patched, id: patched.id || targetId }, ...savedStores];
+    saveSharedScoutData({ ...scoutData, stores: nextStores });
+    setVaultToast(`${getScoutQuickStoreName(patched)} marked ${normalizeShopReviewStatus(patched)}.`);
+  }
+
   function renderEmberAssistAdminInbox() {
     if (!adminToolsVisible) return null;
     const assistMessages = suggestions.filter(isEmberAssistSuggestion);
-    if (adminReviewFilter !== "All" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox")) return null;
+    if (adminReviewFilter !== "All" && adminReviewFilter !== "Trust Command Center" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox")) return null;
     return (
       <section className="settings-subsection ember-assist-admin-inbox">
         <div className="compact-card-header">
@@ -19576,6 +19689,7 @@ function renderForgeHeader() {
         <div className="inventory-list compact-inventory-list">
           {assistMessages.length ? assistMessages.map((message) => {
             const data = message.submittedData || {};
+            const messageStatus = normalizeEmberAssistMessageStatus(message);
             return (
               <article className="inventory-card ember-assist-admin-card" key={message.id}>
                 <div className="compact-card-header">
@@ -19583,13 +19697,15 @@ function renderForgeHeader() {
                     <h4>{data.category || "Ember Assist question"}</h4>
                     <p>{data.page || data.activeTab || "App"} | {shortDate(message.createdAt || data.timestamp)}</p>
                   </div>
-                  <span className="status-badge">{message.status || "Submitted"}</span>
+                  <span className="status-badge">{messageStatus}</span>
                 </div>
                 <div className="catalog-detail-grid">
                   <DetailItem label="User" value={data.publicUsername ? `@${data.publicUsername}` : message.displayName || "Beta user"} />
                   <DetailItem label="Page" value={data.routeLabel || data.activeTab || "Unknown"} />
                   <DetailItem label="Question" value={data.question} />
                   <DetailItem label="Details" value={data.details || "No extra details"} />
+                  <DetailItem label="Route" value={data.route || "Route not captured"} />
+                  <DetailItem label="Persistence" value={data.deliveryMode === "local_admin_inbox" ? "Local admin inbox" : data.deliveryMode || "Local admin inbox"} />
                 </div>
                 {data.assistantResponse ? (
                   <div className="small-empty-state">
@@ -19598,9 +19714,16 @@ function renderForgeHeader() {
                   </div>
                 ) : null}
                 <div className="quick-actions">
-                  <button type="button" className="secondary-button" onClick={() => setSuggestions(updateSuggestionRecord(message.id, { status: "Under Review" }))}>Mark reviewing</button>
-                  <button type="button" className="secondary-button" onClick={() => setSuggestions(updateSuggestionRecord(message.id, { status: "Approved" }))}>Mark answered</button>
-                  <button type="button" className="ghost-button" onClick={() => setSuggestions(updateSuggestionRecord(message.id, { status: "Merged" }))}>Close</button>
+                  {EMBER_ASSIST_MESSAGE_STATUSES.map((status) => (
+                    <button
+                      type="button"
+                      className={status === "Archived" ? "ghost-button" : "secondary-button"}
+                      key={status}
+                      onClick={() => updateEmberAssistAdminMessageStatus(message, status)}
+                    >
+                      {status}
+                    </button>
+                  ))}
                 </div>
               </article>
             );
@@ -20321,6 +20444,10 @@ function renderForgeHeader() {
       confidenceSelfRating: Number.isFinite(confidence) && confidence > 0 ? confidence : scoutConfidenceScore(row.confidence || "guess"),
       confidence: row.confidence || "guess",
       sourceType: row.sourceType || row.source_type || "manual_prediction",
+      status: row.status || "pending",
+      moderationStatus: row.moderationStatus || row.moderation_status || row.verificationStatus || row.verification_status || row.status || "pending",
+      verificationStatus: row.verificationStatus || row.verification_status || row.status || "pending",
+      hidden: Boolean(row.hidden),
       visibility: normalizeScoutGuessVisibility(row.visibility || "private"),
       createdAt: row.createdAt || row.created_at || "2026-05-09T12:00:00.000Z",
       updatedAt: row.updatedAt || row.updated_at || row.submittedAt || row.submitted_at || row.createdAt || row.created_at || "",
@@ -20329,6 +20456,8 @@ function renderForgeHeader() {
   }
 
   function canSeeScoutGuess(row = {}) {
+    const moderationStatus = normalizeCommunityGuessModerationStatus(row);
+    if (!adminEditModeActive && (row.hidden || ["Rejected", "Expired"].includes(moderationStatus))) return false;
     const visibility = normalizeScoutGuessVisibility(row.visibility || "private");
     if (visibility === "public") return true;
     if (isCurrentUserScoutReport(row)) return true;
@@ -20494,6 +20623,7 @@ function renderForgeHeader() {
   }).filter(Boolean);
   const scoutForecastPatternKeys = new Set(scoutForecastPatternRows.map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
   const scoutGuessForecastRows = scoutGuessRows
+    .filter((guess) => ["Pending", "Approved as Community Guess"].includes(normalizeCommunityGuessModerationStatus(guess)))
     .filter((guess) => !scoutForecastPatternKeys.has(`${guess.storeName}|${guess.retailer}`.toLowerCase()))
     .map((guess) => {
       const confidenceScore = Math.max(5, Math.min(95, Number(guess.confidenceSelfRating || 25)));
@@ -20895,6 +21025,7 @@ function renderForgeHeader() {
     if (activeTab === "whatsNew") return "/whats-new";
     if (activeTab === "knownLimitations") return "/known-limitations";
     if (activeTab === "profileProgress") return "/profile/progress";
+    if (activeTab === "adminReview") return "/admin";
     if (activeTab === "membership") return "/settings";
     if (activeTab === "betaReadiness") return "/settings";
     if (activeTab === "menu") return "/settings";
@@ -23116,34 +23247,47 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     confirm: {
       label: "Confirm",
       rpc: "admin_verify_store_report",
-      status: "confirmed",
+      status: "Confirmed",
       message: "Scout report confirmed.",
+    },
+    needsReview: {
+      label: "Needs Review",
+      rpc: "admin_mark_report_disputed",
+      status: "Needs Review",
+      message: "Scout report marked for review.",
     },
     reject: {
       label: "Reject",
       rpc: "admin_hide_store_report",
-      status: "rejected",
+      status: "Rejected",
       message: "Scout report rejected.",
+      risky: true,
+    },
+    duplicate: {
+      label: "Duplicate",
+      rpc: "admin_mark_report_disputed",
+      status: "Duplicate",
+      message: "Scout report marked duplicate.",
       risky: true,
     },
     stale: {
       label: "Mark Stale",
       rpc: "admin_mark_report_disputed",
-      status: "stale",
+      status: "Stale",
       message: "Scout report marked stale.",
       risky: true,
     },
     restore: {
       label: "Restore",
       rpc: "admin_restore_store_report",
-      status: "unverified",
-      message: "Scout report restored.",
+      status: "Needs Review",
+      message: "Scout report restored for review.",
     },
     softDelete: {
-      label: "Soft Delete",
+      label: "Archive / Hide",
       rpc: "admin_soft_delete_store_report",
-      status: "admin_removed",
-      message: "Scout report soft deleted.",
+      status: "Rejected",
+      message: "Scout report archived from public trust surfaces.",
       risky: true,
     },
   };
@@ -23161,25 +23305,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const baseReports = scoutData.reports || scoutSnapshot.reports || [];
     const nextReports = baseReports.map((candidate) => {
       if (String(getScoutReportId(candidate)) !== String(reportId)) return candidate;
-      const hidden = action.status === "rejected";
-      const adminRemoved = action.status === "admin_removed";
-      const restored = action.status === "unverified";
+      const patched = applyScoutReportModerationStatus(candidate, action.status, {
+        now,
+        reviewer: currentUserProfile?.email || currentUserProfile?.displayName || "local-beta-admin",
+      });
       return {
-        ...candidate,
-        verificationStatus: action.status,
-        verification_status: action.status,
-        moderationStatus: action.status,
-        moderation_status: action.status,
-        status: adminRemoved ? "removed" : hidden ? "hidden" : restored ? "active" : candidate.status,
-        hidden: hidden ? true : restored ? false : candidate.hidden || false,
-        adminRemoved: adminRemoved ? true : restored ? false : candidate.adminRemoved || false,
-        admin_removed: adminRemoved ? true : restored ? false : candidate.admin_removed || false,
+        ...patched,
+        adminRemoved: actionKey === "softDelete" ? true : patched.adminRemoved,
+        admin_removed: actionKey === "softDelete" ? true : patched.admin_removed,
+        status: actionKey === "softDelete" ? "removed" : patched.status,
         adminNotes: `Admin Edit Mode: ${action.label}`,
         admin_notes: `Admin Edit Mode: ${action.label}`,
-        adminUpdatedAt: now,
-        admin_updated_at: now,
-        updatedAt: now,
-        updated_at: now,
       };
     });
     saveSharedScoutData({ ...scoutData, reports: nextReports });
@@ -23237,10 +23373,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (!adminEditModeActive) return [];
     return [
       { label: "Confirm", onClick: () => queueScoutReportAdminModeration(report, "confirm") },
+      { label: "Needs Review", onClick: () => queueScoutReportAdminModeration(report, "needsReview") },
       { label: "Reject", danger: true, onClick: () => queueScoutReportAdminModeration(report, "reject") },
+      { label: "Duplicate", danger: true, onClick: () => queueScoutReportAdminModeration(report, "duplicate") },
       { label: "Mark Stale", onClick: () => queueScoutReportAdminModeration(report, "stale") },
       { label: "Restore", onClick: () => queueScoutReportAdminModeration(report, "restore") },
-      { label: "Soft Delete", danger: true, onClick: () => queueScoutReportAdminModeration(report, "softDelete") },
+      { label: "Archive / Hide", danger: true, onClick: () => queueScoutReportAdminModeration(report, "softDelete") },
       { label: "View Audit", onClick: () => setVaultToast("Audit details are not available in this beta UI yet.") },
     ];
   }
@@ -26859,6 +26997,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderAdminScoutReportQueue() {
+    if (!["All", "Trust Command Center", "Reports & Moderation", "Scout Report Moderation"].includes(adminReviewFilter)) return null;
     const reports = adminReviewFilter === "All"
       ? scoutReportRows.slice(0, 8)
       : scoutNeedsReviewReports.length ? scoutNeedsReviewReports : scoutReportRows.slice(0, 8);
@@ -26878,10 +27017,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           {reports.length ? reports.map((report) => (
             <article className="admin-report-review-card" key={getScoutReportId(report) || `${report.storeName}-${report.createdAt}`}>
               {renderScoutReportCard(report, { compact: true })}
+              <div className="detail-grid compact-detail-grid">
+                <DetailItem label="Moderation" value={normalizeScoutReportModerationStatus(report)} />
+                <DetailItem label="Prediction impact" value={scoutReportFeedsPredictions(report) ? "Feeds Drop Radar" : "Excluded from predictions"} />
+              </div>
               <div className="quick-actions">
-                <button type="button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>Approve</button>
-                <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(report, "reject")}>Reject</button>
-                <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(report, "softDelete")}>Hide</button>
+                <button type="button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>Confirm</button>
+                <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(report, "needsReview")}>Needs Review</button>
+                <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(report, "duplicate")}>Duplicate</button>
+                <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(report, "stale")}>Stale</button>
+                <button type="button" className="ghost-button" onClick={() => queueScoutReportAdminModeration(report, "reject")}>Reject</button>
               </div>
             </article>
           )) : (
@@ -26896,6 +27041,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderAdminStoreManagementSection() {
+    if (!["All", "Store Management"].includes(adminReviewFilter)) return null;
     const storeRows = buildStoreMapRows().slice(0, 8);
     return (
       <section className="settings-subsection admin-ops-section">
@@ -26930,6 +27076,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderAdminAnnouncementSection() {
+    if (!["All", "Announcements / New Stuff"].includes(adminReviewFilter)) return null;
     const announcements = (betaReadinessData.notifications || []).filter((entry) => entry.type === "announcement" || /new|update|announcement/i.test(`${entry.title || ""} ${entry.type || ""}`));
     return (
       <section className="settings-subsection admin-ops-section">
@@ -26960,8 +27107,193 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderAdminCommunityGuessQueue() {
+    if (!adminToolsVisible) return null;
+    const rows = scoutGuessRows.slice(0, 12);
+    return (
+      <section className="settings-subsection admin-ops-section admin-trust-queue-section">
+        <div className="compact-card-header">
+          <div>
+            <h3>Community Guess Review</h3>
+            <p>Community predictions stay separate from confirmed restocks. They do not train Drop Radar unless an admin later converts one to a confirmed report with proof.</p>
+          </div>
+          <span className="status-badge">{rows.filter((guess) => normalizeCommunityGuessModerationStatus(guess) === "Pending").length} pending</span>
+        </div>
+        <div className="admin-trust-queue-grid">
+          {rows.length ? rows.map((guess) => {
+            const status = normalizeCommunityGuessModerationStatus(guess);
+            return (
+              <article className="admin-trust-queue-card" key={`admin-guess-${guess.id}`}>
+                <div className="compact-card-header">
+                  <div>
+                    <strong>{guess.storeName || "Store not selected"}</strong>
+                    <p>{guess.retailer || "Retailer unknown"} | {guess.guessedDay || "Day unknown"} {guess.guessedTimeWindow ? `| ${guess.guessedTimeWindow}` : ""}</p>
+                  </div>
+                  <span className="status-badge">{status}</span>
+                </div>
+                <div className="detail-grid compact-detail-grid">
+                  <DetailItem label="Reporter" value={guess.submittedBy || guess.displayName || guess.userId || "Beta Scout"} />
+                  <DetailItem label="Scout points" value={String(getScoutPoints(guess, scoutSnapshot.scoutProfile))} />
+                  <DetailItem label="Product/category" value={guess.productType || "Pokemon restock"} />
+                  <DetailItem label="Prediction impact" value={status === "Converted to Confirmed" ? "May train after proof" : "Does not train"} />
+                </div>
+                <p className="compact-subtitle">{guess.restockPatternNotes || "No notes attached."}</p>
+                <div className="quick-actions">
+                  {COMMUNITY_GUESS_MODERATION_STATUSES.map((statusOption) => (
+                    <button
+                      type="button"
+                      className={["Rejected", "Expired"].includes(statusOption) ? "ghost-button" : "secondary-button"}
+                      key={statusOption}
+                      onClick={() => updateCommunityGuessModeration(guess, statusOption)}
+                    >
+                      {statusOption}
+                    </button>
+                  ))}
+                </div>
+              </article>
+            );
+          }) : (
+            <div className="empty-state">
+              <h3>No community guesses waiting</h3>
+              <p>Qualified Scout guesses will appear here and stay labeled separately from confirmed restocks.</p>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function storeLooksLikeCommunityShop(row = {}) {
+    const store = row.store || row;
+    const haystack = [
+      getScoutQuickStoreName(store),
+      getScoutQuickRetailer(store),
+      store.storeGroup,
+      store.store_group,
+      store.storeType,
+      store.store_type,
+      store.locationType,
+      store.type,
+      store.category,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return /local card|card shop|game store|game shop|tcg|hobby|collectible|comic/.test(haystack);
+  }
+
+  function renderAdminShopReviewQueue() {
+    if (!adminToolsVisible) return null;
+    const rows = buildStoreMapRows()
+      .filter((row) => storeLooksLikeCommunityShop(row) || shopReviewBadges(row.store).length || ["Approved", "Rejected", "Inactive"].includes(normalizeShopReviewStatus(row.store)))
+      .slice(0, 12);
+    return (
+      <section className="settings-subsection admin-ops-section admin-trust-queue-section">
+        <div className="compact-card-header">
+          <div>
+            <h3>Family-Friendly Shop Review</h3>
+            <p>Family-friendly status means this shop supports the Ember & Tide mission. It is not a guarantee of inventory, price, or availability.</p>
+          </div>
+          <span className="status-badge">{rows.filter((row) => normalizeShopReviewStatus(row.store) === "Needs Review").length} need review</span>
+        </div>
+        <div className="admin-trust-queue-grid">
+          {rows.length ? rows.map((row) => {
+            const status = normalizeShopReviewStatus(row.store);
+            const badges = shopReviewBadges(row.store);
+            return (
+              <article className="admin-trust-queue-card" key={`admin-shop-${row.id}`}>
+                <div className="compact-card-header">
+                  <div>
+                    <strong>{row.name}</strong>
+                    <p>{row.retailer} | {row.area || "Area not listed"}</p>
+                  </div>
+                  <span className="status-badge">{status}</span>
+                </div>
+                <div className="summary-pill-row">
+                  {badges.length ? badges.map((badge) => (
+                    <span className={`status-badge ${badge.tone || ""}`} key={badge.key}>{badge.label}</span>
+                  )) : <span className="status-badge">No public badge</span>}
+                </div>
+                <p className="compact-subtitle">{row.store.partnerNotes || row.store.partner_notes || "Review kid access, fair pricing support, events, trade nights, and partner status before showing public trust badges."}</p>
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => updateShopReviewStatus(row, "Approved", { familyFriendlyApproved: true, supportsKidsAccess: true })}>Approve Family-Friendly</button>
+                  <button type="button" className="secondary-button" onClick={() => updateShopReviewStatus(row, "Needs Review")}>Needs Review</button>
+                  <button type="button" className="ghost-button" onClick={() => updateShopReviewStatus(row, "Rejected", { familyFriendlyApproved: false })}>Reject Badge</button>
+                  <button type="button" className="ghost-button" onClick={() => updateShopReviewStatus(row, "Inactive", { active: false })}>Mark Inactive</button>
+                </div>
+              </article>
+            );
+          }) : (
+            <div className="empty-state">
+              <h3>No local card shops queued</h3>
+              <p>Local card shops and game stores will appear here when store metadata exists.</p>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderAdminTrustActivity(summary) {
+    const recentItems = [
+      ...scoutReportRows.slice(0, 3).map((report) => ({
+        id: `activity-report-${getScoutReportId(report)}`,
+        title: getScoutReportStore(report).name || report.storeName || "Scout report",
+        detail: `${normalizeScoutReportModerationStatus(report)} | ${scoutReportFeedsPredictions(report) ? "trains predictions" : "does not train predictions"}`,
+        status: "Scout",
+      })),
+      ...scoutGuessRows.slice(0, 3).map((guess) => ({
+        id: `activity-guess-${guess.id}`,
+        title: guess.storeName || "Community guess",
+        detail: `${normalizeCommunityGuessModerationStatus(guess)} | ${guess.guessedDay || "day unknown"}`,
+        status: "Guess",
+      })),
+      ...suggestions.filter(isEmberAssistSuggestion).slice(0, 3).map((message) => ({
+        id: `activity-assist-${message.id}`,
+        title: message.submittedData?.question || "Ember Assist message",
+        detail: normalizeEmberAssistMessageStatus(message),
+        status: "Assist",
+      })),
+    ].slice(0, 8);
+    return (
+      <section className="settings-subsection admin-ops-section admin-trust-activity">
+        <div className="compact-card-header">
+          <div>
+            <h3>Trust Activity</h3>
+            <p>Quick view of records that can affect public trust, prediction confidence, and support follow-up.</p>
+          </div>
+          <span className="status-badge">{summary.totalOpen} open</span>
+        </div>
+        <div className="admin-compact-list">
+          {recentItems.length ? recentItems.map((item) => (
+            <article className="admin-compact-row" key={item.id}>
+              <div>
+                <strong>{item.title}</strong>
+                <p>{item.detail}</p>
+              </div>
+              <span className="status-badge">{item.status}</span>
+            </article>
+          )) : (
+            <div className="small-empty-state">
+              <strong>No recent trust activity</strong>
+              <span>Scout reports, guesses, shop reviews, and admin messages will appear here.</span>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   function renderAdminOperationsDashboard() {
     const openSuggestions = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status));
+    const assistMessages = suggestions.filter(isEmberAssistSuggestion);
+    const localCommunityGuesses = scoutGuessRows;
+    const localShopRows = buildStoreMapRows().filter((row) => storeLooksLikeCommunityShop(row) || shopReviewBadges(row.store).length);
+    const commandSummary = buildAdminCommandCenterSummary({
+      scoutReports: scoutReportRows,
+      communityGuesses: localCommunityGuesses,
+      assistMessages,
+      stores: localShopRows.map((row) => row.store),
+      feedback: betaReadinessData.betaFeedback || [],
+      errors: betaReadinessData.appErrorLogs || [],
+    });
     const listingReviewItems = workspaceMarketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
     const betaRequests = [
       ...(shorelineState.adminBetaRequests || []).filter((entry) => ["pending", "waitlist"].includes(entry.status || "pending")),
@@ -26976,9 +27308,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const receiptsNeedingReview = phase2RecentReceipts.filter((receipt) => /draft|review|duplicate|pending|needs/i.test(`${receipt.status || ""} ${receipt.reviewStatus || ""} ${receipt.importStatus || ""}`));
     const catalogCorrectionCount = suggestions.filter((suggestion) => ["Catalog Suggestions", "SKU / UPC Suggestions", "Store Suggestions"].includes(REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)])).length;
     const adminQueueRows = [
+      { key: "command", title: "Trust command center", count: commandSummary.totalOpen, priority: commandSummary.totalOpen ? "Needs review" : "Clear", submittedBy: "App queues", details: "Scout, guesses, shops, Assist messages, and user issues.", filter: "Trust Command Center" },
       { key: "beta", title: "Beta access requests", count: betaRequests.length, priority: betaRequests.length ? "Today" : "Clear", submittedBy: "Applicants", details: "Approve, waitlist, pause, or deny app access.", filter: "Beta Access" },
       { key: "kids", title: "Kids Program requests", count: kidsApplications.filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending_review")).length, priority: kidsApplications.length ? "High privacy" : "Clear", submittedBy: "Parents/guardians", details: "Private family requests. No child details are public.", filter: "Kids Program Applications" },
-      { key: "scout", title: "Scout reports needing verification", count: scoutNeedsReviewReports.length, priority: scoutNeedsReviewReports.length ? "High" : "Clear", submittedBy: "Scout reporters", details: "Review store, proof, confidence, and restock impact.", filter: "Reports & Moderation" },
+      { key: "scout", title: "Scout reports needing verification", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "High" : "Clear", submittedBy: "Scout reporters", details: "Confirm, reject, duplicate, stale, or route to review.", filter: "Scout Report Moderation" },
+      { key: "guesses", title: "Community guesses / predictions", count: commandSummary.pendingCommunityGuesses, priority: commandSummary.pendingCommunityGuesses ? "Review" : "Clear", submittedBy: "Qualified Scouts", details: "Keep guesses separate from confirmed restock history.", filter: "Community Guess Review" },
+      { key: "assist", title: "Ember Assist admin messages", count: commandSummary.openAssistMessages, priority: commandSummary.openAssistMessages ? "Review" : "Clear", submittedBy: "App users", details: "Questions escalated from Ember Assist with safe context.", filter: REVIEW_SECTION_LABELS.assist },
+      { key: "shops", title: "Family-friendly shop review", count: commandSummary.shopsNeedingReview, priority: commandSummary.shopsNeedingReview ? "Review" : "Clear", submittedBy: "Admin/store metadata", details: "Approve mission-aligned shop badges without pricing guarantees.", filter: "Family-Friendly Shop Review" },
       { key: "market", title: "Marketplace pricing/scalping flags", count: listingReviewItems.length, priority: listingReviewItems.length ? "High" : "Clear", submittedBy: "Sellers/community", details: "Approve, deny, feature, or remove flagged listings.", filter: "Marketplace Listings" },
       { key: "tidepool", title: "Reported Tidepool posts", count: tidepoolFlaggedPosts.length, priority: tidepoolFlaggedPosts.length ? "Needs review" : "Clear", submittedBy: "Community", details: "Review reported posts, disputes, and unsafe content.", filter: "Reports & Moderation" },
       { key: "receipts", title: "Receipts needing review", count: receiptsNeedingReview.length, priority: receiptsNeedingReview.length ? "Today" : "Clear", submittedBy: "Sellers", details: "Review receipt drafts, duplicates, and expense evidence.", filter: "System Health / Logs" },
@@ -26986,7 +27322,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       { key: "feedback", title: "App feedback and bug reports", count: (betaReadinessData.betaFeedback || []).length + (betaReadinessData.appErrorLogs || []).length, priority: ((betaReadinessData.betaFeedback || []).length + (betaReadinessData.appErrorLogs || []).length) ? "Review" : "Clear", submittedBy: "Beta users/app", details: "Feedback, bugs, and safe client error logs.", filter: "Beta Feedback" },
     ];
     const adminOpsSections = [
-      { title: "Reports & Moderation", value: scoutNeedsReviewReports.length, helper: "Scout report approvals, rejects, hides", filter: "Reports & Moderation" },
+      { title: "Trust Command Center", value: commandSummary.totalOpen, helper: "Scout, guesses, shops, Assist", filter: "Trust Command Center" },
+      { title: "Reports & Moderation", value: commandSummary.pendingScoutReports, helper: "Scout report approvals, rejects, duplicates, stale", filter: "Scout Report Moderation" },
+      { title: "Community Guesses", value: commandSummary.pendingCommunityGuesses, helper: "Separate prediction notes", filter: "Community Guess Review" },
+      { title: "Ember Assist Inbox", value: commandSummary.openAssistMessages, helper: "Escalated user messages", filter: REVIEW_SECTION_LABELS.assist },
+      { title: "Family Shops", value: commandSummary.shopsNeedingReview, helper: "Mission-aligned shop badges", filter: "Family-Friendly Shop Review" },
       { title: "Store Management", value: buildStoreMapRows().length, helper: "Stores, nicknames, duplicate review", filter: "Store Management" },
       { title: "Announcements / New Stuff", value: announcementCount, helper: "Launch notes and app updates", filter: "Announcements / New Stuff" },
       { title: "Users & Usernames", value: 1 + (betaReadinessData.betaFeedback || []).length, helper: "Search users, usernames, badges", filter: "User Management" },
@@ -27044,7 +27384,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
 
         <div className="admin-ops-lane-grid">
+          {(adminReviewFilter === "All" || adminReviewFilter === "Trust Command Center") ? renderAdminTrustActivity(commandSummary) : null}
           {renderAdminScoutReportQueue()}
+          {(adminReviewFilter === "All" || adminReviewFilter === "Trust Command Center" || adminReviewFilter === "Community Guess Review") ? renderAdminCommunityGuessQueue() : null}
+          {(adminReviewFilter === "All" || adminReviewFilter === "Trust Command Center" || adminReviewFilter === "Family-Friendly Shop Review") ? renderAdminShopReviewQueue() : null}
           {renderAdminStoreManagementSection()}
           {renderAdminAnnouncementSection()}
           <section className="settings-subsection admin-ops-section">
@@ -27125,6 +27468,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     }
     const sections = [...new Set([
       "All",
+      ...ADMIN_COMMAND_CENTER_FILTERS.filter((section) => section !== "All"),
       "Reports & Moderation",
       "Store Management",
       "Announcements / New Stuff",
@@ -27145,15 +27489,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     });
     const openCount = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status)).length;
     const listingReviewItems = workspaceMarketplaceListings.filter((listing) => ["Pending Review", "Flagged"].includes(listing.status));
-    const totalOpenCount = openCount + listingReviewItems.length;
+    const trustOpenCount =
+      scoutNeedsReviewReports.length +
+      scoutGuessRows.filter((guess) => normalizeCommunityGuessModerationStatus(guess) === "Pending").length +
+      suggestions.filter((suggestion) => isEmberAssistSuggestion(suggestion) && ["New", "In Progress"].includes(normalizeEmberAssistMessageStatus(suggestion))).length +
+      buildStoreMapRows().filter((row) => storeLooksLikeCommunityShop(row) && normalizeShopReviewStatus(row.store) === "Needs Review").length;
+    const totalOpenCount = openCount + listingReviewItems.length + trustOpenCount;
     const pagedVisibleSuggestions = getPagedItems(visibleSuggestions, adminReviewPage, LONG_LIST_PAGE_SIZE);
     const pagedListingReviewItems = getPagedItems(listingReviewItems, marketplaceReviewPage, LONG_LIST_PAGE_SIZE);
+    const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Community Guess Review", "Family-Friendly Shop Review"]);
     return (
       <>
       <PageHeader
         className={getHeaderCardClass("panel admin-page-header")}
-        title="Admin Operations"
-        subtitle="Operations dashboard for reports, stores, announcements, users, families, marketplace, membership foundations, sellers, beta access, content, and system health."
+        title="Admin Command Center"
+        subtitle="One safe admin desk for Scout reports, Drop Radar guesses, shop trust badges, Ember Assist messages, user issues, and system health."
         actions={(
           <div className="summary-pill-row">
             <span className="status-badge">{totalOpenCount} open</span>
@@ -27271,7 +27621,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </div>
         {renderBetaAdminReviewQueues()}
         {renderEmberAssistAdminInbox()}
-        {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox") && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
+        {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox") && !dedicatedAdminFilters.has(adminReviewFilter) && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
         <div className="inventory-list compact-inventory-list">
           {visibleSuggestions.length ? pagedVisibleSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
             <div className="empty-state">
@@ -36479,7 +36829,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         ) : null}
         {!activeTabLocked && activeTab === "tidepool" && renderTidepoolCommunity()}
         {!activeTabLocked && activeTab === "mySuggestions" && renderMySuggestionsPage()}
-        {!activeTabLocked && activeTab === "adminReview" && adminToolsVisible && renderAdminReviewPage()}
+        {!activeTabLocked && activeTab === "adminReview" && renderAdminReviewPage()}
         {!activeTabLocked && activeTab === "kidsProgram" && renderKidsProgramPage()}
         {!activeTabLocked && activeTab === "sponsor" && renderSponsorInterestPage()}
         {!activeTabLocked && activeTab === "trust" && renderTrustPages()}
