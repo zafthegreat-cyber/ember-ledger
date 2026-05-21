@@ -8849,6 +8849,137 @@ textarea {
   box-shadow: inset 0 3px 0 var(--color-primary);
 }
 
+.first-run-onboarding-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-onboarding-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-starting-path-grid,
+.onboarding-checklist-grid,
+.onboarding-help-card-grid,
+.onboarding-settings-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.onboarding-path-card,
+.onboarding-checklist-item {
+  min-width: 0;
+  border: 1px solid rgba(122, 229, 255, 0.2);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(8, 15, 30, 0.82);
+  color: #f7fbff;
+  text-align: left;
+}
+
+.onboarding-path-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.onboarding-path-card strong,
+.onboarding-checklist-item strong,
+.onboarding-help-card strong {
+  color: #fff7e8;
+}
+
+.onboarding-path-card span,
+.onboarding-checklist-item small,
+.onboarding-settings-card small {
+  color: rgba(248, 250, 252, 0.74);
+  line-height: 1.35;
+}
+
+.onboarding-goal-pill {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.onboarding-goal-pill span {
+  color: rgba(248, 250, 252, 0.7);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.onboarding-checklist-header {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(255, 201, 107, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 201, 107, 0.08);
+}
+
+.onboarding-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.12);
+}
+
+.onboarding-progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff9f43, #7ae5ff);
+}
+
+.onboarding-checklist-item {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.onboarding-checklist-item label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.onboarding-checklist-item input {
+  margin-top: 3px;
+}
+
+.onboarding-checklist-item.is-complete {
+  border-color: rgba(80, 220, 140, 0.34);
+  background:
+    linear-gradient(145deg, rgba(80, 220, 140, 0.12), rgba(255, 255, 255, 0.025)),
+    rgba(8, 15, 30, 0.84);
+}
+
+.drawer-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.onboarding-mini-check {
+  display: grid !important;
+  gap: 3px;
+}
+
+.onboarding-mini-check.is-complete {
+  border-color: rgba(80, 220, 140, 0.34) !important;
+}
+
+.guided-empty-state {
+  min-width: 0;
+}
+
+.guided-empty-actions {
+  margin-top: 10px;
+}
+
 .beta-onboarding-panel,
 .kids-program-layout,
 .sponsor-interest-panel,
@@ -8997,6 +9128,41 @@ textarea {
     right: 12px;
     top: 76px;
     width: auto;
+  }
+
+  .onboarding-starting-path-grid,
+  .onboarding-checklist-grid,
+  .onboarding-help-card-grid,
+  .onboarding-settings-checklist {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .first-run-onboarding-panel .quick-actions {
+    align-items: stretch;
+  }
+
+  .first-run-onboarding-panel .quick-actions button,
+  .guided-empty-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .app .standard-page-header-tabs,
+  .app .pill-tabs,
+  .app .vault-view-strip {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    white-space: normal !important;
+  }
+
+  .app .standard-page-header-tabs button,
+  .app .pill-tabs button,
+  .app .vault-view-strip button {
+    flex: 1 1 min(150px, calc(50% - 8px)) !important;
+    min-width: 0 !important;
+    max-width: 100%;
+    white-space: normal !important;
   }
 }
 
@@ -24997,6 +25163,11 @@ textarea::placeholder {
 
 .hearth-command-layout > .beta-onboarding-panel {
   display: none !important;
+}
+
+.hearth-command-layout > .beta-onboarding-panel.first-run-onboarding-panel {
+  display: grid !important;
+  grid-column: 1 / -1;
 }
 
 .guest-preview-mode .vault-toast {

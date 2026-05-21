@@ -185,11 +185,11 @@ export const PRODUCTION_CONFIG_AUDIT = [
 export const BETA_EMPTY_STATES = {
   vault: {
     title: "Your Vault is empty",
-    body: "Add cards or sealed products you want to track in your personal collection.",
+    body: "Add your first card or sealed product to start tracking your collection. Manual entry stays available when catalog search misses something.",
   },
   forge: {
     title: "Your Forge inventory is empty",
-    body: "Add business inventory, receipt purchases, and items you plan to sell.",
+    body: "Add business inventory, receipt purchases, sales, mileage, and items you plan to sell.",
   },
   wishlist: {
     title: "No wishlist items yet",
@@ -200,8 +200,8 @@ export const BETA_EMPTY_STATES = {
     body: "Submit confirmed store reports to help build restock forecasts. Community guesses stay separate.",
   },
   market: {
-    title: "Market tools are getting ready",
-    body: "Track item values, compare deals, and watch market changes as pricing data becomes available.",
+    title: "No TideTradr checks yet",
+    body: "Search a product, compare value, save products, or prepare a listing from Vault or Forge.",
   },
   kids: {
     title: "Kids Program opportunities will appear here",
@@ -216,9 +216,13 @@ export const BETA_EMPTY_STATES = {
 export const BETA_TOOLTIPS = {
   Vault: "Your personal collection.",
   Forge: "Your business inventory and selling tools.",
+  "Vault vs Forge": "Vault is for collection. Forge is for sellable/business inventory, receipts, mileage, sales, and year-end records.",
+  "Quick Add": "Choose Vault, Forge, Scout, Expense, or Mileage before saving so records go to the right place.",
   Scout: "Confirmed store reports, community guesses, and restock forecasts.",
   Guess: "A personal prediction or pattern note, not confirmed stock.",
   Report: "A real stock sighting or store update.",
+  "Drop Radar": "Predictions are estimates from confirmed history, not guarantees.",
+  Alerts: "In-app alerts are grouped and labeled so confirmed reports do not look like guesses.",
   "Expense only": "Tracks the receipt expense without adding the item to inventory.",
 };
 
@@ -328,7 +332,10 @@ export function createEmptyBetaReadinessData() {
     roadmapItems: DEFAULT_ROADMAP_ITEMS,
     onboarding: {
       completedAt: "",
+      dismissedAt: "",
       preferences: [],
+      goals: [],
+      manualChecklist: [],
       firstLoginSeen: false,
     },
   };

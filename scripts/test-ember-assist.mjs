@@ -12,6 +12,7 @@ import {
 
 const scoutPrompts = getEmberAssistStarterPrompts({ activeTab: "scout" });
 assert.ok(scoutPrompts.includes("How do Scout reports work?"), "Scout should show Scout-aware starter prompts");
+assert.ok(scoutPrompts.includes("What should I do first?"), "Starter prompts should include onboarding help");
 
 const forgePrompts = getEmberAssistStarterPrompts({ activeTab: "inventory" });
 assert.ok(forgePrompts.includes("Help me set a planned sale price"), "Forge should show seller-oriented starter prompts");
@@ -27,6 +28,16 @@ assert.match(scoutPointsAnswer.answer, /confirmed reports|clear store/i);
 const adminHelpAnswer = buildEmberAssistFallbackResponse("How do I message admin?", buildEmberAssistContext({ activeTab: "settings" }));
 assert.match(adminHelpAnswer.answer, /admin inbox/i);
 assert.ok(adminHelpAnswer.actions.includes("Send to Admin"));
+
+const alertsAnswer = buildEmberAssistFallbackResponse("How do alerts work?", buildEmberAssistContext({ activeTab: "dashboard" }));
+assert.match(alertsAnswer.answer, /in-app only/i);
+assert.match(alertsAnswer.answer, /Confirmed restocks/i);
+assert.doesNotMatch(alertsAnswer.answer, /push notifications enabled|email delivery is active|guaranteed/i);
+
+const firstStepAnswer = buildEmberAssistFallbackResponse("What should I do first?", buildEmberAssistContext({ activeTab: "dashboard" }));
+assert.equal(firstStepAnswer.shouldEscalate, false);
+assert.match(firstStepAnswer.answer, /Start with the piece that matches why you came in/i);
+assert.match(firstStepAnswer.answer, /Vault is for collection/i);
 
 const dropContext = buildEmberAssistContext({ activeTab: "scout", scoutView: "alerts" });
 const dropAnswer = buildEmberAssistFallbackResponse("What is Drop Radar?", dropContext);

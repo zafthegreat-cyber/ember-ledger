@@ -39,6 +39,8 @@
     "test:moderation-queues": "node --no-warnings scripts/test-moderation-queues.mjs",
     "test:notifications": "node --no-warnings scripts/test-notifications.mjs",
     "test:alert-generation": "node --no-warnings scripts/test-alert-generation.mjs",
+    "test:onboarding": "node --no-warnings scripts/test-onboarding.mjs",
+    "test:empty-states": "node --no-warnings scripts/test-empty-states.mjs",
     "import:pokemon-tcg-api": "node pokemon_market_ingestion_kit/import_pokemontcg_cards_to_supabase.mjs",
     "import:tcgcsv": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",
     "refresh:pokemon-prices": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",

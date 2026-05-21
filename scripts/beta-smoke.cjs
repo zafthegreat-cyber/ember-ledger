@@ -42,7 +42,7 @@ async function main() {
 
   async function closeOpenModals() {
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      const modalCount = await page.locator(".location-modal-backdrop, .catalog-detail-backdrop, .drawer-backdrop").count();
+      const modalCount = await page.locator(".location-modal-backdrop, .catalog-detail-backdrop, .drawer-backdrop, .flow-modal-backdrop").count();
       if (!modalCount) return;
       await page.keyboard.press("Escape");
       await page.waitForTimeout(200);
@@ -87,12 +87,25 @@ async function main() {
       return;
     }
     const topbarSection = page.locator(".topbar-section-select");
-    if (label === "TideTradr" && (await topbarSection.count())) {
-      await topbarSection.evaluate((select) => {
-        select.value = "tideTradr";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      });
-      return;
+    if (await topbarSection.count()) {
+      const topbarValue = {
+        Home: "home",
+        "Today's Tide": "today",
+        Scout: "scout",
+        Vault: "vault",
+        TideTradr: "tideTradr",
+        Forge: "forge",
+      }[label];
+      if (topbarValue) {
+        const changed = await topbarSection.evaluate((select, value) => {
+          const option = Array.from(select.options || []).find((entry) => entry.value === value);
+          if (!option) return false;
+          select.value = value;
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          return true;
+        }, topbarValue);
+        if (changed) return;
+      }
     }
     throw new Error(`No visible navigation target found for ${label}`);
   }

@@ -38,13 +38,17 @@ const PAGE_PROMPTS = {
   spark: ["How does The Spark work?", "Help me submit a kid request", "What does waitlisted mean?", "Are there upcoming kid-friendly events?"],
   settings: ["Help me switch workspaces", "Explain personal Forge vs Ember & Tide Forge", "Help me update my profile", "Explain seller mode"],
   admin: ["What needs review?", "Show admin message queue", "Explain this user status", "What should I check first?"],
-  general: ["How do I add inventory?", "What is Forge for?", "How do Scout points work?", "How do I message admin?"],
+  general: ["What should I do first?", "How do I add inventory?", "What is Forge for?", "How do alerts work?", "How do I message admin?"],
 };
 
 const CORE_PROMPTS = [
+  "What should I do first?",
   "How do I add inventory?",
+  "What is the difference between Vault and Forge?",
   "What is Forge for?",
   "How do Scout points work?",
+  "How do alerts work?",
+  "How do I use Forge for business records?",
   "How do I submit a restock report?",
   "How do I message admin?",
   "How do I join the Kids Program?",
@@ -58,10 +62,11 @@ const SCOUT_WORDS = /\b(scout|report|store|verified|confidence|trusted)\b/i;
 const SCOUT_POINTS_WORDS = /\b(scout points?|points|reputation|trusted reporter|earn points)\b/i;
 const QUICK_ADD_WORDS = /\b(quick add|add inventory|add item|center plus|\+ button|save to vault|save to forge)\b/i;
 const HEARTH_WORDS = /\b(hearth|home|what should i do next|daily command|today's best action)\b/i;
+const ALERT_WORDS = /\b(alert|alerts|notification|notifications|bell|in-app alerts|confirmed restock alert|predicted window alert)\b/i;
 const SETTINGS_WORDS = /\b(settings|profile|notification|seller mode|workspace|workspaces|personal forge|ember & tide forge|business info)\b/i;
 const CONTACT_WORDS = /\b(message admin|contact admin|send to admin|ask admin|support|help from admin|ember & tide help)\b/i;
 const SHOP_WORDS = /\b(card shop|local shop|family friendly shop|kid friendly shop|where should i buy|shop near me)\b/i;
-const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|help me|where do i start|what is this)\b/i;
+const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|what should i do first|what do i do first|help me|where do i start|what is this)\b/i;
 const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
 const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price)\b/i;
 
@@ -188,6 +193,13 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     });
   }
 
+  if (/\b(what should i do first|what do i do first|where do i start)\b/i.test(text)) {
+    return response("Start with the piece that matches why you came in. Vault is for collection tracking, Forge is for sellable/business inventory, Scout is for confirmed store reports, and The Spark is for kid/family interest.", {
+      actions: ["Open Quick Add", "Go to Vault", "Go to Forge"],
+      category: "Other",
+    });
+  }
+
   if (QUICK_ADD_WORDS.test(text)) {
     return response("Use the center plus or Quick Add to save something fast. Choose Vault for your collection, Forge for sellable/business inventory, Scout for a report, or Expenses/Mileage for records. You can add details later.", {
       actions: ["Open Quick Add", "Go to Vault", "Go to Forge"],
@@ -199,6 +211,13 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     return response("Scout points are trust signals from useful confirmed reports and clean community help. Build points by submitting real store reports with clear store, product, time, and proof when you have it.", {
       actions: ["Open Scout Report", "Open Drop Radar"],
       category: "Drop Radar question",
+    });
+  }
+
+  if (ALERT_WORDS.test(text)) {
+    return response("Alerts are in-app only right now. Confirmed restocks, possible Drop Radar windows, community guesses, Kids Program updates, and admin statuses stay labeled so nothing sounds more certain than it is.", {
+      actions: ["Open Settings", "Open Drop Radar"],
+      category: "Account/beta access question",
     });
   }
 

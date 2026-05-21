@@ -295,6 +295,20 @@ import {
   upsertNotificationState,
 } from "./utils/notificationCenterUtils";
 import {
+  CONTEXTUAL_HELP_CARDS,
+  ONBOARDING_ASSIST_PROMPTS,
+  ONBOARDING_GOALS,
+  ONBOARDING_PERSISTENCE_NOTE,
+  ONBOARDING_WELCOME_COPY,
+  buildOnboardingChecklist,
+  getEmptyStateGuidance,
+  normalizeOnboardingGoalKeys,
+  normalizeOnboardingState,
+  onboardingChecklistSummary,
+  onboardingGoalRows,
+  shouldShowFirstRunOnboarding,
+} from "./utils/onboardingGuidance";
+import {
   BETA_REQUEST_STATUSES,
   LITTLE_SPARKS_STATUSES,
   loadShorelineAccessState,
@@ -6955,15 +6969,138 @@ export default function App() {
     return true;
   }
 
+  function getOnboardingProgressSnapshot() {
+    const notificationPrefs = normalizeNotificationPreferences(betaReadinessData.notificationPreferences || {});
+    const hasAnyAlertEnabled = Object.values(notificationPrefs).some((value) => value !== false);
+    return {
+      hasPublicUsername: Boolean(publicUsernameFromProfile(currentUserProfile)),
+      hasWorkspaceIdentity: Boolean(activeWorkspace?.name || activeForgeWorkspace?.name || forgeModeSettings?.forgeIdentityMode),
+      vaultItems: activeVaultItems.length,
+      forgeItems: forgeInventoryItems.length,
+      scoutReports: scoutReportRows.length,
+      followedStores: (scoutSnapshot.stores || []).filter((store) => store.favorite || store.priority || store.watchlisted || store.watchlist).length,
+      savedProducts: workspaceWatchlist.length + wishlistItems.length,
+      alertsConfigured: hasAnyAlertEnabled,
+      emberAssistAsked: emberAssistMessages.some((message) => message.role === "user"),
+      kidsProgramReviewed: activeTab === "kidsProgram",
+      kidsApplicationSubmitted: Boolean((betaReadinessData.kidsApplications || []).length || shorelineState.littleSparksApplication),
+    };
+  }
+
+  function selectedOnboardingGoalKeys() {
+    return normalizeOnboardingGoalKeys(
+      onboardingChoices.length
+        ? onboardingChoices
+        : betaReadinessData.onboarding?.goals || betaReadinessData.onboarding?.preferences || []
+    );
+  }
+
+  function toggleOnboardingGoal(goalKey) {
+    const normalized = normalizeOnboardingGoalKeys([goalKey])[0];
+    if (!normalized) return;
+    setOnboardingChoices((current) => toggleArrayValue(normalizeOnboardingGoalKeys(current), normalized));
+  }
+
+  function toggleOnboardingChecklistItem(itemKey) {
+    updateBetaReadinessData((current) => {
+      const onboarding = normalizeOnboardingState(current.onboarding || {});
+      const manual = new Set(onboarding.manualChecklist || []);
+      if (manual.has(itemKey)) manual.delete(itemKey);
+      else manual.add(itemKey);
+      return {
+        ...current,
+        onboarding: {
+          ...(current.onboarding || {}),
+          firstLoginSeen: true,
+          goals: onboarding.goals,
+          preferences: onboarding.goals,
+          manualChecklist: [...manual],
+        },
+      };
+    });
+  }
+
+  function runOnboardingAction(target = "") {
+    const normalized = String(target || "").toLowerCase();
+    if (normalized === "profile") {
+      setActiveTab("profileProgress");
+      return;
+    }
+    if (normalized === "settings" || normalized === "alerts") {
+      openMenuDrawer("settings");
+      setMenuSectionsOpen((current) => ({ ...current, settings: true }));
+      return;
+    }
+    if (normalized === "vault") {
+      openProductAddFlow({ source: "onboarding-vault", destinations: { vault: true } });
+      return;
+    }
+    if (normalized === "forge") {
+      if (!activeForgeWorkspace) {
+        openMenuDrawer("settings");
+        setVaultToast("Choose a Forge workspace before adding Forge inventory.");
+        return;
+      }
+      openProductAddFlow({ source: "onboarding-forge", destinations: { forge: true } });
+      return;
+    }
+    if (normalized === "scout_report") {
+      openScoutSubmitFlow({ source: "onboarding" });
+      return;
+    }
+    if (normalized === "stores") {
+      setActiveTab("scout");
+      setScoutView("stores");
+      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+      return;
+    }
+    if (normalized === "ember_assist") {
+      setEmberAssistOpen(true);
+      return;
+    }
+    if (normalized === "kids_program") {
+      setActiveTab("kidsProgram");
+      return;
+    }
+    if (normalized === "market") {
+      setActiveTab("market");
+      return;
+    }
+    if (normalized === "expenses") {
+      setActiveTab("expenses");
+      return;
+    }
+    if (normalized === "mileage") {
+      setActiveTab("mileage");
+      return;
+    }
+    if (normalized === "sales") {
+      openAddSaleFlow();
+      return;
+    }
+    if (normalized === "admin" && adminToolsVisible) {
+      setActiveTab("adminReview");
+      return;
+    }
+    setActiveTab("dashboard");
+  }
+
   function completeOnboarding() {
     const now = new Date().toISOString();
+    const goals = selectedOnboardingGoalKeys();
+    const checklist = buildOnboardingChecklist(getOnboardingProgressSnapshot(), {
+      ...(betaReadinessData.onboarding || {}),
+      goals,
+    });
     updateBetaReadinessData((current) => ({
       ...current,
       onboarding: {
         ...(current.onboarding || {}),
         completedAt: now,
         firstLoginSeen: true,
-        preferences: onboardingChoices,
+        goals,
+        preferences: goals,
+        completedChecklist: checklist.filter((item) => item.completed).map((item) => item.key),
       },
     }));
     setVaultToast("Onboarding saved. You can restart it from Settings.");
@@ -6974,7 +7111,7 @@ export default function App() {
     setOnboardingChoices([]);
     updateBetaReadinessData((current) => ({
       ...current,
-      onboarding: { ...(current.onboarding || {}), completedAt: "", firstLoginSeen: false, preferences: [] },
+      onboarding: { ...(current.onboarding || {}), completedAt: "", dismissedAt: "", firstLoginSeen: false, preferences: [], goals: [], manualChecklist: [], completedChecklist: [] },
     }));
     setActiveTab("dashboard");
     setVaultToast("Onboarding restarted.");
@@ -19321,6 +19458,11 @@ function renderForgeHeader() {
       startupPriorityAppliedRef.current = true;
       return;
     }
+    const onboardingDue = shouldRenderFirstRunOnboarding();
+    if (onboardingDue && activeTab === "dashboard") {
+      startupPriorityAppliedRef.current = true;
+      return;
+    }
     const activeStartupAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement);
     if (activeStartupAnnouncements.length) {
       setActiveTab("whatsNew");
@@ -19525,6 +19667,11 @@ function renderForgeHeader() {
     reports: "business_reports",
   }[activeTab];
   const activeTabLocked = Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
+  function shouldRenderFirstRunOnboarding() {
+    const onboardingState = normalizeOnboardingState(betaReadinessData.onboarding || {});
+    if (activeTabLocked) return false;
+    return !onboardingState.completedAt && !onboardingState.dismissedAt;
+  }
   const emberAssistContext = buildEmberAssistContext({
     activeTab,
     scoutView,
@@ -25726,6 +25873,36 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     });
   }
 
+  function renderGuidedEmptyState(key, overrides = {}) {
+    const guidance = getEmptyStateGuidance(key, overrides);
+    const prompt = guidance.assistPrompt || "";
+    return (
+      <div className={`empty-state guided-empty-state guided-empty-state--${key}`}>
+        <h3>{guidance.title}</h3>
+        <p>{guidance.body}</p>
+        <div className="quick-actions guided-empty-actions">
+          {guidance.actionLabel ? (
+            <button type="button" className={guidance.primary === false ? "secondary-button" : ""} onClick={() => runOnboardingAction(guidance.actionTarget)}>
+              {guidance.actionLabel}
+            </button>
+          ) : null}
+          {prompt ? (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                setEmberAssistOpen(true);
+                sendEmberAssistMessage(prompt);
+              }}
+            >
+              Ask Ember Assist
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   function renderNotificationCenter() {
     const notifications = notificationCenterRows;
     const unreadCount = notificationUnreadCount;
@@ -25774,12 +25951,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </article>
                 ))}
               </div>
-            ) : (
-              <div className="empty-state">
-                <h3>No in-app alerts yet</h3>
-                <p>Confirmed restocks, possible Drop Radar windows, Kids Program updates, admin message statuses, and Forge reminders will appear here when they are useful.</p>
-              </div>
-            )}
+            ) : renderGuidedEmptyState("notifications")}
           </section>
         ) : null}
       </div>
@@ -25787,67 +25959,100 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderOnboardingPanel() {
-    const completedAt = betaReadinessData.onboarding?.completedAt;
-    const choices = [
-      "Track my personal collection",
-      "Track business inventory",
-      "Watch local restocks",
-      "Join Kids Program updates",
-      "Browse market/pricing tools",
+    const onboardingState = normalizeOnboardingState(betaReadinessData.onboarding || {});
+    const completedAt = onboardingState.completedAt;
+    const selectedGoals = selectedOnboardingGoalKeys();
+    const selectedGoalRows = onboardingGoalRows(selectedGoals);
+    const checklist = buildOnboardingChecklist(getOnboardingProgressSnapshot(), {
+      ...(betaReadinessData.onboarding || {}),
+      goals: selectedGoals,
+    });
+    const checklistSummary = onboardingChecklistSummary(checklist);
+    const firstPaths = [
+      { label: "Track my collection", goal: "collector_vault", target: "vault" },
+      { label: "Track business inventory", goal: "seller_forge", target: "forge" },
+      { label: "Submit Scout reports", goal: "scout_reports", target: "scout_report" },
+      { label: "Find restock windows", goal: "scout_reports", target: "stores" },
+      { label: "Join the Kids Program", goal: "spark_parent", target: "kids_program" },
+      { label: "Explore TideTradr", goal: "collector_vault", target: "market" },
+      { label: "Set up alerts", goal: "parent_family", target: "alerts" },
     ];
-    const firstActions = [
-      { label: "Add first Vault item", action: () => setActiveTab("vault") },
-      { label: "Add first Forge item", action: () => setActiveTab("addInventory") },
-      { label: "Add a wishlist item", action: () => openOperatingSystemFeature("wishlist") },
-      { label: "Submit a store report", action: () => openScoutSubmitFlow({ source: "onboarding" }) },
-      { label: "View Scout forecast", action: () => setActiveTab("scout") },
-    ];
+    const helpCards = ["vault_forge", "quick_add", "scout_trust", "alerts", "workspace_identity", "business_records"]
+      .map((key) => CONTEXTUAL_HELP_CARDS[key])
+      .filter(Boolean);
+    const selectPathAndContinue = (entry) => {
+      setOnboardingChoices((current) => [...new Set([...normalizeOnboardingGoalKeys(current), entry.goal])]);
+      setOnboardingStep(2);
+    };
     return (
-      <section className="panel beta-onboarding-panel" aria-label="Beta onboarding">
+      <section className="panel beta-onboarding-panel first-run-onboarding-panel" aria-label="First-run onboarding">
         <div className="compact-card-header">
           <div>
-            <p className="section-kicker">Beta onboarding</p>
+            <p className="section-kicker">First-run guide</p>
             <h2>Welcome to Ember & Tide</h2>
-            <p>Track your Pokemon collection, business inventory, store reports, and restock predictions in one place.</p>
+            <p>{ONBOARDING_WELCOME_COPY}</p>
           </div>
           {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">Step {onboardingStep} of 3</span>}
         </div>
         <div className="quick-actions">
-          <button type="button" className="secondary-button" onClick={() => void runOnboardingAiAssist()}>What should I do first?</button>
-          <button type="button" className="secondary-button" onClick={runSettingsHelpAiAssist}>Explain the app modes</button>
+          {ONBOARDING_ASSIST_PROMPTS.slice(0, 3).map((prompt) => (
+            <button
+              type="button"
+              className="secondary-button"
+              key={prompt}
+              onClick={() => {
+                setEmberAssistOpen(true);
+                sendEmberAssistMessage(prompt);
+              }}
+            >
+              {prompt}
+            </button>
+          ))}
         </div>
         {completedAt ? (
-          <div className="beta-foundation-grid">
-            {(betaReadinessData.onboarding?.preferences || []).map((choice) => <span className="status-badge" key={choice}>{choice}</span>)}
-            <button type="button" className="secondary-button" onClick={restartOnboarding}>Restart onboarding</button>
+          <div className="onboarding-complete-summary">
+            <p className="compact-subtitle">{checklistSummary.label}. {ONBOARDING_PERSISTENCE_NOTE}</p>
+            <div className="beta-foundation-grid onboarding-goal-summary-grid">
+              {selectedGoalRows.map((goal) => <span className="status-badge" key={goal.key}>{goal.shortLabel}</span>)}
+              <button type="button" className="secondary-button" onClick={restartOnboarding}>Restart onboarding</button>
+            </div>
           </div>
         ) : onboardingStep === 1 ? (
           <>
-            <div className="beta-foundation-grid">
-              {Object.entries(BETA_TOOLTIPS).slice(0, 6).map(([label, tooltip]) => (
-                <article className="beta-readiness-card" key={label}>
-                  <span>{label}</span>
-                  <strong>{tooltip}</strong>
+            <div className="onboarding-starting-path-grid">
+              {firstPaths.map((entry) => (
+                <button type="button" className="onboarding-path-card" key={entry.label} onClick={() => selectPathAndContinue(entry)}>
+                  <strong>{entry.label}</strong>
+                  <span>{ONBOARDING_GOALS.find((goal) => goal.key === entry.goal)?.description}</span>
+                </button>
+              ))}
+            </div>
+            <div className="beta-foundation-grid onboarding-help-card-grid">
+              {helpCards.map((card) => (
+                <article className="beta-readiness-card onboarding-help-card" key={card.title}>
+                  <span>{card.title}</span>
+                  <strong>{card.body}</strong>
                 </article>
               ))}
             </div>
             <div className="quick-actions">
               <button type="button" onClick={() => setOnboardingStep(2)}>Start Walkthrough</button>
-              <button type="button" className="secondary-button" onClick={completeOnboarding}>Skip</button>
+              <button type="button" className="secondary-button" onClick={completeOnboarding}>Skip for now</button>
             </div>
           </>
         ) : onboardingStep === 2 ? (
           <>
             <div className="beta-choice-grid">
-              {choices.map((choice) => (
+              {ONBOARDING_GOALS.map((goal) => (
                 <button
                   type="button"
-                  className={onboardingChoices.includes(choice) ? "choice-pill active" : "choice-pill"}
-                  aria-pressed={onboardingChoices.includes(choice)}
-                  key={choice}
-                  onClick={() => setOnboardingChoices((current) => toggleArrayValue(current, choice))}
+                  className={selectedGoals.includes(goal.key) ? "choice-pill active onboarding-goal-pill" : "choice-pill onboarding-goal-pill"}
+                  aria-pressed={selectedGoals.includes(goal.key)}
+                  key={goal.key}
+                  onClick={() => toggleOnboardingGoal(goal.key)}
                 >
-                  {choice}
+                  <strong>{goal.label}</strong>
+                  <span>{goal.description}</span>
                 </button>
               ))}
             </div>
@@ -25858,11 +26063,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </>
         ) : (
           <>
-            <div className="beta-foundation-grid">
-              {firstActions.map((entry) => (
-                <button type="button" className="beta-action-card" key={entry.label} onClick={entry.action}>
-                  {entry.label}
-                </button>
+            <div className="onboarding-checklist-header">
+              <strong>{checklistSummary.label}</strong>
+              <div className="onboarding-progress-track" aria-label={`Onboarding ${checklistSummary.percent}% complete`}>
+                <i style={{ width: `${checklistSummary.percent}%` }} />
+              </div>
+              <span>{ONBOARDING_PERSISTENCE_NOTE}</span>
+            </div>
+            <div className="onboarding-checklist-grid">
+              {checklist.map((item) => (
+                <article className={item.completed ? "onboarding-checklist-item is-complete" : "onboarding-checklist-item"} key={item.key}>
+                  <label>
+                    <input type="checkbox" checked={item.completed} onChange={() => toggleOnboardingChecklistItem(item.key)} />
+                    <span>
+                      <strong>{item.title}</strong>
+                      <small>{item.description}</small>
+                    </span>
+                  </label>
+                  <button type="button" className="secondary-button" onClick={() => runOnboardingAction(item.actionTarget)}>{item.actionLabel}</button>
+                </article>
               ))}
             </div>
             <div className="quick-actions">
@@ -25872,6 +26091,40 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </>
         )}
       </section>
+    );
+  }
+
+  function renderOnboardingSettingsCard() {
+    const selectedGoals = normalizeOnboardingState(betaReadinessData.onboarding || {}).goals;
+    const checklist = buildOnboardingChecklist(getOnboardingProgressSnapshot(), betaReadinessData.onboarding || {});
+    const summary = onboardingChecklistSummary(checklist);
+    return (
+      <div className="drawer-info-card onboarding-settings-card">
+        <strong>First-run guide & checklist</strong>
+        <p className="compact-subtitle">{summary.label}. {ONBOARDING_PERSISTENCE_NOTE}</p>
+        {selectedGoals.length ? (
+          <div className="drawer-chip-row">
+            {onboardingGoalRows(selectedGoals).map((goal) => <span className="status-badge" key={goal.key}>{goal.shortLabel}</span>)}
+          </div>
+        ) : (
+          <p className="compact-subtitle">No goals selected yet. Restart onboarding to choose a path.</p>
+        )}
+        <div className="onboarding-settings-checklist">
+          {checklist.slice(0, 5).map((item) => (
+            <button type="button" className={item.completed ? "drawer-link onboarding-mini-check is-complete" : "drawer-link onboarding-mini-check"} key={item.key} onClick={() => runOnboardingAction(item.actionTarget)}>
+              <strong>{item.completed ? "Done: " : ""}{item.title}</strong>
+              <small>{item.actionLabel}</small>
+            </button>
+          ))}
+        </div>
+        <div className="drawer-inline-actions">
+          <button type="button" className="drawer-link" onClick={restartOnboarding}>Replay Onboarding</button>
+          <button type="button" className="drawer-link" onClick={() => {
+            setEmberAssistOpen(true);
+            sendEmberAssistMessage("What should I do first?");
+          }}>Ask Ember</button>
+        </div>
+      </div>
     );
   }
 
@@ -32698,7 +32951,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           actions={<button type="button" onClick={() => openAddActionSheet("home")}>Quick Add</button>}
         />
 
-        {!betaReadinessData.onboarding?.completedAt ? renderOnboardingPanel() : null}
+        {shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null}
 
         <section className={`panel hearth-best-action-card hearth-best-action-${hearthMode}`} aria-label="Today's best action">
           <div className="hearth-best-action-copy">
@@ -34261,6 +34514,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       ))}
                     </div>
                   </div>
+                  {renderOnboardingSettingsCard()}
                   <div className="drawer-info-card experience-mode-settings-card">
                     <strong>Experience Mode</strong>
                     <p className="compact-subtitle">This changes what Hearth and Today&apos;s Tide prioritize. Mobile navigation stays stable unless seller personalization is already supported.</p>
@@ -36987,7 +37241,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               )}
             />
 
-            {!betaReadinessData.onboarding?.completedAt ? renderOnboardingPanel() : null}
+            {shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null}
 
             <section className="panel today-tide-command daily-tide-overview-card" aria-label="Today's Tide command center">
               <div className="today-tide-hero">
@@ -38150,15 +38404,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ) : null}
               <div className="inventory-list compact-inventory-list">
                 {vaultItems.length === 0 ? (
-                  <div className="empty-state vault-empty-state">
-                    <h3>Your collection starts here.</h3>
-                    <p>Scan a card, add a sealed product, or enter an item manually. Manual add stays available even when catalog search misses something.</p>
-                    <div className="quick-actions">
-                      <button type="button" onClick={() => beginScanProduct("vault")}>Scan Card</button>
-                      <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "vault-empty-sealed", seed: { productType: "Sealed Product" }, destinations: { vault: true } })}>Add Sealed Product</button>
-                      <button type="button" className="secondary-button" onClick={openVaultQuickAddFlow}>Manual Add</button>
-                    </div>
-                  </div>
+                  renderGuidedEmptyState("vault", { actionLabel: "Add first Vault item", actionTarget: "vault" })
                 ) : (
                   pagedVaultItems.items.map((item) => (
                     <CompactInventoryCard
@@ -38481,6 +38727,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               )}
             />
+            <section className="panel settings-onboarding-panel">
+              {renderOnboardingSettingsCard()}
+              <div className="drawer-info-card onboarding-help-card">
+                <strong>Quick setup help</strong>
+                <p className="compact-subtitle">Use this guide to keep first-run help, workspace setup, alerts, and Ember Assist prompts easy to find.</p>
+                <div className="drawer-chip-row">
+                  {["Vault vs Forge", "Scout trust", "Alerts", "Workspace identity"].map((label) => (
+                    <span className="status-badge" key={label}>{label}</span>
+                  ))}
+                </div>
+              </div>
+            </section>
           </>
         )}
 
@@ -40213,15 +40471,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             ) : null}
             <div className="inventory-list compact-inventory-list">
               {groupedSortedFilteredItems.length === 0 ? (
-                <div className="inventory-card compact-card forge-empty-state">
-                  <h3>Ready to track your first sale?</h3>
-                  <p>Add a receipt, product, or mileage trip to start building a private Forge business history.</p>
-                  <div className="quick-actions">
-                    <button type="button" onClick={openReceiptScanWorkflow}>Add Receipt</button>
-                    <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "forge-empty-inventory", destinations: { forge: true } })}>Add Product</button>
-                    <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
-                  </div>
-                </div>
+                renderGuidedEmptyState("forge", { actionLabel: "Add first Forge item", actionTarget: "forge" })
               ) : pagedForgeInventory.items.map((item) => (
                 <CompactInventoryCard
                   key={item.id}
@@ -40382,7 +40632,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </div>
               </div>
             </section>
-            <ListPanel title="Forge Sales" emptyText="No sales added yet.">
+            <ListPanel title="Forge Sales" emptyText={getEmptyStateGuidance("sales").body}>
               {workspaceSales.map((sale) => (
                 <div className="inventory-card sales-record-card" key={sale.id}>
                   <div className="compact-card-header">
@@ -40589,7 +40839,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 {editingVehicleId && <button type="button" className="secondary-button" onClick={() => { setEditingVehicleId(null); setVehicleForm({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" }); }}>Cancel Edit</button>}
               </form>
             </section>
-            <ListPanel title="Vehicles" emptyText="No vehicles added yet.">
+            <ListPanel title="Vehicles" emptyText="No vehicles added yet. Add a vehicle profile before grouping mileage trips for year-end review.">
               {vehicles.map((v) => (
                 <div className="inventory-card" key={v.id}>
                   <h3>{v.name}</h3>
@@ -40640,7 +40890,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </form>
             </section>
             )}
-            <ListPanel title="Mileage Vehicle Summary" emptyText="No mileage trips added yet.">
+            <ListPanel title="Mileage Vehicle Summary" emptyText={getEmptyStateGuidance("mileage").body}>
               {groupedMileageVehicles.map((group) => (
                 <button
                   type="button"
