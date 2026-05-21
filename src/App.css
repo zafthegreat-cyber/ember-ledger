@@ -35963,3 +35963,291 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* Final visual reliability layer: keep legacy light-theme rules from leaking into the dark app shell. */
+.app,
+.app-command-shell,
+.app-shell-dark {
+  --et-readable-surface: rgba(7, 15, 30, 0.86);
+  --et-readable-surface-strong: rgba(4, 10, 22, 0.96);
+  --et-readable-surface-soft: rgba(12, 25, 48, 0.72);
+  --et-readable-border: rgba(132, 226, 255, 0.18);
+  --et-readable-border-strong: rgba(255, 151, 64, 0.42);
+  --et-readable-text: #fff7ed;
+  --et-readable-muted: rgba(233, 241, 255, 0.76);
+  --et-readable-subtle: rgba(215, 228, 246, 0.62);
+}
+
+.app :where(
+  .panel,
+  .card,
+  .compact-card,
+  .section-card,
+  .detail-panel,
+  .stat-card,
+  .metric-card,
+  .empty-state,
+  .small-empty-state,
+  .flow-modal,
+  .location-modal,
+  .drawer,
+  .menu-drawer,
+  .settings-drawer,
+  .quick-add-sheet,
+  .bottom-sheet,
+  .popover,
+  .dropdown,
+  .overflow-menu-list,
+  .feature-dropdown,
+  .scout-report-step-card,
+  .scout-report-store-card,
+  .scout-report-compact-card,
+  .scout-quick-section,
+  .scout-quick-report-success,
+  .scout-location-trust-note,
+  .scout-report-empty-step,
+  .watch-calendar-event-row,
+  .watch-calendar-detail,
+  .drop-radar-tool-card,
+  .marketplace-listing-card,
+  .market-card,
+  .vault-item-card,
+  .vault-set-card,
+  .vault-set-mini-card,
+  .forge-inventory-card,
+  .tidepool-post-card,
+  .announcement-card,
+  .admin-review-card,
+  .admin-report-review-card,
+  .catalog-result-card,
+  .smart-catalog-suggestion,
+  .search-result-card,
+  .review-card
+),
+.app-command-shell :where(
+  .panel,
+  .card,
+  .compact-card,
+  .section-card,
+  .detail-panel,
+  .stat-card,
+  .metric-card,
+  .empty-state,
+  .small-empty-state,
+  .flow-modal,
+  .location-modal,
+  .drawer,
+  .menu-drawer,
+  .settings-drawer,
+  .quick-add-sheet,
+  .bottom-sheet,
+  .popover,
+  .dropdown,
+  .overflow-menu-list,
+  .feature-dropdown,
+  .scout-report-step-card,
+  .scout-report-store-card,
+  .scout-report-compact-card,
+  .scout-quick-section,
+  .scout-quick-report-success,
+  .scout-location-trust-note,
+  .scout-report-empty-step,
+  .watch-calendar-event-row,
+  .watch-calendar-detail,
+  .drop-radar-tool-card,
+  .marketplace-listing-card,
+  .market-card,
+  .vault-item-card,
+  .vault-set-card,
+  .vault-set-mini-card,
+  .forge-inventory-card,
+  .tidepool-post-card,
+  .announcement-card,
+  .admin-review-card,
+  .admin-report-review-card,
+  .catalog-result-card,
+  .smart-catalog-suggestion,
+  .search-result-card,
+  .review-card
+) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.062), rgba(255, 255, 255, 0.018)),
+    var(--et-readable-surface) !important;
+  border-color: var(--et-readable-border) !important;
+  color: var(--et-readable-text) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
+}
+
+.app :where(h1, h2, h3, h4, strong, label, summary, th),
+.app-command-shell :where(h1, h2, h3, h4, strong, label, summary, th) {
+  color: var(--et-readable-text) !important;
+}
+
+.app :where(p, small, span, td, li, em, .compact-subtitle, .muted, .helper-text, .form-help),
+.app-command-shell :where(p, small, span, td, li, em, .compact-subtitle, .muted, .helper-text, .form-help) {
+  color: var(--et-readable-muted) !important;
+}
+
+.app :where(input, select, textarea, .search-input, .form-control),
+.app-command-shell :where(input, select, textarea, .search-input, .form-control) {
+  min-height: 42px;
+  background: rgba(2, 7, 18, 0.82) !important;
+  border: 1px solid rgba(132, 226, 255, 0.24) !important;
+  color: var(--et-readable-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+}
+
+.app :where(option),
+.app-command-shell :where(option) {
+  background: #07111f !important;
+  color: var(--et-readable-text) !important;
+}
+
+.app :where(input:disabled, select:disabled, textarea:disabled, button:disabled),
+.app-command-shell :where(input:disabled, select:disabled, textarea:disabled, button:disabled) {
+  opacity: 0.58 !important;
+  color: rgba(233, 241, 255, 0.72) !important;
+  -webkit-text-fill-color: rgba(233, 241, 255, 0.72) !important;
+}
+
+.app :where(button, .primary-button, .gradient-button),
+.app-command-shell :where(button, .primary-button, .gradient-button) {
+  min-height: 40px;
+}
+
+.app :where(.secondary-button, .ghost-button, .icon-button, .overflow-menu-button),
+.app-command-shell :where(.secondary-button, .ghost-button, .icon-button, .overflow-menu-button) {
+  background: rgba(10, 25, 48, 0.78) !important;
+  border-color: rgba(132, 226, 255, 0.22) !important;
+  color: var(--et-readable-text) !important;
+  box-shadow: none !important;
+}
+
+.app :where(
+  .active,
+  .selected,
+  [aria-selected="true"],
+  [aria-pressed="true"],
+  [data-selected="true"],
+  .is-active
+):not(input):not(option),
+.app-command-shell :where(
+  .active,
+  .selected,
+  [aria-selected="true"],
+  [aria-pressed="true"],
+  [data-selected="true"],
+  .is-active
+):not(input):not(option) {
+  border-color: var(--et-readable-border-strong) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 122, 24, 0.28), rgba(0, 216, 255, 0.18)),
+    rgba(7, 18, 34, 0.9) !important;
+  color: #fffdf7 !important;
+  box-shadow: 0 0 0 1px rgba(255, 151, 64, 0.22), 0 0 22px rgba(0, 216, 255, 0.12) !important;
+}
+
+.app :where(.form-error, .alert, .warning-box, .error-state),
+.app-command-shell :where(.form-error, .alert, .warning-box, .error-state) {
+  border-color: rgba(255, 99, 132, 0.42) !important;
+  background: rgba(98, 18, 34, 0.34) !important;
+  color: #ffe5e9 !important;
+}
+
+.app :where(.form-success, .success-box, .toast-success),
+.app-command-shell :where(.form-success, .success-box, .toast-success) {
+  border-color: rgba(56, 232, 168, 0.36) !important;
+  background: rgba(6, 78, 59, 0.32) !important;
+  color: #ddfff4 !important;
+}
+
+.app :where(.flow-form-footer, .scout-wizard-footer, .modal-sticky-footer),
+.app-command-shell :where(.flow-form-footer, .scout-wizard-footer, .modal-sticky-footer) {
+  background: linear-gradient(180deg, rgba(4, 10, 22, 0), rgba(4, 10, 22, 0.96) 30%) !important;
+  border-top: 1px solid rgba(132, 226, 255, 0.14) !important;
+}
+
+.app :where(.flow-form-footer, .scout-wizard-footer, .quick-actions, .scout-report-store-actions, .market-card-actions, .forge-card-actions) {
+  gap: 10px !important;
+}
+
+.app :where(.scout-report-review-grid, .scout-report-detail-grid, .drop-radar-two-col, .settings-grid, .admin-queue-grid) > *,
+.app-command-shell :where(.scout-report-review-grid, .scout-report-detail-grid, .drop-radar-two-col, .settings-grid, .admin-queue-grid) > * {
+  min-width: 0;
+}
+
+.app :where(.product-card img, .catalog-result-card img, .marketplace-listing-card img, .vault-set-mini-card img, .scout-report-side img),
+.app-command-shell :where(.product-card img, .catalog-result-card img, .marketplace-listing-card img, .vault-set-mini-card img, .scout-report-side img) {
+  background: rgba(3, 8, 18, 0.72) !important;
+  border: 1px solid rgba(132, 226, 255, 0.12);
+  object-fit: contain;
+}
+
+.tax-readiness-panel {
+  border-color: rgba(245, 158, 11, 0.28) !important;
+}
+
+.tax-summary-grid > div,
+.tax-record-card {
+  background: rgba(8, 18, 34, 0.78) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  border-radius: 14px;
+  color: var(--et-readable-text) !important;
+}
+
+.tax-record-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 1rem 0;
+}
+
+.tax-record-card {
+  padding: 1rem;
+}
+
+.tax-record-card h3 {
+  margin: 0 0 0.75rem;
+}
+
+.tax-record-card p {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.45rem 0;
+}
+
+.tax-record-card span,
+.tax-record-card .compact-subtitle {
+  color: var(--et-readable-muted) !important;
+}
+
+@media (max-width: 640px) {
+  .app,
+  .app-command-shell,
+  .app-shell-dark {
+    overflow-x: hidden;
+  }
+
+  .app :where(.panel, .card, .compact-card, .flow-modal, .quick-add-sheet, .location-modal, .drawer, .scout-report-step-card),
+  .app-command-shell :where(.panel, .card, .compact-card, .flow-modal, .quick-add-sheet, .location-modal, .drawer, .scout-report-step-card) {
+    border-radius: 16px !important;
+  }
+
+  .app :where(.flow-modal, .quick-add-sheet, .location-modal),
+  .app-command-shell :where(.flow-modal, .quick-add-sheet, .location-modal) {
+    width: min(100vw - 16px, 560px) !important;
+    max-height: calc(100dvh - 22px) !important;
+  }
+
+  .app :where(.scout-report-review-grid, .scout-report-detail-grid, .drop-radar-two-col, .quick-action-grid, .home-quick-action-grid),
+  .app-command-shell :where(.scout-report-review-grid, .scout-report-detail-grid, .drop-radar-two-col, .quick-action-grid, .home-quick-action-grid) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app :where(button, .secondary-button, .ghost-button, input, select, textarea),
+  .app-command-shell :where(button, .secondary-button, .ghost-button, input, select, textarea) {
+    min-height: 44px;
+  }
+}

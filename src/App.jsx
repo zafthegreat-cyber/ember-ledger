@@ -186,6 +186,18 @@ import {
 } from "./constants/plans";
 import { getCurrentUserProfile, makeFallbackUserProfile } from "./lib/userProfile";
 import {
+  normalizePublicUsername,
+  publicIdentityForProfile,
+  publicUsernameFromProfile,
+  publicUsernameLabel,
+  publicUsernameLabelFromRecord,
+  validatePublicUsername,
+} from "./utils/publicIdentity";
+import {
+  buildTaxRecordExportRows,
+  buildYearEndTaxSummary,
+} from "./utils/businessTaxRecords";
+import {
   BETA_REQUEST_STATUSES,
   LITTLE_SPARKS_STATUSES,
   loadShorelineAccessState,
@@ -1909,6 +1921,8 @@ function catalogSourceSuggestsSealed(value = {}) {
     source.catalog_item_type,
   ].filter(Boolean).join(" "));
   const sealedFlag = source.isSealed ?? source.is_sealed;
+  const sealedProductPattern = /\bbooster\s*(tin)?\b|\bmini\s+portfolio\b|\bportfolio\b|\bbinder\s+collection\b|\bposter\s+collection\b|\btech\s+sticker\b|\bsurprise\s+box\b|\baccessory\s+pouch\b|\bsuper\s+premium\b|\bcollector'?s?\s+chest\b|\bknock\s*out\b|\b(ex|deluxe)\s+battle\s+deck\b/;
+  if (sealedProductPattern.test(typeText)) return true;
   return (
     sealedFlag === true ||
     sealedFlag === "true" ||
@@ -2189,9 +2203,13 @@ function scoreSearchCandidate(queryInfo, candidate) {
     score += 820;
     reason = "Exact name match";
   }
-  if (aliases.some((alias) => alias === normalized || tokens.includes(alias))) {
+  if (aliases.some((alias) => alias === normalized || (alias.includes(" ") && normalized.includes(alias)))) {
     score += 760;
     reason = "Exact alias match";
+  }
+  if (normalized.length > 3 && text.includes(normalized)) {
+    score += 900;
+    reason = reason || "Exact name match";
   }
 
   const phraseHits = phrases.filter((phrase) => phrase.length > 1 && text.includes(phrase)).length;
@@ -2256,7 +2274,15 @@ function createDefaultTidepoolData() {
 }
 
 function getCatalogImage(product = {}) {
-  return product.imageUrl || product.imageLarge || product.imageSmall || product.images?.large || product.images?.small || "";
+  return product.imageUrl || product.image_url || product.photoUrl || product.photo_url || product.productImage || product.product_image || product.imageLarge || product.image_large || product.imageSmall || product.image_small || product.images?.large || product.images?.small || "";
+}
+
+function shouldPersistLocalCatalogProduct(product = {}) {
+  const sourceType = String(product.sourceType || product.source_type || product.source || "").toLowerCase();
+  if (!sourceType) return false;
+  if (sourceType === "supabase" || sourceType === LOCAL_CATALOG_SEED_SOURCE || sourceType === "local_catalog_seed") return false;
+  if (/tcgcsv|generated|recovery|official_release|pokemon_tcg_api/.test(sourceType)) return false;
+  return /manual|user|admin|custom|suggest|approved|phase2|smoke/.test(sourceType);
 }
 
 function getImageSourceLabel(item = {}) {
@@ -2310,98 +2336,6 @@ function shortDate(value) {
 
 function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-const PUBLIC_USERNAME_MIN_LENGTH = 3;
-const PUBLIC_USERNAME_MAX_LENGTH = 24;
-const RESERVED_PUBLIC_USERNAMES = {
-  ember: "Zena",
-  tide: "Dillon",
-};
-const PROTECTED_USERNAME_PATTERNS = [
-  /\bember\s*(?:&|and)?\s*tide\b/i,
-  /\bemberandtide\b/i,
-  /\bember[-_]?tide\b/i,
-  /\bofficial\b/i,
-  /\badmin\b/i,
-  /\bsupport\b/i,
-  /\bmoderator\b/i,
-  /\bmod\b/i,
-  /\bsecurity\b/i,
-  /\bverified\b/i,
-];
-
-function normalizePublicUsername(value = "") {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/^@+/, "")
-    .replace(/[^a-z0-9_]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "")
-    .slice(0, PUBLIC_USERNAME_MAX_LENGTH);
-}
-
-function usernameOwnerMatch(profile = {}, ownerName = "") {
-  const allowedName = String(ownerName || "").trim().toLowerCase();
-  const profileNames = [
-    profile.firstName,
-    profile.first_name,
-    profile.displayName,
-    profile.display_name,
-    profile.fullName,
-    profile.full_name,
-    profile.email,
-  ].map((value) => String(value || "").toLowerCase());
-  return profileNames.some((value) => value === allowedName || value.startsWith(`${allowedName} `) || value.startsWith(`${allowedName}@`));
-}
-
-function publicUsernameFromProfile(profile = {}) {
-  return normalizePublicUsername(
-    profile.publicUsername ||
-    profile.public_username ||
-    profile.username ||
-    profile.handle ||
-    profile.displayName ||
-    profile.display_name ||
-    profile.email ||
-    "local_scout"
-  ) || "local_scout";
-}
-
-function publicUsernameLabel(profile = {}) {
-  return `@${publicUsernameFromProfile(profile)}`;
-}
-
-function publicUsernameLabelFromRecord(record = {}, fallback = "community") {
-  const username = normalizePublicUsername(
-    record.sellerUsername ||
-    record.seller_username ||
-    record.username ||
-    record.publicUsername ||
-    record.public_username ||
-    record.sellerDisplayName ||
-    record.seller_display_name ||
-    record.displayName ||
-    fallback
-  );
-  return `@${username || normalizePublicUsername(fallback) || "community"}`;
-}
-
-function validatePublicUsername(value = "", profile = {}, takenUsernames = []) {
-  const username = normalizePublicUsername(value);
-  if (!username) return "Choose a public username.";
-  if (username.length < PUBLIC_USERNAME_MIN_LENGTH) return "Username must be at least 3 characters.";
-  if (!/^[a-z0-9_]+$/.test(username)) return "Use only letters, numbers, and underscores.";
-  const reservedOwner = RESERVED_PUBLIC_USERNAMES[username];
-  if (reservedOwner && !usernameOwnerMatch(profile, reservedOwner)) {
-    return `@${username} is reserved for Ember & Tide.`;
-  }
-  if (!reservedOwner && PROTECTED_USERNAME_PATTERNS.some((pattern) => pattern.test(username.replace(/_/g, " ")))) {
-    return "Choose a username that does not look like Ember & Tide staff, admin, or official branding.";
-  }
-  if (takenUsernames.map(normalizePublicUsername).includes(username)) return `@${username} is already used in this local workspace.`;
-  return "";
 }
 
 function workspaceTypeLabel(type = "personal") {
@@ -3992,6 +3926,7 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState("");
   const [authFirstName, setAuthFirstName] = useState("");
   const [authLastName, setAuthLastName] = useState("");
+  const [authPublicUsername, setAuthPublicUsername] = useState("");
   const [authTermsAccepted, setAuthTermsAccepted] = useState(false);
   const [authBetaAcknowledged, setAuthBetaAcknowledged] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
@@ -4473,6 +4408,7 @@ export default function App() {
   const [expenseDateTo, setExpenseDateTo] = useState("");
   const [selectedExpenseVendorKey, setSelectedExpenseVendorKey] = useState("");
   const [selectedMileageVehicleKey, setSelectedMileageVehicleKey] = useState("");
+  const [taxSummaryYear, setTaxSummaryYear] = useState(() => String(new Date().getFullYear()));
   const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
   const [tripForm, setTripForm] = useState(blankTrip);
   const [saleForm, setSaleForm] = useState(blankSale);
@@ -5486,6 +5422,9 @@ export default function App() {
         fields: [
           product.name,
           product.productName,
+          product.cleanName,
+          product.searchName,
+          product.search_name,
           product.cardName,
           product.pokemonName,
           product.setName,
@@ -6234,6 +6173,18 @@ export default function App() {
         updatedAt: new Date().toISOString(),
       };
       if (signedInWithSupabase && isSupabaseConfigured && supabase) {
+        const { error: authProfileError } = await supabase.auth.updateUser({
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            full_name: fullName,
+            display_name: displayName,
+            username: publicUsername,
+            public_username: publicUsername,
+            publicUsername,
+          },
+        });
+        if (authProfileError) throw authProfileError;
         const { error } = await supabase.from("profiles").upsert(
           {
             id: user.id,
@@ -9910,7 +9861,7 @@ export default function App() {
       setItems(migrateRecordsToWorkspace(saved.items || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setPurchasers(normalizePurchasers(saved.purchasers));
       const localCatalogProducts = Array.isArray(saved.catalogProducts)
-        ? saved.catalogProducts.filter((product) => product.sourceType !== "supabase")
+        ? saved.catalogProducts.filter(shouldPersistLocalCatalogProduct)
         : [];
       setCatalogProducts(mergeCatalogProductLists(LOCAL_CATALOG_SEED_PRODUCTS, localCatalogProducts));
       setTideTradrWatchlist(migrateRecordsToWorkspace(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : [], workspaceState.activeWorkspaceId, workspaceState.workspaces));
@@ -10221,7 +10172,7 @@ export default function App() {
       JSON.stringify({
         items,
         purchasers,
-        catalogProducts: catalogProducts.filter((product) => product.sourceType !== "supabase"),
+        catalogProducts: catalogProducts.filter(shouldPersistLocalCatalogProduct),
         tideTradrWatchlist,
         marketplaceListings,
         marketplaceReports,
@@ -10675,10 +10626,20 @@ export default function App() {
     const signupFirstName = normalizePersonName(authFirstName);
     const signupLastName = normalizePersonName(authLastName);
     const signupFullName = [signupFirstName, signupLastName].filter(Boolean).join(" ");
+    const signupPublicUsername = normalizePublicUsername(authPublicUsername);
     if (authMode === "signup") {
       const nameError = validateSignupFullName(signupFirstName, signupLastName);
       if (nameError) {
         setAuthError(nameError);
+        return;
+      }
+      const usernameError = validatePublicUsername(
+        signupPublicUsername,
+        { firstName: signupFirstName, first_name: signupFirstName, fullName: signupFullName, full_name: signupFullName, displayName: signupFullName, display_name: signupFullName, email },
+        takenPublicUsernames("")
+      );
+      if (usernameError) {
+        setAuthError(usernameError);
         return;
       }
       if (!authTermsAccepted) {
@@ -10700,6 +10661,9 @@ export default function App() {
               last_name: signupLastName,
               full_name: signupFullName,
               display_name: signupFullName,
+              username: signupPublicUsername,
+              public_username: signupPublicUsername,
+              publicUsername: signupPublicUsername,
               terms_accepted_at: consentTimestamp,
               privacy_accepted_at: consentTimestamp,
               beta_acknowledged_at: authBetaAcknowledged ? consentTimestamp : null,
@@ -10769,6 +10733,7 @@ export default function App() {
       if (authMode === "signup") {
         setAuthFirstName("");
         setAuthLastName("");
+        setAuthPublicUsername("");
         setAuthTermsAccepted(false);
         setAuthBetaAcknowledged(false);
       }
@@ -14074,9 +14039,9 @@ function mapCatalog(row) {
     : productType;
   const marketSource = row.marketSource || row.market_source || row.source || "TideTradr";
   const sourceUrl = row.sourceUrl || row.source_url || row.marketUrl || row.market_url || row.tcgplayerUrl || row.tcgplayer_url || "";
-  const imageSmall = row.imageSmall || row.image_small || row.images?.small || "";
-  const imageLarge = row.imageLarge || row.image_large || row.images?.large || row.imageUrl || row.image_url || "";
-  const imageUrl = row.imageUrl || row.image_url || imageLarge || imageSmall || "";
+  const imageSmall = row.imageSmall || row.image_small || row.images?.small || row.photoUrl || row.photo_url || "";
+  const imageLarge = row.imageLarge || row.image_large || row.images?.large || row.imageUrl || row.image_url || row.photoUrl || row.photo_url || row.productImage || row.product_image || "";
+  const imageUrl = row.imageUrl || row.image_url || row.photoUrl || row.photo_url || row.productImage || row.product_image || imageLarge || imageSmall || "";
   const marketPrice = Number(row.marketPrice ?? row.market_price ?? row.marketValue ?? row.market_value ?? 0);
   const lowPrice = Number(row.lowPrice ?? row.low_price ?? 0);
   const midPrice = Number(row.midPrice ?? row.mid_price ?? 0);
@@ -15005,6 +14970,43 @@ function mapCatalog(row) {
   function startEditingVaultItem(item) {
     startEditingItem(item);
     setActiveTab("vault");
+  }
+
+  async function quickUpdatePlannedSalePrice(item = {}) {
+    if (!item?.id || !ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
+    const current = Number(item.salePrice || item.plannedSalePrice || item.planned_sale_price || 0);
+    const input = window.prompt(`Update planned sale price for ${item.name || "this item"}`, current ? current.toFixed(2) : "");
+    if (input == null) return;
+    const nextPrice = Number.parseFloat(String(input).trim());
+    if (!Number.isFinite(nextPrice) || nextPrice < 0) {
+      showAppMessage("Planned sale price must be a valid number.");
+      return;
+    }
+    const priceHistoryEntry = {
+      price: nextPrice,
+      previousPrice: current,
+      changedAt: new Date().toISOString(),
+      source: "quick_update",
+    };
+    setItems((currentItems) => currentItems.map((entry) => entry.id === item.id ? {
+      ...entry,
+      salePrice: nextPrice,
+      plannedSalePrice: nextPrice,
+      planned_sale_price: nextPrice,
+      plannedSalePriceHistory: [...(entry.plannedSalePriceHistory || []), priceHistoryEntry],
+      updatedAt: new Date().toISOString(),
+    } : entry));
+    if (!BETA_LOCAL_MODE && signedInWithSupabase && supabase) {
+      const { error } = await supabase.from("inventory_items").update({
+        sale_price: nextPrice,
+        updated_at: new Date().toISOString(),
+      }).eq("id", item.id);
+      if (error) {
+        showAppMessage(`Planned sale price saved locally, but cloud sync failed: ${error.message}`);
+        return;
+      }
+    }
+    setVaultToast("Planned sale price updated.");
   }
 
   function inventoryDeleteContext(item = {}) {
@@ -17368,6 +17370,26 @@ function renderForgeHeader() {
     setBackupImportMessage("Backup exported. Keep this file somewhere safe before clearing browser data or switching phones.");
   }
 
+  function downloadYearEndTaxSummary(format = "csv") {
+    const summary = yearEndTaxSummary;
+    if (!summary || (!summary.expenses.count && !summary.mileage.tripCount && !summary.inventory.itemCount && !summary.sales.count)) {
+      return showAppMessage("No business records found for that tax-record year.");
+    }
+    if (format === "json") {
+      const blob = new Blob([JSON.stringify(summary, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ember-tide-tax-records-${summary.year}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setVaultToast("Year-end tax records JSON exported for review.");
+      return;
+    }
+    downloadCSV(`ember-tide-tax-records-${summary.year}.csv`, buildTaxRecordExportRows(summary));
+    setVaultToast("Year-end tax records CSV exported for review.");
+  }
+
   function createBetaBackup() {
     let savedScout = {};
     try {
@@ -17843,6 +17865,22 @@ function renderForgeHeader() {
   const selectedExpenseVendorGroup = groupedExpenses.find((group) => group.key === selectedExpenseVendorKey) || null;
   const groupedMileageVehicles = useMemo(() => buildMileageVehicleGroups(workspaceMileageTrips, vehicles), [workspaceMileageTrips, vehicles]);
   const selectedMileageVehicleGroup = groupedMileageVehicles.find((group) => group.key === selectedMileageVehicleKey) || null;
+  const taxSummaryYearOptions = useMemo(() => {
+    const years = new Set([String(new Date().getFullYear()), taxSummaryYear]);
+    [...workspaceExpenses, ...workspaceMileageTrips, ...forgeInventoryItems, ...workspaceSales].forEach((record) => {
+      const value = expenseDateValue(record);
+      if (value) years.add(String(value).slice(0, 4));
+    });
+    return [...years].filter(Boolean).sort((a, b) => String(b).localeCompare(String(a)));
+  }, [workspaceExpenses, workspaceMileageTrips, forgeInventoryItems, workspaceSales, taxSummaryYear]);
+  const yearEndTaxSummary = useMemo(() => buildYearEndTaxSummary({
+    year: taxSummaryYear,
+    expenses: workspaceExpenses,
+    mileageTrips: workspaceMileageTrips,
+    vehicles,
+    inventoryItems: forgeInventoryItems,
+    sales: workspaceSales,
+  }), [taxSummaryYear, workspaceExpenses, workspaceMileageTrips, vehicles, forgeInventoryItems, workspaceSales]);
   const filteredExpenseTotal = filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const expenseFiltersActive = Boolean(
     expenseSearchQuery.trim() ||
@@ -18871,11 +18909,18 @@ function renderForgeHeader() {
 
   function getScoutReportStore(report = {}) {
     const storeId = report.storeId || report.store_id || "";
-    return scoutStoreMap[String(storeId)] || {
-      name: report.storeName || report.store_name || "",
-      chain: report.retailer || report.chain || "",
-      city: report.city || "",
-      region: report.region || "",
+    const directoryStore = scoutStoreMap[String(storeId)] || {};
+    const savedStoreName = String(report.storeName || report.store_name || "").trim();
+    const savedRetailer = String(report.retailer || report.chain || "").trim();
+    return {
+      ...directoryStore,
+      name: savedStoreName || directoryStore.name || "",
+      nickname: savedStoreName || directoryStore.nickname || "",
+      chain: savedRetailer || directoryStore.chain || "",
+      retailer: savedRetailer || directoryStore.retailer || directoryStore.chain || "",
+      city: report.city || directoryStore.city || "",
+      region: report.region || directoryStore.region || "",
+      address: report.address || directoryStore.address || "",
     };
   }
 
@@ -20552,6 +20597,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       .map((product) => {
         const fields = [
           catalogTitle(product),
+          product.cleanName,
+          product.searchName,
+          product.search_name,
           catalogExpansionName(product),
           product.productType,
           product.sealedProductType,
@@ -26640,6 +26688,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function getMarketplaceTrustBadges(listing = {}) {
     const badges = [];
+    const sellerUsername = normalizePublicUsername(listing.sellerUsername || listing.seller_username || listing.username || listing.publicUsername || listing.public_username);
+    if (["official_admin_ember", "official_admin_tide"].includes(sellerUsername)) {
+      badges.push({ label: "Official Ember & Tide Admin", tone: "verified" });
+    }
     if (listing.verified || listing.isVerified || String(listing.verificationStatus || "").toLowerCase() === "verified") {
       badges.push({ label: "Verified Listing", tone: "verified" });
     }
@@ -27137,6 +27189,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const localPosts = tidepoolPosts.filter((post) => !post.state || String(post.state).toUpperCase() === "VA" || Boolean(post.city || post.zip)).length;
     const trustBadgesForPost = (post) => {
       const badges = [];
+      const postUsername = normalizePublicUsername(post.username || post.publicUsername || post.public_username);
+      if (["official_admin_ember", "official_admin_tide"].includes(postUsername)) badges.push("Official Ember & Tide Admin");
       if (post.verificationStatus === "verified") badges.push("Verified Collector");
       if (/giveaway|donation|kid|family/i.test(`${post.postType || ""} ${post.title || ""}`)) badges.push("Parent-Approved");
       if (post.sourceType === "admin" || post.sourceType === "official") badges.push("Community Helper");
@@ -28348,12 +28402,42 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     };
 
     if (quickScoutReportStep === "submitted") {
+      const savedProductName = quickScoutReportSaved?.productName || quickScoutReportSaved?.itemName || quickScoutReportForm.productName || "Product not added";
+      const savedStockStatus = scoutStockStatusLabel(quickScoutReportSaved?.stockStatus || quickScoutReportSaved?.stock_status || quickScoutReportForm.stockLeft)
+        || quickScoutReportSaved?.quickReportLabel
+        || quickScoutReportTypeMeta(quickScoutReportSaved?.quickReportType || quickScoutReportForm.reportType).label;
+      const savedSubmittedTime = quickScoutReportSaved ? scoutReportDateTimeLabel(quickScoutReportSaved) : quickScoutDateLabel();
+      const savedSignalType = currentType.isGuess
+        ? "Prediction/planner note"
+        : (quickScoutReportSaved?.confidence === "verified" ? "Verified Scout report" : "Submitted Scout report");
       return (
         <section className="scout-quick-report-v2 scout-quick-report-sent">
           <div className="scout-quick-report-success">
             <span>Sent</span>
             <h3>{quickScoutReportMessage || "Report sent. You can add details now or later."}</h3>
             <p>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store"} now appears in {currentType.isGuess ? "Guesses Planner" : "Scout reports"} as a local beta record.</p>
+          </div>
+          <div className="scout-report-review-grid scout-submit-confirmation-grid" aria-label="Submitted Scout report confirmation">
+            <div>
+              <span>Store</span>
+              <strong>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store not selected"}</strong>
+            </div>
+            <div>
+              <span>Product</span>
+              <strong>{savedProductName}</strong>
+            </div>
+            <div>
+              <span>Stock status</span>
+              <strong>{savedStockStatus}</strong>
+            </div>
+            <div>
+              <span>Submitted time</span>
+              <strong>{savedSubmittedTime}</strong>
+            </div>
+            <div>
+              <span>Saved as</span>
+              <strong>{savedSignalType}</strong>
+            </div>
           </div>
           <div className="quick-actions">
             <button type="button" onClick={openQuickScoutReportDetails}>Add details</button>
@@ -30358,7 +30442,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           onChange={(event) => setAuthLastName(event.target.value)}
                         />
                       </Field>
+                      <Field label="Public username">
+                        <input
+                          type="text"
+                          value={authPublicUsername}
+                          autoComplete="nickname"
+                          onChange={(event) => setAuthPublicUsername(normalizePublicUsername(event.target.value))}
+                          placeholder="public_username"
+                        />
+                      </Field>
                       <p className="compact-subtitle auth-name-helper">{SIGNUP_NAME_HELPER}</p>
+                      <p className="compact-subtitle auth-name-helper">Shown publicly in Marketplace and Tidepool. Ember & Tide staff names are reserved.</p>
                     </div>
                   ) : null}
                   <Field label="Email"><input type="email" value={authEmail} autoComplete="email" onChange={(e) => setAuthEmail(e.target.value)} /></Field>
@@ -30395,6 +30489,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           setAuthMode("signup");
                           setAuthFirstName("");
                           setAuthLastName("");
+                          setAuthPublicUsername("");
                           setAuthTermsAccepted(false);
                           setAuthBetaAcknowledged(false);
                         }}
@@ -30416,6 +30511,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           setAuthMode("login");
                           setAuthFirstName("");
                           setAuthLastName("");
+                          setAuthPublicUsername("");
                           setAuthTermsAccepted(false);
                           setAuthBetaAcknowledged(false);
                         }}
@@ -31894,7 +31990,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                                 autoComplete="family-name"
                               />
                             </div>
+                            <input
+                              className="drawer-field"
+                              type="text"
+                              value={authPublicUsername}
+                              onChange={(event) => setAuthPublicUsername(normalizePublicUsername(event.target.value))}
+                              placeholder="public_username"
+                              autoComplete="nickname"
+                            />
                             <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p>
+                            <p className="compact-subtitle">Public usernames appear in Marketplace and Tidepool instead of private account details. Ember & Tide official names are reserved.</p>
                             <label className="checkbox-row">
                               <input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} />
                               <span>{SIGNUP_TERMS_TEXT}</span>
@@ -31946,6 +32051,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                             if (nextMode === "login") {
                               setAuthFirstName("");
                               setAuthLastName("");
+                              setAuthPublicUsername("");
                               setAuthTermsAccepted(false);
                               setAuthBetaAcknowledged(false);
                             }
@@ -31991,6 +32097,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           autoComplete="nickname"
                         />
                         <small>Shown in Marketplace and Tidepool instead of private account details. Ember & Tide staff names are protected.</small>
+                        {publicIdentityForProfile({ ...currentUserProfile, email: accountEmail() }).isOfficialAdminIdentity ? (
+                          <small className="status-badge verified-badge">Official Ember & Tide admin identity: {publicProfileLabel()}</small>
+                        ) : null}
                       </label>
                       <select className="drawer-field" value={profileForm.preferredRegion} onChange={(event) => setProfileForm((current) => ({ ...current, preferredRegion: event.target.value }))}>
                         {["Hampton Roads / 757", "Richmond / Central Virginia", "Northern Virginia", "Fredericksburg", "Charlottesville / Albemarle", "Roanoke / Southwest Virginia", "Lynchburg", "Shenandoah Valley", "Eastern Shore", "Southside Virginia", "Other Virginia"].map((region) => (
@@ -35944,6 +36053,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <button onClick={() => downloadCSV("ember-tide-expenses.csv", expenses)}>Export Expenses</button>
                 <button onClick={() => downloadCSV("ember-tide-mileage.csv", mileageTrips)}>Export Mileage</button>
                 <button onClick={() => downloadCSV("ember-tide-vehicles.csv", vehicles)}>Export Vehicles</button>
+                <button onClick={() => downloadYearEndTaxSummary("csv")}>Export Tax Records CSV</button>
+                <button onClick={() => downloadYearEndTaxSummary("json")}>Export Tax Records JSON</button>
                 <button onClick={downloadBackup}>Full Backup</button>
               </div>
             </section>
@@ -38624,6 +38735,55 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </div>
             </section>
 
+            <section className="panel tax-readiness-panel">
+              <div className="compact-card-header">
+                <div>
+                  <p className="eyebrow">Tax Records</p>
+                  <h2>Year-end summary for review</h2>
+                  <p>Summaries preserve the source records underneath. Ember & Tide does not provide tax advice; use this with your tax professional.</p>
+                </div>
+                <Field label="Year">
+                  <select value={taxSummaryYear} onChange={(event) => setTaxSummaryYear(event.target.value)}>
+                    {taxSummaryYearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <div className="expense-summary-grid tax-summary-grid">
+                <div><span>Expenses</span><strong>{money(yearEndTaxSummary.expenses.total)}</strong><small>{yearEndTaxSummary.expenses.count} transaction{yearEndTaxSummary.expenses.count === 1 ? "" : "s"}</small></div>
+                <div><span>Mileage</span><strong>{yearEndTaxSummary.mileage.totalMiles.toFixed(1)} mi</strong><small>{money(yearEndTaxSummary.mileage.totalValue)} mileage value</small></div>
+                <div><span>Inventory cost basis</span><strong>{money(yearEndTaxSummary.inventory.costBasis)}</strong><small>{yearEndTaxSummary.inventory.quantity} unit{yearEndTaxSummary.inventory.quantity === 1 ? "" : "s"}</small></div>
+                <div><span>Sales / profit</span><strong>{money(yearEndTaxSummary.sales.revenue)}</strong><small>{money(yearEndTaxSummary.sales.profit)} net profit</small></div>
+                <div><span>Missing receipts</span><strong>{yearEndTaxSummary.expenses.missingReceiptCount}</strong><small>Attach or review before filing</small></div>
+              </div>
+              <div className="tax-record-grid">
+                <div className="tax-record-card">
+                  <h3>Top expense vendors</h3>
+                  {yearEndTaxSummary.expenses.vendorGroups.slice(0, 5).map((group) => (
+                    <p key={group.key}><span>{group.vendorName}</span><strong>{money(group.total)}</strong></p>
+                  ))}
+                  {!yearEndTaxSummary.expenses.vendorGroups.length ? <p className="compact-subtitle">No expense records for {taxSummaryYear}.</p> : null}
+                </div>
+                <div className="tax-record-card">
+                  <h3>Mileage by vehicle</h3>
+                  {yearEndTaxSummary.mileage.vehicleGroups.slice(0, 5).map((group) => (
+                    <p key={group.key}><span>{group.vehicleName}</span><strong>{group.totalMiles.toFixed(1)} mi</strong></p>
+                  ))}
+                  {!yearEndTaxSummary.mileage.vehicleGroups.length ? <p className="compact-subtitle">No mileage records for {taxSummaryYear}.</p> : null}
+                </div>
+                <div className="tax-record-card">
+                  <h3>Inventory by purchaser</h3>
+                  {yearEndTaxSummary.inventory.purchaserTotals.slice(0, 5).map((group) => (
+                    <p key={group.name}><span>{group.name}</span><strong>{money(group.costBasis)}</strong></p>
+                  ))}
+                  {!yearEndTaxSummary.inventory.purchaserTotals.length ? <p className="compact-subtitle">No inventory cost basis for {taxSummaryYear}.</p> : null}
+                </div>
+              </div>
+              <div className="drawer-inline-actions">
+                <button type="button" onClick={() => downloadYearEndTaxSummary("csv")}>Export Tax CSV</button>
+                <button type="button" className="secondary-button" onClick={() => downloadYearEndTaxSummary("json")}>Export Tax JSON</button>
+              </div>
+            </section>
+
             {!reportFocus && (
               <>
                 <ReportList title="Forge Sales by Platform" data={salesByPlatform} moneyValues />
@@ -38700,6 +38860,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 items={missingSalePriceItems}
                 button="Add Sale Price"
                 action={startEditingItem}
+                secondaryButton="Quick Price"
+                secondaryAction={quickUpdatePlannedSalePrice}
               />
             )}
 
@@ -40122,7 +40284,7 @@ function ReportList({ title, data, moneyValues = false }) {
   );
 }
 
-function ActionReport({ title, items, button, action }) {
+function ActionReport({ title, items, button, action, secondaryButton = "", secondaryAction = null }) {
   return (
     <section className="panel">
       <h2>{title}</h2>
@@ -40140,9 +40302,13 @@ function ActionReport({ title, items, button, action }) {
               <div className="compact-metrics">
                 <div><span>Cost</span><strong>{money(item.unitCost)}</strong></div>
                 <div><span>TideTradr</span><strong>{money(item.marketPrice)}</strong></div>
+                <div><span>Planned Sale</span><strong>{money(item.salePrice || item.plannedSalePrice || 0)}</strong></div>
                 <div><span>Profit</span><strong>{money(item.quantity * item.marketPrice - item.quantity * item.unitCost)}</strong></div>
               </div>
-              <button className="edit-button" onClick={() => action(item)}>{button}</button>
+              <div className="drawer-inline-actions">
+                <button className="edit-button" onClick={() => action(item)}>{button}</button>
+                {secondaryAction ? <button type="button" className="secondary-button" onClick={() => secondaryAction(item)}>{secondaryButton || "Quick Update"}</button> : null}
+              </div>
             </div>
           ))}
         </div>

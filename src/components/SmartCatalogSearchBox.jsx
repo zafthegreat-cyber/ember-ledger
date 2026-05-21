@@ -89,7 +89,7 @@ export default function SmartCatalogSearchBox({
           ].filter(Boolean).join(" | "),
           badge: productType,
           searchValue: label,
-          imageUrl: product.imageUrl || product.image_url || product.imageSmall || product.image_small || "",
+          imageUrl: product.imageUrl || product.image_url || product.photoUrl || product.photo_url || product.productImage || product.product_image || product.imageSmall || product.image_small || product.imageLarge || product.image_large || "",
           marketPrice: product.marketPrice || product.market_price || product.marketValue || product.market_value || 0,
           product,
         };
@@ -329,7 +329,18 @@ export default function SmartCatalogSearchBox({
                   role="option"
                   aria-selected={suggestion.index === activeIndex}
                 >
-                  {suggestion.imageUrl ? <img src={suggestion.imageUrl} alt="" /> : <span className="smart-catalog-suggestion-thumb">No image</span>}
+                  {suggestion.imageUrl ? (
+                    <img
+                      src={suggestion.imageUrl}
+                      alt=""
+                      onError={(event) => {
+                        event.currentTarget.replaceWith(Object.assign(document.createElement("span"), {
+                          className: "smart-catalog-suggestion-thumb",
+                          textContent: "Image needed",
+                        }));
+                      }}
+                    />
+                  ) : <span className="smart-catalog-suggestion-thumb">Image needed</span>}
                   <span className="smart-catalog-suggestion-copy">
                     <strong>{renderHighlighted(suggestion.label, value)}</strong>
                     <small>{suggestion.description || suggestion.searchValue}</small>

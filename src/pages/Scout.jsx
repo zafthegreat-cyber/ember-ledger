@@ -1736,9 +1736,6 @@ export default function Scout({
       setError("");
       setLoading(false);
 
-      if (!selectedStoreId && savedStores.length > 0) {
-        setSelectedStoreId(savedStores[0].id);
-      }
       return;
     }
 
@@ -1748,9 +1745,6 @@ export default function Scout({
       setStores(data);
       setError("");
 
-      if (!selectedStoreId && data.length > 0) {
-        setSelectedStoreId(data[0].id);
-      }
     } catch (err) {
       setError(err.message || "Failed to load stores");
     } finally {

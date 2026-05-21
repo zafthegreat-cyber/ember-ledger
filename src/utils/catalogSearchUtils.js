@@ -54,6 +54,9 @@ export function scoreCatalogItem(query, item) {
   const fields = [
     item.name,
     item.productName,
+    item.cleanName,
+    item.searchName,
+    item.search_name,
     item.cardName,
     item.pokemonName,
     item.setName,
@@ -80,6 +83,9 @@ export function scoreCatalogItem(query, item) {
   }
 
   let score = 0;
+  if (normalized.length > 3 && haystack.includes(normalized)) {
+    score += 900;
+  }
   expansions.forEach((term) => {
     if (!term) return;
     if (haystack === term) score += 220;

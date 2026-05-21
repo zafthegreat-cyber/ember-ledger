@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../supabaseClient";
 import { PLAN_TYPES, USER_ROLES, normalizeTier, normalizeUserRole } from "../constants/plans";
 import { normalizeBetaStatus, normalizeLittleSparksStatus } from "../services/shorelineAccessService";
+import { publicUsernameFromProfile } from "../utils/publicIdentity";
 
 const ADMIN_EMAILS = String(import.meta.env.VITE_ADMIN_EMAILS || import.meta.env.ADMIN_EMAILS || "")
   .split(",")
@@ -23,21 +24,6 @@ export function isAdminEmail(email = "") {
 
 function metadataFlag(value) {
   return value === true || ["true", "1", "yes"].includes(String(value || "").toLowerCase());
-}
-
-function normalizePublicUsername(value = "") {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/^@+/, "")
-    .replace(/[^a-z0-9_]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "")
-    .slice(0, 24);
-}
-
-function profileUsernameFromValues(...values) {
-  return normalizePublicUsername(values.find((value) => String(value || "").trim()) || "local_scout") || "local_scout";
 }
 
 export function getSupabaseAuthMetadata(user = null) {
@@ -66,7 +52,19 @@ export function makeFallbackUserProfile(user = null) {
   const admin = metadataAccess.admin || isAdminEmail(email) || (isLocalhost() && LOCAL_DEV_ADMIN);
   const now = new Date().toISOString();
   const displayName = fullName || metadata.display_name || metadata.displayName || (email ? email.split("@")[0] : "Local Beta");
-  const publicUsername = profileUsernameFromValues(metadata.username, metadata.public_username, metadata.publicUsername, metadata.handle, displayName, email);
+  const publicUsername = publicUsernameFromProfile({
+    ...metadata,
+    email,
+    firstName,
+    lastName,
+    fullName,
+    displayName,
+    username: metadata.username,
+    public_username: metadata.public_username,
+    publicUsername: metadata.publicUsername,
+    userRole: admin ? USER_ROLES.ADMIN : USER_ROLES.USER,
+    isAdmin: admin,
+  });
   return {
     userId: user?.id || "local-beta",
     email: email || "local beta mode",
@@ -122,7 +120,22 @@ export function mapProfileRow(row = {}, user = null) {
   const lastName = row.last_name || row.lastName || "";
   const fullName = row.full_name || row.fullName || [firstName, lastName].filter(Boolean).join(" ");
   const displayName = row.display_name || row.displayName || fullName || email.split("@")[0] || "User";
-  const publicUsername = profileUsernameFromValues(row.username, row.public_username, row.publicUsername, row.handle, displayName, email);
+  const metadata = user?.user_metadata || user?.raw_user_meta_data || user?.rawUserMetaData || {};
+  const publicUsername = publicUsernameFromProfile({
+    ...metadata,
+    ...row,
+    email,
+    firstName,
+    lastName,
+    fullName,
+    displayName,
+    username: row.username || metadata.username,
+    public_username: row.public_username || metadata.public_username,
+    publicUsername: row.publicUsername || metadata.publicUsername,
+    handle: row.handle || metadata.handle,
+    userRole,
+    isAdmin: userRole === USER_ROLES.ADMIN,
+  });
   return {
     userId: row.id || row.userId || user?.id || "",
     email,
