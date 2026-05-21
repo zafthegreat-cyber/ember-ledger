@@ -194,9 +194,55 @@ import {
   validatePublicUsername,
 } from "./utils/publicIdentity";
 import {
+  buildQuickAddSuccessMessage,
+  calendarEventToQuickAddSeed,
+  findQuickAddCatalogMatch,
+  normalizeQuickAddDestinations,
+} from "./utils/quickAddRouting";
+import {
+  buildPlannedSalePricePatch,
+  groupedInventoryEntryIds,
+  plannedSalePriceUpdateSummary,
+} from "./utils/inventoryDetailUtils";
+import {
+  isMarketplaceClosedStatus,
+  isOfficialCommunityUsername,
+  validateMarketplaceListingDraft,
+  validateTidepoolCommentDraft,
+  validateTidepoolPostDraft,
+} from "./utils/communitySafety";
+import {
+  SPARK_PROGRAM_STATUS_OPTIONS,
+  normalizeSparkProgramStatus,
+  sparkProgramStatusLabel,
+  validateSparkApplication,
+} from "./utils/kidsProgramSafety";
+import {
+  forgeModeSummary,
+  sellerModeEnabled,
+  workspaceDeleteBlockReason,
+} from "./utils/settingsWorkspaceSafety";
+import {
+  buildMileageExportRows,
   buildTaxRecordExportRows,
   buildYearEndTaxSummary,
+  expenseFromReceiptLine,
+  expenseHasReceipt,
+  normalizeMileagePurpose,
 } from "./utils/businessTaxRecords";
+import {
+  EMBER_ASSIST_ESCALATION_CATEGORIES,
+  buildEmberAssistContext,
+  buildEmberAssistFallbackResponse,
+  clearEmberAssistThread,
+  filterEmberAssistMessagesForUser,
+  getEmberAssistStarterPrompts,
+  isEmberAssistSuggestion,
+  loadEmberAssistThread,
+  makeEmberAssistAdminMessage,
+  saveEmberAssistThread,
+  shouldOfferAdminEscalation,
+} from "./utils/emberAssist";
 import {
   BETA_REQUEST_STATUSES,
   LITTLE_SPARKS_STATUSES,
@@ -1394,6 +1440,15 @@ const EXPENSE_CATEGORIES = [
   "Software/Subscriptions",
   "Miscellaneous",
 ];
+const MILEAGE_PURPOSE_OPTIONS = [
+  "Inventory run",
+  "Store restock check",
+  "Shipping/drop-off",
+  "Event",
+  "Marketplace meetup",
+  "Supplies",
+  "Other",
+];
 const MARKETING_PLATFORMS = ["Facebook", "Instagram", "TikTok", "Discord", "Website", "Marketplace", "Other"];
 const MARKETING_GOALS = ["sales", "followers", "event", "donations", "awareness", "giveaway"];
 const TIDEPOOL_POST_TYPES = [
@@ -1501,6 +1556,7 @@ const blankExpense = {
   receiptSplitMode: "expense_only",
   receiptTax: "",
   receiptPersonalTotal: "",
+  receiptId: "",
   taxDeductible: false,
   campaignName: "",
   platform: "",
@@ -2735,7 +2791,7 @@ function buildGroupedInventoryItems(rows = [], context = "inventory") {
     const purchaserBreakdown = summarizeBreakdownRows(groupRows, { type: "purchaser" });
     const locationBreakdown = summarizeBreakdownRows(groupRows, { type: "location" });
     const purchaserSummary = purchaserBreakdown.length <= 2
-      ? purchaserBreakdown.map((entry) => `${entry.name} ${entry.quantity}`).join(" · ")
+      ? purchaserBreakdown.map((entry) => `${entry.name} - ${entry.quantity}`).join(" / ")
       : `${purchaserBreakdown.length} purchasers`;
     const locationSummary = locationBreakdown.length <= 1
       ? locationBreakdown[0]?.name || forgePhysicalLocationLabel(primary) || ""
@@ -2789,6 +2845,7 @@ function vehicleGroupKeyForTrip(trip = {}, vehicle = {}) {
 
 function buildMileageVehicleGroups(trips = [], vehicles = []) {
   const vehicleById = new Map(vehicles.map((vehicle) => [String(vehicle.id), vehicle]));
+  const currentYear = String(new Date().getFullYear());
   const groups = new Map();
   trips.forEach((trip) => {
     const vehicle = vehicleById.get(String(trip.vehicleId || trip.vehicle_id || ""));
@@ -2802,26 +2859,40 @@ function buildMileageVehicleGroups(trips = [], vehicles = []) {
         vehicle,
         trips: [],
         totalMiles: 0,
+        ytdMiles: 0,
+        businessMiles: 0,
+        personalMiles: 0,
         totalVehicleCost: 0,
         totalMileageValue: 0,
         totalFuelCost: 0,
         totalWearCost: 0,
+        purposeTotals: {},
         lastTripDate: "",
       });
     }
     const group = groups.get(key);
     group.trips.push(trip);
-    group.totalMiles += Number(trip.businessMiles || trip.business_miles || 0);
+    const tripMiles = Number(trip.businessMiles || trip.business_miles || trip.miles || 0);
+    const personalMiles = Number(trip.personalMiles || trip.personal_miles || 0);
+    const tripDate = mileageTripDateValue(trip);
+    const purpose = normalizeMileagePurpose(trip.purpose || trip.category || "");
+    group.totalMiles += tripMiles;
+    group.businessMiles += tripMiles;
+    group.personalMiles += personalMiles;
+    if (String(tripDate).slice(0, 4) === currentYear) group.ytdMiles += tripMiles;
     group.totalVehicleCost += Number(trip.totalVehicleCost || trip.total_vehicle_cost || 0);
     group.totalMileageValue += Number(trip.mileageValue || trip.mileage_value || 0);
     group.totalFuelCost += Number(trip.fuelCost || trip.fuel_cost || 0);
     group.totalWearCost += Number(trip.wearCost || trip.wear_cost || 0);
-    const tripDate = mileageTripDateValue(trip);
+    group.purposeTotals[purpose] = (group.purposeTotals[purpose] || 0) + tripMiles;
     if (!group.lastTripDate || (tripDate && tripDate > group.lastTripDate)) group.lastTripDate = tripDate;
   });
   return [...groups.values()].map((group) => ({
     ...group,
     tripCount: group.trips.length,
+    topPurposes: Object.entries(group.purposeTotals)
+      .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0) || a[0].localeCompare(b[0]))
+      .map(([purpose, miles]) => ({ purpose, miles })),
     trips: [...group.trips].sort((a, b) => String(mileageTripDateValue(b)).localeCompare(String(mileageTripDateValue(a)))),
   })).sort((a, b) => String(b.lastTripDate).localeCompare(String(a.lastTripDate)) || a.vehicleName.localeCompare(b.vehicleName));
 }
@@ -3989,6 +4060,10 @@ export default function App() {
   });
   const [userManagementSearch, setUserManagementSearch] = useState("");
   const [aiAssistReview, setAiAssistReview] = useState(null);
+  const [emberAssistOpen, setEmberAssistOpen] = useState(false);
+  const [emberAssistMessages, setEmberAssistMessages] = useState(() => loadEmberAssistThread());
+  const [emberAssistInput, setEmberAssistInput] = useState("");
+  const [emberAssistEscalationDraft, setEmberAssistEscalationDraft] = useState(null);
   const initialWorkspaceBundle = useMemo(() => createDefaultWorkspaceBundle({ id: "local-beta" }), []);
   const [workspaces, setWorkspaces] = useState(initialWorkspaceBundle.workspaces);
   const [workspaceMembers, setWorkspaceMembers] = useState(initialWorkspaceBundle.members);
@@ -4341,7 +4416,7 @@ export default function App() {
   sourceType: "Manual",
 };
 
-  const blankTrip = { purpose: "", driver: "", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" };
+  const blankTrip = { date: "", purpose: "", driver: "", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" };
   const blankSale = { itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCharged: "", shippingCost: "", platformFees: "", notes: "" };
 
   const blankCatalog = {
@@ -6331,12 +6406,9 @@ export default function App() {
     }
     const parentName = String(kidsProgramForm.parentName || currentUserProfile?.fullName || currentUserProfile?.displayName || "").trim();
     const email = String(kidsProgramForm.email || accountEmail()).trim();
-    if (!parentName || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setVaultToast("Parent/guardian name and a valid email are required.");
-      return;
-    }
-    if (!kidsProgramForm.agreesNoResale || !kidsProgramForm.consentContact) {
-      setVaultToast("Please agree to Kids Program rules and contact consent before applying.");
+    const validationError = validateSparkApplication(kidsProgramForm, { parentName, email });
+    if (validationError) {
+      setVaultToast(validationError);
       return;
     }
     const now = new Date().toISOString();
@@ -6354,9 +6426,11 @@ export default function App() {
       requestedAccess: kidsProgramForm.requestedAccess,
       agreesNoResale: true,
       consentText: "I agree Ember & Tide may contact me about Kids Program opportunities.",
-      status: "pending_review",
+      status: "interest_submitted",
       createdAt: now,
       updatedAt: now,
+      privacyLevel: "private_family_request",
+      programName: "The Spark",
     };
     updateBetaReadinessData((current) => ({
       ...current,
@@ -6371,24 +6445,25 @@ export default function App() {
     }));
     addBetaNotification({
       type: "kids_program_update",
-      title: "Kids Program application received",
-      message: "Your application is pending review.",
+      title: "The Spark request received",
+      message: "Your family request is private and marked Interest Submitted.",
       actionUrl: "/kids-program",
     });
-    setVaultToast("Kids Program application submitted for review.");
+    setVaultToast("The Spark request submitted privately.");
     setKidsProgramRequestStep(5);
   }
 
   function updateKidsProgramApplicationStatus(applicationId, status) {
     if (!adminToolsVisible) return;
     const now = new Date().toISOString();
+    const normalizedStatus = normalizeSparkProgramStatus(status);
     updateBetaReadinessData((current) => ({
       ...current,
       kidsApplications: (current.kidsApplications || []).map((entry) =>
         entry.id === applicationId
           ? {
               ...entry,
-              status,
+              status: normalizedStatus,
               reviewedBy: user?.id || "admin",
               reviewedAt: now,
               updatedAt: now,
@@ -6396,8 +6471,20 @@ export default function App() {
           : entry
       ),
     }));
-    addAuditLog("kids_program_status_update", "kids_program_application", applicationId, { status });
-    setVaultToast(`Kids Program application marked ${status}.`);
+    addAuditLog("kids_program_status_update", "kids_program_application", applicationId, { status: normalizedStatus });
+    setVaultToast(`The Spark request marked ${sparkProgramStatusLabel(normalizedStatus)}.`);
+  }
+
+  function updateKidsProgramApplicationAdminNotes(applicationId, adminNotes) {
+    if (!adminToolsVisible) return;
+    updateBetaReadinessData((current) => ({
+      ...current,
+      kidsApplications: (current.kidsApplications || []).map((entry) =>
+        entry.id === applicationId
+          ? { ...entry, adminNotes, updatedAt: new Date().toISOString() }
+          : entry
+      ),
+    }));
   }
 
   function updateSponsorForm(field, value) {
@@ -9722,7 +9809,14 @@ export default function App() {
   function submitTidepoolPost(event) {
     event?.preventDefault?.();
     if (blockGuestSave()) return false;
-    if (!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()) return false;
+    const identity = publicIdentityForProfile(currentUserProfile);
+    const validationError = validateTidepoolPostDraft(tidepoolPostForm, {
+      isOfficialAdmin: identity.isOfficialAdminIdentity,
+    });
+    if (validationError) {
+      setVaultToast(validationError);
+      return false;
+    }
     const post = makeTidepoolPost({
       ...tidepoolPostForm,
       displayName: publicProfileLabel(),
@@ -9747,6 +9841,30 @@ export default function App() {
         post.postId === postId ? { ...post, ...updates, updatedAt: new Date().toISOString() } : post
       ),
     });
+  }
+
+  function reportTidepoolPost(post = {}) {
+    updateTidepoolPost(post.postId, {
+      flagged: true,
+      status: post.status === "removed" ? "removed" : "pending",
+      reportedAt: new Date().toISOString(),
+      reportedBy: currentUserProfile.userId || "local-beta",
+    });
+    setVaultToast("Post reported for admin review.");
+  }
+
+  function hideOwnTidepoolPost(post = {}) {
+    const currentUserId = currentUserProfile.userId || "local-beta";
+    if (post.userId !== currentUserId && !adminToolsVisible) {
+      setVaultToast("Only the author or an admin can hide this post.");
+      return;
+    }
+    updateTidepoolPost(post.postId, {
+      status: "hidden",
+      hiddenAt: new Date().toISOString(),
+      hiddenBy: currentUserId,
+    });
+    setVaultToast("Post hidden from the public feed.");
   }
 
   function requestAdminActionConfirmation({ title, message, confirmLabel = "Confirm", danger = false, onConfirm }) {
@@ -9793,9 +9911,21 @@ export default function App() {
   }
 
   function addTidepoolComment(postId, parentCommentId = "") {
+    const targetPost = tidepoolPosts.find((post) => post.postId === postId);
+    if (targetPost?.commentsLocked || targetPost?.status === "removed") {
+      setVaultToast("Comments are closed for this post.");
+      return;
+    }
     const key = parentCommentId || postId;
     const body = String(tidepoolCommentDrafts[key] || "").trim();
-    if (!body) return;
+    const identity = publicIdentityForProfile(currentUserProfile);
+    const validationError = validateTidepoolCommentDraft(body, {
+      isOfficialAdmin: identity.isOfficialAdminIdentity,
+    });
+    if (validationError) {
+      setVaultToast(validationError);
+      return;
+    }
     const comment = {
       commentId: makeId("comment"),
       postId,
@@ -11072,16 +11202,15 @@ export default function App() {
     const workspace = workspaceDeleteTarget;
     if (!workspace?.id || workspaceDeleteSaving) return;
     const counts = workspaceRecordCountsFor(workspace.id);
-    if (counts.total > 0) {
-      setWorkspaceMessage("Permanent delete is blocked because this collection still has records. Archive it instead.");
-      return;
-    }
-    if (workspaceSelectorOptions.length <= 1 && !isWorkspaceArchived(workspace)) {
-      setWorkspaceMessage("Create another active collection before deleting this one.");
-      return;
-    }
-    if (String(workspaceDeleteConfirmText || "").trim().toUpperCase() !== "DELETE") {
-      setWorkspaceMessage("Type DELETE to permanently delete this empty collection.");
+    const deleteBlockReason = workspaceDeleteBlockReason(workspace, counts, {
+      activeWorkspaceId,
+      activeWorkspaceCount: workspaceSelectorOptions.length,
+      canManage: canManageWorkspaceId(workspace.id),
+      confirmed: String(workspaceDeleteConfirmText || "").trim().toUpperCase() === "DELETE",
+      defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
+    });
+    if (deleteBlockReason) {
+      setWorkspaceMessage(deleteBlockReason);
       return;
     }
     const fallbackWorkspace = workspaceSelectorOptions.find((option) => String(option.id) !== String(workspace.id))
@@ -12083,6 +12212,7 @@ export default function App() {
       category: "Receipt Scan",
       imageUrl: receiptScanDraft.receiptImageUrl,
       receiptImageUrl: receiptScanDraft.receiptImageUrl,
+      receiptImage: receiptScanDraft.receiptImageUrl,
       status: "submitted",
       source: receiptScanDraft.source || "manual",
       splitMode: "expense_only",
@@ -12124,6 +12254,50 @@ export default function App() {
     const inventorySaveResult = await saveInventoryRecords(createdItems);
     const savedInventoryItems = inventorySaveResult.saved;
     if (savedInventoryItems.length) setItems((current) => [...savedInventoryItems, ...current]);
+    const receiptExpenseRecords = expenseOnlyItems.map((item) => ({
+      ...expenseFromReceiptLine(item, { ...receipt, id: savedReceiptId }, {
+        id: makeId("receipt-expense"),
+        buyer: currentUserProfile?.displayName || currentUserProfile?.fullName || "",
+        taxDeductible: false,
+      }),
+      workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+    }));
+    const savedReceiptExpenses = [];
+    const receiptExpenseFailures = [];
+    if (receiptExpenseRecords.length) {
+      if (BETA_LOCAL_MODE || user?.id === "local-beta") {
+        savedReceiptExpenses.push(...receiptExpenseRecords);
+      } else if (isSupabaseConfigured && supabase && user?.id) {
+        const expenseRows = receiptExpenseRecords.map((expense) => ({
+          user_id: user.id,
+          workspace_id: uuidOrNull(expense.workspaceId),
+          date: expense.date || null,
+          vendor: expense.vendor,
+          category: expense.category,
+          subcategory: expense.subcategory,
+          buyer: expense.buyer,
+          amount: Number(expense.amount || 0),
+          payment_method: expense.paymentMethod,
+          linked_item_id: null,
+          linked_sale_id: null,
+          notes: expense.notes,
+          receipt_image: expense.receiptImage,
+          receipt_photo: expense.receiptImage,
+          tax_deductible: Boolean(expense.taxDeductible),
+        }));
+        const { data: expenseData, error: expenseError } = await supabase.from("business_expenses").insert(expenseRows).select();
+        if (expenseError) {
+          receiptExpenseFailures.push(expenseError.message || "Could not save receipt expenses.");
+        } else {
+          savedReceiptExpenses.push(...(expenseData || []).map(mapExpense));
+        }
+      }
+      if (savedReceiptExpenses.length) {
+        setExpenses((current) => [...savedReceiptExpenses, ...current]);
+      }
+    }
     const savedByReceiptLine = new Map();
     savedInventoryItems.forEach((savedItem) => {
       const sourceLine = importableItems.find((item) =>
@@ -12146,14 +12320,15 @@ export default function App() {
       date: receiptScanDraft.purchaseDate,
       totalSpent: receiptScanDraft.total,
       itemsAdded: savedInventoryItems.length,
-      itemsIgnored: expenseOnlyItems.length,
+      itemsIgnored: 0,
+      expensesAdded: savedReceiptExpenses.length,
       needsFutureReview: receiptScanDraft.items.filter((item) => item.status === "needs_review").length,
       vaultValueAdded: savedInventoryItems.filter((item) => item.vaultStatus || isVaultItemRecord(item)).reduce((sum, item) => sum + Number(item.marketValue || item.marketPrice || 0) * Number(item.quantity || 1), 0),
       forgeInventoryCostAdded: savedInventoryItems.filter((item) => isForgeInventoryItem(item)).reduce((sum, item) => sum + Number(item.unitCost || 0) * Number(item.quantity || 1), 0),
       estimatedMsrpTotal: savedInventoryItems.reduce((sum, item) => sum + Number(item.msrpPrice || 0) * Number(item.quantity || 1), 0),
       estimatedMarketTotal: savedInventoryItems.reduce((sum, item) => sum + Number(item.marketPrice || 0) * Number(item.quantity || 1), 0),
       submittedBy: user?.email || user?.id || "local beta",
-      status: inventorySaveResult.failures.length ? "needs_review" : "submitted",
+      status: inventorySaveResult.failures.length || receiptExpenseFailures.length ? "needs_review" : "submitted",
     };
     if (result.source === "supabase") {
       await retryPhase2Sync();
@@ -12174,11 +12349,22 @@ export default function App() {
       setReceiptScanMessage(`Receipt synced, but destination save failed: ${compactFailure} Review remains open.`);
       return;
     }
+    if (receiptExpenseFailures.length) {
+      setReceiptScanStatus("ready_for_review");
+      setReceiptScanDraft((current) => current ? {
+        ...current,
+        status: "needs_review",
+        report,
+        warnings: [...warnings, `Expense-only line(s) did not save: ${receiptExpenseFailures.join(" | ")}`],
+      } : current);
+      setReceiptScanMessage(`Receipt synced, but expense-only line(s) did not save: ${receiptExpenseFailures.join(" | ")}`);
+      return;
+    }
     setReceiptScanStatus("submitted");
     setReceiptScanDraft((current) => current ? { ...current, status: "submitted", report } : current);
     setReceiptScanMessage(result.source === "supabase"
-      ? `Receipt submitted and cloud synced. Added ${savedInventoryItems.length} item(s); expense-only ${expenseOnlyItems.length}.`
-      : `Receipt saved locally. Added ${savedInventoryItems.length} item(s); expense-only ${expenseOnlyItems.length}.`
+      ? `Receipt submitted and cloud synced. Added ${savedInventoryItems.length} inventory item(s) and ${savedReceiptExpenses.length} expense record(s).`
+      : `Receipt saved locally. Added ${savedInventoryItems.length} inventory item(s) and ${savedReceiptExpenses.length} expense record(s).`
     );
   }
 
@@ -12818,13 +13004,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function destinationDefaults(overrides = {}) {
-    return {
-      vault: false,
-      wishlist: false,
-      forge: false,
-      tidetradr: false,
-      ...overrides,
-    };
+    return normalizeQuickAddDestinations(overrides);
   }
 
   function openProductAddFlow({ product = null, source = "quick-add", seed = {}, destinations = {} } = {}) {
@@ -12839,6 +13019,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     };
     if (product) return openMultiDestinationAddForProduct(product, { source, seed: nextSeed });
     return openMultiDestinationAddFlow({ source, seed: nextSeed });
+  }
+
+  function openCalendarReleaseAddToVault(event = {}) {
+    const matchedProduct = findQuickAddCatalogMatch(catalogProducts, event);
+    const seed = calendarEventToQuickAddSeed(event, { vault: true });
+    setSelectedWatchCalendarEvent(null);
+    openProductAddFlow({
+      product: matchedProduct,
+      source: "release-calendar-vault",
+      seed,
+      destinations: { vault: true },
+    });
+    setVaultToast(`${seed.itemName || event.title || "Release item"} is ready to save to Vault. You can edit details later.`);
   }
 
   function openVaultMoveToForgeFlow() {
@@ -13664,6 +13857,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const successes = [];
     const failures = [];
     const pendingInventoryCreates = [];
+    const saveConfirmationEntries = [];
     const destinationWorkspace = (destination) => {
       if (destination === "forge") return activeForgeWorkspace;
       const workspaceId = multiDestinationForm[destination]?.workspaceId || defaultWorkspaceIdForDestination(destination);
@@ -13735,6 +13929,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           createdAt: now,
         }, vaultWorkspace);
         pendingInventoryCreates.push({ record: vaultItem, successMessage: `Added to Vault (${vaultWorkspace?.name || "Workspace"})` });
+        saveConfirmationEntries.push({ destination: "Vault", quantity: vaultQuantity });
       }
     } catch (error) {
       failures.push(`Vault failed: ${error.message || "Could not save"}`);
@@ -13776,6 +13971,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           createdAt: now,
         }, wishlistWorkspace);
         pendingInventoryCreates.push({ record: wishlistItem, successMessage: `Added to Wishlist (${wishlistWorkspace?.name || "Workspace"})` });
+        saveConfirmationEntries.push({ destination: "Wishlist", quantity: wishlistQuantity });
 
         if (multiDestinationForm.wishlist.addToMarketWatch && selectedCatalog?.id) {
           addProductToTideTradrWatchlist(selectedCatalog.id, false, wishlistWorkspace?.id);
@@ -13818,6 +14014,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           createdAt: now,
         }, forgeWorkspace);
         pendingInventoryCreates.push({ record: forgeItem, successMessage: `Added to Forge inventory (${forgeWorkspace?.name || "Workspace"})` });
+        saveConfirmationEntries.push({ destination: "Forge", quantity: forgeQuantity, purchaserName: forgePurchaser.purchaserName });
       }
     } catch (error) {
       failures.push(`Forge failed: ${error.message || "Could not save"}`);
@@ -13829,6 +14026,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         if (existingProductId) {
           addProductToTideTradrWatchlist(existingProductId, false, activeWorkspace?.id);
           successes.push("Added to Watchlist");
+          saveConfirmationEntries.push({ destination: "Market Watch", quantity: 1 });
         } else if (adminToolsVisible) {
           const catalogProduct = {
             id: makeId("catalog"),
@@ -13868,6 +14066,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
             ...current,
           ]);
           successes.push("Created TideTradr catalog item");
+          saveConfirmationEntries.push({ destination: "Market", quantity: 1 });
         } else {
           submitUniversalSuggestion({
             suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
@@ -13892,6 +14091,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
             source: "user",
           });
           successes.push("Submitted TideTradr suggestion");
+          saveConfirmationEntries.push({ destination: "Market suggestion", quantity: 1 });
         }
       }
     } catch (error) {
@@ -13916,8 +14116,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
     const uniqueSuccesses = [...new Set(successes)];
     const uniqueFailures = [...new Set(failures)];
+    const quickAddSaveSummary = buildQuickAddSuccessMessage({
+      itemName,
+      entries: saveConfirmationEntries,
+    });
     if (uniqueFailures.length) console.error("Multi-destination save failures", uniqueFailures);
-    if (uniqueSuccesses.length) setVaultToast(uniqueFailures.length ? `${uniqueSuccesses.join(" | ")}. Could not save item.` : uniqueSuccesses.join(" | "));
+    if (uniqueSuccesses.length) setVaultToast(uniqueFailures.length ? `${quickAddSaveSummary} Could not save every destination.` : quickAddSaveSummary);
     if (!successes.length && uniqueFailures.length) setVaultToast("Could not save item.");
     if (failures.length) {
       setMultiDestinationMessage(multiDestinationFailureMessage(uniqueFailures));
@@ -14302,8 +14506,10 @@ function mapCatalog(row) {
       linkedItemId: row.linkedItemId || row.linked_item_id || "",
       linkedSaleId: row.linkedSaleId || row.linked_sale_id || "",
       notes: row.notes || "",
-      receiptImage: row.receiptImage || row.receipt_image || row.receipt_photo || "",
+      receiptImage: row.receiptImage || row.receipt_image || row.receipt_photo || row.receiptImageUrl || row.receipt_image_url || "",
       receiptPhoto: row.receiptPhoto || row.receipt_photo || row.receipt_image || "",
+      receiptImageUrl: row.receiptImageUrl || row.receipt_image_url || row.receiptImage || row.receipt_image || row.receipt_photo || "",
+      receiptId: row.receiptId || row.receipt_id || "",
       rawReceiptText: row.rawReceiptText || row.raw_receipt_text || row.raw_ocr_text || "",
       receiptSplitMode: row.receiptSplitMode || row.receipt_split_mode || "expense_only",
       receiptTax: row.receiptTax || row.receipt_tax || "",
@@ -14329,7 +14535,7 @@ function mapCatalog(row) {
   }
 
   function mapTrip(row) {
-    return { id: row.id, vehicleId: row.vehicle_id, vehicleName: row.vehicle_name || "", purpose: row.purpose || "", driver: row.driver || "", startMiles: Number(row.start_miles || 0), endMiles: Number(row.end_miles || 0), businessMiles: Number(row.business_miles || 0), gasPrice: Number(row.gas_price || 0), fuelCost: Number(row.fuel_cost || 0), wearCost: Number(row.wear_cost || 0), totalVehicleCost: Number(row.total_vehicle_cost || 0), mileageValue: Number(row.mileage_value || 0), gasReceiptImage: row.gas_receipt_image || "", notes: row.notes || "", workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID, workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceName: row.workspaceName || row.workspace_name || "", createdAt: row.createdAt || row.created_at };
+    return { id: row.id, vehicleId: row.vehicle_id || row.vehicleId || "", vehicleName: row.vehicle_name || row.vehicleName || "", date: row.date || row.trip_date || String(row.createdAt || row.created_at || "").slice(0, 10), purpose: row.purpose || "", purposeCategory: row.purposeCategory || row.purpose_category || normalizeMileagePurpose(row.purpose || row.category || ""), driver: row.driver || "", startMiles: Number(row.start_miles ?? row.startMiles ?? 0), endMiles: Number(row.end_miles ?? row.endMiles ?? 0), businessMiles: Number(row.business_miles ?? row.businessMiles ?? row.miles ?? 0), personalMiles: Number(row.personal_miles ?? row.personalMiles ?? 0), gasPrice: Number(row.gas_price ?? row.gasPrice ?? 0), fuelCost: Number(row.fuel_cost ?? row.fuelCost ?? 0), wearCost: Number(row.wear_cost ?? row.wearCost ?? 0), totalVehicleCost: Number(row.total_vehicle_cost ?? row.totalVehicleCost ?? 0), mileageValue: Number(row.mileage_value ?? row.mileageValue ?? 0), gasReceiptImage: row.gas_receipt_image || row.gasReceiptImage || "", notes: row.notes || "", workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID, workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceName: row.workspaceName || row.workspace_name || "", createdAt: row.createdAt || row.created_at };
   }
 
   function mapSale(row) {
@@ -14975,38 +15181,30 @@ function mapCatalog(row) {
   async function quickUpdatePlannedSalePrice(item = {}) {
     if (!item?.id || !ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     const current = Number(item.salePrice || item.plannedSalePrice || item.planned_sale_price || 0);
-    const input = window.prompt(`Update planned sale price for ${item.name || "this item"}`, current ? current.toFixed(2) : "");
+    const entrySummary = plannedSalePriceUpdateSummary(item);
+    const input = window.prompt(`Update planned sale price for ${item.name || "this item"} (${entrySummary})`, current ? current.toFixed(2) : "");
     if (input == null) return;
     const nextPrice = Number.parseFloat(String(input).trim());
     if (!Number.isFinite(nextPrice) || nextPrice < 0) {
       showAppMessage("Planned sale price must be a valid number.");
       return;
     }
-    const priceHistoryEntry = {
-      price: nextPrice,
-      previousPrice: current,
-      changedAt: new Date().toISOString(),
-      source: "quick_update",
-    };
-    setItems((currentItems) => currentItems.map((entry) => entry.id === item.id ? {
-      ...entry,
-      salePrice: nextPrice,
-      plannedSalePrice: nextPrice,
-      planned_sale_price: nextPrice,
-      plannedSalePriceHistory: [...(entry.plannedSalePriceHistory || []), priceHistoryEntry],
-      updatedAt: new Date().toISOString(),
-    } : entry));
+    const changedAt = new Date().toISOString();
+    const updateIds = groupedInventoryEntryIds(item);
+    setItems((currentItems) => currentItems.map((entry) => updateIds.includes(entry.id)
+      ? { ...entry, ...buildPlannedSalePricePatch(entry, nextPrice, changedAt) }
+      : entry));
     if (!BETA_LOCAL_MODE && signedInWithSupabase && supabase) {
       const { error } = await supabase.from("inventory_items").update({
         sale_price: nextPrice,
-        updated_at: new Date().toISOString(),
-      }).eq("id", item.id);
+        updated_at: changedAt,
+      }).in("id", updateIds);
       if (error) {
         showAppMessage(`Planned sale price saved locally, but cloud sync failed: ${error.message}`);
         return;
       }
     }
-    setVaultToast("Planned sale price updated.");
+    setVaultToast(`Planned sale price updated for ${entrySummary}.`);
   }
 
   function inventoryDeleteContext(item = {}) {
@@ -17053,6 +17251,7 @@ function renderForgeHeader() {
 
   function renderExpenseRecordCard(expense, options = {}) {
     const linkedItemLabel = expenseLinkedItemLabel(expense);
+    const receiptUrl = expense.receiptImage || expense.receiptImageUrl || expense.receiptPhoto || expense.imageUrl || "";
     return (
       <div className={`expense-record-card${options.compact ? " is-compact" : ""}`} key={expense.id}>
         <div className="expense-record-main">
@@ -17066,12 +17265,12 @@ function renderForgeHeader() {
           {expense.buyer ? <span>Paid by {expense.buyer}</span> : null}
           {expense.paymentMethod ? <span>{expense.paymentMethod}</span> : null}
           {expense.taxDeductible ? <span>Tax deductible</span> : null}
-          {expense.receiptImage ? <span>Receipt attached</span> : null}
+          {expenseHasReceipt(expense) ? <span>Receipt attached</span> : <span>Receipt missing</span>}
           {linkedItemLabel ? <span>{linkedItemLabel}</span> : null}
         </div>
         {expense.notes ? <p className="compact-subtitle">{expense.notes}</p> : null}
         <div className="expense-record-actions">
-          {expense.receiptImage ? <a href={expense.receiptImage} target="_blank" rel="noreferrer">View Receipt</a> : null}
+          {receiptUrl ? <a href={receiptUrl} target="_blank" rel="noreferrer">View Receipt</a> : null}
           <OverflowMenu
             onEdit={() => startEditingExpense(expense)}
             onDelete={() => deleteExpense(expense.id)}
@@ -17141,7 +17340,6 @@ function renderForgeHeader() {
     if (!targetForgeWorkspace) return showAppMessage(forgeWorkspaceUnavailableMessage);
     if (!ensureWorkspaceEditor(targetForgeWorkspace.id)) return;
     if (!tripForm.purpose || !tripForm.startMiles || !tripForm.endMiles) return showAppMessage("Please enter purpose, start miles, and end miles.");
-    if (!tripForm.gasPrice) return showAppMessage("Please enter gas price paid.");
 
     const costs = calculateTripCosts(tripForm);
     if (costs.businessMiles < 0) return showAppMessage("Ending mileage must be higher than starting mileage.");
@@ -17173,7 +17371,9 @@ function renderForgeHeader() {
         workspaceId: targetForgeWorkspace.id,
         workspace_id: targetForgeWorkspace.id,
         workspaceName: targetForgeWorkspace.name || "Forge",
-        created_at: mileageTrips.find((trip) => trip.id === editingTripId)?.createdAt || new Date().toISOString(),
+        date: tripForm.date || String(mileageTrips.find((trip) => trip.id === editingTripId)?.date || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+        purposeCategory: normalizeMileagePurpose(tripForm.purpose),
+        created_at: mileageTrips.find((trip) => trip.id === editingTripId)?.createdAt || (tripForm.date ? `${tripForm.date}T12:00:00.000Z` : new Date().toISOString()),
       };
       const mapped = mapTrip(localRow);
       setMileageTrips(editingTripId ? mileageTrips.map((trip) => (trip.id === editingTripId ? mapped : trip)) : [mapped, ...mileageTrips]);
@@ -17199,7 +17399,7 @@ function renderForgeHeader() {
   function startEditingTrip(trip) {
     if (!ensureWorkspaceEditor(trip?.workspaceId || trip?.workspace_id || activeWorkspace?.id)) return;
     setEditingTripId(trip.id);
-    setTripForm({ purpose: trip.purpose, driver: trip.driver, vehicleId: trip.vehicleId || "", startMiles: trip.startMiles, endMiles: trip.endMiles, gasPrice: trip.gasPrice, notes: trip.notes, gasReceiptImage: trip.gasReceiptImage });
+    setTripForm({ date: trip.date || String(trip.createdAt || "").slice(0, 10), purpose: trip.purpose, driver: trip.driver, vehicleId: trip.vehicleId || "", startMiles: trip.startMiles, endMiles: trip.endMiles, gasPrice: trip.gasPrice, notes: trip.notes, gasReceiptImage: trip.gasReceiptImage });
     openFlowModal("addMileage", { size: "medium", source: "edit" });
   }
 
@@ -17388,6 +17588,29 @@ function renderForgeHeader() {
     }
     downloadCSV(`ember-tide-tax-records-${summary.year}.csv`, buildTaxRecordExportRows(summary));
     setVaultToast("Year-end tax records CSV exported for review.");
+  }
+
+  function downloadMileageRecords(format = "csv") {
+    if (!groupedMileageVehicles.length) return showAppMessage("No mileage records to export yet.");
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      workspace: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      disclaimer: "Mileage records for review with your tax professional. Ember & Tide does not provide tax advice.",
+      vehicles: groupedMileageVehicles,
+    };
+    if (format === "json") {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setVaultToast("Mileage records JSON exported for review.");
+      return;
+    }
+    downloadCSV(`ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.csv`, buildMileageExportRows(groupedMileageVehicles));
+    setVaultToast("Mileage records CSV exported for review.");
   }
 
   function createBetaBackup() {
@@ -17815,6 +18038,8 @@ function renderForgeHeader() {
           count: 0,
           mostRecentDate: "",
           lastAmount: 0,
+          receiptCount: 0,
+          missingReceiptCount: 0,
           categoryTotals: {},
         });
       }
@@ -17823,6 +18048,8 @@ function renderForgeHeader() {
       group.expenses.push(expense);
       group.total += Number(expense.amount || 0);
       group.count += 1;
+      if (expenseHasReceipt(expense)) group.receiptCount += 1;
+      else group.missingReceiptCount += 1;
       const expenseDate = expenseDateValue(expense);
       if (!group.mostRecentDate || (expenseDate && expenseDate > group.mostRecentDate)) {
         group.mostRecentDate = expenseDate;
@@ -18696,6 +18923,351 @@ function renderForgeHeader() {
     reports: "business_reports",
   }[activeTab];
   const activeTabLocked = Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
+  const emberAssistContext = buildEmberAssistContext({
+    activeTab,
+    scoutView,
+    routeLabel: activeTabLabel,
+    isAdmin: adminToolsVisible,
+    isSeller: commandDeskSellerAccess,
+    betaStatus: userBetaAccessStatus(),
+    publicUsername: publicUsernameFromProfile(currentUserProfile),
+    counts: {
+      vaultItems: vaultItems.length,
+      forgeItems: forgeInventoryItems.length,
+      scoutReports: (scoutSnapshot.reports || []).length,
+      marketListings: workspaceMarketplaceListings.length,
+      expenses: expenses.length,
+      mileageTrips: mileageTrips.length,
+      adminOpenItems: suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status)).length,
+    },
+  });
+  const emberAssistStarterPrompts = getEmberAssistStarterPrompts({ activeTab, scoutView, isAdmin: adminToolsVisible });
+  const emberAssistOwnMessages = filterEmberAssistMessagesForUser(suggestions, currentUserProfile, adminToolsVisible);
+  const emberAssistVisible = Boolean((user || BETA_LOCAL_MODE || guestPreviewActive) && !activeTabLocked && !["resetPassword"].includes(activeTab));
+
+  useEffect(() => {
+    saveEmberAssistThread(emberAssistMessages);
+  }, [emberAssistMessages]);
+
+  function pushEmberAssistMessage(message) {
+    setEmberAssistMessages((current) => saveEmberAssistThread([...current, message]));
+  }
+
+  function runEmberAssistAction(label = "") {
+    const normalized = String(label || "").toLowerCase();
+    if (normalized.includes("send")) {
+      const lastUser = [...emberAssistMessages].reverse().find((message) => message.role === "user");
+      const lastAssistant = [...emberAssistMessages].reverse().find((message) => message.role === "assistant");
+      setEmberAssistEscalationDraft({
+        question: lastUser?.text || emberAssistInput || "",
+        details: "",
+        category: lastAssistant?.category || "Other",
+        lastResponse: lastAssistant?.text || "",
+      });
+      setEmberAssistOpen(true);
+      return;
+    }
+    setEmberAssistOpen(false);
+    if (normalized.includes("quick add")) {
+      openAddActionSheet("ember-assist");
+      return;
+    }
+    if (normalized.includes("scout report")) {
+      setActiveTab("scout");
+      openScoutSubmitFlow({ source: "ember-assist" });
+      return;
+    }
+    if (normalized.includes("drop radar")) {
+      setActiveTab("scout");
+      setScoutView("alerts");
+      setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+      return;
+    }
+    if (normalized.includes("follow store")) {
+      setActiveTab("scout");
+      setScoutView("stores");
+      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+      return;
+    }
+    if (normalized.includes("vault")) {
+      setActiveTab("vault");
+      return;
+    }
+    if (normalized.includes("forge")) {
+      setActiveTab("inventory");
+      return;
+    }
+    if (normalized.includes("market") || normalized.includes("listing")) {
+      setActiveTab("market");
+      if (normalized.includes("create listing")) openMarketplaceCreate("ember-assist", {});
+      return;
+    }
+    if (normalized.includes("expense")) {
+      setActiveTab("expenses");
+      return;
+    }
+    if (normalized.includes("mileage")) {
+      setActiveTab("mileage");
+      return;
+    }
+    if (normalized.includes("spark") || normalized.includes("kid")) {
+      setActiveTab("kidsProgram");
+      return;
+    }
+    if (normalized.includes("announcement")) {
+      setActiveTab("whatsNew");
+      return;
+    }
+    if (normalized.includes("setting")) {
+      openMenuDrawer("settings");
+      return;
+    }
+    if (normalized.includes("admin") && adminToolsVisible) {
+      setActiveTab("adminReview");
+      setAdminReviewFilter(REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox");
+      return;
+    }
+  }
+
+  function sendEmberAssistMessage(text = emberAssistInput) {
+    const question = String(text || "").trim();
+    if (!question) return;
+    const userMessage = { id: makeId("ember-user"), role: "user", text: question, createdAt: new Date().toISOString() };
+    const answer = buildEmberAssistFallbackResponse(question, emberAssistContext);
+    const assistantMessage = {
+      id: makeId("ember-assist"),
+      role: "assistant",
+      text: answer.answer,
+      actions: answer.actions || [],
+      category: answer.category,
+      shouldEscalate: shouldOfferAdminEscalation(question, answer),
+      createdAt: new Date().toISOString(),
+    };
+    setEmberAssistMessages((current) => saveEmberAssistThread([...current, userMessage, assistantMessage]));
+    setEmberAssistInput("");
+  }
+
+  function submitEmberAssistEscalation(event) {
+    event?.preventDefault?.();
+    if (!emberAssistEscalationDraft) return;
+    const identity = publicIdentityForProfile(currentUserProfile);
+    const message = makeEmberAssistAdminMessage({
+      question: emberAssistEscalationDraft.question,
+      details: emberAssistEscalationDraft.details,
+      category: emberAssistEscalationDraft.category,
+      context: emberAssistContext,
+      profile: {
+        userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-user",
+        publicUsername: identity.username || publicUsernameFromProfile(currentUserProfile),
+        displayName: identity.displayName || currentUserProfile?.displayName || "Beta User",
+      },
+      lastResponse: emberAssistEscalationDraft.lastResponse,
+    });
+    const result = submitSuggestion(message, { allowDuplicate: true });
+    setSuggestions(result.suggestions);
+    setEmberAssistEscalationDraft(null);
+    pushEmberAssistMessage({
+      id: makeId("ember-confirm"),
+      role: "assistant",
+      text: "Sent to Ember & Tide. We will review it as soon as we can.",
+      actions: [],
+      createdAt: new Date().toISOString(),
+    });
+    setVaultToast("Sent to Ember & Tide.");
+  }
+
+  function renderEmberAssistAdminInbox() {
+    if (!adminToolsVisible) return null;
+    const assistMessages = suggestions.filter(isEmberAssistSuggestion);
+    if (adminReviewFilter !== "All" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox")) return null;
+    return (
+      <section className="settings-subsection ember-assist-admin-inbox">
+        <div className="compact-card-header">
+          <div>
+            <h3>Ember Assist Inbox</h3>
+            <p>User questions escalated from Ember Assist. Direct replies are not connected yet; this is an admin review inbox.</p>
+          </div>
+          <span className="status-badge">{assistMessages.length} messages</span>
+        </div>
+        <div className="inventory-list compact-inventory-list">
+          {assistMessages.length ? assistMessages.map((message) => {
+            const data = message.submittedData || {};
+            return (
+              <article className="inventory-card ember-assist-admin-card" key={message.id}>
+                <div className="compact-card-header">
+                  <div>
+                    <h4>{data.category || "Ember Assist question"}</h4>
+                    <p>{data.page || data.activeTab || "App"} | {shortDate(message.createdAt || data.timestamp)}</p>
+                  </div>
+                  <span className="status-badge">{message.status || "Submitted"}</span>
+                </div>
+                <div className="catalog-detail-grid">
+                  <DetailItem label="User" value={data.publicUsername ? `@${data.publicUsername}` : message.displayName || "Beta user"} />
+                  <DetailItem label="Page" value={data.routeLabel || data.activeTab || "Unknown"} />
+                  <DetailItem label="Question" value={data.question} />
+                  <DetailItem label="Details" value={data.details || "No extra details"} />
+                </div>
+                {data.assistantResponse ? (
+                  <div className="small-empty-state">
+                    <strong>Assistant response</strong>
+                    <span>{data.assistantResponse}</span>
+                  </div>
+                ) : null}
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => setSuggestions(updateSuggestionRecord(message.id, { status: "Under Review" }))}>Mark reviewing</button>
+                  <button type="button" className="secondary-button" onClick={() => setSuggestions(updateSuggestionRecord(message.id, { status: "Approved" }))}>Mark answered</button>
+                  <button type="button" className="ghost-button" onClick={() => setSuggestions(updateSuggestionRecord(message.id, { status: "Merged" }))}>Close</button>
+                </div>
+              </article>
+            );
+          }) : (
+            <div className="empty-state">
+              <h3>No Ember Assist messages yet</h3>
+              <p>When users ask for admin help from Ember Assist, safe context and their question will appear here.</p>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderEmberAssist() {
+    if (!emberAssistVisible) return null;
+    const latestAssistant = [...emberAssistMessages].reverse().find((message) => message.role === "assistant");
+    return (
+      <section className={`ember-assist-shell ${emberAssistOpen ? "is-open" : ""}`} aria-label="Ember Assist">
+        <button
+          type="button"
+          className="ember-assist-fab"
+          aria-expanded={emberAssistOpen}
+          aria-label="Open Ember Assist"
+          onClick={() => setEmberAssistOpen((open) => !open)}
+        >
+          <span aria-hidden="true">ET</span>
+          <b>Assist</b>
+        </button>
+        {emberAssistOpen ? (
+          <aside className="ember-assist-panel" role="dialog" aria-modal="false" aria-labelledby="ember-assist-title">
+            <div className="ember-assist-header">
+              <div>
+                <p className="section-kicker">Ember Assist</p>
+                <h2 id="ember-assist-title">I will help you figure this out.</h2>
+                <p>Founder-guided app help. Short, practical, and careful with private data.</p>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close Ember Assist" onClick={() => setEmberAssistOpen(false)}>X</button>
+            </div>
+            <div className="ember-assist-prompts" aria-label="Starter prompts">
+              {emberAssistStarterPrompts.map((prompt) => (
+                <button type="button" key={prompt} onClick={() => sendEmberAssistMessage(prompt)}>{prompt}</button>
+              ))}
+            </div>
+            <div className="ember-assist-messages" aria-live="polite">
+              {!emberAssistMessages.length ? (
+                <div className="ember-assist-empty">
+                  <strong>What should we make easier?</strong>
+                  <span>Ask about this page, Quick Add, Scout trust, Forge records, The Spark, or year-end record cleanup.</span>
+                </div>
+              ) : null}
+              {emberAssistMessages.map((message) => (
+                <article className={`ember-assist-message is-${message.role}`} key={message.id}>
+                  <span>{message.role === "user" ? "You" : "Ember Assist"}</span>
+                  <p>{message.text}</p>
+                  {message.actions?.length ? (
+                    <div className="ember-assist-actions">
+                      {message.actions.slice(0, 4).map((action) => (
+                        <button type="button" key={action} className="secondary-button" onClick={() => runEmberAssistAction(action)}>{action}</button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {message.shouldEscalate ? (
+                    <button
+                      type="button"
+                      className="ember-assist-escalate"
+                      onClick={() => setEmberAssistEscalationDraft({
+                        question: [...emberAssistMessages].reverse().find((entry) => entry.role === "user")?.text || "",
+                        details: "",
+                        category: message.category || "Other",
+                        lastResponse: message.text,
+                      })}
+                    >
+                      Send to Admin
+                    </button>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+            {emberAssistOwnMessages.length ? (
+              <details className="ember-assist-status">
+                <summary>Your sent questions</summary>
+                {emberAssistOwnMessages.slice(0, 3).map((message) => (
+                  <div key={message.id}>
+                    <strong>{message.status || "Submitted"}</strong>
+                    <span>{message.submittedData?.question || "Ember Assist message"}</span>
+                  </div>
+                ))}
+              </details>
+            ) : null}
+            <form className="ember-assist-form" onSubmit={(event) => {
+              event.preventDefault();
+              sendEmberAssistMessage();
+            }}>
+              <label className="sr-only" htmlFor="ember-assist-input">Ask Ember Assist</label>
+              <textarea
+                id="ember-assist-input"
+                rows={2}
+                value={emberAssistInput}
+                onChange={(event) => setEmberAssistInput(event.target.value)}
+                placeholder="Ask what to do next..."
+              />
+              <div className="ember-assist-footer-actions">
+                <button type="submit">Send</button>
+                <button type="button" className="secondary-button" onClick={() => setEmberAssistEscalationDraft({
+                  question: emberAssistInput || latestAssistant?.text || "",
+                  details: "",
+                  category: latestAssistant?.category || "Other",
+                  lastResponse: latestAssistant?.text || "",
+                })}>Need more help?</button>
+                <button type="button" className="ghost-button" onClick={() => {
+                  setEmberAssistMessages(clearEmberAssistThread());
+                  setEmberAssistInput("");
+                }}>Clear</button>
+              </div>
+            </form>
+            {emberAssistEscalationDraft ? (
+              <div className="ember-assist-escalation-form" role="group" aria-label="Send Ember Assist question to admin">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>Send to Ember & Tide</h3>
+                    <p>I am not fully sure on that one. Add anything that would help a real person review it.</p>
+                  </div>
+                  <button type="button" className="ghost-button" onClick={() => setEmberAssistEscalationDraft(null)}>Cancel</button>
+                </div>
+                <Field label="Category">
+                  <select value={emberAssistEscalationDraft.category} onChange={(event) => setEmberAssistEscalationDraft((current) => ({ ...current, category: event.target.value }))}>
+                    {EMBER_ASSIST_ESCALATION_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                </Field>
+                <Field label="Question">
+                  <textarea rows={2} value={emberAssistEscalationDraft.question} onChange={(event) => setEmberAssistEscalationDraft((current) => ({ ...current, question: event.target.value }))} />
+                </Field>
+                <Field label="Extra details">
+                  <textarea rows={3} value={emberAssistEscalationDraft.details} onChange={(event) => setEmberAssistEscalationDraft((current) => ({ ...current, details: event.target.value }))} placeholder="What did you expect, and what happened?" />
+                </Field>
+                <p className="compact-subtitle">This includes your public username, current page, question, and the assistant response. It does not include private admin notes or other users' data.</p>
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={(event) => submitEmberAssistEscalation(event)}
+                >
+                  Send to Admin
+                </button>
+              </div>
+            ) : null}
+          </aside>
+        ) : null}
+      </section>
+    );
+  }
   const dashboardSectionStyle = (key) => ({ order: dashboardSectionState(key).order });
   const packItForwardItems = vaultItems.filter((item) =>
     item.status === "Donated" ||
@@ -24527,12 +25099,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       {
         key: "parent-requests",
         title: "Parent Requests",
-        value: activeApplication ? statusLabel(activeApplication.status || "pending_review") : "No open requests",
+        value: activeApplication ? sparkProgramStatusLabel(activeApplication.status || "interest_submitted") : "No open requests",
         detail: activeApplication ? "Your family request is private and waiting for review." : "Parent or guardian starts every Kids Program request.",
       },
       { key: "missions", title: "Kid Missions", value: "Coming soon", detail: "Simple collecting goals that teach care, fairness, and patience." },
-      { key: "giveaways", title: "Giveaways", value: "Inventory based", detail: "Retail-first, parent-approved opportunities when stock allows." },
-      { key: "events", title: "Events", value: "Family safe", detail: "Local and community events stay supervised and clearly announced." },
+      { key: "giveaways", title: "Giveaways", value: "When available", detail: "Kids packs and giveaways may open when Ember & Tide has safe inventory to share." },
+      { key: "events", title: "Drops / Events", value: "Announced only", detail: "Kid-friendly drops and events appear through Announcements or Ember Watch when confirmed." },
       { key: "rewards", title: "Rewards", value: "Spark points", detail: "Positive collecting habits, not pressure to spend or flip." },
       { key: "rules", title: "Safety Rules", value: "Always on", detail: "No private child messaging, no scalper pricing, and parent-approved trades only." },
     ];
@@ -24555,8 +25127,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
           summary={(
             <div className="settings-header-summary">
-              <span>Protect the spark. Bring Pokemon back to kids.</span>
+              <span>Protect the spark. Help families collect fairly.</span>
               <span>{KIDS_PROGRAM_ANTI_RESALE_COPY}</span>
+              <span>Inventory and program availability may vary; requests are not guaranteed.</span>
             </div>
           )}
         />
@@ -24567,14 +25140,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           </div>
           <div className="spark-mascot-copy">
             <h2>The Spark</h2>
-            <p>Parent-approved requests, safe collecting missions, fair access, and supervised family updates. No private child messaging. No resale pressure.</p>
+            <p>Parent-approved requests, safe collecting missions, giveaways/events when available, and retail-price opportunities when inventory allows. No private child messaging. No guaranteed fulfillment.</p>
             <div className="spark-status-grid">
               <div><span>Parent Requests</span><strong>{activeApplication ? "1 private" : "0 open"}</strong></div>
               <div><span>Fair Access</span><strong>Retail-first</strong></div>
             </div>
             <div className="quick-actions spark-action-row">
-              <button type="button" onClick={scrollToSparkRequest}>Request Kid Access</button>
+              <button type="button" onClick={scrollToSparkRequest}>Join The Spark</button>
               <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("announcements")}>Follow Announcements</button>
+              <button type="button" className="secondary-button" onClick={openPokemonWatchCalendar}>View kid-friendly drops</button>
             </div>
           </div>
         </section>
@@ -24605,7 +25180,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="spark-parent-safe-panel">
             <div>
               <h3>Parent-safe by design</h3>
-              <p>Ember & Tide is built with families in mind. Kids Program participation is managed by a parent or guardian. We keep child information minimal, use age ranges instead of birthdates, and do not create public child profiles.</p>
+              <p>Ember & Tide is built with families in mind. The Spark is community-based and inventory-limited. Participation is managed by a parent or guardian, requests are private, and availability may vary.</p>
             </div>
             <ul className="clean-bullet-list">
               {FOR_PARENTS_COPY.map((point) => <li key={point}>{point}</li>)}
@@ -24633,9 +25208,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           {!activeApplication ? (
             <div className="empty-state spark-empty-state">
               <h3>No open requests yet.</h3>
-              <p>Start with a parent-approved request, or review the rules before submitting anything.</p>
+              <p>Start with a parent-approved interest request. We will never promise inventory, but The Spark helps Ember & Tide understand what local families are hoping to find.</p>
               <div className="quick-actions">
-                <button type="button" onClick={scrollToSparkRequest}>Request Kid Access</button>
+                <button type="button" onClick={scrollToSparkRequest}>Submit a kid wish/request</button>
                 <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
               </div>
             </div>
@@ -24644,9 +25219,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div>
                 <span>Parent Requests</span>
                 <h3>Your request is private</h3>
-                <p>Status: {statusLabel(activeApplication.status || "pending_review")}. Child/family request details are not public.</p>
+                <p>Status: {sparkProgramStatusLabel(activeApplication.status || "interest_submitted")}. Child/family request details are not public.</p>
               </div>
-              <span className="status-badge">{activeApplication.status || "pending_review"}</span>
+              <span className="status-badge">{sparkProgramStatusLabel(activeApplication.status || "interest_submitted")}</span>
             </div>
           )}
 
@@ -24706,6 +25281,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {kidsProgramRequestStep === 2 ? (
               <div className="spark-flow-panel">
                 <h4>Product wanted</h4>
+                <p className="compact-subtitle">Tell us interests, not guarantees. The Spark can only help when safe inventory, giveaways, or family opportunities are available.</p>
                 <Field label="Favorite Pokemon or product">
                   <input value={kidsProgramForm.favoritePokemon} onChange={(event) => updateKidsProgramField("favoritePokemon", event.target.value)} placeholder="Pikachu, ETB, binder, starter deck..." />
                 </Field>
@@ -24738,7 +25314,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <Field label="Parent note optional">
                   <textarea value={kidsProgramForm.reason} onChange={(event) => updateKidsProgramField("reason", event.target.value)} placeholder="Anything we should know before review?" />
                 </Field>
-                <p className="compact-subtitle">We do not expose child/family request details publicly.</p>
+                <p className="compact-subtitle">We do not expose child/family request details publicly. Admin notes stay internal.</p>
               </div>
             ) : null}
 
@@ -24770,7 +25346,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <DetailItem label="Request type" value={requestAccessSummary} />
                   <DetailItem label="Rules" value={kidsProgramForm.agreesNoResale && kidsProgramForm.consentContact ? "Accepted" : "Needs review"} />
                 </div>
-                <p className="compact-subtitle">Submit sends a private parent/family request for review. No child messaging or public child profile is created.</p>
+                <p className="compact-subtitle">Submit sends a private parent/family interest request. Fulfillment is not guaranteed and depends on inventory, fairness review, and program availability.</p>
               </div>
             ) : null}
 
@@ -25575,7 +26151,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <h3>Kids Program Applications</h3>
                 <p>Admins review manually. AI and Regular Preview Mode never approve applications.</p>
               </div>
-              <span className="status-badge">{(betaReadinessData.kidsApplications || []).length} total</span>
+              <span className="status-badge">{(betaReadinessData.kidsApplications || []).length} local total</span>
             </div>
             <div className="inventory-list compact-inventory-list">
               {(shorelineState.adminLittleSparksApplications || []).length ? shorelineState.adminLittleSparksApplications.map((entry) => (
@@ -25608,13 +26184,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <strong>{entry.parentName || entry.email}</strong>
                       <p>{entry.zipCode || "ZIP not provided"} | {entry.childAgeRange || "Age range not provided"} | {(entry.requestedAccess || []).join(", ") || "Access not specified"}</p>
                     </div>
-                    <span className="status-badge">{entry.status || "pending_review"}</span>
+                    <span className="status-badge">{sparkProgramStatusLabel(entry.status || "interest_submitted")}</span>
                   </div>
                   <p className="compact-subtitle">{entry.collectingInterest || entry.reason || "No application note."}</p>
+                  <Field label="Internal admin notes">
+                    <textarea
+                      value={entry.adminNotes || ""}
+                      onChange={(event) => updateKidsProgramApplicationAdminNotes(entry.id, event.target.value)}
+                      placeholder="Private admin notes. Never shown to families or the public."
+                    />
+                  </Field>
                   <div className="quick-actions">
                     <button type="button" className="secondary-button" onClick={() => void runKidsProgramAiAssist(entry)}>Summarize application</button>
-                    {["approved", "waitlisted", "denied", "suspended"].map((status) => (
-                      <button type="button" className="secondary-button" key={status} onClick={() => updateKidsProgramApplicationStatus(entry.id, status)}>{status}</button>
+                    {SPARK_PROGRAM_STATUS_OPTIONS.map((status) => (
+                      <button type="button" className="secondary-button" key={status} onClick={() => updateKidsProgramApplicationStatus(entry.id, status)}>{sparkProgramStatusLabel(status)}</button>
                     ))}
                   </div>
                 </article>
@@ -26047,7 +26630,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       "Market Source Controls",
     ])];
     const visibleSuggestions = suggestions.filter((suggestion) => {
-      if (adminReviewFilter === "All") return true;
+      if (adminReviewFilter === "All") return !isEmberAssistSuggestion(suggestion);
       return REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)] === adminReviewFilter;
     });
     const openCount = suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status)).length;
@@ -26177,7 +26760,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           ) : null}
         </div>
         {renderBetaAdminReviewQueues()}
-        {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
+        {renderEmberAssistAdminInbox()}
+        {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox") && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
         <div className="inventory-list compact-inventory-list">
           {visibleSuggestions.length ? pagedVisibleSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
             <div className="empty-state">
@@ -26296,7 +26880,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function marketplaceFormReady() {
-    return marketplaceForm.title.trim() && Number(marketplaceForm.quantity || 0) >= 1;
+    return !validateMarketplaceListingDraft(marketplaceForm, {
+      isOfficialAdmin: publicIdentityForProfile(currentUserProfile).isOfficialAdminIdentity,
+      requirePublicFields: false,
+    });
   }
 
   function buildMarketplaceListing(status = "Draft") {
@@ -26487,11 +27074,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function saveMarketplaceListing(status = "Draft") {
-    if (!marketplaceFormReady()) {
-      setVaultToast(!marketplaceForm.title.trim() ? "Listing title is required." : "Quantity must be at least 1.");
+    const finalStatus = status === "Submit" ? "Pending Review" : status;
+    const validationError = validateMarketplaceListingDraft(marketplaceForm, {
+      isOfficialAdmin: publicIdentityForProfile(currentUserProfile).isOfficialAdminIdentity,
+      requirePublicFields: finalStatus !== "Draft",
+    });
+    if (validationError) {
+      setVaultToast(validationError);
       return;
     }
-    const finalStatus = status === "Submit" ? "Pending Review" : status;
     const listing = buildMarketplaceListing(finalStatus);
     setMarketplaceListings((current) =>
       current.some((item) => item.id === listing.id)
@@ -26515,6 +27106,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function updateMarketplaceListingStatus(listingId, status, reason = "") {
+    const now = new Date().toISOString();
+    const actor = currentPublicUsername();
+    updateMarketplaceListing(listingId, {
+      status,
+      statusUpdatedAt: now,
+      statusUpdatedBy: actor,
+      moderationReason: reason,
+      ...(status === "Sold" ? { soldAt: now } : {}),
+      ...(status === "Removed" ? { removedAt: now } : {}),
+      ...(status === "Archived" ? { archivedAt: now } : {}),
+      ...(status === "Flagged" ? { flaggedAt: now } : {}),
+    });
+  }
+
   function editMarketplaceListing(listing = {}) {
     setMarketplaceForm({
       ...BLANK_MARKETPLACE_FORM,
@@ -26530,12 +27136,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function approveMarketplaceListing(listingId) {
-    updateMarketplaceListing(listingId, { status: "Active", reviewedBy: currentUserProfile.email || "local-beta-admin", reviewedAt: new Date().toISOString() });
+    updateMarketplaceListing(listingId, { status: "Active", reviewedBy: currentPublicUsername(), reviewedAt: new Date().toISOString() });
     setVaultToast("Marketplace listing approved.");
   }
 
   function rejectMarketplaceListing(listingId) {
-    updateMarketplaceListing(listingId, { status: "Removed", reviewedBy: currentUserProfile.email || "local-beta-admin", reviewedAt: new Date().toISOString() });
+    updateMarketplaceListing(listingId, { status: "Removed", reviewedBy: currentPublicUsername(), reviewedAt: new Date().toISOString(), removedAt: new Date().toISOString() });
     setVaultToast("Marketplace listing rejected/removed.");
   }
 
@@ -26551,6 +27157,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       status: "Open",
     };
     setMarketplaceReports((current) => [report, ...current]);
+    updateMarketplaceListingStatus(listingReportTarget.id, "Flagged", listingReportReason);
     updateMarketplaceListing(listingReportTarget.id, {
       status: "Flagged",
       reportCount: Number(listingReportTarget.reportCount || 0) + 1,
@@ -26689,7 +27296,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function getMarketplaceTrustBadges(listing = {}) {
     const badges = [];
     const sellerUsername = normalizePublicUsername(listing.sellerUsername || listing.seller_username || listing.username || listing.publicUsername || listing.public_username);
-    if (["official_admin_ember", "official_admin_tide"].includes(sellerUsername)) {
+    if (isOfficialCommunityUsername(sellerUsername)) {
       badges.push({ label: "Official Ember & Tide Admin", tone: "verified" });
     }
     if (listing.verified || listing.isVerified || String(listing.verificationStatus || "").toLowerCase() === "verified") {
@@ -26747,8 +27354,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const referenceParts = marketplaceReferenceParts(marketInfo);
     const imageSrc = listing.photos?.[0] || catalogImage(listingCatalogProduct || {});
     const priceLabel = listing.listingType === "For Trade" ? "Trade value" : listing.listingType === "Free / Donation" ? "Price" : "Price";
+    const closedListing = isMarketplaceClosedStatus(listing.status);
     return (
-      <article className="marketplace-listing-card market-fair-card compact-card" key={listing.id}>
+      <article className={`marketplace-listing-card market-fair-card compact-card${closedListing ? " marketplace-listing-card--closed" : ""}`} key={listing.id}>
         <div className="marketplace-listing-row">
           {imageSrc ? (
             <img
@@ -26768,7 +27376,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="market-card-body">
             <div className="marketplace-badges">
               <span className="status-badge">{listing.listingType}</span>
-              <span className="status-badge">{listing.status}</span>
+              <span className={`status-badge ${String(listing.status || "").toLowerCase().replace(/\s+/g, "-")}`}>{listing.status}</span>
               {renderFairPriceBadge(fairAssessment)}
             </div>
             <h3>{listing.title}</h3>
@@ -26790,27 +27398,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {trustBadges.length ? trustBadges.map(renderTrustBadge) : <span className="trust-badge trust-badge--secure">Community Listing</span>}
             </div>
             <p className="compact-subtitle">{listing.condition || "Unknown condition"} | {listing.locationCity || "Local"} {listing.locationState || ""}</p>
+            {closedListing ? (
+              <p className="compact-subtitle market-closed-note">Closed listing: {listing.status}. This should not be treated as active inventory.</p>
+            ) : null}
           </div>
         </div>
         <div className="quick-actions market-card-actions">
           <button type="button" onClick={() => setSelectedListingId(listing.id)}>View</button>
           <button type="button" className="secondary-button" onClick={() => toggleSavedListing(listing.id)}>{marketplaceSavedIds.includes(listing.id) ? "Saved" : "Save"}</button>
-          {listingCatalogProduct ? (
+          {listingCatalogProduct && !closedListing ? (
             <>
               <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-vault", destinations: { vault: true } })}>Add to Vault</button>
               <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-forge", destinations: { forge: true } })}>Add to Forge</button>
             </>
           ) : null}
           <button type="button" className="secondary-button" onClick={() => setListingReportTarget(listing)}>Report</button>
-          {listing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible ? (
-            <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { status: "Sold" })}>Mark Sold</button>
+          {!closedListing && (listing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible) ? (
+            <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Sold", "seller_marked_sold")}>Mark Sold</button>
           ) : null}
           {adminMode ? (
             <>
               <button type="button" className="secondary-button" onClick={() => approveMarketplaceListing(listing.id)}>Approve</button>
               <button type="button" className="secondary-button" onClick={() => rejectMarketplaceListing(listing.id)}>Reject</button>
-              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { status: "Removed" })}>Remove</button>
-              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { status: "Flagged" })}>Flag</button>
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Removed", "admin_removed")}>Remove</button>
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(listing.id, "Flagged", "admin_flagged")}>Flag</button>
               <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(listing.id, { featured: true })}>Feature</button>
             </>
           ) : null}
@@ -26868,6 +27479,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       filteredListings;
     const selectedListing = marketplaceListings.find((listing) => listing.id === selectedListingId);
     const reviewListing = buildMarketplaceListing("Pending Review");
+    const selectedListingClosed = selectedListing ? isMarketplaceClosedStatus(selectedListing.status) : false;
 
     return (
       <div className="marketplace-section">
@@ -27136,26 +27748,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <DetailItem label="Seller Contact" value={selectedListing.contactPreference || "Request contact"} />
             </div>
             <p>{selectedListing.description || "No description yet."}</p>
+            {selectedListingClosed ? (
+              <p className="market-closed-note">This listing is {selectedListing.status}. It is kept for history and review, not as an active public offer.</p>
+            ) : null}
             <p className="compact-subtitle">Meet safely, verify items, and do not send payment outside trusted methods. Message system is coming later.</p>
             <div className="quick-actions">
-              <button type="button" onClick={() => setVaultToast("Contact request saved for beta. Messaging is coming soon.")}>Contact Seller</button>
+              <button type="button" disabled={selectedListingClosed} onClick={() => setVaultToast("Contact request saved for beta. Messaging is coming soon.")}>Contact Seller</button>
               <button type="button" className="secondary-button" onClick={() => toggleSavedListing(selectedListing.id)}>Save Listing</button>
               <button type="button" className="secondary-button" disabled>Make Offer Later</button>
               <button type="button" className="secondary-button" onClick={() => setListingReportTarget(selectedListing)}>Report</button>
-              {selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible ? (
-              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(selectedListing.id, { status: "Sold" })}>Mark Sold</button>
+              {!selectedListingClosed && (selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible) ? (
+              <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(selectedListing.id, "Sold", "seller_marked_sold")}>Mark Sold</button>
               ) : null}
               {selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible ? (
                 <>
                   <button type="button" className="secondary-button" onClick={() => editMarketplaceListing(selectedListing)}>Edit Listing</button>
-                  <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(selectedListing.id, { status: "Archived" })}>Archive</button>
+                  <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(selectedListing.id, "Archived", "seller_archived")}>Archive</button>
                 </>
               ) : null}
               {adminToolsVisible ? (
                 <>
                   <button type="button" className="secondary-button" onClick={() => approveMarketplaceListing(selectedListing.id)}>Approve</button>
                   <button type="button" className="secondary-button" onClick={() => rejectMarketplaceListing(selectedListing.id)}>Remove</button>
-                  <button type="button" className="secondary-button" onClick={() => updateMarketplaceListing(selectedListing.id, { status: "Flagged" })}>Flag</button>
+                  <button type="button" className="secondary-button" onClick={() => updateMarketplaceListingStatus(selectedListing.id, "Flagged", "admin_flagged")}>Flag</button>
                 </>
               ) : null}
             </div>
@@ -27190,7 +27805,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const trustBadgesForPost = (post) => {
       const badges = [];
       const postUsername = normalizePublicUsername(post.username || post.publicUsername || post.public_username);
-      if (["official_admin_ember", "official_admin_tide"].includes(postUsername)) badges.push("Official Ember & Tide Admin");
+      if (isOfficialCommunityUsername(postUsername)) badges.push("Official Ember & Tide Admin");
       if (post.verificationStatus === "verified") badges.push("Verified Collector");
       if (/giveaway|donation|kid|family/i.test(`${post.postType || ""} ${post.title || ""}`)) badges.push("Parent-Approved");
       if (post.sourceType === "admin" || post.sourceType === "official") badges.push("Community Helper");
@@ -27269,8 +27884,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               const usernameLabel = publicUsernameLabelFromRecord(post, "community");
               const displayName = post.displayName && !String(post.displayName).startsWith("@") ? post.displayName : "Community member";
               const trustBadges = trustBadgesForPost(post);
+              const currentUserId = currentUserProfile.userId || "local-beta";
+              const canHidePost = post.userId === currentUserId || adminToolsVisible;
               return (
-                <article className="tidepool-post-card compact-card" key={post.postId}>
+                <article className={`tidepool-post-card compact-card${post.status === "hidden" || post.status === "removed" ? " tidepool-post-card--moderated" : ""}`} key={post.postId}>
                   <div className="tidepool-post-top">
                     <div className="tidepool-author-block">
                       <div className="tidepool-avatar" aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</div>
@@ -27302,6 +27919,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <span className={statusClass(post.verificationStatus)}>{post.verificationStatus}</span>
                     {trustBadges.map((badge) => <span className="trust-badge tidepool-trust-badge" key={badge}>{badge}</span>)}
                     {post.flagged ? <span className="status-badge needs-review">Needs Review</span> : null}
+                    {post.status === "hidden" ? <span className="status-badge warning">Hidden</span> : null}
+                    {post.status === "removed" ? <span className="status-badge danger">Removed</span> : null}
                     {post.sourceType !== "user" ? <span className={statusClass(sourceBadge)}>{sourceBadge}</span> : null}
                   </div>
                   <div className="tidepool-post-copy">
@@ -27323,7 +27942,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "confirmed")}>Confirm</button>
                     <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "disputed")}>Dispute</button>
                     <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { saved: !post.saved })}>{post.saved ? "Saved" : "Save / Follow"}</button>
-                    <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { flagged: true, status: "pending" })}>{post.flagged ? "Reported" : "Report content"}</button>
+                    <button type="button" className="secondary-button" onClick={() => reportTidepoolPost(post)}>{post.flagged ? "Reported" : "Report content"}</button>
+                    {canHidePost ? (
+                      <button type="button" className="secondary-button" onClick={() => hideOwnTidepoolPost(post)}>{post.status === "hidden" ? "Hidden" : "Hide post"}</button>
+                    ) : null}
                     <button type="button" className="secondary-button" onClick={() => setVaultToast("Mute/block controls are queued for account settings. Report unsafe content now.")}>Mute</button>
                     <button type="button" className="secondary-button" onClick={() => document.getElementById(`tidepool-comment-${post.postId}`)?.focus()}>Comment</button>
                   </div>
@@ -27692,7 +28314,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       if (quickAddWizard.itemType === "mileage") return "Continue to Mileage Review";
       if (quickAddWizard.destination === "market" || quickAddWizard.itemType === "listing") return "Continue to Listing Review";
       if (quickAddWizard.destination === "kids" || quickAddWizard.itemType === "kids_request") return "Continue to Kids Request";
-      return "Continue to Review and Save";
+      return "Choose Product";
     })();
 
     return (
@@ -27826,7 +28448,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <section className="guided-quick-step guided-review-step">
                 <div className="guided-step-heading">
                   <h3>Review and save</h3>
-                  <p>Nothing saves from Quick Add. The next screen is the destination-specific review form.</p>
+                  <p>Quick Add will open the right save form with this destination already selected. You can save fast and edit details later.</p>
                 </div>
                 <div className="guided-review-grid">
                   <div className="wizard-summary-card">
@@ -27845,7 +28467,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <small>{selectedDetailMethod?.helper || "Choose how you want to enter details."}</small>
                   </div>
                 </div>
-                <p className="flow-inline-message is-info">Save only happens in the review flow after you confirm the item, destination, and required fields.</p>
+                <p className="flow-inline-message is-info">Save only happens after you choose the item and confirm the required fields.</p>
               </section>
             ) : null}
 
@@ -28082,7 +28704,25 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderAddMileageFlowContent() {
     return (
       <form onSubmit={addTrip} className="form flow-form-grid">
-        <Field label="Trip Purpose"><input value={tripForm.purpose} onChange={(e) => updateTripForm("purpose", e.target.value)} /></Field>
+        <Field label="Trip Date"><input type="date" value={tripForm.date || ""} onChange={(e) => updateTripForm("date", e.target.value)} /></Field>
+        <Field label="Trip Purpose">
+          <input list="mileage-purpose-options" value={tripForm.purpose} onChange={(e) => updateTripForm("purpose", e.target.value)} placeholder="Inventory run, shipping drop-off, event..." />
+          <datalist id="mileage-purpose-options">
+            {MILEAGE_PURPOSE_OPTIONS.map((purpose) => <option key={purpose} value={purpose} />)}
+          </datalist>
+        </Field>
+        <div className="quick-action-rail mileage-purpose-rail">
+          {MILEAGE_PURPOSE_OPTIONS.map((purpose) => (
+            <button
+              key={purpose}
+              type="button"
+              className={normalizeMileagePurpose(tripForm.purpose) === purpose ? "primary" : "secondary-button"}
+              onClick={() => updateTripForm("purpose", purpose)}
+            >
+              {purpose}
+            </button>
+          ))}
+        </div>
         <div className="ai-helper-note">
           <span>Purpose suggestions are for tracking only and are not tax advice.</span>
           <button type="button" className="secondary-button" onClick={() => void runMileageAiAssist()}>Suggest purpose</button>
@@ -28091,7 +28731,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <Field label="Vehicle"><select value={tripForm.vehicleId} onChange={(e) => updateTripForm("vehicleId", e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} - {v.averageMpg} MPG</option>)}</select></Field>
         <Field label="Starting Odometer"><input type="number" value={tripForm.startMiles} onChange={(e) => updateTripForm("startMiles", e.target.value)} /></Field>
         <Field label="Ending Odometer"><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
-        <Field label="Gas Price Paid"><input type="number" step="0.01" value={tripForm.gasPrice} onChange={(e) => updateTripForm("gasPrice", e.target.value)} /></Field>
+        <Field label="Gas Price Paid"><input type="number" step="0.01" value={tripForm.gasPrice} placeholder="Optional" onChange={(e) => updateTripForm("gasPrice", e.target.value)} /></Field>
         <Field label="Gas Receipt"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateTripForm("gasReceiptImage", url), "gas")} /></Field>
         {tripForm.gasReceiptImage ? <div className="receipt-preview"><p>Gas Receipt</p><img src={tripForm.gasReceiptImage} alt="Gas Receipt" /></div> : null}
         <Field label="Notes"><input value={tripForm.notes} onChange={(e) => updateTripForm("notes", e.target.value)} /></Field>
@@ -31596,6 +32236,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const activeCollectionCount = workspaceSelectorOptions.length;
   const workspaceDeleteCounts = workspaceDeleteTarget ? workspaceRecordCountsFor(workspaceDeleteTarget.id) : null;
   const workspaceArchiveCounts = workspaceArchiveTarget ? workspaceRecordCountsFor(workspaceArchiveTarget.id) : null;
+  const settingsSellerModeActive = sellerModeEnabled(userType, dashboardPreset);
+  const activeForgeModeSummary = forgeModeSummary(forgeModeSettings, activeForgeWorkspace);
 
   if (user && !guestPreviewActive && !betaAccessAllowed()) {
     return renderShorelineAccessGate();
@@ -31726,6 +32368,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     ) : null}
   </div>
   <div className="topbar-command-actions" aria-label="Command desk actions">
+    <button
+      type="button"
+      className="topbar-workspace-chip"
+      onClick={() => openMenuDrawer("workspace")}
+      title="Open workspace settings"
+    >
+      <span>{activeWorkspace?.name || "My Personal Space"}</span>
+      <small>{workspaceTypeLabel(activeWorkspace?.type)} · {workspaceRoleLabel(activeWorkspaceRole)}</small>
+    </button>
     <button
       type="button"
       className="topbar-quick-add-button"
@@ -32078,6 +32729,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <form className="drawer-info-card" onSubmit={saveProfileSettings} noValidate>
                       <strong>Profile Settings</strong>
                       <p className="compact-subtitle">Your full name is private by default and used for account, Kids Program, and admin review context.</p>
+                      <div className="profile-public-preview settings-highlight-card">
+                        <span>Public identity preview</span>
+                        <strong>{publicProfileLabel()}</strong>
+                        <small>Marketplace and Tidepool show this username instead of private email.</small>
+                      </div>
                       <div className="ai-helper-note">
                         <span>AI can explain what these settings do; it cannot change account permissions.</span>
                         <button type="button" className="secondary-button" onClick={() => void runSettingsHelpAiAssist()}>Explain this setting</button>
@@ -32128,6 +32784,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="drawer-info-card">
                     <strong>Current collection</strong>
                     <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this collection. Archived collections are hidden here by default.</p>
+                    <div className="settings-active-workspace-card">
+                      <span>Active workspace</span>
+                      <strong>{activeWorkspace?.name || "My Personal Space"}</strong>
+                      <small>{workspaceTypeLabel(activeWorkspace?.type)} · {workspaceRoleLabel(activeWorkspaceRole)}</small>
+                    </div>
                     <Field label="Collection">
                       <select value={activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID} onChange={(event) => changeActiveWorkspace(event.target.value)}>
                         {workspaceSelectorOptions.map((workspace) => (
@@ -32151,11 +32812,34 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         Manage Collections
                       </button>
                     </div>
+                    <div className="settings-section-grid compact">
+                      <article className="settings-section-card">
+                        <strong>Personal workspace</strong>
+                        <span>Private collection space for personal Vault, wishlist, and optional Personal Forge records.</span>
+                      </article>
+                      <article className="settings-section-card">
+                        <strong>Ember & Tide workspace</strong>
+                        <span>Shared/business space for Ember & Tide inventory when you have access.</span>
+                      </article>
+                      <article className="settings-section-card">
+                        <strong>Business workspace</strong>
+                        <span>Seller records, expenses, mileage, listings, and tax-review exports stay scoped to the workspace.</span>
+                      </article>
+                    </div>
                   </div>
 
                   <div className="drawer-info-card forge-mode-settings-card">
                     <strong>Forge workspace mode</strong>
                     <p className="compact-subtitle">Choose whether Forge follows your personal workspace or stays locked to Ember & Tide seller inventory. Personal Forge data is hidden when turned off, not deleted.</p>
+                    <div className="settings-mode-summary">
+                      <span>Seller mode</span>
+                      <strong>{settingsSellerModeActive ? "On" : "Off"}</strong>
+                      <small>{settingsSellerModeActive ? "Forge, receipts, mileage, inventory, and sales are prioritized." : "Turn on Seller mode to prioritize business tools."}</small>
+                    </div>
+                    <div className="drawer-inline-actions">
+                      <button type="button" className={settingsSellerModeActive ? "drawer-link active" : "drawer-link"} onClick={() => applyHomeViewPreset("seller")}>Turn Seller Mode On</button>
+                      <button type="button" className={!settingsSellerModeActive ? "secondary-button" : "secondary-button"} onClick={() => applyHomeViewPreset("collector")}>Use Collector Mode</button>
+                    </div>
                     <label className="toggle-row forge-mode-toggle">
                       <span>
                         <strong>Show Personal Forge</strong>
@@ -32206,6 +32890,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <div><dt>Personal Forge</dt><dd>{forgeModeSettings.personalForgeEnabled ? "Visible" : "Hidden"}</dd></div>
                       <div><dt>Locked mode</dt><dd>{forgeModeSettings.lockToEmberTide ? "Ember & Tide" : "Off"}</dd></div>
                     </dl>
+                    <p className="compact-subtitle">{activeForgeModeSummary}</p>
                     {!emberTideForgeWorkspace ? (
                       <p className="compact-subtitle">Ember & Tide Forge is not available in your workspace list yet. Create an Ember & Tide business workspace or keep Personal Forge enabled.</p>
                     ) : null}
@@ -32218,8 +32903,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
 
                   <form className="drawer-info-card" onSubmit={createWorkspace}>
-                    <strong>Create collection</strong>
-                    <p className="compact-subtitle">New workspaces start empty. Existing personal data stays private until you intentionally add or move items.</p>
+                    <strong>Create workspace</strong>
+                    <p className="compact-subtitle">New workspaces start empty. Existing personal data stays private until you intentionally add or move items. Business info currently saves as workspace name/type.</p>
                     <input
                       className="drawer-field"
                       value={workspaceForm.name}
@@ -32894,7 +33579,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   const canManageWorkspace = canManageWorkspaceId(workspace.id);
                   const canEditWorkspace = canEditWorkspaceId(workspace.id);
                   const isCurrent = String(workspace.id) === String(activeWorkspace?.id);
-                  const deleteDisabled = counts.total > 0 || (!archived && activeCollectionCount <= 1) || !canManageWorkspace;
+                  const deleteDisabled = Boolean(workspaceDeleteBlockReason(workspace, counts, {
+                    activeWorkspaceId,
+                    activeWorkspaceCount: activeCollectionCount,
+                    canManage: canManageWorkspace,
+                    confirmed: true,
+                    defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
+                  }));
                   return (
                     <article className={`collection-manager-card ${archived ? "is-archived" : ""}`} key={workspace.id}>
                       <div className="collection-manager-card-header">
@@ -32912,6 +33603,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <div><dt>Expenses</dt><dd>{counts.expenses}</dd></div>
                         <div><dt>Mileage</dt><dd>{counts.mileage}</dd></div>
                         <div><dt>Market</dt><dd>{counts.marketListings}</dd></div>
+                        <div><dt>Reports</dt><dd>{counts.scoutReports + counts.marketReports}</dd></div>
+                        <div><dt>Sales</dt><dd>{counts.sales}</dd></div>
                       </dl>
                       <div className="collection-manager-actions">
                         {!archived ? (
@@ -32944,8 +33637,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           Delete
                         </button>
                       </div>
-                      {deleteDisabled && counts.total > 0 ? (
-                        <p className="compact-subtitle">Permanent delete is blocked because this collection still has records. Archive it instead.</p>
+                      {deleteDisabled ? (
+                        <p className="compact-subtitle">{workspaceDeleteBlockReason(workspace, counts, {
+                          activeWorkspaceId,
+                          activeWorkspaceCount: activeCollectionCount,
+                          canManage: canManageWorkspace,
+                          confirmed: true,
+                          defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID,
+                        })}</p>
                       ) : null}
                     </article>
                   );
@@ -32995,6 +33694,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div><dt>Expenses</dt><dd>{workspaceArchiveCounts?.expenses || 0}</dd></div>
                 <div><dt>Mileage</dt><dd>{workspaceArchiveCounts?.mileage || 0}</dd></div>
                 <div><dt>Market</dt><dd>{workspaceArchiveCounts?.marketListings || 0}</dd></div>
+                <div><dt>Reports</dt><dd>{(workspaceArchiveCounts?.scoutReports || 0) + (workspaceArchiveCounts?.marketReports || 0)}</dd></div>
+                <div><dt>Sales</dt><dd>{workspaceArchiveCounts?.sales || 0}</dd></div>
               </dl>
               {String(workspaceArchiveTarget.id) === String(activeWorkspace?.id) ? (
                 <p className="compact-subtitle">Because this is current, Ember & Tide will switch to another active collection after archiving.</p>
@@ -33033,8 +33734,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div><dt>Expenses</dt><dd>{workspaceDeleteCounts?.expenses || 0}</dd></div>
                 <div><dt>Mileage</dt><dd>{workspaceDeleteCounts?.mileage || 0}</dd></div>
                 <div><dt>Market</dt><dd>{workspaceDeleteCounts?.marketListings || 0}</dd></div>
+                <div><dt>Reports</dt><dd>{(workspaceDeleteCounts?.scoutReports || 0) + (workspaceDeleteCounts?.marketReports || 0)}</dd></div>
+                <div><dt>Sales</dt><dd>{workspaceDeleteCounts?.sales || 0}</dd></div>
               </dl>
-              {workspaceDeleteCounts?.total > 0 ? (
+              {workspaceDeleteTarget?.id === DEFAULT_PERSONAL_WORKSPACE_ID ? (
+                <div className="validation-summary" role="alert">
+                  <strong>Default workspace cannot be deleted.</strong>
+                  <p>Use Settings to hide Personal Forge, or archive/delete other empty workspaces you no longer need.</p>
+                </div>
+              ) : workspaceDeleteCounts?.total > 0 ? (
                 <div className="validation-summary" role="alert">
                   <strong>This collection is not empty.</strong>
                   <p>Archive it instead so inventory, expenses, mileage, and listings stay linked and recoverable.</p>
@@ -33053,7 +33761,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
             <div className="location-modal-actions modal-sticky-footer">
               <button type="button" className="secondary-button" onClick={closeWorkspaceDelete} disabled={workspaceDeleteSaving}>Cancel</button>
-              {workspaceDeleteCounts?.total > 0 ? (
+              {workspaceDeleteTarget?.id === DEFAULT_PERSONAL_WORKSPACE_ID ? (
+                <button type="button" className="secondary-button" onClick={closeWorkspaceDelete}>Keep Default Workspace</button>
+              ) : workspaceDeleteCounts?.total > 0 ? (
                 <button type="button" className="danger-button" onClick={() => {
                   setWorkspaceDeleteTarget(null);
                   openWorkspaceArchive(workspaceDeleteTarget);
@@ -33094,6 +33804,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div><span>Average expense</span><strong>{money(selectedExpenseVendorGroup.averageAmount)}</strong></div>
                 <div><span>Last expense</span><strong>{formatExpenseDate(selectedExpenseVendorGroup.mostRecentDate)}</strong></div>
                 <div><span>Last purchase</span><strong>{money(selectedExpenseVendorGroup.lastAmount)}</strong></div>
+                <div><span>Receipts attached</span><strong>{selectedExpenseVendorGroup.receiptCount || 0}</strong></div>
+                <div><span>Missing receipts</span><strong>{selectedExpenseVendorGroup.missingReceiptCount || 0}</strong></div>
               </div>
               {selectedExpenseVendorGroup.categorySummary ? <p className="compact-subtitle">Category summary: {selectedExpenseVendorGroup.categorySummary}</p> : null}
               {selectedExpenseVendorGroup.originalVendorNames.length > 1 ? (
@@ -33132,10 +33844,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="flow-modal-body">
               <div className="expense-vendor-detail-summary mileage-vehicle-summary">
                 <div><span>Total miles</span><strong>{selectedMileageVehicleGroup.totalMiles.toFixed(1)}</strong></div>
+                <div><span>Year to date</span><strong>{selectedMileageVehicleGroup.ytdMiles.toFixed(1)}</strong></div>
                 <div><span>Trips</span><strong>{selectedMileageVehicleGroup.tripCount}</strong></div>
                 <div><span>Last trip</span><strong>{formatExpenseDate(selectedMileageVehicleGroup.lastTripDate)}</strong></div>
-                <div><span>IRS value</span><strong>{money(selectedMileageVehicleGroup.totalMileageValue)}</strong></div>
+                <div><span>Mileage value</span><strong>{money(selectedMileageVehicleGroup.totalMileageValue)}</strong></div>
               </div>
+              {selectedMileageVehicleGroup.topPurposes?.length ? (
+                <div className="expense-vendor-detail-summary mileage-purpose-summary">
+                  {selectedMileageVehicleGroup.topPurposes.slice(0, 6).map((entry) => (
+                    <div key={entry.purpose}><span>{entry.purpose}</span><strong>{entry.miles.toFixed(1)} mi</strong></div>
+                  ))}
+                </div>
+              ) : null}
               <div className="expense-record-list mileage-trip-list">
                 {selectedMileageVehicleGroup.trips.map((trip) => (
                   <div className="expense-record-card mileage-trip-card is-compact" key={trip.id}>
@@ -33147,10 +33867,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <strong>{Number(trip.businessMiles || 0).toFixed(1)} mi</strong>
                     </div>
                     <div className="expense-record-meta">
+                      <span>{normalizeMileagePurpose(trip.purpose || trip.category || "")}</span>
+                      <span>Odometer {Number(trip.startMiles || 0).toFixed(0)}-{Number(trip.endMiles || 0).toFixed(0)}</span>
                       <span>Fuel {money(trip.fuelCost)}</span>
                       <span>Wear {money(trip.wearCost)}</span>
                       <span>Total {money(trip.totalVehicleCost)}</span>
-                      <span>IRS {money(trip.mileageValue)}</span>
+                      <span>Mileage value {money(trip.mileageValue)}</span>
                       {trip.gasReceiptImage ? <span>Receipt attached</span> : null}
                     </div>
                     {trip.notes ? <p className="compact-subtitle">{trip.notes}</p> : null}
@@ -34979,9 +35701,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </button>
                   <button type="button" className="secondary-button" onClick={() => {
                     const event = selectedWatchCalendarEvent;
-                    setSelectedWatchCalendarEvent(null);
-                    openAddActionSheet("release-calendar");
-                    setVaultToast(`Use Quick Add to add ${event.productName || event.title} to Vault or Forge.`);
+                    openCalendarReleaseAddToVault(event);
                   }}>
                     Add to Vault
                   </button>
@@ -36051,7 +36771,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <button onClick={() => downloadCSV("ember-tide-catalog.csv", catalogProducts)}>Export Catalog</button>
                 <button onClick={() => downloadCSV("ember-tide-sales.csv", sales)}>Export Forge Sales</button>
                 <button onClick={() => downloadCSV("ember-tide-expenses.csv", expenses)}>Export Expenses</button>
-                <button onClick={() => downloadCSV("ember-tide-mileage.csv", mileageTrips)}>Export Mileage</button>
+                <button onClick={() => downloadMileageRecords("csv")}>Export Mileage CSV</button>
+                <button onClick={() => downloadMileageRecords("json")}>Export Mileage JSON</button>
                 <button onClick={() => downloadCSV("ember-tide-vehicles.csv", vehicles)}>Export Vehicles</button>
                 <button onClick={() => downloadYearEndTaxSummary("csv")}>Export Tax Records CSV</button>
                 <button onClick={() => downloadYearEndTaxSummary("json")}>Export Tax Records JSON</button>
@@ -36217,6 +36938,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   onCreateListing={openVaultMarketplaceDecision}
                   onDuplicate={openVaultDuplicateItem}
                   onRefreshMarket={refreshVaultMarket}
+                  onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                 />
               ) : null}
               <div className="inventory-list compact-inventory-list">
@@ -36244,6 +36966,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       onMoveToForge={(vaultItem) => openVaultForgeTransfer(vaultItem, "move")}
                       onCopyToForge={(vaultItem) => openVaultForgeTransfer(vaultItem, "copy")}
                       onDuplicate={openVaultDuplicateItem}
+                      onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                     />
                   ))
                 )}
@@ -38263,6 +38986,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 onEdit={startEditingItem}
                 onDelete={(item) => { deleteItem(item.id); setSelectedForgeDetailId(""); }}
                 onCreateListing={(item) => openMarketplaceCreate("forge", item)}
+                onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                 onSell={(item) => {
                   setSaleForm((current) => ({
                     ...current,
@@ -38295,6 +39019,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   onDelete={deleteItem}
                   onStatusChange={updateItemStatus}
                   onCreateListing={(forgeItem) => openMarketplaceCreate("forge", forgeItem)}
+                  onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                   onSell={(forgeItem) => {
                     setSaleForm((current) => ({
                       ...current,
@@ -38550,6 +39275,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <div className="expense-vendor-card-stats">
                         <span>Average {money(group.averageAmount)}</span>
                         <span>Last purchase {money(group.lastAmount)}</span>
+                        <span>{group.receiptCount} receipt{group.receiptCount === 1 ? "" : "s"} attached</span>
+                        <span>{group.missingReceiptCount} missing receipt{group.missingReceiptCount === 1 ? "" : "s"}</span>
                         {group.categorySummary ? <span>{group.categorySummary}</span> : null}
                       </div>
                       {group.originalVendorNames.length > 1 ? (
@@ -38606,9 +39333,13 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <div className="compact-card-header">
                 <div>
                   <h2>Mileage by Vehicle</h2>
-                  <p>Vehicles stay grouped here. Open a vehicle to review the individual mileage logs underneath.</p>
+                  <p>Vehicles stay grouped here. Open a vehicle to review individual trips for year-end records. Ember & Tide does not provide tax advice.</p>
                 </div>
-                <button type="button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
+                <div className="drawer-inline-actions">
+                  <button type="button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
+                  <button type="button" className="secondary-button" onClick={() => downloadMileageRecords("csv")}>Export CSV</button>
+                  <button type="button" className="secondary-button" onClick={() => downloadMileageRecords("json")}>Export JSON</button>
+                </div>
               </div>
             </section>
             {false && (
@@ -38645,11 +39376,15 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     <strong>{group.totalMiles.toFixed(1)} mi</strong>
                   </div>
                   <div className="expense-vendor-card-stats">
+                    <span>YTD {group.ytdMiles.toFixed(1)} mi</span>
                     <span>Total cost {money(group.totalVehicleCost)}</span>
-                    <span>IRS value {money(group.totalMileageValue)}</span>
+                    <span>Mileage value {money(group.totalMileageValue)}</span>
                     <span>Fuel {money(group.totalFuelCost)}</span>
                     <span>Wear {money(group.totalWearCost)}</span>
                   </div>
+                  {group.topPurposes?.length ? (
+                    <p className="compact-subtitle">Top purpose: {group.topPurposes.slice(0, 2).map((entry) => `${entry.purpose} ${entry.miles.toFixed(1)} mi`).join(" | ")}</p>
+                  ) : null}
                   <span className="expense-vendor-card-action">View all trips</span>
                 </button>
               ))}
@@ -38719,7 +39454,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </div>
 
                 <div className="card">
-                  <p>IRS Mileage Value</p>
+                  <p>Mileage Value Estimate</p>
                   <h2>{money(totalMileageValue)}</h2>
                 </div>
 
@@ -38750,7 +39485,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </div>
               <div className="expense-summary-grid tax-summary-grid">
                 <div><span>Expenses</span><strong>{money(yearEndTaxSummary.expenses.total)}</strong><small>{yearEndTaxSummary.expenses.count} transaction{yearEndTaxSummary.expenses.count === 1 ? "" : "s"}</small></div>
-                <div><span>Mileage</span><strong>{yearEndTaxSummary.mileage.totalMiles.toFixed(1)} mi</strong><small>{money(yearEndTaxSummary.mileage.totalValue)} mileage value</small></div>
+                <div><span>Mileage</span><strong>{yearEndTaxSummary.mileage.totalMiles.toFixed(1)} mi</strong><small>{money(yearEndTaxSummary.mileage.totalValue)} mileage value estimate</small></div>
                 <div><span>Inventory cost basis</span><strong>{money(yearEndTaxSummary.inventory.costBasis)}</strong><small>{yearEndTaxSummary.inventory.quantity} unit{yearEndTaxSummary.inventory.quantity === 1 ? "" : "s"}</small></div>
                 <div><span>Sales / profit</span><strong>{money(yearEndTaxSummary.sales.revenue)}</strong><small>{money(yearEndTaxSummary.sales.profit)} net profit</small></div>
                 <div><span>Missing receipts</span><strong>{yearEndTaxSummary.expenses.missingReceiptCount}</strong><small>Attach or review before filing</small></div>
@@ -39229,6 +39964,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         <span aria-hidden="true">↑</span>
         <b>Top</b>
       </button>
+      {renderEmberAssist()}
       <nav className="mobile-bottom-nav" aria-label="Mobile main navigation">
         {mobileBottomTabs.map((tab) => (
           <button
@@ -39332,16 +40068,24 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
   );
 }
 
-function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateListing }) {
+function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateListing, onQuickUpdateSalePrice }) {
   if (!item) return null;
+  const detailImage = item.itemImage || vaultItemDisplayImage(item);
+  const setLabel = item.setName || item.expansion || "";
+  const productType = item.productType || "Forge inventory";
+  const totalCost = Number(item.quantity || 0) * Number(item.unitCost || 0);
+  const totalMarket = Number(item.quantity || 0) * Number(item.marketPrice || 0);
+  const plannedTotal = Number(item.quantity || 0) * Number(item.salePrice || 0);
   const details = [
     ["Quantity", item.quantity],
     ["Cost Paid", hasValue(item.unitCost) ? money(item.unitCost) : ""],
-    ["Total Cost", hasValue(item.unitCost) ? money(Number(item.quantity || 0) * Number(item.unitCost || 0)) : ""],
+    ["Total Cost", hasValue(item.unitCost) ? money(totalCost) : ""],
     ["MSRP", hasValue(item.msrpPrice) ? money(item.msrpPrice) : ""],
     ["Market Value", hasValue(item.marketPrice) ? money(item.marketPrice) : ""],
-    ["Product Type", item.productType],
-    ["Set / Collection", item.expansion],
+    ["Total Market", hasValue(item.marketPrice) ? money(totalMarket) : ""],
+    ["Planned Sale Total", hasValue(item.salePrice) ? money(plannedTotal) : ""],
+    ["Product Type", productType],
+    ["Set / Collection", setLabel],
     ["Release Year", item.releaseYear],
     ["Pack Count", item.packCount],
     ["UPC / Barcode", item.barcode],
@@ -39364,11 +40108,27 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
       <div className="compact-card-header">
         <div>
           <h3>{item.name}</h3>
-          <p className="compact-subtitle">Full Forge item details and selling actions.</p>
+          <p className="compact-subtitle">Forge is private business inventory for pricing, selling, and fulfillment prep.</p>
         </div>
         <button type="button" className="secondary-button" onClick={onClose}>Close</button>
       </div>
-      {item.itemImage ? <img className="vault-detail-image" src={item.itemImage} alt={item.name} /> : null}
+      <div className="inventory-detail-hero">
+        <div className={detailImage ? "inventory-detail-image-frame" : "inventory-detail-image-frame placeholder"}>
+          {detailImage ? <img src={detailImage} alt={item.name} /> : <span>Photo needed</span>}
+        </div>
+        <div className="inventory-detail-summary">
+          <span className="trust-badge trust-badge--secure">Private Forge</span>
+          <h4>{item.name}</h4>
+          <p>{[setLabel, productType].filter(Boolean).join(" - ") || "Business inventory"}</p>
+          <div className="inventory-detail-metrics">
+            <div><span>Qty</span><strong>{item.quantity || 0}</strong></div>
+            <div><span>Market</span><strong>{money(totalMarket)}</strong></div>
+            <div><span>Planned</span><strong>{money(plannedTotal)}</strong></div>
+            <div><span>Cost Basis</span><strong>{money(totalCost)}</strong></div>
+          </div>
+          {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
+        </div>
+      </div>
       <div className="catalog-detail-grid">
         {details.map(([label, value]) => (
           <DetailItem key={label} label={label} value={value} />
@@ -39396,6 +40156,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
       <div className="quick-actions">
         <button type="button" onClick={() => onSell(item)}>Sell</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+        <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
         <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Forge Item</button>
       </div>
@@ -39403,18 +40164,25 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
   );
 }
 
-function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onRefreshMarket }) {
+function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onRefreshMarket, onQuickUpdateSalePrice }) {
   if (!item) return null;
   const detailImage = vaultItemDisplayImage(item);
+  const setLabel = vaultItemSetLabel(item);
+  const itemType = vaultItemTypeLabel(item);
+  const totalCost = Number(item.quantity || 0) * Number(item.unitCost || 0);
+  const totalMarket = vaultItemTotalMarketValue(item);
+  const plannedTotal = Number(item.quantity || 0) * Number(item.salePrice || 0);
   const details = [
     ["Quantity", item.quantity],
     ["Owner / Purchaser", item.purchaserSummary || itemPurchaserName(item)],
     ["Vault Location", item.locationSummary || vaultItemLocationLabel(item) || "Unassigned"],
     ["Cost Paid", hasValue(item.unitCost) ? money(item.unitCost) : ""],
+    ["Total Cost", hasValue(item.unitCost) ? money(totalCost) : ""],
     ["MSRP", hasValue(item.msrpPrice) ? money(item.msrpPrice) : ""],
-    ["Market Value", hasValue(item.marketPrice) ? money(vaultItemTotalMarketValue(item)) : ""],
-    ["Set / Collection", vaultItemSetLabel(item)],
-    ["Product Type", vaultItemTypeLabel(item)],
+    ["Market Value", hasValue(item.marketPrice) ? money(totalMarket) : ""],
+    ["Planned Sale Total", hasValue(item.salePrice) ? money(plannedTotal) : ""],
+    ["Set / Collection", setLabel],
+    ["Product Type", itemType],
     ["Planned Selling Price", hasValue(item.salePrice) ? money(item.salePrice) : ""],
     ["Source", item.sourceType || item.source || item.sourceLocation || item.externalProductSource],
     ["SKU", item.sku],
@@ -39428,11 +40196,27 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
       <div className="compact-card-header">
         <div>
           <h3>{item.name}</h3>
-          <p className="compact-subtitle">Purchaser, location, value, and Forge transfer details.</p>
+          <p className="compact-subtitle">Vault is collection and held inventory. Move or copy to Forge when it becomes sellable business stock.</p>
         </div>
         <button type="button" className="secondary-button" onClick={onClose}>Close</button>
       </div>
-      {detailImage ? <img className="vault-detail-image" src={detailImage} alt={item.name} /> : null}
+      <div className="inventory-detail-hero">
+        <div className={detailImage ? "inventory-detail-image-frame" : "inventory-detail-image-frame placeholder"}>
+          {detailImage ? <img src={detailImage} alt={item.name} /> : <span>Photo needed</span>}
+        </div>
+        <div className="inventory-detail-summary">
+          <span className="trust-badge trust-badge--verified">Vault collection</span>
+          <h4>{item.name}</h4>
+          <p>{[setLabel, itemType].filter(Boolean).join(" - ") || "Collection item"}</p>
+          <div className="inventory-detail-metrics">
+            <div><span>Qty</span><strong>{item.quantity || 0}</strong></div>
+            <div><span>Market</span><strong>{money(totalMarket)}</strong></div>
+            <div><span>Planned</span><strong>{money(plannedTotal)}</strong></div>
+            <div><span>Cost Basis</span><strong>{money(totalCost)}</strong></div>
+          </div>
+          {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
+        </div>
+      </div>
       <div className="catalog-detail-grid">
         {details.map(([label, value]) => (
           <DetailItem key={label} label={label} value={value} />
@@ -39463,6 +40247,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
         <button type="button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button>
         <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+        <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
         <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Vault Item</button>
       </div>
@@ -39485,6 +40270,7 @@ function CompactInventoryCard({
   onMoveToForge,
   onCopyToForge,
   onDuplicate,
+  onQuickUpdateSalePrice,
   onSell,
   onCreateListing,
 }) {
@@ -39549,6 +40335,7 @@ function CompactInventoryCard({
             buttonLabel="More"
             actions={[
               { label: "Edit", onClick: () => onEdit?.(item) },
+              { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
               { label: "Copy to Forge", onClick: () => onCopyToForge?.(item) },
               { label: "Duplicate Item", onClick: () => onDuplicate?.(item) },
               { label: "Mark Traded", onClick: () => onStatusChange?.(item, "traded") },
@@ -39647,6 +40434,7 @@ function CompactInventoryCard({
           buttonLabel="More"
           actions={[
             { label: "Edit", onClick: () => onEdit?.(item) },
+            { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
             { label: "List", onClick: () => onCreateListing?.(item) },
             { label: "Restock", onClick: () => onRestock?.(item) },
             { label: "Change Status", onClick: () => onEdit?.(item) },

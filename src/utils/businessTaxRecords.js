@@ -102,7 +102,7 @@ export function groupExpensesByVendor(expenses = []) {
     const category = cleanText(expense.category || "Uncategorized");
     const buyer = cleanText(expense.buyer || expense.purchaserName || expense.purchaser_name || "") || UNASSIGNED_PURCHASER_LABEL;
     const date = recordDateValue(expense);
-    const hasReceipt = Boolean(expense.receiptImage || expense.receiptImageUrl || expense.receipt_image || expense.receipt_url || expense.photoUrl);
+    const hasReceipt = expenseHasReceipt(expense);
     group.originalVendors.add(expense.vendor || expense.store || expense.merchant || NO_VENDOR_LABEL);
     group.expenses.push(expense);
     group.total += amount;
@@ -121,7 +121,77 @@ export function groupExpensesByVendor(expenses = []) {
   })).sort((a, b) => Math.abs(b.total) - Math.abs(a.total) || a.vendorName.localeCompare(b.vendorName));
 }
 
-export function groupMileageByVehicle(trips = [], vehicles = []) {
+export function expenseHasReceipt(expense = {}) {
+  return Boolean(
+    expense.receiptImage ||
+    expense.receiptImageUrl ||
+    expense.receiptPhoto ||
+    expense.receipt_photo ||
+    expense.receipt_image ||
+    expense.receipt_url ||
+    expense.photoUrl ||
+    expense.imageUrl
+  );
+}
+
+export function normalizeExpenseCategory(value = "") {
+  const key = cleanText(value).toLowerCase();
+  if (/inventory|product|sealed|card|pokemon|tcg/.test(key)) return "Inventory/Product Cost";
+  if (/ship|postage|usps|ups|fedex/.test(key)) return "Shipping";
+  if (/pack|label|box|sleeve|mailer|tape/.test(key)) return "Packaging Supplies";
+  if (/fee|platform|marketplace|seller/.test(key)) return "Platform Fees";
+  if (/mileage|gas|fuel|vehicle|parking/.test(key)) return "Mileage/Vehicle";
+  if (/event|giveaway|show/.test(key)) return "Events/Giveaways";
+  if (/software|subscription|domain|app/.test(key)) return "Software/Subscriptions";
+  if (/supply|supplies|equipment|storage/.test(key)) return "Supplies";
+  return value || "Supplies";
+}
+
+export function normalizeMileagePurpose(value = "") {
+  const key = cleanText(value).toLowerCase();
+  if (/ship|drop.?off|post office|usps|ups|fedex|mail/.test(key)) return "Shipping/drop-off";
+  if (/restock|check|scout|signal|drop|radar/.test(key)) return "Store restock check";
+  if (/inventory|store run|target|walmart|gamestop|barnes|best buy|pickup/.test(key)) return "Inventory run";
+  if (/event|show|trade night|giveaway|spark|kids/.test(key)) return "Event";
+  if (/meet|marketplace|pickup|local sale|handoff/.test(key)) return "Marketplace meetup";
+  if (/suppl|packag|box|label|sleeve|tape|mailer/.test(key)) return "Supplies";
+  return key ? "Other" : "Uncategorized";
+}
+
+export function expenseFromReceiptLine(item = {}, receipt = {}, options = {}) {
+  const id = options.id || item.expenseId || item.id || "";
+  const amount = toNumber(item.totalCost || item.lineTotal || item.amount || (toNumber(item.quantity, 1) * toNumber(item.unitCost || item.unitPrice)));
+  const itemName = cleanText(item.suggestedMatchName || item.itemName || item.productName || item.rawText || "Receipt line");
+  const receiptImage = receipt.receiptImageUrl || receipt.imageUrl || receipt.receiptImage || "";
+  const receiptId = receipt.id || receipt.receiptId || "";
+  return {
+    id,
+    expenseId: id,
+    date: receipt.purchaseDate || String(receipt.purchasedAt || "").slice(0, 10) || recordDateValue(receipt),
+    vendor: receipt.storeName || receipt.merchant || receipt.vendor || "",
+    category: normalizeExpenseCategory(item.category || itemName),
+    subcategory: itemName,
+    buyer: item.buyer || item.purchaserName || options.buyer || "",
+    amount,
+    paymentMethod: receipt.paymentMethod || "",
+    linkedItemId: item.createdInventoryItemId || item.linkedItemId || "",
+    linkedSaleId: "",
+    notes: [item.notes, receiptId ? `Receipt ${receipt.transactionNumber || receiptId}` : "", item.rawText ? `Raw line: ${item.rawText}` : ""].filter(Boolean).join(" | "),
+    receiptImage,
+    receiptPhoto: receiptImage,
+    receiptImageUrl: receiptImage,
+    receiptId,
+    rawReceiptText: item.rawText || "",
+    receiptSplitMode: item.destination || "expense_only",
+    receiptTax: receipt.tax || "",
+    taxDeductible: Boolean(options.taxDeductible),
+    createdAt: receipt.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function groupMileageByVehicle(trips = [], vehicles = [], options = {}) {
+  const selectedYear = String(options.year || new Date().getFullYear());
   const vehicleById = new Map(vehicles.map((vehicle) => [String(vehicle.id), vehicle]));
   const groups = new Map();
   trips.forEach((trip) => {
@@ -133,27 +203,86 @@ export function groupMileageByVehicle(trips = [], vehicles = []) {
         key,
         vehicleName,
         vehicleId: trip.vehicleId || trip.vehicle_id || vehicle?.id || "",
+        vehicle,
         trips: [],
         tripCount: 0,
         totalMiles: 0,
+        ytdMiles: 0,
+        businessMiles: 0,
+        personalMiles: 0,
         totalVehicleCost: 0,
         totalMileageValue: 0,
+        purposeTotals: {},
         lastTripDate: "",
       });
     }
     const group = groups.get(key);
     const date = recordDateValue(trip);
+    const miles = toNumber(trip.businessMiles || trip.business_miles || trip.miles);
+    const personalMiles = toNumber(trip.personalMiles || trip.personal_miles);
+    const purpose = normalizeMileagePurpose(trip.purpose || trip.category || "");
     group.trips.push(trip);
     group.tripCount += 1;
-    group.totalMiles += toNumber(trip.businessMiles || trip.business_miles || trip.miles);
+    group.totalMiles += miles;
+    group.businessMiles += miles;
+    group.personalMiles += personalMiles;
+    if (recordYear(trip) === selectedYear) group.ytdMiles += miles;
     group.totalVehicleCost += toNumber(trip.totalVehicleCost || trip.total_vehicle_cost);
     group.totalMileageValue += toNumber(trip.mileageValue || trip.mileage_value);
+    group.purposeTotals[purpose] = (group.purposeTotals[purpose] || 0) + miles;
     if (!group.lastTripDate || (date && date > group.lastTripDate)) group.lastTripDate = date;
   });
   return [...groups.values()].map((group) => ({
     ...group,
+    topPurposes: Object.entries(group.purposeTotals)
+      .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0) || a[0].localeCompare(b[0]))
+      .map(([purpose, miles]) => ({ purpose, miles })),
     trips: [...group.trips].sort((a, b) => String(recordDateValue(b)).localeCompare(String(recordDateValue(a)))),
   })).sort((a, b) => String(b.lastTripDate).localeCompare(String(a.lastTripDate)) || a.vehicleName.localeCompare(b.vehicleName));
+}
+
+export function buildMileageExportRows(vehicleGroups = []) {
+  const rows = [];
+  vehicleGroups.forEach((group) => {
+    rows.push({
+      section: "Vehicle summary",
+      vehicle: group.vehicleName,
+      date: group.lastTripDate || "",
+      purpose: "All trips",
+      miles: group.totalMiles || 0,
+      tripCount: group.tripCount || 0,
+      totalVehicleCost: group.totalVehicleCost || 0,
+      mileageValue: group.totalMileageValue || 0,
+      notes: "Mileage records for review with your tax professional. Ember & Tide does not provide tax advice.",
+    });
+    (group.topPurposes || []).forEach((entry) => {
+      rows.push({
+        section: "Purpose summary",
+        vehicle: group.vehicleName,
+        date: "",
+        purpose: entry.purpose,
+        miles: entry.miles,
+        tripCount: "",
+        totalVehicleCost: "",
+        mileageValue: "",
+        notes: "",
+      });
+    });
+    (group.trips || []).forEach((trip) => {
+      rows.push({
+        section: "Trip",
+        vehicle: group.vehicleName,
+        date: recordDateValue(trip),
+        purpose: normalizeMileagePurpose(trip.purpose || trip.category || ""),
+        miles: toNumber(trip.businessMiles || trip.business_miles || trip.miles),
+        tripCount: 1,
+        totalVehicleCost: toNumber(trip.totalVehicleCost || trip.total_vehicle_cost),
+        mileageValue: toNumber(trip.mileageValue || trip.mileage_value),
+        notes: cleanText([trip.purpose, trip.driver, trip.notes].filter(Boolean).join(" | ")),
+      });
+    });
+  });
+  return rows;
 }
 
 export function summarizePurchaserInventory(items = []) {
@@ -179,7 +308,7 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
   const yearlyInventoryItems = inventoryItems.filter((item) => !recordDateValue(item) || recordYear(item) === selectedYear);
   const yearlySales = sales.filter((sale) => !recordDateValue(sale) || recordYear(sale) === selectedYear);
   const expenseGroups = groupExpensesByVendor(yearlyExpenses);
-  const mileageGroups = groupMileageByVehicle(yearlyMileageTrips, vehicles);
+  const mileageGroups = groupMileageByVehicle(yearlyMileageTrips, vehicles, { year: selectedYear });
   const purchaserTotals = summarizePurchaserInventory(yearlyInventoryItems);
   const expenseTotal = yearlyExpenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0);
   const mileageMiles = yearlyMileageTrips.reduce((sum, trip) => sum + toNumber(trip.businessMiles || trip.business_miles || trip.miles), 0);

@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 
 import {
   buildTaxRecordExportRows,
+  buildMileageExportRows,
   buildYearEndTaxSummary,
+  expenseFromReceiptLine,
+  expenseHasReceipt,
   groupExpensesByVendor,
   groupMileageByVehicle,
   normalizeBusinessVendor,
+  normalizeExpenseCategory,
+  normalizeMileagePurpose,
   summarizePurchaserInventory,
 } from "../src/utils/businessTaxRecords.js";
 
@@ -18,21 +23,46 @@ const expenses = [
   { id: "e3", vendor: "Target", amount: 20, category: "Supplies", buyer: "Zena", date: "2025-12-31" },
 ];
 
+assert.equal(expenseHasReceipt({ receiptImageUrl: "receipt.png" }), true);
+assert.equal(expenseHasReceipt({}), false);
+assert.equal(normalizeExpenseCategory("Pokemon booster packs"), "Inventory/Product Cost");
+assert.equal(normalizeMileagePurpose("USPS drop-off"), "Shipping/drop-off");
+assert.equal(normalizeMileagePurpose("Target restock check"), "Store restock check");
+
+const receiptExpense = expenseFromReceiptLine(
+  { id: "line-1", itemName: "Packing tape", quantity: 2, unitCost: 3.5, totalCost: 7, destination: "expense_only", rawText: "Packing tape 7.00" },
+  { id: "receipt-1", storeName: "Target Store #456", purchaseDate: "2026-03-04", receiptImageUrl: "target-receipt.png", paymentMethod: "Card", tax: 0.42 },
+  { id: "expense-from-line", buyer: "Zena", taxDeductible: true }
+);
+assert.equal(receiptExpense.vendor, "Target Store #456");
+assert.equal(receiptExpense.amount, 7);
+assert.equal(receiptExpense.receiptImage, "target-receipt.png");
+assert.equal(receiptExpense.receiptId, "receipt-1");
+assert.equal(receiptExpense.buyer, "Zena");
+assert.equal(receiptExpense.taxDeductible, true);
+
 const expenseGroups = groupExpensesByVendor(expenses.slice(0, 2));
 assert.equal(expenseGroups.length, 1);
 assert.equal(expenseGroups[0].vendorName, "Walmart");
 assert.equal(expenseGroups[0].count, 2);
 assert.equal(expenseGroups[0].total, 55);
 assert.equal(expenseGroups[0].missingReceiptCount, 1);
+assert.equal(expenseGroups[0].receiptCount, 1);
 
 const mileageGroups = groupMileageByVehicle([
-  { id: "m1", vehicleId: "prius", vehicleName: "Toyota Prius", businessMiles: 12.5, totalVehicleCost: 4, mileageValue: 8, date: "2026-03-01" },
-  { id: "m2", vehicleId: "prius", vehicleName: "Toyota Prius", businessMiles: 7.5, totalVehicleCost: 3, mileageValue: 5, date: "2026-03-02" },
-  { id: "m3", vehicleName: "Honda Van", businessMiles: 10, totalVehicleCost: 6, mileageValue: 7, date: "2026-03-03" },
-]);
+  { id: "m1", vehicleId: "prius", vehicleName: "Toyota Prius", businessMiles: 12.5, totalVehicleCost: 4, mileageValue: 8, date: "2026-03-01", purpose: "Inventory run" },
+  { id: "m2", vehicleId: "prius", vehicleName: "Toyota Prius", businessMiles: 7.5, totalVehicleCost: 3, mileageValue: 5, date: "2026-03-02", purpose: "USPS drop-off" },
+  { id: "m3", vehicleName: "Honda Van", businessMiles: 10, totalVehicleCost: 6, mileageValue: 7, date: "2026-03-03", purpose: "Marketplace meetup" },
+], [], { year: "2026" });
 assert.equal(mileageGroups.length, 2);
 assert.equal(mileageGroups.find((group) => group.vehicleName === "Toyota Prius").tripCount, 2);
 assert.equal(mileageGroups.find((group) => group.vehicleName === "Toyota Prius").totalMiles, 20);
+assert.equal(mileageGroups.find((group) => group.vehicleName === "Toyota Prius").ytdMiles, 20);
+assert.ok(mileageGroups.find((group) => group.vehicleName === "Toyota Prius").topPurposes.some((entry) => entry.purpose === "Shipping/drop-off"));
+
+const mileageExportRows = buildMileageExportRows(mileageGroups);
+assert.ok(mileageExportRows.some((row) => row.section === "Vehicle summary" && row.vehicle === "Toyota Prius"));
+assert.ok(mileageExportRows.some((row) => row.section === "Trip" && row.purpose === "Shipping/drop-off"));
 
 const purchaserTotals = summarizePurchaserInventory([
   { id: "i1", name: "ETB", purchaserName: "Zena", quantity: 4, unitCost: 50, marketPrice: 55, salePrice: 60 },

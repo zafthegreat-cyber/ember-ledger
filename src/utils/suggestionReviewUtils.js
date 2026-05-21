@@ -30,6 +30,7 @@ export const SUGGESTION_TYPES = {
   SUGGEST_RESTOCK_PATTERN: "suggest_restock_pattern",
   SUGGEST_PURCHASE_LIMIT: "suggest_purchase_limit",
   SCOUT_REPORT_REVIEW: "scout_report_review",
+  EMBER_ASSIST_ADMIN_MESSAGE: "ember_assist_admin_message",
 };
 
 export const SUGGESTION_TYPE_LABELS = {
@@ -49,6 +50,7 @@ export const SUGGESTION_TYPE_LABELS = {
   [SUGGESTION_TYPES.SUGGEST_RESTOCK_PATTERN]: "Suggest Restock Pattern",
   [SUGGESTION_TYPES.SUGGEST_PURCHASE_LIMIT]: "Suggest Purchase Limit",
   [SUGGESTION_TYPES.SCOUT_REPORT_REVIEW]: "Scout Report Review",
+  [SUGGESTION_TYPES.EMBER_ASSIST_ADMIN_MESSAGE]: "Ember Assist Message",
 };
 
 export const REVIEW_SECTION_LABELS = {
@@ -59,6 +61,7 @@ export const REVIEW_SECTION_LABELS = {
   reports: "Scout Report Review",
   intelligence: "Store Intelligence Suggestions",
   flagged: "Duplicate / Closed Store Reports",
+  assist: "Ember Assist Inbox",
 };
 
 function safeParse(value, fallback) {
@@ -199,6 +202,7 @@ export function appendAdminReviewLog(entry = {}) {
 
 export function getSuggestionReviewSection(suggestion = {}) {
   const type = suggestion.suggestionType;
+  if (type === SUGGESTION_TYPES.EMBER_ASSIST_ADMIN_MESSAGE || suggestion.targetTable === "ember_assist_messages") return "assist";
   if ([SUGGESTION_TYPES.ADD_MISSING_STORE, SUGGESTION_TYPES.EDIT_STORE_DETAILS, SUGGESTION_TYPES.SUGGEST_STORE_NICKNAME, SUGGESTION_TYPES.SUGGEST_STORE_REGION_CORRECTION].includes(type)) return "store";
   if ([SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT, SUGGESTION_TYPES.CORRECT_CATALOG_PRODUCT, SUGGESTION_TYPES.CORRECT_MSRP, SUGGESTION_TYPES.CORRECT_PRODUCT_METADATA].includes(type)) return "catalog";
   if (type === SUGGESTION_TYPES.ADD_UPC_SKU) return "sku";
@@ -211,6 +215,9 @@ export function getSuggestionReviewSection(suggestion = {}) {
 
 export function suggestionTitle(suggestion = {}) {
   const data = suggestion.submittedData || {};
+  if (suggestion.suggestionType === SUGGESTION_TYPES.EMBER_ASSIST_ADMIN_MESSAGE || suggestion.targetTable === "ember_assist_messages") {
+    return data.question || data.category || "Ember Assist message";
+  }
   return (
     data.name ||
     data.storeName ||
