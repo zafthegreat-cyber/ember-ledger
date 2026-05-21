@@ -36615,6 +36615,21 @@ body,
   color: var(--et-readable-muted) !important;
 }
 
+.sales-records-summary-panel {
+  border-color: rgba(56, 189, 248, 0.22) !important;
+}
+
+.sales-summary-grid > div,
+.sales-record-card {
+  background: rgba(8, 18, 34, 0.82) !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  color: var(--et-readable-text) !important;
+}
+
+.sales-record-card .sales-record-metrics {
+  margin: 0.75rem 0;
+}
+
 .ember-assist-shell {
   bottom: 1.25rem;
   pointer-events: none;

@@ -237,12 +237,19 @@ import {
   workspaceDeleteBlockReason,
 } from "./utils/settingsWorkspaceSafety";
 import {
+  SALES_PLATFORM_OPTIONS,
+  buildSalesExportRows,
   buildMileageExportRows,
   buildTaxRecordExportRows,
   buildYearEndTaxSummary,
+  buildSalesRecordFromDraft,
+  calculateSalesRecordTotals,
   expenseFromReceiptLine,
   expenseHasReceipt,
+  normalizeSalesPlatform,
   normalizeMileagePurpose,
+  summarizeSalesRecords,
+  validateManualSaleDraft,
 } from "./utils/businessTaxRecords";
 import {
   EMBER_ASSIST_ESCALATION_CATEGORIES,
@@ -1024,7 +1031,7 @@ function loadDailyTideState() {
 
 const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
 const STATUSES = ["In Stock", "Needs Photos", "Needs Market Check", "Ready to List", "Listed", "Sold", "Held", "Personal Collection", "Damaged"];
-const PLATFORMS = ["eBay", "Mercari", "Whatnot", "Facebook Marketplace", "In-Store", "Instagram", "TikTok Shop", "Other"];
+const PLATFORMS = SALES_PLATFORM_OPTIONS;
 const VAULT_CATEGORIES = ["Personal collection", "Keep sealed", "Rip later", "Trade", "Favorite", "Wishlist", "Set goal", "Kid collection"];
 const VAULT_STATUS_OPTIONS = [
   { value: "personal_collection", label: "Personal Collection", description: "Keeping long term." },
@@ -4517,7 +4524,25 @@ export default function App() {
 };
 
   const blankTrip = { date: "", purpose: "", driver: "", vehicleId: "", startMiles: "", endMiles: "", gasPrice: "", notes: "", gasReceiptImage: "" };
-  const blankSale = { itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCharged: "", shippingCost: "", platformFees: "", notes: "" };
+  const blankSale = {
+    itemId: "",
+    manualItemName: "",
+    saleDate: "",
+    platform: "eBay",
+    quantitySold: 1,
+    finalSalePrice: "",
+    shippingCharged: "",
+    platformFees: "",
+    paymentProcessingFees: "",
+    shippingCost: "",
+    suppliesCost: "",
+    discountsRefunds: "",
+    costBasis: "",
+    buyerName: "",
+    referenceId: "",
+    receiptImage: "",
+    notes: "",
+  };
 
   const blankCatalog = {
   catalogType: "sealed",
@@ -9146,6 +9171,14 @@ export default function App() {
     const previewRows = forgeImportForm.previewRows || [];
     if (!forgeImportForm.fileName) {
       showAppMessage("Choose a file to import first.");
+      return;
+    }
+    if (forgeImportForm.importType === "Sales") {
+      setForgeImportForm((current) => ({
+        ...current,
+        mappingNotes: "Sales import mapping is coming soon. Manual sale entry is available now; this file was previewed but no sale records were saved.",
+      }));
+      setVaultToast("Sales import preview is staged for mapping only. No sale records were saved.");
       return;
     }
     if (!previewRows.length) {
@@ -14873,7 +14906,49 @@ function mapCatalog(row) {
   }
 
   function mapSale(row) {
-    return { id: row.id, itemId: row.item_id || row.itemId, itemName: row.item_name || row.itemName || "", sku: row.sku || "", platform: row.platform || "", quantitySold: Number(row.quantity_sold ?? row.quantitySold ?? 0), finalSalePrice: Number(row.final_sale_price ?? row.finalSalePrice ?? 0), grossSale: Number(row.gross_sale ?? row.grossSale ?? 0), itemCost: Number(row.item_cost ?? row.itemCost ?? 0), shippingCost: Number(row.shipping_cost ?? row.shippingCost ?? 0), platformFees: Number(row.platform_fees ?? row.platformFees ?? 0), netProfit: Number(row.net_profit ?? row.netProfit ?? 0), notes: row.notes || "", workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID, workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceName: row.workspaceName || row.workspace_name || "", createdAt: row.createdAt || row.created_at };
+    const mapped = {
+      id: row.id,
+      itemId: row.item_id || row.itemId || row.linkedInventoryItemId || row.linked_inventory_item_id || "",
+      linkedInventoryItemId: row.linkedInventoryItemId || row.linked_inventory_item_id || row.item_id || row.itemId || "",
+      itemName: row.item_name || row.itemName || row.manualItemName || row.manual_item_name || "",
+      sku: row.sku || "",
+      platform: normalizeSalesPlatform(row.platform || row.channel || ""),
+      buyerName: row.buyerName || row.buyer_name || row.customerName || row.customer_name || "",
+      saleDate: row.saleDate || row.sale_date || row.soldAt || row.sold_at || String(row.createdAt || row.created_at || "").slice(0, 10),
+      quantitySold: Number(row.quantity_sold ?? row.quantitySold ?? 0),
+      finalSalePrice: Number(row.final_sale_price ?? row.finalSalePrice ?? 0),
+      shippingCharged: Number(row.shipping_charged ?? row.shippingCharged ?? 0),
+      grossSale: Number(row.gross_sale ?? row.grossSale ?? 0),
+      itemCost: Number(row.item_cost ?? row.itemCost ?? row.costBasis ?? row.cost_basis ?? 0),
+      costBasis: Number(row.costBasis ?? row.cost_basis ?? row.item_cost ?? row.itemCost ?? 0),
+      shippingCost: Number(row.shipping_cost ?? row.shippingCost ?? 0),
+      platformFees: Number(row.platform_fees ?? row.platformFees ?? 0),
+      paymentProcessingFees: Number(row.paymentProcessingFees ?? row.payment_processing_fees ?? 0),
+      suppliesCost: Number(row.suppliesCost ?? row.supplies_cost ?? 0),
+      discountsRefunds: Number(row.discountsRefunds ?? row.discounts_refunds ?? 0),
+      netProceeds: Number(row.netProceeds ?? row.net_proceeds ?? 0),
+      netProfit: Number(row.net_profit ?? row.netProfit ?? row.estimatedProfitLoss ?? row.estimated_profit_loss ?? 0),
+      estimatedProfitLoss: Number(row.estimatedProfitLoss ?? row.estimated_profit_loss ?? row.net_profit ?? row.netProfit ?? 0),
+      referenceId: row.referenceId || row.reference_id || row.orderId || row.order_id || row.transactionId || row.transaction_id || "",
+      receiptImage: row.receiptImage || row.receipt_image || row.receiptImageUrl || row.receipt_image_url || row.referenceImage || row.reference_image || "",
+      receiptImageUrl: row.receiptImageUrl || row.receipt_image_url || row.receiptImage || row.receipt_image || row.referenceImage || row.reference_image || "",
+      notes: row.notes || "",
+      workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: row.workspaceName || row.workspace_name || "",
+      createdAt: row.createdAt || row.created_at || (row.saleDate || row.sale_date ? `${row.saleDate || row.sale_date}T12:00:00.000Z` : ""),
+      updatedAt: row.updatedAt || row.updated_at,
+    };
+    const totals = calculateSalesRecordTotals(mapped);
+    return {
+      ...mapped,
+      grossSale: mapped.grossSale || totals.grossSale,
+      itemCost: mapped.itemCost || totals.costBasis,
+      costBasis: mapped.costBasis || totals.costBasis,
+      netProceeds: mapped.netProceeds || totals.netProceeds,
+      netProfit: mapped.netProfit || totals.estimatedProfitLoss,
+      estimatedProfitLoss: mapped.estimatedProfitLoss || totals.estimatedProfitLoss,
+    };
   }
 
   async function loadInventory() {
@@ -17758,55 +17833,73 @@ function renderForgeHeader() {
     event.preventDefault();
     if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in first.");
-    if (!saleForm.itemId || !saleForm.quantitySold || !saleForm.finalSalePrice) return showAppMessage("Please choose item, quantity, and price.");
 
     const item = forgeInventoryItems.find((i) => String(i.id) === String(saleForm.itemId));
-    if (!item) return showAppMessage("Item not found.");
-    if (!ensureWorkspaceEditor(item.workspaceId || item.workspace_id || activeWorkspace?.id)) return;
+    const targetWorkspaceId = item?.workspaceId || item?.workspace_id || activeForgeWorkspace?.id || activeWorkspace?.id;
+    if (!ensureWorkspaceEditor(targetWorkspaceId)) return;
 
-    const qty = Number(saleForm.quantitySold);
-    if (qty > item.quantity) return showAppMessage("You cannot sell more than you have.");
+    const saleBuild = buildSalesRecordFromDraft(saleForm, item || {}, {
+      id: editingSaleId || makeId("sale"),
+      workspaceId: targetWorkspaceId,
+      workspaceName: item?.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      createdAt: sales.find((sale) => sale.id === editingSaleId)?.createdAt,
+    });
+    if (!saleBuild.valid) {
+      const firstError = Object.values(saleBuild.errors)[0] || "Sale details need review before saving.";
+      return showAppMessage(firstError);
+    }
 
-    const price = Number(saleForm.finalSalePrice);
-    const shippingCharged = Number(saleForm.shippingCharged || 0);
-    const shipping = Number(saleForm.shippingCost || 0);
-    const fees = Number(saleForm.platformFees || 0);
-    const itemCost = item.unitCost * qty;
-    const grossSale = price * qty + shippingCharged;
-    const netProfit = grossSale - itemCost - shipping - fees;
-    const remaining = item.quantity - qty;
+    const saleRecord = saleBuild.sale;
+    const qty = Number(saleRecord.quantitySold || 0);
+    if (item && qty > Number(item.quantity || 0)) return showAppMessage("You cannot sell more than you have.");
+    const remaining = item ? Number(item.quantity || 0) - qty : 0;
+    const saleNotes = [
+      saleRecord.notes,
+      saleRecord.saleDate ? `Sale date: ${saleRecord.saleDate}` : "",
+      saleRecord.buyerName ? `Buyer/customer: ${saleRecord.buyerName}` : "",
+      saleRecord.shippingCharged ? `Shipping charged: ${money(saleRecord.shippingCharged)}` : "",
+      saleRecord.paymentProcessingFees ? `Payment processing fee: ${money(saleRecord.paymentProcessingFees)}` : "",
+      saleRecord.suppliesCost ? `Supplies cost: ${money(saleRecord.suppliesCost)}` : "",
+      saleRecord.discountsRefunds ? `Discounts/refunds: ${money(saleRecord.discountsRefunds)}` : "",
+      `Estimated net proceeds: ${money(saleRecord.netProceeds)}`,
+      saleRecord.referenceId ? `Reference: ${saleRecord.referenceId}` : "",
+    ].filter(Boolean).join(" | ");
 
     const row = {
       user_id: user.id,
-      workspace_id: uuidOrNull(item.workspaceId || item.workspace_id || activeWorkspace?.id),
-      item_id: item.id,
-      item_name: item.name,
-      sku: item.sku,
-      original_buyer: item.buyer,
-      category: item.category,
-      store: item.store,
-      platform: saleForm.platform,
+      workspace_id: uuidOrNull(targetWorkspaceId),
+      item_id: item?.id || null,
+      item_name: saleRecord.itemName,
+      sku: saleRecord.sku,
+      original_buyer: item?.buyer || saleRecord.buyerName || "",
+      category: item?.category || "",
+      store: item?.store || "",
+      platform: saleRecord.platform,
       quantity_sold: qty,
-      final_sale_price: price,
-      gross_sale: grossSale,
-      item_cost: itemCost,
-      shipping_cost: shipping,
-      platform_fees: fees,
-      net_profit: netProfit,
-      notes: [saleForm.notes, shippingCharged ? `Shipping charged: ${money(shippingCharged)}` : ""].filter(Boolean).join(" | "),
+      final_sale_price: saleRecord.finalSalePrice,
+      gross_sale: saleRecord.grossSale,
+      item_cost: saleRecord.costBasis,
+      shipping_cost: saleRecord.shippingCost + saleRecord.suppliesCost,
+      platform_fees: saleRecord.totalFees,
+      net_profit: saleRecord.estimatedProfitLoss,
+      notes: saleNotes,
     };
+    if (saleRecord.saleDate) row.created_at = `${saleRecord.saleDate}T12:00:00.000Z`;
 
     if (BETA_LOCAL_MODE || user.id === "local-beta") {
       const localRow = {
         ...row,
-        id: editingSaleId || makeId("sale"),
-        workspaceId: item.workspaceId || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
-        workspaceName: item.workspaceName || activeWorkspace?.name || "My Personal Space",
-        created_at: sales.find((sale) => sale.id === editingSaleId)?.createdAt || new Date().toISOString(),
+        ...saleRecord,
+        id: editingSaleId || saleRecord.id || makeId("sale"),
+        workspaceId: targetWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
+        workspace_id: targetWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
+        workspaceName: saleRecord.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+        notes: saleNotes,
+        created_at: sales.find((sale) => sale.id === editingSaleId)?.createdAt || saleRecord.createdAt || new Date().toISOString(),
       };
       const mapped = mapSale(localRow);
       setSales(editingSaleId ? sales.map((sale) => (sale.id === editingSaleId ? mapped : sale)) : [mapped, ...sales]);
-      if (!editingSaleId) {
+      if (!editingSaleId && item) {
         setItems(items.map((currentItem) => (
           currentItem.id === item.id
             ? { ...currentItem, quantity: remaining, status: remaining === 0 ? "Sold" : currentItem.status, updatedAt: new Date().toISOString() }
@@ -17829,7 +17922,7 @@ function renderForgeHeader() {
 
     if (saleError) return showAppMessage("Could not save sale: " + saleError.message);
 
-    if (!editingSaleId) {
+    if (!editingSaleId && item) {
       const { data: updatedItem, error: updateError } = await supabase
         .from("inventory_items")
         .update({ quantity: remaining, status: remaining === 0 ? "Sold" : item.status, updated_at: new Date().toISOString() })
@@ -17860,7 +17953,26 @@ function renderForgeHeader() {
   function startEditingSale(sale) {
     if (!ensureWorkspaceEditor(sale?.workspaceId || sale?.workspace_id || activeWorkspace?.id)) return;
     setEditingSaleId(sale.id);
-    setSaleForm({ itemId: sale.itemId, platform: sale.platform, quantitySold: sale.quantitySold, finalSalePrice: sale.finalSalePrice, shippingCharged: "", shippingCost: sale.shippingCost, platformFees: sale.platformFees, notes: sale.notes });
+    setSaleForm({
+      ...blankSale,
+      itemId: sale.itemId || "",
+      manualItemName: sale.itemId ? "" : sale.itemName || "",
+      saleDate: sale.saleDate || String(sale.createdAt || "").slice(0, 10),
+      platform: normalizeSalesPlatform(sale.platform || ""),
+      quantitySold: sale.quantitySold || 1,
+      finalSalePrice: sale.finalSalePrice || "",
+      shippingCharged: sale.shippingCharged || "",
+      shippingCost: sale.shippingCost || "",
+      platformFees: sale.platformFees || "",
+      paymentProcessingFees: sale.paymentProcessingFees || "",
+      suppliesCost: sale.suppliesCost || "",
+      discountsRefunds: sale.discountsRefunds || "",
+      costBasis: sale.costBasis || sale.itemCost || "",
+      buyerName: sale.buyerName || "",
+      referenceId: sale.referenceId || "",
+      receiptImage: sale.receiptImage || sale.receiptImageUrl || "",
+      notes: sale.notes,
+    });
     openFlowModal("addSale", { size: "medium", source: "edit" });
   }
 
@@ -17946,6 +18058,30 @@ function renderForgeHeader() {
     }
     downloadCSV(`ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.csv`, buildMileageExportRows(groupedMileageVehicles));
     setVaultToast("Mileage records CSV exported for review.");
+  }
+
+  function downloadSalesRecords(format = "csv") {
+    if (!workspaceSales.length) return showAppMessage("No sales records to export yet.");
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      workspace: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+      disclaimer: "Sales records are organized for year-end review with your tax professional. Ember & Tide does not provide tax advice.",
+      summary: salesSummary,
+      sales: workspaceSales,
+    };
+    if (format === "json") {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ember-tide-sales-records-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setVaultToast("Sales records JSON exported for review.");
+      return;
+    }
+    downloadCSV(`ember-tide-sales-records-${new Date().toISOString().slice(0, 10)}.csv`, buildSalesExportRows(workspaceSales));
+    setVaultToast("Sales records CSV exported for review.");
   }
 
   function createBetaBackup() {
@@ -18511,19 +18647,22 @@ function renderForgeHeader() {
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const estimatedProfitAfterMarketing = estimatedProfit - totalMarketingSpend;
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
-  const totalSalesRevenue = workspaceSales.reduce((s, sale) => s + sale.grossSale, 0);
-  const totalSalesProfit = workspaceSales.reduce((s, sale) => s + sale.netProfit, 0);
-  const totalItemsSold = workspaceSales.reduce((s, sale) => s + sale.quantitySold, 0);
+  const salesSummary = useMemo(() => summarizeSalesRecords(workspaceSales), [workspaceSales]);
+  const totalSalesRevenue = salesSummary.grossSales;
+  const totalSalesProfit = salesSummary.estimatedProfitLoss;
+  const totalItemsSold = salesSummary.itemsSold;
   const activeForgeItems = forgeInventoryItems;
   const selectedSaleItem = forgeInventoryItems.find((item) => String(item.id) === String(saleForm.itemId));
-  const saleQuantity = Number(saleForm.quantitySold || 0);
-  const salePriceEach = Number(saleForm.finalSalePrice || 0);
-  const saleShippingCharged = Number(saleForm.shippingCharged || 0);
-  const saleShippingCost = Number(saleForm.shippingCost || 0);
-  const saleFees = Number(saleForm.platformFees || 0);
-  const saleCostBasis = selectedSaleItem ? Number(selectedSaleItem.unitCost || 0) * saleQuantity : 0;
-  const saleGrossPreview = salePriceEach * saleQuantity + saleShippingCharged;
-  const saleProfitPreview = saleGrossPreview - saleCostBasis - saleShippingCost - saleFees;
+  const saleValidation = validateManualSaleDraft(saleForm, { linkedItem: selectedSaleItem });
+  const saleTotalsPreview = calculateSalesRecordTotals(saleForm, selectedSaleItem);
+  const saleQuantity = saleTotalsPreview.quantitySold;
+  const saleFees = saleTotalsPreview.totalFees;
+  const saleShippingCost = saleTotalsPreview.shippingCost;
+  const saleSuppliesCost = saleTotalsPreview.suppliesCost;
+  const saleCostBasis = saleTotalsPreview.costBasis;
+  const saleGrossPreview = saleTotalsPreview.grossSale;
+  const saleNetProceedsPreview = saleTotalsPreview.netProceeds;
+  const saleProfitPreview = saleTotalsPreview.estimatedProfitLoss;
   const totalBusinessMiles = workspaceMileageTrips.reduce((s, t) => s + t.businessMiles, 0);
   const totalFuelCost = workspaceMileageTrips.reduce((s, t) => s + t.fuelCost, 0);
   const totalWearCost = workspaceMileageTrips.reduce((s, t) => s + t.wearCost, 0);
@@ -18548,7 +18687,7 @@ function renderForgeHeader() {
     ]),
   ].filter(Boolean);
 
-  const salesByPlatform = workspaceSales.reduce((a, s) => ({ ...a, [s.platform]: (a[s.platform] || 0) + s.grossSale }), {});
+  const salesByPlatform = salesSummary.byPlatform.reduce((acc, row) => ({ ...acc, [row.label]: row.grossSales }), {});
   const expensesByCategory = workspaceExpenses.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + e.amount }), {});
   const inventoryByCategory = forgeInventoryItems.reduce((a, i) => ({ ...a, [i.category || "Uncategorized"]: (a[i.category || "Uncategorized"] || 0) + i.quantity }), {});
   const inventoryByStatus = forgeInventoryItems.reduce((a, i) => ({ ...a, [i.status || "In Stock"]: (a[i.status || "In Stock"] || 0) + i.quantity }), {});
@@ -28961,10 +29100,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <div className="forge-sale-fields-grid">
           <Field label="Item Sold">
             <select value={saleForm.itemId} onChange={(e) => updateSaleForm("itemId", e.target.value)}>
-              <option value="">Choose item</option>
+              <option value="">Manual sale / not linked to inventory</option>
               {forgeInventoryItems.filter((i) => i.quantity > 0).map((i) => <option key={i.id} value={i.id}>{i.name} - Qty {i.quantity} - {i.sku}</option>)}
             </select>
           </Field>
+          {!selectedSaleItem ? (
+            <Field label="Manual Item Name">
+              <input value={saleForm.manualItemName} placeholder="Product or item sold" onChange={(e) => updateSaleForm("manualItemName", e.target.value)} />
+            </Field>
+          ) : null}
           {selectedSaleItem ? (
             <div className="forge-sale-product-summary">
               {selectedSaleItem.itemImage ? <img src={selectedSaleItem.itemImage} alt="" /> : <span>Item</span>}
@@ -28976,25 +29120,37 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </div>
           ) : (
             <div className="small-empty-state forge-sale-helper">
-              <strong>Choose an inventory item to calculate cost basis and profit.</strong>
+              <strong>Manual sale entry is available.</strong>
+              <span>Inventory will not be adjusted automatically unless you link a Forge item.</span>
             </div>
           )}
+          <Field label="Sale Date"><input type="date" value={saleForm.saleDate} onChange={(e) => updateSaleForm("saleDate", e.target.value)} /></Field>
           <Field label="Platform"><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+          <Field label="Buyer / Customer Optional"><input value={saleForm.buyerName} onChange={(e) => updateSaleForm("buyerName", e.target.value)} placeholder="Optional customer label" /></Field>
           <Field label="Quantity Sold"><input type="number" min="1" value={saleForm.quantitySold} onChange={(e) => updateSaleForm("quantitySold", e.target.value)} /></Field>
           <Field label="Sale Price Each"><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
           <Field label="Shipping Charged"><input type="number" step="0.01" value={saleForm.shippingCharged} onChange={(e) => updateSaleForm("shippingCharged", e.target.value)} /></Field>
+          <Field label="Platform Fee"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
+          <Field label="Payment Processing Fee"><input type="number" step="0.01" value={saleForm.paymentProcessingFees} onChange={(e) => updateSaleForm("paymentProcessingFees", e.target.value)} /></Field>
           <Field label="Shipping Cost"><input type="number" step="0.01" value={saleForm.shippingCost} onChange={(e) => updateSaleForm("shippingCost", e.target.value)} /></Field>
-          <Field label="Fees"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
+          <Field label="Supplies Cost"><input type="number" step="0.01" value={saleForm.suppliesCost} onChange={(e) => updateSaleForm("suppliesCost", e.target.value)} /></Field>
+          <Field label="Discounts / Refunds"><input type="number" step="0.01" value={saleForm.discountsRefunds} onChange={(e) => updateSaleForm("discountsRefunds", e.target.value)} /></Field>
+          {!selectedSaleItem ? <Field label="Cost Basis"><input type="number" step="0.01" value={saleForm.costBasis} onChange={(e) => updateSaleForm("costBasis", e.target.value)} /></Field> : null}
+          <Field label="Order / Reference"><input value={saleForm.referenceId} onChange={(e) => updateSaleForm("referenceId", e.target.value)} placeholder="Order ID, payout, or receipt reference" /></Field>
+          <Field label="Receipt / Reference Image"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateSaleForm("receiptImage", url), "sales")} /></Field>
           <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
         </div>
+        {saleForm.receiptImage ? <div className="receipt-preview"><p>Sale reference</p><img src={saleForm.receiptImage} alt="Sale reference" /></div> : null}
         <div className="profit-preview forge-profit-preview">
           <h3>Estimated Profit</h3>
           <div className="preview-grid">
             <div><span>Gross Sale</span><strong>{money(saleGrossPreview)}</strong></div>
+            <div><span>Net Proceeds</span><strong>{money(saleNetProceedsPreview)}</strong></div>
             <div><span>Cost Basis</span><strong>{money(saleCostBasis)}</strong></div>
-            <div><span>Shipping + Fees</span><strong>{money(saleShippingCost + saleFees)}</strong></div>
-            <div><span>Net Profit</span><strong>{money(saleProfitPreview)}</strong></div>
+            <div><span>Shipping + Fees</span><strong>{money(saleShippingCost + saleSuppliesCost + saleFees)}</strong></div>
+            <div><span>Estimated Profit/Loss</span><strong>{money(saleProfitPreview)}</strong></div>
           </div>
+          {!saleValidation.valid ? <p className="flow-inline-message is-warning">{Object.values(saleValidation.errors)[0]}</p> : null}
         </div>
         <div className="ai-helper-note">
           <span>Mileage, sales, and tax-related estimates are for tracking only and are not tax advice.</span>
@@ -31054,6 +31210,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
         <details className="forge-import-mapping" open={Boolean(forgeImportForm.detectedColumns.length || previewRows.length)}>
           <summary>Preview detected columns and mapping</summary>
+          {forgeImportForm.importType === "Sales" ? (
+            <p className="flow-inline-message is-info">
+              Sales import mapping is coming soon. Manual sale entry is available now; this preview helps you confirm date, platform, item name, quantity, gross sale, fees, shipping, net payout, and notes before a future import save.
+            </p>
+          ) : null}
           {forgeImportForm.detectedColumns.length ? (
             <div className="forge-import-columns">
               {forgeImportForm.detectedColumns.map((column) => <span key={column}>{column}</span>)}
@@ -37329,13 +37490,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="export-grid">
                 <button onClick={() => downloadCSV("ember-tide-inventory.csv", items)}>Export Forge Inventory</button>
                 <button onClick={() => downloadCSV("ember-tide-catalog.csv", catalogProducts)}>Export Catalog</button>
-                <button onClick={() => downloadCSV("ember-tide-sales.csv", sales)}>Export Forge Sales</button>
+                <button onClick={() => downloadSalesRecords("csv")}>Export Forge Sales CSV</button>
+                <button onClick={() => downloadSalesRecords("json")}>Export Forge Sales JSON</button>
                 <button onClick={() => downloadCSV("ember-tide-expenses.csv", expenses)}>Export Expenses</button>
                 <button onClick={() => downloadMileageRecords("csv")}>Export Mileage CSV</button>
                 <button onClick={() => downloadMileageRecords("json")}>Export Mileage JSON</button>
                 <button onClick={() => downloadCSV("ember-tide-vehicles.csv", vehicles)}>Export Vehicles</button>
-                <button onClick={() => downloadYearEndTaxSummary("csv")}>Export Tax Records CSV</button>
-                <button onClick={() => downloadYearEndTaxSummary("json")}>Export Tax Records JSON</button>
+                <button onClick={() => downloadYearEndTaxSummary("csv")}>Export Year-End CSV</button>
+                <button onClick={() => downloadYearEndTaxSummary("json")}>Export Year-End JSON</button>
                 <button onClick={downloadBackup}>Full Backup</button>
               </div>
             </section>
@@ -39627,10 +39789,15 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <div className="forge-sale-fields-grid">
               <Field label="Item Sold">
                 <select value={saleForm.itemId} onChange={(e) => updateSaleForm("itemId", e.target.value)}>
-                  <option value="">Choose item</option>
+                  <option value="">Manual sale / not linked to inventory</option>
                   {forgeInventoryItems.filter((i) => i.quantity > 0).map((i) => <option key={i.id} value={i.id}>{i.name} — Qty {i.quantity} — {i.sku}</option>)}
                 </select>
               </Field>
+              {!selectedSaleItem ? (
+                <Field label="Manual Item Name">
+                  <input value={saleForm.manualItemName} placeholder="Product or item sold" onChange={(e) => updateSaleForm("manualItemName", e.target.value)} />
+                </Field>
+              ) : null}
               {selectedSaleItem ? (
                 <div className="forge-sale-product-summary">
                   {selectedSaleItem.itemImage ? <img src={selectedSaleItem.itemImage} alt="" /> : <span>Item</span>}
@@ -39642,25 +39809,37 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </div>
               ) : (
                 <div className="small-empty-state forge-sale-helper">
-                  <strong>Choose an inventory item to calculate cost basis and profit.</strong>
+                  <strong>Manual sale entry is available.</strong>
+                  <span>Inventory will not be adjusted automatically unless you link a Forge item.</span>
                 </div>
               )}
+              <Field label="Sale Date"><input type="date" value={saleForm.saleDate} onChange={(e) => updateSaleForm("saleDate", e.target.value)} /></Field>
               <Field label="Platform"><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+              <Field label="Buyer / Customer Optional"><input value={saleForm.buyerName} onChange={(e) => updateSaleForm("buyerName", e.target.value)} placeholder="Optional customer label" /></Field>
               <Field label="Quantity Sold"><input type="number" min="1" value={saleForm.quantitySold} onChange={(e) => updateSaleForm("quantitySold", e.target.value)} /></Field>
               <Field label="Sale Price Each"><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
               <Field label="Shipping Charged"><input type="number" step="0.01" value={saleForm.shippingCharged} onChange={(e) => updateSaleForm("shippingCharged", e.target.value)} /></Field>
+              <Field label="Platform Fee"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
+              <Field label="Payment Processing Fee"><input type="number" step="0.01" value={saleForm.paymentProcessingFees} onChange={(e) => updateSaleForm("paymentProcessingFees", e.target.value)} /></Field>
               <Field label="Shipping Cost"><input type="number" step="0.01" value={saleForm.shippingCost} onChange={(e) => updateSaleForm("shippingCost", e.target.value)} /></Field>
-              <Field label="Fees"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
+              <Field label="Supplies Cost"><input type="number" step="0.01" value={saleForm.suppliesCost} onChange={(e) => updateSaleForm("suppliesCost", e.target.value)} /></Field>
+              <Field label="Discounts / Refunds"><input type="number" step="0.01" value={saleForm.discountsRefunds} onChange={(e) => updateSaleForm("discountsRefunds", e.target.value)} /></Field>
+              {!selectedSaleItem ? <Field label="Cost Basis"><input type="number" step="0.01" value={saleForm.costBasis} onChange={(e) => updateSaleForm("costBasis", e.target.value)} /></Field> : null}
+              <Field label="Order / Reference"><input value={saleForm.referenceId} onChange={(e) => updateSaleForm("referenceId", e.target.value)} placeholder="Order ID, payout, or receipt reference" /></Field>
+              <Field label="Receipt / Reference Image"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateSaleForm("receiptImage", url), "sales")} /></Field>
               <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
               </div>
+              {saleForm.receiptImage ? <div className="receipt-preview"><p>Sale reference</p><img src={saleForm.receiptImage} alt="Sale reference" /></div> : null}
               <div className="profit-preview forge-profit-preview">
                 <h3>Estimated Profit</h3>
                 <div className="preview-grid">
                   <div><span>Gross Sale</span><strong>{money(saleGrossPreview)}</strong></div>
+                  <div><span>Net Proceeds</span><strong>{money(saleNetProceedsPreview)}</strong></div>
                   <div><span>Cost Basis</span><strong>{money(saleCostBasis)}</strong></div>
-                  <div><span>Shipping + Fees</span><strong>{money(saleShippingCost + saleFees)}</strong></div>
-                  <div><span>Net Profit</span><strong>{money(saleProfitPreview)}</strong></div>
+                  <div><span>Shipping + Fees</span><strong>{money(saleShippingCost + saleSuppliesCost + saleFees)}</strong></div>
+                  <div><span>Estimated Profit/Loss</span><strong>{money(saleProfitPreview)}</strong></div>
                 </div>
+                {!saleValidation.valid ? <p className="flow-inline-message is-warning">{Object.values(saleValidation.errors)[0]}</p> : null}
               </div>
               <div className="ai-helper-note">
                 <span>Mileage, sales, and tax-related estimates are for tracking only and are not tax advice.</span>
@@ -39669,34 +39848,84 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </div>
               <div className="forge-form-footer">
                 <button type="submit">{editingSaleId ? "Save Sale" : "Add Sale"}</button>
-                {editingSaleId && <button type="button" className="secondary-button" onClick={() => { setEditingSaleId(null); setSaleForm({ itemId: "", platform: "eBay", quantitySold: 1, finalSalePrice: "", shippingCharged: "", shippingCost: "", platformFees: "", notes: "" }); }}>Cancel Edit</button>}
+                {editingSaleId && <button type="button" className="secondary-button" onClick={() => { setEditingSaleId(null); setSaleForm(blankSale); }}>Cancel Edit</button>}
               </div>
             </form>
           </section>
         )}
 
         {!activeTabLocked && activeTab === "sales" && (
-          <ListPanel title="Forge Sales" emptyText="No sales added yet.">
-            {workspaceSales.map((sale) => (
-              <div className="inventory-card" key={sale.id}>
-                <h3>{sale.itemName}</h3>
-                <p>SKU: {sale.sku}</p>
-                <p>Platform: {sale.platform}</p>
-                <p>Quantity Sold: {sale.quantitySold}</p>
-                <p>Sale Price Each: {money(sale.finalSalePrice)}</p>
-                <p>Gross Sale: {money(sale.grossSale)}</p>
-                <p>Item Cost: {money(sale.itemCost)}</p>
-                <p>Shipping: {money(sale.shippingCost)}</p>
-                <p>Fees: {money(sale.platformFees)}</p>
-                <p>Net Profit: {money(sale.netProfit)}</p>
-                {sale.notes && <p>Notes: {sale.notes}</p>}
-                <OverflowMenu
-                  onEdit={() => startEditingSale(sale)}
-                  onDelete={() => deleteSale(sale.id)}
-                />
+          <>
+            <section className="panel sales-records-summary-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h2>Sales Records</h2>
+                  <p>Manual sales and linked Forge inventory sales stay organized for business records and year-end review.</p>
+                </div>
+                <div className="drawer-inline-actions">
+                  <button type="button" onClick={() => openAddSaleFlow()}>Add Sale</button>
+                  <button type="button" className="secondary-button" onClick={() => downloadSalesRecords("csv")}>Export Sales CSV</button>
+                  <button type="button" className="secondary-button" onClick={() => downloadSalesRecords("json")}>Export Sales JSON</button>
+                </div>
               </div>
-            ))}
-          </ListPanel>
+              <div className="expense-summary-grid sales-summary-grid">
+                <div><span>Gross sales</span><strong>{money(salesSummary.grossSales)}</strong><small>{salesSummary.count} sale{salesSummary.count === 1 ? "" : "s"}</small></div>
+                <div><span>Estimated fees</span><strong>{money(salesSummary.estimatedFees)}</strong><small>Platform + payment processing</small></div>
+                <div><span>Net proceeds</span><strong>{money(salesSummary.estimatedNetProceeds)}</strong><small>After fees, shipping, supplies, refunds</small></div>
+                <div><span>Estimated profit/loss</span><strong>{money(salesSummary.estimatedProfitLoss)}</strong><small>After estimated cost basis</small></div>
+                <div><span>Items sold</span><strong>{salesSummary.itemsSold}</strong><small>{salesSummary.receiptCoverage.missingReference} sale reference{salesSummary.receiptCoverage.missingReference === 1 ? "" : "s"} missing</small></div>
+              </div>
+              <div className="tax-record-grid">
+                <div className="tax-record-card">
+                  <h3>By platform/channel</h3>
+                  {salesSummary.byPlatform.slice(0, 5).map((row) => (
+                    <p key={row.label}><span>{row.label}</span><strong>{money(row.grossSales)}</strong></p>
+                  ))}
+                  {!salesSummary.byPlatform.length ? <p className="compact-subtitle">No sales channels recorded yet.</p> : null}
+                </div>
+                <div className="tax-record-card">
+                  <h3>By month</h3>
+                  {salesSummary.byMonth.slice(0, 5).map((row) => (
+                    <p key={row.label}><span>{row.label === "undated" ? "Undated" : row.label}</span><strong>{money(row.grossSales)}</strong></p>
+                  ))}
+                  {!salesSummary.byMonth.length ? <p className="compact-subtitle">No monthly sales data yet.</p> : null}
+                </div>
+                <div className="tax-record-card">
+                  <h3>Import foundation</h3>
+                  <p><span>CSV mapping</span><strong>Preview</strong></p>
+                  <p className="compact-subtitle">Sales import mapping is coming soon. Manual sale entry is available now, and uploaded files can be staged from Import File.</p>
+                </div>
+              </div>
+            </section>
+            <ListPanel title="Forge Sales" emptyText="No sales added yet.">
+              {workspaceSales.map((sale) => (
+                <div className="inventory-card sales-record-card" key={sale.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <h3>{sale.itemName}</h3>
+                      <p>{sale.platform} | {sale.saleDate || shortDate(sale.createdAt) || "No date"} | Qty {sale.quantitySold}</p>
+                    </div>
+                    <span className="status-badge">{sale.itemId ? "Linked inventory" : "Manual sale"}</span>
+                  </div>
+                  <div className="preview-grid sales-record-metrics">
+                    <div><span>Gross</span><strong>{money(sale.grossSale)}</strong></div>
+                    <div><span>Net proceeds</span><strong>{money(sale.netProceeds || sale.grossSale - sale.platformFees - sale.shippingCost)}</strong></div>
+                    <div><span>Cost basis</span><strong>{money(sale.costBasis || sale.itemCost)}</strong></div>
+                    <div><span>Profit/loss</span><strong>{money(sale.estimatedProfitLoss || sale.netProfit)}</strong></div>
+                  </div>
+                  <p className="compact-subtitle">
+                    Fees {money((sale.platformFees || 0) + (sale.paymentProcessingFees || 0))} | Shipping/supplies {money((sale.shippingCost || 0) + (sale.suppliesCost || 0))}
+                    {sale.referenceId || sale.receiptImage ? " | Reference attached" : " | Missing sale reference"}
+                  </p>
+                  {sale.notes && <p>Notes: {sale.notes}</p>}
+                  <OverflowMenu
+                    onEdit={() => startEditingSale(sale)}
+                    onDelete={() => deleteSale(sale.id)}
+                  />
+                </div>
+              ))}
+            </ListPanel>
+          </>
         )}
 
         {!activeTabLocked && activeTab === "expenses" && (
@@ -40055,6 +40284,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <div><span>Inventory cost basis</span><strong>{money(yearEndTaxSummary.inventory.costBasis)}</strong><small>{yearEndTaxSummary.inventory.quantity} unit{yearEndTaxSummary.inventory.quantity === 1 ? "" : "s"}</small></div>
                 <div><span>Sales / profit</span><strong>{money(yearEndTaxSummary.sales.revenue)}</strong><small>{money(yearEndTaxSummary.sales.profit)} net profit</small></div>
                 <div><span>Missing receipts</span><strong>{yearEndTaxSummary.expenses.missingReceiptCount}</strong><small>Attach or review before filing</small></div>
+                <div><span>Sales references</span><strong>{yearEndTaxSummary.sales.receiptCoverage?.withReference || 0}/{yearEndTaxSummary.sales.receiptCoverage?.total || 0}</strong><small>{yearEndTaxSummary.sales.receiptCoverage?.missingReference || 0} missing sale reference{yearEndTaxSummary.sales.receiptCoverage?.missingReference === 1 ? "" : "s"}</small></div>
               </div>
               <div className="tax-record-grid">
                 <div className="tax-record-card">
@@ -40078,10 +40308,24 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   ))}
                   {!yearEndTaxSummary.inventory.purchaserTotals.length ? <p className="compact-subtitle">No inventory cost basis for {taxSummaryYear}.</p> : null}
                 </div>
+                <div className="tax-record-card">
+                  <h3>Sales channels</h3>
+                  {yearEndTaxSummary.sales.byPlatform.slice(0, 5).map((group) => (
+                    <p key={group.label}><span>{group.label}</span><strong>{money(group.grossSales)}</strong></p>
+                  ))}
+                  {!yearEndTaxSummary.sales.byPlatform.length ? <p className="compact-subtitle">No sales records for {taxSummaryYear}.</p> : null}
+                </div>
+                <div className="tax-record-card">
+                  <h3>Export center</h3>
+                  <p><span>Inventory, sales, expenses, mileage</span><strong>CSV/JSON</strong></p>
+                  <p className="compact-subtitle">Exports organize records for review with your tax professional. They are not tax advice or a filing.</p>
+                </div>
               </div>
               <div className="drawer-inline-actions">
-                <button type="button" onClick={() => downloadYearEndTaxSummary("csv")}>Export Tax CSV</button>
-                <button type="button" className="secondary-button" onClick={() => downloadYearEndTaxSummary("json")}>Export Tax JSON</button>
+                <button type="button" onClick={() => downloadYearEndTaxSummary("csv")}>Export Year-End CSV</button>
+                <button type="button" className="secondary-button" onClick={() => downloadYearEndTaxSummary("json")}>Export Year-End JSON</button>
+                <button type="button" className="secondary-button" onClick={() => downloadSalesRecords("csv")}>Export Sales CSV</button>
+                <button type="button" className="secondary-button" onClick={() => downloadMileageRecords("csv")}>Export Mileage CSV</button>
               </div>
             </section>
 

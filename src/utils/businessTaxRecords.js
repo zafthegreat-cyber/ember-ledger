@@ -20,7 +20,8 @@ const VENDOR_RULES = [
 ];
 
 function toNumber(value, fallback = 0) {
-  const number = Number.parseFloat(value);
+  const cleaned = typeof value === "string" ? value.replace(/[$,%\s,]/g, "") : value;
+  const number = Number.parseFloat(cleaned);
   return Number.isFinite(number) ? number : fallback;
 }
 
@@ -64,7 +65,7 @@ export function normalizeBusinessVendor(value = "") {
 }
 
 export function recordDateValue(record = {}) {
-  return record.date || record.purchaseDate || record.purchase_date || record.soldAt || record.sold_at || String(record.createdAt || record.created_at || "").slice(0, 10) || "";
+  return record.date || record.purchaseDate || record.purchase_date || record.saleDate || record.sale_date || record.soldAt || record.sold_at || String(record.createdAt || record.created_at || "").slice(0, 10) || "";
 }
 
 export function recordYear(record = {}) {
@@ -285,6 +286,266 @@ export function buildMileageExportRows(vehicleGroups = []) {
   return rows;
 }
 
+export const SALES_PLATFORM_OPTIONS = [
+  "Whatnot",
+  "eBay",
+  "TCGplayer",
+  "Facebook Marketplace",
+  "Instagram",
+  "In-person",
+  "Local card show/event",
+  "Ember & Tide",
+  "Other",
+];
+
+const SALES_PLATFORM_RULES = [
+  { label: "Whatnot", pattern: /^what\s*not\b|^whatnot\b/ },
+  { label: "eBay", pattern: /^e\s*-?\s*bay\b|^ebay\b/ },
+  { label: "TCGplayer", pattern: /^tcg\s*player\b|^tcgplayer\b/ },
+  { label: "Facebook Marketplace", pattern: /^facebook\b|^fb\b|marketplace/ },
+  { label: "Instagram", pattern: /^instagram\b|^ig\b/ },
+  { label: "In-person", pattern: /^in.?person\b|^cash\b|^local pickup\b|^in.?store\b/ },
+  { label: "Local card show/event", pattern: /^local card show\b|^card show\b|^event\b|trade night/ },
+  { label: "Ember & Tide", pattern: /^ember\s*(and|&)?\s*tide\b|^emberandtide\b/ },
+];
+
+export function normalizeSalesPlatform(value = "") {
+  const raw = cleanText(value);
+  if (!raw) return "Other";
+  const cleaned = raw
+    .normalize("NFKD")
+    .replace(/[^\w\s&'-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  const rule = SALES_PLATFORM_RULES.find((entry) => entry.pattern.test(cleaned));
+  if (rule) return rule.label;
+  const existing = SALES_PLATFORM_OPTIONS.find((platform) => platform.toLowerCase() === raw.toLowerCase());
+  return existing || titleCase(raw);
+}
+
+export function saleHasReference(sale = {}) {
+  return Boolean(
+    sale.receiptImage ||
+    sale.receiptImageUrl ||
+    sale.referenceImage ||
+    sale.referenceImageUrl ||
+    sale.screenshotUrl ||
+    sale.screenshot_url ||
+    sale.orderId ||
+    sale.order_id ||
+    sale.referenceId ||
+    sale.reference_id ||
+    sale.transactionId ||
+    sale.transaction_id ||
+    sale.externalUrl ||
+    sale.external_url
+  );
+}
+
+export function calculateSalesRecordTotals(input = {}, linkedItem = {}) {
+  const quantitySold = Math.max(0, toNumber(input.quantitySold ?? input.quantity_sold ?? input.quantity, 0));
+  const shippingCharged = Math.max(0, toNumber(input.shippingCharged ?? input.shipping_charged, 0));
+  const grossSource = input.grossSale ?? input.gross_sale ?? input.grossSaleAmount ?? input.gross_sale_amount;
+  const explicitGross = grossSource !== undefined && grossSource !== null && String(grossSource) !== "" ? toNumber(grossSource, NaN) : NaN;
+  const finalSalePrice = Math.max(0, toNumber(input.finalSalePrice ?? input.final_sale_price ?? input.salePriceEach ?? input.sale_price_each ?? input.salePrice ?? input.sale_price, 0));
+  const grossSale = Number.isFinite(explicitGross) && explicitGross > 0
+    ? explicitGross
+    : (quantitySold * finalSalePrice) + shippingCharged;
+  const platformFees = Math.max(0, toNumber(input.platformFees ?? input.platform_fees ?? input.fees, 0));
+  const paymentProcessingFees = Math.max(0, toNumber(input.paymentProcessingFees ?? input.payment_processing_fees ?? input.processingFees ?? input.processing_fees, 0));
+  const shippingCost = Math.max(0, toNumber(input.shippingCost ?? input.shipping_cost, 0));
+  const suppliesCost = Math.max(0, toNumber(input.suppliesCost ?? input.supplies_cost, 0));
+  const discountsRefunds = Math.max(0, toNumber(input.discountsRefunds ?? input.discounts_refunds ?? input.refunds ?? input.discounts, 0));
+  const totalFees = platformFees + paymentProcessingFees;
+  const costBasisSource = input.costBasis ?? input.cost_basis ?? input.itemCost ?? input.item_cost;
+  const explicitCostBasis = costBasisSource !== undefined && costBasisSource !== null && String(costBasisSource) !== "" ? toNumber(costBasisSource, NaN) : NaN;
+  const unitCost = toNumber(linkedItem.unitCost ?? linkedItem.unit_cost ?? linkedItem.costPaid ?? linkedItem.cost_paid, 0);
+  const costBasis = Number.isFinite(explicitCostBasis)
+    ? Math.max(0, explicitCostBasis)
+    : quantitySold * unitCost;
+  const netProceeds = grossSale - totalFees - shippingCost - suppliesCost - discountsRefunds;
+  const profitSource = input.estimatedProfitLoss ?? input.estimated_profit_loss ?? input.netProfit ?? input.net_profit;
+  const explicitProfit = profitSource !== undefined && profitSource !== null && String(profitSource) !== "" ? toNumber(profitSource, NaN) : NaN;
+  const estimatedProfitLoss = Number.isFinite(explicitProfit) ? explicitProfit : netProceeds - costBasis;
+
+  return {
+    quantitySold,
+    finalSalePrice,
+    shippingCharged,
+    grossSale,
+    platformFees,
+    paymentProcessingFees,
+    totalFees,
+    shippingCost,
+    suppliesCost,
+    discountsRefunds,
+    netProceeds,
+    costBasis,
+    estimatedProfitLoss,
+  };
+}
+
+export function validateManualSaleDraft(form = {}, options = {}) {
+  const errors = {};
+  const linkedItem = options.linkedItem || {};
+  const itemName = cleanText(form.manualItemName || form.itemName || linkedItem.name || "");
+  const hasLinkedItem = Boolean(form.itemId || form.item_id || linkedItem.id);
+  const totals = calculateSalesRecordTotals(form, linkedItem);
+  if (!hasLinkedItem && !itemName) errors.itemName = "Enter an item name or choose Forge inventory.";
+  if (totals.quantitySold <= 0) errors.quantitySold = "Quantity sold must be greater than zero.";
+  if (totals.grossSale <= 0) errors.grossSale = "Enter a sale amount greater than zero.";
+  ["shippingCharged", "platformFees", "paymentProcessingFees", "shippingCost", "suppliesCost", "discountsRefunds", "costBasis"].forEach((field) => {
+    if (toNumber(form[field], 0) < 0) errors[field] = "Use zero or a positive amount.";
+  });
+  if (!cleanText(form.platform)) errors.platform = "Choose a sales channel.";
+  return { valid: Object.keys(errors).length === 0, errors, totals };
+}
+
+export function normalizeSalesRecord(row = {}, linkedItem = {}) {
+  const totals = calculateSalesRecordTotals(row, linkedItem);
+  const itemName = cleanText(row.itemName || row.item_name || row.manualItemName || row.manual_item_name || linkedItem.name || "Manual sale");
+  const platform = normalizeSalesPlatform(row.platform || row.channel || "");
+  return {
+    id: row.id || "",
+    itemId: row.itemId || row.item_id || linkedItem.id || "",
+    linkedInventoryItemId: row.linkedInventoryItemId || row.linked_inventory_item_id || row.itemId || row.item_id || linkedItem.id || "",
+    itemName,
+    sku: row.sku || linkedItem.sku || "",
+    platform,
+    channel: platform,
+    buyerName: cleanText(row.buyerName || row.buyer_name || row.customerName || row.customer_name || ""),
+    saleDate: recordDateValue(row),
+    quantitySold: totals.quantitySold,
+    finalSalePrice: totals.finalSalePrice,
+    shippingCharged: totals.shippingCharged,
+    grossSale: totals.grossSale,
+    platformFees: totals.platformFees,
+    paymentProcessingFees: totals.paymentProcessingFees,
+    totalFees: totals.totalFees,
+    shippingCost: totals.shippingCost,
+    suppliesCost: totals.suppliesCost,
+    discountsRefunds: totals.discountsRefunds,
+    netProceeds: totals.netProceeds,
+    itemCost: totals.costBasis,
+    costBasis: totals.costBasis,
+    estimatedProfitLoss: totals.estimatedProfitLoss,
+    netProfit: totals.estimatedProfitLoss,
+    notes: cleanText(row.notes || ""),
+    receiptImage: row.receiptImage || row.receipt_image || row.receiptImageUrl || row.receipt_image_url || row.referenceImage || row.reference_image || "",
+    receiptImageUrl: row.receiptImageUrl || row.receipt_image_url || row.receiptImage || row.receipt_image || row.referenceImage || row.reference_image || "",
+    referenceId: row.referenceId || row.reference_id || row.orderId || row.order_id || row.transactionId || row.transaction_id || "",
+    workspaceId: row.workspaceId || row.workspace_id || "",
+    workspace_id: row.workspace_id || row.workspaceId || "",
+    workspaceName: row.workspaceName || row.workspace_name || "",
+    createdAt: row.createdAt || row.created_at || (recordDateValue(row) ? `${recordDateValue(row)}T12:00:00.000Z` : ""),
+    updatedAt: row.updatedAt || row.updated_at || "",
+  };
+}
+
+export function buildSalesRecordFromDraft(form = {}, linkedItem = {}, options = {}) {
+  const validation = validateManualSaleDraft(form, { linkedItem });
+  const saleDate = form.saleDate || form.sale_date || new Date().toISOString().slice(0, 10);
+  const base = normalizeSalesRecord({
+    ...form,
+    id: options.id || form.id || "",
+    itemId: form.itemId || linkedItem.id || "",
+    itemName: linkedItem.name || form.manualItemName || form.itemName || "",
+    sku: linkedItem.sku || form.sku || "",
+    saleDate,
+    platform: normalizeSalesPlatform(form.platform),
+    workspaceId: options.workspaceId || form.workspaceId || linkedItem.workspaceId || linkedItem.workspace_id || "",
+    workspaceName: options.workspaceName || form.workspaceName || linkedItem.workspaceName || linkedItem.workspace_name || "",
+    createdAt: options.createdAt || `${saleDate}T12:00:00.000Z`,
+    updatedAt: options.updatedAt || new Date().toISOString(),
+  }, linkedItem);
+  return {
+    valid: validation.valid,
+    errors: validation.errors,
+    sale: {
+      ...base,
+      manualEntry: !base.itemId,
+      inventoryAdjustmentMode: base.itemId ? "linked_inventory_quantity" : "manual_inventory_adjustment",
+      notes: cleanText([
+        form.notes,
+        !base.itemId ? "Manual sale entry. Inventory adjustment is manual for now." : "",
+      ].filter(Boolean).join(" | ")),
+    },
+  };
+}
+
+export function summarizeSalesRecords(sales = [], options = {}) {
+  const selectedYear = options.year ? String(options.year) : "";
+  const normalized = sales
+    .map((sale) => normalizeSalesRecord(sale))
+    .filter((sale) => !selectedYear || !recordDateValue(sale) || recordYear(sale) === selectedYear);
+  const byPlatform = {};
+  const byMonth = {};
+  normalized.forEach((sale) => {
+    const platform = sale.platform || "Other";
+    byPlatform[platform] = byPlatform[platform] || { label: platform, count: 0, grossSales: 0, netProceeds: 0, estimatedProfitLoss: 0, itemsSold: 0 };
+    byPlatform[platform].count += 1;
+    byPlatform[platform].grossSales += sale.grossSale;
+    byPlatform[platform].netProceeds += sale.netProceeds;
+    byPlatform[platform].estimatedProfitLoss += sale.estimatedProfitLoss;
+    byPlatform[platform].itemsSold += sale.quantitySold;
+
+    const month = (recordDateValue(sale) || "").slice(0, 7) || "undated";
+    byMonth[month] = byMonth[month] || { label: month, count: 0, grossSales: 0, netProceeds: 0, estimatedProfitLoss: 0, itemsSold: 0 };
+    byMonth[month].count += 1;
+    byMonth[month].grossSales += sale.grossSale;
+    byMonth[month].netProceeds += sale.netProceeds;
+    byMonth[month].estimatedProfitLoss += sale.estimatedProfitLoss;
+    byMonth[month].itemsSold += sale.quantitySold;
+  });
+
+  return {
+    count: normalized.length,
+    itemsSold: normalized.reduce((sum, sale) => sum + sale.quantitySold, 0),
+    grossSales: normalized.reduce((sum, sale) => sum + sale.grossSale, 0),
+    estimatedFees: normalized.reduce((sum, sale) => sum + sale.totalFees, 0),
+    estimatedShippingCosts: normalized.reduce((sum, sale) => sum + sale.shippingCost, 0),
+    estimatedSuppliesCost: normalized.reduce((sum, sale) => sum + sale.suppliesCost, 0),
+    estimatedDiscountsRefunds: normalized.reduce((sum, sale) => sum + sale.discountsRefunds, 0),
+    estimatedNetProceeds: normalized.reduce((sum, sale) => sum + sale.netProceeds, 0),
+    estimatedCostBasis: normalized.reduce((sum, sale) => sum + sale.costBasis, 0),
+    estimatedProfitLoss: normalized.reduce((sum, sale) => sum + sale.estimatedProfitLoss, 0),
+    receiptCoverage: {
+      total: normalized.length,
+      withReference: normalized.filter(saleHasReference).length,
+      missingReference: normalized.filter((sale) => !saleHasReference(sale)).length,
+    },
+    byPlatform: Object.values(byPlatform).sort((a, b) => b.grossSales - a.grossSales || a.label.localeCompare(b.label)),
+    byMonth: Object.values(byMonth).sort((a, b) => String(b.label).localeCompare(String(a.label))),
+    records: normalized,
+  };
+}
+
+export function buildSalesExportRows(sales = []) {
+  return sales.map((sale) => {
+    const normalized = normalizeSalesRecord(sale);
+    return {
+      section: "Sale record",
+      date: normalized.saleDate,
+      platform: normalized.platform,
+      itemName: normalized.itemName,
+      sku: normalized.sku,
+      quantitySold: normalized.quantitySold,
+      grossSale: normalized.grossSale,
+      platformFees: normalized.platformFees,
+      paymentProcessingFees: normalized.paymentProcessingFees,
+      shippingCost: normalized.shippingCost,
+      suppliesCost: normalized.suppliesCost,
+      discountsRefunds: normalized.discountsRefunds,
+      netProceeds: normalized.netProceeds,
+      costBasis: normalized.costBasis,
+      estimatedProfitLoss: normalized.estimatedProfitLoss,
+      receiptOrReference: saleHasReference(normalized) ? "Attached/reference present" : "Missing",
+      notes: normalized.notes,
+    };
+  });
+}
+
 export function summarizePurchaserInventory(items = []) {
   const groups = new Map();
   items.forEach((item) => {
@@ -307,6 +568,7 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
   const yearlyMileageTrips = mileageTrips.filter((trip) => recordYear(trip) === selectedYear);
   const yearlyInventoryItems = inventoryItems.filter((item) => !recordDateValue(item) || recordYear(item) === selectedYear);
   const yearlySales = sales.filter((sale) => !recordDateValue(sale) || recordYear(sale) === selectedYear);
+  const salesSummary = summarizeSalesRecords(yearlySales, { year: selectedYear });
   const expenseGroups = groupExpensesByVendor(yearlyExpenses);
   const mileageGroups = groupMileageByVehicle(yearlyMileageTrips, vehicles, { year: selectedYear });
   const purchaserTotals = summarizePurchaserInventory(yearlyInventoryItems);
@@ -316,8 +578,6 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
   const inventoryCostBasis = yearlyInventoryItems.reduce((sum, item) => sum + toNumber(item.quantity, 1) * toNumber(item.unitCost || item.unit_cost || item.costPaid || item.cost_paid), 0);
   const inventoryMarketValue = yearlyInventoryItems.reduce((sum, item) => sum + toNumber(item.quantity, 1) * toNumber(item.marketPrice || item.market_price || item.marketValue || item.market_value), 0);
   const plannedSaleValue = yearlyInventoryItems.reduce((sum, item) => sum + toNumber(item.quantity, 1) * toNumber(item.salePrice || item.sale_price || item.plannedSalePrice || item.planned_sale_price), 0);
-  const salesRevenue = yearlySales.reduce((sum, sale) => sum + toNumber(sale.grossSale || sale.gross_sale || sale.finalSalePrice || sale.final_sale_price), 0);
-  const salesProfit = yearlySales.reduce((sum, sale) => sum + toNumber(sale.netProfit || sale.net_profit), 0);
   const missingReceiptCount = expenseGroups.reduce((sum, group) => sum + group.missingReceiptCount, 0);
 
   return {
@@ -351,9 +611,20 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
       purchaserTotals,
     },
     sales: {
-      count: yearlySales.length,
-      revenue: salesRevenue,
-      profit: salesProfit,
+      count: salesSummary.count,
+      revenue: salesSummary.grossSales,
+      profit: salesSummary.estimatedProfitLoss,
+      grossSales: salesSummary.grossSales,
+      estimatedFees: salesSummary.estimatedFees,
+      estimatedShippingCosts: salesSummary.estimatedShippingCosts,
+      estimatedNetProceeds: salesSummary.estimatedNetProceeds,
+      estimatedCostBasis: salesSummary.estimatedCostBasis,
+      estimatedProfitLoss: salesSummary.estimatedProfitLoss,
+      itemsSold: salesSummary.itemsSold,
+      byPlatform: salesSummary.byPlatform,
+      byMonth: salesSummary.byMonth,
+      receiptCoverage: salesSummary.receiptCoverage,
+      records: salesSummary.records,
     },
   };
 }
@@ -364,7 +635,7 @@ export function buildTaxRecordExportRows(summary = {}) {
     { section: "Expenses", label: "Total expenses", value: summary.expenses?.total || 0, count: summary.expenses?.count || 0, notes: `${summary.expenses?.missingReceiptCount || 0} missing receipt(s)` },
     { section: "Mileage", label: "Business miles", value: summary.mileage?.totalMiles || 0, count: summary.mileage?.tripCount || 0, notes: `Mileage value ${summary.mileage?.totalValue || 0}` },
     { section: "Inventory", label: "Cost basis", value: summary.inventory?.costBasis || 0, count: summary.inventory?.quantity || 0, notes: `Planned sale value ${summary.inventory?.plannedSaleValue || 0}` },
-    { section: "Sales", label: "Sales revenue", value: summary.sales?.revenue || 0, count: summary.sales?.count || 0, notes: `Net profit ${summary.sales?.profit || 0}` },
+    { section: "Sales", label: "Sales revenue", value: summary.sales?.revenue || 0, count: summary.sales?.count || 0, notes: `Estimated profit/loss ${summary.sales?.profit || 0}` },
   ];
   (summary.expenses?.vendorGroups || []).forEach((group) => {
     rows.push({ section: "Expense vendor", label: group.vendorName, value: group.total, count: group.count, notes: `${group.missingReceiptCount} missing receipt(s)` });
@@ -375,5 +646,20 @@ export function buildTaxRecordExportRows(summary = {}) {
   (summary.inventory?.purchaserTotals || []).forEach((group) => {
     rows.push({ section: "Inventory purchaser", label: group.name, value: group.costBasis, count: group.quantity, notes: `Planned sale value ${group.plannedSaleValue}` });
   });
+  (summary.sales?.byPlatform || []).forEach((group) => {
+    rows.push({ section: "Sales platform", label: group.label, value: group.grossSales, count: group.count, notes: `Estimated net proceeds ${group.netProceeds}; estimated profit/loss ${group.estimatedProfitLoss}` });
+  });
+  (summary.sales?.byMonth || []).forEach((group) => {
+    rows.push({ section: "Sales month", label: group.label, value: group.grossSales, count: group.count, notes: `${group.itemsSold} item(s) sold` });
+  });
+  if (summary.sales?.receiptCoverage) {
+    rows.push({
+      section: "Documentation coverage",
+      label: "Sales references",
+      value: summary.sales.receiptCoverage.withReference,
+      count: summary.sales.receiptCoverage.total,
+      notes: `${summary.sales.receiptCoverage.missingReference} sale reference(s) missing`,
+    });
+  }
   return rows;
 }
