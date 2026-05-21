@@ -221,10 +221,12 @@ export const PRODUCT_ALIAS_RULES = [
   productRule("Checklane Blister", ["checklane", "check lane", "checklane blister", "check lane blister"], "checklane_blister", 105),
   productRule("Blister Pack", ["blister", "blister pack", "blisters"], "blister_pack", 95),
   productRule("Mini Tin", ["mini tin", "mini tins"], "mini_tin", 105),
+  productRule("Stacking Tin", ["stacking tin", "stack tin"], "stacking_tin", 100),
   productRule("Mini Portfolio", ["mini portfolio", "portfolio", "mini binder", "mini portfolio booster", "mini portfolio and booster pack"], "mini_portfolio", 105),
   productRule("Tin", ["tin", "tins"], "tin", 85),
   productRule("Collector's Chest", ["collector chest", "collector's chest", "collectors chest", "chest", "lunchbox", "collector lunchbox"], "collectors_chest", 110),
   productRule("Collection Box", ["collection box", "ex box", "v box", "vmax box", "special collection"], "collection_box", 95),
+  productRule("Ex Box", ["ex box", "pokemon ex box"], "ex_box", 96),
   productRule("Premium Collection", ["premium collection", "premium coll"], "premium_collection", 95),
   productRule("Poster Collection", ["poster collection", "poster box"], "poster_collection", 95),
   productRule("Binder Collection", ["binder collection", "binder", "4 pocket portfolio", "9 pocket portfolio", "portfolio"], "binder_collection", 95),
@@ -504,6 +506,23 @@ export function scoreCatalogSearchRow(row = {}, analysis = analyzeCatalogSearch(
   if (analysis.normalized && textIncludes(rowText.all, analysis.normalized)) score += 350;
   if (row.market_price || row.market_value || row.mid_price) score += 8;
   if (row.image_url || row.image_large || row.image_small) score += 4;
+
+  const wantsCodeCard = Boolean(analysis.tokenSet?.has("code") || analysis.normalized.includes("code card"));
+  const looksLikeCodeCard = rowText.name.includes("code card") || rowText.product.includes("code card");
+  if (looksLikeCodeCard && !wantsCodeCard) {
+    score -= 1200;
+    reasons.push("excluded code card from sealed search");
+  }
+
+  const productTypeMatched = (analysis.productMatches || []).some((product) => {
+    const label = normalizeSearchQuery(product.label);
+    const type = normalizeSearchQuery(product.canonicalType.replace(/_/g, " "));
+    return Boolean(label && textIncludes(rowText.product, label)) || Boolean(type && textIncludes(rowText.product, type));
+  });
+  if (productTypeMatched) {
+    score += 450;
+    reasons.push("explicit product type");
+  }
 
   return { score, reasons: [...new Set(reasons)] };
 }

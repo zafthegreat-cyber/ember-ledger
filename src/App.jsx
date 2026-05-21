@@ -209,6 +209,10 @@ import {
   normalizeQuickAddDestinations,
 } from "./utils/quickAddRouting";
 import {
+  getProductImageFallback,
+  getProductImageUrl,
+} from "./utils/productDisplayUtils";
+import {
   buildPlannedSalePricePatch,
   groupedInventoryEntryIds,
   plannedSalePriceUpdateSummary,
@@ -1262,11 +1266,23 @@ const ADD_ITEM_QUICK_SEARCH_CHIPS = [
   "ETB",
   "Elite Trainer Box",
   "Booster Bundle",
+  "Mini Portfolio",
+  "Collector Chest",
+  "3-Pack Blister",
   "Tin",
+  "Mini Tin",
   "Blister",
   "Collection Box",
+  "Binder Collection",
   "Booster Box",
   "Sleeved Booster",
+];
+const ADD_ITEM_NO_RESULT_HINTS = [
+  "Try ETB instead of Elite Trainer Box",
+  "Try collectors chest",
+  "Try 3 pack blister",
+  "Try mini portfolio",
+  "Try the set name only",
 ];
 const INVENTORY_ITEMS_SUPABASE_COLUMNS = new Set([
   "user_id",
@@ -2340,7 +2356,7 @@ function createDefaultTidepoolData() {
 }
 
 function getCatalogImage(product = {}) {
-  return product.imageUrl || product.image_url || product.photoUrl || product.photo_url || product.productImage || product.product_image || product.imageLarge || product.image_large || product.imageSmall || product.image_small || product.images?.large || product.images?.small || "";
+  return getProductImageUrl(product);
 }
 
 function shouldPersistLocalCatalogProduct(product = {}) {
@@ -7797,6 +7813,32 @@ export default function App() {
     return `Could not save item: ${compactFailure}`;
   }
 
+  function findCatalogAutofillCompanion(product = {}, known = {}) {
+    const selectedId = String(product.id || "");
+    const title = normalizeSearchText(known.itemName || catalogTitle(product));
+    const setName = normalizeSearchText(known.setName || catalogExpansionName(product));
+    const productType = normalizeSearchText(known.productType || catalogProductTypeLabel(product));
+    if (!title && !productType) return {};
+    let fallbackKnown = {};
+    const searchPool = mergeCatalogProductLists(catalogProducts, LOCAL_CATALOG_SEED_PRODUCTS);
+    for (const candidate of searchPool) {
+      if (selectedId && String(candidate.id || "") === selectedId) continue;
+      const candidateKnown = buildCatalogAutofillDetails(candidate);
+      const hasNeededMsrp = !known.msrpPrice && candidateKnown.msrpPrice;
+      const hasNeededMarket = !known.marketPrice && candidateKnown.marketPrice;
+      if (!hasNeededMsrp && !hasNeededMarket) continue;
+      const candidateTitle = normalizeSearchText(candidateKnown.itemName || catalogTitle(candidate));
+      const candidateSet = normalizeSearchText(candidateKnown.setName || catalogExpansionName(candidate));
+      const candidateType = normalizeSearchText(candidateKnown.productType || catalogProductTypeLabel(candidate));
+      const sameTitle = title && candidateTitle === title;
+      const sameSetType = productType && candidateType === productType && setName && candidateSet && (candidateSet.includes(setName) || setName.includes(candidateSet));
+      if (!sameTitle && !sameSetType) continue;
+      if (hasNeededMsrp) return candidateKnown;
+      if (!fallbackKnown.marketPrice && hasNeededMarket) fallbackKnown = candidateKnown;
+    }
+    return fallbackKnown;
+  }
+
   function selectMultiDestinationCatalogProduct(productOrId) {
     const product = typeof productOrId === "object"
       ? productOrId
@@ -7805,7 +7847,13 @@ export default function App() {
     const defaultVariant = product
       ? (getCatalogVariantOptions(product).find((variant) => variant.isDefault) || getCatalogVariantOptions(product)[0] || null)
       : null;
-    const known = product ? buildCatalogAutofillDetails(product) : {};
+    const directKnown = product ? buildCatalogAutofillDetails(product) : {};
+    const companionKnown = product ? findCatalogAutofillCompanion(product, directKnown) : {};
+    const known = {
+      ...directKnown,
+      msrpPrice: directKnown.msrpPrice || companionKnown.msrpPrice || "",
+      marketPrice: directKnown.marketPrice || companionKnown.marketPrice || "",
+    };
 
     if (product) {
       setCatalogProducts((current) => [
@@ -20909,6 +20957,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return product.productType || product.sealedProductType || product.productKind || "Catalog product";
   }
 
+  function renderProductImageFallback(product = {}, options = {}) {
+    const fallback = getProductImageFallback(product, {
+      title: options.title || catalogTitle(product),
+      setName: options.setName || catalogExpansionName(product),
+      productType: options.productType || catalogProductTypeLabel(product),
+    });
+    const className = ["image-needed-placeholder", "branded-product-fallback", options.className].filter(Boolean).join(" ");
+    return (
+      <div className={className} hidden={Boolean(options.hidden)}>
+        <strong>{fallback.title}</strong>
+        <span>{fallback.meta}</span>
+        <b>{options.badge || "Photo coming soon"}</b>
+      </div>
+    );
+  }
+
   function isCatalogCodeCardProduct(product = {}) {
     return getCatalogDisplayKind(product) === "code_card";
   }
@@ -29706,11 +29770,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <button key={product.id || catalogTitle(product)} type="button" className="catalog-picker-card" onClick={() => onSelect(product)}>
         <div className="catalog-thumb">
-          {imageUrl ? <img src={imageUrl} alt="" /> : (
-            <div className="image-needed-placeholder">
-              <span>No image</span>
-            </div>
-          )}
+          {imageUrl ? (
+            <>
+              <img
+                src={imageUrl}
+                alt=""
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                  event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                }}
+              />
+              {renderProductImageFallback(product, { hidden: true })}
+            </>
+          ) : renderProductImageFallback(product)}
         </div>
         <span className="catalog-picker-copy">
           <strong>{catalogTitle(product)}</strong>
@@ -30054,9 +30126,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {selectedCatalog && !multiDestinationMatchSearchOpen ? (
                 <div className="selected-product-card selected-match-card">
                   <div className="catalog-thumb selected-match-thumb">
-                    {catalogImage(selectedCatalog) ? <img src={catalogImage(selectedCatalog)} alt="" /> : (
-                      <div className="image-needed-placeholder"><span>No image</span></div>
-                    )}
+                    {catalogImage(selectedCatalog) ? (
+                      <>
+                        <img
+                          src={catalogImage(selectedCatalog)}
+                          alt=""
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                            event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                          }}
+                        />
+                        {renderProductImageFallback(selectedCatalog, { hidden: true })}
+                      </>
+                    ) : renderProductImageFallback(selectedCatalog)}
                   </div>
                   <div className="selected-match-copy">
                     <span className="neon-chip add-item-selected-chip">Selected item</span>
@@ -30185,6 +30267,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <div className="empty-state small-empty-state add-item-no-results">
                       <h3>No results found</h3>
                       <p>Try a shorter search like ETB, tin, booster bundle, a set name, UPC, or SKU.</p>
+                      <div className="catalog-chip-row add-item-chip-row" aria-label="Alternate catalog search terms">
+                        {ADD_ITEM_NO_RESULT_HINTS.map((hint) => {
+                          const value = hint.replace(/^Try\s+/i, "").replace(/\s+instead of.*$/i, "");
+                          return (
+                            <button key={hint} type="button" className="secondary-button" onClick={() => runMultiDestinationCatalogSearch(value)}>
+                              {hint}
+                            </button>
+                          );
+                        })}
+                      </div>
                       <div className="catalog-selector-actions">
                         <button type="button" className="secondary-button" onClick={() => startMultiDestinationManualEntry({ itemName: multiDestinationCatalogQuery })}>
                           Can't find it? Add manually
@@ -35705,16 +35797,32 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </button>
             </div>
             {selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage ? (
-              <img
-                className="watch-calendar-detail-image"
-                src={selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage}
-                alt=""
-                loading="lazy"
-                onError={(event) => {
-                  event.currentTarget.style.display = "none";
-                }}
-              />
-            ) : null}
+              <div className="watch-calendar-detail-media">
+                <img
+                  className="watch-calendar-detail-image"
+                  src={selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage}
+                  alt=""
+                  loading="lazy"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                    event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                  }}
+                />
+                {renderProductImageFallback({
+                  productName: selectedWatchCalendarEvent.productName || selectedWatchCalendarEvent.title,
+                  setName: selectedWatchCalendarEvent.setName || selectedWatchCalendarEvent.subtitle,
+                  productType: selectedWatchCalendarEvent.productType || selectedWatchCalendarEvent.category || selectedWatchCalendarEvent.eventType,
+                }, { className: "watch-calendar-detail-fallback", hidden: true })}
+              </div>
+            ) : (
+              <div className="watch-calendar-detail-media">
+                {renderProductImageFallback({
+                  productName: selectedWatchCalendarEvent.productName || selectedWatchCalendarEvent.title,
+                  setName: selectedWatchCalendarEvent.setName || selectedWatchCalendarEvent.subtitle,
+                  productType: selectedWatchCalendarEvent.productType || selectedWatchCalendarEvent.category || selectedWatchCalendarEvent.eventType,
+                }, { className: "watch-calendar-detail-fallback" })}
+              </div>
+            )}
             <div className="catalog-detail-grid">
               <DetailItem label="Event type" value={selectedWatchCalendarEvent.eventType || "Calendar event"} />
               <DetailItem label="When" value={selectedWatchCalendarEvent.timeLabel || "Unknown"} />
@@ -37450,16 +37558,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                                   event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                                 }}
                               />
-                              <div className="image-needed-placeholder" hidden>
-                                <strong>{catalogTitle(tideTradrLookupProduct)}</strong>
-                                <span>Image needed</span>
-                              </div>
+                              {renderProductImageFallback(tideTradrLookupProduct, { hidden: true })}
                             </>
                           ) : (
-                            <div className="image-needed-placeholder">
-                              <strong>{catalogTitle(tideTradrLookupProduct)}</strong>
-                              <span>Image needed</span>
-                            </div>
+                            renderProductImageFallback(tideTradrLookupProduct)
                           )}
                         </div>
                         <div>
@@ -39715,16 +39817,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                             event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                           }}
                         />
-                        <div className="catalog-detail-image placeholder" hidden>
-                          <b>Image needed</b>
-                          <span>Suggest an image correction if this looks wrong.</span>
-                        </div>
+                        {renderProductImageFallback(selectedCatalogDetailProduct, {
+                          className: "catalog-detail-image placeholder",
+                          hidden: true,
+                          badge: "Image fallback",
+                        })}
                       </>
                     ) : (
-                      <div className="catalog-detail-image placeholder">
-                        <b>Image needed</b>
-                        <span>Suggest an image correction if this looks wrong.</span>
-                      </div>
+                      renderProductImageFallback(selectedCatalogDetailProduct, {
+                        className: "catalog-detail-image placeholder",
+                        badge: "Image fallback",
+                      })
                     )}
                     <div className="image-source-panel">
                       {shouldShowCatalogRepairLabels() ? <span>Image source: {getImageSourceLabel(selectedCatalogDetailPricingProduct)}</span> : null}

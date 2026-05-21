@@ -1,6 +1,7 @@
 import { PRODUCT_TYPE_ALIASES, POKEMON_NAME_ALIASES, RARITY_VARIANT_ALIASES } from "../data/productAliases";
 import { getSetByCodeOrAlias } from "../data/pokemonSetCatalog";
 import generatedSearchAliases from "../data/generated/searchAliases.json";
+import { getProductImageUrl } from "./productDisplayUtils";
 
 export function normalizeCatalogName(name) {
   return String(name || "")
@@ -8,6 +9,8 @@ export function normalizeCatalogName(name) {
     .replace(/pok[eé]mon/g, "pokemon")
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9/.\s-]/g, " ")
+    .replace(/\bcollector s\b/g, "collector")
+    .replace(/\bcollectors\b/g, "collector")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -94,6 +97,39 @@ export function scoreCatalogItem(query, item) {
   tokens.forEach((token) => {
     if (haystack.includes(token)) score += token.length > 2 ? 35 : 10;
   });
+  if (score > 0) {
+    const sourceText = normalizeCatalogName([
+      item.source,
+      item.sourceType,
+      item.source_type,
+      item.imageSource,
+      item.imageStatus,
+      item.setName,
+      item.set_name,
+    ].filter(Boolean).join(" "));
+    const hasImage = Boolean(getProductImageUrl(item));
+    const genericPlaceholder =
+      !hasImage &&
+      /recovery|placeholder|assorted|image unavailable|image needed/.test(sourceText);
+    const setSpecific = Boolean(item.setName || item.set_name || item.expansion || item.productLine || item.product_line);
+    const titleText = normalizeCatalogName([item.name, item.productName, item.cardName].filter(Boolean).join(" "));
+    const productTypeText = normalizeCatalogName([
+      item.productType,
+      item.product_type,
+      item.sealedProductType,
+      item.sealed_product_type,
+      item.catalogGroup,
+      item.catalog_group,
+    ].filter(Boolean).join(" "));
+    const queryWantsCodeCard = normalized.includes("code card") || tokens.includes("code");
+    const looksLikeCodeCard = titleText.includes("code card") || productTypeText.includes("code card");
+    if (hasImage) score += 48;
+    if (setSpecific && !/assorted/.test(sourceText)) score += 18;
+    if (expansions.some((term) => term.length > 2 && productTypeText.includes(term))) score += 120;
+    if (genericPlaceholder && !normalized.includes("back to school")) score -= 72;
+    if (looksLikeCodeCard && !queryWantsCodeCard) score -= 520;
+  }
+
   return { score, reason: score >= 160 ? "Alias/shorthand match" : score > 0 ? "Partial catalog match" : "" };
 }
 

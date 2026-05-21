@@ -8,6 +8,13 @@ import {
 } from "../services/pokemonCatalogSearch";
 import { POKEMON_PRODUCTS } from "../data/pokemonProductCatalog";
 import { searchCatalog } from "../utils/catalogSearchUtils";
+import {
+  getProductDisplayTitle,
+  getProductImageFallback,
+  getProductImageUrl,
+  getProductSetLabel,
+  getProductTypeLabel,
+} from "../utils/productDisplayUtils";
 
 function renderHighlighted(label, query) {
   const text = String(label || "");
@@ -23,6 +30,34 @@ function renderHighlighted(label, query) {
     <>
       {before}<mark>{match}</mark>{after}
     </>
+  );
+}
+
+function CatalogSuggestionThumbnail({ suggestion }) {
+  const [failed, setFailed] = useState(false);
+  const product = suggestion.product || {};
+  const imageUrl = !failed ? suggestion.imageUrl || getProductImageUrl(product) : "";
+  const fallback = getProductImageFallback(product, {
+    title: suggestion.label || getProductDisplayTitle(product),
+    setName: getProductSetLabel(product),
+    productType: suggestion.type || getProductTypeLabel(product),
+  });
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt=""
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span className="smart-catalog-suggestion-thumb branded-product-fallback">
+      <strong>{fallback.title}</strong>
+      <small>{fallback.meta}</small>
+    </span>
   );
 }
 
@@ -63,11 +98,11 @@ export default function SmartCatalogSearchBox({
   const showTiming = isCatalogSearchDebugEnabled();
 
   function titleForProduct(product = {}) {
-    return product.name || product.productName || product.product_name || product.cardName || product.card_name || "Catalog item";
+    return getProductDisplayTitle(product) || "Catalog item";
   }
 
   function typeForProduct(product = {}) {
-    return product.productType || product.product_type || product.catalogType || product.catalog_type || "Product";
+    return getProductTypeLabel(product) || "Product";
   }
 
   function buildLocalSuggestions(queryValue = "") {
@@ -89,7 +124,7 @@ export default function SmartCatalogSearchBox({
           ].filter(Boolean).join(" | "),
           badge: productType,
           searchValue: label,
-          imageUrl: product.imageUrl || product.image_url || product.photoUrl || product.photo_url || product.productImage || product.product_image || product.imageSmall || product.image_small || product.imageLarge || product.image_large || "",
+          imageUrl: getProductImageUrl(product),
           marketPrice: product.marketPrice || product.market_price || product.marketValue || product.market_value || 0,
           product,
         };
@@ -329,18 +364,7 @@ export default function SmartCatalogSearchBox({
                   role="option"
                   aria-selected={suggestion.index === activeIndex}
                 >
-                  {suggestion.imageUrl ? (
-                    <img
-                      src={suggestion.imageUrl}
-                      alt=""
-                      onError={(event) => {
-                        event.currentTarget.replaceWith(Object.assign(document.createElement("span"), {
-                          className: "smart-catalog-suggestion-thumb",
-                          textContent: "Image needed",
-                        }));
-                      }}
-                    />
-                  ) : <span className="smart-catalog-suggestion-thumb">Image needed</span>}
+                  <CatalogSuggestionThumbnail suggestion={suggestion} />
                   <span className="smart-catalog-suggestion-copy">
                     <strong>{renderHighlighted(suggestion.label, value)}</strong>
                     <small>{suggestion.description || suggestion.searchValue}</small>

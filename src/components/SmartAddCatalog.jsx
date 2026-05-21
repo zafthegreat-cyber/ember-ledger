@@ -1,6 +1,7 @@
 import { useState } from "react";
 import SmartCatalogSearchBox from "./SmartCatalogSearchBox";
 import { isSupabaseConfigured, supabase } from "../supabaseClient";
+import { getProductImageFallback, getProductImageUrl } from "../utils/productDisplayUtils";
 
 function mapCatalogProduct(row = {}) {
   return {
@@ -13,6 +14,7 @@ function mapCatalogProduct(row = {}) {
     packCount: row.pack_count || row.packCount || "",
     marketPrice: row.market_price ?? row.marketPrice ?? "",
     msrpPrice: row.msrp_price ?? row.msrpPrice ?? "",
+    imageUrl: getProductImageUrl(row),
     upcs: [row.barcode || row.upc || ""].filter(Boolean),
     rawCatalogProduct: row,
   };
@@ -47,17 +49,35 @@ export default function SmartAddCatalog({ onUseProduct }) {
           }}
         />
         {selectedProduct ? (
-          <div className="inventory-card compact-card">
-            <h3>{selectedProduct.name}</h3>
-            <p>
-              <strong>Type:</strong> {selectedProduct.itemType || "Unknown"}
-            </p>
-            <p>
-              <strong>Set:</strong> {selectedProduct.expansion || "Unknown"}
-            </p>
-            <p>
-              <strong>UPC:</strong> {selectedProduct.upcs?.[0] || "Not listed"}
-            </p>
+          <div className="inventory-card compact-card forge-selected-product-card">
+            <div className="catalog-thumb">
+              {selectedProduct.imageUrl ? (
+                <img
+                  src={selectedProduct.imageUrl}
+                  alt=""
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                    event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                  }}
+                />
+              ) : null}
+              <span className="image-needed-placeholder branded-product-fallback" hidden={Boolean(selectedProduct.imageUrl)}>
+                <strong>{selectedProduct.name}</strong>
+                <small>{getProductImageFallback({ ...selectedProduct, productType: selectedProduct.itemType, setName: selectedProduct.expansion }).meta}</small>
+              </span>
+            </div>
+            <div>
+              <h3>{selectedProduct.name}</h3>
+              <p>
+                <strong>Type:</strong> {selectedProduct.itemType || "Unknown"}
+              </p>
+              <p>
+                <strong>Set:</strong> {selectedProduct.expansion || "Unknown"}
+              </p>
+              <p>
+                <strong>UPC:</strong> {selectedProduct.upcs?.[0] || "Not listed"}
+              </p>
+            </div>
           </div>
         ) : null}
         <button type="button" onClick={handleUseProduct} disabled={!selectedProduct}>
