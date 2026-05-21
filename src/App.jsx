@@ -195,6 +195,9 @@ import {
   validatePublicUsername,
 } from "./utils/publicIdentity";
 import {
+  buildPublicCommunityProfile,
+} from "./utils/communityProfile";
+import {
   buildQuickAddSuccessMessage,
   calendarEventToQuickAddSeed,
   findQuickAddCatalogMatch,
@@ -4193,6 +4196,7 @@ export default function App() {
     lastName: "",
     displayName: "",
     publicUsername: "",
+    publicBio: "",
     preferredRegion: "Hampton Roads / 757",
   });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -6292,6 +6296,68 @@ export default function App() {
     };
   }
 
+  function communityProfileContext(overrides = {}) {
+    return {
+      scoutReports: scoutReportRows || [],
+      communityGuesses: scoutGuessRows || [],
+      marketplaceListings: marketplaceListings || [],
+      tidepoolPosts: tidepoolPosts || [],
+      scoutProfile: scoutSnapshot.scoutProfile || {},
+      ...overrides,
+    };
+  }
+
+  function publicCommunityProfile(record = {}, overrides = {}) {
+    return buildPublicCommunityProfile(record, communityProfileContext(overrides));
+  }
+
+  function renderCommunityProfileSummary(record = {}, options = {}) {
+    const profile = publicCommunityProfile(record, options.context || {});
+    const compact = options.compact !== false;
+    const badges = profile.badges.slice(0, options.badgeLimit || (compact ? 3 : 5));
+    const classNames = [
+      "community-profile-card",
+      compact ? "community-profile-card--compact" : "",
+      options.className || "",
+    ].filter(Boolean).join(" ");
+    return (
+      <div className={classNames} aria-label={`Public profile ${profile.publicUsernameLabel}`}>
+        <div className="community-profile-main">
+          <span className="community-profile-avatar" aria-hidden="true">{profile.avatarInitial}</span>
+          <span>
+            <strong>{profile.publicUsernameLabel}</strong>
+            <small>{profile.scoutLevel.label} | {profile.scoutPoints} Scout points</small>
+          </span>
+        </div>
+        {badges.length ? (
+          <div className="community-profile-badge-row">
+            {badges.map((badge) => (
+              <span className={`community-trust-badge community-trust-badge--${badge.tone}`} key={badge.key}>{badge.label}</span>
+            ))}
+          </div>
+        ) : null}
+        {!compact ? (
+          <>
+            {profile.publicBio ? <p className="compact-subtitle">{profile.publicBio}</p> : null}
+            <p className="compact-subtitle">{profile.contributionLine}</p>
+            <p className="compact-subtitle">
+              {profile.canSubmitCommunityGuesses
+                ? "Eligible to submit community guesses. Guesses still stay separate from confirmed restocks."
+                : `Needs ${profile.guessThreshold} Scout points before posting community guesses.`}
+            </p>
+          </>
+        ) : null}
+        {options.adminDetail ? (
+          <div className="community-profile-admin-row">
+            <span>{profile.confirmedReports} confirmed</span>
+            <span>{profile.rejectedReports} rejected/stale</span>
+            <span>{profile.communityGuesses} guesses</span>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   function takenPublicUsernames(excludedUserId = currentUserProfile?.userId || user?.id || "") {
     const values = [
       ...marketplaceListings.map((listing) => ({
@@ -6305,6 +6371,14 @@ export default function App() {
       ...tidepoolComments.map((comment) => ({
         username: comment.username || comment.publicUsername || comment.displayName,
         userId: comment.userId || comment.user_id,
+      })),
+      ...(scoutSnapshot.reports || []).map((report) => ({
+        username: report.username || report.publicUsername || report.public_username || report.displayName || report.reportedBy,
+        userId: report.userId || report.user_id,
+      })),
+      ...(scoutSnapshot.storeGuesses || []).map((guess) => ({
+        username: guess.username || guess.publicUsername || guess.public_username || guess.displayName || guess.submittedBy,
+        userId: guess.userId || guess.user_id,
       })),
     ];
     return values
@@ -6485,6 +6559,7 @@ export default function App() {
     const fullName = `${firstName} ${lastName}`.trim();
     const displayName = normalizePersonName(profileForm.displayName || fullName);
     const publicUsername = normalizePublicUsername(profileForm.publicUsername || displayName || firstName || "local_scout");
+    const publicBio = String(profileForm.publicBio || "").trim().slice(0, 160);
     const usernameValidationError = validatePublicUsername(
       publicUsername,
       { ...currentUserProfile, firstName, first_name: firstName, displayName, display_name: displayName, fullName, full_name: fullName, email: accountEmail() },
@@ -6506,6 +6581,8 @@ export default function App() {
         username: publicUsername,
         publicUsername,
         public_username: publicUsername,
+        publicBio,
+        public_bio: publicBio,
         preferredRegion,
         preferred_region: preferredRegion,
         updatedAt: new Date().toISOString(),
@@ -6520,6 +6597,8 @@ export default function App() {
             username: publicUsername,
             public_username: publicUsername,
             publicUsername,
+            public_bio: publicBio,
+            publicBio,
           },
         });
         if (authProfileError) throw authProfileError;
@@ -10978,6 +11057,7 @@ export default function App() {
           lastName: profile.lastName || "",
           displayName: profile.displayName || profile.fullName || "",
           publicUsername: publicUsernameFromProfile(profile),
+          publicBio: profile.publicBio || profile.public_bio || profile.bio || "",
           preferredRegion: profile.preferredRegion || profile.preferred_region || "Hampton Roads / 757",
         });
         setSubscriptionProfile((current) => ({
@@ -10999,6 +11079,7 @@ export default function App() {
         lastName: profile.lastName || "",
         displayName: profile.displayName || profile.fullName || "",
         publicUsername: publicUsernameFromProfile(profile),
+        publicBio: profile.publicBio || profile.public_bio || profile.bio || "",
         preferredRegion: profile.preferredRegion || profile.preferred_region || "Hampton Roads / 757",
       });
       setSubscriptionProfile((current) => ({
@@ -14151,7 +14232,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
-      displayName: currentUserProfile?.displayName || user?.email || "Local Scout",
+      displayName: publicProfileLabel(),
+      username: currentPublicUsername(),
+      publicUsername: currentPublicUsername(),
+      public_username: currentPublicUsername(),
       workspaceId,
       workspace_id: workspaceId,
       sourceStatus: BETA_LOCAL_MODE ? "local_beta" : "local",
@@ -14182,7 +14266,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       verified: false,
       userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
       user_id: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
-      displayName: currentUserProfile?.displayName || user?.email || "Local Scout",
+      displayName: publicProfileLabel(),
+      username: currentPublicUsername(),
+      publicUsername: currentPublicUsername(),
+      public_username: currentPublicUsername(),
       storeId: storeSelection.storeId,
       store_id: storeSelection.storeId,
       selectedStoreId: storeSelection.storeId,
@@ -23730,6 +23817,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const distance = Number(store.distanceMiles ?? store.distance_miles ?? store.distance ?? report.distanceMiles ?? report.distance_miles ?? report.distance);
     const distanceLabel = Number.isFinite(distance) ? `${distance.toFixed(1)} mi` : "";
     const reporterReputation = report.reporterReputation || report.reporter_reputation || report.trustScore || report.trust_score || "";
+    const reporterProfile = publicCommunityProfile(report);
     return (
       <article className="scout-report-compact-card" key={reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -23746,13 +23834,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {stockStatus ? <span>{stockStatus}</span> : null}
             {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
             <span>{proofLabel}</span>
-            <span>Submitted by {isCurrentUserScoutReport(report) ? "You" : (report.displayName || report.reportedBy || report.reported_by || "Scout user")}</span>
+            <span>Submitted by {isCurrentUserScoutReport(report) ? "You" : reporterProfile.publicUsernameLabel}</span>
           </div>
           <div className="scout-signal-badge-row" aria-label="Scout signal trust">
             <span className={`scout-confidence-pill scout-confidence-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
             <span className="mini-badge">{proofLabel}</span>
             {reporterReputation ? <span className="mini-badge">Reporter rep {reporterReputation}</span> : null}
           </div>
+          {renderCommunityProfileSummary(report, { compact: true, className: "scout-report-profile-card" })}
           <div className="scout-report-items">
             <strong>Items seen</strong>
             {visibleItems.length ? (
@@ -24266,6 +24355,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <span className="mini-badge">Self rating {guess.confidenceSelfRating}/100</span>
                 <span className="mini-badge">{scoutSourceTypeLabel(guess.sourceType)}</span>
               </div>
+              {renderCommunityProfileSummary(guess, { compact: true, className: "scout-guess-profile-card" })}
             </article>
           )) : (
             <div className="small-empty-state">
@@ -26733,8 +26823,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderProfileProgressPage() {
     const displayName = currentUserProfile?.displayName || profileForm.displayName || user?.user_metadata?.display_name || "Ember & Tide Collector";
-    const handleSource = String(displayName || "collector").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 18) || "collector";
-    const avatarInitials = String(displayName || "ET")
+    const handleSource = String(publicUsernameFromProfile(currentUserProfile) || "collector").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 18) || "collector";
+    const avatarInitials = String(publicUsernameFromProfile(currentUserProfile) || "ET")
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
@@ -26765,6 +26855,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       { label: "Forge items", value: forgeInventoryItems.length },
     ];
     const isKidProfile = /kid|child/i.test(`${currentUserProfile?.accountType || currentUserProfile?.role || userType || ""}`);
+    const publicCommunity = publicCommunityProfile(publicProfileForCurrentUser({
+      publicBio: currentUserProfile.publicBio || currentUserProfile.public_bio || profileForm.publicBio,
+      scoutPoints: scoutGuessPoints,
+    }));
     return (
       <section className="profile-progress-page">
         <PageHeader
@@ -26784,7 +26878,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="profile-avatar" aria-hidden="true">{avatarInitials}</div>
             <div>
               <p className="section-kicker">Public profile preview</p>
-              <h2>{displayName}</h2>
+              <h2>{publicCommunity.publicUsernameLabel}</h2>
+              <p>{publicCommunity.contributionLine}</p>
               <p>@{handleSource} · {isKidProfile ? "Kid collector" : "Collector"}</p>
             </div>
           </div>
@@ -26821,6 +26916,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <span>Linked seats: {linkedSeats}</span>
             </div>
             <p className="compact-subtitle">Membership details are modeled for beta only. No billing or payment data is shown here.</p>
+          </article>
+          <article className="panel profile-progress-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Scout reputation</p>
+                <h2>{publicCommunity.scoutLevel.label}</h2>
+              </div>
+              <span className="status-badge">{publicCommunity.scoutPoints}/{publicCommunity.guessThreshold} points</span>
+            </div>
+            <div className="profile-mini-list">
+              <span>{publicCommunity.confirmedReports} confirmed reports</span>
+              <span>{publicCommunity.communityGuesses} community guesses</span>
+              <span>{publicCommunity.canSubmitCommunityGuesses ? "Community guesses unlocked" : "Community guesses locked"}</span>
+            </div>
+            <p className="compact-subtitle">Earn Scout points by submitting confirmed reports. Trusted Scouts can help predict restock windows, but guesses stay separate from confirmed data.</p>
           </article>
         </section>
 
@@ -27116,6 +27226,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 const feedbackCount = (betaReadinessData.betaFeedback || []).filter((feedback) => String(feedback.userId || feedback.email || "") === String(entry.userId || entry.email)).length;
                 const note = (betaReadinessData.userAdminNotes || []).find((item) => String(item.userId) === String(entry.userId || entry.email));
                 const accessStatus = userBetaAccessStatus(entry);
+                const usernameReviewError = validatePublicUsername(publicUsernameFromProfile(entry), entry, []);
                 return (
                   <article className="inventory-card compact-card" key={entry.userId || entry.email || entry.displayName}>
                     <div className="compact-card-header">
@@ -27125,14 +27236,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       </div>
                       <span className="status-badge">{entry.isAdmin ? "admin" : entry.userRole || "user"}</span>
                     </div>
+                    {renderCommunityProfileSummary(entry, { compact: true, adminDetail: true, className: "admin-reputation-profile-card" })}
                     <div className="detail-grid compact-detail-grid">
                       <DetailItem label="Plan/tier" value={entry.planTier || entry.tier || "free"} />
                       <DetailItem label="Beta access" value={accessStatus} />
                       <DetailItem label="Kids Program" value={kidsStatus} />
                       <DetailItem label="Reports" value={String(reportCount)} />
                       <DetailItem label="Feedback" value={String(feedbackCount)} />
-                      <DetailItem label="Flagged/suspended" value="Placeholder only" />
+                      <DetailItem label="Username review" value={usernameReviewError ? "Needs review" : "Clear"} />
                     </div>
+                    {usernameReviewError ? <p className="compact-subtitle warning-text">{usernameReviewError}</p> : null}
                     <textarea className="drawer-field" defaultValue={note?.note || ""} placeholder="Internal admin note" onBlur={(event) => setUserAdminNote(entry.userId || entry.email, event.target.value)} />
                     <div className="quick-actions">
                       {BETA_ACCESS_STATUSES.map((status) => (
@@ -27420,6 +27533,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <DetailItem label="Moderation" value={normalizeScoutReportModerationStatus(report)} />
                 <DetailItem label="Prediction impact" value={scoutReportFeedsPredictions(report) ? "Feeds Drop Radar" : "Excluded from predictions"} />
               </div>
+              {renderCommunityProfileSummary(report, { compact: true, adminDetail: true, className: "admin-reputation-profile-card" })}
               <div className="quick-actions">
                 <button type="button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>Confirm</button>
                 <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(report, "needsReview")}>Needs Review</button>
@@ -27531,11 +27645,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <span className="status-badge">{status}</span>
                 </div>
                 <div className="detail-grid compact-detail-grid">
-                  <DetailItem label="Reporter" value={guess.submittedBy || guess.displayName || guess.userId || "Beta Scout"} />
-                  <DetailItem label="Scout points" value={String(getScoutPoints(guess, scoutSnapshot.scoutProfile))} />
+                  <DetailItem label="Reporter" value={publicCommunityProfile(guess).publicUsernameLabel} />
+                  <DetailItem label="Scout points" value={String(publicCommunityProfile(guess).scoutPoints)} />
                   <DetailItem label="Product/category" value={guess.productType || "Pokemon restock"} />
                   <DetailItem label="Prediction impact" value={status === "Converted to Confirmed" ? "May train after proof" : "Does not train"} />
                 </div>
+                {renderCommunityProfileSummary(guess, { compact: true, adminDetail: true, className: "admin-reputation-profile-card" })}
                 <p className="compact-subtitle">{guess.restockPatternNotes || "No notes attached."}</p>
                 <div className="quick-actions">
                   {COMMUNITY_GUESS_MODERATION_STATUSES.map((statusOption) => (
@@ -28653,6 +28768,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <span>{publicUsernameLabelFromRecord(listing, "seller")}</span>
               {isMarketplaceListingKidFriendly(listing) ? <span>Family-friendly listing</span> : <span>Community listing</span>}
             </p>
+            {renderCommunityProfileSummary(listing, { compact: true, className: "marketplace-seller-profile-card" })}
             <div className="market-trust-badge-row">
               {trustBadges.length ? trustBadges.map(renderTrustBadge) : <span className="trust-badge trust-badge--secure">Community Listing</span>}
             </div>
@@ -28996,6 +29112,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               {renderFairPriceBadge(getMarketplaceListingFairAssessment(selectedListing))}
               {getMarketplaceTrustBadges(selectedListing).map(renderTrustBadge)}
             </div>
+            {renderCommunityProfileSummary(selectedListing, { compact: false, className: "marketplace-detail-profile-card" })}
             <div className="catalog-detail-grid">
               <DetailItem label="Price" value={money(selectedListing.askingPrice)} />
               <DetailItem label="Market Value" value={money(getListingMarketReference(selectedListing).currentMarketValue)} />
@@ -29156,6 +29273,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           <span>Community member</span>
                           <span>{postDate}</span>
                         </p>
+                        {renderCommunityProfileSummary(post, { compact: true, className: "tidepool-profile-card" })}
                       </div>
                     </div>
                     {adminEditModeActive ? (
@@ -34048,8 +34166,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <p className="compact-subtitle">Your full name is private by default and used for account, Kids Program, and admin review context.</p>
                       <div className="profile-public-preview settings-highlight-card">
                         <span>Public identity preview</span>
-                        <strong>{publicProfileLabel()}</strong>
-                        <small>Marketplace and Tidepool show this username instead of private email.</small>
+                        {renderCommunityProfileSummary(publicProfileForCurrentUser({
+                          publicBio: profileForm.publicBio,
+                          scoutPoints: scoutGuessPoints,
+                        }), { compact: false, className: "settings-community-profile-preview" })}
+                        <small>Your public username may appear on Scout reports, community guesses, marketplace listings, and Tidepool. Private email and child/family details stay hidden from public views.</small>
                       </div>
                       <div className="ai-helper-note">
                         <span>AI can explain what these settings do; it cannot change account permissions.</span>
@@ -34069,10 +34190,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           placeholder="public_username"
                           autoComplete="nickname"
                         />
-                        <small>Shown in Marketplace and Tidepool instead of private account details. Ember & Tide staff names are protected.</small>
+                        <small>Shown on Scout reports, community guesses, marketplace listings, and Tidepool instead of private account details. Ember & Tide staff, support, moderator, and official names are protected.</small>
                         {publicIdentityForProfile({ ...currentUserProfile, email: accountEmail() }).isOfficialAdminIdentity ? (
                           <small className="status-badge verified-badge">Official Ember & Tide admin identity: {publicProfileLabel()}</small>
                         ) : null}
+                      </label>
+                      <label className="settings-field-group">
+                        <span>Short public bio</span>
+                        <textarea
+                          className="drawer-field"
+                          rows={3}
+                          value={profileForm.publicBio}
+                          onChange={(event) => setProfileForm((current) => ({ ...current, publicBio: event.target.value.slice(0, 160) }))}
+                          placeholder="Optional: collector, parent helper, Scout, or seller note."
+                        />
+                        <small>Optional and public. Do not include private family details, exact locations, or child information.</small>
                       </label>
                       <select className="drawer-field" value={profileForm.preferredRegion} onChange={(event) => setProfileForm((current) => ({ ...current, preferredRegion: event.target.value }))}>
                         {["Hampton Roads / 757", "Richmond / Central Virginia", "Northern Virginia", "Fredericksburg", "Charlottesville / Albemarle", "Roanoke / Southwest Virginia", "Lynchburg", "Shenandoah Valley", "Eastern Shore", "Southside Virginia", "Other Virginia"].map((region) => (

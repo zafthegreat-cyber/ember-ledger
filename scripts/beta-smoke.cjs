@@ -934,6 +934,17 @@ async function main() {
 
   async function openScoutReportWizard() {
     await nav("Scout");
+    const existingForm = page.locator("form.scout-report-flow").first();
+    if (await existingForm.count()) {
+      const existingText = await existingForm.innerText().catch(() => "");
+      if (!/What did you see\?|Select item or product/i.test(existingText)) {
+        const whatStepButton = existingForm.getByRole("button", { name: /What/ }).first();
+        if (await whatStepButton.count()) {
+          await whatStepButton.click();
+          await page.waitForTimeout(250);
+        }
+      }
+    }
     if (await page.locator("form.scout-report-flow").count() === 0) {
       await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
     }
@@ -1067,7 +1078,12 @@ async function main() {
     await page.reload({ waitUntil: "domcontentloaded" });
     const form = await openScoutReportWizard();
 
-    await form.getByText("What did you see?").waitFor({ state: "visible", timeout: 5000 });
+    await form.getByText(/What did you see\?|Select item or product/i).waitFor({ state: "visible", timeout: 5000 }).catch(async (error) => {
+      const formText = await form.innerText().catch(() => "");
+      const bodyText = await page.locator("body").innerText().catch(() => "");
+      error.message = `${error.message}\nScout wizard state:\n${formText.slice(0, 1200)}\nBody:\n${bodyText.slice(0, 1600)}`;
+      throw error;
+    });
     const categoryButton = form.getByRole("button", { name: /One Piece/i }).first();
     await categoryButton.click();
     await page.waitForFunction(
