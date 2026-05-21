@@ -34,6 +34,14 @@ assert.match(alertsAnswer.answer, /in-app only/i);
 assert.match(alertsAnswer.answer, /Confirmed restocks/i);
 assert.doesNotMatch(alertsAnswer.answer, /push notifications enabled|email delivery is active|guaranteed/i);
 
+const tidepoolAnswer = buildEmberAssistFallbackResponse("What is Tidepool?", buildEmberAssistContext({ activeTab: "tidepool" }));
+assert.match(tidepoolAnswer.answer, /community board/i);
+assert.match(tidepoolAnswer.answer, /review first/i);
+
+const tidepoolReportAnswer = buildEmberAssistFallbackResponse("How do I report a post?", buildEmberAssistContext({ activeTab: "tidepool" }));
+assert.match(tidepoolReportAnswer.answer, /moderation signal/i);
+assert.match(tidepoolReportAnswer.answer, /without publicly showing who reported/i);
+
 const firstStepAnswer = buildEmberAssistFallbackResponse("What should I do first?", buildEmberAssistContext({ activeTab: "dashboard" }));
 assert.equal(firstStepAnswer.shouldEscalate, false);
 assert.match(firstStepAnswer.answer, /Start with the piece that matches why you came in/i);

@@ -9,6 +9,7 @@ import {
   isLocalCommunityShop,
   normalizeStoreExpansionFields,
 } from "./storeExpansionUtils.js";
+import { tidepoolPostNeedsModeration } from "./tidepoolCommunity.js";
 
 export const SCOUT_REPORT_MODERATION_STATUSES = [
   "Confirmed",
@@ -426,6 +427,7 @@ export function buildAdminCommandCenterSummary({
   communityGuesses = [],
   assistMessages = [],
   stores = [],
+  tidepoolPosts = [],
   feedback = [],
   errors = [],
 } = {}) {
@@ -436,6 +438,7 @@ export function buildAdminCommandCenterSummary({
   const shopsNeedingReview = stores
     .map(normalizeStoreExpansionFields)
     .filter((store) => isLocalCommunityShop(store) && normalizeShopReviewStatus(store) === "Needs Review");
+  const tidepoolPostsNeedingReview = tidepoolPosts.filter(tidepoolPostNeedsModeration);
 
   return {
     pendingScoutReports: pendingScoutReports.length,
@@ -443,6 +446,7 @@ export function buildAdminCommandCenterSummary({
     pendingCommunityGuesses: pendingGuesses.length,
     openAssistMessages: openAssistMessages.length,
     shopsNeedingReview: shopsNeedingReview.length,
+    tidepoolPostsNeedingReview: tidepoolPostsNeedingReview.length,
     userIssues: feedback.length,
     systemWarnings: errors.length,
     totalOpen:
@@ -450,6 +454,7 @@ export function buildAdminCommandCenterSummary({
       pendingGuesses.length +
       openAssistMessages.length +
       shopsNeedingReview.length +
+      tidepoolPostsNeedingReview.length +
       feedback.length +
       errors.length,
   };

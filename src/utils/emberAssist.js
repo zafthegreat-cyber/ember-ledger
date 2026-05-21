@@ -36,6 +36,7 @@ const PAGE_PROMPTS = {
   expenses: ["What receipts are missing?", "Summarize this year's expenses", "Help me categorize this expense", "What do I need for tax records?"],
   mileage: ["Summarize miles by vehicle", "Help me log a trip", "What mileage records are missing notes?", "Explain this vehicle summary"],
   spark: ["How does The Spark work?", "Help me submit a kid request", "What does waitlisted mean?", "Are there upcoming kid-friendly events?"],
+  tidepool: ["What is Tidepool?", "How do I post safely?", "Why is my post pending?", "How do I report a post?"],
   settings: ["Help me switch workspaces", "Explain personal Forge vs Ember & Tide Forge", "Help me update my profile", "Explain seller mode"],
   admin: ["What needs review?", "Show admin message queue", "Explain this user status", "What should I check first?"],
   general: ["What should I do first?", "How do I add inventory?", "What is Forge for?", "How do alerts work?", "How do I message admin?"],
@@ -69,6 +70,7 @@ const SHOP_WORDS = /\b(card shop|local shop|family friendly shop|kid friendly sh
 const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|what should i do first|what do i do first|help me|where do i start|what is this)\b/i;
 const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
 const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price)\b/i;
+const TIDEPOOL_WORDS = /\b(tidepool|community post|post safely|why is my post pending|report a post|flag a post|can kids post|community board)\b/i;
 
 function safeJsonParse(value, fallback) {
   try {
@@ -105,6 +107,7 @@ export function emberAssistPageKind(activeTab = "", extra = {}) {
   if (["expenses"].includes(activeTab)) return "expenses";
   if (["mileage", "vehicles"].includes(activeTab)) return "mileage";
   if (activeTab === "kidsProgram") return "spark";
+  if (activeTab === "tidepool") return "tidepool";
   if (["menu", "profileProgress", "membership"].includes(activeTab)) return "settings";
   if (activeTab === "adminReview" || extra.isAdminPage) return "admin";
   if (activeTab === "dailyTide") return "general";
@@ -218,6 +221,31 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     return response("Alerts are in-app only right now. Confirmed restocks, possible Drop Radar windows, community guesses, Kids Program updates, and admin statuses stay labeled so nothing sounds more certain than it is.", {
       actions: ["Open Settings", "Open Drop Radar"],
       category: "Account/beta access question",
+    });
+  }
+
+  if (TIDEPOOL_WORDS.test(text) || (page === "tidepool" && GENERAL_PAGE_HELP_WORDS.test(text))) {
+    if (/\b(pending|review|why is my post)\b/i.test(text)) {
+      return response("Tidepool posts may wait for admin review because this is a family-centered space. Pending does not mean you did anything wrong; it means we are keeping public posts clean and safe.", {
+        actions: ["Open Tidepool", "Send to Admin"],
+        category: "Other",
+      });
+    }
+    if (/\b(report|flag|unsafe)\b/i.test(text)) {
+      return response("Use Report content on a Tidepool post when something feels unsafe, private, fake, or not family-friendly. It creates a moderation signal for admins without publicly showing who reported it.", {
+        actions: ["Open Tidepool", "Send to Admin"],
+        category: "Other",
+      });
+    }
+    if (/\b(kids?|children|child)\b/i.test(text)) {
+      return response("Tidepool is family-friendly, but kids should not share private details or use private messaging. Parents and guardians should manage Kids Program and family posts.", {
+        actions: ["Open Tidepool", "Open The Spark"],
+        category: "The Spark/Kids Program question",
+      });
+    }
+    return response("Tidepool is the Ember & Tide community board for helpful local updates, questions, family-friendly wins, events, shop notes, and safe collecting talk. Posts stay kind, public-safe, and may go through review first.", {
+      actions: ["Open Tidepool", "Send to Admin"],
+      category: "Other",
     });
   }
 

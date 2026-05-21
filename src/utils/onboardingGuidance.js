@@ -138,6 +138,8 @@ export const ONBOARDING_ASSIST_PROMPTS = [
   "How do alerts work?",
   "How do I use Forge for business records?",
   "How do I join the Kids Program?",
+  "What is Tidepool?",
+  "How do I post safely?",
 ];
 
 export const CONTEXTUAL_HELP_CARDS = {
@@ -180,6 +182,11 @@ export const CONTEXTUAL_HELP_CARDS = {
     title: "Business records",
     body: "Forge organizes sales, expenses, receipts, mileage, and exports for review with your tax professional. It is not tax advice.",
     prompt: "How do I use Forge for business records?",
+  },
+  tidepool: {
+    title: "Tidepool community",
+    body: "Tidepool is for family-safe community posts, helpful local updates, questions, events, and shop notes. New posts may wait for admin review.",
+    prompt: "What is Tidepool?",
   },
 };
 
@@ -246,6 +253,13 @@ export const EMPTY_STATE_GUIDANCE = {
     actionLabel: "Alert Settings",
     actionTarget: "alerts",
     assistPrompt: "How do alerts work?",
+  },
+  tidepool: {
+    title: "The Tidepool is quiet right now.",
+    body: "Start with a family-safe question, local update, shop note, or kid-friendly collecting win. New posts are reviewed before they appear publicly.",
+    actionLabel: "Start a Post",
+    actionTarget: "tidepool",
+    assistPrompt: "How do I post safely?",
   },
   admin: {
     title: "No pending reviews.",

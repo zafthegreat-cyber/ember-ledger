@@ -4,6 +4,7 @@ import {
   normalizePublicUsername,
   usernameReservationKey,
 } from "./publicIdentity.js";
+import { detectTidepoolSafetyReviewReason } from "./tidepoolCommunity.js";
 
 export const MARKETPLACE_CLOSED_STATUSES = new Set(["Sold", "Traded", "Removed", "Archived"]);
 
@@ -100,12 +101,17 @@ export function validateTidepoolPostDraft(form = {}, options = {}) {
   const title = String(form.title || "").trim();
   const body = String(form.body || "").trim();
   if (!title && !body) return "Add a title or message before posting.";
-  return validateCommunityCopy([
+  const copyError = validateCommunityCopy([
     form.title,
     form.body,
     form.tags,
     form.locationName,
   ], options);
+  if (copyError) return copyError;
+  if (!options.allowSafetyReview && detectTidepoolSafetyReviewReason(form)) {
+    return "This public content needs safer wording before it can be posted.";
+  }
+  return "";
 }
 
 export function validateTidepoolCommentDraft(body = "", options = {}) {
