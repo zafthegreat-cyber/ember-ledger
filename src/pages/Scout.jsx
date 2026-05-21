@@ -27,7 +27,7 @@ import { DEFAULT_VIRGINIA_REGION, POKEMON_STOCK_LIKELIHOOD_OPTIONS, VIRGINIA_REG
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
-import { shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
+import { DROP_RADAR_GUESS_LOCKED_MESSAGE, MIN_SCOUT_POINTS_FOR_GUESS, canSubmitScoutGuess, getScoutPoints, shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
 import {
   cacheBestBuyStockResult,
   createBestBuyStockAlert,
@@ -75,7 +75,7 @@ const REPORT_TYPE_OPTIONS = [
   { key: "empty_shelves", label: "Empty shelves", reportType: "Store Restock Report", stockStatus: "empty", confidence: "possible", sourceType: "user_report" },
   { key: "locked_up", label: "Product locked up", reportType: "Store Restock Report", stockStatus: "behind_counter", confidence: "possible", sourceType: "user_report" },
   { key: "employee_shipment_day", label: "Employee said shipment day", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", confidence: "likely", sourceType: "employee_tip", needsReview: true },
-  { key: "guess_prediction", label: "Guess / prediction", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", confidence: "guess", sourceType: "manual_prediction", visibility: "private_from_map", needsReview: true },
+  { key: "guess_prediction", label: "Community guess / prediction", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", confidence: "guess", sourceType: "manual_prediction", visibility: "private_from_map", needsReview: true },
 ];
 
 const REPORT_RETAILER_OPTIONS = [
@@ -1212,6 +1212,8 @@ export default function Scout({
   });
   const [bestBuyMessage, setBestBuyMessage] = useState("");
   const [scoutProfile, setScoutProfile] = useState(createDefaultScoutProfile);
+  const scoutGuessPoints = getScoutPoints(scoutProfile);
+  const canSubmitLegacyScoutGuess = canSubmitScoutGuess({ scoutPoints: scoutGuessPoints });
   const [alertSettings, setAlertSettings] = useState(createDefaultAlertSettings);
   const [tidepoolForm, setTidepoolForm] = useState({
     displayName: "Local Scout",
@@ -1363,6 +1365,11 @@ export default function Scout({
       setReportForm((current) => ({ ...current, reportType: "Store Correction" }));
     }
     if (targetSubTabKey === "reports" && targetSubTabAction === "addGuess") {
+      if (!canSubmitLegacyScoutGuess) {
+        setError(`${DROP_RADAR_GUESS_LOCKED_MESSAGE} Current Scout points: ${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS}.`);
+        handledTargetSubTabRef.current = targetToken;
+        return;
+      }
       setReportInputMethod("Manual");
       setReportForm((current) => ({
         ...current,
@@ -1377,7 +1384,7 @@ export default function Scout({
       setReportInputMethod("Import Intel");
     }
     handledTargetSubTabRef.current = targetToken;
-  }, [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductName, targetSubTabProductId, targetSubTabProductSnapshot, targetSubTabReportId, allReports]);
+  }, [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductName, targetSubTabProductId, targetSubTabProductSnapshot, targetSubTabReportId, allReports, canSubmitLegacyScoutGuess, scoutGuessPoints]);
 
   useEffect(() => {
     setStorePage(1);
@@ -2892,6 +2899,11 @@ async function handleUpdateStore(e) {
       setError("Select a store before submitting a Scout report.");
       return;
     }
+    const isCommunityGuess = reportForm.sourceType === "manual_prediction" || reportForm.confidence === "guess";
+    if (isCommunityGuess && !canSubmitLegacyScoutGuess) {
+      setError(`${DROP_RADAR_GUESS_LOCKED_MESSAGE} Current Scout points: ${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS}.`);
+      return;
+    }
     const submitMode = e.currentTarget?.dataset?.submitMode || e.nativeEvent?.submitter?.value || "public";
     if (e.currentTarget?.dataset) e.currentTarget.dataset.submitMode = "";
     const submitForReview = submitMode === "review";
@@ -2916,6 +2928,7 @@ async function handleUpdateStore(e) {
       }))
       .filter((item) => item.productName);
     const hasQuickReportSignal = Boolean(note || reportForm.stockStatus || uniquePhotoUrls.length || itemsSeen.length || reportForm.itemName);
+    const isConfirmedRestockSignal = ["in_stock", "vendor_stocking", "behind_counter"].includes(reportForm.stockStatus);
     if (!hasQuickReportSignal) {
       setError("Add a quick stock status, note, photo, or optional item before submitting.");
       return;
@@ -2983,6 +2996,8 @@ async function handleUpdateStore(e) {
         reportedBy: reportForm.reportedBy,
         verified: needsReview ? false : reportForm.verified,
         verificationStatus,
+        recordKind: isCommunityGuess ? "community_guess" : isConfirmedRestockSignal ? "confirmed_restock" : "scout_report",
+        shouldTrainPredictions: !isCommunityGuess && isConfirmedRestockSignal,
         sourceType: reportForm.sourceType || (uniquePhotoUrls.length ? "photo_report" : "user_report"),
         source_type: reportForm.sourceType || (uniquePhotoUrls.length ? "photo_report" : "user_report"),
         confidence: reportForm.confidence || (uniquePhotoUrls.length ? "confirmed" : "possible"),
@@ -4802,10 +4817,11 @@ async function handleUpdateStore(e) {
                       key={option.key}
                       type="button"
                       className={`scout-report-choice-card ${selectedReportTypeOption.key === option.key ? "selected" : ""}`}
+                      disabled={option.confidence === "guess" && !canSubmitLegacyScoutGuess}
                       onClick={() => selectReportTypeOption(option)}
                     >
                       <strong>{option.label}</strong>
-                      <span>{option.reportType}</span>
+                      <span>{option.confidence === "guess" && !canSubmitLegacyScoutGuess ? `${DROP_RADAR_GUESS_LOCKED_MESSAGE} (${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS})` : option.reportType}</span>
                     </button>
                   ))}
                 </div>

@@ -39,10 +39,19 @@ import {
   normalizeReleaseCalendarEvent,
 } from "./utils/calendarDataUtils.mjs";
 import {
+  DROP_RADAR_GUESS_LOCKED_MESSAGE,
   DROP_RADAR_CONFIRMATION_TEXT,
   DROP_RADAR_RESET_OPTIONS,
+  MIN_SCOUT_POINTS_FOR_GUESS,
   applyDropRadarReset,
   buildDropRadarPredictions,
+  canSubmitScoutGuess,
+  dropRadarRecordKind,
+  dropRadarRecordLabel,
+  getScoutPoints,
+  isDropRadarCommunityGuess,
+  isDropRadarConfirmedTrainingEntry,
+  isDropRadarPlaceholderForecast,
   parseDropRadarShorthand,
   shouldUseDropRadarSeed,
 } from "./utils/dropRadarUtils.mjs";
@@ -729,7 +738,7 @@ const SCOUT_QUICK_REPORT_TYPES = [
   { value: "no_stock", label: "No stock", helper: "Nothing found", reportType: "Store Restock Report", stockStatus: "empty", sourceType: "user_report", confidence: "possible" },
   { value: "restock_happening_now", label: "Restock happening now", helper: "Vendor or staff stocking", reportType: "Store Restock Report", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "likely" },
   { value: "employee_restock_coming", label: "Employee said restock coming", helper: "Needs review", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", sourceType: "employee_tip", confidence: "likely", needsReview: true },
-  { value: "restock_guess", label: "Restock guess / pattern", helper: "Personal prediction", reportType: "Store Guess", stockStatus: "unknown", sourceType: "manual_prediction", confidence: "guess", isGuess: true },
+  { value: "restock_guess", label: "Community guess / pattern", helper: "Requires Scout points; never counts as confirmed stock.", reportType: "Store Guess", stockStatus: "unknown", sourceType: "manual_prediction", confidence: "guess", isGuess: true },
   { value: "truck_vendor_seen", label: "Truck/vendor seen", helper: "Possible restock", reportType: "Restock Pattern Suggestion", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "possible", needsReview: true },
   { value: "shelf_tag_only", label: "Shelf tag only", helper: "No product seen", reportType: "Store Intel", stockStatus: "limit_posted", sourceType: "user_report", confidence: "possible" },
   { value: "line_queue_seen", label: "Line/queue seen", helper: "Demand signal", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible", needsReview: true },
@@ -13386,6 +13395,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function scoutWizardStepError(stepKey = quickScoutReportStep) {
     const currentType = quickScoutReportTypeMeta();
+    if (currentType.isGuess && !currentUserCanSubmitScoutGuess && ["details", "review"].includes(stepKey)) return DROP_RADAR_GUESS_LOCKED_MESSAGE;
     if (stepKey === "details" && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
     if (stepKey === "where") {
       const storeSelection = resolveQuickScoutStoreSelection();
@@ -13559,6 +13569,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     return {
       id,
       recordType: "guess",
+      recordKind: "community_guess",
+      eventType: "Community Guess",
+      shouldTrainPredictions: false,
+      trainingEligible: false,
+      verified: false,
       userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
       user_id: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
       displayName: currentUserProfile?.displayName || user?.email || "Local Scout",
@@ -13581,6 +13596,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       confidenceSelfRating: Number(quickScoutReportForm.confidenceSelfRating || 50),
       confidence_self_rating: Number(quickScoutReportForm.confidenceSelfRating || 50),
       confidence: "guess",
+      confidenceLabel: "Community Guess",
+      verificationStatus: "community_guess",
+      verification_status: "community_guess",
+      status: "guess",
       sourceType: "manual_prediction",
       source_type: "manual_prediction",
       visibility: normalizeScoutGuessVisibility(quickScoutReportForm.visibility),
@@ -13609,6 +13628,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const currentType = quickScoutReportTypeMeta();
     const scoutData = getSharedScoutData();
     if (currentType.isGuess) {
+      if (!currentUserCanSubmitScoutGuess) {
+        setQuickScoutReportMessage(DROP_RADAR_GUESS_LOCKED_MESSAGE);
+        setVaultToast(DROP_RADAR_GUESS_LOCKED_MESSAGE);
+        return;
+      }
       const guess = buildQuickScoutGuessRecord();
       if (!guess) {
         setQuickScoutReportMessage(scoutWizardStepError("where") || "Choose the store/location before saving this guess.");
@@ -13679,6 +13703,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openScoutGuessFlow() {
+    if (!currentUserCanSubmitScoutGuess) {
+      setScoutForecastMode("guesses");
+      setVaultToast(DROP_RADAR_GUESS_LOCKED_MESSAGE);
+      return;
+    }
     openScoutSubmitFlow({ action: "addGuess", source: "scout-forecast" });
   }
 
@@ -18603,6 +18632,8 @@ function renderForgeHeader() {
   const adminEditModeAvailable = adminViewingAsAdmin;
   const adminEditModeActive = adminEditModeAvailable && adminEditMode;
   const canReviewSharedData = adminEditModeActive;
+  const scoutGuessPoints = getScoutPoints(scoutSnapshot.scoutProfile, currentUserProfile);
+  const currentUserCanSubmitScoutGuess = canSubmitScoutGuess({ scoutPoints: scoutGuessPoints }, { admin: adminEditModeActive });
   const adminReviewIdentityLabel = "Signed in as Admin / Moderator";
   const adminReviewIdentityDetail = "Your actual profile has admin or moderator review access. View Mode only changes frontend display; protected writes remain guarded by server-side database rules.";
   const setAdminModeView = (nextMode) => {
@@ -19648,9 +19679,9 @@ function renderForgeHeader() {
     const source = String(sourceType || "").toLowerCase();
     const normalizedConfidence = String(confidence || "").toLowerCase();
     const badges = [];
-    if (normalizedConfidence === "confirmed") badges.push("Verified");
+    if (normalizedConfidence === "confirmed") badges.push("Confirmed");
     if (source === "employee_tip") badges.push("Employee Tip");
-    else if (["planner_guess", "manual_prediction", "user_correction"].includes(source) || normalizedConfidence === "guess") badges.push("User Guess");
+    else if (["planner_guess", "manual_prediction", "user_correction"].includes(source) || normalizedConfidence === "guess") badges.push("Community Guess");
     else if (["user_report", "photo_report", "text_screenshot", "group_chat", "called_store", "social_media_post"].includes(source)) badges.push("User Report");
     else if (source) badges.push(scoutSourceTypeLabel(source));
     else badges.push("Pattern");
@@ -19911,15 +19942,15 @@ function renderForgeHeader() {
     : shouldUseDropRadarSeed(scoutSnapshot)
       ? SCOUT_HISTORICAL_INTEL_SEED
       : [];
-  const scoutPatternRows = scoutSnapshot.restockPatterns?.length ? scoutSnapshot.restockPatterns : buildScoutRestockPatterns(scoutIntelRows);
+  const confirmedScoutIntel = scoutIntelRows.filter(isDropRadarConfirmedTrainingEntry);
+  const scoutPatternRows = scoutSnapshot.restockPatterns?.length ? scoutSnapshot.restockPatterns : buildScoutRestockPatterns(confirmedScoutIntel);
   const dropRadarPredictionRows = buildDropRadarPredictions({
     stores: scoutSnapshot.stores || [],
     reports: scoutSnapshot.reports || [],
     trainingRestocks: scoutSnapshot.manualRestockTraining || [],
     restockIntel: scoutIntelRows,
   });
-  const confirmedScoutIntel = scoutIntelRows.filter((row) => ["confirmed", "likely"].includes(row.confidence));
-  const predictionScoutIntel = scoutIntelRows.filter((row) => ["guess", "possible", "rumor"].includes(row.confidence) || /guess|prediction|planner/i.test(row.sourceType || ""));
+  const predictionScoutIntel = scoutIntelRows.filter((row) => isDropRadarCommunityGuess(row) && !isDropRadarPlaceholderForecast(row));
   const scoutGuessRows = [
     ...(scoutSnapshot.storeGuesses || []),
     ...(scoutSnapshot.guesses || []),
@@ -19939,7 +19970,7 @@ function renderForgeHeader() {
       return String(a.storeName).localeCompare(String(b.storeName));
     });
   const scoutForecastPatternRows = scoutPatternRows.map((pattern) => {
-    const relatedIntel = scoutIntelRows
+    const relatedIntel = confirmedScoutIntel
       .filter((row) => {
         const rowStore = String(row.storeAlias || row.store_alias || "").toLowerCase();
         const rowRetailer = String(row.retailer || "").toLowerCase();
@@ -19948,54 +19979,48 @@ function renderForgeHeader() {
         return rowStore === patternStore && (!patternRetailer || !rowRetailer || rowRetailer === patternRetailer);
       })
       .sort((a, b) => scoutForecastSourceRank(a) - scoutForecastSourceRank(b));
-    const relatedReports = scoutReportRows.filter((report) => {
-      const store = getScoutReportStore(report);
-      const reportStore = String(store.name || store.nickname || report.storeName || report.store_name || "").toLowerCase();
-      const reportRetailer = String(store.chain || store.retailer || report.retailer || "").toLowerCase();
-      const patternStore = String(pattern.storeAlias || pattern.nickname || "").toLowerCase();
-      const patternRetailer = String(pattern.retailer || "").toLowerCase();
-      return reportStore === patternStore && (!patternRetailer || !reportRetailer || reportRetailer === patternRetailer);
-    });
-    const relatedGuesses = scoutGuessRows.filter((guess) => {
-      const guessStore = String(guess.storeName || "").toLowerCase();
-      const guessRetailer = String(guess.retailer || "").toLowerCase();
-      const patternStore = String(pattern.storeAlias || pattern.nickname || "").toLowerCase();
-      const patternRetailer = String(pattern.retailer || "").toLowerCase();
-      return guessStore === patternStore && (!patternRetailer || !guessRetailer || guessRetailer === patternRetailer);
-    });
-    const latest = relatedIntel[0] || {};
-    const latestConfirmedReport = relatedReports.find((report) => /verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`));
-    const confidence = latestConfirmedReport ? "confirmed" : latest.confidence || pattern.computedConfidence || (relatedGuesses.length ? "possible" : "unknown");
-    const sourceType = latest.sourceType || latest.source_type || pattern.patternCandidates?.[0]?.sourceType || "pattern";
+    const relatedReports = scoutReportRows
+      .filter(isDropRadarConfirmedTrainingEntry)
+      .filter((report) => {
+        const store = getScoutReportStore(report);
+        const reportStore = String(store.name || store.nickname || report.storeName || report.store_name || "").toLowerCase();
+        const reportRetailer = String(store.chain || store.retailer || report.retailer || "").toLowerCase();
+        const patternStore = String(pattern.storeAlias || pattern.nickname || "").toLowerCase();
+        const patternRetailer = String(pattern.retailer || "").toLowerCase();
+        return reportStore === patternStore && (!patternRetailer || !reportRetailer || reportRetailer === patternRetailer);
+      });
+    const confirmedSupportCount = relatedIntel.length + relatedReports.length;
+    if (!confirmedSupportCount) return null;
+    const latest = relatedIntel[0] || relatedReports[0] || {};
+    const sourceType = latest.sourceType || latest.source_type || pattern.patternCandidates?.[0]?.sourceType || "confirmed_history";
     const days = pattern.usualDays?.length
       ? pattern.usualDays
-      : relatedGuesses.length
-        ? [...new Set(relatedGuesses.map((guess) => guess.guessedDay).filter(Boolean))]
-        : scoutForecastDayNames(latest.pattern, latest.sourceText, latest.source_text, pattern.productTypePattern);
+      : scoutForecastDayNames(latest.pattern, latest.sourceText, latest.source_text, pattern.productTypePattern, latest.dayOfWeek || latest.day_of_week);
     const groupLabel = scoutForecastGroupLabel(days);
-    const windowLabel = scoutForecastWindowLabel(days, pattern.usualTimeWindow || relatedGuesses[0]?.guessedTimeWindow, groupLabel);
+    const windowLabel = scoutForecastWindowLabel(days, pattern.usualTimeWindow || latest.timeWindow || latest.time_window, groupLabel);
     const products = scoutForecastProducts(latest);
-    const reason = scoutForecastReason(latest, pattern) || relatedGuesses[0]?.restockPatternNotes || "";
-    const updatedAt = latestConfirmedReport?.reportedAt || latestConfirmedReport?.reported_at || latest.updatedAt || latest.updated_at || latest.submittedAt || latest.submitted_at || latest.createdAt || latest.created_at || pattern.lastConfirmedRestockAt || relatedGuesses[0]?.updatedAt || "";
+    const reason = scoutForecastReason(latest, pattern) || `Based on ${confirmedSupportCount} confirmed restock${confirmedSupportCount === 1 ? "" : "s"} at this store.`;
+    const updatedAt = latest.reportedAt || latest.reported_at || latest.updatedAt || latest.updated_at || latest.submittedAt || latest.submitted_at || latest.createdAt || latest.created_at || pattern.lastConfirmedRestockAt || "";
     const updatedLabel = updatedAt ? scoutReportDateTimeLabel({ submittedAt: updatedAt }) : "";
     const submittedBy = latest.submittedBy || latest.submitted_by || latest.username || latest.userName || latest.user_name || "";
-    const baseScore = scoutConfidenceScore(confidence);
-    const reportBoost = Math.min(18, relatedReports.length * 6);
-    const guessBoost = Math.min(12, relatedGuesses.length * 4);
-    const noStockPenalty = relatedReports.some((report) => /empty|no_stock|sold out/i.test(`${report.stockStatus || report.stock_status || report.reportType || ""}`)) ? 12 : 0;
-    const confidenceScore = Math.max(5, Math.min(95, baseScore + reportBoost + guessBoost - noStockPenalty));
-    const forecastConfidenceLabel = confidenceScore >= 75 ? "High" : confidenceScore >= 45 ? "Medium" : "Low";
+    const confidenceScore = confirmedSupportCount >= 5 ? 82 : confirmedSupportCount >= 3 ? 62 : 38;
+    const confidenceKey = confirmedSupportCount >= 5 ? "high" : confirmedSupportCount >= 3 ? "medium" : "low";
+    const forecastConfidenceLabel = confidenceKey === "high" ? "High Confidence" : confidenceKey === "medium" ? "Medium Confidence" : "Low Confidence";
+    const lastConfirmedReport = [...relatedReports, ...relatedIntel]
+      .sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a))[0];
     return {
       id: pattern.id || `${pattern.storeAlias || pattern.nickname}-${pattern.retailer}`,
-      storeName: pattern.nickname || pattern.storeAlias || "Store not selected",
+      recordKind: "predicted_window",
+      eventType: "Predicted Drop Window",
+      storeName: pattern.nickname || pattern.storeAlias || latest.storeName || latest.storeAlias || "Store not selected",
       retailer: pattern.retailer || latest.retailer || "Retailer unknown",
-      confidence,
-      confidenceKey: scoutForecastConfidenceKey(confidence),
-      confidenceLabel: latestConfirmedReport ? "Confirmed" : forecastConfidenceLabel,
+      confidence: confidenceKey,
+      confidenceKey,
+      confidenceLabel: forecastConfidenceLabel,
       confidenceScore,
       sourceType,
-      sourceLabel: sourceType ? scoutSourceTypeLabel(sourceType) : "",
-      badges: scoutForecastSourceBadges(sourceType, confidence),
+      sourceLabel: "Confirmed restock history",
+      badges: ["Predicted", forecastConfidenceLabel],
       days,
       groupLabel,
       windowLabel,
@@ -20003,18 +20028,17 @@ function renderForgeHeader() {
       reason,
       updatedLabel,
       submittedBy,
-      lastConfirmedReportLabel: latestConfirmedReport ? scoutReportDateTimeLabel(latestConfirmedReport) : "",
-      supportingReportCount: relatedReports.length,
-      supportingGuessCount: relatedGuesses.length,
+      lastConfirmedReportLabel: lastConfirmedReport ? scoutReportDateTimeLabel(lastConfirmedReport) : "",
+      supportingReportCount: confirmedSupportCount,
+      supportingGuessCount: 0,
       basisSummary: [
-        relatedReports.length ? `${relatedReports.length} report${relatedReports.length === 1 ? "" : "s"}` : "",
-        relatedGuesses.length ? `${relatedGuesses.length} guess${relatedGuesses.length === 1 ? "" : "es"}` : "",
+        `${confirmedSupportCount} confirmed restock${confirmedSupportCount === 1 ? "" : "s"} used`,
         reason,
       ].filter(Boolean).join(" | "),
-      sortRank: scoutForecastSourceRank({ sourceType, confidence }),
+      sortRank: 1,
       dayDistance: Math.min(...(days.length ? days.map(scoutForecastDayDistance) : [99])),
     };
-  });
+  }).filter(Boolean);
   const scoutForecastPatternKeys = new Set(scoutForecastPatternRows.map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
   const scoutGuessForecastRows = scoutGuessRows
     .filter((guess) => !scoutForecastPatternKeys.has(`${guess.storeName}|${guess.retailer}`.toLowerCase()))
@@ -20023,15 +20047,17 @@ function renderForgeHeader() {
       const confidenceLabel = confidenceScore >= 75 ? "High" : confidenceScore >= 45 ? "Medium" : "Low";
       return {
         id: `guess-forecast-${guess.id}`,
+        recordKind: "community_guess",
+        eventType: "Community Guess",
         storeName: guess.storeName,
         retailer: guess.retailer,
         confidence: "guess",
         confidenceKey: "low",
-        confidenceLabel,
+        confidenceLabel: "Community Guess",
         confidenceScore,
         sourceType: guess.sourceType || "manual_prediction",
         sourceLabel: scoutSourceTypeLabel(guess.sourceType || "manual_prediction"),
-        badges: ["User Guess"],
+        badges: ["Community Guess", `${confidenceLabel} self-rating`],
         days: [guess.guessedDay].filter(Boolean),
         groupLabel: scoutForecastGroupLabel([guess.guessedDay].filter(Boolean)),
         windowLabel: scoutForecastWindowLabel([guess.guessedDay].filter(Boolean), guess.guessedTimeWindow, "Unknown window"),
@@ -20049,6 +20075,8 @@ function renderForgeHeader() {
     });
   const dropRadarForecastRows = dropRadarPredictionRows.map((row) => ({
     id: row.id,
+    recordKind: "predicted_window",
+    eventType: "Predicted Drop Window",
     storeId: row.storeId,
     store: row.store,
     storeName: row.storeName,
@@ -20059,8 +20087,8 @@ function renderForgeHeader() {
     confidenceLabel: row.confidenceLabel,
     confidenceScore: row.confidenceKey === "high" ? 82 : row.confidenceKey === "medium" ? 62 : row.confidenceKey === "low" ? 38 : 15,
     sourceType: "manual_training_restock",
-    sourceLabel: "Manual Training Restock",
-    badges: [row.patternStrength === "strong" ? "Strong Pattern" : row.patternStrength === "developing" ? "Developing Pattern" : "Needs Data"],
+    sourceLabel: row.sourceLabel || "Confirmed Scout/restock history",
+    badges: ["Predicted", row.confidenceLabel, row.patternStrength === "strong" ? "Strong Pattern" : row.patternStrength === "developing" ? "Developing Pattern" : "Needs Data"],
     days: [row.commonDay].filter(Boolean),
     groupLabel: row.commonDay || "Needs more data",
     windowLabel: row.nextLikelyWindow,
@@ -20145,17 +20173,23 @@ function renderForgeHeader() {
   const watchCalendarForecastEvents = watchCalendarSourceForecastRows.map((row, index) => {
     const dayDistance = Number.isFinite(row.dayDistance) ? Math.min(Math.max(row.dayDistance, 0), 7) : 7;
     const sourceText = `${row.sourceType || ""} ${row.sourceLabel || ""} ${row.badges?.join(" ") || ""}`.toLowerCase();
+    const recordKind = row.recordKind || dropRadarRecordKind(row);
+    const eventType = recordKind === "community_guess"
+      ? "Community Guess"
+      : recordKind === "confirmed_restock"
+        ? "Confirmed Restock"
+        : "Predicted Drop Window";
     const isOnline = /online|website|pokemon center|best buy/.test(sourceText) || /pokemon center/i.test(row.storeName || "");
-    const isGuess = /guess|prediction|planner|possible|rumor/.test(sourceText) || ["medium", "low", "needs-data"].includes(row.confidenceKey);
+    const isGuess = recordKind === "community_guess";
     const matchedStore = !isOnline ? findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer }) : null;
     const isFollowedStore = Boolean(matchedStore?.favorite || matchedStore?.priority || matchedStore?.watchlisted || matchedStore?.watchlist);
-    const isConfirmedDrop = row.confidenceKey === "confirmed" || /verified|confirmed/.test(sourceText);
+    const isConfirmedDrop = recordKind === "confirmed_restock" || row.confidenceKey === "confirmed" || /verified|confirmed/.test(sourceText);
     const isAdminOnlyPrediction = row.confidenceKey === "needs-data" || /needs data/i.test(row.confidenceLabel || row.reason || row.basisSummary || "");
     return {
       id: `forecast-${row.id || index}`,
       dateKey: addLocalDays(watchCalendarTodayKey, dayDistance),
       title: row.storeName || "Watch item",
-      subtitle: `${isOnline ? "Online Drop Watch" : isConfirmedDrop ? "Confirmed Restock" : "Predicted Drop Window"} - ${row.confidenceLabel || "Possible"}`,
+      subtitle: `${isOnline ? "Online Drop Watch" : eventType} - ${row.confidenceLabel || dropRadarRecordLabel(row) || "Possible"}`,
       retailer: row.retailer || "",
       city: matchedStore?.city || row.city || "",
       region: matchedStore?.region || "",
@@ -20164,16 +20198,16 @@ function renderForgeHeader() {
       reportable: !isOnline,
       layerKeys: [
         isOnline ? "onlineRestocks" : "localRestocks",
-        isConfirmedDrop ? "confirmedRestocks" : "predictedDrops",
+        isConfirmedDrop ? "confirmedRestocks" : !isGuess ? "predictedDrops" : "",
         isFollowedStore ? "followedStores" : "",
         isAdminOnlyPrediction ? "adminInternal" : "",
         isGuess ? "userGuesses" : "appPredictions",
         isConfirmedDrop || row.confidenceKey === "high" ? "retailDrops" : "",
       ].filter(Boolean),
-      eventType: isOnline ? "Online Drop Watch" : isConfirmedDrop ? "Confirmed Restock" : "Predicted Drop Window",
+      eventType: isOnline ? "Online Drop Watch" : eventType,
       locationType: isOnline ? "online" : "store",
       timeLabel: row.windowLabel || "Unknown time",
-      confidenceLabel: isConfirmedDrop ? "Confirmed Restock" : row.confidenceLabel || "Predicted",
+      confidenceLabel: isConfirmedDrop ? "Confirmed Restock" : isGuess ? "Community Guess" : row.confidenceLabel || "Predicted",
       confidenceKey: row.confidenceKey || "medium",
       sourceLabel: row.sourceLabel || "",
       products: row.products || [],
@@ -23316,9 +23350,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="summary-pill-row">
             <span className="status-badge">{scoutGuessRows.length} guess{scoutGuessRows.length === 1 ? "" : "es"}</span>
             <button type="button" className="secondary-button" onClick={() => void runGuessPlannerAiAssist()}>Summarize guesses</button>
-            <button type="button" onClick={openScoutGuessFlow}>Add Guess</button>
+            <button type="button" disabled={!currentUserCanSubmitScoutGuess} title={!currentUserCanSubmitScoutGuess ? DROP_RADAR_GUESS_LOCKED_MESSAGE : ""} onClick={openScoutGuessFlow}>Add Guess</button>
           </div>
         </div>
+        {!currentUserCanSubmitScoutGuess ? (
+          <p className="ai-helper-note">{DROP_RADAR_GUESS_LOCKED_MESSAGE} Current Scout points: {scoutGuessPoints}/{MIN_SCOUT_POINTS_FOR_GUESS}.</p>
+        ) : null}
         <div className="scout-intel-dashboard">
           {scoutGuessRows.length ? scoutGuessRows.map((guess) => (
             <article className="scout-intel-card scout-intel-card--prediction" key={guess.id}>
@@ -23327,7 +23364,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <strong>{guess.storeName}</strong>
                   <p>{guess.retailer}{guess.city ? ` | ${guess.city}` : ""}</p>
                 </div>
-                <span className="status-badge">Guess</span>
+                <span className="status-badge">Community Guess</span>
               </div>
               <p><strong>{guess.guessedDay || "Unknown day"}</strong>{guess.guessedTimeWindow ? ` | ${guess.guessedTimeWindow}` : ""}</p>
               {guess.productType ? <p>Expected: {guess.productType}</p> : <p className="compact-subtitle">Products unknown</p>}
@@ -23341,8 +23378,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           )) : (
             <div className="small-empty-state">
               <strong>No guesses saved yet.</strong>
-              <span>Add a pattern note when you think a store usually restocks.</span>
-              <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
+              <span>{currentUserCanSubmitScoutGuess ? "Add a pattern note when you think a store usually restocks." : DROP_RADAR_GUESS_LOCKED_MESSAGE}</span>
+              <button type="button" className="secondary-button" disabled={!currentUserCanSubmitScoutGuess} onClick={openScoutGuessFlow}>Add Guess</button>
             </div>
           )}
         </div>
@@ -23846,14 +23883,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="compact-card-header scout-forecast-header">
             <div>
               <h2>Restock Forecast</h2>
-              <p>Next likely restock windows based on reports, patterns, and user guesses.</p>
+              <p>Next likely restock windows based on confirmed restock history. Community guesses stay labeled separately.</p>
             </div>
             <div className="scout-forecast-actions">
-              <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
+              <button type="button" className="secondary-button" disabled={!currentUserCanSubmitScoutGuess} title={!currentUserCanSubmitScoutGuess ? DROP_RADAR_GUESS_LOCKED_MESSAGE : ""} onClick={openScoutGuessFlow}>Add Guess</button>
               <button type="button" className="secondary-button" onClick={() => setScoutView("predictions")}>Open Predictions</button>
             </div>
           </div>
           <p className="ai-helper-note">{AI_FORECAST_DISCLAIMER}</p>
+          {!currentUserCanSubmitScoutGuess ? (
+            <p className="ai-helper-note">{DROP_RADAR_GUESS_LOCKED_MESSAGE}</p>
+          ) : null}
           <div className="scout-forecast-groups">
             {forecastGroups.length ? forecastGroups.map((group) => (
               <div className="scout-forecast-group" key={`forecast-group-${group.label}`}>
@@ -23930,10 +23970,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <div className="compact-card-header">
           <div>
             <h2>Forecast Windows</h2>
-            <p>App-generated predictions from reports, guesses, history, and patterns. Forecasts show confidence, not certainty.</p>
+            <p>App-generated predictions use confirmed restock reports and admin training. Community guesses do not train the model.</p>
             <p className="ai-helper-note">{AI_FORECAST_DISCLAIMER}</p>
+            {!currentUserCanSubmitScoutGuess ? <p className="ai-helper-note">{DROP_RADAR_GUESS_LOCKED_MESSAGE}</p> : null}
           </div>
-          <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
+          <button type="button" className="secondary-button" disabled={!currentUserCanSubmitScoutGuess} title={!currentUserCanSubmitScoutGuess ? DROP_RADAR_GUESS_LOCKED_MESSAGE : ""} onClick={openScoutGuessFlow}>Add Guess</button>
         </div>
         <div className="scout-forecast-card-grid">
           {scoutForecastPreviewRows.length ? scoutForecastPreviewRows.map((row) => {
@@ -23965,7 +24006,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <button type="button" className="secondary-button" onClick={() => { completeDailyAction("store", { badge: "restock_reporter", points: 5 }); setVaultToast(`${row.storeName} added to watch.`); }}>Watch</button>
                   <button type="button" className="secondary-button" onClick={() => void explainScoutForecast(row)}>Explain forecast</button>
                   <button type="button" className="secondary-button" onClick={() => void summarizeScoutStore(row)}>Summarize reports</button>
-                  <button type="button" className="secondary-button" onClick={() => openScoutGuessFlow()}>Add note</button>
+                  <button type="button" className="secondary-button" disabled={!currentUserCanSubmitScoutGuess} title={!currentUserCanSubmitScoutGuess ? DROP_RADAR_GUESS_LOCKED_MESSAGE : ""} onClick={() => openScoutGuessFlow()}>Add note</button>
                   <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "forecast-window", store: reportStore })}>Report stock</button>
                   <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "forecast-no-stock", store: reportStore, reportType: "no_stock" })}>Mark no stock</button>
                 </div>
@@ -23974,7 +24015,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           }) : (
             <div className="small-empty-state">
               <strong>No forecast windows yet.</strong>
-              <span>Reports and guesses will build a useful forecast over time.</span>
+              <span>Confirmed reports build predictions. Community guesses stay in the planner until enough proof exists.</span>
             </div>
           )}
         </div>
@@ -27882,7 +27923,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               const preview = post.body || "No post body yet.";
               const sourceBadge = post.sourceType === "mock" || post.sourceType === "demo" ? "Demo" : post.sourceType === "admin" ? "Admin" : "User";
               const usernameLabel = publicUsernameLabelFromRecord(post, "community");
-              const displayName = post.displayName && !String(post.displayName).startsWith("@") ? post.displayName : "Community member";
+              const avatarInitial = usernameLabel.replace(/^@/, "").slice(0, 1).toUpperCase() || "C";
               const trustBadges = trustBadgesForPost(post);
               const currentUserId = currentUserProfile.userId || "local-beta";
               const canHidePost = post.userId === currentUserId || adminToolsVisible;
@@ -27890,11 +27931,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <article className={`tidepool-post-card compact-card${post.status === "hidden" || post.status === "removed" ? " tidepool-post-card--moderated" : ""}`} key={post.postId}>
                   <div className="tidepool-post-top">
                     <div className="tidepool-author-block">
-                      <div className="tidepool-avatar" aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</div>
+                      <div className="tidepool-avatar" aria-hidden="true">{avatarInitial}</div>
                       <div>
-                        <strong>{displayName}</strong>
+                        <strong>{usernameLabel}</strong>
                         <p className="tidepool-post-meta">
-                          <span>{usernameLabel}</span>
+                          <span>Community member</span>
                           <span>{postDate}</span>
                         </p>
                       </div>
@@ -28888,7 +28929,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     ];
     const quickReportTypeOptions = currentType.isGuess
       ? [
-          { value: "restock_guess", title: "Restock pattern", helper: "A planning note, not confirmed stock." },
+          { value: "restock_guess", title: "Community guess", helper: currentUserCanSubmitScoutGuess ? "A planning note, not confirmed stock." : DROP_RADAR_GUESS_LOCKED_MESSAGE },
           { value: "employee_restock_coming", title: "Employee tip", helper: "Needs community review." },
           { value: "truck_vendor_seen", title: "Truck/vendor seen", helper: "Possible restock signal." },
           { value: "other_intel", title: "Other", helper: "Manual note or pattern." },
@@ -28962,6 +29003,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ["Expected day", quickScoutDateLabel()],
             ["Expected window", quickScoutReportForm.guessedTimeWindow || "Unknown"],
             ["Self rating", `${quickScoutReportForm.confidenceSelfRating || 50}/100`],
+            ["Scout point gate", currentUserCanSubmitScoutGuess ? `${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS} points` : DROP_RADAR_GUESS_LOCKED_MESSAGE],
           ]
         : [
             ["Quantity", quickScoutReportForm.quantity || "Not specified"],
@@ -29048,7 +29090,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         || quickScoutReportTypeMeta(quickScoutReportSaved?.quickReportType || quickScoutReportForm.reportType).label;
       const savedSubmittedTime = quickScoutReportSaved ? scoutReportDateTimeLabel(quickScoutReportSaved) : quickScoutDateLabel();
       const savedSignalType = currentType.isGuess
-        ? "Prediction/planner note"
+        ? "Community Guess (not confirmed stock)"
         : (quickScoutReportSaved?.confidence === "verified" ? "Verified Scout report" : "Submitted Scout report");
       return (
         <section className="scout-quick-report-v2 scout-quick-report-sent">
@@ -29542,7 +29584,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {quickScoutReportStep === "product" ? "Cancel" : "Back"}
           </button>
           {quickScoutReportStep === "review" ? (
-            <button type="button" onClick={submitQuickScoutReport}>{currentType.isGuess ? "Save Guess" : "Submit Report"}</button>
+            <button type="button" disabled={currentType.isGuess && !currentUserCanSubmitScoutGuess} onClick={submitQuickScoutReport}>{currentType.isGuess ? "Save Guess" : "Submit Report"}</button>
           ) : (
             <button type="button" onClick={goNextScoutWizardStep}>Next</button>
           )}
@@ -32212,7 +32254,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <p>Forecast Windows and Guess Planner are combined here so planning stays in one place.</p>
             </div>
             <SectionHeroArt title="Tide Forecast" className="forecast-feature-art" />
-            <button type="button" className="secondary-button" onClick={openScoutGuessFlow}>Add Guess</button>
+            <button type="button" className="secondary-button" disabled={!currentUserCanSubmitScoutGuess} title={!currentUserCanSubmitScoutGuess ? DROP_RADAR_GUESS_LOCKED_MESSAGE : ""} onClick={openScoutGuessFlow}>Add Guess</button>
           </div>
           <div className="segmented-control scout-subtoggle" role="tablist" aria-label="Tide Forecast views">
             <button type="button" className={scoutForecastMode === "forecast" ? "active" : ""} onClick={() => setScoutForecastMode("forecast")}>Forecast Windows</button>

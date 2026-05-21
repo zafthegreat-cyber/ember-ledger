@@ -197,7 +197,7 @@ export const BETA_EMPTY_STATES = {
   },
   scout: {
     title: "No local reports yet",
-    body: "Submit a store report or add a guess to help build restock forecasts.",
+    body: "Submit confirmed store reports to help build restock forecasts. Community guesses stay separate.",
   },
   market: {
     title: "Market tools are getting ready",
@@ -216,7 +216,7 @@ export const BETA_EMPTY_STATES = {
 export const BETA_TOOLTIPS = {
   Vault: "Your personal collection.",
   Forge: "Your business inventory and selling tools.",
-  Scout: "Store reports, guesses, and restock forecasts.",
+  Scout: "Confirmed store reports, community guesses, and restock forecasts.",
   Guess: "A personal prediction or pattern note, not confirmed stock.",
   Report: "A real stock sighting or store update.",
   "Expense only": "Tracks the receipt expense without adding the item to inventory.",

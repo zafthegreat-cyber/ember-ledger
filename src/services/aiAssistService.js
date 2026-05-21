@@ -1,6 +1,6 @@
 export const AI_REVIEW_DISCLAIMER = "AI suggestions may be incomplete or incorrect. Please review before saving.";
 export const AI_UPLOAD_WARNING = "Review images before uploading. Do not upload sensitive personal, payment, medical, or child information.";
-export const AI_FORECAST_DISCLAIMER = "Forecasts are estimates based on reports, guesses, and signals. They are not guarantees.";
+export const AI_FORECAST_DISCLAIMER = "Drop Radar predictions use confirmed restock history. Community guesses stay separate and are never guarantees.";
 export const AI_PRICE_DISCLAIMER = "Market values are estimates and may be outdated.";
 
 export const AI_FEATURE_AREAS = {
@@ -455,16 +455,16 @@ export function summarizeScoutSignals({ storeName = "", reports = [], guesses = 
   });
   const strongestDay = [...dayCounts.entries()].sort((a, b) => b[1] - a[1])[0];
   const parts = [];
-  if (strongestDay) parts.push(`pattern suggests ${strongestDay[0]}`);
+  if (strongestDay) parts.push(`community guesses mention ${strongestDay[0]}`);
   if (confirmedReports.length) parts.push(`${confirmedReports.length} confirmed report${confirmedReports.length === 1 ? "" : "s"}`);
   if (noStockReports.length) parts.push(`${noStockReports.length} no-stock report${noStockReports.length === 1 ? "" : "s"}`);
   if (recentReport?.reportTime || recentReport?.reportedAt || recentReport?.createdAt) parts.push("recent report exists");
-  const confidenceScore = Math.min(90, confirmedReports.length * 25 + guesses.length * 10 + (latestForecast?.confidenceScore || 0) / 3 - noStockReports.length * 8);
+  const confidenceScore = Math.min(90, confirmedReports.length * 25 + (latestForecast?.confidenceScore || 0) / 3 - noStockReports.length * 8);
   return {
     inputSummary: compactText(`${storeName}: ${reports.length} reports, ${guesses.length} guesses, ${forecasts.length} forecast windows`),
     outputSummary: parts.length
-      ? `Recent Scout signals for ${storeName || "this store"} suggest ${parts.join(", ")}. This needs confirmation before treating it as current stock.`
-      : `There is not enough recent Scout signal for ${storeName || "this store"} yet. Add a report or guess to improve the forecast.`,
+      ? `Recent Scout signals for ${storeName || "this store"} suggest ${parts.join(", ")}. Confirmed reports matter more than guesses.`
+      : `There is not enough confirmed Scout history for ${storeName || "this store"} yet. Add confirmed reports to improve Drop Radar.`,
     confidenceScore: Math.max(0, Math.round(confidenceScore)),
   };
 }
@@ -477,7 +477,7 @@ export function explainForecastSignal(row = {}) {
   const basis = firstPresent(row.basisSummary, row.basis_summary, row.reason, row.sourceText);
   const pieces = [];
   if (reports) pieces.push(`${reports} supporting report${reports === 1 ? "" : "s"}`);
-  if (guesses) pieces.push(`${guesses} supporting guess${guesses === 1 ? "" : "es"}`);
+  if (guesses) pieces.push(`${guesses} separate community guess${guesses === 1 ? "" : "es"} not used as confirmed history`);
   if (noStock) pieces.push(`${noStock} conflicting no-stock report${noStock === 1 ? "" : "s"}`);
   if (basis) pieces.push(basis);
   return {
