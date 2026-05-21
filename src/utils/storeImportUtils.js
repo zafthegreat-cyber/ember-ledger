@@ -7,8 +7,9 @@ import {
   VIRGINIA_STORE_COUNTRY,
   VIRGINIA_STORE_STATE,
   VIRGINIA_STORE_STATE_CODE,
-} from "../data/storeGroups";
-import { getStoreGroup, normalizeStoreGroup } from "./storeGroupingUtils";
+} from "../data/storeGroups.js";
+import { getStoreGroup, normalizeStoreGroup } from "./storeGroupingUtils.js";
+import { normalizeStoreExpansionFields } from "./storeExpansionUtils.js";
 
 const REGION_ALIASES = {
   "hampton roads": DEFAULT_VIRGINIA_REGION,
@@ -122,7 +123,7 @@ export function normalizeImportedStore(row = {}, defaults = {}) {
   const storeName = row.storeName || row.store_name || row.name || row.official_name || "";
   const zipCode = String(row.zipCode || row.zip_code || row.postal_code || row.zip || "");
   const pokemonStockLikelihood = normalizePokemonStockLikelihood(row.pokemonStockLikelihood || row.pokemon_stock_likelihood || row.pokemonConfidence || row.pokemon_confidence || confidence.pokemonConfidence);
-  const normalized = normalizeStoreGroup({
+  const normalized = normalizeStoreExpansionFields(normalizeStoreGroup({
     storeId: row.storeId || row.id || "",
     id: row.id || row.storeId || "",
     country: row.country || defaults.country || VIRGINIA_STORE_COUNTRY,
@@ -179,12 +180,30 @@ export function normalizeImportedStore(row = {}, defaults = {}) {
     tidepoolScore: Number(row.tidepoolScore || 0),
     type: row.storeType || row.store_type || row.type || "Retail",
     storeType: row.storeType || row.store_type || row.type || "Retail",
+    familyFriendlyApproved: row.familyFriendlyApproved ?? row.family_friendly_approved ?? false,
+    family_friendly_approved: row.family_friendly_approved ?? row.familyFriendlyApproved ?? false,
+    supportsKidsAccess: row.supportsKidsAccess ?? row.supports_kids_access ?? false,
+    supports_kids_access: row.supports_kids_access ?? row.supportsKidsAccess ?? false,
+    supportsMsrpOrReasonablePricing: row.supportsMsrpOrReasonablePricing ?? row.supports_msrp_or_reasonable_pricing ?? false,
+    supports_msrp_or_reasonable_pricing: row.supports_msrp_or_reasonable_pricing ?? row.supportsMsrpOrReasonablePricing ?? false,
+    agreedToCommunityMotto: row.agreedToCommunityMotto ?? row.agreed_to_community_motto ?? false,
+    agreed_to_community_motto: row.agreed_to_community_motto ?? row.agreedToCommunityMotto ?? false,
+    offersKidEvents: row.offersKidEvents ?? row.offers_kid_events ?? false,
+    offers_kid_events: row.offers_kid_events ?? row.offersKidEvents ?? false,
+    offersTradeNights: row.offersTradeNights ?? row.offers_trade_nights ?? false,
+    offers_trade_nights: row.offers_trade_nights ?? row.offersTradeNights ?? false,
+    advertisingPartner: row.advertisingPartner ?? row.advertising_partner ?? false,
+    advertising_partner: row.advertising_partner ?? row.advertisingPartner ?? false,
+    featuredPartner: row.featuredPartner ?? row.featured_partner ?? false,
+    featured_partner: row.featured_partner ?? row.featuredPartner ?? false,
+    partnerNotes: row.partnerNotes || row.partner_notes || "",
+    partner_notes: row.partner_notes || row.partnerNotes || "",
     status: row.status || "Unknown",
     limitPolicy: row.limitPolicy || row.limit_policy || "Unknown",
     priority: Boolean(row.priority),
     createdAt: row.createdAt || row.created_at || "seed",
     updatedAt: row.updatedAt || row.updated_at || "seed",
-  });
+  }));
   const id = normalized.id || normalized.storeId || makeStoreId(normalized);
   return { ...normalized, id, storeId: id };
 }

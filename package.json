@@ -29,6 +29,7 @@
     "test:inventory-detail": "node --no-warnings scripts/test-inventory-detail-utils.mjs",
     "test:business-tax": "node --no-warnings scripts/test-business-tax-records.mjs",
     "test:ember-assist": "node --no-warnings scripts/test-ember-assist.mjs",
+    "test:store-expansion": "node --no-warnings scripts/test-store-expansion.mjs",
     "import:pokemon-tcg-api": "node pokemon_market_ingestion_kit/import_pokemontcg_cards_to_supabase.mjs",
     "import:tcgcsv": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",
     "refresh:pokemon-prices": "node pokemon_market_ingestion_kit/import_tcgcsv_to_supabase.mjs",

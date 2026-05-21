@@ -1,5 +1,5 @@
-export { STORE_GROUP_ORDER } from "../data/storeGroups";
-import { STORE_GROUP_ORDER } from "../data/storeGroups";
+export { STORE_GROUP_ORDER } from "../data/storeGroups.js";
+import { STORE_GROUP_ORDER } from "../data/storeGroups.js";
 
 function normalizedStoreText(store = {}) {
   return [

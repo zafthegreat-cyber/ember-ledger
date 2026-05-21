@@ -20,6 +20,17 @@ import OverflowMenu from "../components/OverflowMenu";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
 import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion, parseStoreCsv } from "../utils/storeImportUtils";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
+import {
+  COMMUNITY_MOTTO_COPY,
+  FAMILY_FRIENDLY_SHOP_COPY,
+  STORE_FAMILY_FILTER_OPTIONS,
+  STORE_LOCATION_TYPES,
+  getStoreFamilyFriendlyBadges,
+  isStoreActiveForViewer,
+  matchesStoreExpansionFilters,
+  normalizeStoreExpansionFields,
+  normalizeStoreLocationType,
+} from "../utils/storeExpansionUtils";
 import { buildSuggestedRoute, confidenceLabel, explainRouteChoice, numericDistance } from "../utils/routeUtils";
 import { SUGGESTION_TYPES, submitSuggestion } from "../utils/suggestionReviewUtils";
 import { sanitizeScoutLocalData } from "../utils/betaDataCleanup";
@@ -94,6 +105,9 @@ const REPORT_RETAILER_OPTIONS = [
   "Walgreens",
   "CVS",
   "Hobby Lobby",
+  "Local Card Shops",
+  "Local Game Stores",
+  "Bookstores",
   "Other",
 ];
 
@@ -194,6 +208,9 @@ function createBlankStoreForm() {
     chain: "",
     retailer: "",
     storeGroup: "",
+    storeType: "Big Box Retailer",
+    store_type: "Big Box Retailer",
+    type: "Big Box Retailer",
     city: "",
     address: "",
     zip: "",
@@ -212,6 +229,15 @@ function createBlankStoreForm() {
     confidence: "unverified",
     mergedIntoStoreId: "",
     merged_into_store_id: "",
+    familyFriendlyApproved: false,
+    supportsKidsAccess: false,
+    supportsMsrpOrReasonablePricing: false,
+    agreedToCommunityMotto: false,
+    offersKidEvents: false,
+    offersTradeNights: false,
+    advertisingPartner: false,
+    featuredPartner: false,
+    partnerNotes: "",
     notes: "",
   };
 }
@@ -355,6 +381,12 @@ function getReportStoreId(report) {
 }
 
 function getReportRetailer(store = {}) {
+  const locationType = normalizeStoreLocationType(store);
+  const group = getStoreGroup(store);
+  if (/gamestop|game stop/i.test(`${store.chain || ""} ${store.retailer || ""}`)) return "GameStop";
+  if (locationType === "Local Card Shop" || group === "Local Card Shops") return "Local Card Shops";
+  if (group === "Local Game Stores" || (locationType === "Game Store" && !store.chain && !store.retailer)) return "Local Game Stores";
+  if (locationType === "Bookstore" && !/barnes|b&n/i.test(`${store.chain || ""} ${store.retailer || ""}`)) return "Bookstores";
   return store.chain || store.retailer || store.storeGroup || getStoreGroup(store) || "Other";
 }
 
@@ -364,6 +396,9 @@ function normalizeReportRetailer(value = "") {
   if (/barnes|b&n/.test(normalized)) return "Barnes & Noble";
   if (/sam/.test(normalized)) return "Sam's Club";
   if (/bj/.test(normalized)) return "BJ's";
+  if (/local card|card shop|tcg|collectible|collectibles|comic/.test(normalized)) return "Local Card Shops";
+  if (/local game|game store|game shop|tabletop/.test(normalized)) return "Local Game Stores";
+  if (/bookstore|book store|bookstores/.test(normalized)) return "Bookstores";
   const matched = REPORT_RETAILER_OPTIONS.find((retailer) => retailer.toLowerCase() === normalized);
   if (matched) return matched;
   return REPORT_RETAILER_OPTIONS.find((retailer) => normalized.includes(retailer.toLowerCase())) || "Other";
@@ -1179,6 +1214,7 @@ export default function Scout({
   const [selectedRegion, setSelectedRegion] = useState(DEFAULT_VIRGINIA_REGION);
   const [selectedCity, setSelectedCity] = useState("All");
   const [selectedStoreType, setSelectedStoreType] = useState("All");
+  const [storeFamilyFilter, setStoreFamilyFilter] = useState("all");
   const [selectedCounty, setSelectedCounty] = useState("All");
   const [selectedConfidence, setSelectedConfidence] = useState("All");
   const [storeQuickFilter, setStoreQuickFilter] = useState("default");
@@ -1808,6 +1844,73 @@ export default function Scout({
   }, [deleteReportTarget, selectedReportTarget]);
 
   const selectedStore = stores.find((s) => s.id === selectedStoreId);
+
+  function renderStoreExpansionBadges(store = {}, options = {}) {
+    const normalized = normalizeStoreExpansionFields(store);
+    const badges = [
+      ...(normalized.locationType && normalized.locationType !== "Big Box Retailer"
+        ? [{ key: "locationType", label: normalized.locationType, tone: "type" }]
+        : []),
+      ...getStoreFamilyFriendlyBadges(normalized),
+    ];
+    if (!badges.length) return null;
+    return (
+      <div className={`store-expansion-badges ${options.compact ? "compact" : ""}`}>
+        {badges.map((badge) => (
+          <span key={badge.key} className={`store-expansion-badge store-expansion-badge-${badge.tone || "muted"}`}>
+            {badge.label}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  function renderStoreExpansionAdminFields(form, setForm) {
+    const toggleRows = [
+      ["familyFriendlyApproved", "Family-friendly approved"],
+      ["supportsKidsAccess", "Supports kids access"],
+      ["supportsMsrpOrReasonablePricing", "Supports reasonable pricing"],
+      ["agreedToCommunityMotto", "Agreed to community motto"],
+      ["offersKidEvents", "Offers kid events"],
+      ["offersTradeNights", "Offers trade nights"],
+      ["featuredPartner", "Featured partner"],
+      ["advertisingPartner", "Advertising partner"],
+    ];
+    return (
+      <>
+        <select
+          style={styles.input}
+          value={form.storeType || form.store_type || form.type || "Big Box Retailer"}
+          onChange={(event) => setForm((current) => ({
+            ...current,
+            storeType: event.target.value,
+            store_type: event.target.value,
+            type: event.target.value,
+          }))}
+        >
+          {STORE_LOCATION_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+        </select>
+        <div className="store-expansion-admin-grid">
+          {toggleRows.map(([field, label]) => (
+            <label key={field} className="store-expansion-toggle">
+              <input
+                type="checkbox"
+                checked={Boolean(form[field])}
+                onChange={(event) => setForm((current) => ({ ...current, [field]: event.target.checked }))}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+        <textarea
+          style={styles.textarea}
+          value={form.partnerNotes || ""}
+          onChange={(event) => setForm((current) => ({ ...current, partnerNotes: event.target.value }))}
+          placeholder="Partner notes, mission fit, event details, or pricing context"
+        />
+      </>
+    );
+  }
 
   function resetReportForm() {
     const nowParts = getScoutReportNowParts();
@@ -2698,36 +2801,49 @@ function openInForge(item) {
 }
   useEffect(() => {
     if (selectedStore) {
+      const normalizedSelectedStore = normalizeStoreExpansionFields(selectedStore);
       setEditStoreForm({
         ...createBlankStoreForm(),
-        country: selectedStore.country || "United States",
-        state: normalizeStateLabel(selectedStore.state || VIRGINIA_STORE_STATE),
-        region: normalizeVirginiaRegion(selectedStore.region || DEFAULT_VIRGINIA_REGION),
-        name: selectedStore.name || "",
-        storeName: selectedStore.storeName || selectedStore.store_name || selectedStore.name || "",
-        nickname: selectedStore.nickname || "",
-        chain: selectedStore.chain || "",
-        retailer: selectedStore.retailer || selectedStore.chain || "",
-        storeGroup: selectedStore.storeGroup || getStoreGroup(selectedStore),
-        city: selectedStore.city || "",
-        address: selectedStore.address || "",
-        zip: selectedStore.zip || selectedStore.zipCode || selectedStore.zip_code || "",
-        zipCode: selectedStore.zipCode || selectedStore.zip_code || selectedStore.zip || "",
-        phone: selectedStore.phone || "",
-        storeNumber: selectedStore.storeNumber || selectedStore.store_number || "",
-        retailerStoreId: selectedStore.retailerStoreId || selectedStore.retailer_store_id || "",
-        latitude: selectedStore.latitude || selectedStore.lat || "",
-        longitude: selectedStore.longitude || selectedStore.lng || "",
-        active: selectedStore.active ?? selectedStore.isActive ?? true,
-        pokemonStockLikelihood: selectedStore.pokemonStockLikelihood || selectedStore.pokemon_stock_likelihood || "unknown",
-        source: selectedStore.source || "",
-        sourceUrl: selectedStore.sourceUrl || selectedStore.source_url || "",
-        lastVerifiedAt: selectedStore.lastVerifiedAt || selectedStore.last_verified_at || selectedStore.lastVerified || "",
-        verifiedBy: selectedStore.verifiedBy || selectedStore.verified_by || "",
-        confidence: selectedStore.confidence || "unverified",
-        mergedIntoStoreId: selectedStore.mergedIntoStoreId || selectedStore.merged_into_store_id || "",
-        merged_into_store_id: selectedStore.merged_into_store_id || selectedStore.mergedIntoStoreId || "",
-        notes: selectedStore.notes || "",
+        country: normalizedSelectedStore.country || "United States",
+        state: normalizeStateLabel(normalizedSelectedStore.state || VIRGINIA_STORE_STATE),
+        region: normalizeVirginiaRegion(normalizedSelectedStore.region || DEFAULT_VIRGINIA_REGION),
+        name: normalizedSelectedStore.name || "",
+        storeName: normalizedSelectedStore.storeName || normalizedSelectedStore.store_name || normalizedSelectedStore.name || "",
+        nickname: normalizedSelectedStore.nickname || "",
+        chain: normalizedSelectedStore.chain || "",
+        retailer: normalizedSelectedStore.retailer || normalizedSelectedStore.chain || "",
+        storeGroup: normalizedSelectedStore.storeGroup || getStoreGroup(normalizedSelectedStore),
+        storeType: normalizedSelectedStore.storeType || normalizedSelectedStore.locationType,
+        store_type: normalizedSelectedStore.store_type || normalizedSelectedStore.locationType,
+        type: normalizedSelectedStore.type || normalizedSelectedStore.locationType,
+        city: normalizedSelectedStore.city || "",
+        address: normalizedSelectedStore.address || "",
+        zip: normalizedSelectedStore.zip || normalizedSelectedStore.zipCode || normalizedSelectedStore.zip_code || "",
+        zipCode: normalizedSelectedStore.zipCode || normalizedSelectedStore.zip_code || normalizedSelectedStore.zip || "",
+        phone: normalizedSelectedStore.phone || "",
+        storeNumber: normalizedSelectedStore.storeNumber || normalizedSelectedStore.store_number || "",
+        retailerStoreId: normalizedSelectedStore.retailerStoreId || normalizedSelectedStore.retailer_store_id || "",
+        latitude: normalizedSelectedStore.latitude || normalizedSelectedStore.lat || "",
+        longitude: normalizedSelectedStore.longitude || normalizedSelectedStore.lng || "",
+        active: normalizedSelectedStore.active ?? normalizedSelectedStore.isActive ?? true,
+        pokemonStockLikelihood: normalizedSelectedStore.pokemonStockLikelihood || normalizedSelectedStore.pokemon_stock_likelihood || "unknown",
+        source: normalizedSelectedStore.source || "",
+        sourceUrl: normalizedSelectedStore.sourceUrl || normalizedSelectedStore.source_url || "",
+        lastVerifiedAt: normalizedSelectedStore.lastVerifiedAt || normalizedSelectedStore.last_verified_at || normalizedSelectedStore.lastVerified || "",
+        verifiedBy: normalizedSelectedStore.verifiedBy || normalizedSelectedStore.verified_by || "",
+        confidence: normalizedSelectedStore.confidence || "unverified",
+        mergedIntoStoreId: normalizedSelectedStore.mergedIntoStoreId || normalizedSelectedStore.merged_into_store_id || "",
+        merged_into_store_id: normalizedSelectedStore.merged_into_store_id || normalizedSelectedStore.mergedIntoStoreId || "",
+        familyFriendlyApproved: normalizedSelectedStore.familyFriendlyApproved,
+        supportsKidsAccess: normalizedSelectedStore.supportsKidsAccess,
+        supportsMsrpOrReasonablePricing: normalizedSelectedStore.supportsMsrpOrReasonablePricing,
+        agreedToCommunityMotto: normalizedSelectedStore.agreedToCommunityMotto,
+        offersKidEvents: normalizedSelectedStore.offersKidEvents,
+        offersTradeNights: normalizedSelectedStore.offersTradeNights,
+        advertisingPartner: normalizedSelectedStore.advertisingPartner,
+        featuredPartner: normalizedSelectedStore.featuredPartner,
+        partnerNotes: normalizedSelectedStore.partnerNotes || "",
+        notes: normalizedSelectedStore.notes || "",
       });
     }
   }, [selectedStore]);
@@ -2745,6 +2861,17 @@ function buildStorePayloadFromForm(form = {}, overrides = {}) {
     pokemon_stock_likelihood: form.pokemonStockLikelihood,
     last_verified_at: form.lastVerifiedAt,
     verified_by: form.verifiedBy,
+    store_type: form.storeType || form.store_type || form.type,
+    type: form.storeType || form.store_type || form.type,
+    family_friendly_approved: form.familyFriendlyApproved,
+    supports_kids_access: form.supportsKidsAccess,
+    supports_msrp_or_reasonable_pricing: form.supportsMsrpOrReasonablePricing,
+    agreed_to_community_motto: form.agreedToCommunityMotto,
+    offers_kid_events: form.offersKidEvents,
+    offers_trade_nights: form.offersTradeNights,
+    advertising_partner: form.advertisingPartner,
+    featured_partner: form.featuredPartner,
+    partner_notes: form.partnerNotes,
     active: form.active,
     ...overrides,
   }, {
@@ -2753,19 +2880,20 @@ function buildStorePayloadFromForm(form = {}, overrides = {}) {
     region: DEFAULT_VIRGINIA_REGION,
     source: "manual-admin",
   });
+  const expandedRetailer = normalizeStoreExpansionFields({ ...retailer, ...overrides });
   return {
-    ...retailer,
+    ...expandedRetailer,
     ...overrides,
-    country: retailer.country || "United States",
-    state: normalizeStateLabel(retailer.state || VIRGINIA_STORE_STATE),
-    region: normalizeVirginiaRegion(retailer.region || DEFAULT_VIRGINIA_REGION),
-    name: retailer.name || retailer.storeName,
-    storeName: retailer.storeName || retailer.name,
-    chain: retailer.chain || retailer.retailer,
-    retailer: retailer.retailer || retailer.chain,
-    zip: retailer.zip || retailer.zipCode,
-    zipCode: retailer.zipCode || retailer.zip,
-    active: retailer.active ?? retailer.isActive ?? true,
+    country: expandedRetailer.country || "United States",
+    state: normalizeStateLabel(expandedRetailer.state || VIRGINIA_STORE_STATE),
+    region: normalizeVirginiaRegion(expandedRetailer.region || DEFAULT_VIRGINIA_REGION),
+    name: expandedRetailer.name || expandedRetailer.storeName,
+    storeName: expandedRetailer.storeName || expandedRetailer.name,
+    chain: expandedRetailer.chain || expandedRetailer.retailer,
+    retailer: expandedRetailer.retailer || expandedRetailer.chain,
+    zip: expandedRetailer.zip || expandedRetailer.zipCode,
+    zipCode: expandedRetailer.zipCode || expandedRetailer.zip,
+    active: expandedRetailer.active ?? expandedRetailer.isActive ?? true,
     mergedIntoStoreId: form.mergedIntoStoreId || form.merged_into_store_id || overrides.mergedIntoStoreId || overrides.merged_into_store_id || "",
     merged_into_store_id: form.merged_into_store_id || form.mergedIntoStoreId || overrides.merged_into_store_id || overrides.mergedIntoStoreId || null,
   };
@@ -3555,6 +3683,7 @@ async function handleUpdateStore(e) {
       "Local Card Shops",
     ];
     const counts = stores.reduce((acc, store) => {
+      if (!isStoreActiveForViewer(store, { admin: adminMode })) return acc;
       const chain = store.chain || store.retailer || getStoreGroup(store) || "Other";
       const normalizedChain = /local card|comic|hobby|game shop/i.test(`${chain} ${store.storeGroup || ""}`) ? "Local Card Shops" : chain;
       acc[normalizedChain] = (acc[normalizedChain] || 0) + 1;
@@ -3567,18 +3696,20 @@ async function handleUpdateStore(e) {
       .filter(([retailer]) => !preferredRetailers.includes(retailer))
       .reduce((sum, [, count]) => sum + count, 0);
     return moreCount > 0 ? [...preferred, { retailer: "More", count: moreCount }] : preferred;
-  }, [stores]);
+  }, [stores, adminMode]);
 
   const nearbyFavoriteStores = useMemo(() => {
     return sortStores(stores.filter((store) =>
+      isStoreActiveForViewer(store, { admin: adminMode }) && (
       store.favorite ||
       store.watched ||
       store.distanceFromUser ||
       store.distance ||
       store.lastReportDate ||
       store.region === DEFAULT_VIRGINIA_REGION
+      )
     ), "distance").slice(0, 3);
-  }, [stores]);
+  }, [stores, adminMode]);
 
   const regionOptions = useMemo(() => {
     const regions = Array.from(new Set([...VIRGINIA_REGIONS, ...stores.map((s) => normalizeVirginiaRegion(s.region)).filter(Boolean)]));
@@ -3606,35 +3737,46 @@ async function handleUpdateStore(e) {
   }, [stores]);
 
   const storeTypeOptions = useMemo(() => {
-    const types = Array.from(new Set(stores.map((s) => s.storeType || s.store_type || s.type).filter(Boolean)));
+    const types = Array.from(new Set([
+      ...STORE_LOCATION_TYPES,
+      ...stores.map((s) => normalizeStoreLocationType(s)).filter(Boolean),
+    ]));
     return ["All", ...types.sort()];
   }, [stores]);
 
   const filteredStores = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     return sortStores(stores.filter((store) => {
-      const storeType = store.storeType || store.store_type || store.type || "";
-      const matchesSearch = storeMatchesSearch(store, storeSearch);
-      const storeState = normalizeStateLabel(store.state);
-      const storeRegion = normalizeVirginiaRegion(store.region);
+      const normalizedStore = normalizeStoreExpansionFields(store);
+      const storeType = normalizedStore.locationType || "";
+      const storeGroup = getStoreGroup(normalizedStore);
+      const matchesSearch = storeMatchesSearch(normalizedStore, storeSearch);
+      const storeState = normalizeStateLabel(normalizedStore.state);
+      const storeRegion = normalizeVirginiaRegion(normalizedStore.region);
       const matchesState = selectedState === "All" || storeState === selectedState;
-      const matchesChain = selectedChain === "All" || store.chain === selectedChain || store.retailer === selectedChain;
+      const matchesChain = selectedChain === "All" || normalizedStore.chain === selectedChain || normalizedStore.retailer === selectedChain || storeGroup === selectedChain;
       const matchesRegion = selectedRegion === "All" || storeRegion === selectedRegion;
-      const matchesCity = selectedCity === "All" || store.city === selectedCity;
+      const matchesCity = selectedCity === "All" || normalizedStore.city === selectedCity;
       const matchesType = selectedStoreType === "All" || storeType === selectedStoreType;
-      const matchesCounty = selectedCounty === "All" || store.county === selectedCounty;
-      const storeLikelihood = store.pokemonStockLikelihood || store.pokemon_stock_likelihood || store.pokemonConfidence;
+      const matchesCounty = selectedCounty === "All" || normalizedStore.county === selectedCounty;
+      const storeLikelihood = normalizedStore.pokemonStockLikelihood || normalizedStore.pokemon_stock_likelihood || normalizedStore.pokemonConfidence;
       const matchesConfidence = selectedConfidence === "All" || storeLikelihood === selectedConfidence;
+      const matchesExpansion = matchesStoreExpansionFilters(normalizedStore, {
+        storeType: selectedStoreType,
+        familyStatus: storeFamilyFilter,
+        state: selectedState,
+        region: selectedRegion,
+      }, { admin: adminMode });
       const quickMatch =
         storeQuickFilter === "all" ||
-        (storeQuickFilter === "default" && (store.favorite || store.carriesPokemonLikely || store.tidepoolScore || store.restockConfidence || store.lastReportDate)) ||
-        (storeQuickFilter === "favorites" && store.favorite) ||
-        (storeQuickFilter === "recent" && String(store.lastReportDate || "").slice(0, 10) === today) ||
+        (storeQuickFilter === "default" && (normalizedStore.favorite || normalizedStore.carriesPokemonLikely || normalizedStore.tidepoolScore || normalizedStore.restockConfidence || normalizedStore.lastReportDate)) ||
+        (storeQuickFilter === "favorites" && normalizedStore.favorite) ||
+        (storeQuickFilter === "recent" && String(normalizedStore.lastReportDate || "").slice(0, 10) === today) ||
         (storeQuickFilter === "highConfidence" && ["high", "medium/high"].includes(String(storeLikelihood || "").toLowerCase())) ||
-        (storeQuickFilter === "strictLimits" && store.strictLimits);
-      return matchesSearch && matchesState && matchesChain && matchesRegion && matchesCity && matchesType && matchesCounty && matchesConfidence && quickMatch;
+        (storeQuickFilter === "strictLimits" && normalizedStore.strictLimits);
+      return matchesSearch && matchesState && matchesChain && matchesRegion && matchesCity && matchesType && matchesCounty && matchesConfidence && matchesExpansion && quickMatch;
     }), storeSort);
-  }, [stores, selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
+  }, [stores, selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeFamilyFilter, storeQuickFilter, storeSearch, storeSort, adminMode]);
 
   const groupedFilteredStores = useMemo(() => {
     const groups = filteredStores.reduce((acc, store) => {
@@ -3678,6 +3820,7 @@ async function handleUpdateStore(e) {
     setSelectedRegion("All");
     setSelectedState(VIRGINIA_STORE_STATE);
     setSelectedStoreType("All");
+    setStoreFamilyFilter("all");
     setSelectedCounty("All");
     setSelectedConfidence("All");
     setStoreQuickFilter(retailer === "More" ? "all" : "all");
@@ -3698,7 +3841,7 @@ async function handleUpdateStore(e) {
     setSelectedStoreId(storeId);
     setScoutSubTab("reports");
     setReportRetailer(normalizeReportRetailer(getReportRetailer(store || {})));
-    setReportWizardStep(4);
+    setReportWizardStep(1);
     setReportForm((current) => ({
       ...current,
       reportType,
@@ -3772,7 +3915,7 @@ async function handleUpdateStore(e) {
   );
 
   const reportStoreOptionGroups = useMemo(() => {
-    const groups = stores.reduce((acc, store) => {
+    const groups = stores.filter((store) => isStoreActiveForViewer(store, { admin: adminMode })).reduce((acc, store) => {
       const retailer = store.chain || store.retailer || getStoreGroup(store) || "Other";
       const city = store.city || "No city";
       const label = `${retailer} / ${city}`;
@@ -3785,7 +3928,7 @@ async function handleUpdateStore(e) {
         label,
         stores: sortStores(groupStores, "nickname"),
       }));
-  }, [stores]);
+  }, [stores, adminMode]);
 
   const reportsByStore = useMemo(() => {
     return visibleAllReports.reduce((acc, report) => {
@@ -3798,6 +3941,7 @@ async function handleUpdateStore(e) {
 
   const reportRetailerCards = useMemo(() => {
     const counts = stores.reduce((acc, store) => {
+      if (!isStoreActiveForViewer(store, { admin: adminMode })) return acc;
       const retailer = normalizeReportRetailer(getReportRetailer(store));
       acc[retailer] = (acc[retailer] || 0) + 1;
       return acc;
@@ -3807,12 +3951,13 @@ async function handleUpdateStore(e) {
       count: counts[retailer] || 0,
       selected: reportRetailer === retailer,
     }));
-  }, [stores, reportRetailer]);
+  }, [stores, reportRetailer, adminMode]);
 
   const reportSelectedRetailerStores = useMemo(() => {
     if (!reportRetailer) return [];
     const location = { lat: reportForm.lat, lng: reportForm.lng };
     return stores
+      .filter((store) => isStoreActiveForViewer(store, { admin: adminMode }))
       .filter((store) => storeMatchesReportRetailer(store, reportRetailer))
       .filter((store) => !reportStoreSearch || storeMatchesSearch(store, reportStoreSearch))
       .map((store) => {
@@ -3841,7 +3986,7 @@ async function handleUpdateStore(e) {
         if (cityCompare) return cityCompare;
         return getStoreDisplayName(a.store).localeCompare(getStoreDisplayName(b.store));
       });
-  }, [stores, reportRetailer, reportStoreSearch, reportsByStore, reportForm.lat, reportForm.lng, reportZip]);
+  }, [stores, reportRetailer, reportStoreSearch, reportsByStore, reportForm.lat, reportForm.lng, reportZip, adminMode]);
 
   const selectedReportTypeOption = useMemo(() => {
     return REPORT_TYPE_OPTIONS.find((option) => (
@@ -4905,6 +5050,7 @@ async function handleUpdateStore(e) {
                               <div>
                                 <strong>{getStoreDisplayName(store)}</strong>
                                 <p>{store.city || "City not added"}{store.address ? ` | ${store.address}` : ""}</p>
+                                {renderStoreExpansionBadges(store, { compact: true })}
                               </div>
                               <span className={`scout-store-temperature scout-store-temperature-${entry.status.toLowerCase().replace(/\s+/g, "-")}`}>{entry.status}</span>
                             </div>
@@ -5592,6 +5738,7 @@ async function handleUpdateStore(e) {
                           <option value="">Retailer</option>
                           {VIRGINIA_RETAILERS.map((retailer) => <option key={retailer} value={retailer}>{retailer}</option>)}
                         </select>
+                        {renderStoreExpansionAdminFields(storeForm, setStoreForm)}
                         <select style={styles.input} value={storeForm.region} onChange={(e) => setStoreForm((current) => ({ ...current, region: e.target.value }))}>
                           {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
                         </select>
@@ -5626,6 +5773,7 @@ async function handleUpdateStore(e) {
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.chain || store.retailer || "Retailer"} | {store.city || "Unknown area"} | {normalizeVirginiaRegion(store.region || "") || "Virginia"}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.address || "No address"}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{storeReports.length} report{storeReports.length === 1 ? "" : "s"} | Last updated: {formatStoreDate(store.lastUpdated || store.lastVerified || store.lastReportDate)}</p>
+                                {renderStoreExpansionBadges(store, { compact: true })}
                                 <div style={{ ...styles.row, marginTop: "8px" }}>
                                   {statusBadges.map((badge) => <span key={badge} style={styles.badge}>{badge}</span>)}
                                 </div>
@@ -5702,6 +5850,12 @@ async function handleUpdateStore(e) {
                         </select>
                         <select style={styles.input} value={selectedRegion} onChange={(e) => setSelectedRegion(e.target.value)}>
                           {regionOptions.map((region) => <option key={region} value={region}>{region === "All" ? "All regions" : region}</option>)}
+                        </select>
+                        <select style={styles.input} value={selectedStoreType} onChange={(e) => setSelectedStoreType(e.target.value)}>
+                          {storeTypeOptions.map((type) => <option key={type} value={type}>{type === "All" ? "All store types" : type}</option>)}
+                        </select>
+                        <select style={styles.input} value={storeFamilyFilter} onChange={(e) => setStoreFamilyFilter(e.target.value)}>
+                          {STORE_FAMILY_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                         </select>
                         <select style={styles.input} value={storeSort} onChange={(e) => {
                           if (e.target.value === "distance" && !onLocationRequired("store-distance-sort")) return;
@@ -5808,6 +5962,7 @@ async function handleUpdateStore(e) {
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.chain || store.retailer || "Retailer"} | {store.city || "Unknown area"} | {normalizeVirginiaRegion(store.region || "") || "Virginia"}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{store.address || "No address"}</p>
                                 <p style={{ ...styles.tiny, margin: "4px 0 0" }}>{storeReports.length} report{storeReports.length === 1 ? "" : "s"} | Last updated: {formatStoreDate(store.lastUpdated || store.lastVerified || store.lastReportDate)}</p>
+                                {renderStoreExpansionBadges(store, { compact: true })}
                                 <div style={{ ...styles.row, marginTop: "8px" }}>
                                   {statusBadges.map((badge) => <span key={badge} style={styles.badge}>{badge}</span>)}
                                 </div>
@@ -5847,6 +6002,7 @@ async function handleUpdateStore(e) {
                       <p style={{ margin: "0 0 6px 0", color: "#334155", fontWeight: 800 }}>{selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)} | {selectedStore.city || "Unknown area"} | {normalizeVirginiaRegion(selectedStore.region || "") || VIRGINIA_STORE_STATE}</p>
                       <p style={{ margin: 0, color: "#475569" }}>{selectedStore.address || "No address"}</p>
                       <p style={{ margin: "4px 0 0 0", color: "#475569" }}>{normalizeStateLabel(selectedStore.state || VIRGINIA_STORE_STATE)} {selectedStore.zipCode || selectedStore.zip ? `${selectedStore.zipCode || selectedStore.zip}` : ""} {selectedStore.phone ? `| ${selectedStore.phone}` : ""}</p>
+                      {renderStoreExpansionBadges(selectedStore)}
                     </div>
                     <span style={styles.badge}>{selectedStore.favorite || selectedStore.watched ? "Watching" : "Shared Virginia store"}</span>
                   </div>
@@ -5856,6 +6012,17 @@ async function handleUpdateStore(e) {
                     <Metric label="Last restock" value={selectedStore.lastRestock || selectedStore.lastReportedStockDate || selectedStore.lastReportDate || reports[0]?.reportDate || "Unknown"} />
                     <Metric label="Store ID" value={selectedStore.retailerStoreId || selectedStore.retailer_store_id || selectedStore.storeNumber || selectedStore.store_number || "Unknown"} />
                   </div>
+                  {normalizeStoreExpansionFields(selectedStore).familyFriendlyApproved || normalizeStoreExpansionFields(selectedStore).agreedToCommunityMotto ? (
+                    <div className="store-expansion-mission-card">
+                      {normalizeStoreExpansionFields(selectedStore).familyFriendlyApproved ? (
+                        <div>
+                          <strong>Family-Friendly Card Shop</strong>
+                          <p>{FAMILY_FRIENDLY_SHOP_COPY}</p>
+                        </div>
+                      ) : null}
+                      {normalizeStoreExpansionFields(selectedStore).agreedToCommunityMotto ? <p>{COMMUNITY_MOTTO_COPY}</p> : null}
+                    </div>
+                  ) : null}
                   <div style={styles.row}>
                     <button type="button" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit Report</button>
                     <button type="button" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite || selectedStore.watched ? "Unwatch" : "Watch / Favorite"}</button>
@@ -5885,6 +6052,7 @@ async function handleUpdateStore(e) {
                           <option value="">Retailer</option>
                           {VIRGINIA_RETAILERS.map((retailer) => <option key={retailer} value={retailer}>{retailer}</option>)}
                         </select>
+                        {renderStoreExpansionAdminFields(editStoreForm, setEditStoreForm)}
                         <select style={styles.input} value={editStoreForm.region} onChange={(e) => setEditStoreForm((current) => ({ ...current, region: e.target.value }))}>
                           {VIRGINIA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
                         </select>
@@ -6174,7 +6342,9 @@ async function handleUpdateStore(e) {
                   <p style={styles.tiny}>Retailers</p>
                   <div style={styles.row}>
                     {chainOptions.map((chain) => {
-                      const count = chain === "All" ? stores.length : stores.filter((store) => store.chain === chain).length;
+                      const count = chain === "All"
+                        ? stores.filter((store) => isStoreActiveForViewer(store, { admin: adminMode })).length
+                        : stores.filter((store) => isStoreActiveForViewer(store, { admin: adminMode }) && (store.chain === chain || store.retailer === chain || getStoreGroup(store) === chain)).length;
                       return (
                         <button
                           key={chain}
@@ -6250,6 +6420,20 @@ async function handleUpdateStore(e) {
                   {storeTypeOptions.map((type) => (
                     <option key={type} value={type}>
                       {type === "All" ? "All store types" : type}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  style={styles.input}
+                  value={storeFamilyFilter}
+                  onChange={(e) => {
+                    setStoreFamilyFilter(e.target.value);
+                    setSelectedStoreId("");
+                  }}
+                >
+                  {STORE_FAMILY_FILTER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
