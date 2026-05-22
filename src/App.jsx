@@ -261,6 +261,15 @@ import {
   sortStoreDirectoryProfiles,
 } from "./utils/storeProfileUtils";
 import {
+  REGIONAL_BROWSING_EMPTY_COPY,
+  buildMapReadyStoreLocation,
+  buildRegionalCityBuckets,
+  buildRegionalStoreBuckets,
+  matchesRegionalAreaFilters,
+  normalizeStoreAreaFields,
+  regionalFilterActive,
+} from "./utils/regionalBrowsingUtils";
+import {
   SPARK_PROGRAM_STATUS_OPTIONS,
   normalizeSparkProgramStatus,
   sparkProgramStatusLabel,
@@ -4418,6 +4427,7 @@ export default function App() {
     status: "All",
     state: "All",
     region: "All",
+    city: "All",
     distance: "Any",
     watchlistOnly: false,
     query: "",
@@ -21362,7 +21372,29 @@ function renderForgeHeader() {
     workspaceId: activeWorkspace?.id || "",
   });
   const notificationUnreadCount = unreadNotificationCount(notificationCenterRows);
-  const filteredScoutReports = scoutReportRows.filter((report) => {
+  function scoutRecordMatchesAreaFilters(record = {}) {
+    if (!regionalFilterActive(storeMapFilters)) return true;
+    const store = getScoutReportStore(record);
+    return matchesRegionalAreaFilters({
+      ...store,
+      city: store.city || record.city,
+      state: store.state || record.state,
+      region: store.region || record.region,
+    }, storeMapFilters);
+  }
+
+  function scoutForecastMatchesAreaFilters(row = {}) {
+    if (!regionalFilterActive(storeMapFilters)) return true;
+    const store = findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer, id: row.storeId }) || row.store || {};
+    return matchesRegionalAreaFilters({
+      ...store,
+      city: store.city || row.city,
+      state: store.state || row.state,
+      region: store.region || row.region,
+    }, storeMapFilters);
+  }
+
+  const filteredScoutReports = scoutReportRows.filter(scoutRecordMatchesAreaFilters).filter((report) => {
     if (scoutReportFilter === "Verified") return Boolean(report.verified || /verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`));
     if (scoutReportFilter === "My Reports") return isCurrentUserScoutReport(report);
     if (scoutReportFilter === "Needs Review") return !report.verified && !/verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`);
@@ -21382,6 +21414,8 @@ function renderForgeHeader() {
     const bDate = `${b.reportDate || b.report_date || b.createdAt || ""}T${b.reportTime || b.report_time || "00:00"}`;
     return new Date(bDate) - new Date(aDate);
   });
+  const regionalScoutForecastPreviewRows = scoutForecastPreviewRows.filter(scoutForecastMatchesAreaFilters);
+  const regionalScoutGuessRows = scoutGuessRows.filter(scoutForecastMatchesAreaFilters);
   const scoutNeedsReviewReports = scoutReportRows.filter((report) => {
     const status = scoutReportStatusLabel(report);
     return status === "Needs Review" || status === "Pending";
@@ -23840,6 +23874,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderScoutFilterControls() {
+    const baseRows = buildStoreMapRows({ unfiltered: true });
+    const stateOptions = ["All", ...new Set(baseRows.map((row) => row.profile?.state).filter(Boolean))];
+    const regionOptions = ["All", ...new Set(baseRows
+      .filter((row) => storeMapFilters.state === "All" || row.profile?.state === storeMapFilters.state)
+      .map((row) => row.profile?.region)
+      .filter(Boolean))];
+    const cityOptions = ["All", ...new Set(baseRows
+      .filter((row) => storeMapFilters.state === "All" || row.profile?.state === storeMapFilters.state)
+      .filter((row) => storeMapFilters.region === "All" || row.profile?.region === storeMapFilters.region)
+      .map((row) => row.profile?.city)
+      .filter(Boolean))];
     return (
       <div className="scout-compact-filterbar">
         <label>
@@ -23862,6 +23907,24 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ))}
           </select>
         </label>
+        <label>
+          <span>State</span>
+          <select value={storeMapFilters.state} onChange={(event) => updateStoreMapFilter("state", event.target.value)}>
+            {stateOptions.map((state) => <option key={state}>{state}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>Region</span>
+          <select value={storeMapFilters.region} onChange={(event) => updateStoreMapFilter("region", event.target.value)}>
+            {regionOptions.map((region) => <option key={region}>{region}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>City</span>
+          <select value={storeMapFilters.city} onChange={(event) => updateStoreMapFilter("city", event.target.value)}>
+            {cityOptions.map((city) => <option key={city}>{city}</option>)}
+          </select>
+        </label>
       </div>
     );
   }
@@ -23875,7 +23938,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const rawStoreName = store.name || store.nickname || report.storeName || report.store_name || "";
     const storeName = rawStoreName && !/unknown store/i.test(rawStoreName) ? rawStoreName : "Store not selected";
     const retailer = store.chain || store.retailer || report.retailer || "Retailer not added";
-    const area = [store.city || report.city, store.region || report.region].filter(Boolean).join(" / ");
+    const normalizedArea = normalizeStoreAreaFields({
+      ...store,
+      city: store.city || report.city,
+      state: store.state || report.state,
+      region: store.region || report.region,
+    });
+    const area = normalizedArea.areaLabel;
     const statusLabel = scoutReportStatusLabel(report);
     const note = report.note || report.notes || report.reportText || report.report_text || "";
     const photoUrls = scoutReportPhotoUrls(report);
@@ -24351,7 +24420,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <div className="scout-report-card-grid">
           {filteredScoutReports.length === 0 ? (
             <div className="empty-state">
-              {scoutReportRows.length ? (
+              {regionalFilterActive(storeMapFilters) ? (
+                <>
+                  <h3>No recent reports in this area</h3>
+                  <p>{REGIONAL_BROWSING_EMPTY_COPY.noReports}</p>
+                  <button type="button" className="secondary-button" onClick={() => { updateStoreMapFilter("state", "All"); setScoutReportFilter("Latest"); setScoutReportsPage(1); }}>Show all areas</button>
+                </>
+              ) : scoutReportRows.length ? (
                 <>
                   <h3>Filters are hiding reports</h3>
                   <p>{scoutReportRows.length} report{scoutReportRows.length === 1 ? "" : "s"} exist for this Scout feed, but the current filter is hiding them.</p>
@@ -24401,7 +24476,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <p>User predictions and pattern notes. These are not confirmed stock reports.</p>
           </div>
           <div className="summary-pill-row">
-            <span className="status-badge">{scoutGuessRows.length} guess{scoutGuessRows.length === 1 ? "" : "es"}</span>
+            <span className="status-badge">{regionalScoutGuessRows.length} guess{regionalScoutGuessRows.length === 1 ? "" : "es"}</span>
             <button type="button" className="secondary-button" onClick={() => void runGuessPlannerAiAssist()}>Summarize guesses</button>
             <button type="button" disabled={!currentUserCanSubmitScoutGuess} title={!currentUserCanSubmitScoutGuess ? DROP_RADAR_GUESS_LOCKED_MESSAGE : ""} onClick={openScoutGuessFlow}>Add Guess</button>
           </div>
@@ -24410,7 +24485,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <p className="ai-helper-note">{DROP_RADAR_GUESS_LOCKED_MESSAGE} Current Scout points: {scoutGuessPoints}/{MIN_SCOUT_POINTS_FOR_GUESS}.</p>
         ) : null}
         <div className="scout-intel-dashboard">
-          {scoutGuessRows.length ? scoutGuessRows.map((guess) => (
+          {regionalScoutGuessRows.length ? regionalScoutGuessRows.map((guess) => (
             <article className="scout-intel-card scout-intel-card--prediction" key={guess.id}>
               <div className="compact-card-header">
                 <div>
@@ -24432,7 +24507,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           )) : (
             <div className="small-empty-state">
               <strong>No guesses saved yet.</strong>
-              <span>{currentUserCanSubmitScoutGuess ? "Add a pattern note when you think a store usually restocks." : DROP_RADAR_GUESS_LOCKED_MESSAGE}</span>
+              <span>{regionalFilterActive(storeMapFilters) ? "No community guesses match this area filter. Guesses stay separate from confirmed restock history." : currentUserCanSubmitScoutGuess ? "Add a pattern note when you think a store usually restocks." : DROP_RADAR_GUESS_LOCKED_MESSAGE}</span>
               <button type="button" className="secondary-button" disabled={!currentUserCanSubmitScoutGuess} onClick={openScoutGuessFlow}>Add Guess</button>
             </div>
           )}
@@ -24523,7 +24598,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         : distanceMilesBetween(origin, coordinates);
       const retailer = getScoutQuickRetailer(store);
       const name = getScoutQuickStoreName(store);
-      const city = store.city || store.addressCity || store.region || "";
       const status = getStoreMapStatus(store, reports);
       const confidence = getStoreMapConfidence(store, reports);
       const watchlisted = Boolean(store.favorite || store.priority || store.watchlisted || store.watchlist);
@@ -24542,8 +24616,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         name,
         retailer,
         storeType: profile.storeType,
-        city,
-        area: [city, store.region || store.state || ""].filter(Boolean).join(" / "),
+        city: profile.city,
+        area: profile.areaLabel || profile.area,
         address: store.address || store.streetAddress || "",
         reports,
         latestReport,
@@ -24590,7 +24664,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function updateStoreMapFilter(key, value) {
-    setStoreMapFilters((current) => ({ ...current, [key]: value }));
+    setStoreMapFilters((current) => {
+      if (key === "state") return { ...current, state: value, region: "All", city: "All" };
+      if (key === "region") return { ...current, region: value, city: "All" };
+      return { ...current, [key]: value };
+    });
   }
 
   function openStoreProfile(row) {
@@ -24784,9 +24862,29 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const statusOptions = ["All", ...new Set(baseRows.map((row) => row.status))];
     const retailerOptions = ["All", ...VIRGINIA_RETAILERS];
     const stateOptions = ["All", ...new Set(baseRows.map((row) => row.profile?.state).filter(Boolean))];
-    const regionOptions = ["All", ...new Set(baseRows.map((row) => row.profile?.region).filter(Boolean))];
+    const regionOptions = ["All", ...new Set(baseRows
+      .filter((row) => storeMapFilters.state === "All" || row.profile?.state === storeMapFilters.state)
+      .map((row) => row.profile?.region)
+      .filter(Boolean))];
+    const cityOptions = ["All", ...new Set(baseRows
+      .filter((row) => storeMapFilters.state === "All" || row.profile?.state === storeMapFilters.state)
+      .filter((row) => storeMapFilters.region === "All" || row.profile?.region === storeMapFilters.region)
+      .map((row) => row.profile?.city)
+      .filter(Boolean))];
+    const regionBuckets = buildRegionalStoreBuckets(baseRows.map((row) => row.profile), { admin: adminEditModeActive }).slice(0, 8);
+    const cityBuckets = buildRegionalCityBuckets(baseRows.map((row) => row.profile), storeMapFilters, { admin: adminEditModeActive }).slice(0, 8);
+    const mapReadyRows = rows.map((row) => buildMapReadyStoreLocation(row.profile));
     const featuredRows = rows.slice(0, 7);
     const familyFilterActive = storeMapFilters.familyStatus !== "all" || storeMapFilters.kidsAccessOnly || storeMapFilters.reasonablePricingOnly || storeMapFilters.kidEventsOnly || storeMapFilters.tradeNightsOnly || storeMapFilters.featuredPartnersOnly || storeMapFilters.advertisingPartnersOnly;
+    const areaFilterActive = regionalFilterActive(storeMapFilters);
+    const applyRegionalBrowseFilter = (bucket = {}) => {
+      setStoreMapFilters((current) => ({
+        ...current,
+        state: bucket.state || "All",
+        region: bucket.region || "All",
+        city: bucket.city || "All",
+      }));
+    };
     const locationCopy = hasScoutLocation
       ? `Nearby sorting is on${locationSettings.manualLocation || locationSettings.selectedSavedLocation ? ` for ${locationSettings.manualLocation || locationSettings.selectedSavedLocation}` : ""}.`
       : "Location is optional. Search by city, store, or manual area to use Stores without sharing location.";
@@ -24825,6 +24923,37 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <strong>Partner status is not a guarantee.</strong>
             <span>{PARTNER_STATUS_DISCLAIMER}</span>
           </div>
+          <section className="regional-browse-panel" aria-label="Browse by Area">
+            <div className="compact-card-header">
+              <div>
+                <h3>Browse by Area</h3>
+                <p>Pick a region or city to narrow stores, Scout reports, Drop Radar windows, and family-friendly shop results.</p>
+              </div>
+              <button type="button" className="ghost-button" onClick={() => applyRegionalBrowseFilter({})}>All Areas</button>
+            </div>
+            <div className="regional-browse-grid">
+              {regionBuckets.map((bucket) => (
+                <button type="button" className="regional-browse-card" key={bucket.id} onClick={() => applyRegionalBrowseFilter(bucket)}>
+                  <strong>{bucket.label}</strong>
+                  <span>{bucket.state || "State not set"}</span>
+                  <small>{bucket.storeCount} store{bucket.storeCount === 1 ? "" : "s"} | {bucket.familyFriendlyCount} family-friendly | {bucket.confirmedReportCount} confirmed</small>
+                </button>
+              ))}
+            </div>
+            {cityBuckets.length ? (
+              <div className="regional-city-chip-row" aria-label="Nearby city filters">
+                {cityBuckets.map((bucket) => (
+                  <button type="button" className={storeMapFilters.city === bucket.city ? "active" : ""} key={bucket.id} onClick={() => applyRegionalBrowseFilter(bucket)}>
+                    {bucket.label} <span>{bucket.storeCount}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <p className="store-directory-filter-note">
+              <strong>Map-ready foundation</strong>
+              <span>{mapReadyRows.length} store profile{mapReadyRows.length === 1 ? "" : "s"} have safe map-ready labels, region data, badges, and profile routes. No paid map API is connected.</span>
+            </p>
+          </section>
           <label>
             <span>Search stores</span>
             <input value={storeMapFilters.query} onChange={(event) => updateStoreMapFilter("query", event.target.value)} placeholder="Store, city, ZIP, nickname" />
@@ -24874,6 +25003,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <span>Region</span>
             <select value={storeMapFilters.region} onChange={(event) => updateStoreMapFilter("region", event.target.value)}>
               {regionOptions.map((region) => <option key={region}>{region}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>City</span>
+            <select value={storeMapFilters.city} onChange={(event) => updateStoreMapFilter("city", event.target.value)}>
+              {cityOptions.map((city) => <option key={city}>{city}</option>)}
             </select>
           </label>
           <label>
@@ -24964,8 +25099,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             ))}
             {!rows.length ? (
               <div className="empty-state">
-                <h3>{familyFilterActive ? "No family-friendly shops match yet" : "No stores match those filters"}</h3>
-                <p>{familyFilterActive ? NO_FAMILY_SHOPS_COPY : "Try a broader city search, clear Watchlist only, or suggest a missing store from Quick Add."}</p>
+                <h3>{familyFilterActive ? "No family-friendly shops match yet" : areaFilterActive ? "No stores in this area yet" : "No stores match those filters"}</h3>
+                <p>{familyFilterActive ? NO_FAMILY_SHOPS_COPY : areaFilterActive ? REGIONAL_BROWSING_EMPTY_COPY.noStores : "Try a broader city search, clear Watchlist only, or suggest a missing store from Quick Add."}</p>
                 <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Suggest Store</button>
               </div>
             ) : null}
@@ -25172,6 +25307,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function renderScoutPredictionsPanel() {
+    const forecastRows = regionalScoutForecastPreviewRows;
     return (
       <section className="panel scout-subpage-panel">
         <div className="compact-card-header">
@@ -25184,17 +25320,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <button type="button" className="secondary-button" disabled={!currentUserCanSubmitScoutGuess} title={!currentUserCanSubmitScoutGuess ? DROP_RADAR_GUESS_LOCKED_MESSAGE : ""} onClick={openScoutGuessFlow}>Add Guess</button>
         </div>
         <div className="scout-forecast-card-grid">
-          {scoutForecastPreviewRows.length ? scoutForecastPreviewRows.map((row) => {
+          {forecastRows.length ? forecastRows.map((row) => {
             const reportStore = findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer }) || {
               name: row.storeName,
               retailer: row.retailer,
             };
+            const regionalArea = normalizeStoreAreaFields({
+              ...reportStore,
+              city: reportStore.city || row.city,
+              state: reportStore.state || row.state,
+              region: reportStore.region || row.region,
+            });
             return (
               <article className="scout-forecast-card-item" key={`forecast-window-${row.id}`}>
                 <div className="scout-forecast-card-top">
                   <div>
                     <strong>{row.storeName}</strong>
-                    <span>{row.retailer}</span>
+                    <span>{row.retailer}{regionalArea.areaLabel ? ` | ${regionalArea.areaLabel}` : ""}</span>
                   </div>
                   <span className={`status-badge scout-confidence-badge scout-confidence-badge--${row.confidenceKey}`}>{row.confidenceLabel}</span>
                 </div>
@@ -25222,7 +25364,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           }) : (
             <div className="small-empty-state">
               <strong>No forecast windows yet.</strong>
-              <span>Confirmed reports build predictions. Community guesses stay in the planner until enough proof exists.</span>
+              <span>{regionalFilterActive(storeMapFilters) ? REGIONAL_BROWSING_EMPTY_COPY.noPredictions : "Confirmed reports build predictions. Community guesses stay in the planner until enough proof exists."}</span>
             </div>
           )}
         </div>

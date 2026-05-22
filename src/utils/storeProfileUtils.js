@@ -8,6 +8,10 @@ import {
   isStoreActiveForViewer,
   normalizeStoreExpansionFields,
 } from "./storeExpansionUtils.js";
+import {
+  matchesRegionalAreaFilters,
+  normalizeStoreAreaFields,
+} from "./regionalBrowsingUtils.js";
 
 export { COMMUNITY_MOTTO_COPY, FAMILY_FRIENDLY_SHOP_COPY, STORE_FAMILY_FILTER_OPTIONS, STORE_LOCATION_TYPES };
 
@@ -46,6 +50,9 @@ function recordStoreText(record = {}) {
     record.retailer,
     record.chain,
     record.city,
+    record.state,
+    record.region,
+    record.area,
   ].filter(Boolean).join(" "));
 }
 
@@ -122,6 +129,7 @@ export function buildStoreActivitySummary(store = {}, { reports = [], guesses = 
 
 export function buildStoreProfileSummary(store = {}, options = {}) {
   const normalized = normalizeStoreExpansionFields(store);
+  const area = normalizeStoreAreaFields(normalized);
   const badges = getStoreFamilyFriendlyBadges(normalized);
   const activeForViewer = isStoreActiveForViewer(normalized, { admin: options.admin });
   const activity = buildStoreActivitySummary(normalized, options);
@@ -142,10 +150,15 @@ export function buildStoreProfileSummary(store = {}, options = {}) {
     chainName: firstValue(normalized.chain, normalized.retailer, normalized.storeGroup),
     retailer: storeProfileRetailer(normalized),
     storeType: normalized.locationType,
-    city: firstValue(normalized.city, normalized.addressCity),
-    state: firstValue(normalized.state, normalized.regionState),
-    region: firstValue(normalized.region, normalized.area, normalized.county),
-    area: [firstValue(normalized.city, normalized.addressCity), firstValue(normalized.region, normalized.state)].filter(Boolean).join(" / "),
+    city: area.city,
+    state: area.state,
+    region: area.region,
+    area: area.areaLabel,
+    areaLabel: area.areaLabel,
+    cityKey: area.cityKey,
+    stateKey: area.stateKey,
+    regionKey: area.regionKey,
+    displayLabel: area.displayLabel,
     address: firstValue(normalized.address, normalized.streetAddress),
     notes: firstValue(normalized.description, normalized.notes, normalized.partnerNotes),
     favorite: Boolean(normalized.favorite || normalized.priority || normalized.watchlisted || normalized.watchlist),
@@ -178,8 +191,7 @@ export function matchesStoreDirectoryFilters(storeOrProfile = {}, filters = {}, 
   if (filters.tradeNightsOnly && !store.offersTradeNights) return false;
   if (filters.featuredPartnersOnly && !store.featuredPartner) return false;
   if (filters.advertisingPartnersOnly && !store.advertisingPartner) return false;
-  if (filters.state && filters.state !== "All" && profile.state !== filters.state) return false;
-  if (filters.region && filters.region !== "All" && profile.region !== filters.region) return false;
+  if (!matchesRegionalAreaFilters(profile, filters)) return false;
   if (filters.query) {
     const query = normalizeText(filters.query);
     const haystack = normalizeText([

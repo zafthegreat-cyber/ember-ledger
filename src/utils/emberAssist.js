@@ -28,7 +28,7 @@ export const EMBER_ASSIST_ESCALATION_CATEGORIES = [
 ];
 
 const PAGE_PROMPTS = {
-  scout: ["How do Scout reports work?", "Why is this a prediction?", "Help me submit a report", "What stores should I check?"],
+  scout: ["How do Scout reports work?", "How do I browse by area?", "Help me submit a report", "What stores should I check?"],
   dropRadar: ["Explain this drop prediction", "What releases are coming up?", "What does confirmed vs predicted mean?", "Help me follow a store"],
   vault: ["What is my collection worth?", "Help me find an item", "What should I move to Forge?", "Explain my purchaser tallies"],
   forge: ["What should I list for sale?", "Help me set a planned sale price", "Show items missing cost or photos", "What is ready to sell?"],
@@ -58,7 +58,7 @@ const CORE_PROMPTS = [
 const BUG_WORDS = /\b(broken|wrong|missing|not showing|can't find|cant find|cannot find|disappeared|lost|bug|error|stuck|failed|didn't save|did not save)\b/i;
 const TAX_WORDS = /\b(tax|taxes|deduction|cpa|year[-\s]?end|expense|receipt|mileage)\b/i;
 const SPARK_WORDS = /\b(kid|kids|child|children|spark|giveaway|family|parent)\b/i;
-const DROP_WORDS = /\b(drop radar|prediction|predicted|drop|restock window|confirmed vs predicted|release)\b/i;
+const DROP_WORDS = /\b(drop radar|prediction|predictions|predicted|forecast|drop|restock window|confirmed vs predicted|release)\b/i;
 const SCOUT_WORDS = /\b(scout|report|store|verified|confidence|trusted)\b/i;
 const SCOUT_POINTS_WORDS = /\b(scout points?|points|reputation|trusted reporter|earn points)\b/i;
 const QUICK_ADD_WORDS = /\b(quick add|add inventory|add item|center plus|\+ button|save to vault|save to forge)\b/i;
@@ -66,7 +66,7 @@ const HEARTH_WORDS = /\b(hearth|home|what should i do next|daily command|today's
 const ALERT_WORDS = /\b(alert|alerts|notification|notifications|bell|in-app alerts|confirmed restock alert|predicted window alert)\b/i;
 const SETTINGS_WORDS = /\b(settings|profile|notification|seller mode|workspace|workspaces|personal forge|ember & tide forge|business info)\b/i;
 const CONTACT_WORDS = /\b(message admin|contact admin|send to admin|ask admin|support|help from admin|ember & tide help)\b/i;
-const SHOP_WORDS = /\b(card shop|local shop|family[-\s]?friendly shop|family[-\s]?friendly card shop|kid friendly shop|where should i buy|shop near me|featured partner|advertising partner|reasonable pricing|guarantee msrp|guaranteed msrp|follow a store|favorite store|report a restock at this store|report restock at this store)\b/i;
+const SHOP_WORDS = /\b(card shop|local shop|family[-\s]?friendly shop|family[-\s]?friendly card shop|kid friendly shop|where should i buy|shop near me|featured partner|advertising partner|reasonable pricing|guarantee msrp|guaranteed msrp|follow a store|favorite store|report a restock at this store|report restock at this store|stores near me|find stores near me|browse by area|browse stores by area|stores by region|nearby areas|expand to another state|add more stores)\b/i;
 const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|what should i do first|what do i do first|help me|where do i start|what is this)\b/i;
 const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
 const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price|checkout|payment|pay through|buy through)\b/i;
@@ -225,6 +225,24 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (SHOP_WORDS.test(text)) {
+    if (/\b(stores near me|find stores near me|browse by area|stores by region|nearby areas)\b/i.test(text)) {
+      return response("Open Stores, then use Browse by Area or the State, Region, and City filters. Confirmed reports, predictions, and family-friendly shop badges stay labeled so nearby inventory never sounds guaranteed.", {
+        actions: ["Open Stores", "Open Scout Report"],
+        category: "Wrong Scout report/store",
+      });
+    }
+    if (/\b(add more stores|expand to another state|another state|new area|new region)\b/i.test(text)) {
+      return response("Ember & Tide can expand when we have clean store data and community reports for that area. Suggest stores, add city/state/region details, and submit confirmed Scout reports so the area becomes useful over time.", {
+        actions: ["Open Stores", "Send to Admin"],
+        category: "Wrong Scout report/store",
+      });
+    }
+    if (/\b(no predictions|why.*no.*prediction|no drop radar|no forecast)\b/i.test(text)) {
+      return response("No predictions usually means the area needs more confirmed restock history. Community guesses can help planning, but they should not train Drop Radar as confirmed data.", {
+        actions: ["Open Scout Report", "Open Drop Radar"],
+        category: "Drop Radar question",
+      });
+    }
     if (/\b(guarantee msrp|guaranteed msrp|msrp|guarantee inventory|guaranteed inventory)\b/i.test(text)) {
       return response("A Family-Friendly Card Shop can support fair access and reasonable pricing when possible, but Ember & Tide should not promise guaranteed MSRP or inventory.", {
         actions: ["Open Stores", "Send to Admin"],
@@ -281,6 +299,12 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (DROP_WORDS.test(text) || (page === "dropRadar" && GENERAL_PAGE_HELP_WORDS.test(text))) {
+    if (/\b(no predictions|why.*no.*prediction|no forecast|no drop radar|my area)\b/i.test(text)) {
+      return response("No predictions in an area usually means Drop Radar needs more confirmed restock history there. Submit confirmed Scout reports when you spot stock; community guesses stay separate and should not count as proof.", {
+        actions: ["Open Scout Report", "Open Stores"],
+        category: "Drop Radar question",
+      });
+    }
     return response("Drop Radar helps you see what might be coming, what was confirmed, and what stores are worth watching. Predictions are educated guesses, not promises. Confirmed Scout reports matter more.", {
       actions: ["Open Drop Radar", "Open Scout Report", "Follow Store"],
       category: "Drop Radar question",
