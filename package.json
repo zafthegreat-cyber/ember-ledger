@@ -45,6 +45,8 @@
     "test:store-expansion": "node --no-warnings scripts/test-store-expansion.mjs",
     "test:store-pages": "node --no-warnings scripts/test-store-pages.mjs",
     "test:partner-profiles": "node --no-warnings scripts/test-partner-profiles.mjs",
+    "test:admin-store-tools": "node --no-warnings scripts/test-admin-store-tools.mjs",
+    "test:store-suggestions": "node --no-warnings scripts/test-store-suggestions.mjs",
     "test:admin-command-center": "node --no-warnings scripts/test-admin-command-center.mjs",
     "test:moderation-queues": "node --no-warnings scripts/test-moderation-queues.mjs",
     "test:notifications": "node --no-warnings scripts/test-notifications.mjs",

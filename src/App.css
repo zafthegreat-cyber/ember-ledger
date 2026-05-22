@@ -23007,6 +23007,33 @@ button.admin-edit-toggle.active {
   font-weight: 750;
 }
 
+.admin-store-draft-form {
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(12, 38, 56, 0.10);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.admin-store-draft-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.admin-store-draft-form .flow-form-footer,
+.store-suggestion-panel .flow-form-footer {
+  grid-column: 1 / -1;
+}
+
+.admin-store-summary-cards {
+  margin: 0;
+}
+
+.store-suggestion-panel {
+  display: grid;
+  gap: 12px;
+}
+
 .admin-compact-list {
   display: grid;
   gap: 10px;

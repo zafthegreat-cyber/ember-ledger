@@ -68,7 +68,7 @@ const HEARTH_WORDS = /\b(hearth|home|what should i do next|daily command|today's
 const ALERT_WORDS = /\b(alert|alerts|notification|notifications|bell|in-app alerts|confirmed restock alert|predicted window alert)\b/i;
 const SETTINGS_WORDS = /\b(settings|profile|notification|seller mode|workspace|workspaces|personal forge|ember & tide forge|business info)\b/i;
 const CONTACT_WORDS = /\b(message admin|contact admin|send to admin|ask admin|support|help from admin|ember & tide help)\b/i;
-const SHOP_WORDS = /\b(card shop|local shop|family[-\s]?friendly shop|family[-\s]?friendly card shop|kid friendly shop|where should i buy|shop near me|featured partner|advertising partner|reasonable pricing|guarantee msrp|guaranteed msrp|follow a store|favorite store|report a restock at this store|report restock at this store|stores near me|find stores near me|browse by area|browse stores by area|stores by region|nearby areas|expand to another state|add more stores)\b/i;
+const SHOP_WORDS = /\b(card shop|local shop|family[-\s]?friendly shop|family[-\s]?friendly card shop|kid friendly shop|where should i buy|shop near me|featured partner|advertising partner|reasonable pricing|guarantee msrp|guaranteed msrp|follow a store|favorite store|report a restock at this store|report restock at this store|stores near me|find stores near me|browse by area|browse stores by area|stores by region|nearby areas|expand to another state|add more stores|suggest a store|store suggestion|add a store|adding stores|hidden store|inactive store|why is.*store hidden|admin store tools|store management)\b/i;
 const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|what should i do first|what do i do first|help me|where do i start|what is this)\b/i;
 const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
 const VALUATION_WORDS = /\b(cost basis|market value|price missing|missing price|manual price|manual value|stale price|msrp|exact value|review prices?|price review|estimated profit|profit dashboard|planned sale price|planned price|collection worth|inventory worth|purchaser breakdown|zena and dillon|zena.*dillon|tax advice|financial advice)\b/i;
@@ -331,6 +331,27 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (SHOP_WORDS.test(text)) {
+    if (/\b(suggest a store|store suggestion|add a store|adding stores|missing store)\b/i.test(text)) {
+      return response("Use Suggest Store from the store directory. It sends the name, type, city, state, region, and notes to admin review first, so the store does not become public automatically.", {
+        actions: ["Open Stores", "Send to Admin"],
+        category: "Wrong Scout report/store",
+      });
+    }
+    if (/\b(hidden store|inactive store|why is.*store hidden|closed store)\b/i.test(text)) {
+      return response("Stores can be hidden when they are inactive, closed, not reportable, or still under admin review. Admins can see and edit those records, but normal users should only see active public-safe stores.", {
+        actions: ["Open Stores", "Send to Admin"],
+        category: "Wrong Scout report/store",
+      });
+    }
+    if (/\b(admin store tools|store management|manage stores)\b/i.test(text)) {
+      return response(context.isAdmin
+        ? "Admin Store Management is for reviewing suggestions, adding or editing local store metadata, marking stores inactive, and approving family-friendly or partner badges. Keep public copy clear: no guaranteed MSRP or inventory."
+        : "Store management is admin-only. You can still suggest a store, report bad store details, or message Ember & Tide for review.",
+        {
+          actions: context.isAdmin ? ["Open Admin Review", "Open Stores"] : ["Open Stores", "Send to Admin"],
+          category: "Wrong Scout report/store",
+        });
+    }
     if (/\b(stores near me|find stores near me|browse by area|stores by region|nearby areas)\b/i.test(text)) {
       return response("Open Stores, then use Browse by Area or the State, Region, and City filters. Confirmed reports, predictions, and family-friendly shop badges stay labeled so nearby inventory never sounds guaranteed.", {
         actions: ["Open Stores", "Open Scout Report"],

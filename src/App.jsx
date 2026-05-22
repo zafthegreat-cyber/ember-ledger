@@ -297,6 +297,19 @@ import {
   regionalFilterActive,
 } from "./utils/regionalBrowsingUtils";
 import {
+  ADMIN_STORE_DRAFT_DEFAULTS,
+  ADMIN_STORE_PERSISTENCE_NOTE,
+  STORE_PARTNER_NO_GUARANTEE_COPY,
+  STORE_SUGGESTION_REVIEW_COPY,
+  adminStoreDraftToApprovedStore,
+  applyAdminStoreDraftToStores,
+  buildStoreSuggestionRecord,
+  filterStoresForScoutPicker,
+  getAdminStoreManagementSummary,
+  normalizeAdminStoreDraft,
+  validateAdminStoreDraft,
+} from "./utils/adminStoreTools";
+import {
   SPARK_PROGRAM_STATUS_OPTIONS,
   normalizeSparkProgramStatus,
   sparkProgramStatusLabel,
@@ -4473,6 +4486,10 @@ export default function App() {
     upc: "",
     productUrl: "",
   });
+  const [storeSuggestionOpen, setStoreSuggestionOpen] = useState(false);
+  const [storeSuggestionDraft, setStoreSuggestionDraft] = useState(ADMIN_STORE_DRAFT_DEFAULTS);
+  const [adminStoreDraft, setAdminStoreDraft] = useState(ADMIN_STORE_DRAFT_DEFAULTS);
+  const [adminStoreEditingId, setAdminStoreEditingId] = useState("");
   const [locationPromptOpen, setLocationPromptOpen] = useState(false);
   const [locationPromptZip, setLocationPromptZip] = useState("");
   const [importAssistantOpen, setImportAssistantOpen] = useState(false);
@@ -13974,7 +13991,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     return scoutText(store.retailer || store.chain || store.storeGroup || store.store_group || store.banner) || "Retailer";
   }
 
-  function getScoutQuickStores() {
+  function getScoutQuickStores(options = {}) {
     const seen = new Set();
     const reportStores = [...(scoutSnapshot.reports || []), ...(scoutSnapshot.tidepoolReports || [])]
       .map((report) => ({
@@ -13989,7 +14006,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         source: "scout-report",
       }))
       .filter((store) => store.name || store.id);
-    return [...(scoutSnapshot.stores || []), ...reportStores, ...virginiaStoreSeed]
+    const deduped = [...(scoutSnapshot.stores || []), ...reportStores, ...virginiaStoreSeed]
       .filter(Boolean)
       .filter((store, index) => {
         const key = String(getScoutQuickStoreId(store) || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
@@ -13997,13 +14014,14 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         seen.add(key);
         return true;
       });
+    return filterStoresForScoutPicker(deduped, { admin: Boolean(options.admin) });
   }
 
-  function findScoutQuickStore(storeLike = {}) {
+  function findScoutQuickStore(storeLike = {}, options = {}) {
     const explicitId = getScoutQuickStoreId(storeLike);
     const storeName = scoutText(storeLike.storeName || storeLike.store_name || storeLike.nickname || storeLike.name || storeLike.locationName || storeLike.location_name).toLowerCase();
     const retailer = scoutText(storeLike.retailer || storeLike.chain || storeLike.storeGroup || storeLike.store_group || storeLike.banner).toLowerCase();
-    const stores = getScoutQuickStores();
+    const stores = getScoutQuickStores(options);
     if (explicitId) return stores.find((store) => getScoutQuickStoreId(store) === explicitId) || null;
     if (!storeName) return null;
     return stores.find((store) => {
@@ -14633,6 +14651,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     if (action === "store" || action === "storeSuggestion") {
       setScoutSubTabTarget({ tab: "stores", action: "missingStore", id: Date.now() });
+      setScoutStoresMode("map");
+      setStoreSuggestionOpen(true);
       setScoutView("stores");
       setActiveTab("scout");
       return;
@@ -23719,7 +23739,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function updateDropRadarTrainingForm(field, value) {
     setDropRadarTrainingForm((current) => {
       if (field !== "storeId") return { ...current, [field]: value };
-      const store = findScoutQuickStore({ id: value }) || {};
+      const store = findScoutQuickStore({ id: value }, { admin: adminEditModeActive }) || {};
       return {
         ...current,
         storeId: value,
@@ -23730,7 +23750,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function selectedDropRadarStore() {
-    return findScoutQuickStore({ id: dropRadarTrainingForm.storeId }) || null;
+    return findScoutQuickStore({ id: dropRadarTrainingForm.storeId }, { admin: adminEditModeActive }) || null;
   }
 
   function makeDropRadarTrainingEntry(overrides = {}) {
@@ -23820,7 +23840,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function previewDropRadarShorthand() {
-    const preview = parseDropRadarShorthand(dropRadarShorthandText, getScoutQuickStores(), { year: 2026 });
+    const preview = parseDropRadarShorthand(dropRadarShorthandText, getScoutQuickStores({ admin: adminEditModeActive }), { year: 2026 });
     setDropRadarShorthandPreview(preview);
     if (!preview.ok) {
       setVaultToast(`Could not parse: ${preview.missing?.join(", ") || preview.error || "missing details"}.`);
@@ -24764,7 +24784,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const origin = parseManualLocationCoordinates(locationText);
     const query = String(storeMapFilters.query || "").trim().toLowerCase();
     const area = String(storeMapFilters.area || "").trim().toLowerCase();
-    const sourceStores = getScoutQuickStores();
+    const sourceStores = getScoutQuickStores({ admin: adminEditModeActive || options.admin });
     const rows = sourceStores.map((store, index) => {
       const reports = getStoreMapReports(store);
       const latestReport = reports[0] || null;
@@ -24983,6 +25003,93 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setVaultToast("Product sighting removed.");
   }
 
+  function updateStoreSuggestionDraft(field, value) {
+    setStoreSuggestionDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function resetStoreSuggestionDraft() {
+    setStoreSuggestionDraft(ADMIN_STORE_DRAFT_DEFAULTS);
+    setStoreSuggestionOpen(false);
+  }
+
+  function submitStoreSuggestionFlow(event) {
+    event?.preventDefault?.();
+    const validation = validateAdminStoreDraft(storeSuggestionDraft);
+    if (!validation.ok) {
+      setVaultToast(validation.errors[0]);
+      return;
+    }
+    const userInfo = getSuggestionUserInfo();
+    const suggestion = buildStoreSuggestionRecord(storeSuggestionDraft, {
+      ...userInfo,
+      source: "store-directory",
+    });
+    const result = submitUniversalSuggestion(suggestion);
+    if (!result) return;
+    resetStoreSuggestionDraft();
+    setVaultToast("Store suggestion queued for admin review. It will not appear publicly until approved.");
+  }
+
+  function updateAdminStoreDraft(field, value) {
+    setAdminStoreDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function startAdminStoreDraft(row = {}) {
+    const store = row.store || row;
+    setAdminStoreEditingId(getStoreMapStoreId(store));
+    setAdminStoreDraft(normalizeAdminStoreDraft(store));
+    setAdminReviewFilter("Store Management");
+  }
+
+  function resetAdminStoreDraft() {
+    setAdminStoreDraft(ADMIN_STORE_DRAFT_DEFAULTS);
+    setAdminStoreEditingId("");
+  }
+
+  function saveAdminStoreManagementDraft(event) {
+    event?.preventDefault?.();
+    if (!adminEditModeActive) {
+      setVaultToast("Turn on Admin Edit Mode to save store metadata.");
+      return;
+    }
+    const scoutData = getSharedScoutData();
+    const stores = scoutData.stores?.length ? scoutData.stores : scoutSnapshot.stores || [];
+    const result = applyAdminStoreDraftToStores(stores, {
+      ...adminStoreDraft,
+      id: adminStoreEditingId || adminStoreDraft.id,
+    }, {
+      admin: true,
+      reviewer: adminReviewerName(),
+    });
+    if (!result.ok) {
+      setVaultToast(result.errors?.[0] || "Store metadata needs review before saving.");
+      return;
+    }
+    saveSharedScoutData({ ...scoutData, stores: result.stores });
+    resetAdminStoreDraft();
+    setVaultToast(result.mode === "created" ? "Store added to local shared store data." : "Store metadata updated.");
+  }
+
+  function quickPatchAdminStore(row, patch = {}) {
+    if (!adminEditModeActive) {
+      setVaultToast("Turn on Admin Edit Mode to update store metadata.");
+      return;
+    }
+    const store = normalizeAdminStoreDraft({ ...(row.store || row), ...patch });
+    const scoutData = getSharedScoutData();
+    const stores = scoutData.stores?.length ? scoutData.stores : scoutSnapshot.stores || [];
+    const result = applyAdminStoreDraftToStores(stores, store, {
+      admin: true,
+      reviewer: adminReviewerName(),
+    });
+    if (!result.ok) {
+      setVaultToast(result.errors?.[0] || "Store metadata needs review before saving.");
+      return;
+    }
+    saveSharedScoutData({ ...scoutData, stores: result.stores });
+    setVaultToast(`${store.displayName || store.name} updated.`);
+  }
+
   function renderStoreMapStatusBadge(row) {
     return <span className={`status-badge store-map-status store-map-status--${row.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{row.status}</span>;
   }
@@ -25029,6 +25136,73 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <small>Community guesses are not confirmed restocks.</small>
           </div>
         </div>
+      </section>
+    );
+  }
+
+  function renderStoreSuggestionPanel() {
+    if (!storeSuggestionOpen) return null;
+    return (
+      <section className="panel store-suggestion-panel" aria-label="Suggest a store">
+        <div className="compact-card-header">
+          <div>
+            <h3>Suggest a Store</h3>
+            <p>{STORE_SUGGESTION_REVIEW_COPY} Family-friendly status never guarantees MSRP or inventory.</p>
+          </div>
+          <button type="button" className="ghost-button" onClick={resetStoreSuggestionDraft}>Cancel</button>
+        </div>
+        <form className="compact-form-grid admin-store-draft-form" onSubmit={submitStoreSuggestionFlow}>
+          <label className="form-field">
+            <span>Store / shop name</span>
+            <input value={storeSuggestionDraft.displayName} onChange={(event) => updateStoreSuggestionDraft("displayName", event.target.value)} placeholder="Family Table TCG" />
+          </label>
+          <label className="form-field">
+            <span>Chain / shop brand</span>
+            <input value={storeSuggestionDraft.chain} onChange={(event) => updateStoreSuggestionDraft("chain", event.target.value)} placeholder="Target, Barnes & Noble, local shop" />
+          </label>
+          <label className="form-field">
+            <span>Type</span>
+            <select value={storeSuggestionDraft.storeType} onChange={(event) => updateStoreSuggestionDraft("storeType", event.target.value)}>
+              {STORE_LOCATION_TYPES.map((type) => <option key={type}>{type}</option>)}
+            </select>
+          </label>
+          <label className="form-field">
+            <span>Nickname</span>
+            <input value={storeSuggestionDraft.nickname} onChange={(event) => updateStoreSuggestionDraft("nickname", event.target.value)} placeholder="Optional local nickname" />
+          </label>
+          <label className="form-field">
+            <span>City</span>
+            <input value={storeSuggestionDraft.city} onChange={(event) => updateStoreSuggestionDraft("city", event.target.value)} placeholder="Virginia Beach" />
+          </label>
+          <label className="form-field">
+            <span>State</span>
+            <input value={storeSuggestionDraft.state} onChange={(event) => updateStoreSuggestionDraft("state", event.target.value)} placeholder="Virginia" />
+          </label>
+          <label className="form-field">
+            <span>Region / area</span>
+            <input value={storeSuggestionDraft.region} onChange={(event) => updateStoreSuggestionDraft("region", event.target.value)} placeholder="Hampton Roads / 757" />
+          </label>
+          <label className="form-field">
+            <span>Public notes</span>
+            <textarea value={storeSuggestionDraft.publicNotes} onChange={(event) => updateStoreSuggestionDraft("publicNotes", event.target.value)} placeholder="What should admins know before reviewing this store?" />
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={storeSuggestionDraft.familyFriendlyApproved} onChange={(event) => updateStoreSuggestionDraft("familyFriendlyApproved", event.target.checked)} />
+            <span>Suggest for family-friendly review</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={storeSuggestionDraft.supportsKidsAccess} onChange={(event) => updateStoreSuggestionDraft("supportsKidsAccess", event.target.checked)} />
+            <span>May support kids access</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={storeSuggestionDraft.supportsMsrpOrReasonablePricing} onChange={(event) => updateStoreSuggestionDraft("supportsMsrpOrReasonablePricing", event.target.checked)} />
+            <span>May support reasonable pricing when possible</span>
+          </label>
+          <div className="flow-form-footer">
+            <button type="submit">Submit Store Suggestion</button>
+            <button type="button" className="secondary-button" onClick={resetStoreSuggestionDraft}>Cancel</button>
+          </div>
+        </form>
       </section>
     );
   }
@@ -25081,8 +25255,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <button type="button" className="secondary-button" onClick={() => setStoreMapFilters((current) => ({ ...current, watchlistOnly: !current.watchlistOnly }))}>
               {storeMapFilters.watchlistOnly ? "Show All Stores" : "Watchlist Only"}
             </button>
+            <button type="button" className="secondary-button" onClick={() => setStoreSuggestionOpen((open) => !open)}>
+              {storeSuggestionOpen ? "Close Suggestion" : "Suggest Store"}
+            </button>
           </div>
         </article>
+
+        {renderStoreSuggestionPanel()}
 
         <article className="store-map-filters panel">
           <div className="store-map-retailer-chips" aria-label="Retailer quick filters">
@@ -25614,7 +25793,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderDropRadarAdminPanel() {
     if (!adminEditModeActive) return null;
-    const storeOptions = getScoutQuickStores().slice(0, 500);
+    const storeOptions = getScoutQuickStores({ admin: true }).slice(0, 500);
     const resetSummary = DROP_RADAR_RESET_OPTIONS
       .filter((option) => dropRadarResetSelections[option.key])
       .map((option) => option.label);
@@ -25810,16 +25989,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     if (suggestion.targetTable === "stores") {
       let nextStores = stores;
       if (suggestion.suggestionType === SUGGESTION_TYPES.ADD_MISSING_STORE) {
-        const approvedStore = {
+        const approvedStore = adminStoreDraftToApprovedStore({
           ...submitted,
           id: submitted.id || makeId("store"),
-          isActive: true,
+          active: true,
+          reportable: true,
           userAdded: false,
-          reviewStatus: "approved",
+          reviewStatus: submitted.familyFriendlyApproved ? "Approved" : "Needs Review",
           sourceType: "approved_user_suggestion",
           source: submitted.source || "user-approved",
-          lastUpdated: now,
-        };
+        }, { now, reviewer: adminReviewerName(), sourceType: "approved_user_suggestion", source: "user-approved" });
         const exists = nextStores.some((store) => String(store.id) === String(approvedStore.id));
         nextStores = exists
           ? nextStores.map((store) => (String(store.id) === String(approvedStore.id) ? { ...store, ...approvedStore } : store))
@@ -25827,7 +26006,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       } else if (suggestion.targetRecordId) {
         nextStores = nextStores.map((store) =>
           String(store.id) === String(suggestion.targetRecordId)
-            ? { ...store, ...submitted, lastUpdated: now }
+            ? adminStoreDraftToApprovedStore({ ...store, ...submitted, id: store.id }, { now, reviewer: adminReviewerName(), sourceType: "approved_user_suggestion", source: "user-approved" })
             : store
         );
       }
@@ -28100,31 +28279,137 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderAdminStoreManagementSection() {
     if (!["All", "Store Management"].includes(adminReviewFilter)) return null;
-    const storeRows = buildStoreMapRows().slice(0, 8);
+    const storeRows = buildStoreMapRows({ unfiltered: true, admin: true });
+    const summary = getAdminStoreManagementSummary(storeRows.map((row) => row.store), suggestions);
     return (
       <section className="settings-subsection admin-ops-section">
         <div className="compact-card-header">
           <div>
             <h3>Store Management</h3>
-            <p>Manage store records, nicknames, retailer data, city/address details, coordinates, duplicate records, notes, and current status through existing review flows.</p>
+            <p>Manage store records, nicknames, city/state/area data, active status, reportable status, and family-friendly partner fields. {STORE_PARTNER_NO_GUARANTEE_COPY}</p>
           </div>
           <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); }}>Open Stores</button>
         </div>
+        <div className="cards mini-cards admin-store-summary-cards">
+          <div className="card"><p>Total Stores</p><h2>{summary.totalStores}</h2></div>
+          <div className="card"><p>Active</p><h2>{summary.activeStores}</h2></div>
+          <div className="card"><p>Inactive</p><h2>{summary.inactiveStores}</h2></div>
+          <div className="card"><p>Family-Friendly</p><h2>{summary.familyFriendlyStores}</h2></div>
+          <div className="card"><p>Featured</p><h2>{summary.featuredPartners}</h2></div>
+          <div className="card"><p>Open Suggestions</p><h2>{summary.openStoreSuggestions}</h2></div>
+        </div>
+        <div className="small-empty-state admin-only-note">
+          <strong>Persistence note</strong>
+          <span>{ADMIN_STORE_PERSISTENCE_NOTE}</span>
+        </div>
+        <form className="admin-store-draft-form compact-form-grid" onSubmit={saveAdminStoreManagementDraft}>
+          <label className="form-field">
+            <span>Display name</span>
+            <input value={adminStoreDraft.displayName} onChange={(event) => updateAdminStoreDraft("displayName", event.target.value)} placeholder="Store or shop name" />
+          </label>
+          <label className="form-field">
+            <span>Chain / brand</span>
+            <input value={adminStoreDraft.chain} onChange={(event) => updateAdminStoreDraft("chain", event.target.value)} placeholder="Target, local shop, bookstore" />
+          </label>
+          <label className="form-field">
+            <span>Store type</span>
+            <select value={adminStoreDraft.storeType} onChange={(event) => updateAdminStoreDraft("storeType", event.target.value)}>
+              {STORE_LOCATION_TYPES.map((type) => <option key={type}>{type}</option>)}
+            </select>
+          </label>
+          <label className="form-field">
+            <span>Nickname</span>
+            <input value={adminStoreDraft.nickname} onChange={(event) => updateAdminStoreDraft("nickname", event.target.value)} placeholder="RM T, Pem T, shop nickname" />
+          </label>
+          <label className="form-field">
+            <span>City</span>
+            <input value={adminStoreDraft.city} onChange={(event) => updateAdminStoreDraft("city", event.target.value)} placeholder="Virginia Beach" />
+          </label>
+          <label className="form-field">
+            <span>State</span>
+            <input value={adminStoreDraft.state} onChange={(event) => updateAdminStoreDraft("state", event.target.value)} placeholder="Virginia" />
+          </label>
+          <label className="form-field">
+            <span>Region / area</span>
+            <input value={adminStoreDraft.region} onChange={(event) => updateAdminStoreDraft("region", event.target.value)} placeholder="Hampton Roads / 757" />
+          </label>
+          <label className="form-field">
+            <span>Public notes</span>
+            <textarea value={adminStoreDraft.publicNotes} onChange={(event) => updateAdminStoreDraft("publicNotes", event.target.value)} placeholder="Public-safe store notes" />
+          </label>
+          <label className="form-field">
+            <span>Kids / fair-access notes</span>
+            <textarea value={adminStoreDraft.kidsFairAccessNotes} onChange={(event) => updateAdminStoreDraft("kidsFairAccessNotes", event.target.value)} placeholder="Private review context stays in admin tools/local data" />
+          </label>
+          <label className="form-field">
+            <span>Partner notes</span>
+            <textarea value={adminStoreDraft.partnerNotes} onChange={(event) => updateAdminStoreDraft("partnerNotes", event.target.value)} placeholder="Events, trade nights, partner context" />
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.active} onChange={(event) => updateAdminStoreDraft("active", event.target.checked)} />
+            <span>Active store</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.reportable} onChange={(event) => updateAdminStoreDraft("reportable", event.target.checked)} />
+            <span>Reportable in Scout</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.familyFriendlyApproved} onChange={(event) => updateAdminStoreDraft("familyFriendlyApproved", event.target.checked)} />
+            <span>Family-friendly approved</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.supportsKidsAccess} onChange={(event) => updateAdminStoreDraft("supportsKidsAccess", event.target.checked)} />
+            <span>Kids access support</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.supportsMsrpOrReasonablePricing} onChange={(event) => updateAdminStoreDraft("supportsMsrpOrReasonablePricing", event.target.checked)} />
+            <span>Reasonable pricing when possible</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.agreedToCommunityMotto} onChange={(event) => updateAdminStoreDraft("agreedToCommunityMotto", event.target.checked)} />
+            <span>Agreed to community motto</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.offersKidEvents} onChange={(event) => updateAdminStoreDraft("offersKidEvents", event.target.checked)} />
+            <span>Kid events</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.offersTradeNights} onChange={(event) => updateAdminStoreDraft("offersTradeNights", event.target.checked)} />
+            <span>Trade nights</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.featuredPartner} onChange={(event) => updateAdminStoreDraft("featuredPartner", event.target.checked)} />
+            <span>Featured partner</span>
+          </label>
+          <label className="inline-toggle">
+            <input type="checkbox" checked={adminStoreDraft.advertisingPartner} onChange={(event) => updateAdminStoreDraft("advertisingPartner", event.target.checked)} />
+            <span>Advertising partner</span>
+          </label>
+          <div className="flow-form-footer">
+            <button type="submit" disabled={!adminEditModeActive}>{adminStoreEditingId ? "Save Store Metadata" : "Add Store Draft"}</button>
+            <button type="button" className="secondary-button" onClick={resetAdminStoreDraft}>Reset</button>
+          </div>
+        </form>
         <div className="admin-store-management-grid">
-          {storeRows.map((row) => (
+          {storeRows.slice(0, 16).map((row) => (
             <article className="admin-store-card" key={`admin-store-${row.id}`}>
               <div>
                 <strong>{row.name}</strong>
-                <p>{row.retailer} | {row.area || "Area not listed"}</p>
+                <p>{row.retailer} | {row.profile?.storeType || row.storeType} | {row.area || "Area not listed"}</p>
               </div>
               <div className="summary-pill-row">
                 {renderStoreMapStatusBadge(row)}
                 <span className="confidence-badge">{row.confidence} confidence</span>
+                <span className={row.store.active === false || row.store.isActive === false ? "status-badge danger" : "status-badge"}>{row.store.active === false || row.store.isActive === false ? "Inactive" : "Active"}</span>
+                {row.store.reportable === false || row.store.isReportable === false ? <span className="status-badge warning">Not reportable</span> : <span className="status-badge">Scout reportable</span>}
               </div>
+              {renderStoreProfileBadges(row.profile, { limit: 6, hideWhenEmpty: true })}
+              <p className="compact-subtitle">{row.store.publicNotes || row.store.public_notes || row.store.partnerNotes || row.store.partner_notes || "No public notes yet."}</p>
               <div className="quick-actions">
                 <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>Details</button>
-                <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Admin Store Management", topic: row.name })}>Edit / Suggest</button>
-                <button type="button" className="ghost-button" onClick={() => setVaultToast("Duplicate store review is staged through admin review suggestions.")}>Duplicate</button>
+                <button type="button" className="secondary-button" onClick={() => startAdminStoreDraft(row)}>Edit</button>
+                <button type="button" className="secondary-button" onClick={() => quickPatchAdminStore(row, { familyFriendlyApproved: true, supportsKidsAccess: true, reviewStatus: "Approved" })}>Approve Family</button>
+                <button type="button" className="ghost-button" onClick={() => quickPatchAdminStore(row, { active: false, reportable: false, reviewStatus: "Inactive" })}>Mark Inactive</button>
               </div>
             </article>
           ))}
@@ -28621,7 +28906,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const totalOpenCount = openCount + listingReviewItems.length + trustOpenCount;
     const pagedVisibleSuggestions = getPagedItems(visibleSuggestions, adminReviewPage, LONG_LIST_PAGE_SIZE);
     const pagedListingReviewItems = getPagedItems(listingReviewItems, marketplaceReviewPage, LONG_LIST_PAGE_SIZE);
-    const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Community Guess Review", "Family-Friendly Shop Review"]);
+    const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Community Guess Review", "Family-Friendly Shop Review", "Store Management"]);
     return (
       <>
       <PageHeader

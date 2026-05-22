@@ -90,9 +90,18 @@ export function isLocalCommunityShop(store = {}) {
   return ["Local Card Shop", "Game Store"].includes(normalizeStoreLocationType(store));
 }
 
+export function storePartnerBadgesApprovedForPublic(store = {}) {
+  const active = store.active ?? store.isActive ?? store.is_active ?? true;
+  const statusText = String(`${store.status || ""} ${store.reviewStatus || ""} ${store.review_status || ""}`).toLowerCase();
+  if (active === false || /inactive|closed|removed|rejected|archived/.test(statusText)) return false;
+  if (/pending|needs review|under review|draft/.test(statusText)) return false;
+  return true;
+}
+
 export function getStoreFamilyFriendlyBadges(store = {}) {
   const normalized = normalizeStoreExpansionFields(store);
   const badges = [];
+  if (!storePartnerBadgesApprovedForPublic(normalized)) return badges;
   if (!isLocalCommunityShop(normalized) && !normalized.familyFriendlyApproved && !normalized.featuredPartner && !normalized.advertisingPartner) return badges;
   if (normalized.familyFriendlyApproved) badges.push({ key: "familyFriendly", label: "Family-Friendly", tone: "gold" });
   if (normalized.supportsKidsAccess) badges.push({ key: "kidsAccess", label: "Kids Access", tone: "success" });
