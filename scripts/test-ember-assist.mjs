@@ -22,6 +22,23 @@ const quickAddAnswer = buildEmberAssistFallbackResponse("How do I add inventory?
 assert.match(quickAddAnswer.answer, /center plus|Quick Add/i);
 assert.ok(quickAddAnswer.actions.includes("Open Quick Add"));
 
+const barcodeAnswer = buildEmberAssistFallbackResponse("How do I scan or enter a barcode?", buildEmberAssistContext({ activeTab: "dashboard" }));
+assert.match(barcodeAnswer.answer, /Barcode \/ UPC/i);
+assert.match(barcodeAnswer.answer, /type the UPC\/SKU manually/i);
+assert.match(barcodeAnswer.answer, /code stays attached/i);
+
+const receiptAnswer = buildEmberAssistFallbackResponse("How do I add from a receipt?", buildEmberAssistContext({ activeTab: "expenses" }));
+assert.match(receiptAnswer.answer, /structured/i);
+assert.match(receiptAnswer.answer, /supplies, mileage\/gas/i);
+
+const bulkAnswer = buildEmberAssistFallbackResponse("How do I add multiple items?", buildEmberAssistContext({ activeTab: "inventory" }));
+assert.match(bulkAnswer.answer, /Bulk Add/i);
+assert.match(bulkAnswer.answer, /destination, purchaser, cost/i);
+
+const groupedAnswer = buildEmberAssistFallbackResponse("Why did my item group with another item?", buildEmberAssistContext({ activeTab: "vault" }));
+assert.match(groupedAnswer.answer, /same product/i);
+assert.match(groupedAnswer.answer, /purchaser tallies/i);
+
 const scoutPointsAnswer = buildEmberAssistFallbackResponse("How do Scout points work?", buildEmberAssistContext({ activeTab: "scout" }));
 assert.match(scoutPointsAnswer.answer, /confirmed reports|clear store/i);
 

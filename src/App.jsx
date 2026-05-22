@@ -220,6 +220,17 @@ import {
   normalizeQuickAddDestinations,
 } from "./utils/quickAddRouting";
 import {
+  RECEIPT_LINE_ENTRY_LABELS,
+  RECEIPT_LINE_ENTRY_TYPES,
+  buildManualFallbackItemSeed,
+  catalogIdentifiersForProduct,
+  classifyReceiptLineForEntry,
+  findCatalogProductByBarcode,
+  isLikelyBarcodeValue,
+  normalizeBarcodeValue,
+  normalizeBulkImportRow,
+} from "./utils/inventoryImportUtils";
+import {
   getProductImageFallback,
   getProductImageUrl,
 } from "./utils/productDisplayUtils";
@@ -1228,14 +1239,14 @@ const IMPORT_SOURCE_GUIDES = [
     label: "Bulk Add: paste list",
     mode: BATCH_INTAKE_MODES.BULK_ADD,
     instructions: "Paste a buying, opening, or sorting list. We'll parse quantities and suggest catalog matches before saving.",
-    bestFormat: "One item per line. Quantity formats like 2x, x2, qty 2, or leading quantities are supported.",
+    bestFormat: "One item per line or CSV with product name, quantity, destination, purchaser, unit cost, store/vendor, date, notes, and UPC/code when available.",
   },
   {
     value: "bulk_manual",
     label: "Bulk Add: manual rows",
     mode: BATCH_INTAKE_MODES.BULK_ADD,
     instructions: "Add quick manual rows into a temporary batch, then review and save them together.",
-    bestFormat: "Use the manual row fields for item, quantity, destination, condition, cost, store, and notes.",
+    bestFormat: "Use the manual row fields for item, quantity, destination, purchaser, condition, cost, store, UPC/code, and notes.",
   },
 ];
 const IMPORT_FIELD_OPTIONS = [
@@ -1244,6 +1255,8 @@ const IMPORT_FIELD_OPTIONS = [
   { value: "cardNumber", label: "Card number", aliases: ["number", "card #", "card no"] },
   { value: "productType", label: "Product type", aliases: ["type", "category", "product type"] },
   { value: "quantity", label: "Quantity", aliases: ["quantity", "qty", "count"] },
+  { value: "destination", label: "Destination", aliases: ["destination"] },
+  { value: "purchaserName", label: "Purchaser", aliases: ["purchaser", "buyer"] },
   { value: "condition", label: "Condition", aliases: ["condition", "grade"] },
   { value: "variant", label: "Variant", aliases: ["variant", "finish", "printing"] },
   { value: "costPaid", label: "Purchase price / cost basis", aliases: ["cost", "paid", "purchase", "price", "cost basis"] },
@@ -4467,9 +4480,12 @@ export default function App() {
     itemName: "",
     quantity: "1",
     destination: "Vault",
+    purchaserName: "",
     condition: "Unknown",
     costPaid: "",
     store: "",
+    purchaseDate: "",
+    upcSku: "",
     notes: "",
   });
   const [importCatalogSearch, setImportCatalogSearch] = useState("");
@@ -8505,29 +8521,40 @@ export default function App() {
     setMultiDestinationCatalogQuery(lookup);
     setMultiDestinationMatchSearchOpen(true);
     if (!lookup) return;
-    const exactIdentifier = /^\d{6,}$/.test(lookup);
+    const normalizedLookupCode = normalizeBarcodeValue(lookup);
+    const exactIdentifier = isLikelyBarcodeValue(lookup) || /^\d{6,}$/.test(normalizedLookupCode);
     void loadImportedPokemonCatalog(lookup, {
       page: 1,
       pageSize: Math.min(24, catalogPageSize || 24),
       mode: exactIdentifier ? "barcode" : "general",
-      barcode: exactIdentifier ? lookup : "",
+      barcode: exactIdentifier ? normalizedLookupCode || lookup : "",
       forceSearch: true,
       ...options,
     });
   }
 
   function startMultiDestinationManualEntry(seed = {}) {
+    const fallbackSeed = buildManualFallbackItemSeed({
+      rawValue: seed.catalogSearchQuery || seed.itemName || multiDestinationCatalogQuery,
+      itemName: seed.itemName,
+      productType: seed.productType,
+      setName: seed.setName,
+      upcSku: seed.upcSku,
+      msrpPrice: seed.msrpPrice,
+      marketPrice: seed.marketPrice,
+      destinations: seed.destinations || {},
+    });
     setMultiDestinationMatchSearchOpen(false);
     setMultiDestinationMessage("Manual item mode. Enter an item name, then continue to choose where it belongs.");
     setMultiDestinationForm((current) => ({
       ...current,
       ...seed,
-      itemName: seed.itemName ?? current.itemName ?? multiDestinationCatalogQuery,
-      productType: seed.productType ?? current.productType,
-      setName: seed.setName ?? current.setName,
-      upcSku: seed.upcSku ?? current.upcSku,
-      msrpPrice: seed.msrpPrice ?? current.msrpPrice,
-      marketPrice: seed.marketPrice ?? current.marketPrice,
+      itemName: fallbackSeed.itemName || current.itemName || multiDestinationCatalogQuery,
+      productType: fallbackSeed.productType || current.productType,
+      setName: fallbackSeed.setName || current.setName,
+      upcSku: fallbackSeed.upcSku || current.upcSku,
+      msrpPrice: fallbackSeed.msrpPrice || current.msrpPrice,
+      marketPrice: fallbackSeed.marketPrice || current.marketPrice,
       catalogProductId: "",
       catalogVariantId: "",
       tidetradr: {
@@ -9241,7 +9268,7 @@ export default function App() {
   }
 
   function normalizeImportIdentifier(value) {
-    return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    return normalizeBarcodeValue(value).toLowerCase();
   }
 
   function importConfidenceLabel(score) {
@@ -9258,16 +9285,7 @@ export default function App() {
 
     if (identifier) {
       const exactIdentifier = catalogProducts.find((product) => {
-        const values = [
-          product.barcode,
-          product.upc,
-          product.sku,
-          product.externalProductId,
-          product.tcgplayerProductId,
-          product.pokemonTcgApiId,
-          ...(product.upcs || []),
-          ...(product.identifiers || []),
-        ].map(normalizeImportIdentifier).filter(Boolean);
+        const values = catalogIdentifiersForProduct(product).map(normalizeImportIdentifier).filter(Boolean);
         return values.includes(identifier);
       });
       if (exactIdentifier) {
@@ -9310,12 +9328,17 @@ export default function App() {
   }
 
   function makeImportRow(raw, sourceType, index) {
-    const itemName = raw.itemName || raw.name || raw.productName || raw.originalText || `Imported item ${index + 1}`;
-    const matchResult = findCatalogMatchForImport(itemName, raw.setName, raw);
+    const normalizedRaw = normalizeBulkImportRow(raw, {
+      destination: importBulkApply.destination || defaultImportDestination(),
+      store: importBulkApply.store,
+      purchaseDate: importBulkApply.purchaseDate,
+    });
+    const itemName = normalizedRaw.itemName || raw.itemName || raw.name || raw.productName || raw.originalText || `Imported item ${index + 1}`;
+    const matchResult = findCatalogMatchForImport(itemName, raw.setName, { ...raw, upcSku: normalizedRaw.upcSku || raw.upcSku });
     const matched = matchResult.match;
     const marketInfo = matched ? getTideTradrMarketInfo(matched) : {};
     const catalogType = raw.catalogType || matched?.catalogType || (raw.condition || raw.grade ? "card" : matched?.catalog_type || "unknown");
-    const destination = raw.destination || importBulkApply.destination || defaultImportDestination();
+    const destination = normalizedRaw.destination || raw.destination || importBulkApply.destination || defaultImportDestination();
     return {
       importedItemId: makeId("import-row"),
       originalText: raw.originalText || itemName,
@@ -9327,8 +9350,8 @@ export default function App() {
       productType: raw.productType || matched?.productType || "",
       setName: raw.setName || matched?.setName || matched?.expansion || "",
       cardNumber: raw.cardNumber || matched?.cardNumber || "",
-      quantity: normalizeImportQuantity(raw.quantity),
-      costPaid: normalizeImportNumber(raw.costPaid),
+      quantity: normalizedRaw.quantity || normalizeImportQuantity(raw.quantity),
+      costPaid: normalizeImportNumber(raw.costPaid || normalizedRaw.unitCost),
       msrp: normalizeImportNumber(raw.msrp || matched?.msrpPrice || matched?.msrp || ""),
       marketValue: normalizeImportNumber(raw.marketValue || marketInfo.currentMarketValue || ""),
       condition: raw.condition || matched?.condition || "Unknown",
@@ -9337,9 +9360,10 @@ export default function App() {
       graded: Boolean(raw.graded || matched?.graded),
       grade: raw.grade || matched?.grade || "",
       location: raw.location || raw.store || raw.source || "",
-      store: raw.store || raw.location || raw.source || "",
-      purchaseDate: raw.purchaseDate || "",
-      upcSku: raw.upcSku || raw.barcode || raw.sku || "",
+      store: normalizedRaw.store || raw.store || raw.location || raw.source || "",
+      purchaseDate: normalizedRaw.purchaseDate || raw.purchaseDate || "",
+      purchaserName: normalizedRaw.purchaserName || raw.purchaserName || raw.purchaser || raw.buyer || "",
+      upcSku: normalizedRaw.upcSku || raw.upcSku || raw.barcode || raw.sku || "",
       notes: raw.notes || "",
       confidenceScore: matchResult.confidenceScore,
       confidenceLabel: importConfidenceLabel(matchResult.confidenceScore),
@@ -9357,7 +9381,7 @@ export default function App() {
     const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
     if (lines.length === 0) return [];
     const firstLineCells = parseCsvLine(lines[0]);
-    const headerCellPattern = /^(name|item|item name|product|product name|card|title|quantity|qty|count|cost|cost paid|paid|purchase price|price|market|market value|value|msrp|retail|set|set name|collection|expansion|condition|variant|finish|printing|upc|sku|barcode|external id|note|notes|date|purchase date|purchased|store|source|vendor|card number|card #|card no)$/i;
+    const headerCellPattern = /^(name|item|item name|product|product name|card|title|quantity|qty|count|destination|purchaser|buyer|cost|cost paid|paid|purchase price|price|market|market value|value|msrp|retail|set|set name|collection|expansion|condition|variant|finish|printing|upc|sku|barcode|external id|note|notes|date|purchase date|purchased|store|source|vendor|card number|card #|card no)$/i;
     const hasHeaders = firstLineCells.length > 1
       ? firstLineCells.some((cell) => headerCellPattern.test(cell.trim()))
       : headerCellPattern.test(firstLineCells[0]?.trim() || "");
@@ -9378,6 +9402,8 @@ export default function App() {
           productType: readImportCell(cells, headers, ["type", "category"], 5, mapping, "productType"),
           setName: readImportCell(cells, headers, ["set", "collection", "expansion"], 6, mapping, "setName"),
           condition: readImportCell(cells, headers, ["condition"], 7, mapping, "condition"),
+          destination: readImportCell(cells, headers, ["destination"], -1, mapping, "destination"),
+          purchaserName: readImportCell(cells, headers, ["purchaser", "buyer"], -1, mapping, "purchaserName"),
           variant: readImportCell(cells, headers, ["variant", "finish", "printing"], -1, mapping, "variant"),
           notes: readImportCell(cells, headers, ["note"], 8, mapping, "notes"),
           purchaseDate: readImportCell(cells, headers, ["date", "purchase date", "purchased"], -1, mapping, "purchaseDate"),
@@ -9684,6 +9710,7 @@ export default function App() {
     const matched = catalogProducts.find((product) => String(product.id) === String(row.matchedCatalogItemId));
     const normalizedDestination = normalizeAddDestinationValue(destination, "forge");
     const defaultPurchaser = (normalizedDestination === "forge" ? forgePurchaserOptions[0] : purchaserOptions[0]) || { id: "", name: "" };
+    const rowPurchaserName = String(row.purchaserName || row.purchaser || row.buyer || "").trim();
     const isVaultDestination = normalizedDestination === "vault";
     const isWishlistDestination = normalizedDestination === "wishlist";
     const isForgeDestination = normalizedDestination === "forge";
@@ -9696,15 +9723,15 @@ export default function App() {
       recordType: isVaultDestination ? "vault_item" : isWishlistDestination ? "wishlist_item" : "forge_inventory",
       businessInventory: isForgeDestination,
       isWishlist: isWishlistDestination,
-      buyer: defaultPurchaser.name,
-      purchaserId: defaultPurchaser.id,
-      purchaserName: defaultPurchaser.name,
+      buyer: rowPurchaserName || defaultPurchaser.name,
+      purchaserId: rowPurchaserName ? "" : defaultPurchaser.id,
+      purchaserName: rowPurchaserName || defaultPurchaser.name,
       category: "Pokemon",
       store: row.store || row.location || "",
       quantity: Number(row.quantity || 1),
       unitCost: Number(row.costPaid || 0),
       salePrice: "",
-      barcode: matched?.barcode || "",
+      barcode: matched?.barcode || matched?.upc || row.upcSku || "",
       catalogProductId: matched?.id || "",
       catalogProductName: matched?.name || "",
       externalProductId: matched?.externalProductId || "",
@@ -10098,6 +10125,12 @@ export default function App() {
             <strong>{currentGuide.instructions}</strong>
             <p className="compact-subtitle">Best format: {currentGuide.bestFormat}</p>
           </div>
+          {batchIntakeMode === BATCH_INTAKE_MODES.BULK_ADD ? (
+            <div className="small-empty-state">
+              <strong>Bulk import mapping is coming soon.</strong>
+              <span>You can paste rows or add multiple manual items now; each row still gets reviewed before anything saves.</span>
+            </div>
+          ) : null}
           {importSourceType !== "no_tracker" ? (
             <Field label="Upload File">
               <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,.pdf,image/*" onChange={handleImportFileUpload} />
@@ -10182,6 +10215,9 @@ export default function App() {
                   {IMPORT_DESTINATION_OPTIONS.filter((option) => option.value !== "Both").map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </Field>
+              <Field label="Purchaser">
+                <input value={importManualRow.purchaserName} onChange={(event) => setImportManualRow((current) => ({ ...current, purchaserName: event.target.value }))} placeholder="Zena, Dillon, or buyer name" />
+              </Field>
               <Field label="Condition">
                 <select value={importManualRow.condition} onChange={(event) => setImportManualRow((current) => ({ ...current, condition: event.target.value }))}>
                   {IMPORT_CONDITION_OPTIONS.map((condition) => <option key={condition}>{condition}</option>)}
@@ -10192,6 +10228,12 @@ export default function App() {
               </Field>
               <Field label="Store/source">
                 <input value={importManualRow.store} onChange={(event) => setImportManualRow((current) => ({ ...current, store: event.target.value }))} />
+              </Field>
+              <Field label="Purchase date">
+                <input type="date" value={importManualRow.purchaseDate} onChange={(event) => setImportManualRow((current) => ({ ...current, purchaseDate: event.target.value }))} />
+              </Field>
+              <Field label="UPC / barcode">
+                <input value={importManualRow.upcSku} onChange={(event) => setImportManualRow((current) => ({ ...current, upcSku: event.target.value }))} placeholder="Typed or scanned code" />
               </Field>
               <Field label="Notes">
                 <input value={importManualRow.notes} onChange={(event) => setImportManualRow((current) => ({ ...current, notes: event.target.value }))} />
@@ -10292,6 +10334,9 @@ export default function App() {
                   </Field>
                   <Field label="Quantity">
                     <input type="number" min="1" value={row.quantity} onChange={(event) => updateImportRow(row.importedItemId, { quantity: event.target.value, importStatus: "reviewed" })} />
+                  </Field>
+                  <Field label="Purchaser">
+                    <input value={row.purchaserName || ""} onChange={(event) => updateImportRow(row.importedItemId, { purchaserName: event.target.value, importStatus: "reviewed" })} />
                   </Field>
                   <Field label="Cost Paid">
                     <input type="number" step="0.01" value={row.costPaid} onChange={(event) => updateImportRow(row.importedItemId, { costPaid: event.target.value, importStatus: "reviewed" })} />
@@ -12351,6 +12396,7 @@ export default function App() {
     const best = matches[0];
     const product = best?.item || null;
     const marketInfo = product ? getTideTradrMarketInfo(product) : {};
+    const normalizedRawCode = isLikelyBarcodeValue(rawValue) ? normalizeBarcodeValue(rawValue) : "";
     return {
       scanId: makeId("scan"),
       rawValue,
@@ -12360,7 +12406,7 @@ export default function App() {
       catalogType: product?.catalogType || "unknown",
       productType: normalizedInventoryProductType(product || {}),
       setName: product?.setName || product?.expansion || "",
-      upc: product?.barcode || product?.upc || (/^\d{8,}$/.test(String(rawValue || "")) ? rawValue : ""),
+      upc: product?.barcode || product?.upc || normalizedRawCode,
       sku: product?.sku || "",
       imageUrl: product ? getCatalogImage(product) : "",
       msrp: marketInfo.msrp || product?.msrpPrice || "",
@@ -12622,6 +12668,7 @@ export default function App() {
     const parsedReceiptLines = parseReceiptDraftLines(rawText);
     const fallbackLines = parsedReceiptLines.length ? parsedReceiptLines : [{ rawText: "Unmatched receipt item", name: "Unmatched receipt item", quantity: 1, unitCost: 0, totalCost: 0 }];
     const items = await Promise.all(fallbackLines.map(async (line) => {
+      const lineClassification = classifyReceiptLineForEntry(line);
       const matches = await findReceiptLineCatalogMatches(line);
       const best = matches[0];
       const confidence = best?.confidencePercent || 0;
@@ -12639,6 +12686,11 @@ export default function App() {
         unitCost: Number(line.unitCost || 0).toFixed(2),
         totalCost: Number(line.totalCost || 0).toFixed(2),
         destination: "expense_only",
+        entryType: lineClassification.entryType,
+        entryTypeLabel: lineClassification.label,
+        suggestedCategory: lineClassification.category,
+        category: lineClassification.category,
+        classificationReason: lineClassification.reason,
         condition: /box|etb|tin|booster|pack|sealed/i.test(line.name) ? "Sealed" : "Unknown",
         ownerUserId: user?.id && user.id !== "local-beta" ? user.id : "",
         notes: "",
@@ -12721,6 +12773,32 @@ export default function App() {
         }
         return nextItem;
       }),
+    } : current);
+  }
+
+  function markReceiptDraftItemUse(itemId, entryType, destination = "expense_only") {
+    const category =
+      entryType === RECEIPT_LINE_ENTRY_TYPES.INVENTORY ? "Inventory/Product Cost" :
+      entryType === RECEIPT_LINE_ENTRY_TYPES.SUPPLIES ? "Packaging Supplies" :
+      entryType === RECEIPT_LINE_ENTRY_TYPES.MILEAGE_REFERENCE ? "Mileage/Vehicle" :
+      entryType === RECEIPT_LINE_ENTRY_TYPES.IGNORED ? "Ignored" :
+      "Supplies";
+    setReceiptScanDraft((current) => current ? {
+      ...current,
+      items: current.items.map((item) => item.id === itemId ? {
+        ...item,
+        entryType,
+        entryTypeLabel: RECEIPT_LINE_ENTRY_LABELS[entryType] || "Expense-only record",
+        suggestedCategory: category,
+        category,
+        destination: normalizeReceiptDestination(destination),
+        status: entryType === RECEIPT_LINE_ENTRY_TYPES.IGNORED ? "ignored" : "needs_review",
+        verified: entryType === RECEIPT_LINE_ENTRY_TYPES.IGNORED ? true : item.verified,
+        notes: [
+          item.notes,
+          entryType === RECEIPT_LINE_ENTRY_TYPES.IGNORED ? "Ignored during receipt review." : "",
+        ].filter(Boolean).join(" "),
+      } : item),
     } : current);
   }
 
@@ -12875,6 +12953,7 @@ export default function App() {
     const itemTotal = draft.items.reduce((sum, item) => sum + Number(item.totalCost || 0), 0);
     if (Math.abs((itemTotal + Number(draft.tax || 0) - Number(draft.discounts || 0)) - Number(draft.total || 0)) > 1) warnings.push("Receipt total does not match item totals plus tax/discounts.");
     draft.items.forEach((item, index) => {
+      if (item.status === "ignored" || item.entryType === RECEIPT_LINE_ENTRY_TYPES.IGNORED) return;
       const destination = normalizeReceiptDestination(item.destination);
       const createsInventory = ["vault", "forge", "wishlist"].includes(destination);
       if (!item.verified) warnings.push(`Item ${index + 1} must be verified before submit.`);
@@ -12890,6 +12969,7 @@ export default function App() {
   }
 
   function receiptItemShouldCreateInventory(item = {}) {
+    if (item.status === "ignored" || item.entryType === RECEIPT_LINE_ENTRY_TYPES.IGNORED) return false;
     const destination = receiptItemDbDestination(item);
     return ["forge", "vault", "wishlist"].includes(destination);
   }
@@ -12962,7 +13042,11 @@ export default function App() {
     setReceiptScanStatus("ready_for_review");
     setReceiptScanMessage("Submitting verified receipt to Supabase.");
     const importableItems = receiptScanDraft.items.filter(receiptItemShouldCreateInventory);
-    const expenseOnlyItems = receiptScanDraft.items.filter((item) => receiptItemDbDestination(item) === "expense_only");
+    const expenseOnlyItems = receiptScanDraft.items.filter((item) =>
+      receiptItemDbDestination(item) === "expense_only" &&
+      item.status !== "ignored" &&
+      item.entryType !== RECEIPT_LINE_ENTRY_TYPES.IGNORED
+    );
     const receipt = {
       id: receiptScanDraft.id,
       merchant: receiptScanDraft.storeName,
@@ -13002,7 +13086,7 @@ export default function App() {
         confidenceScore: Number(item.matchConfidence || 0),
         matchedConfidence: item.verified ? "confirmed" : "needs_review",
         verified: Boolean(item.verified),
-        notes: item.notes || "",
+        notes: [item.notes, item.entryTypeLabel ? `Suggested use: ${item.entryTypeLabel}` : "", item.suggestedCategory ? `Category: ${item.suggestedCategory}` : "", item.status === "ignored" ? "Ignored during receipt review." : ""].filter(Boolean).join(" | "),
       })),
       createdAt: receiptScanDraft.createdAt,
     };
@@ -13170,10 +13254,10 @@ export default function App() {
     if (!lookup) {
       setPictureLookup((current) => ({
         ...current,
-        message: "We could not confidently match this item. You can search manually, add custom item, or submit it for review.",
+        message: "No match found - add manually, search with fewer words, or submit it for review.",
       }));
       setScanSearchState("empty");
-      setScanMessage("We could not confidently match this item. You can search manually, add custom item, or submit it for review.");
+      setScanMessage("No match found - add manually, search with fewer words, or submit it for review.");
       return;
     }
     setPictureLookup((current) => ({
@@ -13201,23 +13285,33 @@ export default function App() {
 
     let matches = [];
     const mode = detectCatalogSearchMode(lookupValue);
-    const exactIdentifier = ["barcode", "id"].includes(mode);
+    const normalizedLookupCode = normalizeBarcodeValue(lookupValue);
+    const exactIdentifier = ["barcode", "id"].includes(mode) || isLikelyBarcodeValue(lookupValue);
+    const localBarcodeProduct = exactIdentifier ? findCatalogProductByBarcode(catalogProducts, lookupValue) : null;
+    if (localBarcodeProduct) {
+      matches = [{
+        item: localBarcodeProduct,
+        score: 1200,
+        confidencePercent: 98,
+        explanation: "Exact UPC/EAN/GTIN or SKU match",
+        reason: "local identifier match",
+      }];
+    }
     if (isSupabaseConfigured && supabase && lookupValue.length >= 2) {
       try {
         const result = await searchPokemonCatalog({
           supabase,
-          query: lookupValue,
-          barcode: exactIdentifier ? lookupValue : "",
+          query: exactIdentifier ? normalizedLookupCode || lookupValue : lookupValue,
+          barcode: exactIdentifier ? normalizedLookupCode || lookupValue : "",
           mode: exactIdentifier ? "barcode" : mode,
           page: 1,
           pageSize: 8,
           force: true,
         });
-        matches = (result.rows || []).map((row, index) => {
+        const remoteMatches = (result.rows || []).map((row, index) => {
           const item = mapCatalog(row);
-          const exactMatch = exactIdentifier && [item.barcode, item.upc, item.sku, item.externalProductId, item.tcgplayerProductId]
-            .filter(Boolean)
-            .some((candidate) => String(candidate).toLowerCase() === lookupValue.toLowerCase());
+          const identifiers = catalogIdentifiersForProduct(item);
+          const exactMatch = exactIdentifier && identifiers.includes(normalizedLookupCode || normalizeBarcodeValue(lookupValue));
           return {
             item,
             score: exactMatch ? 1000 : Math.max(400, 850 - index * 40),
@@ -13225,6 +13319,10 @@ export default function App() {
             explanation: exactMatch ? "Exact catalog identifier match" : `Fast ${result.sourceName || "catalog"} match`,
             reason: result.searchPhase || result.searchMode || "catalog search",
           };
+        });
+        matches = [...matches, ...remoteMatches].filter((match, index, allMatches) => {
+          const id = String(match.item?.id || match.item?.name || index);
+          return allMatches.findIndex((candidate) => String(candidate.item?.id || candidate.item?.name || "") === id) === index;
         });
       } catch (error) {
         setScanMessage(error?.message ? `Catalog lookup unavailable. Using local fallback: ${error.message}` : "Catalog lookup unavailable. Using local fallback.");
@@ -13247,7 +13345,7 @@ export default function App() {
     } else {
       setScanReview(null);
       setScanSearchState("empty");
-      setScanMessage("We could not confidently match this item. You can search manually, add custom item, or submit it for review.");
+      setScanMessage("No match found - add manually, search with fewer words, or submit the product for review.");
     }
   }
 
@@ -31970,7 +32068,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <section className="flow-form-section">
           <div className="add-item-step-heading">
             <h3>Select the item first</h3>
-            <p>Search TideTradr, pick a recent item, or use manual add when the product is not in the catalog yet.</p>
+            <p>Search TideTradr, pick a recent item, or use manual add when the product is not in the catalog yet. Can't find it in the catalog? Add it manually and keep tracking.</p>
           </div>
           <div className="flow-form-grid">
             <div className="catalog-selector-panel add-item-search-panel">
@@ -37292,9 +37390,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="picture-lookup-actions">
                   <button type="button" className="secondary-button" onClick={() => setScanMode("manual")}>Search manually instead</button>
                   <button type="button" className="secondary-button" onClick={() => {
-                    const destinations = scanDestination === "vault" ? { vault: true } : scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : {};
                     closeInventoryScanner();
-                    openProductAddFlow({ source: "picture-lookup-manual", destinations });
+                    openProductAddFlow({
+                      source: "picture-lookup-manual",
+                      seed: buildManualFallbackItemSeed({
+                        rawValue: pictureLookup.text || scanInput,
+                        destination: scanDestination,
+                      }),
+                    });
                   }}>Add custom item</button>
                 </div>
                 <Field label="Visible text or UPC/SKU from picture">
@@ -37349,20 +37452,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
             {scanSearchState === "empty" && !scanReview ? (
               <div className="small-empty-state scanner-search-status">
-                <strong>No confident match.</strong>
-                <span>We could not confidently match this item. You can search manually, add custom item, or submit it for review.</span>
+                <strong>No match found.</strong>
+                <span>No match found - add manually, search with fewer words, or submit the product for review. Unmatched UPC/SKU values stay attached to manual fallback items.</span>
                 <div className="quick-actions">
                   <button type="button" className="secondary-button" onClick={() => setScanMode("manual")}>Search manually</button>
                   <button type="button" onClick={() => {
-                    const destinations = scanDestination === "vault" ? { vault: true } : scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : {};
                     closeInventoryScanner();
                     openProductAddFlow({
                       source: "scanner-no-match-manual",
-                      seed: {
-                        itemName: scanInput,
-                        catalogSearchQuery: scanInput,
-                        destinations,
-                      },
+                      seed: buildManualFallbackItemSeed({ rawValue: scanInput, destination: scanDestination }),
                     });
                   }}>Add custom item</button>
                   <button type="button" className="secondary-button" onClick={submitScannerNoMatchForReview}>Submit for review</button>
@@ -37450,19 +37548,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                             : "Continue"}
                   </button>
                   <button type="button" className="secondary-button" onClick={() => {
-                    const destinations = scanDestination === "vault" ? { vault: true } : scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : {};
                     closeInventoryScanner();
                     openProductAddFlow({
                       source: "scanner-manual-review",
-                      seed: {
+                      seed: buildManualFallbackItemSeed({
+                        rawValue: scanReview.rawValue || scanInput,
                         itemName: scanReview.itemName || scanInput,
                         productType: scanReview.productType || scanReview.catalogType,
                         setName: scanReview.setName || "",
-                        upcSku: [scanReview.upc, scanReview.sku].filter(Boolean).join(" / "),
+                        upcSku: scanReview.upc || scanReview.sku || "",
                         marketPrice: scanReview.marketValue || "",
                         msrpPrice: scanReview.msrp || "",
-                        destinations,
-                      },
+                        destination: scanDestination,
+                        destinations: scanDestination === "vault" ? { vault: true } : scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : {},
+                        notes: scanReview.upc || scanReview.sku ? "" : "Manual fallback from scanner review.",
+                      }),
                     });
                   }}>Add manually</button>
                   <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); closeInventoryScanner(); }}>Search TideTradr</button>
@@ -37677,6 +37777,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <div className="catalog-detail-grid">
                         <DetailItem label="Suggested match" value={item.suggestedMatchName || "Needs Review"} />
                         <DetailItem label="Destination" value={RECEIPT_DESTINATION_LABELS[normalizeReceiptDestination(item.destination)] || "Expense only"} />
+                        <DetailItem label="Suggested use" value={item.entryTypeLabel || "Expense-only record"} />
+                        <DetailItem label="Category" value={item.suggestedCategory || item.category || "Supplies"} />
                         <DetailItem label="Quantity" value={item.quantity || 1} />
                         <DetailItem label="Unit cost" value={money(item.unitCost || 0)} />
                         <DetailItem label="Line total" value={money(item.totalCost || 0)} />
@@ -37739,11 +37841,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         <button type="button" className={item.verified ? "primary" : "secondary-button"} onClick={() => updateReceiptDraftItem(item.id, "verified", !item.verified)}>
                           {item.verified ? "Verified" : "Verify Items"}
                         </button>
-                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "vault")}>Destination: Vault</button>
-                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "forge")}>Destination: Forge</button>
-                        <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "expense_only")}>Expense Only</button>
+                        <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.INVENTORY, "vault")}>Destination: Vault</button>
+                        <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.INVENTORY, "forge")}>Destination: Forge</button>
+                        <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.EXPENSE_ONLY, "expense_only")}>Expense Only</button>
+                        <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.SUPPLIES, "expense_only")}>Supplies</button>
+                        <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.MILEAGE_REFERENCE, "expense_only")}>Mileage/Gas</button>
                         <button type="button" className="secondary-button" onClick={() => updateReceiptDraftItem(item.id, "destination", "wishlist")}>Wishlist</button>
                         <button type="button" className="secondary-button" onClick={() => splitReceiptDraftItem(item.id)}>Split line</button>
+                        <button type="button" className="secondary-button" onClick={() => markReceiptDraftItemUse(item.id, RECEIPT_LINE_ENTRY_TYPES.IGNORED, "expense_only")}>Ignore line</button>
                         <button type="button" className="danger-button" onClick={() => removeReceiptDraftItem(item.id)}>Remove line</button>
                         <button type="button" className="ghost-button" onClick={() => {
                           const suggestion = submitSuggestion({

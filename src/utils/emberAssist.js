@@ -39,12 +39,13 @@ const PAGE_PROMPTS = {
   tidepool: ["What is Tidepool?", "How do I post safely?", "Why is my post pending?", "How do I report a post?"],
   settings: ["Help me switch workspaces", "Explain personal Forge vs Ember & Tide Forge", "Help me update my profile", "Explain seller mode"],
   admin: ["What needs review?", "Show admin message queue", "Explain this user status", "What should I check first?"],
-  general: ["What should I do first?", "How do I add inventory?", "What is Forge for?", "How do alerts work?", "How do I message admin?"],
+  general: ["What should I do first?", "How do I add inventory?", "How do I scan a barcode?", "What is Forge for?", "How do alerts work?", "How do I message admin?"],
 };
 
 const CORE_PROMPTS = [
   "What should I do first?",
   "How do I add inventory?",
+  "How do I scan a barcode?",
   "What is the difference between Vault and Forge?",
   "What is Forge for?",
   "How do Scout points work?",
@@ -62,6 +63,7 @@ const DROP_WORDS = /\b(drop radar|prediction|predictions|predicted|forecast|drop
 const SCOUT_WORDS = /\b(scout|report|store|verified|confidence|trusted)\b/i;
 const SCOUT_POINTS_WORDS = /\b(scout points?|points|reputation|trusted reporter|earn points)\b/i;
 const QUICK_ADD_WORDS = /\b(quick add|add inventory|add item|center plus|\+ button|save to vault|save to forge)\b/i;
+const INVENTORY_IMPORT_WORDS = /\b(scan|scanner|barcode|upc|sku|receipt|bulk|import|paste list|multiple items|manual fallback|not in the catalog|not in catalog|catalog missing|add from a receipt|product not found|grouped with another|why did.*group)\b/i;
 const HEARTH_WORDS = /\b(hearth|home|what should i do next|daily command|today's best action)\b/i;
 const ALERT_WORDS = /\b(alert|alerts|notification|notifications|bell|in-app alerts|confirmed restock alert|predicted window alert)\b/i;
 const SETTINGS_WORDS = /\b(settings|profile|notification|seller mode|workspace|workspaces|personal forge|ember & tide forge|business info)\b/i;
@@ -206,6 +208,37 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   if (QUICK_ADD_WORDS.test(text)) {
     return response("Use the center plus or Quick Add to save something fast. Choose Vault for your collection, Forge for sellable/business inventory, Scout for a report, or Expenses/Mileage for records. You can add details later.", {
       actions: ["Open Quick Add", "Go to Vault", "Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+
+  if (INVENTORY_IMPORT_WORDS.test(text)) {
+    if (/\b(barcode|upc|sku|scan|scanner)\b/i.test(text)) {
+      return response("Use Quick Add, then Barcode / UPC. You can scan with the camera when available or type the UPC/SKU manually. If there is no match, add it manually and the code stays attached.", {
+        actions: ["Open Quick Add"],
+        category: "Vault/Forge inventory question",
+      });
+    }
+    if (/\b(receipt|photo)\b/i.test(text)) {
+      return response("Receipt review is structured, not magic OCR. Upload or paste receipt text, then mark each line as Vault, Forge, expense-only, supplies, mileage/gas, wishlist, or ignored before saving.", {
+        actions: ["Open Quick Add", "Open Expenses"],
+        category: "Expenses/receipts/mileage question",
+      });
+    }
+    if (/\b(bulk|import|paste list|multiple items)\b/i.test(text)) {
+      return response("Use Bulk Add to paste rows or add manual rows for several items at once. Review destination, purchaser, cost, store, date, and UPC/code before confirming the batch.", {
+        actions: ["Open Quick Add", "Go to Forge"],
+        category: "Vault/Forge inventory question",
+      });
+    }
+    if (/\b(group|grouped|duplicate)\b/i.test(text)) {
+      return response("Items group when they look like the same product in the same destination. The group keeps individual purchase records, so purchaser tallies like Zena - 4 and Dillon - 3 can still stay clean.", {
+        actions: ["Go to Vault", "Go to Forge"],
+        category: "Vault/Forge inventory question",
+      });
+    }
+    return response("If the catalog cannot find it, add it manually. Keep the product name, type, set, quantity, destination, purchaser, cost, planned sale price if it is Forge, UPC/code, and notes so the record stays useful.", {
+      actions: ["Open Quick Add"],
       category: "Vault/Forge inventory question",
     });
   }

@@ -32189,6 +32189,31 @@ body,
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
 }
 
+.app .scanner-review-modal {
+  display: grid !important;
+  grid-template-rows: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app .scanner-review-modal > .form,
+.app .scanner-review-modal .scanner-camera-panel,
+.app .scanner-review-modal .scanner-search-status,
+.app .scanner-review-modal .scanner-start-state,
+.app .scanner-review-modal .scanner-review-card {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.app .scanner-review-modal > .form button,
+.app .scanner-review-modal .scanner-search-status button,
+.app .scanner-review-modal .scanner-review-card button {
+  scroll-margin-bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+}
+
 .inventory-detail-hero {
   display: grid;
   grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);

@@ -733,6 +733,15 @@ function isExactIdentifierMode(mode, term) {
   return mode === "barcode" || mode === "id" || /^\d{8,}$/.test(normalized);
 }
 
+export function directCatalogIdentifierFieldsForSearch(mode, term = "", exactFields = EXACT_FIELDS) {
+  const normalized = normalizeCatalogQuery(term);
+  const digits = normalized.replace(/\D/g, "");
+  if (mode === "barcode" && digits.length >= 8 && digits.length <= 14) {
+    return exactFields.filter((field) => ["barcode", "upc", "sku"].includes(field));
+  }
+  return exactFields;
+}
+
 function identifierTerms(term = "") {
   const normalized = normalizeCatalogQuery(term);
   const compact = normalized.replace(/[^a-z0-9]/g, "");
@@ -806,7 +815,8 @@ async function runExactIdentifierSearch({ supabase, sourceName, query, barcode, 
   }
 
   const analysis = analyzeCatalogSearch(exactTerm);
-  const directClauses = terms.flatMap((term) => exactFields.map((field) => `${field}.eq.${safeOrTerm(term)}`));
+  const directFields = directCatalogIdentifierFieldsForSearch(mode, exactTerm, exactFields);
+  const directClauses = terms.flatMap((term) => directFields.map((field) => `${field}.eq.${safeOrTerm(term)}`));
   let directQuery = supabase
     .from(sourceName)
     .select(selectFields, { count: "estimated" });
