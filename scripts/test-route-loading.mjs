@@ -44,13 +44,13 @@ check(
 check(
   "Catalog seed is dynamically imported after the app shell loads",
   !/from\s+["']\.\/data\/pokemonProductCatalog["']/.test(app) &&
-    app.includes('await import("./data/pokemonProductCatalog")')
+    app.includes('import("./data/pokemonProductCatalog")')
 );
 
 check(
   "Virginia store seed is dynamically imported after the app shell loads",
   !/from\s+["']\.\/data\/virginiaStoresSeed["']/.test(app) &&
-    app.includes('await import("./data/virginiaStoresSeed")')
+    app.includes('import("./data/virginiaStoresSeed")')
 );
 
 check(

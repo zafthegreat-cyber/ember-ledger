@@ -4313,8 +4313,12 @@ export default function App() {
   const [localCatalogSeedProducts, setLocalCatalogSeedProducts] = useState([]);
   const [localCatalogProductUpcs, setLocalCatalogProductUpcs] = useState([]);
   const [localCatalogSeedStatus, setLocalCatalogSeedStatus] = useState("idle");
+  const localCatalogSeedLoadRef = useRef(null);
+  const localCatalogSeedStatusRef = useRef("idle");
   const [virginiaStoreSeed, setVirginiaStoreSeed] = useState([]);
   const [virginiaStoreSeedStatus, setVirginiaStoreSeedStatus] = useState("idle");
+  const virginiaStoreSeedLoadRef = useRef(null);
+  const virginiaStoreSeedStatusRef = useRef("idle");
   const [catalogPagedResultIds, setCatalogPagedResultIds] = useState([]);
   const [tideTradrWatchlist, setTideTradrWatchlist] = useState([]);
   const [tideTradrLookupId, setTideTradrLookupId] = useState("");
@@ -10713,75 +10717,133 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    let scheduledId = null;
-    const loadLocalCatalogSeed = async () => {
-      setLocalCatalogSeedStatus("loading");
-      try {
-        const catalogModule = await import("./data/pokemonProductCatalog");
-        if (cancelled) return;
-        const seededProducts = normalizeLocalCatalogSeedProducts(catalogModule.POKEMON_PRODUCTS || []);
-        setLocalCatalogSeedProducts(seededProducts);
-        setLocalCatalogProductUpcs(Array.isArray(catalogModule.POKEMON_PRODUCT_UPCS) ? catalogModule.POKEMON_PRODUCT_UPCS : []);
-        setCatalogProducts((current) => mergeCatalogProductLists(seededProducts, current));
-        setLocalCatalogSeedStatus("ready");
-      } catch (error) {
-        if (cancelled) return;
-        console.warn("Could not load local catalog seed chunk", error);
-        setLocalCatalogSeedStatus("error");
-      }
-    };
-
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      scheduledId = window.requestIdleCallback(loadLocalCatalogSeed, { timeout: 1500 });
-    } else if (typeof window !== "undefined") {
-      scheduledId = window.setTimeout(loadLocalCatalogSeed, 400);
-    } else {
-      void loadLocalCatalogSeed();
-    }
-
-    return () => {
-      cancelled = true;
-      if (typeof window !== "undefined" && scheduledId !== null) {
-        if ("cancelIdleCallback" in window) window.cancelIdleCallback(scheduledId);
-        else window.clearTimeout(scheduledId);
-      }
-    };
-  }, []);
+    localCatalogSeedStatusRef.current = localCatalogSeedStatus;
+  }, [localCatalogSeedStatus]);
 
   useEffect(() => {
-    let cancelled = false;
-    let scheduledId = null;
-    const loadVirginiaStoreSeed = async () => {
-      setVirginiaStoreSeedStatus("loading");
-      try {
-        const storeModule = await import("./data/virginiaStoresSeed");
-        if (cancelled) return;
+    virginiaStoreSeedStatusRef.current = virginiaStoreSeedStatus;
+  }, [virginiaStoreSeedStatus]);
+
+  function loadLocalCatalogSeed(reason = "catalog") {
+    if (localCatalogSeedStatusRef.current === "ready") return Promise.resolve();
+    if (localCatalogSeedLoadRef.current) return localCatalogSeedLoadRef.current;
+    localCatalogSeedStatusRef.current = "loading";
+    setLocalCatalogSeedStatus("loading");
+    localCatalogSeedLoadRef.current = import("./data/pokemonProductCatalog")
+      .then((catalogModule) => (
+        typeof catalogModule.loadPokemonProductCatalog === "function"
+          ? catalogModule.loadPokemonProductCatalog()
+          : catalogModule
+      ))
+      .then((catalogData) => {
+        const seededProducts = normalizeLocalCatalogSeedProducts(catalogData.POKEMON_PRODUCTS || []);
+        setLocalCatalogSeedProducts(seededProducts);
+        setLocalCatalogProductUpcs(Array.isArray(catalogData.POKEMON_PRODUCT_UPCS) ? catalogData.POKEMON_PRODUCT_UPCS : []);
+        setCatalogProducts((current) => mergeCatalogProductLists(seededProducts, current));
+        localCatalogSeedStatusRef.current = "ready";
+        setLocalCatalogSeedStatus("ready");
+      })
+      .catch((error) => {
+        console.warn(`Could not load local catalog seed for ${reason}`, error);
+        localCatalogSeedStatusRef.current = "error";
+        setLocalCatalogSeedStatus("error");
+      })
+      .finally(() => {
+        localCatalogSeedLoadRef.current = null;
+      });
+    return localCatalogSeedLoadRef.current;
+  }
+
+  function loadVirginiaStoreSeed(reason = "stores") {
+    if (virginiaStoreSeedStatusRef.current === "ready") return Promise.resolve();
+    if (virginiaStoreSeedLoadRef.current) return virginiaStoreSeedLoadRef.current;
+    virginiaStoreSeedStatusRef.current = "loading";
+    setVirginiaStoreSeedStatus("loading");
+    virginiaStoreSeedLoadRef.current = import("./data/virginiaStoresSeed")
+      .then((storeModule) => {
         setVirginiaStoreSeed(Array.isArray(storeModule.VIRGINIA_STORES_SEED) ? storeModule.VIRGINIA_STORES_SEED : []);
+        virginiaStoreSeedStatusRef.current = "ready";
         setVirginiaStoreSeedStatus("ready");
-      } catch (error) {
-        if (cancelled) return;
-        console.warn("Could not load Virginia store directory chunk", error);
+      })
+      .catch((error) => {
+        console.warn(`Could not load Virginia store directory for ${reason}`, error);
+        virginiaStoreSeedStatusRef.current = "error";
         setVirginiaStoreSeedStatus("error");
-      }
-    };
+      })
+      .finally(() => {
+        virginiaStoreSeedLoadRef.current = null;
+      });
+    return virginiaStoreSeedLoadRef.current;
+  }
 
+  const catalogSeedWarmNeeded = Boolean(
+    quickAddMenuOpen ||
+    quickAddWizard.step !== "start" ||
+    showInventoryScanner ||
+    showCatalogScanner ||
+    receiptScanOpen ||
+    importAssistantOpen ||
+    dealFinderOpen ||
+    selectedCatalogDetailId ||
+    submittedCatalogSearch ||
+    submittedCatalogBarcodeSearch ||
+    catalogSearch ||
+    catalogBarcodeSearch ||
+    ["vault", "inventory", "market", "addInventory", "addSale", "sales", "expenses", "reports", "adminReview"].includes(activeTab)
+  );
+  const catalogSeedUrgent = Boolean(
+    quickAddMenuOpen ||
+    quickAddWizard.step !== "start" ||
+    submittedCatalogSearch ||
+    submittedCatalogBarcodeSearch ||
+    activeTab === "market" ||
+    activeTab === "vault" ||
+    activeTab === "inventory"
+  );
+  const storeSeedWarmNeeded = Boolean(
+    activeTab === "scout" ||
+    activeTab === "adminReview" ||
+    (activeTab === "dashboard" && scoutSubTabTarget?.tab === "stores")
+  );
+
+  useEffect(() => {
+    if (!catalogSeedWarmNeeded) return undefined;
+    let scheduledId = null;
+    const scheduleDelay = catalogSeedUrgent ? 80 : 650;
+    const load = () => void loadLocalCatalogSeed(catalogSeedUrgent ? "active catalog flow" : "deferred catalog flow");
     if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      scheduledId = window.requestIdleCallback(loadVirginiaStoreSeed, { timeout: 1800 });
+      scheduledId = window.requestIdleCallback(load, { timeout: catalogSeedUrgent ? 350 : 1600 });
     } else if (typeof window !== "undefined") {
-      scheduledId = window.setTimeout(loadVirginiaStoreSeed, 500);
+      scheduledId = window.setTimeout(load, scheduleDelay);
     } else {
-      void loadVirginiaStoreSeed();
+      load();
     }
-
     return () => {
-      cancelled = true;
       if (typeof window !== "undefined" && scheduledId !== null) {
         if ("cancelIdleCallback" in window) window.cancelIdleCallback(scheduledId);
         else window.clearTimeout(scheduledId);
       }
     };
-  }, []);
+  }, [catalogSeedWarmNeeded, catalogSeedUrgent]);
+
+  useEffect(() => {
+    if (!storeSeedWarmNeeded) return undefined;
+    let scheduledId = null;
+    const load = () => void loadVirginiaStoreSeed("store directory route");
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      scheduledId = window.requestIdleCallback(load, { timeout: 900 });
+    } else if (typeof window !== "undefined") {
+      scheduledId = window.setTimeout(load, 220);
+    } else {
+      load();
+    }
+    return () => {
+      if (typeof window !== "undefined" && scheduledId !== null) {
+        if ("cancelIdleCallback" in window) window.cancelIdleCallback(scheduledId);
+        else window.clearTimeout(scheduledId);
+      }
+    };
+  }, [storeSeedWarmNeeded]);
 
   useEffect(() => {
     if (BETA_LOCAL_MODE) {
@@ -20022,7 +20084,7 @@ function renderForgeHeader() {
     if (activeTabLocked) return false;
     return !onboardingState.completedAt && !onboardingState.dismissedAt;
   }
-  const emberAssistContext = buildEmberAssistContext({
+  const emberAssistContext = useMemo(() => buildEmberAssistContext({
     activeTab,
     scoutView,
     route: typeof window === "undefined" ? "" : window.location.pathname,
@@ -20040,9 +20102,29 @@ function renderForgeHeader() {
       mileageTrips: mileageTrips.length,
       adminOpenItems: suggestions.filter((suggestion) => ["Submitted", "Under Review", "Needs More Info"].includes(suggestion.status)).length,
     },
-  });
-  const emberAssistStarterPrompts = getEmberAssistStarterPrompts({ activeTab, scoutView, isAdmin: adminToolsVisible });
-  const emberAssistOwnMessages = filterEmberAssistMessagesForUser(suggestions, currentUserProfile, adminToolsVisible);
+  }), [
+    activeTab,
+    scoutView,
+    activeTabLabel,
+    adminToolsVisible,
+    commandDeskSellerAccess,
+    currentUserProfile,
+    vaultItems.length,
+    forgeInventoryItems.length,
+    scoutSnapshot.reports,
+    workspaceMarketplaceListings.length,
+    expenses.length,
+    mileageTrips.length,
+    suggestions,
+  ]);
+  const emberAssistStarterPrompts = useMemo(
+    () => getEmberAssistStarterPrompts({ activeTab, scoutView, isAdmin: adminToolsVisible }),
+    [activeTab, scoutView, adminToolsVisible]
+  );
+  const emberAssistOwnMessages = useMemo(
+    () => filterEmberAssistMessagesForUser(suggestions, currentUserProfile, adminToolsVisible),
+    [suggestions, currentUserProfile, adminToolsVisible]
+  );
   const emberAssistVisible = shouldShowEmberAssistEntry({
     hasUser: Boolean(user),
     betaLocalMode: BETA_LOCAL_MODE,

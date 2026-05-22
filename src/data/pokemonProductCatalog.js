@@ -1,5 +1,5 @@
 import { PRODUCT_CATEGORY_TYPES } from "./productAliases";
-import importedSealedProducts from "./generated/sealedProducts.json";
+import importedSealedProductsUrl from "./generated/sealedProducts.json?url";
 import catalogRecoveryProducts from "./catalogRecoveryProducts.json";
 
 function normalizeMergeText(value = "") {
@@ -110,19 +110,44 @@ function mergeDuplicateSeedProducts(products = []) {
   return [...merged.values()];
 }
 
-export const POKEMON_PRODUCTS = mergeDuplicateSeedProducts([
-  ...catalogRecoveryProducts,
-  ...importedSealedProducts,
-].map(normalizeSeedProduct));
+let catalogSeedPromise = null;
 
-export const POKEMON_PRODUCT_UPCS = POKEMON_PRODUCTS
-  .filter((product) => product.upc || product.barcode)
-  .map((product) => ({
-    productId: product.id,
-    productName: product.productName || product.name,
-    upc: product.upc || product.barcode,
-    sku: product.sku || "",
-  }));
+async function loadImportedSealedProducts() {
+  if (typeof fetch !== "function") return [];
+  const response = await fetch(importedSealedProductsUrl, { cache: "force-cache" });
+  if (!response.ok) throw new Error(`Could not load sealed product catalog: ${response.status}`);
+  return response.json();
+}
+
+function buildProductUpcIndex(products = []) {
+  return products
+    .filter((product) => product.upc || product.barcode)
+    .map((product) => ({
+      productId: product.id,
+      productName: product.productName || product.name,
+      upc: product.upc || product.barcode,
+      sku: product.sku || "",
+    }));
+}
+
+export async function loadPokemonProductCatalog() {
+  if (!catalogSeedPromise) {
+    catalogSeedPromise = loadImportedSealedProducts().then((importedSealedProducts) => {
+      const products = mergeDuplicateSeedProducts([
+        ...catalogRecoveryProducts,
+        ...(Array.isArray(importedSealedProducts) ? importedSealedProducts : []),
+      ].map(normalizeSeedProduct));
+      return {
+        POKEMON_PRODUCTS: products,
+        POKEMON_PRODUCT_UPCS: buildProductUpcIndex(products),
+      };
+    });
+  }
+  return catalogSeedPromise;
+}
+
+export const POKEMON_PRODUCTS = [];
+export const POKEMON_PRODUCT_UPCS = [];
 
 export const POKEMON_PRODUCT_RETAILER_ALIASES = [];
 export { PRODUCT_CATEGORY_TYPES };

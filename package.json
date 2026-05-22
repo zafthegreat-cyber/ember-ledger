@@ -25,6 +25,7 @@
     "test:community-safety": "node --no-warnings scripts/test-community-safety.mjs",
     "test:kids-program": "node --no-warnings scripts/test-kids-program-safety.mjs",
     "test:settings-workspace": "node --no-warnings scripts/test-settings-workspace.mjs",
+    "test:performance-routing": "node --no-warnings scripts/test-performance-routing.mjs",
     "test:area-expansion": "node --no-warnings scripts/test-area-expansion.mjs",
     "test:regional-browsing": "node --no-warnings scripts/test-regional-browsing.mjs",
     "test:inventory-imports": "node --no-warnings scripts/test-inventory-imports.mjs",
