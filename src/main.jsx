@@ -2,44 +2,39 @@ import { Component, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
-import { refreshEmberTideApp } from "./appUpdate";
+import AppLoadFallback from "./components/AppLoadFallback";
 import { registerServiceWorker } from "./registerServiceWorker";
+import { shouldExposeFallbackErrorDetails } from "./utils/appFallbackContent";
 
-class UpdateRecoveryBoundary extends Component {
+class EmberTideErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { crashed: false };
+    this.state = { crashed: false, error: null };
   }
 
-  static getDerivedStateFromError() {
-    return { crashed: true };
+  static getDerivedStateFromError(error) {
+    return { crashed: true, error };
   }
 
   componentDidCatch(error, info) {
-    console.error("Ember & Tide crashed", error, info);
+    if (import.meta.env.DEV) {
+      console.error("Ember & Tide crashed", error, info);
+    } else {
+      console.error("Ember & Tide had trouble loading this screen.", error?.message || "Unknown error");
+    }
   }
 
   render() {
     if (!this.state.crashed) return this.props.children;
-    return (
-      <main className="app-crash-recovery" role="alert">
-        <section className="panel app-crash-card">
-          <h1>Something went wrong after an update.</h1>
-          <p>Refresh Ember & Tide to load the newest version.</p>
-          <button type="button" onClick={() => void refreshEmberTideApp()}>
-            Refresh App
-          </button>
-        </section>
-      </main>
-    );
+    return <AppLoadFallback error={this.state.error} showDetails={shouldExposeFallbackErrorDetails(import.meta.env.MODE)} />;
   }
 }
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <UpdateRecoveryBoundary>
+    <EmberTideErrorBoundary>
       <App />
-    </UpdateRecoveryBoundary>
+    </EmberTideErrorBoundary>
   </StrictMode>
 );
 

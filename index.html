@@ -24,7 +24,7 @@
         background: #04111f;
       }
 
-      .app-startup-screen {
+      .app-load-fallback {
         min-height: 100vh;
         min-height: 100dvh;
         display: grid;
@@ -32,52 +32,149 @@
         padding: 24px;
         color: #f8fafc;
         background:
-          radial-gradient(circle at 18% 12%, rgba(255, 106, 19, 0.28), transparent 18rem),
-          radial-gradient(circle at 82% 10%, rgba(56, 189, 248, 0.22), transparent 20rem),
+          radial-gradient(circle at 18% 12%, rgba(255, 106, 19, 0.3), transparent 18rem),
+          radial-gradient(circle at 82% 10%, rgba(56, 189, 248, 0.24), transparent 20rem),
           linear-gradient(135deg, #061426, #04111f 58%, #020814);
         font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         text-align: center;
       }
 
-      .app-startup-card {
+      .app-load-fallback-card {
+        width: min(460px, 100%);
         display: grid;
         justify-items: center;
         gap: 12px;
+        padding: 28px;
+        border: 1px solid rgba(132, 226, 255, 0.22);
+        border-radius: 24px;
+        background: rgba(7, 18, 34, 0.88);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
       }
 
-      .app-startup-card img {
-        width: 112px;
-        height: 112px;
+      .app-load-fallback-brand {
+        width: 74px;
+        height: 74px;
+        display: grid;
+        place-items: center;
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(255, 106, 19, 0.95), rgba(56, 189, 248, 0.9)), #0f2138;
+        color: #03101e;
+        font-weight: 950;
+        font-size: 1.45rem;
+        box-shadow: 0 18px 42px rgba(255, 106, 19, 0.18);
       }
 
-      .app-startup-card strong {
-        font-size: clamp(2rem, 8vw, 3.5rem);
-        line-height: 1;
-      }
-
-      .app-startup-card span {
-        color: #ff6a13;
+      .app-load-fallback-eyebrow {
+        margin: 0;
+        color: #84e2ff;
+        font-size: 0.78rem;
         font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .app-load-fallback h1 {
+        margin: 0;
+        color: #ffffff;
+        font-size: clamp(1.75rem, 8vw, 2.85rem);
+        line-height: 1.02;
         letter-spacing: 0;
       }
 
-      .app-startup-card p {
+      .app-load-fallback p,
+      .app-load-fallback small {
         margin: 0;
         color: rgba(248, 250, 252, 0.78);
+      }
+
+      .app-load-fallback p {
         font-size: 1rem;
+      }
+
+      .app-load-fallback small {
+        max-width: 32rem;
+        font-size: 0.9rem;
+      }
+
+      .app-load-fallback-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 4px;
+      }
+
+      .app-load-fallback button,
+      .app-load-fallback a {
+        min-height: 44px;
+        border: 0;
+        border-radius: 999px;
+        padding: 0 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #04111f;
+        background: linear-gradient(135deg, #ff8a3d, #84e2ff);
+        font: inherit;
+        font-weight: 900;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .app-load-fallback a.app-load-fallback-secondary {
+        color: #f8fafc;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(132, 226, 255, 0.24);
+      }
+
+      @media (max-width: 520px) {
+        .app-load-fallback {
+          padding: 16px;
+        }
+
+        .app-load-fallback-card {
+          padding: 22px;
+          border-radius: 18px;
+        }
+
+        .app-load-fallback-actions,
+        .app-load-fallback button,
+        .app-load-fallback a {
+          width: 100%;
+        }
       }
     </style>
   </head>
   <body>
     <div id="root">
-      <div class="app-startup-screen" aria-label="Loading Ember & Tide">
-        <div class="app-startup-card">
-          <img src="/icon-192.png" alt="" />
-          <strong>Ember & Tide</strong>
-          <span>Track. Trade. Thrive.</span>
-          <p>Built for collectors. Powered by community.</p>
+      <div class="app-load-fallback" aria-label="Ember & Tide is updating">
+        <div class="app-load-fallback-card">
+          <div class="app-load-fallback-brand" aria-hidden="true">ET</div>
+          <p class="app-load-fallback-eyebrow">Ember & Tide</p>
+          <h1>Ember & Tide is updating</h1>
+          <p>We're refreshing the app so everything stays smooth.</p>
+          <small>Please try again in a moment. If this keeps happening, close and reopen the app.</small>
+          <div class="app-load-fallback-actions">
+            <button type="button" onclick="window.location.reload()">Refresh app</button>
+            <a class="app-load-fallback-secondary" href="/">Go to homepage</a>
+          </div>
         </div>
       </div>
+      <noscript>
+        <style>
+          #root > .app-load-fallback:not(.app-load-fallback-noscript) {
+            display: none;
+          }
+        </style>
+        <div class="app-load-fallback app-load-fallback-noscript" aria-label="Ember & Tide needs JavaScript">
+          <div class="app-load-fallback-card">
+            <div class="app-load-fallback-brand" aria-hidden="true">ET</div>
+            <p class="app-load-fallback-eyebrow">Ember & Tide</p>
+            <h1>Ember & Tide needs JavaScript</h1>
+            <p>Please enable JavaScript, then refresh the app.</p>
+          </div>
+        </div>
+      </noscript>
     </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

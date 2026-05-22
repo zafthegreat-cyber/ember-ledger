@@ -3907,12 +3907,12 @@ function CollapsibleFeatureSection({ title, summary, open, onToggle, children })
   );
 }
 
-function RouteChunkFallback({ label = "Loading this Ember & Tide view..." }) {
+function RouteChunkFallback({ label = "Loading Ember & Tide..." }) {
   return (
     <div className="route-loading-card" role="status" aria-live="polite">
       <span className="route-loading-spinner" aria-hidden="true" />
       <strong>{label}</strong>
-      <small>Keeping Hearth responsive while this tool loads.</small>
+      <small>Preparing your command center.</small>
     </div>
   );
 }

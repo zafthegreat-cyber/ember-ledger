@@ -223,7 +223,7 @@ export function DataTable({ columns = [], rows = [], rowKey = "id", className = 
   );
 }
 
-export function LoadingState({ label = "Loading Ember and Tide...", className = "" }) {
+export function LoadingState({ label = "Loading Ember & Tide...", className = "" }) {
   return (
     <div className={cx("et-loading-state", className)} role="status">
       <span aria-hidden="true" />
