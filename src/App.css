@@ -34131,6 +34131,224 @@ body,
   line-height: 1.28;
 }
 
+.app .inventory-insight-panel,
+.app-command-shell .inventory-insight-panel,
+.app-shell-dark .inventory-insight-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(32, 215, 255, 0.09), transparent 16rem),
+    rgba(4, 14, 30, 0.74);
+  color: #f8fbff;
+}
+
+.app .inventory-insight-heading,
+.app-command-shell .inventory-insight-heading,
+.app-shell-dark .inventory-insight-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.app .inventory-insight-heading h3,
+.app-command-shell .inventory-insight-heading h3,
+.app-shell-dark .inventory-insight-heading h3,
+.app .inventory-insight-split h4,
+.app-command-shell .inventory-insight-split h4,
+.app-shell-dark .inventory-insight-split h4 {
+  margin: 0;
+  color: #fff7ed !important;
+  line-height: 1.18;
+}
+
+.app .inventory-insight-heading p,
+.app-command-shell .inventory-insight-heading p,
+.app-shell-dark .inventory-insight-heading p {
+  margin: 4px 0 0;
+  color: rgba(232, 246, 255, 0.72) !important;
+  line-height: 1.35;
+}
+
+.app .inventory-insight-grid,
+.app-command-shell .inventory-insight-grid,
+.app-shell-dark .inventory-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 9px;
+}
+
+.app .inventory-insight-card,
+.app-command-shell .inventory-insight-card,
+.app-shell-dark .inventory-insight-card {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(2, 8, 23, 0.62);
+}
+
+.app .inventory-insight-card span,
+.app-command-shell .inventory-insight-card span,
+.app-shell-dark .inventory-insight-card span,
+.app .inventory-valuation-strip span,
+.app-command-shell .inventory-valuation-strip span,
+.app-shell-dark .inventory-valuation-strip span {
+  color: #7ce7ff !important;
+  font-size: 0.67rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.app .inventory-insight-card strong,
+.app-command-shell .inventory-insight-card strong,
+.app-shell-dark .inventory-insight-card strong {
+  overflow-wrap: anywhere;
+  color: #fff7ed !important;
+  font-size: clamp(1rem, 1.8vw, 1.28rem);
+  line-height: 1.08;
+}
+
+.app .inventory-insight-card small,
+.app-command-shell .inventory-insight-card small,
+.app-shell-dark .inventory-insight-card small,
+.app .inventory-mini-list small,
+.app-command-shell .inventory-mini-list small,
+.app-shell-dark .inventory-mini-list small {
+  color: rgba(232, 246, 255, 0.68) !important;
+  line-height: 1.28;
+}
+
+.app .inventory-insight-split,
+.app-command-shell .inventory-insight-split,
+.app-shell-dark .inventory-insight-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 12px;
+}
+
+.app .inventory-mini-list,
+.app-command-shell .inventory-mini-list,
+.app-shell-dark .inventory-mini-list,
+.app .inventory-prompt-row,
+.app-command-shell .inventory-prompt-row,
+.app-shell-dark .inventory-prompt-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app .inventory-mini-list,
+.app-command-shell .inventory-mini-list,
+.app-shell-dark .inventory-mini-list {
+  display: grid;
+}
+
+.app .inventory-mini-list p,
+.app-command-shell .inventory-mini-list p,
+.app-shell-dark .inventory-mini-list p {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(124, 231, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(2, 8, 23, 0.42);
+}
+
+.app .inventory-mini-list p span,
+.app-command-shell .inventory-mini-list p span,
+.app-shell-dark .inventory-mini-list p span,
+.app .inventory-mini-list p strong,
+.app-command-shell .inventory-mini-list p strong,
+.app-shell-dark .inventory-mini-list p strong {
+  overflow: hidden;
+  color: #fff7ed;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app .inventory-mini-list p small,
+.app-command-shell .inventory-mini-list p small,
+.app-shell-dark .inventory-mini-list p small {
+  grid-column: 1 / -1;
+}
+
+.app .inventory-data-prompt,
+.app-command-shell .inventory-data-prompt,
+.app-shell-dark .inventory-data-prompt {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(2, 8, 23, 0.52);
+  color: #f8fbff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.app .inventory-data-prompt.warning,
+.app-command-shell .inventory-data-prompt.warning,
+.app-shell-dark .inventory-data-prompt.warning {
+  border-color: rgba(255, 184, 92, 0.34);
+  color: #fff4cf;
+  background: rgba(98, 67, 12, 0.28);
+}
+
+.app .inventory-data-prompt.success,
+.app-command-shell .inventory-data-prompt.success,
+.app-shell-dark .inventory-data-prompt.success {
+  border-color: rgba(34, 197, 94, 0.28);
+  color: #d1fae5;
+  background: rgba(6, 78, 59, 0.28);
+}
+
+.app .inventory-prompt-row.compact,
+.app-command-shell .inventory-prompt-row.compact,
+.app-shell-dark .inventory-prompt-row.compact {
+  margin-top: 8px;
+}
+
+.app .inventory-valuation-strip,
+.app-command-shell .inventory-valuation-strip,
+.app-shell-dark .inventory-valuation-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 8px;
+}
+
+.app .inventory-valuation-strip > div,
+.app-command-shell .inventory-valuation-strip > div,
+.app-shell-dark .inventory-valuation-strip > div {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid rgba(124, 231, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(2, 8, 23, 0.5);
+}
+
+.app .inventory-valuation-strip strong,
+.app-command-shell .inventory-valuation-strip strong,
+.app-shell-dark .inventory-valuation-strip strong {
+  color: #fff7ed;
+  overflow-wrap: anywhere;
+}
+
 .app .vault-filter-panel,
 .app-command-shell .vault-filter-panel,
 .app-shell-dark .vault-filter-panel {
@@ -34451,6 +34669,9 @@ body,
   .app .vault-collection-summary,
   .app-command-shell .vault-collection-summary,
   .app-shell-dark .vault-collection-summary,
+  .app .inventory-insight-split,
+  .app-command-shell .inventory-insight-split,
+  .app-shell-dark .inventory-insight-split,
   .app .vault-filter-panel,
   .app-command-shell .vault-filter-panel,
   .app-shell-dark .vault-filter-panel,

@@ -39,6 +39,22 @@ const groupedAnswer = buildEmberAssistFallbackResponse("Why did my item group wi
 assert.match(groupedAnswer.answer, /same product/i);
 assert.match(groupedAnswer.answer, /purchaser tallies/i);
 
+const costBasisAnswer = buildEmberAssistFallbackResponse("What is cost basis?", buildEmberAssistContext({ activeTab: "inventory" }));
+assert.match(costBasisAnswer.answer, /item cost/i);
+assert.match(costBasisAnswer.answer, /tax professional/i);
+
+const missingMarketAnswer = buildEmberAssistFallbackResponse("Why is market value missing?", buildEmberAssistContext({ activeTab: "vault" }));
+assert.match(missingMarketAnswer.answer, /known value/i);
+assert.match(missingMarketAnswer.answer, /instead of making up a number/i);
+
+const plannedPriceAnswer = buildEmberAssistFallbackResponse("How do I add planned sale price?", buildEmberAssistContext({ activeTab: "inventory" }));
+assert.match(plannedPriceAnswer.answer, /Update Planned Price/i);
+assert.match(plannedPriceAnswer.answer, /original purchase record/i);
+
+const purchaserBreakdownAnswer = buildEmberAssistFallbackResponse("How do I see what Zena and Dillon purchased?", buildEmberAssistContext({ activeTab: "inventory" }));
+assert.match(purchaserBreakdownAnswer.answer, /Zena - 4 and Dillon - 3/i);
+assert.doesNotMatch(purchaserBreakdownAnswer.answer, /payout/i);
+
 const scoutPointsAnswer = buildEmberAssistFallbackResponse("How do Scout points work?", buildEmberAssistContext({ activeTab: "scout" }));
 assert.match(scoutPointsAnswer.answer, /confirmed reports|clear store/i);
 

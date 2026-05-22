@@ -71,6 +71,7 @@ const CONTACT_WORDS = /\b(message admin|contact admin|send to admin|ask admin|su
 const SHOP_WORDS = /\b(card shop|local shop|family[-\s]?friendly shop|family[-\s]?friendly card shop|kid friendly shop|where should i buy|shop near me|featured partner|advertising partner|reasonable pricing|guarantee msrp|guaranteed msrp|follow a store|favorite store|report a restock at this store|report restock at this store|stores near me|find stores near me|browse by area|browse stores by area|stores by region|nearby areas|expand to another state|add more stores)\b/i;
 const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|what should i do first|what do i do first|help me|where do i start|what is this)\b/i;
 const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
+const VALUATION_WORDS = /\b(cost basis|market value|estimated profit|profit dashboard|planned sale price|planned price|collection worth|inventory worth|purchaser breakdown|zena and dillon|zena.*dillon|tax advice|financial advice)\b/i;
 const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price|checkout|payment|pay through|buy through)\b/i;
 const TIDEPOOL_WORDS = /\b(tidepool|community post|post safely|why is my post pending|report a post|flag a post|can kids post|community board)\b/i;
 
@@ -171,6 +172,37 @@ function response(answer, options = {}) {
   };
 }
 
+function buildValuationResponse(text = "") {
+  if (/\b(cost basis)\b/i.test(text)) {
+    return response("Cost basis is what you have tracked as the item cost. In Forge, it helps estimate planning profit and keep records organized for review with your tax professional.", {
+      actions: ["Go to Forge", "Open Expenses"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+  if (/\b(market value|collection worth|inventory worth)\b/i.test(text)) {
+    return response("Market value only shows when the item has a known value. If it is missing, the dashboard leaves it unknown instead of making up a number.", {
+      actions: ["Go to Vault", "Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+  if (/\b(planned sale price|planned price)\b/i.test(text)) {
+    return response("Open the Forge item, then use Update Planned Price. It changes the planning number without changing the original purchase record.", {
+      actions: ["Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+  if (/\b(purchaser breakdown|zena and dillon|zena.*dillon)\b/i.test(text)) {
+    return response("Open the grouped item details or the dashboard purchaser breakdown. It shows who bought what, like Zena - 4 and Dillon - 3, without turning that into official sharing math.", {
+      actions: ["Go to Vault", "Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+  return response("Estimated profit is a planning view: planned sale total minus tracked cost basis, before final sale details like fees or shipping. Forge keeps records organized for planning and review with your tax professional.", {
+    actions: ["Go to Forge", "Open Expenses"],
+    category: "Expenses/receipts/mileage question",
+  });
+}
+
 export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   const text = String(question || "").trim();
   const lower = text.toLowerCase();
@@ -179,6 +211,10 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     return response("Ask me what you are trying to do, and I will point you to the cleanest next step.", {
       actions: ["Open Quick Add", "Go to Vault", "Open Scout Report"],
     });
+  }
+
+  if (VALUATION_WORDS.test(text)) {
+    return buildValuationResponse(text);
   }
 
   if (BUG_WORDS.test(text)) {

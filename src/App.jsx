@@ -240,6 +240,13 @@ import {
   plannedSalePriceUpdateSummary,
 } from "./utils/inventoryDetailUtils";
 import {
+  INVENTORY_VALUATION_COPY,
+  buildGroupedInventoryValuation,
+  buildInventoryInsightCards,
+  buildInventoryMissingDataPrompts,
+  summarizeInventoryValuation,
+} from "./utils/inventoryValuationUtils";
+import {
   isMarketplaceClosedStatus,
   isOfficialCommunityUsername,
   validateMarketplaceListingDraft,
@@ -2968,6 +2975,7 @@ function buildGroupedInventoryItems(rows = [], context = "inventory") {
       marketPrice: weighted("marketPrice"),
       salePrice: weighted("salePrice"),
       msrpPrice: weighted("msrpPrice"),
+      valuationSummary: buildGroupedInventoryValuation({ ...primary, rawItems: groupRows, quantity: safeQuantity }, { context }),
       purchaserBreakdown,
       locationBreakdown,
       purchaserSummary,
@@ -18905,6 +18913,18 @@ function renderForgeHeader() {
   const workspaceWatchlist = tideTradrWatchlist.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
   const workspaceMarketplaceListings = marketplaceListings.filter((listing) => recordBelongsToWorkspace(listing, activeWorkspace?.id));
   const forgeInventoryItems = forgeWorkspaceItems.filter(isForgeInventoryItem);
+  const forgeValuationSummary = useMemo(
+    () => summarizeInventoryValuation(forgeInventoryItems, { context: "forge" }),
+    [forgeInventoryItems]
+  );
+  const forgeValuationPrompts = useMemo(
+    () => buildInventoryMissingDataPrompts(forgeValuationSummary, { context: "forge", includeExport: true }),
+    [forgeValuationSummary]
+  );
+  const forgeInsightCards = useMemo(
+    () => buildInventoryInsightCards(forgeValuationSummary, { context: "forge", moneyFormatter: money }),
+    [forgeValuationSummary]
+  );
   const workspaceRecordCountsById = useMemo(() => {
     const counts = new Map();
     const ensureCounts = (workspaceId) => {
@@ -19129,25 +19149,13 @@ function renderForgeHeader() {
     { label: "Suggestion storage", value: `${Math.ceil(storageSizeForKey(SUGGESTION_STORAGE_KEY) / 1024)} KB` },
   ];
 
-    const totalSpent = forgeInventoryItems.reduce(
-      (s, i) => s + Number(i.quantity || 0) * Number(i.unitCost || 0),
-      0
-    );
+    const totalSpent = forgeValuationSummary.totalCostBasis;
 
-    const totalMsrpValue = forgeInventoryItems.reduce(
-      (s, i) => s + Number(i.quantity || 0) * Number(i.msrpPrice || 0),
-      0
-    );
+    const totalMsrpValue = forgeValuationSummary.msrpTotal;
 
-    const totalPotentialSales = forgeInventoryItems.reduce(
-      (s, i) => s + Number(i.quantity || 0) * Number(i.salePrice || 0),
-      0
-    );
+    const totalPotentialSales = forgeValuationSummary.plannedSaleTotal;
 
-    const totalMarketValue = forgeInventoryItems.reduce(
-      (s, i) => s + Number(i.quantity || 0) * Number(i.marketPrice || 0),
-      0
-    );
+    const totalMarketValue = forgeValuationSummary.estimatedMarketValue;
 
   const estimatedProfit = totalPotentialSales - totalSpent;
   const estimatedMarketProfit = totalMarketValue - totalSpent;
@@ -19312,6 +19320,18 @@ function renderForgeHeader() {
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const activeVaultCardItems = useMemo(() => activeVaultItems.filter(isInventoryCardProduct), [activeVaultItems]);
   const activeVaultSealedItems = useMemo(() => activeVaultItems.filter(isInventorySealedProduct), [activeVaultItems]);
+  const vaultValuationSummary = useMemo(
+    () => summarizeInventoryValuation(activeVaultItems, { context: "vault" }),
+    [activeVaultItems]
+  );
+  const vaultValuationPrompts = useMemo(
+    () => buildInventoryMissingDataPrompts(vaultValuationSummary, { context: "vault" }),
+    [vaultValuationSummary]
+  );
+  const vaultInsightCards = useMemo(
+    () => buildInventoryInsightCards(vaultValuationSummary, { context: "vault", moneyFormatter: money }),
+    [vaultValuationSummary]
+  );
   const vaultTypeOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(vaultItemTypeLabel)), [activeVaultItems]);
   const vaultSetOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(vaultItemSetLabel)), [activeVaultItems]);
   const vaultLocationOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map((item) => vaultItemLocationLabel(item) || "Unassigned")), [activeVaultItems]);
@@ -19366,10 +19386,7 @@ function renderForgeHeader() {
       if (vaultSort === "quantity") return Number(b.quantity || 0) - Number(a.quantity || 0);
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     }), [vaultItems, vaultFilter, vaultSearch, vaultSort, vaultTypeFilter, vaultSetFilter, vaultLocationFilter, vaultOwnerFilter, vaultValueFilter]);
-  const vaultValue = useMemo(() => activeVaultItems.reduce(
-    (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || 0),
-    0
-  ), [activeVaultItems]);
+  const vaultValue = vaultValuationSummary.estimatedMarketValue;
   const homeStatsProfile = { userType, homeStatsEnabled };
   const wishlistValue = wishlistItems.reduce(
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || item.targetPrice || 0),
@@ -19396,15 +19413,9 @@ function renderForgeHeader() {
       return text.includes("kid") || text.includes("donat") || text.includes("giveaway");
     })
     .reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0), 0);
-  const vaultCostBasis = activeVaultItems.reduce(
-    (sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0),
-    0
-  );
+  const vaultCostBasis = vaultValuationSummary.totalCostBasis;
   const vaultGainLoss = vaultValue - vaultCostBasis;
-  const vaultMsrpValue = activeVaultItems.reduce(
-    (sum, item) => sum + Number(item.quantity || 0) * Number(item.msrpPrice || item.msrp || 0),
-    0
-  );
+  const vaultMsrpValue = vaultValuationSummary.msrpTotal;
   const vaultPortfolioStats = [
     { key: "value", label: "Market Value", value: money(vaultValue) },
     { key: "cost", label: "Cost Basis", value: money(vaultCostBasis) },
@@ -39138,11 +39149,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div>
                   <span>Collection value</span>
                   <strong>{money(vaultValue)}</strong>
-                  <small>{activeVaultItems.length} unique record{activeVaultItems.length === 1 ? "" : "s"}</small>
+                  <small>Known market values only</small>
                 </div>
                 <div>
                   <span>Total quantity</span>
-                  <strong>{activeVaultItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</strong>
+                  <strong>{vaultValuationSummary.totalQuantity}</strong>
                   <small>Grouped by product on this page</small>
                 </div>
                 <div>
@@ -39154,6 +39165,50 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <span>Singles</span>
                   <strong>{activeVaultCardItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</strong>
                   <small>Cards, promos, and slabs</small>
+                </div>
+              </div>
+
+              <div className="inventory-insight-panel vault-insight-panel" aria-label="Vault collection valuation insights">
+                <div className="inventory-insight-heading">
+                  <div>
+                    <h3>Collection insights</h3>
+                    <p>{INVENTORY_VALUATION_COPY.vaultDisclaimer}</p>
+                  </div>
+                  <span className="trust-badge trust-badge--secure">Estimated</span>
+                </div>
+                <div className="inventory-insight-grid">
+                  {vaultInsightCards.map((card) => (
+                    <div className="inventory-insight-card" key={card.key}>
+                      <span>{card.label}</span>
+                      <strong>{card.value}</strong>
+                      <small>{card.helper}</small>
+                    </div>
+                  ))}
+                </div>
+                <div className="inventory-insight-split">
+                  <div>
+                    <h4>Purchaser breakdown</h4>
+                    <div className="inventory-mini-list">
+                      {vaultValuationSummary.purchaserBreakdown.slice(0, 4).map((row) => (
+                        <p key={row.key || row.name}>
+                          <span>{row.name}</span>
+                          <strong>{row.quantity} item{row.quantity === 1 ? "" : "s"}</strong>
+                          <small>{money(row.totalCostBasis)} tracked cost</small>
+                        </p>
+                      ))}
+                      {!vaultValuationSummary.purchaserBreakdown.length ? <small>No purchaser records yet.</small> : null}
+                    </div>
+                  </div>
+                  <div>
+                    <h4>Missing data prompts</h4>
+                    <div className="inventory-prompt-row">
+                      {vaultValuationPrompts.length ? vaultValuationPrompts.slice(0, 5).map((prompt) => (
+                        <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
+                          {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+                        </span>
+                      )) : <span className="inventory-data-prompt success">Core details look filled in</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -41171,6 +41226,49 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   </button>
                 ))}
               </div>
+              <div className="inventory-insight-panel forge-valuation-panel" aria-label="Forge valuation and profit planning">
+                <div className="inventory-insight-heading">
+                  <div>
+                    <h3>Inventory valuation and planning</h3>
+                    <p>{INVENTORY_VALUATION_COPY.forgeDisclaimer}</p>
+                  </div>
+                  <span className="trust-badge trust-badge--secure">Estimated records</span>
+                </div>
+                <div className="inventory-insight-grid">
+                  {forgeInsightCards.map((card) => (
+                    <div className="inventory-insight-card" key={card.key}>
+                      <span>{card.label}</span>
+                      <strong>{card.value}</strong>
+                      <small>{card.helper}</small>
+                    </div>
+                  ))}
+                </div>
+                <div className="inventory-insight-split">
+                  <div>
+                    <h4>Purchaser breakdown</h4>
+                    <div className="inventory-mini-list">
+                      {forgeValuationSummary.purchaserBreakdown.slice(0, 4).map((row) => (
+                        <p key={row.key || row.name}>
+                          <span>{row.name}</span>
+                          <strong>{row.quantity} item{row.quantity === 1 ? "" : "s"}</strong>
+                          <small>{money(row.totalCostBasis)} cost basis | {money(row.plannedSaleTotal)} planned</small>
+                        </p>
+                      ))}
+                      {!forgeValuationSummary.purchaserBreakdown.length ? <small>No purchaser records yet.</small> : null}
+                    </div>
+                  </div>
+                  <div>
+                    <h4>Missing data prompts</h4>
+                    <div className="inventory-prompt-row">
+                      {forgeValuationPrompts.slice(0, 6).map((prompt) => (
+                        <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
+                          {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </section>
             <div className="quick-actions forge-action-strip">
               <button type="button" onClick={() => openAddSaleFlow()}>Add Sale</button>
@@ -42414,6 +42512,8 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
   const locationBreakdown = item?.locationBreakdown?.length
     ? item.locationBreakdown
     : summarizeBreakdownRows(entries, { type: "location" });
+  const valuation = item?.valuationSummary || buildGroupedInventoryValuation(item, { context: variant });
+  const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: variant });
   if (!entries.length) return null;
 
   return (
@@ -42429,6 +42529,22 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
         </div>
         <span className="neon-chip">Total Qty {Number(item.quantity || 0)}</span>
       </div>
+
+      <div className="inventory-valuation-strip" aria-label="Grouped item valuation">
+        <div><span>Cost basis</span><strong>{money(valuation.totalCostBasis || 0)}</strong></div>
+        <div><span>Market value</span><strong>{valuation.marketKnownQuantity ? money(valuation.estimatedMarketValue || 0) : "Unknown"}</strong></div>
+        {variant === "forge" ? <div><span>Planned total</span><strong>{valuation.plannedKnownQuantity ? money(valuation.plannedSaleTotal || 0) : "Unknown"}</strong></div> : null}
+        <div><span>{variant === "forge" ? "Est. profit" : "Est. gain/loss"}</span><strong>{(variant === "forge" ? valuation.estimatedProfitAtPlannedPrice : valuation.estimatedUnrealizedGainLoss) === null ? "Unknown" : money(variant === "forge" ? valuation.estimatedProfitAtPlannedPrice : valuation.estimatedUnrealizedGainLoss)}</strong></div>
+      </div>
+      {valuationPrompts.length ? (
+        <div className="inventory-prompt-row compact">
+          {valuationPrompts.slice(0, 4).map((prompt) => (
+            <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
+              {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="breakdown-columns">
         <div>
@@ -42493,9 +42609,11 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
   const detailImage = item.itemImage || vaultItemDisplayImage(item);
   const setLabel = item.setName || item.expansion || "";
   const productType = item.productType || "Forge inventory";
-  const totalCost = Number(item.quantity || 0) * Number(item.unitCost || 0);
-  const totalMarket = Number(item.quantity || 0) * Number(item.marketPrice || 0);
-  const plannedTotal = Number(item.quantity || 0) * Number(item.salePrice || 0);
+  const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "forge" });
+  const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: "forge" });
+  const totalCost = valuation.totalCostBasis || 0;
+  const totalMarket = valuation.estimatedMarketValue || 0;
+  const plannedTotal = valuation.plannedSaleTotal || 0;
   const details = [
     ["Quantity", item.quantity],
     ["Cost Paid", hasValue(item.unitCost) ? money(item.unitCost) : ""],
@@ -42542,11 +42660,21 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
           <p>{[setLabel, productType].filter(Boolean).join(" - ") || "Business inventory"}</p>
           <div className="inventory-detail-metrics">
             <div><span>Qty</span><strong>{item.quantity || 0}</strong></div>
-            <div><span>Market</span><strong>{money(totalMarket)}</strong></div>
-            <div><span>Planned</span><strong>{money(plannedTotal)}</strong></div>
+            <div><span>Market</span><strong>{valuation.marketKnownQuantity ? money(totalMarket) : "Unknown"}</strong></div>
+            <div><span>Planned</span><strong>{valuation.plannedKnownQuantity ? money(plannedTotal) : "Unknown"}</strong></div>
             <div><span>Cost Basis</span><strong>{money(totalCost)}</strong></div>
+            <div><span>Est. Profit</span><strong>{valuation.estimatedProfitAtPlannedPrice === null ? "Unknown" : money(valuation.estimatedProfitAtPlannedPrice)}</strong></div>
           </div>
           {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
+          {valuationPrompts.length ? (
+            <div className="inventory-prompt-row compact">
+              {valuationPrompts.slice(0, 4).map((prompt) => (
+                <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
+                  {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="catalog-detail-grid">
@@ -42591,9 +42719,11 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
   const detailImage = vaultItemDisplayImage(item);
   const setLabel = vaultItemSetLabel(item);
   const itemType = vaultItemTypeLabel(item);
-  const totalCost = Number(item.quantity || 0) * Number(item.unitCost || 0);
-  const totalMarket = vaultItemTotalMarketValue(item);
-  const plannedTotal = Number(item.quantity || 0) * Number(item.salePrice || 0);
+  const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "vault" });
+  const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: "vault" });
+  const totalCost = valuation.totalCostBasis || 0;
+  const totalMarket = valuation.estimatedMarketValue || 0;
+  const plannedTotal = valuation.plannedSaleTotal || 0;
   const details = [
     ["Quantity", item.quantity],
     ["Owner / Purchaser", item.purchaserSummary || itemPurchaserName(item)],
@@ -42632,11 +42762,21 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
           <p>{[setLabel, itemType].filter(Boolean).join(" - ") || "Collection item"}</p>
           <div className="inventory-detail-metrics">
             <div><span>Qty</span><strong>{item.quantity || 0}</strong></div>
-            <div><span>Market</span><strong>{money(totalMarket)}</strong></div>
-            <div><span>Planned</span><strong>{money(plannedTotal)}</strong></div>
+            <div><span>Market</span><strong>{valuation.marketKnownQuantity ? money(totalMarket) : "Unknown"}</strong></div>
+            <div><span>Planned</span><strong>{valuation.plannedKnownQuantity ? money(plannedTotal) : "Unknown"}</strong></div>
             <div><span>Cost Basis</span><strong>{money(totalCost)}</strong></div>
+            <div><span>Est. Gain/Loss</span><strong>{valuation.estimatedUnrealizedGainLoss === null ? "Unknown" : money(valuation.estimatedUnrealizedGainLoss)}</strong></div>
           </div>
           {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
+          {valuationPrompts.length ? (
+            <div className="inventory-prompt-row compact">
+              {valuationPrompts.slice(0, 4).map((prompt) => (
+                <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
+                  {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="catalog-detail-grid">
@@ -42698,17 +42838,16 @@ function CompactInventoryCard({
   onSell,
   onCreateListing,
 }) {
-  const quantity = Number(item.quantity || 0);
+  const isVault = variant === "vault";
+  const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: isVault ? "vault" : "forge" });
+  const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: isVault ? "vault" : "forge" });
+  const quantity = valuation.totalQuantity || Number(item.quantity || 0);
   const unitCost = Number(item.unitCost || 0);
   const marketPrice = Number(item.marketPrice || 0);
-  const salePrice = Number(item.salePrice || 0);
-
-  const marketProfit = quantity * marketPrice - quantity * unitCost;
-  const plannedProfit = quantity * salePrice - quantity * unitCost;
+  const displayedProfitEstimate = valuation.estimatedProfitAtPlannedPrice ?? valuation.estimatedUnrealizedGainLoss;
 
   const roiPercent =
     unitCost > 0 ? ((marketPrice - unitCost) / unitCost) * 100 : 0;
-  const isVault = variant === "vault";
   const packCount = Number(item.packCount || 0);
   const physicalLocation = forgePhysicalLocationLabel(item);
   if (isVault) {
@@ -42716,7 +42855,7 @@ function CompactInventoryCard({
     const itemType = vaultItemTypeLabel(item);
     const setLabel = vaultItemSetLabel(item);
     const locationLabel = vaultItemLocationLabel(item) || "Unassigned";
-    const totalMarket = vaultItemTotalMarketValue(item);
+    const totalMarket = valuation.estimatedMarketValue || 0;
     const lastUpdated = vaultItemLastUpdatedLabel(item);
     const ownerSummary = item.purchaserSummary || itemPurchaserName(item);
     return (
@@ -42744,13 +42883,24 @@ function CompactInventoryCard({
 
           <div className="vault-card-facts">
             <p><span>Qty</span><strong>{quantity || 1}</strong></p>
-            <p><span>Market value</span><strong>{money(totalMarket)}</strong></p>
+            <p><span>Market value</span><strong>{valuation.marketKnownQuantity ? money(totalMarket) : "Unknown"}</strong></p>
+            <p><span>Cost basis</span><strong>{valuation.costKnownQuantity ? money(valuation.totalCostBasis) : "Unknown"}</strong></p>
             <p><span>Owner / purchaser</span><strong>{ownerSummary}</strong></p>
             <p><span>Location</span><strong>{locationLabel}</strong></p>
             {packCount > 0 ? <p><span>Pack count</span><strong>{packCount}</strong></p> : null}
             <p><span>Last updated</span><strong>{lastUpdated}</strong></p>
           </div>
         </div>
+
+        {valuationPrompts.length ? (
+          <div className="inventory-prompt-row compact">
+            {valuationPrompts.slice(0, 3).map((prompt) => (
+              <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
+                {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+              </span>
+            ))}
+          </div>
+        ) : null}
 
         <div className="compact-actions vault-card-actions">
           <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
@@ -42807,21 +42957,31 @@ function CompactInventoryCard({
   <div className="compact-metrics">
     <div>
       <span>Avg Cost</span>
-      <strong>{money(item.unitCost)}</strong>
+      <strong>{valuation.averageCostPerItem === null ? "Unknown" : money(valuation.averageCostPerItem)}</strong>
     </div>
     <div>
-      <span>Market</span>
-      <strong>{money(item.marketPrice)}</strong>
+      <span>Total Market</span>
+      <strong>{valuation.marketKnownQuantity ? money(valuation.estimatedMarketValue) : "Unknown"}</strong>
     </div>
     <div>
-      <span>Planned Sale</span>
-      <strong>{money(item.salePrice)}</strong>
+      <span>Planned Total</span>
+      <strong>{valuation.plannedKnownQuantity ? money(valuation.plannedSaleTotal) : "Unknown"}</strong>
     </div>
     <div>
       <span>Profit Est.</span>
-      <strong>{money(plannedProfit || marketProfit)}</strong>
+      <strong>{displayedProfitEstimate === null ? "Unknown" : money(displayedProfitEstimate)}</strong>
     </div>
   </div>
+
+      {valuationPrompts.length ? (
+        <div className="inventory-prompt-row compact">
+          {valuationPrompts.slice(0, 4).map((prompt) => (
+            <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
+              {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="compact-details">
         <p><strong>SKU:</strong> {item.sku}</p>
@@ -42834,11 +42994,11 @@ function CompactInventoryCard({
         <p><strong>Set Code:</strong> {item.setCode || "Not listed"}</p>
         <p><strong>Pack Count:</strong> {item.packCount || "Not listed"}</p>
         <p><strong>Barcode:</strong> {item.barcode || "Not listed"}</p>
-        <p><strong>Total Cost:</strong> {money(item.quantity * item.unitCost)}</p>
-        <p><strong>Total MSRP:</strong> {money(item.quantity * item.msrpPrice)}</p>
+        <p><strong>Total Cost:</strong> {valuation.costKnownQuantity ? money(valuation.totalCostBasis) : "Unknown"}</p>
+        <p><strong>Total MSRP:</strong> {valuation.msrpKnownQuantity ? money(valuation.msrpTotal) : "Unknown"}</p>
         <p><strong>ROI:</strong> {roiPercent.toFixed(1)}%</p>
-        <p><strong>Total Market:</strong> {money(item.quantity * item.marketPrice)}</p>
-        <p><strong>Planned Profit:</strong> {money(plannedProfit)}</p>
+        <p><strong>Total Market:</strong> {valuation.marketKnownQuantity ? money(valuation.estimatedMarketValue) : "Unknown"}</p>
+        <p><strong>Planned Profit:</strong> {valuation.estimatedProfitAtPlannedPrice === null ? "Unknown" : money(valuation.estimatedProfitAtPlannedPrice)}</p>
         {item.listingPlatform && <p><strong>Listing:</strong> {item.listingPlatform}</p>}
         {item.listedPrice > 0 && <p><strong>Listed Price:</strong> {money(item.listedPrice)}</p>}
         {item.actionNotes && <p><strong>Action:</strong> {item.actionNotes}</p>}

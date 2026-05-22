@@ -1,3 +1,8 @@
+import {
+  buildInventoryValuationExportRows,
+  summarizeInventoryValuation,
+} from "./inventoryValuationUtils.js";
+
 const NO_VENDOR_LABEL = "No vendor";
 const NO_VEHICLE_LABEL = "No vehicle";
 const UNASSIGNED_PURCHASER_LABEL = "Unassigned purchaser";
@@ -572,6 +577,7 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
   const expenseGroups = groupExpensesByVendor(yearlyExpenses);
   const mileageGroups = groupMileageByVehicle(yearlyMileageTrips, vehicles, { year: selectedYear });
   const purchaserTotals = summarizePurchaserInventory(yearlyInventoryItems);
+  const valuationSummary = summarizeInventoryValuation(yearlyInventoryItems, { context: "forge", salesSummary });
   const expenseTotal = yearlyExpenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0);
   const mileageMiles = yearlyMileageTrips.reduce((sum, trip) => sum + toNumber(trip.businessMiles || trip.business_miles || trip.miles), 0);
   const mileageValue = yearlyMileageTrips.reduce((sum, trip) => sum + toNumber(trip.mileageValue || trip.mileage_value), 0);
@@ -609,6 +615,13 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
       marketValue: inventoryMarketValue,
       plannedSaleValue,
       purchaserTotals,
+      valuationSummary,
+      missingCostCount: valuationSummary.missingCostCount,
+      missingMarketValueCount: valuationSummary.missingMarketValueCount,
+      missingPlannedSalePriceCount: valuationSummary.missingPlannedSalePriceCount,
+      missingReceiptCount: valuationSummary.receiptCoverage.missingReceipt,
+      receiptCoverage: valuationSummary.receiptCoverage,
+      purchaserBreakdown: valuationSummary.purchaserBreakdown,
     },
     sales: {
       count: salesSummary.count,
@@ -643,6 +656,18 @@ export function buildTaxRecordExportRows(summary = {}) {
   (summary.mileage?.vehicleGroups || []).forEach((group) => {
     rows.push({ section: "Mileage vehicle", label: group.vehicleName, value: group.totalMiles, count: group.tripCount, notes: `Mileage value ${group.totalMileageValue}` });
   });
+  if (summary.inventory?.valuationSummary) {
+    rows.push(...buildInventoryValuationExportRows(summary.inventory.valuationSummary, { sectionPrefix: "Inventory valuation" }));
+  }
+  if (summary.inventory?.receiptCoverage) {
+    rows.push({
+      section: "Documentation coverage",
+      label: "Inventory receipts",
+      value: summary.inventory.receiptCoverage.withReceipt || 0,
+      count: summary.inventory.receiptCoverage.total || 0,
+      notes: `${summary.inventory.receiptCoverage.missingReceipt || 0} inventory receipt(s) missing`,
+    });
+  }
   (summary.inventory?.purchaserTotals || []).forEach((group) => {
     rows.push({ section: "Inventory purchaser", label: group.name, value: group.costBasis, count: group.quantity, notes: `Planned sale value ${group.plannedSaleValue}` });
   });

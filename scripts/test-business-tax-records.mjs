@@ -88,6 +88,9 @@ assert.equal(summary.expenses.total, 55);
 assert.equal(summary.mileage.totalMiles, 30);
 assert.equal(summary.inventory.quantity, 7);
 assert.equal(summary.inventory.costBasis, 344);
+assert.equal(summary.inventory.valuationSummary.plannedSaleTotal, 417);
+assert.equal(summary.inventory.valuationSummary.estimatedMarketValue, 382);
+assert.equal(summary.inventory.receiptCoverage.missingReceipt, 2);
 assert.equal(summary.sales.revenue, 120);
 assert.match(summary.disclaimer, /tax professional/i);
 
@@ -95,5 +98,6 @@ const rows = buildTaxRecordExportRows(summary);
 assert.ok(rows.some((row) => row.section === "Expense vendor" && row.label === "Walmart"));
 assert.ok(rows.some((row) => row.section === "Mileage vehicle" && row.label === "Toyota Prius"));
 assert.ok(rows.some((row) => row.section === "Inventory purchaser" && row.label === "Zena"));
+assert.ok(rows.some((row) => row.section === "Inventory valuation" && row.label === "Receipt coverage"));
 
 console.log("Business tax record tests passed.");
