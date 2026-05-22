@@ -66,7 +66,7 @@ const HEARTH_WORDS = /\b(hearth|home|what should i do next|daily command|today's
 const ALERT_WORDS = /\b(alert|alerts|notification|notifications|bell|in-app alerts|confirmed restock alert|predicted window alert)\b/i;
 const SETTINGS_WORDS = /\b(settings|profile|notification|seller mode|workspace|workspaces|personal forge|ember & tide forge|business info)\b/i;
 const CONTACT_WORDS = /\b(message admin|contact admin|send to admin|ask admin|support|help from admin|ember & tide help)\b/i;
-const SHOP_WORDS = /\b(card shop|local shop|family friendly shop|kid friendly shop|where should i buy|shop near me)\b/i;
+const SHOP_WORDS = /\b(card shop|local shop|family[-\s]?friendly shop|family[-\s]?friendly card shop|kid friendly shop|where should i buy|shop near me|featured partner|advertising partner|reasonable pricing|guarantee msrp|guaranteed msrp|follow a store|favorite store|report a restock at this store|report restock at this store)\b/i;
 const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|what should i do first|what do i do first|help me|where do i start|what is this)\b/i;
 const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
 const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price|checkout|payment|pay through|buy through)\b/i;
@@ -224,6 +224,37 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     });
   }
 
+  if (SHOP_WORDS.test(text)) {
+    if (/\b(guarantee msrp|guaranteed msrp|msrp|guarantee inventory|guaranteed inventory)\b/i.test(text)) {
+      return response("A Family-Friendly Card Shop can support fair access and reasonable pricing when possible, but Ember & Tide should not promise guaranteed MSRP or inventory.", {
+        actions: ["Open Stores", "Send to Admin"],
+        category: "Other",
+      });
+    }
+    if (/\b(featured partner|advertising partner|partner)\b/i.test(text)) {
+      return response("Featured Partner and Advertising Partner labels highlight shops that support the Ember & Tide mission. Partner status is transparent, but availability and pricing can still vary.", {
+        actions: ["Open Stores", "Send to Admin"],
+        category: "Other",
+      });
+    }
+    if (/\b(report.*restock|submit.*restock|stock report)\b/i.test(text)) {
+      return response("Open the store profile, choose Report Stock or Report Empty, then save the Scout report with the product, time, and proof if you have it. Confirmed reports matter more than guesses.", {
+        actions: ["Open Scout Report", "Open Stores"],
+        category: "Wrong Scout report/store",
+      });
+    }
+    if (/\b(follow|favorite|watch)\b/i.test(text)) {
+      return response("Use Follow Store on a store profile to keep that location in your Scout watchlist. In-app favorite store alerts can use that later without turning predictions into promises.", {
+        actions: ["Open Stores", "Open Settings"],
+        category: "Other",
+      });
+    }
+    return response("A Family-Friendly Card Shop supports the Ember & Tide mission: fair, welcoming Pokemon access for kids, families, and collectors. It can mean kids access, trade nights, events, or reasonable pricing when possible, not guaranteed inventory.", {
+      actions: ["Open Stores", "Open The Spark", "Send to Admin"],
+      category: "Other",
+    });
+  }
+
   if (TIDEPOOL_WORDS.test(text) || (page === "tidepool" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     if (/\b(pending|review|why is my post)\b/i.test(text)) {
       return response("Tidepool posts may wait for admin review because this is a family-centered space. Pending does not mean you did anything wrong; it means we are keeping public posts clean and safe.", {
@@ -325,13 +356,6 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     return response("Settings is where you keep account, workspace, seller mode, notifications, and public identity straight. Personal collection work belongs in Vault; seller or business work belongs in Forge.", {
       actions: ["Open Settings", "Open Forge"],
       category: "Account/beta access question",
-    });
-  }
-
-  if (SHOP_WORDS.test(text)) {
-    return response("Use Scout store search and Tidepool community posts to find local, family-friendly places. If a shop is missing or looks wrong, send it to admin so we can review it without guessing.", {
-      actions: ["Open Scout Report", "Send to Admin"],
-      category: "Other",
     });
   }
 

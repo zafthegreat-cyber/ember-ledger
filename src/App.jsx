@@ -250,6 +250,17 @@ import {
   sellerTrustSummaryForListing,
 } from "./utils/tidetradrMarketplaceSafety";
 import {
+  FAMILY_FRIENDLY_CARD_SHOP_TITLE,
+  NO_FAMILY_SHOPS_COPY,
+  PARTNER_STATUS_DISCLAIMER,
+  STORE_FAMILY_FILTER_OPTIONS,
+  STORE_LOCATION_TYPES,
+  buildStoreProfileSummary,
+  matchesStoreDirectoryFilters,
+  setStoreFavoriteState,
+  sortStoreDirectoryProfiles,
+} from "./utils/storeProfileUtils";
+import {
   SPARK_PROGRAM_STATUS_OPTIONS,
   normalizeSparkProgramStatus,
   sparkProgramStatusLabel,
@@ -4395,8 +4406,18 @@ export default function App() {
   });
   const [storeMapFilters, setStoreMapFilters] = useState({
     retailer: "All",
+    storeType: "All",
+    familyStatus: "all",
+    kidsAccessOnly: false,
+    reasonablePricingOnly: false,
+    kidEventsOnly: false,
+    tradeNightsOnly: false,
+    featuredPartnersOnly: false,
+    advertisingPartnersOnly: false,
     category: "All",
     status: "All",
+    state: "All",
+    region: "All",
     distance: "Any",
     watchlistOnly: false,
     query: "",
@@ -19872,6 +19893,13 @@ function renderForgeHeader() {
       setScoutSubTabTarget({ tab: "stores", id: Date.now() });
       return;
     }
+    if (normalized.includes("open stores") || normalized.includes("store directory")) {
+      setActiveTab("scout");
+      setScoutView("stores");
+      setScoutStoresMode("map");
+      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+      return;
+    }
     if (normalized.includes("vault")) {
       setActiveTab("vault");
       return;
@@ -24161,7 +24189,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <div className="scout-radar-actions">
           <button type="button" className="secondary-button" onClick={() => openStoreMapReport(row, "stock_on_shelf")}>Report Stock</button>
           <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(row)}>{row.watchlisted ? "Unwatch Store" : "Watch Store"}</button>
-          <button type="button" className="ghost-button" onClick={() => { setSelectedStoreMapStore(row); setScoutView("storeMap"); }}>Store Details</button>
+          <button type="button" className="ghost-button" onClick={() => { setScoutView("stores"); openStoreProfile(row); }}>Store Details</button>
         </div>
       </article>
     );
@@ -24478,7 +24506,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return store.pokemonStockLikelihood || store.pokemon_stock_likelihood || "Unknown";
   }
 
-  function buildStoreMapRows() {
+  function buildStoreMapRows(options = {}) {
     const locationText = String(locationSettings.manualLocation || locationSettings.selectedSavedLocation || "").trim();
     const origin = parseManualLocationCoordinates(locationText);
     const query = String(storeMapFilters.query || "").trim().toLowerCase();
@@ -24499,11 +24527,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       const status = getStoreMapStatus(store, reports);
       const confidence = getStoreMapConfidence(store, reports);
       const watchlisted = Boolean(store.favorite || store.priority || store.watchlisted || store.watchlist);
+      const profile = buildStoreProfileSummary(store, {
+        reports: scoutReportRows,
+        guesses: scoutGuessRows,
+        predictions: scoutForecastPreviewRows,
+        tidepoolPosts,
+        admin: adminEditModeActive,
+        index,
+      });
       return {
         id: getStoreMapStoreId(store, index),
-        store,
+        store: profile.store,
+        profile,
         name,
         retailer,
+        storeType: profile.storeType,
         city,
         area: [city, store.region || store.state || ""].filter(Boolean).join(" / "),
         address: store.address || store.streetAddress || "",
@@ -24520,8 +24558,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       };
     });
 
-    return rows
+    const filteredRows = options.unfiltered ? rows : rows
       .filter((row) => storeMapFilters.retailer === "All" || row.retailer === storeMapFilters.retailer)
+      .filter((row) => matchesStoreDirectoryFilters(row.profile, storeMapFilters, { admin: adminEditModeActive }))
       .filter((row) => storeMapFilters.category === "All" || row.categories.includes(storeMapFilters.category))
       .filter((row) => storeMapFilters.status === "All" || row.status === storeMapFilters.status)
       .filter((row) => !storeMapFilters.watchlistOnly || row.watchlisted)
@@ -24539,17 +24578,42 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         if (!area) return true;
         const haystack = [row.city, row.address, row.area, row.store.zip, row.store.postalCode].join(" ").toLowerCase();
         return haystack.includes(area);
-      })
-      .sort((a, b) => {
+      });
+
+    const signalSortedRows = filteredRows.sort((a, b) => {
         if (hasScoutLocation && Number.isFinite(a.distance) && Number.isFinite(b.distance)) return a.distance - b.distance;
         if (b.watchlisted !== a.watchlisted) return Number(b.watchlisted) - Number(a.watchlisted);
         if (b.reports.length !== a.reports.length) return b.reports.length - a.reports.length;
         return a.name.localeCompare(b.name);
       });
+    return sortStoreDirectoryProfiles(signalSortedRows);
   }
 
   function updateStoreMapFilter(key, value) {
     setStoreMapFilters((current) => ({ ...current, [key]: value }));
+  }
+
+  function openStoreProfile(row) {
+    if (!row) return;
+    setScoutStoresMode("map");
+    setScoutSubTabTarget((current) => ({
+      ...current,
+      tab: "stores",
+      storeId: row.id || getStoreMapStoreId(row.store),
+      id: Date.now(),
+    }));
+    setSelectedStoreMapStore(row);
+  }
+
+  function closeStoreProfile() {
+    setSelectedStoreMapStore(null);
+    setScoutSubTabTarget((current) => ({ ...current, storeId: "", id: Date.now() }));
+  }
+
+  function askEmberAboutStore(row = selectedStoreMapStore) {
+    const name = row?.name || row?.profile?.name || "this store";
+    setEmberAssistOpen(true);
+    sendEmberAssistMessage(`What should I know about ${name} and family-friendly shops?`);
   }
 
   function toggleStoreMapWatch(rowOrStore = {}) {
@@ -24561,12 +24625,23 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const exists = savedStores.some((store) => getStoreMapStoreId(store) === targetId);
     const nextWatchlisted = !Boolean(row.store.favorite || row.store.priority || row.store.watchlisted || row.store.watchlist);
     const nextStores = exists
-      ? savedStores.map((store) => getStoreMapStoreId(store) === targetId ? { ...store, favorite: nextWatchlisted, watchlisted: nextWatchlisted } : store)
-      : [{ ...row.store, id: row.store.id || targetId, favorite: nextWatchlisted, watchlisted: nextWatchlisted }, ...savedStores];
+      ? savedStores.map((store) => getStoreMapStoreId(store) === targetId ? setStoreFavoriteState(store, nextWatchlisted) : store)
+      : [setStoreFavoriteState({ ...row.store, id: row.store.id || targetId }, nextWatchlisted), ...savedStores];
     const nextScout = { ...saved, stores: nextStores };
     localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(nextScout));
     setScoutSnapshot((current) => ({ ...current, stores: nextStores }));
-    setSelectedStoreMapStore((current) => current && getStoreMapStoreId(current.store) === targetId ? { ...current, store: { ...current.store, favorite: nextWatchlisted, watchlisted: nextWatchlisted }, watchlisted: nextWatchlisted } : current);
+    setSelectedStoreMapStore((current) => current && getStoreMapStoreId(current.store) === targetId ? {
+      ...current,
+      store: setStoreFavoriteState(current.store, nextWatchlisted),
+      profile: buildStoreProfileSummary(setStoreFavoriteState(current.store, nextWatchlisted), {
+        reports: scoutReportRows,
+        guesses: scoutGuessRows,
+        predictions: scoutForecastPreviewRows,
+        tidepoolPosts,
+        admin: adminEditModeActive,
+      }),
+      watchlisted: nextWatchlisted,
+    } : current);
     setVaultToast(nextWatchlisted ? `${row.name || getScoutQuickStoreName(row.store)} added to watchlist.` : `${row.name || getScoutQuickStoreName(row.store)} removed from watchlist.`);
   }
 
@@ -24656,12 +24731,62 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return <span className={`status-badge store-map-status store-map-status--${row.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{row.status}</span>;
   }
 
+  function renderStoreProfileBadges(profile = {}, options = {}) {
+    const badges = (profile.badges || []).slice(0, options.limit || 8);
+    if (!badges.length && options.hideWhenEmpty) return null;
+    return (
+      <div className="store-profile-badge-row" aria-label="Store badges">
+        {profile.storeType ? <span className="status-badge store-type-badge">{profile.storeType}</span> : null}
+        {badges.map((badge) => (
+          <span key={badge.key || badge.label} className={`status-badge store-partner-badge store-partner-badge--${badge.tone || "default"}`}>{badge.label}</span>
+        ))}
+      </div>
+    );
+  }
+
+  function renderStoreProfileActivity(profile = {}) {
+    const activity = profile.activity || {};
+    return (
+      <section className="store-profile-activity">
+        <div className="compact-card-header">
+          <div>
+            <h3>Store Activity</h3>
+            <p>Confirmed restocks stay separate from predictions and community guesses.</p>
+          </div>
+        </div>
+        <div className="store-profile-activity-grid">
+          <div>
+            <span>Confirmed Restocks</span>
+            <strong>{activity.recentReportCount || 0}</strong>
+            <small>{activity.lastConfirmedRestock ? `Last confirmed: ${activity.lastConfirmedRestock}` : "No confirmed restock yet"}</small>
+            <small>{activity.mostReportedProduct ? `Most reported: ${activity.mostReportedProduct}` : "Needs product history"}</small>
+          </div>
+          <div>
+            <span>Predicted Windows</span>
+            <strong>{activity.predictedWindows?.length || 0}</strong>
+            <small>{activity.nextPredictedWindow || activity.predictionConfidenceSummary || "Needs more confirmed history"}</small>
+            <small>Predictions are estimates, not guarantees.</small>
+          </div>
+          <div>
+            <span>Community Guesses</span>
+            <strong>{activity.communityGuessCount || 0}</strong>
+            <small>Community guesses are not confirmed restocks.</small>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   function renderStoreMapPanel() {
+    const baseRows = buildStoreMapRows({ unfiltered: true });
     const rows = buildStoreMapRows();
-    const categoryOptions = ["All", ...new Set(buildStoreMapRows().flatMap((row) => row.categories).filter(Boolean))];
-    const statusOptions = ["All", ...new Set(buildStoreMapRows().map((row) => row.status))];
+    const categoryOptions = ["All", ...new Set(baseRows.flatMap((row) => row.categories).filter(Boolean))];
+    const statusOptions = ["All", ...new Set(baseRows.map((row) => row.status))];
     const retailerOptions = ["All", ...VIRGINIA_RETAILERS];
+    const stateOptions = ["All", ...new Set(baseRows.map((row) => row.profile?.state).filter(Boolean))];
+    const regionOptions = ["All", ...new Set(baseRows.map((row) => row.profile?.region).filter(Boolean))];
     const featuredRows = rows.slice(0, 7);
+    const familyFilterActive = storeMapFilters.familyStatus !== "all" || storeMapFilters.kidsAccessOnly || storeMapFilters.reasonablePricingOnly || storeMapFilters.kidEventsOnly || storeMapFilters.tradeNightsOnly || storeMapFilters.featuredPartnersOnly || storeMapFilters.advertisingPartnersOnly;
     const locationCopy = hasScoutLocation
       ? `Nearby sorting is on${locationSettings.manualLocation || locationSettings.selectedSavedLocation ? ` for ${locationSettings.manualLocation || locationSettings.selectedSavedLocation}` : ""}.`
       : "Location is optional. Search by city, store, or manual area to use Stores without sharing location.";
@@ -24670,8 +24795,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         <article className="store-map-hero">
           <div>
             <p className="section-kicker">Scout Stores</p>
-            <h2>Find trusted store signals nearby.</h2>
-            <p>{locationCopy}</p>
+            <h2>Family-Friendly Shop Directory</h2>
+            <p>{locationCopy} Local shop profiles show mission support, partner badges, confirmed reports, and prediction data without promising inventory or MSRP.</p>
           </div>
           <SectionHeroArt title="Stores" className="store-map-feature-art" />
           <div className="store-map-hero-actions">
@@ -24696,9 +24821,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </button>
             ))}
           </div>
+          <div className="store-directory-filter-note">
+            <strong>Partner status is not a guarantee.</strong>
+            <span>{PARTNER_STATUS_DISCLAIMER}</span>
+          </div>
           <label>
             <span>Search stores</span>
             <input value={storeMapFilters.query} onChange={(event) => updateStoreMapFilter("query", event.target.value)} placeholder="Store, city, ZIP, nickname" />
+          </label>
+          <label>
+            <span>Store type</span>
+            <select value={storeMapFilters.storeType} onChange={(event) => updateStoreMapFilter("storeType", event.target.value)}>
+              <option>All</option>
+              {STORE_LOCATION_TYPES.map((type) => <option key={type}>{type}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Shop status</span>
+            <select value={storeMapFilters.familyStatus} onChange={(event) => updateStoreMapFilter("familyStatus", event.target.value)}>
+              {STORE_FAMILY_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
           </label>
           <label>
             <span>Manual area</span>
@@ -24723,6 +24865,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </select>
           </label>
           <label>
+            <span>State</span>
+            <select value={storeMapFilters.state} onChange={(event) => updateStoreMapFilter("state", event.target.value)}>
+              {stateOptions.map((state) => <option key={state}>{state}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Region</span>
+            <select value={storeMapFilters.region} onChange={(event) => updateStoreMapFilter("region", event.target.value)}>
+              {regionOptions.map((region) => <option key={region}>{region}</option>)}
+            </select>
+          </label>
+          <label>
             <span>Distance</span>
             <select value={storeMapFilters.distance} onChange={(event) => updateStoreMapFilter("distance", event.target.value)}>
               <option value="Any">Any</option>
@@ -24736,6 +24890,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <input type="checkbox" checked={storeMapFilters.watchlistOnly} onChange={(event) => updateStoreMapFilter("watchlistOnly", event.target.checked)} />
             <span>Watchlist only</span>
           </label>
+          <label className="store-map-watch-toggle">
+            <input type="checkbox" checked={storeMapFilters.kidsAccessOnly} onChange={(event) => updateStoreMapFilter("kidsAccessOnly", event.target.checked)} />
+            <span>Kids access</span>
+          </label>
+          <label className="store-map-watch-toggle">
+            <input type="checkbox" checked={storeMapFilters.reasonablePricingOnly} onChange={(event) => updateStoreMapFilter("reasonablePricingOnly", event.target.checked)} />
+            <span>Reasonable pricing</span>
+          </label>
+          <label className="store-map-watch-toggle">
+            <input type="checkbox" checked={storeMapFilters.kidEventsOnly} onChange={(event) => updateStoreMapFilter("kidEventsOnly", event.target.checked)} />
+            <span>Kid events</span>
+          </label>
+          <label className="store-map-watch-toggle">
+            <input type="checkbox" checked={storeMapFilters.tradeNightsOnly} onChange={(event) => updateStoreMapFilter("tradeNightsOnly", event.target.checked)} />
+            <span>Trade nights</span>
+          </label>
+          <label className="store-map-watch-toggle">
+            <input type="checkbox" checked={storeMapFilters.featuredPartnersOnly} onChange={(event) => updateStoreMapFilter("featuredPartnersOnly", event.target.checked)} />
+            <span>Featured</span>
+          </label>
+          <label className="store-map-watch-toggle">
+            <input type="checkbox" checked={storeMapFilters.advertisingPartnersOnly} onChange={(event) => updateStoreMapFilter("advertisingPartnersOnly", event.target.checked)} />
+            <span>Advertising</span>
+          </label>
         </article>
 
         <div className="store-map-layout">
@@ -24747,7 +24925,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 key={`pin-${row.id}`}
                 className={`store-map-pin store-map-pin--${row.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}${row.watchlisted ? " is-watched" : ""}`}
                 style={{ left: `${row.pinX}%`, top: `${row.pinY}%` }}
-                onClick={() => setSelectedStoreMapStore(row)}
+                onClick={() => openStoreProfile(row)}
                 aria-label={`Open ${row.name}`}
               >
                 <span>{row.retailer.slice(0, 1)}</span>
@@ -24762,14 +24940,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <div className="store-map-card-list">
             {rows.slice(0, 12).map((row) => (
               <article className="store-map-card scout-store-card" key={row.id}>
-                <button type="button" className="store-map-card-main" onClick={() => setSelectedStoreMapStore(row)}>
+                <button type="button" className="store-map-card-main" onClick={() => openStoreProfile(row)}>
                   <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
                   <span>
                     <strong>{row.name}</strong>
-                    <small>{row.retailer} | {row.area || "Area not listed"}{Number.isFinite(row.distance) ? ` | ${row.distance.toFixed(1)} mi` : ""}</small>
+                    <small>{row.retailer} | {row.profile?.storeType || row.storeType} | {row.area || "Area not listed"}{Number.isFinite(row.distance) ? ` | ${row.distance.toFixed(1)} mi` : ""}</small>
                     <em>{row.latestReport ? `Last report: ${scoutReportDateTimeLabel(row.latestReport)}` : "No Scout report yet"}</em>
                   </span>
                 </button>
+                {renderStoreProfileBadges(row.profile, { limit: 5, hideWhenEmpty: true })}
                 <div className="store-map-card-meta">
                   {renderStoreMapStatusBadge(row)}
                   <span className="confidence-badge">{row.confidence} confidence</span>
@@ -24777,15 +24956,17 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
                 <div className="store-map-card-actions">
                   <button type="button" className="secondary-button" onClick={() => openStoreMapReport(row, "stock_on_shelf")}>Report Stock</button>
-                  <button type="button" className="ghost-button" onClick={() => toggleStoreMapWatch(row)}>{row.watchlisted ? "Unwatch" : "Watch"}</button>
-                  <button type="button" className="ghost-button" onClick={() => setSelectedStoreMapStore(row)}>Open Store</button>
+                  <button type="button" className="ghost-button" onClick={() => toggleStoreMapWatch(row)}>{row.watchlisted ? "Unfollow" : "Follow"}</button>
+                  <button type="button" className="ghost-button" onClick={() => askEmberAboutStore(row)}>Ask Ember</button>
+                  <button type="button" className="ghost-button" aria-label={`Open Store Profile ${row.name}`} onClick={() => openStoreProfile(row)}>View Profile</button>
                 </div>
               </article>
             ))}
             {!rows.length ? (
               <div className="empty-state">
-                <h3>No stores match those filters</h3>
-                <p>Try a broader city search, clear Watchlist only, or suggest a missing store from Quick Add.</p>
+                <h3>{familyFilterActive ? "No family-friendly shops match yet" : "No stores match those filters"}</h3>
+                <p>{familyFilterActive ? NO_FAMILY_SHOPS_COPY : "Try a broader city search, clear Watchlist only, or suggest a missing store from Quick Add."}</p>
+                <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Suggest Store</button>
               </div>
             ) : null}
           </div>
@@ -27621,7 +27802,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <span className="confidence-badge">{row.confidence} confidence</span>
               </div>
               <div className="quick-actions">
-                <button type="button" className="secondary-button" onClick={() => setSelectedStoreMapStore(row)}>Details</button>
+                <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>Details</button>
                 <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Admin Store Management", topic: row.name })}>Edit / Suggest</button>
                 <button type="button" className="ghost-button" onClick={() => setVaultToast("Duplicate store review is staged through admin review suggestions.")}>Duplicate</button>
               </div>
@@ -36144,14 +36325,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       ) : null}
 
       {selectedStoreMapStore ? (
-        <div className="location-modal-backdrop" role="presentation" onClick={() => setSelectedStoreMapStore(null)}>
+        <div className="location-modal-backdrop" role="presentation" onClick={closeStoreProfile}>
           <section className="location-modal store-map-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="store-map-detail-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header">
               <div>
                 <h2 id="store-map-detail-title">{selectedStoreMapStore.name}</h2>
-                <p>{selectedStoreMapStore.retailer} | {selectedStoreMapStore.area || "Area not listed"}</p>
+                <p>{selectedStoreMapStore.retailer} | {selectedStoreMapStore.profile?.storeType || selectedStoreMapStore.storeType || "Store"} | {selectedStoreMapStore.area || "Area not listed"}</p>
               </div>
-              <button type="button" className="modal-close-button" aria-label="Close store details" onClick={() => setSelectedStoreMapStore(null)}>X</button>
+              <button type="button" className="modal-close-button" aria-label="Close store details" onClick={closeStoreProfile}>X</button>
             </div>
             <div className="store-map-detail-body">
               <article className="store-map-detail-summary">
@@ -36164,6 +36345,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <span className="confidence-badge">{selectedStoreMapStore.confidence} confidence</span>
                     <span className={selectedStoreMapStore.watchlisted ? "status-badge watchlist" : "status-badge"}>{selectedStoreMapStore.watchlisted ? "Watching" : "Not watched"}</span>
                   </div>
+                  {renderStoreProfileBadges(selectedStoreMapStore.profile, { hideWhenEmpty: true })}
                 </div>
               </article>
 
@@ -36173,6 +36355,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <DetailItem label="Product categories" value={selectedStoreMapStore.categories.length ? selectedStoreMapStore.categories.join(", ") : "No category reports yet"} />
                 <DetailItem label="User notes" value={selectedStoreMapStore.store.notes || selectedStoreMapStore.store.userNotes || "No notes yet"} />
               </div>
+
+              {selectedStoreMapStore.profile?.showFamilyFriendlyProfile ? (
+                <section className="store-profile-partner-panel">
+                  <div className="compact-card-header">
+                    <div>
+                      <h3>{selectedStoreMapStore.profile.familyFriendlyTitle || FAMILY_FRIENDLY_CARD_SHOP_TITLE}</h3>
+                      <p>{selectedStoreMapStore.profile.familyFriendlyCopy || "This shop has community or partner details listed for Ember & Tide review. Availability and pricing may vary."}</p>
+                    </div>
+                  </div>
+                  {selectedStoreMapStore.profile.mottoCopy ? <p>{selectedStoreMapStore.profile.mottoCopy}</p> : null}
+                  {selectedStoreMapStore.profile.partnerDisclaimer ? <p className="compact-subtitle">{selectedStoreMapStore.profile.partnerDisclaimer}</p> : null}
+                </section>
+              ) : null}
+
+              {renderStoreProfileActivity(selectedStoreMapStore.profile)}
 
               <section className="store-map-detail-reports">
                 <div className="compact-card-header">
@@ -36233,6 +36430,30 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 </div>
               </section>
 
+              <section className="store-map-detail-reports">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>Related Tidepool Posts</h3>
+                    <p>Community posts that reference this store stay separate from confirmed Scout reports.</p>
+                  </div>
+                </div>
+                <div className="scout-preview-list">
+                  {selectedStoreMapStore.profile?.activity?.relatedTidepoolPosts?.slice(0, 3).map((post) => (
+                    <article className="compact-card" key={post.id || post.postId || post.title}>
+                      <strong>{post.title || post.postType || "Tidepool post"}</strong>
+                      <p>{post.body || post.summary || "Community discussion"}</p>
+                      <span className="status-badge">{post.postType || post.category || "Tidepool"}</span>
+                    </article>
+                  ))}
+                  {!selectedStoreMapStore.profile?.activity?.relatedTidepoolPosts?.length ? (
+                    <div className="small-empty-state">
+                      <strong>No related Tidepool posts yet</strong>
+                      <span>Community discussion can reference shops without changing confirmed restock history.</span>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+
               {adminEditModeActive ? (
                 <section className="store-map-admin-box">
                   <strong>Admin basics</strong>
@@ -36245,10 +36466,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               ) : null}
             </div>
             <div className="location-modal-actions modal-sticky-footer">
-              <button type="button" onClick={() => openStoreMapReport(selectedStoreMapStore, "stock_on_shelf")}>Report Stock</button>
+              <button type="button" onClick={() => openStoreMapReport(selectedStoreMapStore, "stock_on_shelf")}>Submit Report</button>
               <button type="button" className="secondary-button" onClick={() => openStoreMapReport(selectedStoreMapStore, "no_stock")}>Report Empty</button>
-              <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(selectedStoreMapStore)}>{selectedStoreMapStore.watchlisted ? "Unwatch Store" : "Watch Store"}</button>
-              <button type="button" className="secondary-button" onClick={() => { setSelectedStoreMapStore(null); setWatchCalendarView("stores"); setScoutView("alerts"); }}>Open Ember Watch</button>
+              <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(selectedStoreMapStore)}>{selectedStoreMapStore.watchlisted ? "Unfollow Store" : "Follow Store"}</button>
+              <button type="button" className="secondary-button" onClick={() => { closeStoreProfile(); setWatchCalendarView("stores"); setScoutView("alerts"); }}>Open Ember Watch</button>
+              <button type="button" className="secondary-button" onClick={() => askEmberAboutStore(selectedStoreMapStore)}>Ask Ember Assist</button>
               <button type="button" className="ghost-button" onClick={() => setVaultToast("Store notes are staged for a later persistence pass.")}>Add Note</button>
               <button type="button" className="ghost-button" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([selectedStoreMapStore.name, selectedStoreMapStore.address, selectedStoreMapStore.city].filter(Boolean).join(" "))}`, "_blank", "noopener,noreferrer")}>Directions</button>
             </div>

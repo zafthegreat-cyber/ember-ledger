@@ -167,6 +167,92 @@
   margin: 0.75rem 0;
 }
 
+.store-profile-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.45rem 0;
+}
+
+.store-type-badge {
+  border-color: rgba(125, 211, 252, 0.35);
+  color: #dbeafe;
+}
+
+.store-partner-badge--gold,
+.store-partner-badge--ember {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fde68a;
+}
+
+.store-partner-badge--success {
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #bbf7d0;
+}
+
+.store-partner-badge--tide {
+  border-color: rgba(45, 212, 191, 0.4);
+  color: #99f6e4;
+}
+
+.store-directory-filter-note,
+.store-profile-partner-panel,
+.store-profile-activity {
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  color: #dbeafe;
+  padding: 0.75rem;
+}
+
+.store-directory-filter-note {
+  grid-column: 1 / -1;
+}
+
+.store-directory-filter-note strong,
+.store-profile-partner-panel h3,
+.store-profile-activity h3 {
+  color: #fff7ed;
+}
+
+.store-directory-filter-note span,
+.store-profile-partner-panel p,
+.store-profile-activity p {
+  color: #dbeafe;
+}
+
+.store-profile-activity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.store-profile-activity-grid > div {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.42);
+  padding: 0.75rem;
+}
+
+.store-profile-activity-grid span,
+.store-profile-activity-grid small {
+  display: block;
+  color: #cbd5e1;
+}
+
+.store-profile-activity-grid strong {
+  display: block;
+  color: #ffffff;
+  font-size: 1.45rem;
+  margin: 0.2rem 0;
+}
+
+@media (max-width: 760px) {
+  .store-profile-activity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Hearth Home command view */
 .app .hearth-command-view,
 .app-command-shell .hearth-command-view,

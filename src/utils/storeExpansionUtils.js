@@ -17,7 +17,11 @@ export const STORE_FAMILY_FILTER_OPTIONS = [
   { value: "all", label: "All shop statuses" },
   { value: "familyFriendly", label: "Family-friendly only" },
   { value: "kidsAccess", label: "Kids access" },
+  { value: "reasonablePricing", label: "Reasonable pricing" },
+  { value: "kidEvents", label: "Kid events" },
+  { value: "tradeNights", label: "Trade nights" },
   { value: "featured", label: "Featured partners" },
+  { value: "advertising", label: "Advertising partners" },
 ];
 
 const TRUE_VALUES = new Set(["true", "yes", "y", "1", "approved", "active", "featured"]);
@@ -114,7 +118,11 @@ export function matchesStoreExpansionFilters(store = {}, filters = {}, options =
   if (filters.storeType && filters.storeType !== "All" && normalized.locationType !== filters.storeType) return false;
   if (filters.familyStatus === "familyFriendly" && !normalized.familyFriendlyApproved) return false;
   if (filters.familyStatus === "kidsAccess" && !normalized.supportsKidsAccess) return false;
+  if (filters.familyStatus === "reasonablePricing" && !normalized.supportsMsrpOrReasonablePricing) return false;
+  if (filters.familyStatus === "kidEvents" && !normalized.offersKidEvents) return false;
+  if (filters.familyStatus === "tradeNights" && !normalized.offersTradeNights) return false;
   if (filters.familyStatus === "featured" && !normalized.featuredPartner) return false;
+  if (filters.familyStatus === "advertising" && !normalized.advertisingPartner) return false;
   if (filters.state && filters.state !== "All" && normalized.state !== filters.state) return false;
   if (filters.region && filters.region !== "All" && normalized.region !== filters.region) return false;
   return true;
