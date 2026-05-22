@@ -247,6 +247,15 @@ import {
   summarizeInventoryValuation,
 } from "./utils/inventoryValuationUtils";
 import {
+  buildDropRadarPriceDisplay,
+  buildMarketValueReviewPatch,
+  buildPriceReliabilityCards,
+  buildPriceReviewFields,
+  formatPriceDisplay,
+  hasKnownPriceValue,
+  priceConfidenceTone,
+} from "./utils/pricingReliabilityUtils";
+import {
   isMarketplaceClosedStatus,
   isOfficialCommunityUsername,
   validateMarketplaceListingDraft,
@@ -9830,7 +9839,7 @@ export default function App() {
       tcgplayer_url: record.tideTradrUrl || record.tcgplayer_url || "",
       market_price: Number(record.marketPrice || record.marketValue || 0),
       market_value: marketValue,
-      market_value_source: record.marketValueSource || record.market_value_source || record.externalProductSource || record.external_product_source || "TideTradr",
+      market_value_source: record.marketValueSource || record.market_value_source || record.marketPriceSource || record.market_price_source || record.externalProductSource || record.external_product_source || "TideTradr",
       market_value_updated_at: record.marketPrice || record.marketValue ? new Date().toISOString() : null,
       low_price: Number(record.lowPrice || 0),
       mid_price: Number(record.midPrice || 0),
@@ -15076,11 +15085,18 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemImageNeedsReview: Boolean(row.itemImageNeedsReview || row.item_image_needs_review),
       marketPrice: Number(row.marketPrice ?? row.market_price ?? row.marketValue ?? row.market_value ?? 0),
       marketValue: Number(row.marketValue ?? row.market_value ?? row.marketPrice ?? row.market_price ?? 0),
+      marketValueSource: row.marketValueSource || row.market_value_source || row.marketPriceSource || row.market_price_source || "",
+      marketPriceSource: row.marketPriceSource || row.market_price_source || row.marketValueSource || row.market_value_source || "",
+      marketPriceConfidence: row.marketPriceConfidence || row.market_price_confidence || row.priceConfidence || row.price_confidence || "",
+      marketPriceReviewedAt: row.marketPriceReviewedAt || row.market_price_reviewed_at || row.priceReviewedAt || row.price_reviewed_at || "",
+      marketValueUpdatedAt: row.marketValueUpdatedAt || row.market_value_updated_at || "",
+      priceReviewNote: row.priceReviewNote || row.price_review_note || "",
       lowPrice: Number(row.lowPrice ?? row.low_price ?? 0),
       midPrice: Number(row.midPrice ?? row.mid_price ?? 0),
       highPrice: Number(row.highPrice ?? row.high_price ?? 0),
       msrpPrice: Number(row.msrpPrice ?? row.msrp_price ?? row.msrp ?? 0),
       msrp: Number(row.msrp ?? row.msrpPrice ?? row.msrp_price ?? 0),
+      msrpSource: row.msrpSource || row.msrp_source || "",
       setCode: row.setCode || row.set_code || "",
       expansion: row.expansion || row.setName || row.set_name || "",
       setName: row.setName || row.set_name || row.expansion || "",
@@ -15119,6 +15135,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       visibility: row.visibility || "private",
       lastPriceChecked: row.lastPriceChecked || row.last_price_checked || "",
       plannedSalePrice: Number(row.plannedSalePrice ?? row.planned_sale_price ?? row.salePrice ?? row.sale_price ?? 0),
+      plannedSalePriceSource: row.plannedSalePriceSource || row.planned_sale_price_source || row.salePriceSource || row.sale_price_source || "",
+      plannedSalePriceConfidence: row.plannedSalePriceConfidence || row.planned_sale_price_confidence || "",
+      plannedSalePriceReviewedAt: row.plannedSalePriceReviewedAt || row.planned_sale_price_reviewed_at || "",
       createdAt: row.createdAt || row.created_at,
       updatedAt: row.updatedAt || row.updated_at || row.createdAt || row.created_at,
     };
@@ -16147,6 +16166,41 @@ function mapCatalog(row) {
     setVaultToast(`Planned sale price updated for ${entrySummary}.`);
   }
 
+  async function quickUpdateMarketValue(item = {}) {
+    if (!item?.id || !ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
+    const current = Number(item.marketPrice || item.marketValue || item.market_price || item.market_value || 0);
+    const entrySummary = plannedSalePriceUpdateSummary(item);
+    const input = window.prompt(`Review market value for ${item.name || "this item"} (${entrySummary})`, current ? current.toFixed(2) : "");
+    if (input == null) return;
+    const nextPrice = Number.parseFloat(String(input).trim());
+    if (!Number.isFinite(nextPrice) || nextPrice < 0) {
+      showAppMessage("Market value must be a valid number.");
+      return;
+    }
+    const noteInput = window.prompt("Optional price review note/reason", item.priceReviewNote || "");
+    const changedAt = new Date().toISOString();
+    const updateIds = groupedInventoryEntryIds(item);
+    const note = noteInput == null ? "" : noteInput;
+    setItems((currentItems) => currentItems.map((entry) => updateIds.includes(entry.id)
+      ? { ...entry, ...buildMarketValueReviewPatch(entry, nextPrice, { changedAt, note }) }
+      : entry));
+    if (!BETA_LOCAL_MODE && signedInWithSupabase && supabase) {
+      const { error } = await supabase.from("inventory_items").update({
+        market_price: nextPrice,
+        market_value: nextPrice,
+        market_value_source: "manual",
+        market_value_updated_at: changedAt,
+        last_price_checked: changedAt,
+        updated_at: changedAt,
+      }).in("id", updateIds);
+      if (error) {
+        showAppMessage(`Market value saved locally, but cloud sync failed: ${error.message}`);
+        return;
+      }
+    }
+    setVaultToast(`Manual market value reviewed for ${entrySummary}.`);
+  }
+
   function inventoryDeleteContext(item = {}) {
     const destination = normalizeInventoryDestination(item);
     const itemName = item?.name || item?.itemName || "this item";
@@ -16898,9 +16952,10 @@ function getTideTradrMarketInfo(product = {}) {
   const sourceRows = Array.isArray(product.marketSources) ? product.marketSources : [];
   const primaryMarketSource = sourceRows.find((source) => source.marketPrice || source.midPrice || source.lowPrice || source.highPrice) || sourceRows[0] || {};
   const msrp = toNumber(product.msrpPrice || product.msrp || marketSummary.msrp);
+  const bestPriceIsMsrpFallback = bestPrice.marketStatus === MARKET_STATUS.MOCK || /estimated fallback/i.test(String(bestPrice.externalSource || ""));
+  const bestMarketPrice = bestPriceIsMsrpFallback ? 0 : toNumber(bestPrice.marketPrice || bestPrice.price);
   const currentMarketValue = toNumber(
-    bestPrice.marketPrice ||
-      bestPrice.price ||
+    bestMarketPrice ||
       marketSummary.recommended_market_value ||
       marketSummary.recommendedMarketValue ||
       product.marketPrice ||
@@ -16911,22 +16966,23 @@ function getTideTradrMarketInfo(product = {}) {
       product.midPrice ||
       product.marketValueRaw ||
       product.highPrice ||
-      product.lowPrice ||
-      msrp
+      product.lowPrice
   );
-  const sourceType = bestPrice.marketStatus || product.marketStatus || product.sourceType || (product.marketSource ? String(product.marketSource).toLowerCase() : "estimated");
+  const sourceType = bestPriceIsMsrpFallback && !currentMarketValue
+    ? "unknown"
+    : bestPrice.marketStatus || product.marketStatus || product.sourceType || (product.marketSource ? String(product.marketSource).toLowerCase() : "estimated");
   const sourceName =
-    bestPrice.externalSource ||
+    (bestPriceIsMsrpFallback && !currentMarketValue ? "Market value missing; MSRP is separate" : bestPrice.externalSource) ||
     product.marketSource ||
     primaryMarketSource.source ||
     (product.marketUrl ? "Manual market source link" : "") ||
     (product.marketPrice ? "Internal/manual catalog value" : "") ||
-    (msrp ? "MSRP fallback" : "Manual fallback needed");
+    (msrp ? "MSRP available; market value missing" : "Manual fallback needed");
   const confidenceLabel = String(product.priceConfidence || marketSummary.price_confidence || marketSummary.priceConfidence || "").toLowerCase();
   const confidenceLevel = bestPrice.confidence?.label ||
     product.marketConfidenceLevel ||
     (confidenceLabel ? confidenceLabel[0].toUpperCase() + confidenceLabel.slice(1) : "") ||
-    (product.marketPrice || product.marketValueNearMint
+    (currentMarketValue || product.marketPrice || product.marketValueNearMint
     ? "Medium"
     : product.midPrice || product.lowPrice || product.highPrice
       ? "Low"
@@ -18925,6 +18981,10 @@ function renderForgeHeader() {
     () => buildInventoryInsightCards(forgeValuationSummary, { context: "forge", moneyFormatter: money }),
     [forgeValuationSummary]
   );
+  const forgePriceReliabilityCards = useMemo(
+    () => buildPriceReliabilityCards(forgeValuationSummary.priceReliabilitySummary || { context: "forge" }),
+    [forgeValuationSummary]
+  );
   const workspaceRecordCountsById = useMemo(() => {
     const counts = new Map();
     const ensureCounts = (workspaceId) => {
@@ -19330,6 +19390,10 @@ function renderForgeHeader() {
   );
   const vaultInsightCards = useMemo(
     () => buildInventoryInsightCards(vaultValuationSummary, { context: "vault", moneyFormatter: money }),
+    [vaultValuationSummary]
+  );
+  const vaultPriceReliabilityCards = useMemo(
+    () => buildPriceReliabilityCards(vaultValuationSummary.priceReliabilitySummary || { context: "vault" }),
     [vaultValuationSummary]
   );
   const vaultTypeOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(vaultItemTypeLabel)), [activeVaultItems]);
@@ -23087,10 +23151,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       tideTradrUrl: catalogSourceUrl(product),
       marketPrice: Number(marketInfo.currentMarketValue || product.marketPrice || product.midPrice || 0),
       marketValue: Number(marketInfo.currentMarketValue || product.marketPrice || product.midPrice || 0),
+      marketValueSource: marketInfo.sourceName || product.marketValueSource || product.market_value_source || product.marketSource || product.market_source || product.sourceType || product.source_type || "TideTradr",
+      marketPriceSource: marketInfo.sourceName || product.marketPriceSource || product.market_price_source || product.marketSource || product.market_source || product.sourceType || product.source_type || "TideTradr",
+      marketPriceConfidence: marketInfo.confidenceLevel || product.marketPriceConfidence || product.market_price_confidence || "",
+      marketValueUpdatedAt: marketInfo.lastUpdated || product.marketValueUpdatedAt || product.market_value_updated_at || "",
       lowPrice: Number(product.lowPrice || marketInfo.lowPrice || 0),
       midPrice: Number(product.midPrice || marketInfo.midPrice || 0),
       highPrice: Number(product.highPrice || marketInfo.highPrice || 0),
       msrpPrice: Number(marketInfo.msrp || product.msrpPrice || 0),
+      msrpSource: product.msrpSource || product.msrp_source || (marketInfo.msrp ? "msrp" : ""),
       setCode: product.setCode || "",
       setName: catalogExpansionName(product),
       expansion: catalogExpansionName(product),
@@ -23614,7 +23683,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <>
           <p>{catalogExpansionName(product) || "Expansion unavailable"} • #{product.cardNumber || "No number"} • {product.rarity || "No rarity"}</p>
-          <p>Market: {hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}</p>
+          <p>Market: {formatPriceDisplay(marketInfo.currentMarketValue, { moneyFormatter: money, missingLabel: "Market data unavailable" })}</p>
       </>
     );
   }
@@ -23622,7 +23691,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return (
       <>
           <p>Code Card | {catalogExpansionName(product) || product.productLine || "Expansion unavailable"}</p>
-          <p>Market: {hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Market data unavailable"}</p>
+          <p>Market: {formatPriceDisplay(marketInfo.currentMarketValue, { moneyFormatter: money, missingLabel: "Market data unavailable" })}</p>
       </>
     );
   }
@@ -29753,9 +29822,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {renderCommunityProfileSummary(selectedListing, { compact: false, className: "marketplace-detail-profile-card" })}
             {selectedListingQuality ? renderMarketplaceQualitySummary(selectedListingQuality, { hideWhenClear: true, limit: 5 }) : null}
             <div className="catalog-detail-grid">
-              <DetailItem label="Price" value={money(selectedListing.askingPrice)} />
-              <DetailItem label="Market Value" value={money(getListingMarketReference(selectedListing).currentMarketValue)} />
-              <DetailItem label="MSRP" value={money(getListingMarketReference(selectedListing).msrp)} />
+              <DetailItem label="Asking Price" value={hasKnownPriceValue(selectedListing.askingPrice) ? money(selectedListing.askingPrice) : "Not set"} />
+              <DetailItem label="Market Value" value={formatPriceDisplay(getListingMarketReference(selectedListing).currentMarketValue, { moneyFormatter: money, missingLabel: "Market value unknown" })} />
+              <DetailItem label="MSRP" value={formatPriceDisplay(getListingMarketReference(selectedListing).msrp, { moneyFormatter: money, missingLabel: "MSRP unknown" })} />
               <DetailItem label="Condition" value={selectedListing.condition} />
               <DetailItem label="Quantity" value={selectedListing.quantity} />
               <DetailItem label="Location" value={`${selectedListing.locationCity || "Local"} ${selectedListing.locationState || ""}`} />
@@ -38015,6 +38084,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <DetailItem label="Area" value={[selectedWatchCalendarEvent.city, selectedWatchCalendarEvent.region].filter(Boolean).join(" / ") || "Not specified"} />
               <DetailItem label="Source" value={selectedWatchCalendarEvent.sourceLabel || "Existing app data"} />
               <DetailItem label="Products" value={selectedWatchCalendarEvent.products?.filter(Boolean).join(", ") || "Product not specified"} />
+              {(() => {
+                const priceDisplay = buildDropRadarPriceDisplay(selectedWatchCalendarEvent, { moneyFormatter: money });
+                return (
+                  <>
+                    <DetailItem label="MSRP" value={priceDisplay.msrpDisplay} />
+                    <DetailItem label="Market value" value={priceDisplay.marketDisplay} />
+                  </>
+                );
+              })()}
             </div>
             <div className="watch-calendar-why-panel">
               <strong>Why this is showing</strong>
@@ -39185,6 +39263,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     </div>
                   ))}
                 </div>
+                <div className="price-reliability-summary" aria-label="Vault valuation reliability">
+                  <div>
+                    <h4>Valuation reliability</h4>
+                    <p>Valuation is estimated from items with known values. Items with missing or manual prices may need review.</p>
+                  </div>
+                  <div className="price-reliability-card-row">
+                    {vaultPriceReliabilityCards.slice(0, 5).map((card) => (
+                      <span className="price-reliability-card" key={card.key}>
+                        <b>{card.value}</b>
+                        <small>{card.label}</small>
+                      </span>
+                    ))}
+                  </div>
+                </div>
                 <div className="inventory-insight-split">
                   <div>
                     <h4>Purchaser breakdown</h4>
@@ -39326,6 +39418,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   onCreateListing={openVaultMarketplaceDecision}
                   onDuplicate={openVaultDuplicateItem}
                   onRefreshMarket={refreshVaultMarket}
+                  onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                 />
               ) : null}
@@ -39346,6 +39439,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       onMoveToForge={(vaultItem) => openVaultForgeTransfer(vaultItem, "move")}
                       onCopyToForge={(vaultItem) => openVaultForgeTransfer(vaultItem, "copy")}
                       onDuplicate={openVaultDuplicateItem}
+                      onQuickUpdateMarketValue={quickUpdateMarketValue}
                       onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                     />
                   ))
@@ -41243,6 +41337,20 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     </div>
                   ))}
                 </div>
+                <div className="price-reliability-summary" aria-label="Forge valuation reliability">
+                  <div>
+                    <h4>Valuation reliability</h4>
+                    <p>Valuation is estimated from known values. Manual, stale, or missing prices stay labeled for review.</p>
+                  </div>
+                  <div className="price-reliability-card-row">
+                    {forgePriceReliabilityCards.slice(0, 6).map((card) => (
+                      <span className="price-reliability-card" key={card.key}>
+                        <b>{card.value}</b>
+                        <small>{card.label}</small>
+                      </span>
+                    ))}
+                  </div>
+                </div>
                 <div className="inventory-insight-split">
                   <div>
                     <h4>Purchaser breakdown</h4>
@@ -41427,6 +41535,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 onEdit={startEditingItem}
                 onDelete={(item) => { deleteItem(item.id); setSelectedForgeDetailId(""); }}
                 onCreateListing={(item) => openMarketplaceCreate("forge", item)}
+                onQuickUpdateMarketValue={quickUpdateMarketValue}
                 onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                 onSell={(item) => {
                   setSaleForm((current) => ({
@@ -41452,6 +41561,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   onDelete={deleteItem}
                   onStatusChange={updateItemStatus}
                   onCreateListing={(forgeItem) => openMarketplaceCreate("forge", forgeItem)}
+                  onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                   onSell={(forgeItem) => {
                     setSaleForm((current) => ({
@@ -42604,24 +42714,72 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
   );
 }
 
-function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateListing, onQuickUpdateSalePrice }) {
+function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPlanned }) {
+  if (!item) return null;
+  const rows = buildPriceReviewFields(item, { context: variant, moneyFormatter: money });
+  const marketRow = rows.find((row) => row.role === "market");
+  const plannedRow = rows.find((row) => row.role === "planned");
+  const reliabilityCopy = variant === "forge"
+    ? "Market value, MSRP, planned sale price, and sale records stay separate. Estimates are for planning and record review."
+    : "Vault value only uses known market values. Missing or manual prices stay labeled so the collection total does not pretend to be perfect.";
+  return (
+    <section className="price-review-panel" aria-label="Price reliability and manual review">
+      <div className="compact-card-header">
+        <div>
+          <h4>Price reliability</h4>
+          <p className="compact-subtitle">{reliabilityCopy}</p>
+        </div>
+        <span className={`inventory-data-prompt ${priceConfidenceTone(marketRow?.confidence)}`}>{marketRow?.confidence || "Missing"}</span>
+      </div>
+      <div className="price-review-grid">
+        {rows.map((row) => (
+          <div className="price-review-card" key={row.key}>
+            <div>
+              <span>{row.label}</span>
+              <strong>{row.displayValue}</strong>
+            </div>
+            <div className="price-review-meta">
+              <span className={`inventory-data-prompt ${row.tone}`}>{row.confidence}</span>
+              <small>Source: {row.sourceLabel}</small>
+              <small>{row.reviewedAt ? `Reviewed ${shortDate(row.reviewedAt)}` : row.updatedAt ? `Updated ${shortDate(row.updatedAt)}` : "No review date"}</small>
+            </div>
+            <p>{row.helper}</p>
+          </div>
+        ))}
+      </div>
+      <div className="quick-actions price-review-actions">
+        <button type="button" className="secondary-button" onClick={() => onReviewMarket?.(item)}>
+          {marketRow?.isMissing ? "Add market value" : marketRow?.isStale ? "Review stale price" : "Review market value"}
+        </button>
+        <button type="button" className="secondary-button" onClick={() => onReviewPlanned?.(item)}>
+          {plannedRow?.isMissing ? "Set planned sale price" : "Update planned sale price"}
+        </button>
+      </div>
+      {item.priceReviewNote ? <p className="compact-subtitle">Last review note: {item.priceReviewNote}</p> : null}
+    </section>
+  );
+}
+
+function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateListing, onQuickUpdateMarketValue, onQuickUpdateSalePrice }) {
   if (!item) return null;
   const detailImage = item.itemImage || vaultItemDisplayImage(item);
   const setLabel = item.setName || item.expansion || "";
   const productType = item.productType || "Forge inventory";
   const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "forge" });
   const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: "forge" });
+  const priceFields = buildPriceReviewFields(item, { context: "forge", moneyFormatter: money });
+  const priceByRole = Object.fromEntries(priceFields.map((field) => [field.role, field]));
   const totalCost = valuation.totalCostBasis || 0;
   const totalMarket = valuation.estimatedMarketValue || 0;
   const plannedTotal = valuation.plannedSaleTotal || 0;
   const details = [
     ["Quantity", item.quantity],
-    ["Cost Paid", hasValue(item.unitCost) ? money(item.unitCost) : ""],
-    ["Total Cost", hasValue(item.unitCost) ? money(totalCost) : ""],
-    ["MSRP", hasValue(item.msrpPrice) ? money(item.msrpPrice) : ""],
-    ["Market Value", hasValue(item.marketPrice) ? money(item.marketPrice) : ""],
-    ["Total Market", hasValue(item.marketPrice) ? money(totalMarket) : ""],
-    ["Planned Sale Total", hasValue(item.salePrice) ? money(plannedTotal) : ""],
+    ["Cost Paid", priceByRole.cost?.displayValue],
+    ["Total Cost", valuation.costKnownQuantity ? money(totalCost) : "Unknown"],
+    ["MSRP", priceByRole.msrp?.displayValue],
+    ["Market Value", priceByRole.market?.displayValue],
+    ["Total Market", valuation.marketKnownQuantity ? money(totalMarket) : "Unknown"],
+    ["Planned Sale Total", valuation.plannedKnownQuantity ? money(plannedTotal) : "Not set"],
     ["Product Type", productType],
     ["Set / Collection", setLabel],
     ["Release Year", item.releaseYear],
@@ -42634,7 +42792,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
     ["Location Notes", item.physicalLocationNotes],
     ["Purchaser", itemPurchaserName(item)],
     ["Notes", item.notes],
-    ["Planned Selling Price", hasValue(item.salePrice) ? money(item.salePrice) : ""],
+    ["Planned Selling Price", priceByRole.planned?.displayValue],
     ["Source", item.sourceLocation || item.externalProductSource],
     ["Original Vault Item", item.originalVaultItemId],
     ["Moved From Vault", item.movedFromVaultAt || item.dateMovedToForge],
@@ -42682,6 +42840,12 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
           <DetailItem key={label} label={label} value={value} />
         ))}
       </div>
+      <PriceReviewPanel
+        item={item}
+        variant="forge"
+        onReviewMarket={onQuickUpdateMarketValue}
+        onReviewPlanned={onQuickUpdateSalePrice}
+      />
       <InventoryBreakdownPanel
         item={item}
         variant="forge"
@@ -42706,6 +42870,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
       <div className="quick-actions">
         <button type="button" onClick={() => onSell(item)}>Sell</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+        <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review Market Value</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
         <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Forge Item</button>
@@ -42714,13 +42879,15 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
   );
 }
 
-function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onRefreshMarket, onQuickUpdateSalePrice }) {
+function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice }) {
   if (!item) return null;
   const detailImage = vaultItemDisplayImage(item);
   const setLabel = vaultItemSetLabel(item);
   const itemType = vaultItemTypeLabel(item);
   const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "vault" });
   const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: "vault" });
+  const priceFields = buildPriceReviewFields(item, { context: "vault", moneyFormatter: money });
+  const priceByRole = Object.fromEntries(priceFields.map((field) => [field.role, field]));
   const totalCost = valuation.totalCostBasis || 0;
   const totalMarket = valuation.estimatedMarketValue || 0;
   const plannedTotal = valuation.plannedSaleTotal || 0;
@@ -42728,14 +42895,14 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
     ["Quantity", item.quantity],
     ["Owner / Purchaser", item.purchaserSummary || itemPurchaserName(item)],
     ["Vault Location", item.locationSummary || vaultItemLocationLabel(item) || "Unassigned"],
-    ["Cost Paid", hasValue(item.unitCost) ? money(item.unitCost) : ""],
-    ["Total Cost", hasValue(item.unitCost) ? money(totalCost) : ""],
-    ["MSRP", hasValue(item.msrpPrice) ? money(item.msrpPrice) : ""],
-    ["Market Value", hasValue(item.marketPrice) ? money(totalMarket) : ""],
-    ["Planned Sale Total", hasValue(item.salePrice) ? money(plannedTotal) : ""],
+    ["Cost Paid", priceByRole.cost?.displayValue],
+    ["Total Cost", valuation.costKnownQuantity ? money(totalCost) : "Unknown"],
+    ["MSRP", priceByRole.msrp?.displayValue],
+    ["Market Value", priceByRole.market?.displayValue],
+    ["Planned Sale Total", valuation.plannedKnownQuantity ? money(plannedTotal) : "Not set"],
     ["Set / Collection", setLabel],
     ["Product Type", itemType],
-    ["Planned Selling Price", hasValue(item.salePrice) ? money(item.salePrice) : ""],
+    ["Planned Selling Price", priceByRole.planned?.displayValue],
     ["Source", item.sourceType || item.source || item.sourceLocation || item.externalProductSource],
     ["SKU", item.sku],
     ["UPC / Barcode", item.barcode],
@@ -42784,6 +42951,12 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
           <DetailItem key={label} label={label} value={value} />
         ))}
       </div>
+      <PriceReviewPanel
+        item={item}
+        variant="vault"
+        onReviewMarket={onQuickUpdateMarketValue}
+        onReviewPlanned={onQuickUpdateSalePrice}
+      />
       <InventoryBreakdownPanel
         item={item}
         variant="vault"
@@ -42811,6 +42984,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
         <button type="button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button>
         <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+        <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review Market Value</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
         <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Vault Item</button>
@@ -42834,6 +43008,7 @@ function CompactInventoryCard({
   onMoveToForge,
   onCopyToForge,
   onDuplicate,
+  onQuickUpdateMarketValue,
   onQuickUpdateSalePrice,
   onSell,
   onCreateListing,
@@ -42909,6 +43084,7 @@ function CompactInventoryCard({
             buttonLabel="More"
             actions={[
               { label: "Edit", onClick: () => onEdit?.(item) },
+              { label: "Review Market Value", onClick: () => onQuickUpdateMarketValue?.(item) },
               { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
               { label: "Copy to Forge", onClick: () => onCopyToForge?.(item) },
               { label: "Duplicate Item", onClick: () => onDuplicate?.(item) },
@@ -43018,6 +43194,7 @@ function CompactInventoryCard({
           buttonLabel="More"
           actions={[
             { label: "Edit", onClick: () => onEdit?.(item) },
+            { label: "Review Market Value", onClick: () => onQuickUpdateMarketValue?.(item) },
             { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
             { label: "List", onClick: () => onCreateListing?.(item) },
             { label: "Restock", onClick: () => onRestock?.(item) },
@@ -43388,7 +43565,7 @@ function InventoryForm({
       <Field label="Choose Saved Catalog Product">
         <select value={form.catalogProductId} onChange={(e) => applyCatalogProduct(e.target.value)}>
           <option value="">No catalog product selected</option>
-          {catalogProducts.map((p) => <option key={p.id} value={p.id}>{p.name} — {money(p.marketPrice)}</option>)}
+          {catalogProducts.map((p) => <option key={p.id} value={p.id}>{p.name} — {formatPriceDisplay(p.marketPrice || p.marketValue, { moneyFormatter: money, missingLabel: "Market unknown" })}</option>)}
         </select>
       </Field>
       {selectedCatalogProduct ? (
@@ -43399,7 +43576,7 @@ function InventoryForm({
           <div>
             <strong>{selectedCatalogName}</strong>
             <span>{selectedCatalogProduct.setName || selectedCatalogProduct.expansion || selectedCatalogProduct.productType || "Catalog product"}</span>
-            <span>Market: {money(selectedCatalogProduct.marketPrice || selectedCatalogProduct.marketValue || 0)} | MSRP: {selectedCatalogProduct.msrpPrice || selectedCatalogProduct.msrp ? money(selectedCatalogProduct.msrpPrice || selectedCatalogProduct.msrp) : "Unknown"}</span>
+            <span>Market: {formatPriceDisplay(selectedCatalogProduct.marketPrice || selectedCatalogProduct.marketValue, { moneyFormatter: money, missingLabel: "Market unknown" })} | MSRP: {formatPriceDisplay(selectedCatalogProduct.msrpPrice || selectedCatalogProduct.msrp, { moneyFormatter: money, missingLabel: "Unknown" })}</span>
           </div>
         </div>
       ) : null}

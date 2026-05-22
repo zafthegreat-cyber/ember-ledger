@@ -9,6 +9,8 @@ const APP_URL = appUrl.toString();
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1366, height: 1600 } });
+  page.setDefaultTimeout(20000);
+  page.setDefaultNavigationTimeout(45000);
   const results = [];
 
   await page.addInitScript(() => {

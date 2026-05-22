@@ -56,6 +56,8 @@ assert.ok(rows.some((row) => row.section === "Expenses" && row.label === "Total 
 assert.ok(rows.some((row) => row.section === "Mileage" && row.label === "Business miles"));
 assert.ok(rows.some((row) => row.section === "Inventory" && row.label === "Cost basis"));
 assert.ok(rows.some((row) => row.section === "Inventory valuation" && row.label === "Estimated market value"));
+assert.ok(rows.some((row) => row.section === "Inventory valuation price reliability" && row.label === "Missing market value"));
+assert.ok(rows.some((row) => row.section === "Inventory valuation price reliability" && row.label === "Manual price records"));
 assert.ok(rows.some((row) => row.section === "Documentation coverage" && row.label === "Inventory receipts"));
 assert.ok(rows.some((row) => row.section === "Sales" && row.label === "Sales revenue"));
 assert.ok(rows.some((row) => row.section === "Sales platform" && row.label === "TCGplayer"));

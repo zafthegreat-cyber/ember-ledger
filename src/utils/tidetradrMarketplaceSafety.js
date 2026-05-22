@@ -1,5 +1,6 @@
 import { containsOfficialImpersonation } from "./communitySafety.js";
 import { buildPublicCommunityProfile } from "./communityProfile.js";
+import { buildMarketplacePriceWarning } from "./pricingReliabilityUtils.js";
 import { publicUsernameLabelFromRecord } from "./publicIdentity.js";
 
 export const TIDETRADR_LISTING_STATUSES = [
@@ -277,14 +278,14 @@ export function buildMarketplaceListingQualityReport(listing = {}, options = {})
     warnings.push(`No listing photo yet; Ember & Tide will show a branded ${fallbackLabel} fallback.`);
   }
   if (!firstText(listing.productType, listing.product_type)) warnings.push("Add a product type so buyers can scan the listing quickly.");
-  if (referencePrice > 0 && price > 0 && !freeOrTrade) {
-    if (price > referencePrice * 1.5) {
-      warnings.push("Double-check this price. It looks far from known MSRP/market values.");
-      labels.push({ key: "high_price_review", label: "Price Review", tone: "warning" });
-    } else if (price < referencePrice * 0.25) {
-      warnings.push("Double-check this price. It looks unusually low and may be a typo.");
-      labels.push({ key: "low_price_review", label: "Price Review", tone: "warning" });
-    }
+  const priceWarning = buildMarketplacePriceWarning(listing, { marketValue, msrp });
+  if (priceWarning && referencePrice > 0 && price > 0 && !freeOrTrade) {
+    warnings.push(priceWarning);
+    labels.push({
+      key: price > referencePrice ? "high_price_review" : "low_price_review",
+      label: "Price Review",
+      tone: "warning",
+    });
   }
 
   if (moderationStatus === "Flagged") labels.push({ key: "flagged", label: "Flagged", tone: "warning" });

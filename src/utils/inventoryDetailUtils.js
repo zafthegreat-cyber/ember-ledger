@@ -9,6 +9,9 @@ export function buildPlannedSalePricePatch(entry = {}, nextPrice = 0, changedAt 
     salePrice: nextPrice,
     plannedSalePrice: nextPrice,
     planned_sale_price: nextPrice,
+    plannedSalePriceSource: "manual",
+    plannedSalePriceConfidence: "Manual",
+    plannedSalePriceReviewedAt: changedAt,
     plannedSalePriceHistory: [
       ...(Array.isArray(entry.plannedSalePriceHistory) ? entry.plannedSalePriceHistory : []),
       {

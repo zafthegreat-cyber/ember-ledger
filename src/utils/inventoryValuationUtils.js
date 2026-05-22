@@ -1,3 +1,9 @@
+import {
+  buildInventoryPriceReliabilityExportRows,
+  buildPriceReliabilityCards,
+  buildPriceReliabilitySummary,
+} from "./pricingReliabilityUtils.js";
+
 const UNKNOWN_PURCHASER_LABEL = "Unassigned purchaser";
 
 function cleanText(value = "") {
@@ -240,6 +246,7 @@ export function summarizeInventoryValuation(items = [], { context = "forge", sal
     missingPhotoCount: 0,
     receiptCoverage: { total: 0, withReceipt: 0, missingReceipt: 0 },
     photoCoverage: { total: 0, withPhoto: 0, missingPhoto: 0 },
+    priceReliabilitySummary: null,
     purchaserBreakdown: [],
     topProductTypes: [],
     topSets: [],
@@ -291,6 +298,7 @@ export function summarizeInventoryValuation(items = [], { context = "forge", sal
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
     .slice(0, 5);
+  summary.priceReliabilitySummary = buildPriceReliabilitySummary(items, { context });
 
   return summary;
 }
@@ -314,6 +322,13 @@ export function buildInventoryMissingDataPrompts(summary = {}, { context = "forg
   if (Number(summary.missingMarketValueCount || 0) > 0) {
     prompts.push({ key: "market", label: "Review market value", count: summary.missingMarketValueCount, tone: "info" });
   }
+  const reliability = summary.priceReliabilitySummary || {};
+  if (Number(reliability.stalePriceCount || 0) > 0) {
+    prompts.push({ key: "stale-price", label: "Review stale price", count: reliability.stalePriceCount, tone: "warning" });
+  }
+  if (Number(reliability.manualPriceCount || 0) > 0) {
+    prompts.push({ key: "manual-price", label: "Manual price", count: reliability.manualPriceCount, tone: "info" });
+  }
   if (context === "forge" && Number(summary.missingPlannedSalePriceCount || 0) > 0) {
     prompts.push({ key: "planned", label: "Add planned sale price", count: summary.missingPlannedSalePriceCount, tone: "warning" });
   }
@@ -336,6 +351,7 @@ function defaultMoney(value) {
 
 export function buildInventoryInsightCards(summary = {}, { context = "forge", moneyFormatter = defaultMoney } = {}) {
   const money = moneyFormatter;
+  const reliabilityCards = buildPriceReliabilityCards(summary.priceReliabilitySummary || { context }).slice(0, context === "forge" ? 2 : 1);
   if (context === "vault") {
     return [
       { key: "quantity", label: "Total items", value: Number(summary.totalQuantity || 0), helper: `${Number(summary.itemCount || 0)} grouped record(s)` },
@@ -344,6 +360,7 @@ export function buildInventoryInsightCards(summary = {}, { context = "forge", mo
       { key: "gain", label: "Estimated gain/loss", value: summary.estimatedUnrealizedGainLoss === null ? "Unknown" : money(summary.estimatedUnrealizedGainLoss), helper: "Market value minus tracked cost" },
       { key: "photos", label: "Missing photos", value: Number(summary.missingPhotoCount || 0), helper: "Use clean fallback until added" },
       { key: "purchasers", label: "Purchaser breakdown", value: summary.purchaserBreakdown?.length || 0, helper: formatPurchaserTally((summary.purchaserBreakdown || []).slice(0, 2)) || "No purchasers yet" },
+      ...reliabilityCards,
     ];
   }
   return [
@@ -353,6 +370,7 @@ export function buildInventoryInsightCards(summary = {}, { context = "forge", mo
     { key: "market", label: "Estimated market value", value: money(summary.estimatedMarketValue || 0), helper: `${Number(summary.missingMarketValueCount || 0)} missing market value` },
     { key: "profit", label: "Estimated profit", value: summary.estimatedProfitAtPlannedPrice === null ? "Unknown" : money(summary.estimatedProfitAtPlannedPrice), helper: "At planned sale price, before final sale details" },
     { key: "receipts", label: "Receipt coverage", value: `${Number(summary.receiptCoverage?.withReceipt || 0)}/${Number(summary.receiptCoverage?.total || 0)}`, helper: `${Number(summary.receiptCoverage?.missingReceipt || 0)} missing receipt(s)` },
+    ...reliabilityCards,
   ];
 }
 
@@ -364,6 +382,7 @@ export function buildInventoryValuationExportRows(summary = {}, { sectionPrefix 
     { section: sectionPrefix, label: "MSRP total", value: summary.msrpTotal || 0, count: summary.msrpKnownQuantity || 0, notes: `${summary.missingMsrpCount || 0} missing MSRP record(s)` },
     { section: sectionPrefix, label: "Planned sale total", value: summary.plannedSaleTotal || 0, count: summary.plannedKnownQuantity || 0, notes: `${summary.missingPlannedSalePriceCount || 0} missing planned sale price record(s)` },
     { section: sectionPrefix, label: "Receipt coverage", value: summary.receiptCoverage?.withReceipt || 0, count: summary.receiptCoverage?.total || 0, notes: `${summary.receiptCoverage?.missingReceipt || 0} missing receipt(s)` },
+    ...buildInventoryPriceReliabilityExportRows(summary, { sectionPrefix: `${sectionPrefix} price reliability` }),
   ];
 
   (summary.purchaserBreakdown || []).forEach((row) => {

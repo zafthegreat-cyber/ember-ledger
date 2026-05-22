@@ -71,7 +71,7 @@ const CONTACT_WORDS = /\b(message admin|contact admin|send to admin|ask admin|su
 const SHOP_WORDS = /\b(card shop|local shop|family[-\s]?friendly shop|family[-\s]?friendly card shop|kid friendly shop|where should i buy|shop near me|featured partner|advertising partner|reasonable pricing|guarantee msrp|guaranteed msrp|follow a store|favorite store|report a restock at this store|report restock at this store|stores near me|find stores near me|browse by area|browse stores by area|stores by region|nearby areas|expand to another state|add more stores)\b/i;
 const GENERAL_PAGE_HELP_WORDS = /\b(what can i do here|explain this page|what should i do next|what should i do first|what do i do first|help me|where do i start|what is this)\b/i;
 const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory|what should i do with this item|where did my forge item go|where did my item go)\b/i;
-const VALUATION_WORDS = /\b(cost basis|market value|estimated profit|profit dashboard|planned sale price|planned price|collection worth|inventory worth|purchaser breakdown|zena and dillon|zena.*dillon|tax advice|financial advice)\b/i;
+const VALUATION_WORDS = /\b(cost basis|market value|price missing|missing price|manual price|manual value|stale price|msrp|exact value|review prices?|price review|estimated profit|profit dashboard|planned sale price|planned price|collection worth|inventory worth|purchaser breakdown|zena and dillon|zena.*dillon|tax advice|financial advice)\b/i;
 const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price|checkout|payment|pay through|buy through)\b/i;
 const TIDEPOOL_WORDS = /\b(tidepool|community post|post safely|why is my post pending|report a post|flag a post|can kids post|community board)\b/i;
 
@@ -179,8 +179,38 @@ function buildValuationResponse(text = "") {
       category: "Vault/Forge inventory question",
     });
   }
+  if (/\b(msrp).*\b(market value|planned sale price|planned price|price)|\b(market value).*\b(msrp|planned sale price|planned price)|\b(planned sale price|planned price).*\b(msrp|market value)/i.test(text)) {
+    return response("MSRP, market value, and planned sale price are separate. MSRP is the retail reference, market value is an estimate or reviewed value, and planned sale price is your own selling plan.", {
+      actions: ["Go to Vault", "Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+  if (/\b(manual price|manual value)\b/i.test(text)) {
+    return response("Manual price means a user or admin entered or reviewed that value. It is useful for planning, but Ember & Tide labels it so it does not look like a live guaranteed market price.", {
+      actions: ["Go to Forge", "Go to Vault"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+  if (/\b(stale price)\b/i.test(text)) {
+    return response("Stale price means the value is old enough that it should be reviewed before you trust it too much. Open the item detail and update the market value when you have a better reference.", {
+      actions: ["Go to Forge", "Go to Vault"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+  if (/\b(exact value|guarantee.*value|guaranteed value)\b/i.test(text)) {
+    return response("Ember & Tide cannot promise an exact value. Prices are estimates or manually entered unless a trusted source is shown, so use them for planning instead of guarantees.", {
+      actions: ["Go to Vault", "Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+  if (/\b(review prices?|price review)\b/i.test(text)) {
+    return response("Open the item detail and look for Price reliability. You can review market value, set a planned sale price, and keep MSRP separate from both.", {
+      actions: ["Go to Vault", "Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
   if (/\b(market value|collection worth|inventory worth)\b/i.test(text)) {
-    return response("Market value only shows when the item has a known value. If it is missing, the dashboard leaves it unknown instead of making up a number.", {
+    return response("Market value only shows when the item has a known value. If it is missing, the dashboard leaves it unknown instead of making up a number or showing $0.", {
       actions: ["Go to Vault", "Go to Forge"],
       category: "Vault/Forge inventory question",
     });

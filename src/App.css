@@ -34235,6 +34235,115 @@ body,
   gap: 12px;
 }
 
+.app .price-reliability-summary,
+.app-command-shell .price-reliability-summary,
+.app-shell-dark .price-reliability-summary,
+.app .price-review-panel,
+.app-command-shell .price-review-panel,
+.app-shell-dark .price-review-panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(2, 8, 23, 0.5);
+}
+
+.app .price-reliability-summary h4,
+.app-command-shell .price-reliability-summary h4,
+.app-shell-dark .price-reliability-summary h4,
+.app .price-review-panel h4,
+.app-command-shell .price-review-panel h4,
+.app-shell-dark .price-review-panel h4 {
+  margin: 0;
+  color: #fff7ed;
+}
+
+.app .price-reliability-summary p,
+.app-command-shell .price-reliability-summary p,
+.app-shell-dark .price-reliability-summary p,
+.app .price-review-card p,
+.app-command-shell .price-review-card p,
+.app-shell-dark .price-review-card p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.72);
+  line-height: 1.35;
+}
+
+.app .price-reliability-card-row,
+.app-command-shell .price-reliability-card-row,
+.app-shell-dark .price-reliability-card-row,
+.app .price-review-grid,
+.app-command-shell .price-review-grid,
+.app-shell-dark .price-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.app .price-reliability-card,
+.app-command-shell .price-reliability-card,
+.app-shell-dark .price-reliability-card,
+.app .price-review-card,
+.app-command-shell .price-review-card,
+.app-shell-dark .price-review-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(7, 18, 36, 0.68);
+}
+
+.app .price-reliability-card b,
+.app-command-shell .price-reliability-card b,
+.app-shell-dark .price-reliability-card b,
+.app .price-review-card strong,
+.app-command-shell .price-review-card strong,
+.app-shell-dark .price-review-card strong {
+  color: #fff7ed;
+  overflow-wrap: anywhere;
+}
+
+.app .price-reliability-card small,
+.app-command-shell .price-reliability-card small,
+.app-shell-dark .price-reliability-card small,
+.app .price-review-card small,
+.app-command-shell .price-review-card small,
+.app-shell-dark .price-review-card small {
+  color: rgba(232, 246, 255, 0.68);
+}
+
+.app .price-review-card > div:first-child span,
+.app-command-shell .price-review-card > div:first-child span,
+.app-shell-dark .price-review-card > div:first-child span {
+  color: #7ce7ff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.app .price-review-meta,
+.app-command-shell .price-review-meta,
+.app-shell-dark .price-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.app .price-review-actions,
+.app-command-shell .price-review-actions,
+.app-shell-dark .price-review-actions {
+  margin-top: 0;
+}
+
 .app .inventory-mini-list,
 .app-command-shell .inventory-mini-list,
 .app-shell-dark .inventory-mini-list,
@@ -34315,6 +34424,25 @@ body,
   border-color: rgba(34, 197, 94, 0.28);
   color: #d1fae5;
   background: rgba(6, 78, 59, 0.28);
+}
+
+.app .inventory-data-prompt.manual,
+.app-command-shell .inventory-data-prompt.manual,
+.app-shell-dark .inventory-data-prompt.manual,
+.app .inventory-data-prompt.info,
+.app-command-shell .inventory-data-prompt.info,
+.app-shell-dark .inventory-data-prompt.info {
+  border-color: rgba(124, 231, 255, 0.28);
+  color: #dff7ff;
+  background: rgba(8, 47, 73, 0.32);
+}
+
+.app .inventory-data-prompt.missing,
+.app-command-shell .inventory-data-prompt.missing,
+.app-shell-dark .inventory-data-prompt.missing {
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.48);
 }
 
 .app .inventory-prompt-row.compact,

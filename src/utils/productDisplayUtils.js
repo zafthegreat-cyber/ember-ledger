@@ -84,7 +84,11 @@ export function buildCatalogSelectionSnapshot(product = {}, overrides = {}) {
     photoUrl: imageUrl,
     imageStatus: imageUrl ? "catalog" : "fallback",
     marketPrice: product.marketPrice || product.market_price || product.marketValue || product.market_value || "",
+    marketValueSource: product.marketValueSource || product.market_value_source || product.marketSource || product.market_source || product.sourceType || product.source_type || "",
+    marketPriceConfidence: product.marketPriceConfidence || product.market_price_confidence || product.priceConfidence || product.price_confidence || "",
+    marketValueUpdatedAt: product.marketValueUpdatedAt || product.market_value_updated_at || product.lastPriceChecked || product.last_price_checked || "",
     msrpPrice: product.msrpPrice || product.msrp_price || product.msrp || "",
+    msrpSource: product.msrpSource || product.msrp_source || "",
     sourceProductId: product.sourceProductId || product.source_product_id || product.tcgplayerProductId || product.tcgplayer_product_id || "",
     destination: overrides.destination || "",
   };
