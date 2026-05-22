@@ -243,6 +243,13 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     });
   }
 
+  if (SHOP_WORDS.test(text) && /\b(guarantee msrp|guaranteed msrp|guarantee inventory|guaranteed inventory)\b/i.test(text)) {
+    return response("A Family-Friendly Card Shop can support fair access and reasonable pricing when possible, but Ember & Tide should not promise guaranteed MSRP or inventory.", {
+      actions: ["Open Stores", "Send to Admin"],
+      category: "Other",
+    });
+  }
+
   if (VALUATION_WORDS.test(text)) {
     return buildValuationResponse(text);
   }
