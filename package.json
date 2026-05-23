@@ -53,6 +53,7 @@
     "test:admin-store-tools": "node --no-warnings scripts/test-admin-store-tools.mjs",
     "test:store-suggestions": "node --no-warnings scripts/test-store-suggestions.mjs",
     "test:admin-command-center": "node --no-warnings scripts/test-admin-command-center.mjs",
+    "test:beta-user-approval": "node --no-warnings scripts/test-beta-user-approval.mjs",
     "test:moderation-queues": "node --no-warnings scripts/test-moderation-queues.mjs",
     "test:notifications": "node --no-warnings scripts/test-notifications.mjs",
     "test:alert-generation": "node --no-warnings scripts/test-alert-generation.mjs",

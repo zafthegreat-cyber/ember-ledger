@@ -1,40 +1,23 @@
-import { isSupabaseConfigured, supabase } from "../supabaseClient";
+import { isSupabaseConfigured, supabase } from "../supabaseClient.js";
+import {
+  BETA_REQUEST_STATUSES,
+  LITTLE_SPARKS_STATUSES,
+  betaAccessAllowedForProfile,
+  betaAccessStatusForProfile,
+  normalizeBetaStatus,
+  normalizeLittleSparksStatus,
+  statusLabel,
+} from "../utils/betaAccessUtils.js";
 
-export const BETA_REQUEST_STATUSES = ["not_requested", "pending", "approved", "waitlist", "denied"];
-export const LITTLE_SPARKS_STATUSES = ["not_applied", "pending", "approved", "waitlist", "denied"];
-
-export const STATUS_LABELS = {
-  not_requested: "Not Requested",
-  not_applied: "Not Applied",
-  pending: "Pending",
-  approved: "Approved",
-  waitlist: "Waitlist",
-  waitlisted: "Waitlist",
-  denied: "Denied",
-  paused: "Waitlist",
-  pending_review: "Pending",
-  suspended: "Denied",
+export {
+  BETA_REQUEST_STATUSES,
+  LITTLE_SPARKS_STATUSES,
+  betaAccessAllowedForProfile,
+  betaAccessStatusForProfile,
+  normalizeBetaStatus,
+  normalizeLittleSparksStatus,
+  statusLabel,
 };
-
-export function normalizeBetaStatus(status = "not_requested") {
-  const normalized = String(status || "").trim().toLowerCase();
-  if (normalized === "paused" || normalized === "waitlisted") return "waitlist";
-  if (BETA_REQUEST_STATUSES.includes(normalized)) return normalized;
-  return "not_requested";
-}
-
-export function normalizeLittleSparksStatus(status = "not_applied") {
-  const normalized = String(status || "").trim().toLowerCase();
-  if (normalized === "pending_review") return "pending";
-  if (normalized === "waitlisted") return "waitlist";
-  if (normalized === "suspended") return "denied";
-  if (LITTLE_SPARKS_STATUSES.includes(normalized)) return normalized;
-  return "not_applied";
-}
-
-export function statusLabel(status) {
-  return STATUS_LABELS[String(status || "").toLowerCase()] || "Not Requested";
-}
 
 function mapBetaRequest(row = {}) {
   if (!row) return null;
@@ -80,6 +63,45 @@ function mapLittleSparksApplication(row = {}) {
     reviewedAt: row.reviewed_at || row.reviewedAt || "",
     createdAt: row.created_at || row.createdAt || "",
     updatedAt: row.updated_at || row.updatedAt || "",
+  };
+}
+
+function mapAdminBetaAccessProfile(row = {}) {
+  if (!row) return null;
+  const userId = row.user_id || row.userId || row.id || "";
+  const userRole = row.user_role || row.userRole || "user";
+  const fullName = row.full_name || row.fullName || [row.first_name || row.firstName, row.last_name || row.lastName].filter(Boolean).join(" ");
+  const displayName = row.display_name || row.displayName || fullName || row.email || "Beta user";
+  const betaStatus = normalizeBetaStatus(row.beta_status || row.betaStatus || row.beta_access_status || row.betaAccessStatus);
+  const betaAccessStatus = normalizeBetaStatus(row.beta_access_status || row.betaAccessStatus || betaStatus);
+  return {
+    id: userId,
+    userId,
+    email: row.email || "",
+    firstName: row.first_name || row.firstName || "",
+    lastName: row.last_name || row.lastName || "",
+    fullName,
+    displayName,
+    userRole,
+    isAdmin: ["admin", "moderator"].includes(String(userRole).toLowerCase()),
+    tier: row.tier || "free",
+    planTier: row.plan_tier || row.planTier || row.tier || "free",
+    betaStatus,
+    beta_status: betaStatus,
+    betaAccessStatus,
+    beta_access_status: betaAccessStatus,
+    status: betaAccessStatus,
+    appAccess: Boolean(row.app_access ?? row.appAccess),
+    app_access: Boolean(row.app_access ?? row.appAccess),
+    betaAccessRequestedAt: row.beta_access_requested_at || row.betaAccessRequestedAt || "",
+    betaAccessApprovedAt: row.beta_access_approved_at || row.betaAccessApprovedAt || "",
+    betaAccessApprovedBy: row.beta_access_approved_by || row.betaAccessApprovedBy || "",
+    betaAccessNotes: row.beta_access_notes || row.betaAccessNotes || "",
+    littleSparksStatus: normalizeLittleSparksStatus(row.little_sparks_status || row.littleSparksStatus),
+    createdAt: row.created_at || row.createdAt || "",
+    updatedAt: row.updated_at || row.updatedAt || "",
+    lastSeenAt: row.last_seen_at || row.lastSeenAt || row.last_login_at || row.lastLoginAt || row.updated_at || "",
+    source: "Supabase profile",
   };
 }
 
@@ -165,17 +187,46 @@ export async function submitLittleSparksApplication(user, payload) {
   return mapLittleSparksApplication(data);
 }
 
+export async function loadAdminBetaAccessProfiles(searchText = "") {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase.rpc("admin_list_beta_access_profiles", {
+    search_text: String(searchText || "").trim() || null,
+  });
+  if (error) throw error;
+  return (data || []).map(mapAdminBetaAccessProfile);
+}
+
+export async function updateAdminBetaAccessProfile(userId, status, adminNotes = "") {
+  if (!userId || !isSupabaseConfigured || !supabase) throw new Error("User id is required.");
+  const { data, error } = await supabase.rpc("admin_update_profile_beta_access", {
+    target_user_id: userId,
+    next_status: normalizeBetaStatus(status),
+    admin_notes: String(adminNotes || "").trim() || null,
+  });
+  if (error) throw error;
+  return mapAdminBetaAccessProfile(Array.isArray(data) ? data[0] : data);
+}
+
 export async function loadShorelineAdminRequests() {
-  if (!isSupabaseConfigured || !supabase) return { betaRequests: [], littleSparksApplications: [] };
-  const [betaResult, sparksResult] = await Promise.all([
+  if (!isSupabaseConfigured || !supabase) return { betaRequests: [], littleSparksApplications: [], profileUsers: [], profileUsersReady: false };
+  const [betaResult, sparksResult, profileResult] = await Promise.all([
     supabase.from("beta_access_requests").select("*").order("created_at", { ascending: false }),
     supabase.from("little_sparks_applications").select("*").order("created_at", { ascending: false }),
+    supabase.rpc("admin_list_beta_access_profiles", { search_text: null }),
   ]);
   if (betaResult.error) throw betaResult.error;
   if (sparksResult.error) throw sparksResult.error;
+  const missingProfileRpc = profileResult.error && (
+    profileResult.error.code === "42883" ||
+    profileResult.error.code === "PGRST202" ||
+    /admin_list_beta_access_profiles|function.*does not exist|could not find/i.test(profileResult.error.message || "")
+  );
+  if (profileResult.error && !missingProfileRpc) throw profileResult.error;
   return {
     betaRequests: (betaResult.data || []).map(mapBetaRequest),
     littleSparksApplications: (sparksResult.data || []).map(mapLittleSparksApplication),
+    profileUsers: missingProfileRpc ? [] : (profileResult.data || []).map(mapAdminBetaAccessProfile),
+    profileUsersReady: !missingProfileRpc,
   };
 }
 

@@ -402,6 +402,8 @@ import {
 import {
   BETA_REQUEST_STATUSES,
   LITTLE_SPARKS_STATUSES,
+  betaAccessAllowedForProfile,
+  betaAccessStatusForProfile,
   loadShorelineAccessState,
   loadShorelineAdminRequests,
   normalizeBetaStatus,
@@ -409,6 +411,7 @@ import {
   statusLabel,
   submitBetaAccessRequest,
   submitLittleSparksApplication,
+  updateAdminBetaAccessProfile,
   updateBetaAccessRequestStatus,
   updateLittleSparksApplicationStatus,
 } from "./services/shorelineAccessService";
@@ -4420,6 +4423,8 @@ export default function App() {
     littleSparksApplication: null,
     adminBetaRequests: [],
     adminLittleSparksApplications: [],
+    adminProfileUsers: [],
+    adminProfileUsersReady: false,
     message: "",
     error: "",
   });
@@ -6799,7 +6804,7 @@ export default function App() {
 
   function userBetaAccessStatus(profile = currentUserProfile) {
     if (BETA_LOCAL_MODE || profile?.isAdmin || profile?.userRole === USER_ROLES.ADMIN) return "approved";
-    const profileStatus = normalizeBetaStatus(profile?.betaStatus || profile?.beta_status || profile?.betaAccessStatus || profile?.beta_access_status);
+    const profileStatus = betaAccessStatusForProfile(profile);
     const requestStatus = normalizeBetaStatus(shorelineState.betaRequest?.status);
     const localStatus = (betaReadinessData.betaAccessUsers || []).find((entry) => {
       const email = String(entry.email || "").toLowerCase();
@@ -6812,8 +6817,7 @@ export default function App() {
     return Boolean(
       BETA_LOCAL_MODE ||
       actualAdminUser ||
-      profile?.appAccess ||
-      profile?.app_access ||
+      betaAccessAllowedForProfile(profile) ||
       userBetaAccessStatus(profile) === "approved"
     );
   }
@@ -7093,6 +7097,45 @@ export default function App() {
         ],
       };
     });
+  }
+
+  function setAdminProfileUserNote(targetUserId, note) {
+    if (!adminToolsVisible || !targetUserId) return;
+    setShorelineState((current) => ({
+      ...current,
+      adminProfileUsers: (current.adminProfileUsers || []).map((entry) =>
+        String(entry.userId) === String(targetUserId) ? { ...entry, betaAccessNotes: note } : entry
+      ),
+    }));
+  }
+
+  async function updateExistingBetaUserAccess(targetUser, status) {
+    if (!adminToolsVisible || !targetUser?.userId || !BETA_REQUEST_STATUSES.includes(status)) return;
+    try {
+      const updated = await updateAdminBetaAccessProfile(targetUser.userId, status, targetUser.betaAccessNotes || "");
+      if (!updated?.userId) throw new Error("No profile was returned after updating beta access.");
+      setShorelineState((current) => ({
+        ...current,
+        adminProfileUsers: (current.adminProfileUsers || []).map((entry) =>
+          String(entry.userId) === String(updated.userId) ? updated : entry
+        ),
+      }));
+      setVaultToast(`${updated.displayName || "User"} marked ${statusLabel(updated.status)}.`);
+      addAuditLog("beta_profile_access_update", "profile", updated.userId, { status: updated.status });
+      if (String(updated.userId) === String(user?.id || "")) {
+        setCurrentUserProfile((current) => ({
+          ...current,
+          betaStatus: updated.betaStatus,
+          betaAccessStatus: updated.betaAccessStatus,
+          appAccess: updated.appAccess,
+          beta_access_status: updated.betaAccessStatus,
+          app_access: updated.appAccess,
+        }));
+      }
+    } catch (error) {
+      logAppError("beta_profile_access_update", error, { targetUserId: targetUser.userId, status }, "normal");
+      setVaultToast(error.message || "Could not update beta access for that user.");
+    }
   }
 
   function updateBetaAccessUser(targetUser, status) {
@@ -21252,13 +21295,19 @@ function renderForgeAccessState() {
     if (!user?.id || user.id === "local-beta") return;
     setShorelineState((current) => ({ ...current, loading: true, error: "", message: "" }));
     try {
-      const next = await loadShorelineAccessState(user);
+      const [next, refreshedProfile] = await Promise.all([
+        loadShorelineAccessState(user),
+        getCurrentUserProfile(user),
+      ]);
+      setCurrentUserProfile(refreshedProfile);
       setShorelineState((current) => ({
         ...current,
         ...next,
         loading: false,
         error: "",
-        message: "Access status checked. If you were just approved, the full app will unlock after refresh or sign-in.",
+        message: betaAccessAllowedForProfile(refreshedProfile)
+          ? "Access approved. Opening Ember & Tide now."
+          : "Access status checked. Your request is still pending review.",
       }));
     } catch (error) {
       setShorelineState((current) => ({
@@ -21281,6 +21330,8 @@ function renderForgeAccessState() {
           ...current,
           adminBetaRequests: next.betaRequests,
           adminLittleSparksApplications: next.littleSparksApplications,
+          adminProfileUsers: next.profileUsers || [],
+          adminProfileUsersReady: Boolean(next.profileUsersReady),
         }));
       } catch (error) {
         if (!active) return;
@@ -29423,10 +29474,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderBetaReadinessPanel() {
     if (!adminToolsVisible) return null;
     const blockers = betaReadinessData.readiness?.blockers || [];
+    const pendingProfileUsers = (shorelineState.adminProfileUsers || []).filter((entry) =>
+      !entry.isAdmin && !betaAccessAllowedForProfile(entry)
+    ).length;
     const reviewCounts = {
       "Kids Program Applications": (shorelineState.adminLittleSparksApplications || []).filter((entry) => entry.status === "pending").length + (betaReadinessData.kidsApplications || []).filter((entry) => entry.status === "pending_review").length,
       "Data Requests": (betaReadinessData.dataRequests || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
-      "User Management": 1,
+      "User Management": shorelineState.adminProfileUsersReady ? pendingProfileUsers : 1,
       "App Error Logs": (betaReadinessData.appErrorLogs || []).length,
       "Sponsor Interest": (betaReadinessData.sponsorInterest || []).filter((entry) => ["new", "pending"].includes(entry.status || "new")).length,
       "Beta Feedback": (betaReadinessData.betaFeedback || []).filter((entry) => ["new", "reviewing"].includes(entry.status || "new")).length,
@@ -29595,6 +29649,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const showUserManagement = adminReviewFilter === "All" || adminReviewFilter === "User Management";
     const showSystemHealth = adminReviewFilter === "All" || adminReviewFilter === "System Health / Logs" || adminReviewFilter === "App Error Logs";
     const showErrors = showSystemHealth;
+    const adminProfileUsers = shorelineState.adminProfileUsers || [];
     const backendBetaRequestKeys = new Set((shorelineState.adminBetaRequests || []).map((entry) => String(entry.userId || entry.email || "").toLowerCase()).filter(Boolean));
     const localBetaAccessRows = (betaReadinessData.betaAccessUsers || []).filter((entry) => {
       const key = String(entry.userId || entry.email || "").toLowerCase();
@@ -29621,14 +29676,20 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       })),
     ].filter(Boolean);
     const userMap = new Map();
+    adminProfileUsers.forEach((entry) => {
+      const key = String(entry.userId || entry.email || "").toLowerCase();
+      if (!key) return;
+      userMap.set(key, { ...entry, backendProfileRow: true });
+    });
     localUsers.forEach((entry) => {
       const key = String(entry.userId || entry.email || entry.displayName || "").toLowerCase();
       if (!key) return;
-      userMap.set(key, { ...(userMap.get(key) || {}), ...entry });
+      const existing = userMap.get(key) || {};
+      userMap.set(key, { ...entry, ...existing, backendProfileRow: Boolean(existing.backendProfileRow) });
     });
     const userSearch = userManagementSearch.trim().toLowerCase();
     const visibleUsers = [...userMap.values()].filter((entry) => {
-      const haystack = `${entry.fullName || ""} ${entry.displayName || ""} ${entry.email || ""}`.toLowerCase();
+      const haystack = `${entry.fullName || ""} ${entry.displayName || ""} ${entry.publicUsername || ""} ${entry.username || ""} ${entry.email || ""} ${entry.betaStatus || ""} ${entry.betaAccessStatus || ""}`.toLowerCase();
       return !userSearch || haystack.includes(userSearch);
     });
     return (
@@ -29638,10 +29699,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="compact-card-header">
               <div>
                 <h3>User Management</h3>
-                <p>Admin-only user summaries. Private Vault/Forge data is not exposed here.</p>
+                <p>Admin-only profile access queue. Approvals update real backend beta fields; private Vault/Forge data is not exposed here.</p>
               </div>
               <input value={userManagementSearch} onChange={(event) => setUserManagementSearch(event.target.value)} placeholder="Search name or email" />
             </div>
+            {!shorelineState.adminProfileUsersReady ? (
+              <div className="empty-state compact-empty-state">
+                <h3>Secure profile approval needs backend setup</h3>
+                <p>Beta request reviews still work. Existing signed-up users appear here after the admin beta approval RPC migration is applied.</p>
+              </div>
+            ) : null}
             <div className="inventory-list compact-inventory-list">
               {visibleUsers.length ? visibleUsers.map((entry) => {
                 const kidsStatus = (betaReadinessData.kidsApplications || []).find((application) =>
@@ -29650,39 +29717,69 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 const reportCount = scoutReportRows.filter((report) => String(report.userId || report.user_id || report.reporterEmail || "") === String(entry.userId || entry.email)).length;
                 const feedbackCount = (betaReadinessData.betaFeedback || []).filter((feedback) => String(feedback.userId || feedback.email || "") === String(entry.userId || entry.email)).length;
                 const note = (betaReadinessData.userAdminNotes || []).find((item) => String(item.userId) === String(entry.userId || entry.email));
-                const accessStatus = userBetaAccessStatus(entry);
+                const backendProfileRow = Boolean(entry.backendProfileRow);
+                const accessStatus = backendProfileRow ? betaAccessStatusForProfile(entry) : userBetaAccessStatus(entry);
+                const accessAllowed = backendProfileRow ? betaAccessAllowedForProfile(entry) : accessStatus === "approved";
                 const usernameReviewError = validatePublicUsername(publicUsernameFromProfile(entry), entry, []);
                 return (
                   <article className="inventory-card compact-card" key={entry.userId || entry.email || entry.displayName}>
                     <div className="compact-card-header">
                       <div>
                         <strong>{entry.fullName || entry.displayName || "Unnamed user"}</strong>
-                        <p>{maskEmail(entry.email)} | {entry.createdAt ? shortDate(entry.createdAt) : "Created date unavailable"}</p>
+                        <p>{maskEmail(entry.email)} | {entry.createdAt ? shortDate(entry.createdAt) : "Created date unavailable"} | {backendProfileRow ? "Supabase profile" : "Local fallback"}</p>
                       </div>
-                      <span className="status-badge">{entry.isAdmin ? "admin" : entry.userRole || "user"}</span>
+                      <span className={`status-badge ${accessStatus}`}>{entry.isAdmin ? "admin" : statusLabel(accessStatus)}</span>
                     </div>
                     {renderCommunityProfileSummary(entry, { compact: true, adminDetail: true, className: "admin-reputation-profile-card" })}
                     <div className="detail-grid compact-detail-grid">
                       <DetailItem label="Plan/tier" value={entry.planTier || entry.tier || "free"} />
-                      <DetailItem label="Beta access" value={accessStatus} />
+                      <DetailItem label="Beta access" value={accessAllowed ? "Approved" : statusLabel(accessStatus)} />
                       <DetailItem label="Kids Program" value={kidsStatus} />
+                      <DetailItem label="Last seen" value={entry.lastSeenAt ? shortDate(entry.lastSeenAt) : "Unavailable"} />
                       <DetailItem label="Reports" value={String(reportCount)} />
                       <DetailItem label="Feedback" value={String(feedbackCount)} />
                       <DetailItem label="Username review" value={usernameReviewError ? "Needs review" : "Clear"} />
                     </div>
                     {usernameReviewError ? <p className="compact-subtitle warning-text">{usernameReviewError}</p> : null}
-                    <textarea className="drawer-field" defaultValue={note?.note || ""} placeholder="Internal admin note" onBlur={(event) => setUserAdminNote(entry.userId || entry.email, event.target.value)} />
-                    <div className="quick-actions">
-                      {BETA_ACCESS_STATUSES.map((status) => (
-                        <button type="button" className="secondary-button" key={status} onClick={() => updateBetaAccessUser(entry, status)}>{status}</button>
-                      ))}
-                    </div>
+                    {backendProfileRow ? (
+                      <>
+                        {entry.isAdmin ? <p className="compact-subtitle">Admin/moderator access is not managed from beta approval.</p> : null}
+                        <textarea
+                          className="drawer-field"
+                          value={entry.betaAccessNotes || ""}
+                          placeholder="Private beta access note"
+                          onChange={(event) => setAdminProfileUserNote(entry.userId, event.target.value)}
+                        />
+                        <div className="quick-actions">
+                          {BETA_REQUEST_STATUSES.filter((status) => status !== "not_requested").map((status) => (
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              key={status}
+                              disabled={entry.isAdmin}
+                              onClick={() => void updateExistingBetaUserAccess(entry, status)}
+                            >
+                              {status === "denied" ? "Deny / Revoke" : statusLabel(status)}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <textarea className="drawer-field" defaultValue={note?.note || ""} placeholder="Internal admin note" onBlur={(event) => setUserAdminNote(entry.userId || entry.email, event.target.value)} />
+                        <div className="quick-actions">
+                          {BETA_ACCESS_STATUSES.map((status) => (
+                            <button type="button" className="secondary-button" key={status} onClick={() => updateBetaAccessUser(entry, status)}>{status}</button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </article>
                 );
               }) : (
                 <div className="empty-state">
                   <h3>No users match that search</h3>
-                  <p>User summaries appear from the current profile, Kids Program applications, and beta feedback.</p>
+                  <p>Signed-up users appear from Supabase profiles when the admin approval backend is available. Local fallback rows still appear from applications and feedback.</p>
                 </div>
               )}
             </div>
