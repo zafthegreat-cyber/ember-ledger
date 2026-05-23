@@ -1,4 +1,3 @@
-import { PRODUCT_CATEGORY_TYPES } from "./productAliases";
 import importedSealedProductsUrl from "./generated/sealedProducts.json?url";
 import catalogRecoveryProducts from "./catalogRecoveryProducts.json";
 
@@ -148,6 +147,5 @@ export async function loadPokemonProductCatalog() {
 
 export const POKEMON_PRODUCTS = [];
 export const POKEMON_PRODUCT_UPCS = [];
-
 export const POKEMON_PRODUCT_RETAILER_ALIASES = [];
-export { PRODUCT_CATEGORY_TYPES };
+export const PRODUCT_CATEGORY_TYPES = [];

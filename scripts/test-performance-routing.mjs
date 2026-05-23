@@ -26,6 +26,8 @@ assert.match(app, /import\("\.\/services\/pokemonCatalogSearch"\)/);
 assert.match(app, /const SmartCatalogSearchBox = lazy\(\(\) => import\("\.\/components\/SmartCatalogSearchBox"\)\)/);
 assert.doesNotMatch(app, /import SmartCatalogSearchBox from "\.\/components\/SmartCatalogSearchBox"/);
 assert.doesNotMatch(app, /from "\.\/services\/pokemonCatalogSearch"/);
+assert.match(app, /from "\.\/data\/pokemonCatalogCoreData"/);
+assert.doesNotMatch(app, /from "\.\/data\/sharedPokemonCatalog"/);
 assert.match(app, /from "\.\/utils\/emberAssistLite"/);
 assert.match(app, /import\("\.\/utils\/emberAssist"\)/);
 assert.doesNotMatch(app, /from "\.\/utils\/emberAssist"/);
@@ -34,6 +36,7 @@ assert.match(catalogSeed, /generated\/sealedProducts\.json\?url/);
 assert.match(catalogSeed, /export async function loadPokemonProductCatalog/);
 assert.match(catalogSeed, /fetch\(importedSealedProductsUrl/);
 assert.doesNotMatch(catalogSeed, /import importedSealedProducts from "\.\/generated\/sealedProducts\.json"/);
+assert.doesNotMatch(catalogSeed, /from "\.\/productAliases"/);
 
 assert.match(storeSeed, /generated\/virginiaStores\.json\?url/);
 assert.match(storeSeed, /export async function loadVirginiaStoresSeed/);

@@ -49,6 +49,13 @@ check(
 );
 
 check(
+  "Catalog metadata constants do not pull the catalog seed chunk into startup",
+  app.includes('from "./data/pokemonCatalogCoreData"') &&
+    !/from\s+["']\.\/data\/sharedPokemonCatalog["']/.test(app) &&
+    read("src/data/pokemonSetCatalog.js").includes('from "./pokemonCatalogCoreData"')
+);
+
+check(
   "Catalog search UI and full search service are lazy-loaded",
   !/import\s+SmartCatalogSearchBox\s+from\s+["']\.\/components\/SmartCatalogSearchBox["']/.test(app) &&
     app.includes('const SmartCatalogSearchBox = lazy(() => import("./components/SmartCatalogSearchBox"))') &&

@@ -4,7 +4,7 @@ import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
 import { APP_VERSION, checkForEmberTideUpdate, refreshEmberTideApp } from "./appUpdate";
-import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/sharedPokemonCatalog";
+import { SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/pokemonCatalogCoreData";
 import {
   ALERT_TYPE_OPTIONS,
   APP_STRUCTURE_LINKS,
@@ -426,9 +426,16 @@ const BRAND_ASSETS = {
 };
 
 const LOCAL_CATALOG_SEED_SOURCE = "local_catalog_seed";
+const EMPTY_CATALOG_IMPORT_STATUS = {
+  source: "supabase",
+  totalCards: 0,
+  totalSealedProducts: 0,
+  generatedAt: "",
+};
 let pokemonCatalogSearchModulePromise = null;
 let catalogAliasModulePromise = null;
 let emberAssistBrainModulePromise = null;
+let catalogImportStatusModulePromise = null;
 
 function loadPokemonCatalogSearchModule() {
   if (!pokemonCatalogSearchModulePromise) {
@@ -455,6 +462,21 @@ function loadEmberAssistBrainModule() {
     emberAssistBrainModulePromise = import("./utils/emberAssist");
   }
   return emberAssistBrainModulePromise;
+}
+
+async function loadCatalogImportStatusOnDemand() {
+  if (!catalogImportStatusModulePromise) {
+    catalogImportStatusModulePromise = import("./data/generated/catalogImportStatus.json");
+  }
+  const statusModule = await catalogImportStatusModulePromise;
+  const status = statusModule.default || statusModule;
+  return {
+    source: "supabase",
+    totalCards: status.cardsImported || 0,
+    totalSealedProducts: status.sealedProductsImported || 0,
+    generatedAt: status.lastImportedAt || "",
+    ...status,
+  };
 }
 
 function normalizeLocalCatalogSeedProducts(products = []) {
@@ -4590,6 +4612,7 @@ export default function App() {
   const [listingReportReason, setListingReportReason] = useState(MARKETPLACE_REPORT_REASONS[0]);
   const [listingReportDetails, setListingReportDetails] = useState("");
   const [vaultListingDecision, setVaultListingDecision] = useState(null);
+  const [catalogImportStatus, setCatalogImportStatus] = useState(EMPTY_CATALOG_IMPORT_STATUS);
   const [supabaseImportStatus, setSupabaseImportStatus] = useState({
     loading: false,
     totalPokemonProducts: null,
@@ -7768,6 +7791,9 @@ export default function App() {
     }
     if (activeTab === "adminReview" && hasAdminProfileSignal) {
       loadSupabaseImportStatus();
+      loadCatalogImportStatusOnDemand()
+        .then(setCatalogImportStatus)
+        .catch((error) => console.warn("Could not load catalog import status", error));
     }
   }, [activeTab, hasAdminProfileSignal]);
 
@@ -41195,16 +41221,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="cards mini-cards">
                 <div className="card"><p>Set Records</p><h2>{POKEMON_SETS.length}</h2></div>
                 <div className="card"><p>Catalog Rows</p><h2>{supabaseImportStatus.totalPokemonProducts ?? catalogProducts.length}</h2></div>
-                <div className="card"><p>Imported Cards</p><h2>{CATALOG_IMPORT_STATUS.cardsImported || 0}</h2></div>
-                <div className="card"><p>Imported Sealed</p><h2>{CATALOG_IMPORT_STATUS.sealedProductsImported || 0}</h2></div>
+                <div className="card"><p>Imported Cards</p><h2>{catalogImportStatus.cardsImported || 0}</h2></div>
+                <div className="card"><p>Imported Sealed</p><h2>{catalogImportStatus.sealedProductsImported || 0}</h2></div>
                 <div className="card"><p>UPC/SKU Links</p><h2>{catalogUpcCount}</h2></div>
                 <div className="card"><p>Market Price Rows</p><h2>{catalogMarketPriceCount}</h2></div>
                 <div className="card"><p>Duplicate Warnings</p><h2>{catalogDuplicateWarnings.length}</h2></div>
                 <div className="card"><p>Validation Warnings</p><h2>{catalogValidationWarnings.length}</h2></div>
               </div>
               <p className="compact-subtitle">
-                Last catalog import: {CATALOG_IMPORT_STATUS.lastImportedAt ? new Date(CATALOG_IMPORT_STATUS.lastImportedAt).toLocaleString() : "No generated import yet"}.
-                Source: {CATALOG_IMPORT_STATUS.source || "local catalog"}.
+                Last catalog import: {catalogImportStatus.lastImportedAt ? new Date(catalogImportStatus.lastImportedAt).toLocaleString() : "No generated import yet"}.
+                Source: {catalogImportStatus.source || "local catalog"}.
               </p>
               <div className="quick-action-rail">
                 {CATALOG_IMPORT_SOURCES.map((source) => (

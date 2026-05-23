@@ -1,4 +1,4 @@
-import { SET_SEARCH_METADATA } from "./sharedPokemonCatalog";
+import { SET_SEARCH_METADATA } from "./pokemonCatalogCoreData";
 import importedPokemonSets from "./generated/pokemonTcgSets.json";
 
 const SET_SERIES = {
