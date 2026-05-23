@@ -143,13 +143,13 @@ function scoreIndexedCatalogItem(queryMeta, indexed) {
   const { item, haystack } = indexed;
 
   if (indexed.exactIds.some((id) => id === normalized)) {
-    return { score: 1000, reason: "Exact UPC/SKU/barcode match" };
+    return { item, score: 1000, reason: "Exact UPC/SKU/barcode match" };
   }
   if (indexed.cardNumber && indexed.cardNumber === normalized) {
-    return { score: 940, reason: "Exact card number match" };
+    return { item, score: 940, reason: "Exact card number match" };
   }
   if (indexed.setCode && tokens.includes(indexed.setCode)) {
-    return { score: 760, reason: "Set code match" };
+    return { item, score: 760, reason: "Set code match" };
   }
 
   let score = 0;

@@ -32,6 +32,9 @@ assert.match(catalogSearchUtils, /function buildCatalogSearchIndex/);
 assert.match(catalogSearchUtils, /function buildCatalogQueryMeta/);
 assert.match(catalogSearchUtils, /function indexedItemMayMatch/);
 assert.match(catalogSearchUtils, /\.filter\(\(indexed\) => indexedItemMayMatch\(queryMeta, indexed\)\)/);
+assert.match(catalogSearchUtils, /return \{ item, score: 1000, reason: "Exact UPC\/SKU\/barcode match" \}/);
+assert.match(catalogSearchUtils, /return \{ item, score: 940, reason: "Exact card number match" \}/);
+assert.match(catalogSearchUtils, /return \{ item, score: 760, reason: "Set code match" \}/);
 
 assert.equal(pkg.scripts?.["test:search-performance"], "node --no-warnings scripts/test-search-performance.mjs");
 
