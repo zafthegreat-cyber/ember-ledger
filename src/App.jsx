@@ -7201,6 +7201,19 @@ export default function App() {
     if (!isAnnouncementNotification(entry)) return false;
     if (announcementWindowState(entry) !== "active") return false;
     if (entry.dismissedAt && !isRequiredAnnouncement(entry)) return false;
+    const audience = String(entry.audience || entry.audienceKey || entry.targetAudience || "").toLowerCase();
+    if (audience) {
+      if (/\b(admin|moderator|internal)\b/.test(audience) && !adminToolsVisible) return false;
+      if (/\b(seller|forge|business)\b/.test(audience) && !commandDeskSellerAccess && !adminToolsVisible) return false;
+      if (/\b(kids|spark|family|parent)\b/.test(audience)) {
+        const familyRelevant =
+          adminToolsVisible ||
+          ["budget", "parent"].includes(normalizeUserType(userType)) ||
+          ["simple", "budget_parent"].includes(normalizeDashboardPreset(dashboardPreset)) ||
+          Boolean(shorelineState.littleSparksApplication);
+        if (!familyRelevant) return false;
+      }
+    }
     return true;
   }
 
@@ -20768,9 +20781,9 @@ function renderForgeHeader() {
     downloadCSV("ember-tide-kid-pack-builder.csv", rows);
   }
 
-  const recentPurchases = [...forgeInventoryItems]
+  const recentPurchases = commandDeskSellerAccess ? [...forgeInventoryItems]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .slice(0, 5);
+    .slice(0, 5) : [];
   const recentSales = [...workspaceSales]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     .slice(0, 5);
@@ -20787,6 +20800,8 @@ function renderForgeHeader() {
   const bestScoutStore = scoutSnapshot.stores?.[0] || virginiaStoreSeed[0] || {};
   const bestMarketMover = recentMarketUpdates[0] || workspaceWatchlist[0] || null;
   const bestWishlistItem = wishlistItems[0] || workspaceWatchlist[0] || null;
+  const latestVaultActivityItem = [...activeVaultItems]
+    .sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0))[0];
   const suggestedHomeAction = dailyTideComplete
     ? { key: "complete", label: "Daily Tide Complete ✓", detail: "Today's Tide is ready.", onClick: () => setDailyTideModalTask("") }
     : !dailyTideStartedToday
@@ -20795,8 +20810,8 @@ function renderForgeHeader() {
   const earnedBadges = new Set([
     ...(dailyTideToday.badges || []),
     activeVaultItems.length ? "vault_builder" : "",
-    forgeInventoryItems.length ? "forge_starter" : "",
-    workspaceSales.length ? "first_sale" : "",
+    commandDeskSellerAccess && forgeInventoryItems.length ? "forge_starter" : "",
+    commandDeskSellerAccess && workspaceSales.length ? "first_sale" : "",
     scoutSnapshot.reports?.length ? "restock_reporter" : "",
     workspaceWatchlist.length ? "market_watcher" : "",
   ].filter(Boolean));
@@ -20820,12 +20835,12 @@ function renderForgeHeader() {
           action: () => setActiveTab("inventory"),
         }
       : null,
-    vaultItems[0]
+    latestVaultActivityItem
       ? {
-          id: `home-vault-${vaultItems[0].id}`,
+          id: `home-vault-${latestVaultActivityItem.id}`,
           label: "The Vault",
-          title: vaultItems[0].name,
-          detail: `${vaultStatusLabel(normalizeVaultStatus(vaultItems[0]))} | ${money(Number(vaultItems[0].quantity || 0) * Number(vaultItems[0].marketPrice || 0))}`,
+          title: latestVaultActivityItem.name,
+          detail: `${vaultStatusLabel(normalizeVaultStatus(latestVaultActivityItem))} | ${money(Number(latestVaultActivityItem.quantity || 0) * Number(latestVaultActivityItem.marketPrice || 0))}`,
           action: () => setActiveTab("vault"),
         }
       : null,
@@ -34021,13 +34036,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderHearthHomeCommandView() {
     const normalizedMode = normalizeUserType(userType);
     const normalizedPreset = normalizeDashboardPreset(dashboardPreset);
-    const sellerModeRequested =
-      ["seller", "all_in_one"].includes(normalizedMode) ||
-      ["seller", "full_business"].includes(normalizedPreset);
     const simpleModeRequested =
       ["budget", "parent"].includes(normalizedMode) ||
       ["simple", "budget_parent"].includes(normalizedPreset);
-    const sellerAccessVisible = adminToolsVisible || sellerModeRequested || featureAllowed("seller_tools");
+    const sellerAccessVisible = commandDeskSellerAccess;
     const hearthMode = adminToolsVisible
       ? "admin"
       : sellerAccessVisible
@@ -34042,29 +34054,65 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       collector: "Collector command view",
     }[hearthMode];
     const activeAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement).slice(0, 3);
-    const pendingBetaRequests = (shorelineState.adminBetaRequests || [])
-      .filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length +
-      (betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length;
-    const pendingKidsRequests = (shorelineState.adminLittleSparksApplications || [])
-      .filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending")).length +
-      (betaReadinessData.kidsApplications || []).filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending_review")).length;
-    const pendingFeedbackCount = (betaReadinessData.betaFeedback || [])
+    const currentScopedUserId = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta");
+    const currentScopedEmail = String(accountEmail() || "").trim().toLowerCase();
+    const isCurrentUserRecord = (entry = {}) => {
+      const entryUserId = String(entry.userId || entry.user_id || entry.ownerId || entry.owner_id || "").trim();
+      const entryEmail = String(entry.email || entry.guestEmail || entry.guest_email || "").trim().toLowerCase();
+      if (entryUserId && entryUserId === currentScopedUserId) return true;
+      if (entryEmail && currentScopedEmail && entryEmail === currentScopedEmail) return true;
+      return !entryUserId && !entryEmail && (BETA_LOCAL_MODE || guestPreviewActive);
+    };
+    const adminBetaAccessRows = adminToolsVisible
+      ? [
+          ...(shorelineState.adminBetaRequests || []),
+          ...(betaReadinessData.betaAccessUsers || []),
+        ]
+      : [];
+    const adminKidsApplicationRows = adminToolsVisible
+      ? [
+          ...(shorelineState.adminLittleSparksApplications || []),
+          ...(betaReadinessData.kidsApplications || []),
+        ]
+      : [];
+    const userKidsApplicationRows = [
+      shorelineState.littleSparksApplication,
+      ...(betaReadinessData.kidsApplications || []).filter(isCurrentUserRecord),
+    ].filter(Boolean);
+    const pendingBetaRequests = adminBetaAccessRows
+      .filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length;
+    const pendingKidsRequests = adminKidsApplicationRows
+      .filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending")).length;
+    const pendingFeedbackCount = adminToolsVisible ? (betaReadinessData.betaFeedback || [])
       .filter((entry) => ["new", "reviewing", "pending"].includes(entry.status || "new")).length +
-      (betaReadinessData.appErrorLogs || []).length;
-    const pendingSuggestionCount = suggestions.filter((entry) =>
+      (betaReadinessData.appErrorLogs || []).length : 0;
+    const pendingSuggestionCount = adminToolsVisible ? suggestions.filter((entry) =>
       ["Submitted", "Under Review", "Needs More Info"].includes(entry.status)
-    ).length;
-    const marketReviewCount = workspaceMarketplaceListings.filter((listing) =>
+    ).length : 0;
+    const marketReviewCount = adminToolsVisible ? workspaceMarketplaceListings.filter((listing) =>
       listing.flagged ||
       /pending|review|flag|reported/i.test(`${listing.status || ""} ${listing.moderationStatus || ""} ${listing.reviewStatus || ""}`)
-    ).length;
-    const latestVaultItem = [...activeVaultItems]
-      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-    const latestScoutReport = (scoutSnapshot.reports || [])
-      .find((report) => report.verified || report.confidence === "verified" || /verified|confirmed/i.test(`${report.status || ""} ${report.confidence || ""}`)) ||
-      (scoutSnapshot.reports || [])[0];
+    ).length : 0;
+    const followedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+    const followedStoreIds = new Set(followedStores.map((store) => String(store.id || store.storeId || store.store_id || "")).filter(Boolean));
+    const scoutReportMatchesFollowedStore = (report = {}) => {
+      const store = getScoutReportStore(report);
+      const reportStoreId = String(report.storeId || report.store_id || store.id || "").trim();
+      return Boolean(
+        report.favoriteStore ||
+        report.favorite_store ||
+        (reportStoreId && followedStoreIds.has(reportStoreId)) ||
+        isWatchedEmberStore(store)
+      );
+    };
+    const isConfirmedScoutSignal = (report = {}) =>
+      Boolean(report.verified || report.confidence === "verified" || /verified|confirmed/i.test(`${report.status || ""} ${report.confidence || ""} ${report.verificationStatus || report.verification_status || ""}`));
+    const latestScoutReport = scoutReportRows.find((report) => scoutReportMatchesFollowedStore(report) && isConfirmedScoutSignal(report)) ||
+      scoutReportRows.find(isConfirmedScoutSignal) ||
+      scoutReportRows.find(scoutReportMatchesFollowedStore) ||
+      scoutReportRows[0];
     const latestScoutStore = latestScoutReport ? getScoutReportStore(latestScoutReport) : bestScoutStore;
-    const latestScoutStoreName = latestScoutStore?.name || latestScoutReport?.storeName || latestScoutReport?.store_name || bestScoutStore?.name || "your followed stores";
+    const latestScoutStoreName = latestScoutStore?.name || latestScoutReport?.storeName || latestScoutReport?.store_name || bestScoutStore?.name || (followedStores.length ? "your followed stores" : "nearby stores");
     const latestScoutItem = latestScoutReport?.itemName || latestScoutReport?.item_name || latestScoutReport?.productName || latestScoutReport?.product_name || "Pokemon stock";
     const latestScoutTime = latestScoutReport
       ? shortDate(latestScoutReport.reportedAt || latestScoutReport.reported_at || latestScoutReport.createdAt || latestScoutReport.created_at)
@@ -34073,7 +34121,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       /draft|review|pending|duplicate/i.test(`${receipt.status || ""}`)
     ).length;
     const forgeReviewCount = receiptsNeedingReviewCount + needsMarketCheckItems.length + missingSalePriceItems.length;
-    const kidsApplication = (betaReadinessData.kidsApplications || [])[0] || shorelineState.littleSparksApplication || null;
+    const kidsApplication = userKidsApplicationRows[0] || null;
+    const catalogFreshnessSource = supabaseImportStatus.lastPriceChecked || catalogImportStatus.lastImportedAt || marketPriceCache.lastSync || "";
+    const catalogFreshnessLabel = catalogFreshnessSource ? shortDate(catalogFreshnessSource) : "";
     const getStartedCards = [
       {
         key: "start-collection",
@@ -34267,6 +34317,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         { key: "scout-review", eyebrow: "Scout", title: "Reports needing verification", value: scoutNeedsReviewReports.length, detail: "Review community reports before they shape predictions.", cta: "Open Queue", onClick: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); }, accent: "scout" },
         { key: "market-flags", eyebrow: "Market", title: "Marketplace review", value: marketReviewCount, detail: "Flagged or pending listing review.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
         { key: "feedback", eyebrow: "Support", title: "Feedback and bugs", value: pendingFeedbackCount + pendingSuggestionCount, detail: "Feedback, app errors, and shared data suggestions.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "tide" },
+        catalogFreshnessLabel ? { key: "catalog-freshness", eyebrow: "Catalog", title: "Pricing freshness", value: catalogFreshnessLabel, detail: "Latest loaded catalog or market-price status available to admin tools.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "gold" } : null,
       ],
       seller: [
         { key: "forge", eyebrow: "Forge Workshop", title: "Inventory health", value: `${forgeInventoryItems.length} items`, detail: `${forgeReviewCount} item${forgeReviewCount === 1 ? "" : "s"} need receipt, price, or listing review.`, cta: "Open Forge", onClick: () => setActiveTab("inventory"), accent: "forge" },
@@ -34275,18 +34326,18 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         { key: "sales", eyebrow: "Sales", title: "Profit snapshot", value: money(monthlyProfitLoss), detail: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} and ${workspaceExpenses.length} expense${workspaceExpenses.length === 1 ? "" : "s"} in this workspace.`, cta: "Open Reports", onClick: () => setActiveTab("reports"), accent: "gold" },
       ],
       simple: [
-        { key: "scout", eyebrow: "Scout Signals", title: latestScoutStoreName || "Nearby signals", value: scoutSnapshot.reports?.length || 0, detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` reported ${latestScoutTime}` : " reported recently"}.` : "No verified signals nearby yet.", cta: "Open Scout", onClick: () => setActiveTab("scout"), accent: "scout" },
+        { key: "scout", eyebrow: "Scout Signals", title: latestScoutStoreName || "Nearby signals", value: followedStores.length ? `${followedStores.length} followed` : scoutReportRows.length || 0, detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` reported ${latestScoutTime}` : " reported recently"}.` : "No verified signals nearby yet.", cta: "Open Scout", onClick: () => setActiveTab("scout"), accent: "scout" },
         { key: "spark", eyebrow: "Kids Program", title: "The Spark", value: kidsApplication?.status || "Ready", detail: kidsApplication ? "Your Kids Program request is tracked here." : "Parent-approved access, requests, and safety rules.", cta: "Open Spark", onClick: () => setActiveTab("kidsProgram"), accent: "spark" },
         { key: "vault", eyebrow: "Vault", title: "Collection basics", value: `${activeVaultItems.length} items`, detail: activeVaultItems.length ? "Keep owned items organized for fair trades and family planning." : "Start with one saved card or sealed product.", cta: "Add Item", onClick: () => openQuickAddAction("vaultItem"), accent: "vault" },
       ],
       collector: [
         { key: "vault", eyebrow: "Vault", title: "Collection summary", value: money(vaultValue), detail: `${activeVaultItems.length} active item${activeVaultItems.length === 1 ? "" : "s"} tracked.`, cta: activeVaultItems.length ? "Open Vault" : "Add Item", onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"), accent: "vault" },
-        { key: "recent", eyebrow: "Recent Additions", title: latestVaultItem?.name || "No additions yet", value: latestVaultItem ? `Qty ${latestVaultItem.quantity || 1}` : "0", detail: latestVaultItem ? `${vaultStatusLabel(normalizeVaultStatus(latestVaultItem))} in your Vault.` : "Add items to build your collection history.", cta: "Open Vault", onClick: () => setActiveTab("vault"), accent: "vault" },
+        { key: "recent", eyebrow: "Recent Additions", title: latestVaultActivityItem?.name || "No additions yet", value: latestVaultActivityItem ? `Qty ${latestVaultActivityItem.quantity || 1}` : "0", detail: latestVaultActivityItem ? `${vaultStatusLabel(normalizeVaultStatus(latestVaultActivityItem))} in your Vault.` : "Add items to build your collection history.", cta: "Open Vault", onClick: () => setActiveTab("vault"), accent: "vault" },
         { key: "sets", eyebrow: "Sets", title: "Missing set cards", value: missingSetCardCount, detail: missingSetCardCount ? "Open Vault Sets to continue completion tracking." : "Set completion will appear as your collection grows.", cta: "Open Sets", onClick: () => { setActiveTab("vault"); setVaultSubTab("sets"); }, accent: "tide" },
         { key: "market", eyebrow: "Market Watch", title: bestMarketMover?.name || bestMarketMover?.productName || "No watched deals yet", value: bestMarketMover ? money(bestMarketMover.marketPrice || bestMarketMover.marketValue || 0) : workspaceWatchlist.length, detail: bestMarketMover ? "Compare current market value before buying or trading." : "Create a watchlist to track fair prices.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
       ],
     };
-    const priorityCards = modePriorityCards[hearthMode] || modePriorityCards.collector;
+    const priorityCards = (modePriorityCards[hearthMode] || modePriorityCards.collector).filter(Boolean);
     const fallbackCards = getStartedCards.filter((card) => {
       if (card.key === "start-collection") return !activeVaultItems.length;
       if (card.key === "follow-stores") return !(scoutSnapshot.reports || []).length;
@@ -34441,13 +34492,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderTodaysTideCommandCenter() {
     const normalizedMode = normalizeUserType(userType);
     const normalizedPreset = normalizeDashboardPreset(dashboardPreset);
-    const sellerModeRequested =
-      ["seller", "all_in_one"].includes(normalizedMode) ||
-      ["seller", "full_business"].includes(normalizedPreset);
     const simpleModeRequested =
       ["budget", "parent"].includes(normalizedMode) ||
       ["simple", "budget_parent"].includes(normalizedPreset);
-    const sellerAccessVisible = adminToolsVisible || sellerModeRequested || featureAllowed("seller_tools");
+    const sellerAccessVisible = commandDeskSellerAccess;
     const tideMode = adminToolsVisible
       ? "admin"
       : sellerAccessVisible
@@ -34456,27 +34504,65 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           ? "simple"
           : "collector";
     const activeAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement).slice(0, 4);
-    const pendingBetaRequests = (shorelineState.adminBetaRequests || [])
-      .filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length +
-      (betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length;
-    const pendingKidsRequests = (shorelineState.adminLittleSparksApplications || [])
-      .filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending")).length +
-      (betaReadinessData.kidsApplications || []).filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending_review")).length;
-    const pendingFeedbackCount = (betaReadinessData.betaFeedback || [])
+    const currentScopedUserId = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta");
+    const currentScopedEmail = String(accountEmail() || "").trim().toLowerCase();
+    const isCurrentUserRecord = (entry = {}) => {
+      const entryUserId = String(entry.userId || entry.user_id || entry.ownerId || entry.owner_id || "").trim();
+      const entryEmail = String(entry.email || entry.guestEmail || entry.guest_email || "").trim().toLowerCase();
+      if (entryUserId && entryUserId === currentScopedUserId) return true;
+      if (entryEmail && currentScopedEmail && entryEmail === currentScopedEmail) return true;
+      return !entryUserId && !entryEmail && (BETA_LOCAL_MODE || guestPreviewActive);
+    };
+    const adminBetaAccessRows = adminToolsVisible
+      ? [
+          ...(shorelineState.adminBetaRequests || []),
+          ...(betaReadinessData.betaAccessUsers || []),
+        ]
+      : [];
+    const adminKidsApplicationRows = adminToolsVisible
+      ? [
+          ...(shorelineState.adminLittleSparksApplications || []),
+          ...(betaReadinessData.kidsApplications || []),
+        ]
+      : [];
+    const userKidsApplicationRows = [
+      shorelineState.littleSparksApplication,
+      ...(betaReadinessData.kidsApplications || []).filter(isCurrentUserRecord),
+    ].filter(Boolean);
+    const pendingBetaRequests = adminBetaAccessRows
+      .filter((entry) => ["pending", "paused", "requested"].includes(entry.status || "pending")).length;
+    const pendingKidsRequests = adminKidsApplicationRows
+      .filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending")).length;
+    const pendingFeedbackCount = adminToolsVisible ? (betaReadinessData.betaFeedback || [])
       .filter((entry) => ["new", "reviewing", "pending"].includes(entry.status || "new")).length +
-      (betaReadinessData.appErrorLogs || []).length;
-    const pendingSuggestionCount = suggestions.filter((entry) =>
+      (betaReadinessData.appErrorLogs || []).length : 0;
+    const pendingSuggestionCount = adminToolsVisible ? suggestions.filter((entry) =>
       ["Submitted", "Under Review", "Needs More Info"].includes(entry.status)
-    ).length;
-    const marketReviewCount = workspaceMarketplaceListings.filter((listing) =>
+    ).length : 0;
+    const marketReviewCount = adminToolsVisible ? workspaceMarketplaceListings.filter((listing) =>
       listing.flagged ||
       /pending|review|flag|reported/i.test(`${listing.status || ""} ${listing.moderationStatus || ""} ${listing.reviewStatus || ""}`)
-    ).length;
-    const latestScoutReport = (scoutSnapshot.reports || [])
-      .find((report) => report.verified || /verified|confirmed/i.test(`${report.status || ""} ${report.confidence || ""}`)) ||
-      (scoutSnapshot.reports || [])[0];
+    ).length : 0;
+    const followedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+    const followedStoreIds = new Set(followedStores.map((store) => String(store.id || store.storeId || store.store_id || "")).filter(Boolean));
+    const scoutReportMatchesFollowedStore = (report = {}) => {
+      const store = getScoutReportStore(report);
+      const reportStoreId = String(report.storeId || report.store_id || store.id || "").trim();
+      return Boolean(
+        report.favoriteStore ||
+        report.favorite_store ||
+        (reportStoreId && followedStoreIds.has(reportStoreId)) ||
+        isWatchedEmberStore(store)
+      );
+    };
+    const isConfirmedScoutSignal = (report = {}) =>
+      Boolean(report.verified || /verified|confirmed/i.test(`${report.status || ""} ${report.confidence || ""} ${report.verificationStatus || report.verification_status || ""}`));
+    const latestScoutReport = scoutReportRows.find((report) => scoutReportMatchesFollowedStore(report) && isConfirmedScoutSignal(report)) ||
+      scoutReportRows.find(isConfirmedScoutSignal) ||
+      scoutReportRows.find(scoutReportMatchesFollowedStore) ||
+      scoutReportRows[0];
     const latestScoutStore = latestScoutReport ? getScoutReportStore(latestScoutReport) : bestScoutStore;
-    const latestScoutStoreName = latestScoutStore?.name || latestScoutReport?.storeName || latestScoutReport?.store_name || bestScoutStore?.name || "nearby stores";
+    const latestScoutStoreName = latestScoutStore?.name || latestScoutReport?.storeName || latestScoutReport?.store_name || bestScoutStore?.name || (followedStores.length ? "your followed stores" : "nearby stores");
     const latestScoutItem = latestScoutReport?.itemName || latestScoutReport?.item_name || latestScoutReport?.productName || latestScoutReport?.product_name || "Pokemon stock";
     const latestScoutTime = latestScoutReport
       ? shortDate(latestScoutReport.reportedAt || latestScoutReport.reported_at || latestScoutReport.createdAt || latestScoutReport.created_at)
@@ -34485,7 +34571,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       /draft|review|pending|duplicate/i.test(`${receipt.status || ""}`)
     ).length;
     const forgePricingTaskCount = needsMarketCheckItems.length + missingSalePriceItems.length;
-    const kidsApplications = [...(shorelineState.adminLittleSparksApplications || []), ...(betaReadinessData.kidsApplications || [])];
+    const kidsApplications = adminToolsVisible ? adminKidsApplicationRows : userKidsApplicationRows;
+    const catalogFreshnessSource = supabaseImportStatus.lastPriceChecked || catalogImportStatus.lastImportedAt || marketPriceCache.lastSync || "";
+    const catalogFreshnessLabel = catalogFreshnessSource ? shortDate(catalogFreshnessSource) : "";
     const openScoutToday = () => {
       setActiveTab("scout");
       setScoutView("overview");
@@ -34671,6 +34759,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         onAction: () => setActiveTab("adminReview"),
         badge: "scout_verified",
       } : null,
+      adminToolsVisible && catalogFreshnessLabel ? {
+        key: "catalog_freshness",
+        priority: "optional",
+        area: "Catalog",
+        title: "Check catalog and pricing freshness",
+        reason: `Latest loaded catalog or pricing update: ${catalogFreshnessLabel}.`,
+        actionLabel: "Open Admin",
+        onAction: () => setActiveTab("adminReview"),
+        badge: "first_scan",
+      } : null,
     ].filter(Boolean);
     const priorityOrder = { urgent: 0, today: 1, optional: 2 };
     const sortedChecklistItems = checklistItems.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
@@ -34695,7 +34793,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         key: "scout",
         area: "Scout Signals",
         title: latestScoutReport ? latestScoutStoreName : "No verified signals nearby yet",
-        value: scoutSnapshot.reports?.length || 0,
+        value: followedStores.length ? `${followedStores.length} followed` : scoutReportRows.length || 0,
         detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` | ${latestScoutTime}` : ""}` : "Follow stores or submit the first signal.",
         actionLabel: "Open Scout",
         onClick: openScoutToday,
@@ -34759,6 +34857,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         detail: activeAnnouncements[0].body || activeAnnouncements[0].message || "Review the latest update.",
         actionLabel: "View Details",
         onClick: () => setActiveTab("whatsNew"),
+        accent: "gold",
+      } : null,
+      adminToolsVisible && catalogFreshnessLabel ? {
+        key: "catalog",
+        area: "Catalog Freshness",
+        title: "Catalog and pricing status",
+        value: catalogFreshnessLabel,
+        detail: "Shown only when catalog or market-price status has already loaded.",
+        actionLabel: "Open Admin",
+        onClick: () => setActiveTab("adminReview"),
         accent: "gold",
       } : null,
     ].filter(Boolean);
