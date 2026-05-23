@@ -1066,6 +1066,7 @@ function routeStateFromPath(pathname = "") {
   if (section === "known-limitations") return { activeTab: "knownLimitations" };
   if (section === "kids-program") return { activeTab: "kidsProgram" };
   if (section === "profile" && subSection === "progress") return { activeTab: "profileProgress" };
+  if (section === "reports" || section === "business-reports" || section === "exports") return { activeTab: "reports", forgeSubTab: "overview" };
   if (section === "admin" || section === "admin-review") return { activeTab: "adminReview" };
   if (section === "partner" || section === "sponsor") return { activeTab: "sponsor" };
   if (section === "privacy" || section === "terms" || section === "trust") return { activeTab: "trust" };
@@ -7727,13 +7728,13 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (activeTab === "adminReview" || activeTab === "mySuggestions") {
+    if ((activeTab === "adminReview" && hasAdminProfileSignal) || activeTab === "mySuggestions") {
       refreshSuggestionsFromStorage();
     }
-    if (activeTab === "adminReview") {
+    if (activeTab === "adminReview" && hasAdminProfileSignal) {
       loadSupabaseImportStatus();
     }
-  }, [activeTab]);
+  }, [activeTab, hasAdminProfileSignal]);
 
   useEffect(() => {
     if (activeTab !== "market" || tideTradrSubTab !== "overview") return;
@@ -10789,7 +10790,8 @@ export default function App() {
     submittedCatalogBarcodeSearch ||
     catalogSearch ||
     catalogBarcodeSearch ||
-    ["vault", "inventory", "market", "addInventory", "addSale", "sales", "expenses", "reports", "adminReview"].includes(activeTab)
+    ["vault", "inventory", "market", "addInventory", "addSale", "sales", "expenses", "reports"].includes(activeTab) ||
+    (activeTab === "adminReview" && hasAdminProfileSignal)
   );
   const catalogSeedUrgent = Boolean(
     quickAddMenuOpen ||
@@ -10802,7 +10804,7 @@ export default function App() {
   );
   const storeSeedWarmNeeded = Boolean(
     activeTab === "scout" ||
-    activeTab === "adminReview" ||
+    (activeTab === "adminReview" && hasAdminProfileSignal) ||
     (activeTab === "dashboard" && scoutSubTabTarget?.tab === "stores")
   );
 

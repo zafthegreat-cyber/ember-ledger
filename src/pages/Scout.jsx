@@ -5696,7 +5696,7 @@ async function handleUpdateStore(e) {
           <div style={styles.col}>
             {storeDirectoryView === "landing" ? (
               <>
-                <div style={styles.card}>
+                <div className="scout-directory-card" style={styles.card}>
                   <h2 style={styles.sectionTitle}>Virginia Store Directory</h2>
                   <p style={styles.empty}>Search statewide Virginia stores, pick a retailer, then open the exact location you want. Hampton Roads / 757 is the default home view.</p>
                   <input
