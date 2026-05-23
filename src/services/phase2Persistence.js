@@ -202,6 +202,8 @@ function mapReceipt(row = {}) {
   const total = Number(row.receipt_total ?? row.total ?? 0);
   return {
     id: row.id,
+    workspaceId: row.workspace_id || row.workspaceId || "",
+    workspace_id: row.workspace_id || row.workspaceId || "",
     merchant: row.store_name || row.merchant || "",
     storeName: row.store_name || row.merchant || "",
     purchasedAt,
@@ -706,7 +708,15 @@ export function parseReceiptText(rawText = "") {
 export async function saveReceiptRecord(ctx = {}, receipt = {}) {
   const now = new Date().toISOString();
   const receiptId = receipt.id || `receipt-${Math.random().toString(36).slice(2, 8)}`;
-  const localReceipt = { ...receipt, id: receiptId, updatedAt: now, createdAt: receipt.createdAt || now };
+  const receiptWorkspaceId = receipt.workspaceId || receipt.workspace_id || workspaceId(ctx);
+  const localReceipt = {
+    ...receipt,
+    id: receiptId,
+    workspaceId: receiptWorkspaceId,
+    workspace_id: receiptWorkspaceId,
+    updatedAt: now,
+    createdAt: receipt.createdAt || now,
+  };
   const localLines = (receipt.lines || []).map((line) => ({
     ...line,
     destination: normalizeReceiptDestination(line.destination),
@@ -726,7 +736,7 @@ export async function saveReceiptRecord(ctx = {}, receipt = {}) {
 
   const row = {
     user_id: userId(ctx),
-    workspace_id: workspaceId(ctx),
+    workspace_id: receiptWorkspaceId,
     merchant: receipt.merchant || "",
     store_name: receipt.storeName || receipt.merchant || "",
     purchased_at: receipt.purchasedAt || null,

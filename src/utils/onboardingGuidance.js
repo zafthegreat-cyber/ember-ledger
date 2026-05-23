@@ -204,10 +204,15 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Help me add my first Vault item",
   },
   forge: {
-    title: "Forge is ready for your first record.",
-    body: "Add a sellable item, receipt, expense, sale, or mileage trip to start building business history for year-end review.",
-    actionLabel: "Add to Forge",
+    title: "Ready to track your first sale?",
+    body: "Add a receipt, product, or mileage trip to start building business history for year-end review.",
+    actionLabel: "Add Receipt",
     actionTarget: "forge",
+    actions: [
+      { label: "Add Receipt", actionTarget: "receipt" },
+      { label: "Add Product", actionTarget: "forge", primary: false },
+      { label: "Add Mileage", actionTarget: "mileage", primary: false },
+    ],
     assistPrompt: "What belongs in Forge?",
   },
   expenses: {

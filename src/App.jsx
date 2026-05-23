@@ -4624,6 +4624,7 @@ export default function App() {
   });
   const [dealFinderOpen, setDealFinderOpen] = useState(false);
   const [phase2Data, setPhase2Data] = useState(() => loadLocalPhase2Data());
+  const [forgePhase2Data, setForgePhase2Data] = useState(() => createEmptyPhase2Data());
   const [phase2SyncStatus, setPhase2SyncStatus] = useState({
     source: "local",
     message: "Phase 2 workflow records are saved locally until cloud tables are available.",
@@ -5363,7 +5364,7 @@ export default function App() {
       return next;
     });
   };
-  const forgeTabActive = ["addInventory", "inventory", "addSale", "sales", "expenses", "mileage", "reports"].includes(activeTab);
+  const forgeTabActive = ["addInventory", "inventory", "addSale", "sales", "expenses", "vehicles", "mileage", "reports"].includes(activeTab);
   const autoHideBlocked = Boolean(
     activeFlowModal ||
     showInventoryScanner ||
@@ -7501,6 +7502,10 @@ export default function App() {
       setActiveTab("expenses");
       return;
     }
+    if (normalized === "receipt" || normalized === "add_receipt") {
+      openReceiptScanWorkflow();
+      return;
+    }
     if (normalized === "mileage") {
       setActiveTab("mileage");
       return;
@@ -8236,11 +8241,25 @@ export default function App() {
   const updateSaleForm = (field, value) => setSaleForm((old) => ({ ...old, [field]: value }));
   const updateDealForm = (field, value) => setDealForm((old) => ({ ...old, [field]: value }));
   const updateKidProjectForm = (field, value) => setKidProjectForm((old) => ({ ...old, [field]: value }));
-  const phase2Context = () => ({ supabase, isSupabaseConfigured, user, workspaceId: activeWorkspaceId, requireSupabase: !BETA_LOCAL_MODE });
+  const phase2Context = (overrides = {}) => ({
+    supabase,
+    isSupabaseConfigured,
+    user,
+    workspaceId: overrides.workspaceId || activeWorkspaceId,
+    requireSupabase: !BETA_LOCAL_MODE,
+  });
+  const forgePhase2Context = () => phase2Context({ workspaceId: activeForgeWorkspace?.id || activeWorkspaceId });
   const phase2RecentDeals = phase2Data.dealFinderSessions || [];
   const phase2RecentScannerIntakes = phase2Data.scannerIntakeSessions || [];
   const phase2RecentReceipts = phase2Data.receiptRecords || [];
   const phase2RecentAiAssistEvents = phase2Data.aiAssistEvents || [];
+  const forgeReceiptRecords = commandDeskSellerAccess && activeForgeWorkspace
+    ? (forgePhase2Data.receiptRecords || []).filter((receipt) => recordBelongsToWorkspace(receipt, activeForgeWorkspace.id))
+    : [];
+  const forgeReceiptIds = new Set(forgeReceiptRecords.map((receipt) => String(receipt.id || "")).filter(Boolean));
+  const forgeReceiptLineItems = commandDeskSellerAccess && activeForgeWorkspace
+    ? (forgePhase2Data.receiptLineItems || []).filter((line) => !forgeReceiptIds.size || forgeReceiptIds.has(String(line.receiptId || line.receipt_id || "")))
+    : [];
   const phase2WorkflowSyncLabel = phase2SyncStatus.source === "supabase"
     ? "Cloud synced"
     : phase2SyncStatus.label || "Local only mode";
@@ -13908,6 +13927,36 @@ export default function App() {
     }, workspace);
   }
 
+  function upsertReceiptWorkflowData(current = createEmptyPhase2Data(), receipt = {}, lines = []) {
+    const receiptId = receipt.id || receipt.receiptId || "";
+    const normalizedReceipt = {
+      ...receipt,
+      workspaceId: receipt.workspaceId || receipt.workspace_id || activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: receipt.workspace_id || receipt.workspaceId || activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: receipt.workspaceName || activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+    };
+    const normalizedLines = (lines || []).map((line) => ({ ...line, receiptId: line.receiptId || line.receipt_id || receiptId }));
+    return {
+      ...current,
+      receiptRecords: [
+        normalizedReceipt,
+        ...(current.receiptRecords || []).filter((entry) => String(entry.id || "") !== String(receiptId)),
+      ],
+      receiptLineItems: [
+        ...normalizedLines,
+        ...(current.receiptLineItems || []).filter((line) => String(line.receiptId || line.receipt_id || "") !== String(receiptId)),
+      ],
+    };
+  }
+
+  function syncForgeReceiptWorkflowState(receipt = {}, lines = []) {
+    setForgePhase2Data((current) => upsertReceiptWorkflowData(current, receipt, lines));
+    const targetWorkspaceId = receipt.workspaceId || receipt.workspace_id || activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+    if (String(targetWorkspaceId) === String(activeWorkspaceId)) {
+      setPhase2Data((current) => upsertReceiptWorkflowData(current, receipt, lines));
+    }
+  }
+
   async function submitReceiptReview() {
     if (!receiptScanDraft) return;
     const warnings = receiptReviewWarnings();
@@ -13950,6 +13999,9 @@ export default function App() {
       splitMode: "expense_only",
       businessTotal: importableItems.filter((item) => receiptItemDbDestination(item) === "forge").reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
       personalTotal: importableItems.filter((item) => receiptItemDbDestination(item) === "vault").reduce((sum, item) => sum + Number(item.totalCost || 0), 0),
+      workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
       notes: `Receipt scan report. Store location: ${receiptScanDraft.storeLocation || "not visible"}. Transaction: ${receiptScanDraft.transactionNumber || "not visible"}.`,
       rawOcrText: receiptScanForm.rawText,
       lines: receiptScanDraft.items.map((item) => ({
@@ -13972,7 +14024,7 @@ export default function App() {
       })),
       createdAt: receiptScanDraft.createdAt,
     };
-    const result = await saveReceiptRecord(phase2Context(), { ...receipt });
+    const result = await saveReceiptRecord(forgePhase2Context(), { ...receipt });
     updatePhase2Status(result, "Receipt scan saved locally.");
     if (!BETA_LOCAL_MODE && result.source !== "supabase") {
       setReceiptScanDraft((current) => current ? { ...current, warnings: [...warnings, "Receipt did not sync to Supabase. Review remains unsubmitted."] } : current);
@@ -13981,6 +14033,16 @@ export default function App() {
     }
 
     const savedReceiptId = result.data?.id || receipt.id;
+    const savedReceipt = {
+      ...receipt,
+      ...(result.data || {}),
+      id: savedReceiptId,
+      workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
+    };
+    const savedReceiptLines = (result.lines?.length ? result.lines : receipt.lines.map((line) => ({ ...line, receiptId: savedReceiptId })));
+    syncForgeReceiptWorkflowState(savedReceipt, savedReceiptLines);
     const receiptReference = { ...receiptScanDraft, id: savedReceiptId };
     const createdItems = importableItems.map((item) => receiptItemToInventoryRecord(item, receiptReference, receiptItemDbDestination(item)));
     const inventorySaveResult = await saveInventoryRecords(createdItems);
@@ -19222,6 +19284,20 @@ function renderForgeHeader() {
   );
 }
 
+function renderForgeAccessState() {
+  return (
+    <section className="panel empty-state forge-workspace-unavailable" aria-label="Forge access required">
+      <span className="trust-badge trust-badge--secure">Private Forge</span>
+      <h2>Forge Workshop is for seller records.</h2>
+      <p>Business inventory, receipts, mileage, sales, and profit views stay hidden unless your account has seller or admin access.</p>
+      <div className="quick-actions">
+        <button type="button" onClick={() => openMenuDrawer("settings")}>Review account settings</button>
+        <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Return to Hearth</button>
+      </div>
+    </section>
+  );
+}
+
   function buildReceiptWorkflowFromExpense(expense = {}) {
     const rawText = expense.rawReceiptText || "";
     const parsedLines = parseReceiptText(rawText);
@@ -19247,6 +19323,9 @@ function renderForgeHeader() {
       splitMode: expense.receiptSplitMode || "expense_only",
       businessTotal: Math.max(0, Number(expense.amount || 0) - Number(expense.receiptPersonalTotal || 0)),
       personalTotal: Number(expense.receiptPersonalTotal || 0),
+      workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
       notes: expense.notes || "",
       rawOcrText: rawText,
       lines: parsedLines.length ? parsedLines : fallbackLine,
@@ -19257,15 +19336,21 @@ function renderForgeHeader() {
   async function persistReceiptWorkflowFromExpense(expense = {}) {
     if (!expense.receiptImage && !expense.rawReceiptText && !expense.receiptPhoto) return null;
     const receipt = buildReceiptWorkflowFromExpense(expense);
-    setPhase2Data((current) => ({
-      ...current,
-      receiptRecords: [receipt, ...(current.receiptRecords || []).filter((entry) => entry.id !== receipt.id)],
-      receiptLineItems: [
-        ...receipt.lines.map((line) => ({ ...line, receiptId: receipt.id })),
-        ...(current.receiptLineItems || []),
-      ],
-    }));
-    const result = await saveReceiptRecord(phase2Context(), receipt);
+    const receiptLines = receipt.lines.map((line) => ({ ...line, receiptId: receipt.id }));
+    syncForgeReceiptWorkflowState(receipt, receiptLines);
+    const result = await saveReceiptRecord(forgePhase2Context(), receipt);
+    if (result.data) {
+      syncForgeReceiptWorkflowState(
+        {
+          ...receipt,
+          ...result.data,
+          workspaceId: receipt.workspaceId,
+          workspace_id: receipt.workspace_id,
+          workspaceName: receipt.workspaceName,
+        },
+        result.lines?.length ? result.lines : receiptLines
+      );
+    }
     updatePhase2Status(result, "Receipt workflow saved locally.");
     return result;
   }
@@ -20112,16 +20197,16 @@ function renderForgeHeader() {
   }
 
   const workspaceItems = items.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
-  const forgeWorkspaceItems = activeForgeWorkspace
+  const forgeWorkspaceItems = commandDeskSellerAccess && activeForgeWorkspace
     ? items.filter((item) => recordBelongsToWorkspace(item, activeForgeWorkspace.id))
     : [];
-  const workspaceExpenses = activeForgeWorkspace
+  const workspaceExpenses = commandDeskSellerAccess && activeForgeWorkspace
     ? expenses.filter((expense) => recordBelongsToWorkspace(expense, activeForgeWorkspace.id))
     : [];
-  const workspaceSales = activeForgeWorkspace
+  const workspaceSales = commandDeskSellerAccess && activeForgeWorkspace
     ? sales.filter((sale) => recordBelongsToWorkspace(sale, activeForgeWorkspace.id))
     : [];
-  const workspaceMileageTrips = activeForgeWorkspace
+  const workspaceMileageTrips = commandDeskSellerAccess && activeForgeWorkspace
     ? mileageTrips.filter((trip) => recordBelongsToWorkspace(trip, activeForgeWorkspace.id))
     : [];
   const workspaceWatchlist = tideTradrWatchlist.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
@@ -20495,12 +20580,33 @@ function renderForgeHeader() {
   const monthlySpending = monthlyItemSpending + monthlyExpenses;
   const monthlyProfitLoss = monthlySalesProfit - monthlyExpenses;
   const activeMarketplaceCount = workspaceMarketplaceListings.filter((listing) => listing.status === "Active").length;
-  const forgeReceiptsNeedingReviewCount = (phase2RecentReceipts || []).filter((receipt) =>
-    /draft|review|pending|duplicate/i.test(`${receipt.status || ""}`)
-  ).length;
+  const forgeReceiptReviewIds = new Set([
+    ...forgeReceiptRecords
+      .filter((receipt) => /draft|review|pending|duplicate|needs/i.test(`${receipt.status || ""} ${receipt.reviewStatus || ""} ${receipt.importStatus || ""}`))
+      .map((receipt) => String(receipt.id || "")),
+    ...forgeReceiptLineItems
+      .filter((line) => line.destination !== "ignored" && (!line.verified || /review|unknown|unmatched/i.test(`${line.matchedConfidence || ""}`)))
+      .map((line) => String(line.receiptId || "")),
+  ].filter(Boolean));
+  const forgeReceiptsNeedingReviewCount = forgeReceiptReviewIds.size;
   const forgeInventoryReviewCount = needsMarketCheckItems.length + needsPhotosItems.length + missingSalePriceItems.length;
   const forgeTotalProductQuantity = forgeInventoryItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const forgeBusinessHasRecords = Boolean(
+    forgeInventoryItems.length ||
+    workspaceSales.length ||
+    workspaceExpenses.length ||
+    workspaceMileageTrips.length ||
+    forgeReceiptRecords.length
+  );
+  const forgeHasProfitSnapshot = Boolean(workspaceSales.length || workspaceExpenses.length);
   const forgeRecentActivity = [
+    ...forgeReceiptRecords.map((receipt) => ({
+      key: `receipt-${receipt.id}`,
+      source: "Receipt",
+      title: receipt.merchant || receipt.storeName || "Receipt review",
+      detail: `${money(receipt.total || receipt.receiptTotal || 0)}${forgeReceiptReviewIds.has(String(receipt.id || "")) ? " | Needs review" : " | Saved"}`,
+      date: receipt.updatedAt || receipt.updated_at || receipt.purchasedAt || receipt.purchaseDate || receipt.createdAt || receipt.created_at,
+    })),
     ...forgeInventoryItems.map((item) => ({
       key: `inventory-${item.id}`,
       source: "Inventory",
@@ -20877,6 +20983,46 @@ function renderForgeHeader() {
     adminToolsVisible,
     localDataLoaded,
     signedInWithSupabase,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    shorelineState.betaRequest?.status,
+  ]);
+
+  useEffect(() => {
+    if (!localDataLoaded || !commandDeskSellerAccess || !activeForgeWorkspace?.id || guestPreviewActive) {
+      setForgePhase2Data(createEmptyPhase2Data());
+      return undefined;
+    }
+    if (user?.id && user.id !== "local-beta" && (!currentProfileLoadedForUser() || !betaAccessAllowed())) {
+      setForgePhase2Data(createEmptyPhase2Data());
+      return undefined;
+    }
+    if (String(activeForgeWorkspace.id) === String(activeWorkspaceId)) {
+      setForgePhase2Data(phase2Data);
+      return undefined;
+    }
+    let cancelled = false;
+    loadPhase2Data(phase2Context({ workspaceId: activeForgeWorkspace.id })).then(({ data }) => {
+      if (cancelled) return;
+      setForgePhase2Data(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    localDataLoaded,
+    commandDeskSellerAccess,
+    activeForgeWorkspace?.id,
+    activeWorkspaceId,
+    phase2Data,
+    user?.id,
+    guestPreviewActive,
     currentUserProfile?.id,
     currentUserProfile?.userId,
     currentUserProfile?.appAccess,
@@ -35244,9 +35390,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const latestScoutTime = latestScoutReport
       ? shortDate(latestScoutReport.reportedAt || latestScoutReport.reported_at || latestScoutReport.createdAt || latestScoutReport.created_at)
       : "";
-    const receiptsNeedingReviewCount = (phase2RecentReceipts || []).filter((receipt) =>
-      /draft|review|pending|duplicate/i.test(`${receipt.status || ""}`)
-    ).length;
+    const receiptsNeedingReviewCount = forgeReceiptsNeedingReviewCount;
     const forgeReviewCount = receiptsNeedingReviewCount + needsMarketCheckItems.length + missingSalePriceItems.length;
     const kidsApplication = userKidsApplicationRows[0] || null;
     const catalogFreshnessSource = supabaseImportStatus.lastPriceChecked || catalogImportStatus.lastImportedAt || marketPriceCache.lastSync || "";
@@ -35470,7 +35614,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       if (card.key === "follow-stores") return !(scoutSnapshot.reports || []).length;
       if (card.key === "market-alert") return !workspaceWatchlist.length;
       if (card.key === "kids-access") return hearthMode === "simple" && !kidsApplication;
-      if (card.key === "first-receipt") return sellerAccessVisible && !workspaceExpenses.length && !phase2RecentReceipts.length;
+      if (card.key === "first-receipt") return sellerAccessVisible && !workspaceExpenses.length && !forgeReceiptRecords.length;
       return false;
     });
     const recentRows = homeRecentActivity.length ? homeRecentActivity : [];
@@ -35694,9 +35838,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const latestScoutTime = latestScoutReport
       ? shortDate(latestScoutReport.reportedAt || latestScoutReport.reported_at || latestScoutReport.createdAt || latestScoutReport.created_at)
       : "";
-    const receiptsNeedingReviewCount = (phase2RecentReceipts || []).filter((receipt) =>
-      /draft|review|pending|duplicate/i.test(`${receipt.status || ""}`)
-    ).length;
+    const receiptsNeedingReviewCount = forgeReceiptsNeedingReviewCount;
     const forgePricingTaskCount = needsMarketCheckItems.length + missingSalePriceItems.length;
     const kidsApplications = adminToolsVisible ? adminKidsApplicationRows : userKidsApplicationRows;
     const catalogFreshnessSource = supabaseImportStatus.lastPriceChecked || catalogImportStatus.lastImportedAt || marketPriceCache.lastSync || "";
@@ -35826,7 +35968,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         onAction: () => setActiveTab("inventory"),
         badge: "forge_starter",
       } : null,
-      sellerAccessVisible && !workspaceExpenses.length && !phase2RecentReceipts.length ? {
+      sellerAccessVisible && !workspaceExpenses.length && !forgeReceiptRecords.length ? {
         key: "forge_receipt_start",
         priority: "optional",
         area: "Forge",
@@ -42857,9 +42999,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {["addInventory", "inventory", "addSale", "sales", "expenses", "mileage", "reports"].includes(activeTab) ? renderForgeHeader() : null}
+        {forgeTabActive && commandDeskSellerAccess ? renderForgeHeader() : null}
+        {!activeTabLocked && forgeTabActive && !commandDeskSellerAccess ? renderForgeAccessState() : null}
 
-        {activeTab === "addInventory" && (
+        {commandDeskSellerAccess && activeTab === "addInventory" && (
   <section className="panel forge-add-inventory-panel">
     <div className="compact-card-header forge-form-page-header">
       <div>
@@ -42986,7 +43129,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
   </section>
 )}
 
-        {activeTab === "inventory" && (
+        {commandDeskSellerAccess && activeTab === "inventory" && (
           forgeSubTab === "marketplace" ? (
             <>
               <PageHeader
@@ -43034,6 +43177,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </div>
                 <span className="trust-badge trust-badge--secure">Private Forge</span>
               </div>
+              {activeForgeWorkspace && !forgeBusinessHasRecords ? (
+                <div className="small-empty-state forge-business-empty-state">
+                  <strong>Ready to track your first sale?</strong>
+                  <span>Add a receipt, product, or mileage trip to start building real business history.</span>
+                  <div className="quick-actions">
+                    <button type="button" onClick={openReceiptScanWorkflow}>Add Receipt</button>
+                    <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "forge-empty-state", destinations: { forge: true } })}>Add Product</button>
+                    <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
+                  </div>
+                </div>
+              ) : null}
               <div className="forge-daily-grid forge-business-grid">
                 {[
                   { label: "Profit this month", value: money(monthlyProfitLoss), helper: `${money(monthlySalesProfit)} sales profit · ${money(monthlyExpenses)} expenses`, action: () => setActiveTab("reports") },
@@ -43138,9 +43292,14 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   ))}
                 </div>
               ) : (
-                <div className="small-empty-state">
+                <div className="small-empty-state forge-business-empty-state">
                   <strong>Ready to track your first sale?</strong>
                   <span>Add a receipt, product, or mileage trip to build your business history.</span>
+                  <div className="quick-actions">
+                    <button type="button" onClick={openReceiptScanWorkflow}>Add Receipt</button>
+                    <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "forge-recent-activity-empty", destinations: { forge: true } })}>Add Product</button>
+                    <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
+                  </div>
                 </div>
               )}
             </section>
@@ -43402,7 +43561,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </section>
         )}
 
-        {!activeTabLocked && activeTab === "sales" && (
+        {!activeTabLocked && commandDeskSellerAccess && activeTab === "sales" && (
           <>
             <section className="panel sales-records-summary-panel">
               <div className="compact-card-header">
@@ -43476,7 +43635,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {!activeTabLocked && activeTab === "expenses" && (
+        {!activeTabLocked && commandDeskSellerAccess && activeTab === "expenses" && (
           <>
             <section className="panel">
               <div className="compact-card-header">
@@ -43638,7 +43797,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {!activeTabLocked && activeTab === "vehicles" && (
+        {!activeTabLocked && commandDeskSellerAccess && activeTab === "vehicles" && (
           <>
             <section className="panel">
               <h2>{editingVehicleId ? "Edit Vehicle" : "Add Vehicle"}</h2>
@@ -43670,7 +43829,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {!activeTabLocked && activeTab === "mileage" && (
+        {!activeTabLocked && commandDeskSellerAccess && activeTab === "mileage" && (
           <>
             <section className="panel">
               <div className="compact-card-header">
@@ -43735,7 +43894,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {!activeTabLocked && activeTab === "reports" && (
+        {!activeTabLocked && commandDeskSellerAccess && activeTab === "reports" && (
           <>
             <section className="panel">
               <h2>Forge Reports</h2>

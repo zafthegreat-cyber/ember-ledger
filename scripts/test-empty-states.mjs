@@ -14,7 +14,9 @@ assert.equal(vault.actionTarget, "vault");
 assert.deepEqual(vault.actions.map((action) => action.label), ["Scan Card", "Add Sealed Product", "Manual Add"]);
 
 const forge = getEmptyStateGuidance("forge");
+assert.equal(forge.title, "Ready to track your first sale?");
 assert.match(forge.body, /year-end review/i);
+assert.deepEqual(forge.actions.map((action) => action.label), ["Add Receipt", "Add Product", "Add Mileage"]);
 assert.doesNotMatch(forge.body, /tax advice|guaranteed deduction|IRS-ready/i);
 
 const dropRadar = getEmptyStateGuidance("drop radar");
