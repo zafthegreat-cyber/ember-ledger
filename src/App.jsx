@@ -25936,7 +25936,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           <button type="button" onClick={openPokemonWatchCalendar}>
             <span>Upcoming Releases</span>
             <strong>{watchCalendarHomeCounts.upcomingReleases ? `${watchCalendarHomeCounts.upcomingReleases} release event${watchCalendarHomeCounts.upcomingReleases === 1 ? "" : "s"}` : "No release data loaded"}</strong>
-            <small>{watchCalendarHomeCounts.upcomingReleases ? "Official release data with catalog photo matching when available" : "Will appear when official release data is loaded"}</small>
+            <small>{watchCalendarHomeCounts.upcomingReleases ? "Source-labeled release data with catalog photo matching when available" : "Will appear when release data is loaded"}</small>
           </button>
         </div>
         <div className="watch-calendar-compact-list">

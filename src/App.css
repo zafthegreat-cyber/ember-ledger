@@ -21560,15 +21560,18 @@ button.home-metric-card small,
 }
 
 .watch-calendar-dot--medium,
-.watch-calendar-dot--possible {
+.watch-calendar-dot--possible,
+.watch-calendar-dot--predicted {
   background: #f59e0b;
 }
 
-.watch-calendar-dot--low {
+.watch-calendar-dot--low,
+.watch-calendar-dot--rumored {
   background: #64748b;
 }
 
-.watch-calendar-dot--needs-data {
+.watch-calendar-dot--needs-data,
+.watch-calendar-dot--unavailable {
   background: #94a3b8;
 }
 

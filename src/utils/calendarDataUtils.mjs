@@ -8,6 +8,19 @@ export const CALENDAR_CONFIDENCE_LABELS = {
   unavailable: "Unavailable",
 };
 
+export const CALENDAR_EVENT_TYPES = [
+  "Product Release",
+  "Set Release",
+  "Preorder Window",
+  "Confirmed Restock",
+  "Predicted Drop Window",
+  "Local Store Watch",
+  "Online Drop Watch",
+  "Kids Program Event",
+  "Community Event",
+  "Admin/Internal Reminder",
+];
+
 export function normalizeCalendarText(value = "") {
   return String(value || "")
     .toLowerCase()
@@ -20,9 +33,10 @@ export function normalizeCalendarText(value = "") {
 
 export function calendarConfidenceKey(value = "") {
   const normalized = normalizeCalendarText(value);
-  if (/confirmed|official|verified/.test(normalized)) return "confirmed";
+  if (/unconfirmed|unverified|rumor|rumoured|guess|low/.test(normalized)) return "rumored";
+  if (/missing|unavailable|unknown|not set/.test(normalized)) return "unavailable";
+  if (/\b(confirmed|official|verified)\b/.test(normalized)) return "confirmed";
   if (/likely|medium|high/.test(normalized)) return "likely";
-  if (/rumor|rumoured|unconfirmed|guess|low/.test(normalized)) return "rumored";
   if (/predict|watch|possible|needs data/.test(normalized)) return "predicted";
   return "unavailable";
 }
@@ -48,7 +62,16 @@ export function normalizeReleaseCalendarEvent(release = {}, catalogProducts = []
         const productText = normalizeCalendarText(`${product.productName || product.name || ""} ${product.setName || product.expansion || product.productLine || ""}`);
         return productText && (productText === search || productText.includes(search) || search.includes(productText));
       });
-  const confidenceKey = calendarConfidenceKey(release.confidence || release.sourceConfidence || "confirmed");
+  const explicitConfidence = release.confidence || release.sourceConfidence || "";
+  const sourceNeedsReview = ["source_unavailable", "official_fetch_no_date"].includes(release.sourceVerificationStatus) || release.dateSource === "configured_fallback_needs_review";
+  const sourceVerified = release.sourceVerificationStatus === "official_fetch_success" || release.sourceFetched === true || release.verified === true;
+  const confidenceKey = calendarConfidenceKey((sourceNeedsReview && !release.verified) ? "unconfirmed" : explicitConfidence || (sourceVerified ? "confirmed" : "unavailable"));
+  const isConfirmedRelease = confidenceKey === "confirmed";
+  const confidenceLabel = isConfirmedRelease
+    ? "Confirmed Release"
+    : confidenceKey === "rumored"
+      ? "Rumored/Unconfirmed"
+      : calendarConfidenceLabel(confidenceKey);
   return {
     id: release.id || `release-${dateKey}-${normalizeCalendarText(title).replace(/\s+/g, "-")}`,
     dateKey,
@@ -66,14 +89,15 @@ export function normalizeReleaseCalendarEvent(release = {}, catalogProducts = []
     sourceLabel: release.sourceLabel || release.source || "Official Pokemon release data",
     sourceUrl: release.sourceUrl || release.url || "",
     source: release.source || "Pokemon.com",
+    sourceVerificationStatus: release.sourceVerificationStatus || (sourceVerified ? "official_fetch_success" : "source_unavailable"),
     confidenceKey,
-    confidenceLabel: confidenceKey === "confirmed" ? "Confirmed Release" : calendarConfidenceLabel(confidenceKey),
-    verified: confidenceKey === "confirmed",
+    confidenceLabel,
+    verified: isConfirmedRelease,
     layerKeys: release.layerKeys || ["pokemonReleases", "expansionReleases"],
     timeLabel: release.timeLabel || "Release day",
     notes: release.notes || "",
-    reason: release.notes || "Official Pokemon release date.",
-    basisSummary: release.sourceUrl ? `Source: ${release.sourceUrl}` : "Official Pokemon release date.",
+    reason: release.notes || (isConfirmedRelease ? "Official Pokemon release date." : "Release source needs review before it is treated as confirmed."),
+    basisSummary: release.sourceUrl ? `Source: ${release.sourceUrl}` : "Release source not verified.",
     visibility: release.visibility || "public",
     reportable: false,
     sortWeight: release.sortWeight ?? 4,
@@ -83,6 +107,7 @@ export function normalizeReleaseCalendarEvent(release = {}, catalogProducts = []
 export function normalizeDropCalendarEvent(drop = {}) {
   const confidenceKey = drop.confidenceKey || calendarConfidenceKey(drop.confidence || drop.patternStrength || "predicted");
   const isConfirmed = confidenceKey === "confirmed" || drop.eventType === "Confirmed Restock";
+  const isRumored = confidenceKey === "rumored" || /rumor|unconfirmed|community/i.test(drop.eventType || drop.confidenceLabel || "");
   return {
     id: drop.id || `drop-${normalizeCalendarText(drop.storeName || drop.store || "store").replace(/\s+/g, "-")}-${drop.dateKey || drop.date || "watch"}`,
     dateKey: String(drop.dateKey || drop.date || "").slice(0, 10),
@@ -101,7 +126,7 @@ export function normalizeDropCalendarEvent(drop = {}) {
     layerKeys: drop.layerKeys || ["localRestocks", isConfirmed ? "retailDrops" : "appPredictions"],
     timeLabel: drop.timeWindow || drop.timeLabel || "Watch window unknown",
     confidenceKey,
-    confidenceLabel: isConfirmed ? "Confirmed Restock" : drop.confidenceLabel || "Predicted",
+    confidenceLabel: isConfirmed ? "Confirmed Restock" : isRumored ? "Rumored/Unconfirmed" : drop.confidenceLabel || "Predicted Drop Window",
     patternStrength: drop.patternStrength || "",
     trainingCount: Number(drop.trainingCount || drop.supportingReportCount || 0),
     supportingReportCount: Number(drop.supportingReportCount || drop.trainingCount || 0),
@@ -109,6 +134,7 @@ export function normalizeDropCalendarEvent(drop = {}) {
     lastConfirmedReportLabel: drop.lastConfirmedRestock || drop.lastConfirmedReportLabel || "",
     sourceLabel: drop.sourceLabel || drop.source || "Scout reports / Drop Radar",
     source: drop.source || "Scout reports / Drop Radar",
+    sourceVerificationStatus: drop.sourceVerificationStatus || (isConfirmed ? "confirmed_restock" : "prediction_or_watch"),
     products: drop.products || [],
     reason: drop.reason || drop.dataNeededMessage || "Prediction uses available Scout reports and training restocks.",
     basisSummary: drop.basisSummary || `${Number(drop.trainingCount || 0)} training restock${Number(drop.trainingCount || 0) === 1 ? "" : "s"} used`,

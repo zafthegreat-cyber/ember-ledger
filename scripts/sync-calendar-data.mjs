@@ -8,6 +8,19 @@ const rootDir = path.resolve(path.dirname(scriptPath), "..");
 const generatedDir = path.join(rootDir, "src", "data", "generated");
 const SYNC_TIMESTAMP = "2026-05-20T00:00:00.000Z";
 
+const CALENDAR_EVENT_TYPES = [
+  "Product Release",
+  "Set Release",
+  "Preorder Window",
+  "Confirmed Restock",
+  "Predicted Drop Window",
+  "Local Store Watch",
+  "Online Drop Watch",
+  "Kids Program Event",
+  "Community Event",
+  "Admin/Internal Reminder",
+];
+
 const OFFICIAL_RELEASE_SOURCES = [
   {
     url: "https://www.pokemon.com/us/pokemon-tcg/product-gallery/mega-evolution-chaos-rising-booster-bundle",
@@ -127,11 +140,28 @@ async function fetchOfficialRelease(source) {
     const $ = cheerio.load(html);
     const title = $("h1").first().text().trim() || $("meta[property='og:title']").attr("content") || source.fallbackTitle;
     const bodyText = $("body").text().replace(/\s+/g, " ");
-    const date = parseDate(bodyText.match(/(?:Launch|Available|available|sale|release)[^A-Za-z0-9]{0,10}(?:on\s+)?[A-Z][a-z]+\s+\d{1,2},\s+20\d{2}/)?.[0] || bodyText) || source.fallbackDate;
+    const parsedDate = parseDate(bodyText.match(/(?:Launch|Available|available|sale|release)[^A-Za-z0-9]{0,10}(?:on\s+)?[A-Z][a-z]+\s+\d{1,2},\s+20\d{2}/)?.[0] || bodyText);
     const imageUrl = $("meta[property='og:image']").attr("content") || "";
-    return { ...source, title, releaseDate: date, imageUrl, fetched: true };
+    return {
+      ...source,
+      title,
+      releaseDate: parsedDate || source.fallbackDate,
+      imageUrl,
+      fetched: true,
+      verifiedReleaseDate: Boolean(parsedDate),
+      sourceVerificationStatus: parsedDate ? "official_fetch_success" : "official_fetch_no_date",
+    };
   } catch (error) {
-    return { ...source, title: source.fallbackTitle, releaseDate: source.fallbackDate, imageUrl: "", fetched: false, warning: error.message };
+    return {
+      ...source,
+      title: source.fallbackTitle,
+      releaseDate: source.fallbackDate,
+      imageUrl: "",
+      fetched: false,
+      verifiedReleaseDate: false,
+      sourceVerificationStatus: "source_unavailable",
+      warning: error.message,
+    };
   }
 }
 
@@ -146,6 +176,8 @@ export async function syncReleaseCalendar() {
     .map((row) => {
       const matched = matchCatalogProduct(row, catalogProducts);
       const title = (row.fallbackTitle || row.title).replace(/\s+\|\s+Pokemon\.com$/i, "");
+      const sourceConfirmed = Boolean(row.fetched && row.verifiedReleaseDate);
+      const sourceNeedsReview = row.fetched ? "Official source was reachable, but the sync did not parse a release date." : "Official source was not reachable during this sync.";
       return {
         id: `pokemon-official-${slug(title)}-${row.releaseDate}`,
         title,
@@ -153,17 +185,22 @@ export async function syncReleaseCalendar() {
         releaseDate: row.releaseDate,
         eventType: row.eventType || (inferProductType(title, row.productType) === "Expansion" ? "Set Release" : "Product Release"),
         source: "Pokemon.com",
-        sourceLabel: "Official Pokemon product/news page",
+        sourceLabel: sourceConfirmed ? "Official Pokemon product/news page" : "Official Pokemon page configured (not verified this sync)",
         sourceUrl: row.url,
-        confidence: "confirmed",
+        sourceFetched: Boolean(row.fetched),
+        sourceVerificationStatus: row.sourceVerificationStatus,
+        confidence: sourceConfirmed ? "confirmed" : "unconfirmed",
+        confidenceLabel: sourceConfirmed ? "Confirmed Release" : "Rumored/Unconfirmed",
+        dateSource: sourceConfirmed ? "official_page" : "configured_fallback_needs_review",
+        sourceWarning: row.warning || "",
         productType: inferProductType(title, row.productType),
         category: inferProductType(title, row.productType) === "Expansion" ? "Singles/set" : "Sealed product",
         productImage: row.imageUrl || matched?.imageUrl || matched?.photoUrl || "",
         catalogProductId: matched?.id || "",
         sourceUpdatedAt: SYNC_TIMESTAMP,
-        notes: row.fetched
+        notes: sourceConfirmed
           ? "Official Pokemon.com release page parsed by sync:release-calendar."
-          : "Official Pokemon.com source configured, but live fetch was unavailable; existing official fallback date retained.",
+          : `${sourceNeedsReview} Treat this calendar date as unconfirmed until the official source can verify it.`,
         visibility: "public",
       };
     })
@@ -177,19 +214,36 @@ export async function syncDropCalendar() {
   const rows = existing.length ? existing : [{
     id: "drop-calendar-seed-needs-training",
     dateKey: "",
+    dateRange: "",
     storeName: "Drop Radar",
     retailer: "Scout",
     eventType: "Predicted Drop Window",
     confidence: "unavailable",
+    confidenceLabel: "Predicted Drop Window",
     patternStrength: "weak",
     trainingCount: 0,
+    supportingReportCount: 0,
+    timeWindow: "Needs confirmed restock history",
+    lastConfirmedRestock: "",
     source: "Generated placeholder",
     sourceLabel: "Drop Radar training data",
+    sourceVerificationStatus: "local_runtime_placeholder",
     sourceUpdatedAt: SYNC_TIMESTAMP,
     visibility: "admin_only",
+    actions: ["Submit Scout Report", "Add Restock Training"],
     notes: "Runtime Drop Radar events are generated from Scout reports and manual training restocks.",
   }];
-  await writeJson("dropCalendarSeed.json", rows.map((row) => ({ sourceUpdatedAt: SYNC_TIMESTAMP, ...row })));
+  await writeJson("dropCalendarSeed.json", rows.map((row) => ({
+    ...row,
+    sourceUpdatedAt: SYNC_TIMESTAMP,
+    dateRange: "",
+    confidenceLabel: row.confidenceLabel || "Predicted Drop Window",
+    supportingReportCount: Number(row.supportingReportCount || row.trainingCount || 0),
+    timeWindow: row.timeWindow || "Needs confirmed restock history",
+    lastConfirmedRestock: row.lastConfirmedRestock || "",
+    sourceVerificationStatus: row.sourceVerificationStatus || "local_runtime_placeholder",
+    actions: row.actions || ["Submit Scout Report", "Add Restock Training"],
+  })));
   return { dropSeedEvents: rows.length };
 }
 
@@ -199,12 +253,27 @@ async function main() {
   const drop = mode === "release" ? { dropSeedEvents: (await readJson("dropCalendarSeed.json", [])).length } : await syncDropCalendar();
   await writeJson("calendarSyncStatus.json", {
     source: "Pokemon.com official pages + local Drop Radar runtime data",
+    releaseSourcePolicy: "Pokemon.com official pages are treated as confirmed only when the sync verifies a release date. Configured fallback rows stay Rumored/Unconfirmed.",
+    dropSourcePolicy: "Drop Radar events come from Scout reports, manual/admin training restocks, and prediction cache data; confirmed restocks stay separate from predicted windows.",
     releaseCalendarUpdatedAt: SYNC_TIMESTAMP,
     dropCalendarUpdatedAt: SYNC_TIMESTAMP,
     releaseEvents: release.releaseEvents,
     releaseFetchSuccesses: release.fetched,
     releaseFetchWarnings: release.warnings,
     dropSeedEvents: drop.dropSeedEvents,
+    eventTypes: CALENDAR_EVENT_TYPES,
+    labels: {
+      officialRelease: "Confirmed Release",
+      predictedDrop: "Predicted Drop Window",
+      confirmedRestock: "Confirmed Restock",
+      rumoredCommunity: "Rumored/Unconfirmed",
+    },
+    syncCommands: {
+      releaseCalendar: "npm.cmd run sync:release-calendar",
+      dropCalendar: "npm.cmd run sync:drop-calendar",
+      calendarData: "npm.cmd run sync:calendar-data",
+    },
+    schedulingStatus: "manual-script-only",
     scheduling: "Scripts are available; no automatic scheduler is configured in this repo. Suggested cadence: release weekly/daily, drop daily or after restock entry.",
   });
   console.log(JSON.stringify({ ok: true, mode, ...release, ...drop }, null, 2));

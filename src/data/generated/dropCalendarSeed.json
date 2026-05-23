@@ -1,6 +1,16 @@
 [
   {
     "sourceUpdatedAt": "2026-05-20T00:00:00.000Z",
+    "dateRange": "",
+    "confidenceLabel": "Predicted Drop Window",
+    "supportingReportCount": 0,
+    "timeWindow": "Needs confirmed restock history",
+    "lastConfirmedRestock": "",
+    "sourceVerificationStatus": "local_runtime_placeholder",
+    "actions": [
+      "Submit Scout Report",
+      "Add Restock Training"
+    ],
     "id": "drop-calendar-seed-needs-training",
     "dateKey": "",
     "storeName": "Drop Radar",

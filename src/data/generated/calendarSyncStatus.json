@@ -1,10 +1,36 @@
 {
   "source": "Pokemon.com official pages + local Drop Radar runtime data",
+  "releaseSourcePolicy": "Pokemon.com official pages are treated as confirmed only when the sync verifies a release date. Configured fallback rows stay Rumored/Unconfirmed.",
+  "dropSourcePolicy": "Drop Radar events come from Scout reports, manual/admin training restocks, and prediction cache data; confirmed restocks stay separate from predicted windows.",
   "releaseCalendarUpdatedAt": "2026-05-20T00:00:00.000Z",
   "dropCalendarUpdatedAt": "2026-05-20T00:00:00.000Z",
   "releaseEvents": 4,
   "releaseFetchSuccesses": 0,
   "releaseFetchWarnings": 4,
   "dropSeedEvents": 1,
+  "eventTypes": [
+    "Product Release",
+    "Set Release",
+    "Preorder Window",
+    "Confirmed Restock",
+    "Predicted Drop Window",
+    "Local Store Watch",
+    "Online Drop Watch",
+    "Kids Program Event",
+    "Community Event",
+    "Admin/Internal Reminder"
+  ],
+  "labels": {
+    "officialRelease": "Confirmed Release",
+    "predictedDrop": "Predicted Drop Window",
+    "confirmedRestock": "Confirmed Restock",
+    "rumoredCommunity": "Rumored/Unconfirmed"
+  },
+  "syncCommands": {
+    "releaseCalendar": "npm.cmd run sync:release-calendar",
+    "dropCalendar": "npm.cmd run sync:drop-calendar",
+    "calendarData": "npm.cmd run sync:calendar-data"
+  },
+  "schedulingStatus": "manual-script-only",
   "scheduling": "Scripts are available; no automatic scheduler is configured in this repo. Suggested cadence: release weekly/daily, drop daily or after restock entry."
 }
