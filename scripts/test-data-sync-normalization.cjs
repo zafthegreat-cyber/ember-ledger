@@ -108,6 +108,9 @@ const sealedProducts = JSON.parse(fs.readFileSync(path.join(generatedDir, "seale
 const cards = JSON.parse(fs.readFileSync(path.join(generatedDir, "pokemonTcgCards.json"), "utf8"));
 const marketPrices = JSON.parse(fs.readFileSync(path.join(generatedDir, "marketPrices.json"), "utf8"));
 const importStatus = JSON.parse(fs.readFileSync(path.join(generatedDir, "catalogImportStatus.json"), "utf8"));
+const retailerDropSources = JSON.parse(fs.readFileSync(path.join(generatedDir, "retailerDropSources.json"), "utf8"));
+const retailerDropStatus = JSON.parse(fs.readFileSync(path.join(generatedDir, "retailerDropStatus.json"), "utf8"));
+const retailerDropEvents = JSON.parse(fs.readFileSync(path.join(generatedDir, "retailerDropEvents.json"), "utf8"));
 const generatedProductIds = new Set([...sealedProducts, ...cards].map((row) => String(row.id)));
 const joinedPriceRows = marketPrices.filter((row) => generatedProductIds.has(String(row.catalogItemId || row.productId)));
 
@@ -123,6 +126,13 @@ assert.equal(importStatus.marketPricesJoinedByProductId, joinedPriceRows.length)
 assert.ok(importStatus.productsMissingReferencePrices >= 0, "missing price count should be explicit");
 assert.ok(importStatus.productsMissingPhotos >= 0, "missing photo count should be explicit");
 assert.doesNotMatch(importStatus.pricingPolicy, /guarantee|guaranteed/i);
+assert.equal(retailerDropSources.length, 28, "all retailer drop source profiles should be generated");
+assert.ok(retailerDropSources.some((row) => row.retailerName === "Pokemon Center"), "Pokemon Center source profile should be generated");
+assert.equal(retailerDropStatus.totalRetailers, retailerDropSources.length);
+assert.equal(retailerDropStatus.generatedDrops, retailerDropEvents.length);
+assert.ok(retailerDropStatus.optionalEnvKeys.includes("BEST_BUY_API_KEY"), "optional env key names should be listed without secret values");
+assert.ok(retailerDropStatus.calendarEventTypes.includes("Confirmed Online Drop"));
+assert.match(retailerDropStatus.syncPolicy, /No retailer page scraping/i);
 
 const status = buildCatalogSyncStatus({
   catalog: {

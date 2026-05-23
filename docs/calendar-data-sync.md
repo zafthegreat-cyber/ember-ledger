@@ -20,6 +20,11 @@ The release/drop calendar is generated from safe public and local sources.
   - Runs both release and drop calendar sync paths.
   - Updates `src/data/generated/calendarSyncStatus.json`.
 
+- `npm.cmd run sync:retailer-drops`
+  - Refreshes the safe all-retailer drop source framework.
+  - Writes generated retailer drop cache rows only for connected/allowed sources.
+  - Manual-only retailers are skipped without failing the app.
+
 ## Scheduling
 
 No automatic scheduler is configured in this repository.

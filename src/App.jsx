@@ -20,6 +20,7 @@ import { SCOUT_HISTORICAL_INTEL_SEED, buildScoutRestockPatterns } from "./data/s
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import generatedReleaseCalendar from "./data/generated/releaseCalendar.json";
 import generatedDropCalendarSeed from "./data/generated/dropCalendarSeed.json";
+import generatedRetailerDropEvents from "./data/generated/retailerDropEvents.json";
 import calendarSyncStatus from "./data/generated/calendarSyncStatus.json";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
@@ -29,6 +30,7 @@ import {
   normalizeDropCalendarEvent,
   normalizeReleaseCalendarEvent,
 } from "./utils/calendarDataUtils.mjs";
+import { retailerDropToCalendarEvent } from "./utils/retailerDropSources.mjs";
 import {
   DROP_RADAR_GUESS_LOCKED_MESSAGE,
   DROP_RADAR_CONFIRMATION_TEXT,
@@ -23124,6 +23126,9 @@ function renderForgeAccessState() {
     verified: Boolean(alert.inStock || alert.status === "in_stock"),
     sortWeight: 3,
   }));
+  const generatedRetailerDropCalendarEvents = generatedRetailerDropEvents
+    .map((drop, index) => retailerDropToCalendarEvent(drop, { todayKey: watchCalendarTodayKey, index }))
+    .filter((event) => event.dateKey);
   const generatedDropSeedEvents = generatedDropCalendarSeed
     .map((drop) => normalizeDropCalendarEvent({ ...drop, dateKey: drop.dateKey || watchCalendarTodayKey }))
     .filter((event) => event.dateKey)
@@ -23138,6 +23143,7 @@ function renderForgeAccessState() {
     ...watchCalendarReportEvents,
     ...watchCalendarForecastEvents,
     ...watchCalendarOnlineEvents,
+    ...generatedRetailerDropCalendarEvents,
     ...releaseCalendarEvents,
     ...generatedDropSeedEvents,
   ], { admin: adminEditModeActive }).filter((event) => event.dateKey >= watchCalendarTodayKey && event.dateKey <= watchCalendarRangeEndKey);

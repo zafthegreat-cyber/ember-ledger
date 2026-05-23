@@ -1,0 +1,498 @@
+[
+  {
+    "retailerId": "best-buy",
+    "retailerName": "Best Buy",
+    "sourceType": "official-api",
+    "connected": false,
+    "status": "missing-key",
+    "supportedSignals": [
+      "onlineAvailability",
+      "storeAvailability",
+      "price",
+      "retailerSku",
+      "productUrl"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [
+      "BEST_BUY_API_KEY"
+    ],
+    "aliases": [],
+    "notes": "API-capable when an allowed Best Buy connector/key is configured. No retailer page scraping."
+  },
+  {
+    "retailerId": "target",
+    "retailerName": "Target",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "walmart",
+    "retailerName": "Walmart",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "pokemon-center",
+    "retailerName": "Pokemon Center",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "onlineAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [
+      "Pokemon Center"
+    ],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "gamestop",
+    "retailerName": "GameStop",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "onlineAvailability",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "barnes-noble",
+    "retailerName": "Barnes & Noble",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [
+      "B&N"
+    ],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "costco",
+    "retailerName": "Costco",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "sam-s-club",
+    "retailerName": "Sam's Club",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [
+      "Sams Club"
+    ],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "bj-s-wholesale-club",
+    "retailerName": "BJ's Wholesale Club",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [
+      "BJ's",
+      "BJs"
+    ],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "walgreens",
+    "retailerName": "Walgreens",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "cvs",
+    "retailerName": "CVS",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "dollar-general",
+    "retailerName": "Dollar General",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "family-dollar",
+    "retailerName": "Family Dollar",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "dollar-tree",
+    "retailerName": "Dollar Tree",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "five-below",
+    "retailerName": "Five Below",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "dick-s-sporting-goods",
+    "retailerName": "DICK'S Sporting Goods",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [
+      "Dicks Sporting Goods"
+    ],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "hobby-lobby",
+    "retailerName": "Hobby Lobby",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "michaels",
+    "retailerName": "Michaels",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "kohl-s",
+    "retailerName": "Kohl's",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [
+      "Kohls"
+    ],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "hot-topic",
+    "retailerName": "Hot Topic",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "onlineAvailability",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "boxlunch",
+    "retailerName": "BoxLunch",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "onlineAvailability",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [
+      "Box Lunch"
+    ],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "meijer",
+    "retailerName": "Meijer",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "kroger",
+    "retailerName": "Kroger",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "publix",
+    "retailerName": "Publix",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "wegmans",
+    "retailerName": "Wegmans",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "local-card-shops",
+    "retailerName": "Local card shops",
+    "sourceType": "community-report",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "local-hobby-game-stores",
+    "retailerName": "Local hobby/game stores",
+    "sourceType": "community-report",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed",
+      "storeAvailability"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  },
+  {
+    "retailerId": "other-manual-retailer",
+    "retailerName": "Other/manual retailer",
+    "sourceType": "manual-watch",
+    "connected": false,
+    "status": "manual-only",
+    "supportedSignals": [
+      "manualWatch",
+      "communityReport",
+      "adminConfirmed"
+    ],
+    "lastCheckedAt": "2026-05-20T00:00:00.000Z",
+    "optionalEnvKeys": [],
+    "aliases": [],
+    "notes": "Manual/community watch only until an allowed source is configured."
+  }
+]
