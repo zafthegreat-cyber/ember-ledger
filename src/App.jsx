@@ -4233,6 +4233,8 @@ export default function App() {
     metadata: {},
   });
   const [betaReadinessData, setBetaReadinessData] = useState(() => loadBetaReadinessData());
+  const [backendNotifications, setBackendNotifications] = useState([]);
+  const [backendNotificationsReady, setBackendNotificationsReady] = useState(false);
   const [kidsProgramForm, setKidsProgramForm] = useState({
     parentName: "",
     email: "",
@@ -4998,6 +5000,17 @@ export default function App() {
     currentUserProfile?.adminRole ||
     currentUserProfile?.admin_role
   );
+  const earlyAdminProfileSignal = Boolean(
+    hasAdminProfileSignal ||
+    isAdminUser(subscriptionProfile) ||
+    subscriptionProfile?.isAdmin ||
+    subscriptionProfile?.is_admin ||
+    subscriptionProfile?.adminRole ||
+    subscriptionProfile?.admin_role ||
+    subscriptionProfile?.isModerator ||
+    subscriptionProfile?.is_moderator
+  );
+  const adminHeavyDataVisible = !guestPreviewActive && earlyAdminProfileSignal && adminModeStorageReady && adminViewMode === "admin";
   const commandDeskSellerAccess = isSellerExperience || hasAdminProfileSignal;
 
   const mainTabs = [
@@ -5844,7 +5857,7 @@ export default function App() {
       { label: "Vault items", value: activeVaultItems.length || 0 },
       { label: "Market listings", value: marketplaceListings.length || 0 },
       { label: "Forge inventory", value: forgeInventoryItems.length || 0 },
-      { label: "Alerts", value: (betaReadinessData.notifications || []).filter((entry) => !entry.dismissedAt && !entry.readAt).length },
+      { label: "Alerts", value: getPersistedNotificationRows().filter((entry) => !entry.dismissedAt && !entry.readAt).length },
       { label: "Reviews", value: adminToolsVisible ? suggestions.filter((entry) => entry.status === SUGGESTION_STATUSES.PENDING).length : phase2MarketplaceDraftListings.length || 0 },
     ];
     const missionStats = [
@@ -6468,6 +6481,91 @@ export default function App() {
         ...(current.notifications || []),
       ].slice(0, 50),
     }));
+  }
+
+  function mapSupabaseNotification(row = {}) {
+    const type = row.type || "account_notice";
+    const title = row.title || "Ember & Tide update";
+    const message = row.message || "";
+    return {
+      id: row.id || makeId("notification"),
+      userId: row.user_id || row.userId || "",
+      workspaceId: row.workspace_id || row.workspaceId || "",
+      type,
+      category: type,
+      channel: row.channel || "in_app",
+      title,
+      message,
+      actionUrl: row.action_url || row.actionUrl || "",
+      route: row.action_url || row.actionUrl || "",
+      relatedEntityType: row.related_entity_type || row.relatedEntityType || "",
+      relatedEntityId: row.related_entity_id || row.relatedEntityId || "",
+      readAt: row.read_at || row.readAt || "",
+      dismissedAt: row.dismissed_at || row.dismissedAt || "",
+      createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+      priority: type === "admin_review_needed" ? "high" : /critical|required|urgent/i.test(`${title} ${message}`) ? "urgent" : "normal",
+      audience: "current user",
+      dismissible: !/critical|required|urgent/i.test(`${title} ${message}`),
+      source: "supabase",
+      dedupeKey: `supabase-notification:${row.id || title}`,
+    };
+  }
+
+  function getPersistedNotificationRows() {
+    const rows = [...backendNotifications, ...(betaReadinessData.notifications || [])];
+    const merged = new Map();
+    rows.forEach((entry) => {
+      const key = entry.dedupeKey || entry.id;
+      if (!key) return;
+      merged.set(key, { ...(merged.get(key) || {}), ...entry });
+    });
+    return [...merged.values()].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
+
+  async function loadBackendNotifications() {
+    if (!isSupabaseConfigured || !supabase || !signedInWithSupabase || !protectedAppDataAccessReady()) {
+      setBackendNotifications([]);
+      return [];
+    }
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("id,user_id,workspace_id,type,channel,title,message,action_url,related_entity_type,related_entity_id,read_at,dismissed_at,created_at")
+      .eq("user_id", user.id)
+      .eq("channel", "in_app")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      if (!isScoutBackendOptionalError(error)) {
+        logAppError("notifications_backend_load", error, {}, "low");
+      }
+      setBackendNotifications([]);
+      return [];
+    }
+    const rows = (data || []).map(mapSupabaseNotification);
+    setBackendNotifications(rows);
+    return rows;
+  }
+
+  async function patchBackendNotificationState(notification = {}, updates = {}) {
+    if (notification.source !== "supabase" || !notification.id || !isSupabaseConfigured || !supabase || !signedInWithSupabase) return;
+    const patch = {};
+    if (updates.readAt) patch.read_at = updates.readAt;
+    if (updates.dismissedAt) patch.dismissed_at = updates.dismissedAt;
+    if (!Object.keys(patch).length) return;
+    const { error } = await supabase
+      .from("notifications")
+      .update(patch)
+      .eq("id", notification.id)
+      .eq("user_id", user.id);
+    if (error) {
+      if (!isScoutBackendOptionalError(error)) {
+        logAppError("notifications_backend_update", error, { notificationId: notification.id }, "low");
+      }
+      return;
+    }
+    setBackendNotifications((current) => current.map((entry) =>
+      entry.id === notification.id ? { ...entry, ...updates } : entry
+    ));
   }
 
   function submitFeedbackDialog(event) {
@@ -7215,18 +7313,21 @@ export default function App() {
   function markNotificationRead(notificationId) {
     const target = notificationCenterRows.find((entry) => entry.id === notificationId || entry.dedupeKey === notificationId);
     if (target) {
+      const readAt = target.readAt || new Date().toISOString();
       updateBetaReadinessData((current) => ({
         ...current,
         notifications: upsertNotificationState(current.notifications || [], target, {
-          readAt: target.readAt || new Date().toISOString(),
+          readAt,
         }),
       }));
+      void patchBackendNotificationState(target, { readAt });
       return;
     }
+    const readAt = new Date().toISOString();
     updateBetaReadinessData((current) => ({
       ...current,
       notifications: (current.notifications || []).map((entry) =>
-        entry.id === notificationId ? { ...entry, readAt: entry.readAt || new Date().toISOString() } : entry
+        entry.id === notificationId ? { ...entry, readAt: entry.readAt || readAt } : entry
       ),
     }));
   }
@@ -7234,18 +7335,21 @@ export default function App() {
   function dismissNotification(notificationId) {
     const target = notificationCenterRows.find((entry) => entry.id === notificationId || entry.dedupeKey === notificationId);
     if (target && target.dismissible !== false) {
+      const dismissedAt = target.dismissedAt || new Date().toISOString();
       updateBetaReadinessData((current) => ({
         ...current,
         notifications: upsertNotificationState(current.notifications || [], target, {
-          dismissedAt: target.dismissedAt || new Date().toISOString(),
+          dismissedAt,
         }),
       }));
+      void patchBackendNotificationState(target, { dismissedAt });
       return;
     }
+    const dismissedAt = new Date().toISOString();
     updateBetaReadinessData((current) => ({
       ...current,
       notifications: (current.notifications || []).map((entry) =>
-        entry.id === notificationId && entry.dismissible !== false ? { ...entry, dismissedAt: new Date().toISOString() } : entry
+        entry.id === notificationId && entry.dismissible !== false ? { ...entry, dismissedAt } : entry
       ),
     }));
   }
@@ -7259,6 +7363,9 @@ export default function App() {
         current.notifications || []
       ),
     }));
+    notificationCenterRows.forEach((entry) => {
+      if (!entry.readAt) void patchBackendNotificationState(entry, { readAt: now });
+    });
   }
 
   function openNotificationTarget(entry = {}) {
@@ -7987,16 +8094,16 @@ export default function App() {
   }
 
   useEffect(() => {
-    if ((activeTab === "adminReview" && hasAdminProfileSignal) || activeTab === "mySuggestions") {
+    if ((activeTab === "adminReview" && adminHeavyDataVisible) || activeTab === "mySuggestions") {
       refreshSuggestionsFromStorage();
     }
-    if (activeTab === "adminReview" && hasAdminProfileSignal) {
+    if (activeTab === "adminReview" && adminHeavyDataVisible) {
       loadSupabaseImportStatus();
       loadCatalogImportStatusOnDemand()
         .then(setCatalogImportStatus)
         .catch((error) => console.warn("Could not load catalog import status", error));
     }
-  }, [activeTab, hasAdminProfileSignal]);
+  }, [activeTab, adminHeavyDataVisible]);
 
   useEffect(() => {
     if (activeTab !== "market" || tideTradrSubTab !== "overview") return;
@@ -11586,7 +11693,7 @@ export default function App() {
   );
   const catalogRouteWarmNeeded = Boolean(
     ["vault", "inventory", "market", "addInventory", "addSale", "sales", "expenses", "reports"].includes(activeTab) ||
-    (activeTab === "adminReview" && hasAdminProfileSignal)
+    (activeTab === "adminReview" && adminHeavyDataVisible)
   );
   const catalogQueryWarmNeeded = Boolean(
     activeTab === "market" &&
@@ -11607,7 +11714,7 @@ export default function App() {
   );
   const storeSeedWarmNeeded = Boolean(
     activeTab === "scout" ||
-    (activeTab === "adminReview" && hasAdminProfileSignal) ||
+    (activeTab === "adminReview" && adminHeavyDataVisible) ||
     (activeTab === "dashboard" && scoutSubTabTarget?.tab === "stores")
   );
 
@@ -21119,6 +21226,45 @@ function renderForgeAccessState() {
   }, [adminToolsVisible, signedInWithSupabase]);
 
   useEffect(() => {
+    if (!localDataLoaded || guestPreviewActive || !signedInWithSupabase || !protectedAppDataAccessReady()) {
+      setBackendNotifications([]);
+      setBackendNotificationsReady(true);
+      return undefined;
+    }
+    let active = true;
+    setBackendNotificationsReady(false);
+    loadBackendNotifications().then((rows) => {
+      if (!active) return;
+      setBackendNotifications(rows);
+      setBackendNotificationsReady(true);
+    }).catch((error) => {
+      if (!active) return;
+      if (!isScoutBackendOptionalError(error)) {
+        logAppError("notifications_backend_load_unhandled", error, {}, "low");
+      }
+      setBackendNotifications([]);
+      setBackendNotificationsReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    localDataLoaded,
+    guestPreviewActive,
+    signedInWithSupabase,
+    user?.id,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    shorelineState.betaRequest?.status,
+  ]);
+
+  useEffect(() => {
     if (!adminEditModeAvailable && adminEditMode) {
       setAdminEditMode(false);
     }
@@ -21160,19 +21306,25 @@ function renderForgeAccessState() {
       startupPriorityAppliedRef.current = true;
       return;
     }
+    const backendAnnouncementsPending =
+      signedInWithSupabase &&
+      !guestPreviewActive &&
+      protectedAppDataAccessReady() &&
+      (!localDataLoaded || !backendNotificationsReady);
+    if (backendAnnouncementsPending) return;
     const onboardingDue = shouldRenderFirstRunOnboarding();
     if (onboardingDue && activeTab === "dashboard") {
       startupPriorityAppliedRef.current = true;
       return;
     }
-    const activeStartupAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement);
+    const activeStartupAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement);
     if (activeStartupAnnouncements.length) {
       setActiveTab("whatsNew");
     } else if (activeTab === "dashboard") {
       setActiveTab("dailyTide");
     }
     startupPriorityAppliedRef.current = true;
-  }, [activeTab, betaReadinessData.notifications]);
+  }, [activeTab, betaReadinessData.notifications, backendNotifications, backendNotificationsReady, signedInWithSupabase, guestPreviewActive, localDataLoaded]);
   const notificationPreferenceRows = [
     ...ALERT_TYPE_OPTIONS.map((option) => ({
       key: option.key,
@@ -22967,7 +23119,7 @@ function renderForgeAccessState() {
     ...(phase2Data.notificationPreferences || {}),
   });
   const notificationCenterRows = buildNotificationsFromEvents({
-    persistedNotifications: betaReadinessData.notifications || [],
+    persistedNotifications: getPersistedNotificationRows(),
     preferences: effectiveNotificationPreferences,
     scoutReports: scoutReportRows || [],
     predictedWindows: watchCalendarForecastEvents || [],
@@ -28026,7 +28178,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   async function runNotificationCopyAiAssist(notification = null) {
-    const latest = notification || (betaReadinessData.notifications || [])[0] || {};
+    const latest = notification || getPersistedNotificationRows()[0] || {};
     const suggestion = draftNotificationCopy(latest);
     return showAiSuggestion(AI_FEATURE_AREAS.NOTIFICATION_COPY, {
       ...suggestion,
@@ -28883,7 +29035,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         priority: "normal",
       },
     ];
-    const activeAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement);
+    const activeAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement);
     const recentAnnouncements = activeAnnouncements.length ? activeAnnouncements : staticUpdates;
     const heroAnnouncement = recentAnnouncements[0];
     const heroType = heroAnnouncement?.type || "New feature";
@@ -29369,7 +29521,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const showFeedback = adminReviewFilter === "All" || adminReviewFilter === "Beta Feedback";
     const showDataRequests = adminReviewFilter === "All" || adminReviewFilter === "Data Requests";
     const showUserManagement = adminReviewFilter === "All" || adminReviewFilter === "User Management";
-    const showErrors = adminReviewFilter === "All" || adminReviewFilter === "App Error Logs";
+    const showSystemHealth = adminReviewFilter === "All" || adminReviewFilter === "System Health / Logs" || adminReviewFilter === "App Error Logs";
+    const showErrors = showSystemHealth;
+    const backendBetaRequestKeys = new Set((shorelineState.adminBetaRequests || []).map((entry) => String(entry.userId || entry.email || "").toLowerCase()).filter(Boolean));
+    const localBetaAccessRows = (betaReadinessData.betaAccessUsers || []).filter((entry) => {
+      const key = String(entry.userId || entry.email || "").toLowerCase();
+      return key && !backendBetaRequestKeys.has(key);
+    });
+    const betaAccessRows = [...(shorelineState.adminBetaRequests || []), ...localBetaAccessRows];
+    const receiptsNeedingReview = phase2RecentReceipts.filter((receipt) => /draft|review|duplicate|pending|needs/i.test(`${receipt.status || ""} ${receipt.reviewStatus || ""} ${receipt.importStatus || ""}`));
     const localUsers = [
       currentUserProfile,
       ...(betaReadinessData.kidsApplications || []).map((entry) => ({
@@ -29461,17 +29621,19 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="compact-card-header">
               <div>
                 <h3>Beta Access Requests</h3>
-                <p>Approve, deny, waitlist, or reset requests. Approval unlocks the full app.</p>
+                <p>Approve, deny, waitlist, or reset requests. Supabase Shoreline rows appear first; local fallback access rows stay admin-only.</p>
               </div>
-              <span className="status-badge">{(shorelineState.adminBetaRequests || []).length} total</span>
+              <span className="status-badge">{betaAccessRows.length} total</span>
             </div>
             <div className="inventory-list compact-inventory-list">
-              {(shorelineState.adminBetaRequests || []).length ? shorelineState.adminBetaRequests.map((entry) => (
-                <article className="inventory-card compact-card" key={entry.id}>
+              {betaAccessRows.length ? betaAccessRows.map((entry) => {
+                const backendRow = Boolean(entry.id && (shorelineState.adminBetaRequests || []).some((request) => request.id === entry.id));
+                return (
+                <article className="inventory-card compact-card" key={entry.id || entry.userId || entry.email}>
                   <div className="compact-card-header">
                     <div>
                       <strong>{entry.fullName || entry.email}</strong>
-                      <p>{maskEmail(entry.email)} | {entry.cityArea || "Area not provided"} | {entry.collectorType || "collector"}</p>
+                      <p>{maskEmail(entry.email)} | {entry.cityArea || "Area not provided"} | {entry.collectorType || "collector"} | {backendRow ? "Supabase" : "Local fallback"}</p>
                     </div>
                     <span className={`status-badge ${entry.status}`}>{statusLabel(entry.status)}</span>
                   </div>
@@ -29483,12 +29645,15 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <DetailItem label="Submitted" value={entry.createdAt ? shortDate(entry.createdAt) : "No date"} />
                   </div>
                   <div className="quick-actions">
-                    {BETA_REQUEST_STATUSES.filter((status) => status !== "not_requested").map((status) => (
+                    {backendRow ? BETA_REQUEST_STATUSES.filter((status) => status !== "not_requested").map((status) => (
                       <button type="button" className="secondary-button" key={status} onClick={() => void updateShorelineAdminStatus("beta", entry, status)}>{statusLabel(status)}</button>
+                    )) : BETA_ACCESS_STATUSES.map((status) => (
+                      <button type="button" className="secondary-button" key={status} onClick={() => updateBetaAccessUser(entry, status)}>{statusLabel(status)}</button>
                     ))}
                   </div>
                 </article>
-              )) : (
+                );
+              }) : (
                 <div className="empty-state">
                   <h3>No beta requests yet</h3>
                   <p>Signed-in users submit requests from the beta access welcome screen.</p>
@@ -29662,6 +29827,45 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <div className="empty-state">
                   <h3>No data requests</h3>
                   <p>Privacy and account requests will appear here.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : null}
+        {showSystemHealth ? (
+          <section className="settings-subsection beta-review-queue">
+            <div className="compact-card-header">
+              <div>
+                <h3>Receipts Needing Review</h3>
+                <p>Admin-only view of receipt drafts, duplicate warnings, and review states available from the current Phase 2 receipt data.</p>
+              </div>
+              <span className="status-badge">{receiptsNeedingReview.length} need review</span>
+            </div>
+            <div className="inventory-list compact-inventory-list">
+              {receiptsNeedingReview.length ? receiptsNeedingReview.slice(0, 12).map((receipt) => (
+                <article className="inventory-card compact-card" key={receipt.id}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{receipt.merchant || receipt.storeName || "Receipt review"}</strong>
+                      <p>{receipt.purchaseDate || shortDate(receipt.purchasedAt || receipt.createdAt) || "No date"} | {money(receipt.total || receipt.receiptTotal || 0)}</p>
+                    </div>
+                    <span className="status-badge">{receipt.status || receipt.reviewStatus || "review"}</span>
+                  </div>
+                  <div className="detail-grid compact-detail-grid">
+                    <DetailItem label="Lines" value={String(phase2ReceiptLineItemCounts[receipt.id] || 0)} />
+                    <DetailItem label="Destination" value={phase2ReceiptDestinationSummaryText(receipt.id)} />
+                    <DetailItem label="Source" value={receipt.source || "manual"} />
+                    <DetailItem label="Workspace" value={receipt.workspaceId || receipt.workspace_id || "Personal"} />
+                  </div>
+                  <p className="compact-subtitle">Receipt images and raw OCR are not shown in this summary. Open Forge receipt review before changing records.</p>
+                  <div className="quick-actions">
+                    <button type="button" className="secondary-button" onClick={() => { setActiveTab("expenses"); setForgeSubTab("expenses"); }}>Open Forge Expenses</button>
+                  </div>
+                </article>
+              )) : (
+                <div className="empty-state">
+                  <h3>No receipts need review</h3>
+                  <p>Draft, duplicate, pending, and needs-review receipts will appear here when Phase 2 receipt data is available.</p>
                 </div>
               )}
             </div>
@@ -29889,13 +30093,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function renderAdminAnnouncementSection() {
     if (!["All", "Announcements / New Stuff"].includes(adminReviewFilter)) return null;
-    const announcements = (betaReadinessData.notifications || []).filter((entry) => entry.type === "announcement" || /new|update|announcement/i.test(`${entry.title || ""} ${entry.type || ""}`));
+    const announcements = getPersistedNotificationRows().filter(isAnnouncementNotification);
     return (
       <section className="settings-subsection admin-ops-section">
         <div className="compact-card-header">
           <div>
             <h3>Announcements / New Stuff</h3>
-            <p>Create local announcement drafts and review active New Stuff messages. Backend-managed announcements can plug into this surface later.</p>
+            <p>Create local announcement drafts and review Supabase in-app updates when available. Required or critical messages stay visible until resolved.</p>
           </div>
           <button type="button" onClick={createAdminAnnouncement}>Create Draft</button>
         </div>
@@ -29906,12 +30110,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <strong>{entry.title}</strong>
                 <p>{entry.message}</p>
               </div>
-              <span className="status-badge">{entry.dismissedAt ? "dismissed" : announcementWindowState(entry)}</span>
+              <span className="status-badge">{entry.source === "supabase" ? "Supabase" : "Local"} | {entry.dismissedAt ? "dismissed" : announcementWindowState(entry)}</span>
             </article>
           )) : (
             <div className="small-empty-state">
               <strong>No announcements active</strong>
-              <span>Create a draft or connect the future admin-managed announcement feed.</span>
+              <span>Create a draft or publish a user-scoped Supabase notification for the current account.</span>
             </div>
           )}
         </div>
@@ -30179,7 +30383,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const kidsApplications = [...(shorelineState.adminLittleSparksApplications || []), ...(betaReadinessData.kidsApplications || [])];
     const sponsorRows = betaReadinessData.sponsorInterest || [];
     const auditLogs = betaReadinessData.auditLogs || [];
-    const announcementCount = (betaReadinessData.notifications || []).filter((entry) => entry.type === "announcement").length;
+    const announcementCount = getPersistedNotificationRows().filter(isAnnouncementNotification).length;
     const shopWorkspaces = workspaces.filter((workspace) => ["business", "card_shop_partner", "team"].includes(workspace.type));
     const receiptsNeedingReview = phase2RecentReceipts.filter((receipt) => /draft|review|duplicate|pending|needs/i.test(`${receipt.status || ""} ${receipt.reviewStatus || ""} ${receipt.importStatus || ""}`));
     const catalogCorrectionCount = suggestions.filter((suggestion) => ["Catalog Suggestions", "SKU / UPC Suggestions", "Store Suggestions"].includes(REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)])).length;
@@ -35372,7 +35576,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       simple: "Simple family view",
       collector: "Collector command view",
     }[hearthMode];
-    const activeAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement).slice(0, 3);
+    const activeAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement).slice(0, 3);
     const currentScopedUserId = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta");
     const currentScopedEmail = String(accountEmail() || "").trim().toLowerCase();
     const isCurrentUserRecord = (entry = {}) => {
@@ -35820,7 +36024,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         : simpleModeRequested
           ? "simple"
           : "collector";
-    const activeAnnouncements = (betaReadinessData.notifications || []).filter(canShowAnnouncement).slice(0, 4);
+    const activeAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement).slice(0, 4);
     const currentScopedUserId = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta");
     const currentScopedEmail = String(accountEmail() || "").trim().toLowerCase();
     const isCurrentUserRecord = (entry = {}) => {
