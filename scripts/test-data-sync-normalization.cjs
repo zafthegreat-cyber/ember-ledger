@@ -1,6 +1,9 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const {
+  buildCatalogSyncStatus,
   imageConfidence,
   inferProductType,
   isRelevantOsmStore,
@@ -99,5 +102,44 @@ const merged = mergeStores(
 );
 assert.equal(merged.length, 1);
 assert.equal(merged[0].nickname, "FC");
+
+const generatedDir = path.join(__dirname, "..", "src", "data", "generated");
+const sealedProducts = JSON.parse(fs.readFileSync(path.join(generatedDir, "sealedProducts.json"), "utf8"));
+const cards = JSON.parse(fs.readFileSync(path.join(generatedDir, "pokemonTcgCards.json"), "utf8"));
+const marketPrices = JSON.parse(fs.readFileSync(path.join(generatedDir, "marketPrices.json"), "utf8"));
+const importStatus = JSON.parse(fs.readFileSync(path.join(generatedDir, "catalogImportStatus.json"), "utf8"));
+const generatedProductIds = new Set([...sealedProducts, ...cards].map((row) => String(row.id)));
+const joinedPriceRows = marketPrices.filter((row) => generatedProductIds.has(String(row.catalogItemId || row.productId)));
+
+assert.ok(sealedProducts.length > 0, "generated sealed catalog should not be empty");
+assert.ok(cards.length > 0, "generated card catalog should not be empty");
+assert.ok(marketPrices.length > 0, "generated market price cache should not be empty");
+assert.equal(joinedPriceRows.length, marketPrices.length, "market prices should join to catalog products by productId/catalogItemId");
+assert.equal(importStatus.priceFallbackLabel, "Price data unavailable");
+assert.equal(importStatus.imageFallbackLabel, "Ember & Tide product placeholder");
+assert.equal(importStatus.dailyRefreshCommand, "npm.cmd run sync:market-prices");
+assert.equal(importStatus.schedulingStatus, "manual-script-only");
+assert.equal(importStatus.marketPricesJoinedByProductId, joinedPriceRows.length);
+assert.ok(importStatus.productsMissingReferencePrices >= 0, "missing price count should be explicit");
+assert.ok(importStatus.productsMissingPhotos >= 0, "missing photo count should be explicit");
+assert.doesNotMatch(importStatus.pricingPolicy, /guarantee|guaranteed/i);
+
+const status = buildCatalogSyncStatus({
+  catalog: {
+    groups: [group],
+    syncedGroups: [group],
+    sealedProducts: [product, noPrice],
+    cards: [],
+    marketPrices: [price],
+    failedGroups: [],
+  },
+  stores: { stores: [target], importedFromOverpass: 1, overpassError: "" },
+  aliasesImported: 0,
+});
+assert.equal(status.catalogProductsImported, 2);
+assert.equal(status.marketPricesJoinedByProductId, 1);
+assert.equal(status.productsWithReferencePrices, 1);
+assert.equal(status.productsMissingReferencePrices, 1);
+assert.equal(status.priceFallbackLabel, "Price data unavailable");
 
 console.log("Data sync normalization tests passed");

@@ -35,23 +35,23 @@ export function getBestAvailableMarketPrice(item = {}, cache = { prices: [] }) {
     marketStatus: item.marketStatus || item.sourceType || (item.marketSource ? MARKET_STATUS.MANUAL : MARKET_STATUS.MOCK),
     confidenceScore: item.marketConfidenceLevel === "High" ? 80 : item.marketConfidenceLevel === "Medium" ? 62 : item.marketConfidenceLevel === "Low" ? 42 : 50,
   });
-  const fallbackMock = normalizeMarketPrice({
+  const unavailableMarketPrice = normalizeMarketPrice({
     catalogItemId: item.id,
     catalogType: item.catalogType || "sealed",
-    externalSource: "Estimated fallback",
-    marketPrice: Number(item.msrpPrice || item.msrp || 0),
-    timestamp: item.createdAt || new Date().toISOString(),
-    marketStatus: Number(item.msrpPrice || item.msrp || 0) > 0 ? MARKET_STATUS.MOCK : MARKET_STATUS.UNKNOWN,
-    confidenceScore: Number(item.msrpPrice || item.msrp || 0) > 0 ? 25 : 0,
+    externalSource: "Market value unavailable",
+    marketPrice: 0,
+    timestamp: item.createdAt || item.updatedAt || "",
+    marketStatus: MARKET_STATUS.UNKNOWN,
+    confidenceScore: 0,
   });
 
-  const candidates = [cached, manualOrCatalog, fallbackMock].filter(Boolean).filter((price) => Number(price.marketPrice || price.price || 0) > 0 || price.marketStatus === MARKET_STATUS.UNKNOWN);
+  const candidates = [cached, manualOrCatalog, unavailableMarketPrice].filter(Boolean).filter((price) => Number(price.marketPrice || price.price || 0) > 0 || price.marketStatus === MARKET_STATUS.UNKNOWN);
   const priority = { live: 5, manual: 4, cached: 3, mock: 2, unknown: 1 };
   const best = candidates.sort((a, b) => {
     const statusDiff = (priority[b.marketStatus] || 0) - (priority[a.marketStatus] || 0);
     if (statusDiff) return statusDiff;
     return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
-  })[0] || fallbackMock;
+  })[0] || unavailableMarketPrice;
   const confidence = calculateMarketConfidence(item, best);
   return {
     ...best,

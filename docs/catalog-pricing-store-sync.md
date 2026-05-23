@@ -30,20 +30,23 @@ Generated files:
 - `src/data/generated/virginiaStores.json`
 - `src/data/generated/catalogImportStatus.json`
 
+`catalogImportStatus.json` includes the generated product/photo/reference-price counts, productId join coverage, fallback labels, and the current scheduling status so admin surfaces can explain freshness without implying live pricing.
+
 ## Daily Refresh
 
-No scheduler is created by this pass. To refresh daily, schedule:
+No scheduler is configured in this repository. To refresh daily, schedule:
 
 ```powershell
 npm.cmd run sync:market-prices
 ```
 
-The script writes deterministic generated data from public source records and logs counts only. It does not wipe manual app data and does not update Supabase.
+The script writes deterministic generated data from public source records and logs counts only. It does not wipe manual app data and does not update Supabase. A future scheduler can run this command from Vercel Cron, GitHub Actions, or another trusted runner; until then, pricing refresh is manual/on-demand.
 
 ## Fallback Behavior
 
 - Missing product images render through the app's Ember & Tide product placeholder.
 - Missing reference prices show as unavailable; the app should not claim fair pricing without a reliable reference.
+- Reference prices are joined by source productId when available. Low-confidence fallback matching is for review only and must not power automatic fair-price labels.
 - Missing stores can still be entered manually in Scout.
 - OSM directory matches are not verified restock signals. Scout restock confidence still comes from reports and history.
 

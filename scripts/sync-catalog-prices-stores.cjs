@@ -731,6 +731,58 @@ function chainCounts(stores = []) {
   }, {});
 }
 
+function buildCatalogSyncStatus({ catalog = {}, stores = {}, aliasesImported = 0 } = {}) {
+  const products = [...(catalog.sealedProducts || []), ...(catalog.cards || [])];
+  const productIds = new Set(products.map((item) => String(item.id || "")).filter(Boolean));
+  const joinedMarketPrices = (catalog.marketPrices || []).filter((price) =>
+    productIds.has(String(price.catalogItemId || price.productId || ""))
+  );
+  const productsWithReferencePrice = new Set(
+    joinedMarketPrices
+      .filter((price) => Number(price.marketPrice || price.price || 0) > 0)
+      .map((price) => String(price.catalogItemId || price.productId || ""))
+  );
+  const productsWithPhotos = products.filter((item) =>
+    item.imageUrl || item.photoUrl || item.imageSmall || item.imageLarge
+  ).length;
+  const totalProducts = products.length;
+
+  return {
+    lastImportedAt: SYNC_TIMESTAMP,
+    source: "tcgcsv-plus-local-seeds",
+    marketPriceSource: "TCGCSV public product/price JSON",
+    tcgcsvCategoryId: POKEMON_CATEGORY_ID,
+    tcgcsvGroupsAvailable: (catalog.groups || []).length,
+    tcgcsvGroupsSynced: (catalog.syncedGroups || []).length,
+    catalogProductsImported: totalProducts,
+    cardsImported: (catalog.cards || []).length,
+    sealedProductsImported: (catalog.sealedProducts || []).length,
+    marketPricesImported: (catalog.marketPrices || []).length,
+    marketPricesJoinedByProductId: joinedMarketPrices.length,
+    referencePriceJoinCoverage: (catalog.marketPrices || []).length
+      ? Number((joinedMarketPrices.length / catalog.marketPrices.length).toFixed(4))
+      : 0,
+    aliasesImported,
+    productsWithPhotos,
+    productsMissingPhotos: Math.max(totalProducts - productsWithPhotos, 0),
+    productsWithReferencePrices: productsWithReferencePrice.size,
+    productsMissingReferencePrices: Math.max(totalProducts - productsWithReferencePrice.size, 0),
+    priceFallbackLabel: "Price data unavailable",
+    imageFallbackLabel: "Ember & Tide product placeholder",
+    photoSourcePolicy: "Use source image URLs when provided by public catalog data; otherwise render the branded app placeholder.",
+    pricingPolicy: "Use productId joins for reference prices. Fallback matching is low-confidence and must not power automatic fair-price claims.",
+    dailyRefreshCommand: "npm.cmd run sync:market-prices",
+    schedulingStatus: "manual-script-only",
+    schedulingNotes: "No automatic scheduler is configured in this repository. Schedule the command in Vercel Cron, GitHub Actions, or another trusted runner when operations are ready.",
+    virginiaStoresImported: (stores.stores || []).length,
+    virginiaStoresFromOverpass: stores.importedFromOverpass || 0,
+    virginiaStoreCountsByChain: chainCounts(stores.stores || []),
+    failedTcgcsvGroups: catalog.failedGroups || [],
+    overpassError: stores.overpassError || "",
+    notes: "Generated from public TCGCSV product/price JSON and cached Virginia store directory data. No retailer scraping and no TCGplayer page scraping. Pricing is reference data, not a live offer.",
+  };
+}
+
 async function writeGenerated(fileName, data) {
   await fs.mkdir(generatedDir, { recursive: true });
   await fs.writeFile(path.join(generatedDir, fileName), `${JSON.stringify(data, null, 2)}\n`);
@@ -745,25 +797,11 @@ async function main() {
   const catalog = await syncTcgCsvCatalog();
   const stores = await syncVirginiaStores();
 
-  const status = {
-    lastImportedAt: SYNC_TIMESTAMP,
-    source: "tcgcsv-plus-local-seeds",
-    tcgcsvCategoryId: POKEMON_CATEGORY_ID,
-    tcgcsvGroupsAvailable: catalog.groups.length,
-    tcgcsvGroupsSynced: catalog.syncedGroups.length,
-    cardsImported: catalog.cards.length,
-    sealedProductsImported: catalog.sealedProducts.length,
-    marketPricesImported: catalog.marketPrices.length,
+  const status = buildCatalogSyncStatus({
+    catalog,
+    stores,
     aliasesImported: (await readJson(path.join(generatedDir, "searchAliases.json"), [])).length,
-    productsWithPhotos: catalog.sealedProducts.filter((item) => item.imageUrl).length + catalog.cards.filter((item) => item.imageUrl).length,
-    productsWithReferencePrices: catalog.marketPrices.filter((price) => Number(price.marketPrice || 0) > 0).length,
-    virginiaStoresImported: stores.stores.length,
-    virginiaStoresFromOverpass: stores.importedFromOverpass,
-    virginiaStoreCountsByChain: chainCounts(stores.stores),
-    failedTcgcsvGroups: catalog.failedGroups,
-    overpassError: stores.overpassError,
-    notes: "Generated from public TCGCSV product/price JSON and cached Virginia store directory data. No retailer scraping and no TCGplayer page scraping. Pricing is reference data, not a live offer.",
-  };
+  });
 
   await writeGenerated("sealedProducts.json", catalog.sealedProducts);
   await writeGenerated("pokemonTcgCards.json", catalog.cards);
@@ -810,6 +848,7 @@ module.exports = {
   normalizeMarketPrice,
   pricingConfidence,
   imageConfidence,
+  buildCatalogSyncStatus,
   storeMergeKey,
   mergeStores,
   osmStoreFromElement,
