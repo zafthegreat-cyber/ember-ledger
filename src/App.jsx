@@ -16,21 +16,10 @@ import {
 } from "./data/tcgOperatingSystem";
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
 import { VIRGINIA_RETAILERS } from "./data/storeGroups";
-import { SCOUT_HISTORICAL_INTEL_SEED, buildScoutRestockPatterns } from "./data/scoutRestockIntelSeed";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
-import generatedReleaseCalendar from "./data/generated/releaseCalendar.json";
-import generatedDropCalendarSeed from "./data/generated/dropCalendarSeed.json";
-import generatedRetailerDropEvents from "./data/generated/retailerDropEvents.json";
-import calendarSyncStatus from "./data/generated/calendarSyncStatus.json";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
-import {
-  filterCalendarEventsForViewer,
-  normalizeDropCalendarEvent,
-  normalizeReleaseCalendarEvent,
-} from "./utils/calendarDataUtils.mjs";
-import { retailerDropToCalendarEvent } from "./utils/retailerDropSources.mjs";
 import {
   DROP_RADAR_GUESS_LOCKED_MESSAGE,
   DROP_RADAR_CONFIRMATION_TEXT,
@@ -443,10 +432,31 @@ const EMPTY_CATALOG_IMPORT_STATUS = {
   totalSealedProducts: 0,
   generatedAt: "",
 };
+const EMPTY_CALENDAR_SYNC_STATUS = {
+  releaseEvents: 0,
+  dropSeedEvents: 0,
+  scheduling: "Calendar data loads when Scout calendar opens.",
+};
+const EMPTY_CALENDAR_DATA_BUNDLE = {
+  generatedReleaseCalendar: [],
+  generatedDropCalendarSeed: [],
+  generatedRetailerDropEvents: [],
+  calendarSyncStatus: EMPTY_CALENDAR_SYNC_STATUS,
+  filterCalendarEventsForViewer: (events = []) => events,
+  normalizeDropCalendarEvent: () => null,
+  normalizeReleaseCalendarEvent: () => null,
+  retailerDropToCalendarEvent: () => null,
+};
+const EMPTY_SCOUT_RESTOCK_INTEL_BUNDLE = {
+  scoutHistoricalIntelSeed: [],
+  buildScoutRestockPatterns: () => [],
+};
 let pokemonCatalogSearchModulePromise = null;
 let catalogAliasModulePromise = null;
 let emberAssistBrainModulePromise = null;
 let catalogImportStatusModulePromise = null;
+let calendarDataBundlePromise = null;
+let scoutRestockIntelBundlePromise = null;
 
 function loadPokemonCatalogSearchModule() {
   if (!pokemonCatalogSearchModulePromise) {
@@ -488,6 +498,46 @@ async function loadCatalogImportStatusOnDemand() {
     generatedAt: status.lastImportedAt || "",
     ...status,
   };
+}
+
+async function loadCalendarDataOnDemand() {
+  if (!calendarDataBundlePromise) {
+    calendarDataBundlePromise = Promise.all([
+      import("./data/generated/releaseCalendar.json"),
+      import("./data/generated/dropCalendarSeed.json"),
+      import("./data/generated/retailerDropEvents.json"),
+      import("./data/generated/calendarSyncStatus.json"),
+      import("./utils/calendarDataUtils.mjs"),
+      import("./utils/retailerDropSources.mjs"),
+    ]).then(([
+      releaseCalendarModule,
+      dropCalendarSeedModule,
+      retailerDropEventsModule,
+      calendarSyncStatusModule,
+      calendarDataUtils,
+      retailerDropSources,
+    ]) => ({
+      generatedReleaseCalendar: releaseCalendarModule.default || releaseCalendarModule,
+      generatedDropCalendarSeed: dropCalendarSeedModule.default || dropCalendarSeedModule,
+      generatedRetailerDropEvents: retailerDropEventsModule.default || retailerDropEventsModule,
+      calendarSyncStatus: calendarSyncStatusModule.default || calendarSyncStatusModule || EMPTY_CALENDAR_SYNC_STATUS,
+      filterCalendarEventsForViewer: calendarDataUtils.filterCalendarEventsForViewer,
+      normalizeDropCalendarEvent: calendarDataUtils.normalizeDropCalendarEvent,
+      normalizeReleaseCalendarEvent: calendarDataUtils.normalizeReleaseCalendarEvent,
+      retailerDropToCalendarEvent: retailerDropSources.retailerDropToCalendarEvent,
+    }));
+  }
+  return calendarDataBundlePromise;
+}
+
+async function loadScoutRestockIntelOnDemand() {
+  if (!scoutRestockIntelBundlePromise) {
+    scoutRestockIntelBundlePromise = import("./data/scoutRestockIntelSeed").then((module) => ({
+      scoutHistoricalIntelSeed: module.SCOUT_HISTORICAL_INTEL_SEED || [],
+      buildScoutRestockPatterns: module.buildScoutRestockPatterns || (() => []),
+    }));
+  }
+  return scoutRestockIntelBundlePromise;
 }
 
 function normalizeLocalCatalogSeedProducts(products = []) {
@@ -4327,6 +4377,18 @@ export default function App() {
   const [watchCalendarMonthDate, setWatchCalendarMonthDate] = useState(() => new Date());
   const [watchCalendarArea, setWatchCalendarArea] = useState("hampton_roads");
   const [watchCalendarLayers, setWatchCalendarLayers] = useState(WATCH_CALENDAR_DEFAULT_LAYERS);
+  const [calendarDataBundle, setCalendarDataBundle] = useState(EMPTY_CALENDAR_DATA_BUNDLE);
+  const [calendarDataStatus, setCalendarDataStatus] = useState("idle");
+  const {
+    generatedReleaseCalendar,
+    generatedDropCalendarSeed,
+    generatedRetailerDropEvents,
+    calendarSyncStatus,
+    filterCalendarEventsForViewer,
+    normalizeDropCalendarEvent,
+    normalizeReleaseCalendarEvent,
+    retailerDropToCalendarEvent,
+  } = calendarDataBundle;
   const [selectedWatchCalendarEvent, setSelectedWatchCalendarEvent] = useState(null);
   const [scoutSectionsOpen, setScoutSectionsOpen] = useState({
     quickActions: true,
@@ -4647,6 +4709,9 @@ export default function App() {
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
   const [scoutSnapshot, setScoutSnapshot] = useState(createEmptyScoutSnapshot);
+  const [scoutRestockIntelBundle, setScoutRestockIntelBundle] = useState(EMPTY_SCOUT_RESTOCK_INTEL_BUNDLE);
+  const [scoutRestockIntelStatus, setScoutRestockIntelStatus] = useState("idle");
+  const { scoutHistoricalIntelSeed, buildScoutRestockPatterns } = scoutRestockIntelBundle;
   const [scoutBackendSync, setScoutBackendSync] = useState({
     loaded: false,
     loading: false,
@@ -11079,7 +11144,7 @@ export default function App() {
 
   function loadScoutSnapshot() {
     const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
-    const restockIntel = saved.restockIntel?.length ? saved.restockIntel : shouldUseDropRadarSeed(saved) ? SCOUT_HISTORICAL_INTEL_SEED : [];
+    const restockIntel = saved.restockIntel?.length ? saved.restockIntel : [];
     setScoutSnapshot({
       stores: saved.stores || [],
       reports: saved.reports || [],
@@ -11099,13 +11164,6 @@ export default function App() {
       scoutProfile: saved.scoutProfile || {},
       alertSettings: saved.alertSettings || {},
     });
-    if (!saved.restockIntel?.length && shouldUseDropRadarSeed(saved)) {
-      localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({
-        ...saved,
-        restockIntel,
-        restockPatterns: buildScoutRestockPatterns(restockIntel),
-      }));
-    }
   }
 
   function scoutBackendSyncReady() {
@@ -11954,6 +12012,53 @@ export default function App() {
       }
     };
   }, [storeSeedWarmNeeded]);
+
+  const calendarDataWarmNeeded = Boolean(
+    activeTab === "scout" &&
+    (scoutView === "alerts" || scoutSectionsOpen.alerts || selectedWatchCalendarEvent)
+  );
+
+  useEffect(() => {
+    if (!calendarDataWarmNeeded || calendarDataStatus === "ready" || calendarDataStatus === "loading") return undefined;
+    let active = true;
+    setCalendarDataStatus("loading");
+    loadCalendarDataOnDemand()
+      .then((bundle) => {
+        if (!active) return;
+        setCalendarDataBundle({ ...EMPTY_CALENDAR_DATA_BUNDLE, ...bundle });
+        setCalendarDataStatus("ready");
+      })
+      .catch((error) => {
+        if (!active) return;
+        setCalendarDataStatus("error");
+        logAppError("calendar_data_load", error, {}, "low");
+      });
+    return () => {
+      active = false;
+    };
+  }, [calendarDataWarmNeeded, calendarDataStatus]);
+
+  const scoutRestockIntelWarmNeeded = Boolean(activeTab === "scout" || (activeTab === "adminReview" && adminHeavyDataVisible));
+
+  useEffect(() => {
+    if (!scoutRestockIntelWarmNeeded || scoutRestockIntelStatus === "ready" || scoutRestockIntelStatus === "loading") return undefined;
+    let active = true;
+    setScoutRestockIntelStatus("loading");
+    loadScoutRestockIntelOnDemand()
+      .then((bundle) => {
+        if (!active) return;
+        setScoutRestockIntelBundle({ ...EMPTY_SCOUT_RESTOCK_INTEL_BUNDLE, ...bundle });
+        setScoutRestockIntelStatus("ready");
+      })
+      .catch((error) => {
+        if (!active) return;
+        setScoutRestockIntelStatus("error");
+        logAppError("scout_restock_intel_load", error, {}, "low");
+      });
+    return () => {
+      active = false;
+    };
+  }, [scoutRestockIntelWarmNeeded, scoutRestockIntelStatus]);
 
   useEffect(() => {
     if (BETA_LOCAL_MODE) {
@@ -20604,22 +20709,43 @@ function renderForgeAccessState() {
     return new Blob([localStorage.getItem(key) || ""]).size;
   }
 
-  const workspaceItems = items.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
-  const forgeWorkspaceItems = commandDeskSellerAccess && activeForgeWorkspace
-    ? items.filter((item) => recordBelongsToWorkspace(item, activeForgeWorkspace.id))
-    : [];
-  const workspaceExpenses = commandDeskSellerAccess && activeForgeWorkspace
-    ? expenses.filter((expense) => recordBelongsToWorkspace(expense, activeForgeWorkspace.id))
-    : [];
-  const workspaceSales = commandDeskSellerAccess && activeForgeWorkspace
-    ? sales.filter((sale) => recordBelongsToWorkspace(sale, activeForgeWorkspace.id))
-    : [];
-  const workspaceMileageTrips = commandDeskSellerAccess && activeForgeWorkspace
-    ? mileageTrips.filter((trip) => recordBelongsToWorkspace(trip, activeForgeWorkspace.id))
-    : [];
-  const workspaceWatchlist = tideTradrWatchlist.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id));
-  const workspaceMarketplaceListings = marketplaceListings.filter((listing) => recordBelongsToWorkspace(listing, activeWorkspace?.id));
-  const forgeInventoryItems = forgeWorkspaceItems.filter(isForgeInventoryItem);
+  const workspaceItems = useMemo(
+    () => items.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id)),
+    [items, activeWorkspace?.id]
+  );
+  const forgeWorkspaceItems = useMemo(
+    () => commandDeskSellerAccess && activeForgeWorkspace
+      ? items.filter((item) => recordBelongsToWorkspace(item, activeForgeWorkspace.id))
+      : [],
+    [commandDeskSellerAccess, activeForgeWorkspace?.id, items]
+  );
+  const workspaceExpenses = useMemo(
+    () => commandDeskSellerAccess && activeForgeWorkspace
+      ? expenses.filter((expense) => recordBelongsToWorkspace(expense, activeForgeWorkspace.id))
+      : [],
+    [commandDeskSellerAccess, activeForgeWorkspace?.id, expenses]
+  );
+  const workspaceSales = useMemo(
+    () => commandDeskSellerAccess && activeForgeWorkspace
+      ? sales.filter((sale) => recordBelongsToWorkspace(sale, activeForgeWorkspace.id))
+      : [],
+    [commandDeskSellerAccess, activeForgeWorkspace?.id, sales]
+  );
+  const workspaceMileageTrips = useMemo(
+    () => commandDeskSellerAccess && activeForgeWorkspace
+      ? mileageTrips.filter((trip) => recordBelongsToWorkspace(trip, activeForgeWorkspace.id))
+      : [],
+    [commandDeskSellerAccess, activeForgeWorkspace?.id, mileageTrips]
+  );
+  const workspaceWatchlist = useMemo(
+    () => tideTradrWatchlist.filter((item) => recordBelongsToWorkspace(item, activeWorkspace?.id)),
+    [tideTradrWatchlist, activeWorkspace?.id]
+  );
+  const workspaceMarketplaceListings = useMemo(
+    () => marketplaceListings.filter((listing) => recordBelongsToWorkspace(listing, activeWorkspace?.id)),
+    [marketplaceListings, activeWorkspace?.id]
+  );
+  const forgeInventoryItems = useMemo(() => forgeWorkspaceItems.filter(isForgeInventoryItem), [forgeWorkspaceItems]);
   const forgeValuationSummary = useMemo(
     () => summarizeInventoryValuation(forgeInventoryItems, { context: "forge" }),
     [forgeInventoryItems]
@@ -20833,7 +20959,10 @@ function renderForgeAccessState() {
     inventoryItems: forgeInventoryItems,
     sales: workspaceSales,
   }), [taxSummaryYear, workspaceExpenses, workspaceMileageTrips, vehicles, forgeInventoryItems, workspaceSales]);
-  const filteredExpenseTotal = filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const filteredExpenseTotal = useMemo(
+    () => filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0),
+    [filteredExpenses]
+  );
   const expenseFiltersActive = Boolean(
     expenseSearchQuery.trim() ||
     expenseFilterCategory !== "all" ||
@@ -20843,7 +20972,7 @@ function renderForgeAccessState() {
     expenseDateTo
   );
 
-  const storageStatus = [
+  const storageStatus = useMemo(() => [
     { label: "Mode", value: BETA_LOCAL_MODE ? "Private beta mode" : "Cloud sync mode" },
     { label: "Cloud sync", value: cloudSyncPreference === "cloud" ? "Requested" : "Off" },
     { label: "Forge inventory", value: forgeInventoryItems.length },
@@ -20858,7 +20987,18 @@ function renderForgeAccessState() {
     { label: "App storage", value: `${Math.ceil(storageSizeForKey(LOCAL_STORAGE_KEY) / 1024)} KB` },
     { label: "Scout storage", value: `${Math.ceil(storageSizeForKey(SCOUT_STORAGE_KEY) / 1024)} KB` },
     { label: "Suggestion storage", value: `${Math.ceil(storageSizeForKey(SUGGESTION_STORAGE_KEY) / 1024)} KB` },
-  ];
+  ], [
+    cloudSyncPreference,
+    forgeInventoryItems.length,
+    activeWorkspace?.name,
+    activeForgeWorkspace?.name,
+    workspaceItems,
+    scoutSnapshot.stores,
+    scoutSnapshot.reports,
+    suggestions.length,
+    workspaceWatchlist.length,
+    workspaceMarketplaceListings.length,
+  ]);
 
     const totalSpent = forgeValuationSummary.totalCostBasis;
 
@@ -20880,13 +21020,14 @@ function renderForgeAccessState() {
 
   const msrpRoiPercent =
     totalMsrpValue > 0 ? (profitOverMsrp / totalMsrpValue) * 100 : 0;
-  const totalExpenses = workspaceExpenses.reduce((s, e) => s + e.amount, 0);
-  const totalMarketingSpend = workspaceExpenses
-    .filter((expense) => expense.category === "Marketing")
-    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-  const totalEventsGiveawaysSpend = workspaceExpenses
-    .filter((expense) => expense.category === "Events/Giveaways")
-    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const expenseTotals = useMemo(() => workspaceExpenses.reduce((totals, expense) => {
+    const amount = Number(expense.amount || 0);
+    totals.totalExpenses += amount;
+    if (expense.category === "Marketing") totals.totalMarketingSpend += amount;
+    if (expense.category === "Events/Giveaways") totals.totalEventsGiveawaysSpend += amount;
+    return totals;
+  }, { totalExpenses: 0, totalMarketingSpend: 0, totalEventsGiveawaysSpend: 0 }), [workspaceExpenses]);
+  const { totalExpenses, totalMarketingSpend, totalEventsGiveawaysSpend } = expenseTotals;
   const estimatedProfitAfterMarketing = estimatedProfit - totalMarketingSpend;
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
   const salesSummary = useMemo(() => summarizeSalesRecords(workspaceSales), [workspaceSales]);
@@ -20894,9 +21035,18 @@ function renderForgeAccessState() {
   const totalSalesProfit = salesSummary.estimatedProfitLoss;
   const totalItemsSold = salesSummary.itemsSold;
   const activeForgeItems = forgeInventoryItems;
-  const selectedSaleItem = forgeInventoryItems.find((item) => String(item.id) === String(saleForm.itemId));
-  const saleValidation = validateManualSaleDraft(saleForm, { linkedItem: selectedSaleItem });
-  const saleTotalsPreview = calculateSalesRecordTotals(saleForm, selectedSaleItem);
+  const selectedSaleItem = useMemo(
+    () => forgeInventoryItems.find((item) => String(item.id) === String(saleForm.itemId)),
+    [forgeInventoryItems, saleForm.itemId]
+  );
+  const saleValidation = useMemo(
+    () => validateManualSaleDraft(saleForm, { linkedItem: selectedSaleItem }),
+    [saleForm, selectedSaleItem]
+  );
+  const saleTotalsPreview = useMemo(
+    () => calculateSalesRecordTotals(saleForm, selectedSaleItem),
+    [saleForm, selectedSaleItem]
+  );
   const saleQuantity = saleTotalsPreview.quantitySold;
   const saleFees = saleTotalsPreview.totalFees;
   const saleShippingCost = saleTotalsPreview.shippingCost;
@@ -20905,11 +21055,21 @@ function renderForgeAccessState() {
   const saleGrossPreview = saleTotalsPreview.grossSale;
   const saleNetProceedsPreview = saleTotalsPreview.netProceeds;
   const saleProfitPreview = saleTotalsPreview.estimatedProfitLoss;
-  const totalBusinessMiles = workspaceMileageTrips.reduce((s, t) => s + t.businessMiles, 0);
-  const totalFuelCost = workspaceMileageTrips.reduce((s, t) => s + t.fuelCost, 0);
-  const totalWearCost = workspaceMileageTrips.reduce((s, t) => s + t.wearCost, 0);
-  const totalVehicleCost = workspaceMileageTrips.reduce((s, t) => s + t.totalVehicleCost, 0);
-  const totalMileageValue = workspaceMileageTrips.reduce((s, t) => s + t.mileageValue, 0);
+  const mileageTotals = useMemo(() => workspaceMileageTrips.reduce((totals, trip) => {
+    totals.totalBusinessMiles += Number(trip.businessMiles || 0);
+    totals.totalFuelCost += Number(trip.fuelCost || 0);
+    totals.totalWearCost += Number(trip.wearCost || 0);
+    totals.totalVehicleCost += Number(trip.totalVehicleCost || 0);
+    totals.totalMileageValue += Number(trip.mileageValue || 0);
+    return totals;
+  }, {
+    totalBusinessMiles: 0,
+    totalFuelCost: 0,
+    totalWearCost: 0,
+    totalVehicleCost: 0,
+    totalMileageValue: 0,
+  }), [workspaceMileageTrips]);
+  const { totalBusinessMiles, totalFuelCost, totalWearCost, totalVehicleCost, totalMileageValue } = mileageTotals;
 
   const inventorySpendingFor = (person, list = forgeInventoryItems) =>
     list
@@ -20921,41 +21081,55 @@ function renderForgeAccessState() {
     workspaceExpenses.filter((e) => e.buyer === person).reduce((s, e) => s + e.amount, 0) +
     workspaceMileageTrips.filter((t) => t.driver === person).reduce((s, t) => s + t.totalVehicleCost, 0);
 
-  const purchaserSummaryNames = [
+  const purchaserSummaryNames = useMemo(() => [
       ...new Set([
       ...purchasers.map((purchaser) => purchaser.name),
       ...forgeInventoryItems.map(itemPurchaserName),
       "Unassigned purchaser",
     ]),
-  ].filter(Boolean);
+  ].filter(Boolean), [purchasers, forgeInventoryItems]);
 
-  const salesByPlatform = salesSummary.byPlatform.reduce((acc, row) => ({ ...acc, [row.label]: row.grossSales }), {});
-  const expensesByCategory = workspaceExpenses.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + e.amount }), {});
-  const inventoryByCategory = forgeInventoryItems.reduce((a, i) => ({ ...a, [i.category || "Uncategorized"]: (a[i.category || "Uncategorized"] || 0) + i.quantity }), {});
-  const inventoryByStatus = forgeInventoryItems.reduce((a, i) => ({ ...a, [i.status || "In Stock"]: (a[i.status || "In Stock"] || 0) + i.quantity }), {});
-
-  const lowStockItems = forgeInventoryItems.filter((i) => i.quantity <= 1);
-  const needsPhotosItems = forgeInventoryItems.filter((i) => i.status === "Needs Photos" || !i.itemImage);
-  const needsMarketCheckItems = forgeInventoryItems.filter((i) => i.status === "Needs Market Check" || Number(i.marketPrice) <= 0);
-  const missingMsrpItems = forgeInventoryItems.filter((i) => Number(i.msrpPrice || 0) <= 0);
-
-  const missingMarketPriceItems = forgeInventoryItems.filter(
-    (i) => Number(i.marketPrice || 0) <= 0
+  const salesByPlatform = useMemo(
+    () => salesSummary.byPlatform.reduce((acc, row) => ({ ...acc, [row.label]: row.grossSales }), {}),
+    [salesSummary]
+  );
+  const expensesByCategory = useMemo(
+    () => workspaceExpenses.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + e.amount }), {}),
+    [workspaceExpenses]
+  );
+  const inventoryByCategory = useMemo(
+    () => forgeInventoryItems.reduce((a, i) => ({ ...a, [i.category || "Uncategorized"]: (a[i.category || "Uncategorized"] || 0) + i.quantity }), {}),
+    [forgeInventoryItems]
+  );
+  const inventoryByStatus = useMemo(
+    () => forgeInventoryItems.reduce((a, i) => ({ ...a, [i.status || "In Stock"]: (a[i.status || "In Stock"] || 0) + i.quantity }), {}),
+    [forgeInventoryItems]
   );
 
-  const missingProductTypeItems = forgeInventoryItems.filter(
-    (i) => !i.productType || String(i.productType).trim() === ""
-  );
-
-  const missingBarcodeItems = forgeInventoryItems.filter(
-    (i) => !i.barcode || String(i.barcode).trim() === ""
-  );
-
-  const missingSalePriceItems = forgeInventoryItems.filter(
-    (i) => Number(i.salePrice || 0) <= 0
-  );
-  const readyToListItems = forgeInventoryItems.filter((i) => i.status === "Ready to List");
-  const listedItems = forgeInventoryItems.filter((i) => i.status === "Listed");
+  const forgeInventoryBuckets = useMemo(() => ({
+    lowStockItems: forgeInventoryItems.filter((i) => i.quantity <= 1),
+    needsPhotosItems: forgeInventoryItems.filter((i) => i.status === "Needs Photos" || !i.itemImage),
+    needsMarketCheckItems: forgeInventoryItems.filter((i) => i.status === "Needs Market Check" || Number(i.marketPrice) <= 0),
+    missingMsrpItems: forgeInventoryItems.filter((i) => Number(i.msrpPrice || 0) <= 0),
+    missingMarketPriceItems: forgeInventoryItems.filter((i) => Number(i.marketPrice || 0) <= 0),
+    missingProductTypeItems: forgeInventoryItems.filter((i) => !i.productType || String(i.productType).trim() === ""),
+    missingBarcodeItems: forgeInventoryItems.filter((i) => !i.barcode || String(i.barcode).trim() === ""),
+    missingSalePriceItems: forgeInventoryItems.filter((i) => Number(i.salePrice || 0) <= 0),
+    readyToListItems: forgeInventoryItems.filter((i) => i.status === "Ready to List"),
+    listedItems: forgeInventoryItems.filter((i) => i.status === "Listed"),
+  }), [forgeInventoryItems]);
+  const {
+    lowStockItems,
+    needsPhotosItems,
+    needsMarketCheckItems,
+    missingMsrpItems,
+    missingMarketPriceItems,
+    missingProductTypeItems,
+    missingBarcodeItems,
+    missingSalePriceItems,
+    readyToListItems,
+    listedItems,
+  } = forgeInventoryBuckets;
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const isThisMonth = (value) => {
@@ -20963,11 +21137,12 @@ function renderForgeAccessState() {
     const date = new Date(value);
     return !Number.isNaN(date.getTime()) && date >= monthStart;
   };
-  const monthlyItemSpending = forgeInventoryItems
-    .filter((item) => isThisMonth(item.createdAt))
-    .reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0), 0);
-  const monthlyItems = forgeInventoryItems.filter((item) => isThisMonth(item.createdAt));
-  const monthlyPurchaserSpending = purchaserSummaryNames
+  const monthlyItems = useMemo(() => forgeInventoryItems.filter((item) => isThisMonth(item.createdAt)), [forgeInventoryItems]);
+  const monthlyItemSpending = useMemo(
+    () => monthlyItems.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0), 0),
+    [monthlyItems]
+  );
+  const monthlyPurchaserSpending = useMemo(() => purchaserSummaryNames
     .map((name) => ({
       name,
       amount: inventorySpendingFor(name, monthlyItems),
@@ -20975,30 +21150,45 @@ function renderForgeAccessState() {
       active: purchasers.find((purchaser) => purchaser.name === name)?.active !== false,
     }))
     .filter((row) => row.amount > 0 || row.total > 0 || row.active)
-    .sort((a, b) => b.amount - a.amount || b.total - a.total || a.name.localeCompare(b.name));
-  const monthlyExpenses = workspaceExpenses
-    .filter((expense) => isThisMonth(expense.date || expense.createdAt))
-    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-  const monthlyMarketingSpend = workspaceExpenses
-    .filter((expense) => expense.category === "Marketing" && isThisMonth(expense.date || expense.createdAt))
-    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-  const monthlySalesProfit = workspaceSales
-    .filter((sale) => isThisMonth(sale.createdAt))
-    .reduce((sum, sale) => sum + Number(sale.netProfit || 0), 0);
+    .sort((a, b) => b.amount - a.amount || b.total - a.total || a.name.localeCompare(b.name)), [
+    purchaserSummaryNames,
+    monthlyItems,
+    forgeInventoryItems,
+    purchasers,
+  ]);
+  const { monthlyExpenses, monthlyMarketingSpend } = useMemo(() => workspaceExpenses.reduce((totals, expense) => {
+    if (!isThisMonth(expense.date || expense.createdAt)) return totals;
+    const amount = Number(expense.amount || 0);
+    totals.monthlyExpenses += amount;
+    if (expense.category === "Marketing") totals.monthlyMarketingSpend += amount;
+    return totals;
+  }, { monthlyExpenses: 0, monthlyMarketingSpend: 0 }), [workspaceExpenses]);
+  const monthlySalesProfit = useMemo(
+    () => workspaceSales
+      .filter((sale) => isThisMonth(sale.createdAt))
+      .reduce((sum, sale) => sum + Number(sale.netProfit || 0), 0),
+    [workspaceSales]
+  );
   const monthlySpending = monthlyItemSpending + monthlyExpenses;
   const monthlyProfitLoss = monthlySalesProfit - monthlyExpenses;
-  const activeMarketplaceCount = workspaceMarketplaceListings.filter((listing) => listing.status === "Active").length;
-  const forgeReceiptReviewIds = new Set([
+  const activeMarketplaceCount = useMemo(
+    () => workspaceMarketplaceListings.filter((listing) => listing.status === "Active").length,
+    [workspaceMarketplaceListings]
+  );
+  const forgeReceiptReviewIds = useMemo(() => new Set([
     ...forgeReceiptRecords
       .filter((receipt) => /draft|review|pending|duplicate|needs/i.test(`${receipt.status || ""} ${receipt.reviewStatus || ""} ${receipt.importStatus || ""}`))
       .map((receipt) => String(receipt.id || "")),
     ...forgeReceiptLineItems
       .filter((line) => line.destination !== "ignored" && (!line.verified || /review|unknown|unmatched/i.test(`${line.matchedConfidence || ""}`)))
       .map((line) => String(line.receiptId || "")),
-  ].filter(Boolean));
+  ].filter(Boolean)), [forgeReceiptRecords, forgeReceiptLineItems]);
   const forgeReceiptsNeedingReviewCount = forgeReceiptReviewIds.size;
   const forgeInventoryReviewCount = needsMarketCheckItems.length + needsPhotosItems.length + missingSalePriceItems.length;
-  const forgeTotalProductQuantity = forgeInventoryItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const forgeTotalProductQuantity = useMemo(
+    () => forgeInventoryItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+    [forgeInventoryItems]
+  );
   const forgeBusinessHasRecords = Boolean(
     forgeInventoryItems.length ||
     workspaceSales.length ||
@@ -21007,7 +21197,7 @@ function renderForgeAccessState() {
     forgeReceiptRecords.length
   );
   const forgeHasProfitSnapshot = Boolean(workspaceSales.length || workspaceExpenses.length);
-  const forgeRecentActivity = [
+  const forgeRecentActivity = useMemo(() => [
     ...forgeReceiptRecords.map((receipt) => ({
       key: `receipt-${receipt.id}`,
       source: "Receipt",
@@ -21046,7 +21236,14 @@ function renderForgeAccessState() {
   ]
     .filter((entry) => entry.date)
     .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-    .slice(0, 5);
+    .slice(0, 5), [
+    forgeReceiptRecords,
+    forgeInventoryItems,
+    workspaceSales,
+    workspaceExpenses,
+    workspaceMileageTrips,
+    forgeReceiptReviewIds,
+  ]);
   const rawVaultItems = useMemo(() => workspaceItems.filter(isVaultItemRecord), [workspaceItems]);
   const rawWishlistItems = useMemo(() => workspaceItems.filter(isWishlistItemRecord), [workspaceItems]);
   const vaultCatalogLookup = useMemo(
@@ -21138,88 +21335,93 @@ function renderForgeAccessState() {
     }), [vaultItems, vaultFilter, vaultSearch, vaultSort, vaultTypeFilter, vaultSetFilter, vaultLocationFilter, vaultOwnerFilter, vaultValueFilter]);
   const vaultValue = vaultValuationSummary.estimatedMarketValue;
   const homeStatsProfile = { userType, homeStatsEnabled };
-  const wishlistValue = wishlistItems.reduce(
+  const wishlistValue = useMemo(() => wishlistItems.reduce(
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || item.targetPrice || 0),
     0
-  ) + workspaceWatchlist.reduce((sum, item) => sum + Number(item.marketPrice || item.marketValue || item.targetPrice || 0), 0);
-  const ownedCatalogKeys = new Set(activeVaultItems.map((item) => {
+  ) + workspaceWatchlist.reduce((sum, item) => sum + Number(item.marketPrice || item.marketValue || item.targetPrice || 0), 0), [wishlistItems, workspaceWatchlist]);
+  const ownedCatalogKeys = useMemo(() => new Set(activeVaultItems.map((item) => {
     const setName = String(item.setName || item.expansion || "").toLowerCase();
     const cardNumber = String(item.cardNumber || item.card_number || "").toLowerCase();
     return setName && cardNumber ? `${setName}:${cardNumber}` : "";
-  }).filter(Boolean));
-  const missingSetCardCount = catalogProducts.filter((product) => {
+  }).filter(Boolean)), [activeVaultItems]);
+  const missingSetCardCount = useMemo(() => catalogProducts.filter((product) => {
     const setName = String(product.setName || product.expansion || product.set_name || "").toLowerCase();
     const cardNumber = String(product.cardNumber || product.card_number || "").toLowerCase();
     return setName && cardNumber && !ownedCatalogKeys.has(`${setName}:${cardNumber}`);
-  }).length;
-  const activeListingCount = workspaceMarketplaceListings.filter((listing) =>
+  }).length, [catalogProducts, ownedCatalogKeys]);
+  const activeListingCount = useMemo(() => workspaceMarketplaceListings.filter((listing) =>
     ["Active", "Listed", "Cross-listed", "cross_listed", "listed", "active"].includes(listing.status || listing.listingStatus)
-  ).length;
+  ).length, [workspaceMarketplaceListings]);
   const activeStoreAlertCount = (scoutSnapshot.bestBuyAlerts || []).length + needsPhotosItems.length + needsMarketCheckItems.length;
   const upcomingRestockCount = (scoutSnapshot.restockPatterns || []).length || (scoutSnapshot.predictions || []).length || 0;
-  const kidCommunityBudgetValue = vaultItems
+  const kidCommunityBudgetValue = useMemo(() => vaultItems
     .filter((item) => {
       const text = `${item.status || ""} ${item.actionNotes || ""} ${item.notes || ""}`.toLowerCase();
       return text.includes("kid") || text.includes("donat") || text.includes("giveaway");
     })
-    .reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0), 0);
+    .reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0), 0), [vaultItems]);
   const vaultCostBasis = vaultValuationSummary.totalCostBasis;
   const vaultGainLoss = vaultValue - vaultCostBasis;
   const vaultMsrpValue = vaultValuationSummary.msrpTotal;
   const vaultMarketValueDisplay = vaultValuationSummary.marketKnownQuantity > 0 ? money(vaultValue) : "Price data unavailable";
-  const vaultPortfolioStats = [
+  const vaultPortfolioStats = useMemo(() => [
     { key: "value", label: "Market Value", value: vaultMarketValueDisplay },
     { key: "cost", label: "Cost Basis", value: money(vaultCostBasis) },
     { key: "gain", label: "Gain / Loss", value: money(vaultGainLoss) },
     { key: "msrp", label: "MSRP Value", value: money(vaultMsrpValue) },
     { key: "duplicates", label: "Duplicates", value: activeVaultItems.filter((item) => Number(item.quantity || 0) > 1).length },
     { key: "trade", label: "Trade / Sell", value: activeVaultItems.filter((item) => ["trade_pile", "listed", "ready_for_forge"].includes(normalizeVaultStatus(item))).length },
-  ];
-  const catalogSetNames = [...new Set(catalogProducts.map((product) => catalogExpansionName(product) || product.setName || product.expansion || product.series || "").filter(Boolean))];
-  const knownSetKeys = new Set(POKEMON_SETS.flatMap((set) => [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase())));
-  const vaultSetSourceRows = [
-    ...POKEMON_SETS,
-    ...catalogSetNames
-      .filter((name) => !knownSetKeys.has(String(name).toLowerCase()))
-      .map((name) => ({ name, code: name, series: "Catalog", total: 0, setAliases: [] })),
-  ];
-  const vaultSetCompletionRows = vaultSetSourceRows.map((set) => {
-    const aliases = [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase());
-    const setMatches = (value = "") => {
-      const setName = String(value || "").toLowerCase();
-      return setName && aliases.some((alias) => setName === alias || setName.includes(alias) || alias.includes(setName));
-    };
-    const owned = activeVaultItems.filter((item) => {
-      return setMatches(item.setName || item.expansion || item.setCode || "");
-    });
-    const catalogInSet = catalogProducts.filter((product) => setMatches(catalogExpansionName(product) || product.setName || product.expansion || product.series || ""));
-    const catalogCards = catalogInSet.filter((product) => isCatalogCardProduct(product) && !isCatalogCodeCardProduct(product));
-    const catalogSealedProducts = catalogInSet.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product));
-    const ownedCards = new Set(owned.filter(isInventoryCardProduct).map((item) => item.cardNumber || item.card_number || item.catalogProductId || item.name).filter(Boolean));
-    const ownedProductKeys = new Set(owned.map((item) => String(item.catalogProductId || item.catalog_product_id || item.name || "").toLowerCase()).filter(Boolean));
-    const totalCards = Number(set.total || set.printedTotal || catalogCards.length || 0);
-    const ownedCount = ownedCards.size || owned.length;
-    const missingCards = catalogCards.filter((product) => {
-      const key = String(product.id || catalogTitle(product) || "").toLowerCase();
-      const fallback = String(catalogTitle(product) || "").toLowerCase();
-      return key ? !ownedProductKeys.has(key) && !ownedProductKeys.has(fallback) : true;
-    });
-    return {
-      id: set.setId || set.code || set.name,
-      name: set.name,
-      series: set.series,
-      totalCards,
-      ownedCount,
-      percent: totalCards > 0 ? Math.min(100, Math.round((ownedCount / totalCards) * 100)) : 0,
-      ownedItems: owned,
-      catalogCards,
-      sealedProducts: catalogSealedProducts,
-      missingCards,
-    };
-  })
-    .filter((row) => row.ownedCount > 0 || row.totalCards > 0 || row.catalogCards.length || row.sealedProducts.length)
-    .sort((a, b) => b.ownedCount - a.ownedCount || String(a.name).localeCompare(String(b.name)));
-  const selectedVaultSet = vaultSetCompletionRows.find((set) => String(set.id) === String(selectedVaultSetId)) || null;
+  ], [vaultMarketValueDisplay, vaultCostBasis, vaultGainLoss, vaultMsrpValue, activeVaultItems]);
+  const vaultSetCompletionRows = useMemo(() => {
+    const catalogSetNames = [...new Set(catalogProducts.map((product) => catalogExpansionName(product) || product.setName || product.expansion || product.series || "").filter(Boolean))];
+    const knownSetKeys = new Set(POKEMON_SETS.flatMap((set) => [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase())));
+    const vaultSetSourceRows = [
+      ...POKEMON_SETS,
+      ...catalogSetNames
+        .filter((name) => !knownSetKeys.has(String(name).toLowerCase()))
+        .map((name) => ({ name, code: name, series: "Catalog", total: 0, setAliases: [] })),
+    ];
+    return vaultSetSourceRows.map((set) => {
+      const aliases = [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase());
+      const setMatches = (value = "") => {
+        const setName = String(value || "").toLowerCase();
+        return setName && aliases.some((alias) => setName === alias || setName.includes(alias) || alias.includes(setName));
+      };
+      const owned = activeVaultItems.filter((item) => {
+        return setMatches(item.setName || item.expansion || item.setCode || "");
+      });
+      const catalogInSet = catalogProducts.filter((product) => setMatches(catalogExpansionName(product) || product.setName || product.expansion || product.series || ""));
+      const catalogCards = catalogInSet.filter((product) => isCatalogCardProduct(product) && !isCatalogCodeCardProduct(product));
+      const catalogSealedProducts = catalogInSet.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product));
+      const ownedCards = new Set(owned.filter(isInventoryCardProduct).map((item) => item.cardNumber || item.card_number || item.catalogProductId || item.name).filter(Boolean));
+      const ownedProductKeys = new Set(owned.map((item) => String(item.catalogProductId || item.catalog_product_id || item.name || "").toLowerCase()).filter(Boolean));
+      const totalCards = Number(set.total || set.printedTotal || catalogCards.length || 0);
+      const ownedCount = ownedCards.size || owned.length;
+      const missingCards = catalogCards.filter((product) => {
+        const key = String(product.id || catalogTitle(product) || "").toLowerCase();
+        const fallback = String(catalogTitle(product) || "").toLowerCase();
+        return key ? !ownedProductKeys.has(key) && !ownedProductKeys.has(fallback) : true;
+      });
+      return {
+        id: set.setId || set.code || set.name,
+        name: set.name,
+        series: set.series,
+        totalCards,
+        ownedCount,
+        percent: totalCards > 0 ? Math.min(100, Math.round((ownedCount / totalCards) * 100)) : 0,
+        ownedItems: owned,
+        catalogCards,
+        sealedProducts: catalogSealedProducts,
+        missingCards,
+      };
+    })
+      .filter((row) => row.ownedCount > 0 || row.totalCards > 0 || row.catalogCards.length || row.sealedProducts.length)
+      .sort((a, b) => b.ownedCount - a.ownedCount || String(a.name).localeCompare(String(b.name)));
+  }, [activeVaultItems, catalogProducts]);
+  const selectedVaultSet = useMemo(
+    () => vaultSetCompletionRows.find((set) => String(set.id) === String(selectedVaultSetId)) || null,
+    [vaultSetCompletionRows, selectedVaultSetId]
+  );
   const dashboardStats = [
     { key: "collection_value", label: "Collection Value", value: money(vaultValue) },
     { key: "monthly_spending", label: "Monthly Spending", value: money(monthlySpending) },
@@ -22595,16 +22797,16 @@ function renderForgeAccessState() {
     { label: "Price changes", value: recentMarketUpdates[0]?.name || "No catalog changes", updatedAt: recentMarketUpdates[0]?.createdAt || "Local catalog" },
     { label: "Store limit changes", value: scoutSnapshot.stores.find((store) => store.limitPolicy || store.limit_policy)?.limitPolicy || "No limits logged", updatedAt: scoutLastUpdated },
   ];
-  const scoutReportsByStore = (scoutSnapshot.reports || []).filter((report) => !isScoutGuessRow(report)).reduce((acc, report) => {
+  const scoutReportsByStore = useMemo(() => (scoutSnapshot.reports || []).filter((report) => !isScoutGuessRow(report)).reduce((acc, report) => {
     const storeId = report.storeId || report.store_id || "";
     if (!storeId) return acc;
     acc[storeId] = [...(acc[storeId] || []), report];
     return acc;
-  }, {});
-  const scoutStoreMap = (scoutSnapshot.stores || []).reduce((acc, store) => {
+  }, {}), [scoutSnapshot.reports]);
+  const scoutStoreMap = useMemo(() => (scoutSnapshot.stores || []).reduce((acc, store) => {
     acc[String(store.id)] = store;
     return acc;
-  }, {});
+  }, {}), [scoutSnapshot.stores]);
 
   function getScoutReportId(report = {}) {
     return report.id || report.reportId || report.report_id || "";
@@ -22997,12 +23199,17 @@ function renderForgeAccessState() {
     return false;
   }
 
-  const rawScoutReportRows = [...(scoutSnapshot.reports || [])];
-  const scoutReportRows = rawScoutReportRows
+  const rawScoutReportRows = useMemo(() => [...(scoutSnapshot.reports || [])], [scoutSnapshot.reports]);
+  const scoutReportRows = useMemo(() => rawScoutReportRows
     .filter(canSeeScoutReport)
     .filter((report) => !isScoutGuessRow(report))
-    .sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a));
-  const homeScoutPreview = scoutSnapshot.stores
+    .sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a)), [
+    rawScoutReportRows,
+    adminEditModeActive,
+    currentUserProfile.userId,
+    user?.id,
+  ]);
+  const homeScoutPreview = useMemo(() => scoutSnapshot.stores
     .map((store) => {
       const storeReports = scoutReportsByStore[store.id] || [];
       const latestReport = [...storeReports].sort((a, b) => {
@@ -23014,14 +23221,25 @@ function renderForgeAccessState() {
       return { store, latestReport, score, reportCount: storeReports.length };
     })
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-  const tidepoolPostsWithCounts = tidepoolPosts.map((post) => ({
-    ...buildTidepoolPost(post),
-    commentCount: tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed").length,
-    reactionCount: tidepoolReactions.filter((reaction) => reaction.postId === post.postId).length,
-  }));
+    .slice(0, 3), [scoutSnapshot.stores, scoutReportsByStore]);
+  const tidepoolPostsWithCounts = useMemo(() => {
+    const commentCounts = new Map();
+    const reactionCounts = new Map();
+    for (const comment of tidepoolComments) {
+      if (comment.parentCommentId || comment.status === "removed") continue;
+      commentCounts.set(comment.postId, Number(commentCounts.get(comment.postId) || 0) + 1);
+    }
+    for (const reaction of tidepoolReactions) {
+      reactionCounts.set(reaction.postId, Number(reactionCounts.get(reaction.postId) || 0) + 1);
+    }
+    return tidepoolPosts.map((post) => ({
+      ...buildTidepoolPost(post),
+      commentCount: commentCounts.get(post.postId) || 0,
+      reactionCount: reactionCounts.get(post.postId) || 0,
+    }));
+  }, [tidepoolPosts, tidepoolComments, tidepoolReactions]);
   const visibleTidepoolFilters = TIDEPOOL_FEED_FILTERS.filter((filter) => filter !== "Needs Review" || adminEditModeActive);
-  const filteredTidepoolPosts = tidepoolPostsWithCounts
+  const filteredTidepoolPosts = useMemo(() => tidepoolPostsWithCounts
     .filter((post) => {
       if (!canViewTidepoolPost(post, { isAdmin: adminEditModeActive, currentUserId: currentUserProfile.userId || "local-beta" })) return false;
       if (tidepoolFilter === "Needs Review" && !adminEditModeActive) return false;
@@ -23039,22 +23257,36 @@ function renderForgeAccessState() {
       if (tidepoolFilter === "Needs Review") return tidepoolPostNeedsModeration(post);
       return true;
     })
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  const scoutIntelRows = scoutSnapshot.restockIntel?.length
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)), [
+    tidepoolPostsWithCounts,
+    tidepoolFilter,
+    adminEditModeActive,
+    currentUserProfile.userId,
+  ]);
+  const scoutIntelRows = useMemo(() => scoutSnapshot.restockIntel?.length
     ? scoutSnapshot.restockIntel
     : shouldUseDropRadarSeed(scoutSnapshot)
-      ? SCOUT_HISTORICAL_INTEL_SEED
-      : [];
-  const confirmedScoutIntel = scoutIntelRows.filter(isDropRadarConfirmedTrainingEntry);
-  const scoutPatternRows = scoutSnapshot.restockPatterns?.length ? scoutSnapshot.restockPatterns : buildScoutRestockPatterns(confirmedScoutIntel);
-  const dropRadarPredictionRows = buildDropRadarPredictions({
+      ? scoutHistoricalIntelSeed
+      : [], [scoutSnapshot, scoutHistoricalIntelSeed]);
+  const confirmedScoutIntel = useMemo(
+    () => scoutIntelRows.filter(isDropRadarConfirmedTrainingEntry),
+    [scoutIntelRows]
+  );
+  const scoutPatternRows = useMemo(
+    () => scoutSnapshot.restockPatterns?.length ? scoutSnapshot.restockPatterns : buildScoutRestockPatterns(confirmedScoutIntel),
+    [scoutSnapshot.restockPatterns, confirmedScoutIntel]
+  );
+  const dropRadarPredictionRows = useMemo(() => buildDropRadarPredictions({
     stores: scoutSnapshot.stores || [],
     reports: scoutSnapshot.reports || [],
     trainingRestocks: scoutSnapshot.manualRestockTraining || [],
     restockIntel: scoutIntelRows,
-  });
-  const predictionScoutIntel = scoutIntelRows.filter((row) => isDropRadarCommunityGuess(row) && !isDropRadarPlaceholderForecast(row));
-  const scoutGuessRows = [
+  }), [scoutSnapshot.stores, scoutSnapshot.reports, scoutSnapshot.manualRestockTraining, scoutIntelRows]);
+  const predictionScoutIntel = useMemo(
+    () => scoutIntelRows.filter((row) => isDropRadarCommunityGuess(row) && !isDropRadarPlaceholderForecast(row)),
+    [scoutIntelRows]
+  );
+  const scoutGuessRows = useMemo(() => [
     ...(scoutSnapshot.storeGuesses || []),
     ...(scoutSnapshot.guesses || []),
     ...predictionScoutIntel,
@@ -23071,8 +23303,16 @@ function renderForgeAccessState() {
       const bDay = scoutForecastDayDistance(b.guessedDay);
       if (aDay !== bDay) return aDay - bDay;
       return String(a.storeName).localeCompare(String(b.storeName));
-    });
-  const scoutForecastPatternRows = scoutPatternRows.map((pattern) => {
+    }), [
+    scoutSnapshot.storeGuesses,
+    scoutSnapshot.guesses,
+    predictionScoutIntel,
+    rawScoutReportRows,
+    adminEditModeActive,
+    currentUserProfile.userId,
+    user?.id,
+  ]);
+  const scoutForecastPatternRows = useMemo(() => scoutPatternRows.map((pattern) => {
     const relatedIntel = confirmedScoutIntel
       .filter((row) => {
         const rowStore = String(row.storeAlias || row.store_alias || "").toLowerCase();
@@ -23141,9 +23381,12 @@ function renderForgeAccessState() {
       sortRank: 1,
       dayDistance: Math.min(...(days.length ? days.map(scoutForecastDayDistance) : [99])),
     };
-  }).filter(Boolean);
-  const scoutForecastPatternKeys = new Set(scoutForecastPatternRows.map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
-  const scoutGuessForecastRows = scoutGuessRows
+  }).filter(Boolean), [scoutPatternRows, confirmedScoutIntel, scoutReportRows]);
+  const scoutForecastPatternKeys = useMemo(
+    () => new Set(scoutForecastPatternRows.map((row) => `${row.storeName}|${row.retailer}`.toLowerCase())),
+    [scoutForecastPatternRows]
+  );
+  const scoutGuessForecastRows = useMemo(() => scoutGuessRows
     .filter((guess) => ["Pending", "Approved as Community Guess"].includes(normalizeCommunityGuessModerationStatus(guess)))
     .filter((guess) => !scoutForecastPatternKeys.has(`${guess.storeName}|${guess.retailer}`.toLowerCase()))
     .map((guess) => {
@@ -23176,8 +23419,8 @@ function renderForgeAccessState() {
         sortRank: 2,
         dayDistance: scoutForecastDayDistance(guess.guessedDay),
       };
-    });
-  const dropRadarForecastRows = dropRadarPredictionRows.map((row) => ({
+    }), [scoutGuessRows, scoutForecastPatternKeys]);
+  const dropRadarForecastRows = useMemo(() => dropRadarPredictionRows.map((row) => ({
     id: row.id,
     recordKind: "predicted_window",
     eventType: "Predicted Drop Window",
@@ -23209,9 +23452,12 @@ function renderForgeAccessState() {
     basisSummary: row.dataNeededMessage || `${row.trainingCount} training restock${row.trainingCount === 1 ? "" : "s"} used`,
     sortRank: row.confidenceKey === "needs-data" ? 5 : 1,
     dayDistance: row.commonDay ? scoutForecastDayDistance(row.commonDay) : 99,
-  }));
-  const existingForecastPreviewKeys = new Set([...scoutForecastPatternRows, ...scoutGuessForecastRows].map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
-  const cachedForecastWindowRows = (scoutSnapshot.forecastWindows || []).map((row, index) => {
+  })), [dropRadarPredictionRows]);
+  const existingForecastPreviewKeys = useMemo(
+    () => new Set([...scoutForecastPatternRows, ...scoutGuessForecastRows].map((row) => `${row.storeName}|${row.retailer}`.toLowerCase())),
+    [scoutForecastPatternRows, scoutGuessForecastRows]
+  );
+  const cachedForecastWindowRows = useMemo(() => (scoutSnapshot.forecastWindows || []).map((row, index) => {
     const confidenceScore = Number(row.confidenceScore ?? row.confidence_score ?? 0);
     const rawConfidence = String(row.confidenceKey || row.confidence || row.confidenceLabel || row.confidence_label || "low").toLowerCase();
     const supportingReportCount = Number(row.supportingReportCount ?? row.supporting_report_count ?? 0);
@@ -23252,9 +23498,12 @@ function renderForgeAccessState() {
       sortRank: needsMoreData ? 5 : 1,
       dayDistance: forecastDay ? scoutForecastDayDistance(forecastDay) : 99,
     };
-  }).filter((row) => !existingForecastPreviewKeys.has(`${row.storeName}|${row.retailer}`.toLowerCase()));
-  const dropRadarForecastKeys = new Set([...scoutForecastPatternRows, ...scoutGuessForecastRows, ...cachedForecastWindowRows].map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
-  const scoutForecastPreviewRows = [
+  }).filter((row) => !existingForecastPreviewKeys.has(`${row.storeName}|${row.retailer}`.toLowerCase())), [scoutSnapshot.forecastWindows, existingForecastPreviewKeys]);
+  const dropRadarForecastKeys = useMemo(
+    () => new Set([...scoutForecastPatternRows, ...scoutGuessForecastRows, ...cachedForecastWindowRows].map((row) => `${row.storeName}|${row.retailer}`.toLowerCase())),
+    [scoutForecastPatternRows, scoutGuessForecastRows, cachedForecastWindowRows]
+  );
+  const scoutForecastPreviewRows = useMemo(() => [
     ...scoutForecastPatternRows,
     ...cachedForecastWindowRows,
     ...scoutGuessForecastRows,
@@ -23263,7 +23512,7 @@ function renderForgeAccessState() {
     if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank;
     if (a.dayDistance !== b.dayDistance) return a.dayDistance - b.dayDistance;
     return String(a.storeName).localeCompare(String(b.storeName));
-  });
+  }), [scoutForecastPatternRows, cachedForecastWindowRows, scoutGuessForecastRows, dropRadarForecastRows, dropRadarForecastKeys]);
   const watchCalendarTodayKey = getLocalDateKey();
   const watchCalendarWeekEndKey = addLocalDays(watchCalendarTodayKey, 7);
   const watchCalendarMonthStart = new Date(watchCalendarMonthDate.getFullYear(), watchCalendarMonthDate.getMonth(), 1);
@@ -23914,18 +24163,36 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setVaultSort("newest");
   }
 
-  const catalogPagedResultSet = new Set(catalogPagedResultIds.map((id) => String(id)));
-  const catalogProductsForFiltering = catalogSearchHasRun && catalogPagedResultSet.size
-    ? catalogPagedResultIds
-        .map((id) => catalogProducts.find((product) => String(product.id) === String(id)))
-        .filter(Boolean)
-    : catalogProducts;
-  const filteredCatalogProducts = catalogProductsForFiltering.filter((product) => {
+  const catalogPagedResultSet = useMemo(
+    () => new Set(catalogPagedResultIds.map((id) => String(id))),
+    [catalogPagedResultIds]
+  );
+  const catalogProductsById = useMemo(
+    () => new Map(catalogProducts.map((product) => [String(product.id), product])),
+    [catalogProducts]
+  );
+  const ownedCatalogProductIds = useMemo(
+    () => new Set(items.map((item) => String(item.catalogProductId || "")).filter(Boolean)),
+    [items]
+  );
+  const watchedCatalogProductIds = useMemo(
+    () => new Set(workspaceWatchlist.map((item) => String(item.productId || "")).filter(Boolean)),
+    [workspaceWatchlist]
+  );
+  const catalogProductsForFiltering = useMemo(
+    () => catalogSearchHasRun && catalogPagedResultSet.size
+      ? catalogPagedResultIds
+          .map((id) => catalogProductsById.get(String(id)))
+          .filter(Boolean)
+      : catalogProducts,
+    [catalogSearchHasRun, catalogPagedResultSet, catalogPagedResultIds, catalogProductsById, catalogProducts]
+  );
+  const filteredCatalogProducts = useMemo(() => catalogProductsForFiltering.filter((product) => {
     const search = (catalogSearchHasRun ? submittedCatalogSearch : "").toLowerCase();
     const serverSearchResult = catalogSearchHasRun && product.sourceType === "supabase";
     const marketInfo = getTideTradrMarketInfo(product);
-    const owned = items.some((item) => String(item.catalogProductId || "") === String(product.id));
-    const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
+    const owned = ownedCatalogProductIds.has(String(product.id));
+    const watched = watchedCatalogProductIds.has(String(product.id));
     const matchesSearch = serverSearchResult ||
       String(product.name || "").toLowerCase().includes(search) ||
       String(product.productName || "").toLowerCase().includes(search) ||
@@ -23997,20 +24264,90 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     const matchesValue = marketInfo.currentMarketValue >= minValue && marketInfo.currentMarketValue <= maxValue;
 
     return matchesSearch && matchesKind && matchesSet && matchesType && matchesEra && matchesYear && matchesRarity && matchesVariant && matchesCondition && matchesGraded && matchesOwned && matchesWatchlist && matchesHistory && matchesDataFilter && matchesValue;
-  }).sort((a, b) => compareCatalogProducts(a, b, catalogSort));
-  const catalogSetOptions = ["All", ...new Set(catalogProducts.map((product) => product.setName || product.expansion).filter(Boolean))].sort();
-  const catalogTypeOptions = ["All", ...new Set([...SEALED_PRODUCT_TYPES, ...catalogProducts.map((product) => product.productType).filter(Boolean)])].sort();
-  const catalogEraOptions = ["All", ...new Set(catalogProducts.map((product) => product.productLine).filter(Boolean))].sort();
-  const catalogYearOptions = ["All", ...new Set(catalogProducts.map((product) => String(product.releaseYear || "")).filter(Boolean))].sort();
-  const catalogRarityOptions = ["All", ...new Set(catalogProducts.map((product) => product.rarity).filter(Boolean))].sort();
-  const catalogVariantOptions = ["All", ...new Set(catalogProducts.flatMap((product) => getCatalogVariantOptions(product).map((variant) => variant.variantName)).filter(Boolean))].sort();
-  const catalogConditionOptions = ["All", ...new Set(catalogProducts.map((product) => product.condition).filter(Boolean))].sort();
-  const sealedCatalogCount = catalogProducts.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product)).length;
-  const cardCatalogCount = catalogProducts.filter((product) => isCatalogCardProduct(product)).length;
-  const catalogDuplicateWarnings = flagCatalogDuplicates(catalogProducts);
-  const catalogValidationWarnings = validateCatalogImport(catalogProducts);
-  const catalogUpcCount = catalogProducts.filter((product) => product.upc || product.barcode).length + localCatalogProductUpcs.length;
-  const catalogMarketPriceCount = catalogProducts.filter((product) => Number(product.marketPrice || product.marketValue || product.marketValueNearMint || 0) > 0).length;
+  }).sort((a, b) => compareCatalogProducts(a, b, catalogSort)), [
+    catalogProductsForFiltering,
+    catalogSearchHasRun,
+    submittedCatalogSearch,
+    catalogKindFilter,
+    catalogSetFilter,
+    catalogTypeFilter,
+    catalogEraFilter,
+    catalogYearFilter,
+    catalogRarityFilter,
+    catalogVariantFilter,
+    catalogConditionFilter,
+    catalogGradedFilter,
+    catalogOwnedFilter,
+    catalogWatchlistFilter,
+    catalogHistoryFilter,
+    catalogDataFilter,
+    catalogMinValue,
+    catalogMaxValue,
+    catalogSort,
+    ownedCatalogProductIds,
+    watchedCatalogProductIds,
+  ]);
+  const catalogOptionSummary = useMemo(() => {
+    const setNames = new Set();
+    const typeNames = new Set(SEALED_PRODUCT_TYPES);
+    const eraNames = new Set();
+    const yearNames = new Set();
+    const rarityNames = new Set();
+    const variantNames = new Set();
+    const conditionNames = new Set();
+    let sealedCount = 0;
+    let cardCount = 0;
+    let upcCount = localCatalogProductUpcs.length;
+    let marketPriceCount = 0;
+
+    for (const product of catalogProducts) {
+      if (product.setName || product.expansion) setNames.add(product.setName || product.expansion);
+      if (product.productType) typeNames.add(product.productType);
+      if (product.productLine) eraNames.add(product.productLine);
+      if (product.releaseYear) yearNames.add(String(product.releaseYear));
+      if (product.rarity) rarityNames.add(product.rarity);
+      if (product.condition) conditionNames.add(product.condition);
+      for (const variant of getCatalogVariantOptions(product)) {
+        if (variant.variantName) variantNames.add(variant.variantName);
+      }
+      const productIsCard = isCatalogCardProduct(product);
+      if (productIsCard) cardCount += 1;
+      if (isCatalogSealedProduct(product) && !productIsCard) sealedCount += 1;
+      if (product.upc || product.barcode) upcCount += 1;
+      if (Number(product.marketPrice || product.marketValue || product.marketValueNearMint || 0) > 0) marketPriceCount += 1;
+    }
+
+    return {
+      catalogSetOptions: ["All", ...setNames].sort(),
+      catalogTypeOptions: ["All", ...typeNames].sort(),
+      catalogEraOptions: ["All", ...eraNames].sort(),
+      catalogYearOptions: ["All", ...yearNames].sort(),
+      catalogRarityOptions: ["All", ...rarityNames].sort(),
+      catalogVariantOptions: ["All", ...variantNames].sort(),
+      catalogConditionOptions: ["All", ...conditionNames].sort(),
+      sealedCatalogCount: sealedCount,
+      cardCatalogCount: cardCount,
+      catalogDuplicateWarnings: flagCatalogDuplicates(catalogProducts),
+      catalogValidationWarnings: validateCatalogImport(catalogProducts),
+      catalogUpcCount: upcCount,
+      catalogMarketPriceCount: marketPriceCount,
+    };
+  }, [catalogProducts, localCatalogProductUpcs]);
+  const {
+    catalogSetOptions,
+    catalogTypeOptions,
+    catalogEraOptions,
+    catalogYearOptions,
+    catalogRarityOptions,
+    catalogVariantOptions,
+    catalogConditionOptions,
+    sealedCatalogCount,
+    cardCatalogCount,
+    catalogDuplicateWarnings,
+    catalogValidationWarnings,
+    catalogUpcCount,
+    catalogMarketPriceCount,
+  } = catalogOptionSummary;
   const cachedMarketPriceCount = marketPriceCache.prices?.length || 0;
   const failedMarketMatches = marketPriceCache.failedMatches || [];
   const lastMarketSync = marketPriceCache.lastSync || "Not synced yet";
@@ -24041,25 +24378,53 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct || selectedCatalogDetailProduct;
   const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct ? getTideTradrMarketInfo(selectedCatalogDetailPricingProduct) : null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
-  const tideTradrCatalogRawResults = catalogSearchHasRun
-    ? (catalogPagedResultSet.size
-        ? catalogPagedResultIds
-            .map((id) => filteredCatalogProducts.find((product) => String(product.id) === String(id)))
-            .filter(Boolean)
-        : filteredCatalogProducts)
-    : [];
-  const tideTradrCatalogResults = buildCatalogParentCardResults(tideTradrCatalogRawResults)
-    .filter((product) => catalogProductMatchesMarketDealFilter(product, marketCatalogDealFilter));
-  const tideTradrCatalogCardResults = tideTradrCatalogResults.filter((product) => isCatalogCardProduct(product));
-  const tideTradrCatalogSealedResults = tideTradrCatalogResults.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product));
-  const tideTradrCatalogOtherResults = tideTradrCatalogResults.filter((product) => !isCatalogCardProduct(product) && !isCatalogSealedProduct(product));
-  const tideTradrCatalogResultGroups = catalogKindFilter === "All"
-    ? [
-        { key: "cards", title: "Cards", items: tideTradrCatalogCardResults },
-        { key: "sealed", title: "Sealed Products", items: tideTradrCatalogSealedResults },
-        { key: "other", title: "Other Results", items: tideTradrCatalogOtherResults },
-      ].filter((group) => group.items.length)
-    : [{ key: catalogKindFilter, title: catalogKindFilter === "card" ? "Cards" : catalogKindFilter === "sealed" ? "Sealed Products" : "Other Results", items: tideTradrCatalogResults }];
+  const filteredCatalogProductsById = useMemo(
+    () => new Map(filteredCatalogProducts.map((product) => [String(product.id), product])),
+    [filteredCatalogProducts]
+  );
+  const tideTradrCatalogRawResults = useMemo(() => {
+    if (!catalogSearchHasRun) return [];
+    return catalogPagedResultSet.size
+      ? catalogPagedResultIds
+          .map((id) => filteredCatalogProductsById.get(String(id)))
+          .filter(Boolean)
+      : filteredCatalogProducts;
+  }, [catalogSearchHasRun, catalogPagedResultSet, catalogPagedResultIds, filteredCatalogProductsById, filteredCatalogProducts]);
+  const tideTradrCatalogResults = useMemo(
+    () => buildCatalogParentCardResults(tideTradrCatalogRawResults)
+      .filter((product) => catalogProductMatchesMarketDealFilter(product, marketCatalogDealFilter)),
+    [tideTradrCatalogRawResults, marketCatalogDealFilter]
+  );
+  const {
+    tideTradrCatalogCardResults,
+    tideTradrCatalogSealedResults,
+    tideTradrCatalogOtherResults,
+    tideTradrCatalogResultGroups,
+  } = useMemo(() => {
+    const cardResults = [];
+    const sealedResults = [];
+    const otherResults = [];
+    for (const product of tideTradrCatalogResults) {
+      const productIsCard = isCatalogCardProduct(product);
+      const productIsSealed = isCatalogSealedProduct(product) && !productIsCard;
+      if (productIsCard) cardResults.push(product);
+      else if (productIsSealed) sealedResults.push(product);
+      else otherResults.push(product);
+    }
+    const groups = catalogKindFilter === "All"
+      ? [
+          { key: "cards", title: "Cards", items: cardResults },
+          { key: "sealed", title: "Sealed Products", items: sealedResults },
+          { key: "other", title: "Other Results", items: otherResults },
+        ].filter((group) => group.items.length)
+      : [{ key: catalogKindFilter, title: catalogKindFilter === "card" ? "Cards" : catalogKindFilter === "sealed" ? "Sealed Products" : "Other Results", items: tideTradrCatalogResults }];
+    return {
+      tideTradrCatalogCardResults: cardResults,
+      tideTradrCatalogSealedResults: sealedResults,
+      tideTradrCatalogOtherResults: otherResults,
+      tideTradrCatalogResultGroups: groups,
+    };
+  }, [tideTradrCatalogResults, catalogKindFilter]);
   const tideTradrCatalogPageCount = supabaseCatalogStatus.totalCount
     ? Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))
     : null;
@@ -26296,6 +26661,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <strong>{watchCalendarHomeCounts.upcomingReleases || 0}</strong>
           </div>
         </div>
+        {calendarDataStatus === "loading" ? (
+          <div className="route-loading-card"><span className="route-loading-spinner" aria-hidden="true" />Loading release and drop calendar data...</div>
+        ) : null}
+        {calendarDataStatus === "error" ? (
+          <p className="compact-subtitle danger-text">Calendar data could not load. Scout reports and manual store signals still work.</p>
+        ) : null}
         {adminEditModeActive ? (
           <p className="compact-subtitle">
             Calendar sync: {calendarSyncStatus.releaseEvents || 0} release rows / {calendarSyncStatus.dropSeedEvents || 0} Drop Radar seed rows. {calendarSyncStatus.scheduling || "No scheduler configured."}

@@ -78,6 +78,23 @@ check(
 );
 
 check(
+  "Calendar and retailer drop data load only when the Scout calendar is opened",
+  !/from\s+["']\.\/data\/generated\/releaseCalendar\.json["']/.test(app) &&
+    !/from\s+["']\.\/data\/generated\/dropCalendarSeed\.json["']/.test(app) &&
+    !/from\s+["']\.\/data\/generated\/retailerDropEvents\.json["']/.test(app) &&
+    app.includes("function loadCalendarDataOnDemand") &&
+    app.includes('import("./data/generated/releaseCalendar.json")')
+);
+
+check(
+  "Scout historical restock seed is loaded on demand instead of during Hearth startup",
+  !/from\s+["']\.\/data\/scoutRestockIntelSeed["']/.test(app) &&
+    app.includes("function loadScoutRestockIntelOnDemand") &&
+    app.includes('import("./data/scoutRestockIntelSeed")') &&
+    app.includes("const scoutRestockIntelWarmNeeded")
+);
+
+check(
   "Generated store directory is fetched as on-demand JSON, not bundled as startup JS",
   storeSeed.includes('generated/virginiaStores.json?url') &&
     storeSeed.includes("export async function loadVirginiaStoresSeed") &&

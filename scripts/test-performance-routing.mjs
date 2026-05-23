@@ -28,6 +28,15 @@ assert.doesNotMatch(app, /import SmartCatalogSearchBox from "\.\/components\/Sma
 assert.doesNotMatch(app, /from "\.\/services\/pokemonCatalogSearch"/);
 assert.match(app, /from "\.\/data\/pokemonCatalogCoreData"/);
 assert.doesNotMatch(app, /from "\.\/data\/sharedPokemonCatalog"/);
+assert.doesNotMatch(app, /from "\.\/data\/generated\/releaseCalendar\.json"/);
+assert.doesNotMatch(app, /from "\.\/data\/generated\/dropCalendarSeed\.json"/);
+assert.doesNotMatch(app, /from "\.\/data\/generated\/retailerDropEvents\.json"/);
+assert.doesNotMatch(app, /from "\.\/data\/generated\/calendarSyncStatus\.json"/);
+assert.doesNotMatch(app, /from "\.\/data\/scoutRestockIntelSeed"/);
+assert.match(app, /function loadCalendarDataOnDemand\(\)/);
+assert.match(app, /import\("\.\/data\/generated\/releaseCalendar\.json"\)/);
+assert.match(app, /function loadScoutRestockIntelOnDemand\(\)/);
+assert.match(app, /import\("\.\/data\/scoutRestockIntelSeed"\)/);
 assert.match(app, /from "\.\/utils\/emberAssistLite"/);
 assert.match(app, /import\("\.\/utils\/emberAssist"\)/);
 assert.doesNotMatch(app, /from "\.\/utils\/emberAssist"/);
@@ -46,6 +55,13 @@ assert.doesNotMatch(storeSeed, /import generatedVirginiaStores from "\.\/generat
 assert.match(app, /const emberAssistContext = useMemo/);
 assert.match(app, /const emberAssistStarterPrompts = useMemo/);
 assert.match(app, /const emberAssistOwnMessages = useMemo/);
+assert.match(app, /const workspaceItems = useMemo/);
+assert.match(app, /const forgeInventoryBuckets = useMemo/);
+assert.match(app, /const catalogOptionSummary = useMemo/);
+assert.match(app, /const tideTradrCatalogRawResults = useMemo/);
+assert.match(app, /const scoutForecastPreviewRows = useMemo/);
+assert.match(app, /const tidepoolPostsWithCounts = useMemo/);
+assert.match(app, /const vaultSetCompletionRows = useMemo/);
 
 assert.equal(pkg.scripts?.["test:performance-routing"], "node --no-warnings scripts/test-performance-routing.mjs");
 
