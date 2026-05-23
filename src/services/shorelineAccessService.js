@@ -105,6 +105,70 @@ function mapAdminBetaAccessProfile(row = {}) {
   };
 }
 
+function mapAdminBetaInvite(row = {}) {
+  if (!row) return null;
+  const status = String(row.status || "").trim().toLowerCase() || "active";
+  return {
+    id: row.id || "",
+    inviteToken: row.invite_token || row.inviteToken || "",
+    invitePath: row.invite_path || row.invitePath || "",
+    recipientName: row.recipient_name || row.recipientName || "",
+    recipientEmail: row.recipient_email || row.recipientEmail || "",
+    note: row.note || "",
+    createdBy: row.created_by || row.createdBy || "",
+    createdByEmail: row.created_by_email || row.createdByEmail || "",
+    createdAt: row.created_at || row.createdAt || "",
+    expiresAt: row.expires_at || row.expiresAt || "",
+    claimedBy: row.claimed_by || row.claimedBy || "",
+    claimedEmail: row.claimed_email || row.claimedEmail || "",
+    claimedAt: row.claimed_at || row.claimedAt || "",
+    revokedAt: row.revoked_at || row.revokedAt || "",
+    audience: row.audience || "beta",
+    grantsBetaAccess: Boolean(row.grants_beta_access ?? row.grantsBetaAccess ?? true),
+    status,
+  };
+}
+
+function mapBetaInviteClaim(row = {}) {
+  if (!row) return null;
+  return {
+    inviteId: row.invite_id || row.inviteId || "",
+    status: row.status || "",
+    recipientName: row.recipient_name || row.recipientName || "",
+    recipientEmail: row.recipient_email || row.recipientEmail || "",
+    claimedBy: row.claimed_by || row.claimedBy || "",
+    claimedEmail: row.claimed_email || row.claimedEmail || "",
+    claimedAt: row.claimed_at || row.claimedAt || "",
+    appAccess: Boolean(row.app_access ?? row.appAccess),
+    betaStatus: normalizeBetaStatus(row.beta_status || row.betaStatus),
+    betaAccessStatus: normalizeBetaStatus(row.beta_access_status || row.betaAccessStatus),
+    userRole: row.user_role || row.userRole || "user",
+    tier: row.tier || "free",
+    planTier: row.plan_tier || row.planTier || row.tier || "free",
+  };
+}
+
+export function isMissingBetaInviteBackend(error) {
+  const message = String(error?.message || error?.details || error || "");
+  return Boolean(
+    error?.code === "42883" ||
+    error?.code === "PGRST202" ||
+    /admin_create_beta_invite|admin_list_beta_invites|admin_revoke_beta_invite|claim_beta_invite|function.*does not exist|could not find/i.test(message)
+  );
+}
+
+export function betaInviteClaimErrorMessage(error) {
+  const message = String(error?.message || error?.details || error || "").trim();
+  if (!message) return "This invite could not be claimed. Request beta access and we will review it.";
+  if (/different email|email does not match|mismatch/i.test(message)) return "This invite was made for a different email. Log in with the email this invite was sent to, or request beta access.";
+  if (/already.*claimed/i.test(message)) return "This invite has already been claimed. Ask the sender for a new invite or request beta access.";
+  if (/expired/i.test(message)) return "This invite link has expired. You can still request beta access and we will review it.";
+  if (/no longer active|revoked/i.test(message)) return "This invite link is no longer active. You can still request beta access and we will review it.";
+  if (/not valid|invalid|missing/i.test(message)) return "This invite link is not valid. Check the link or request beta access.";
+  if (/sign in|required|auth/i.test(message)) return "Create or log into your account to claim beta access.";
+  return message;
+}
+
 export async function loadShorelineAccessState(user) {
   if (!user?.id || !isSupabaseConfigured || !supabase) {
     return { betaRequest: null, littleSparksApplication: null };
@@ -205,6 +269,52 @@ export async function updateAdminBetaAccessProfile(userId, status, adminNotes = 
   });
   if (error) throw error;
   return mapAdminBetaAccessProfile(Array.isArray(data) ? data[0] : data);
+}
+
+export async function createAdminBetaInvite(payload = {}) {
+  if (!isSupabaseConfigured || !supabase) throw new Error("Supabase is not configured.");
+  const recipientName = String(payload.recipientName || payload.recipient_name || "").trim();
+  if (!recipientName) throw new Error("Recipient name is required.");
+  const recipientEmail = String(payload.recipientEmail || payload.recipient_email || "").trim().toLowerCase();
+  const note = String(payload.note || "").trim();
+  const expiresAt = payload.expiresAt || payload.expires_at || null;
+  const { data, error } = await supabase.rpc("admin_create_beta_invite", {
+    recipient_name: recipientName,
+    recipient_email: recipientEmail || null,
+    note: note || null,
+    expires_at: expiresAt || null,
+  });
+  if (error) throw error;
+  return mapAdminBetaInvite(Array.isArray(data) ? data[0] : data);
+}
+
+export async function loadAdminBetaInvites(searchText = "") {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase.rpc("admin_list_beta_invites", {
+    search_text: String(searchText || "").trim() || null,
+  });
+  if (error) throw error;
+  return (data || []).map(mapAdminBetaInvite);
+}
+
+export async function revokeAdminBetaInvite(inviteId) {
+  if (!inviteId || !isSupabaseConfigured || !supabase) throw new Error("Invite id is required.");
+  const { data, error } = await supabase.rpc("admin_revoke_beta_invite", {
+    invite_id: inviteId,
+  });
+  if (error) throw error;
+  return mapAdminBetaInvite(Array.isArray(data) ? data[0] : data);
+}
+
+export async function claimBetaInvite(inviteToken = "") {
+  if (!isSupabaseConfigured || !supabase) throw new Error("Supabase is not configured.");
+  const token = String(inviteToken || "").trim();
+  if (!token) throw new Error("Invite link is not valid.");
+  const { data, error } = await supabase.rpc("claim_beta_invite", {
+    invite_token: token,
+  });
+  if (error) throw error;
+  return mapBetaInviteClaim(Array.isArray(data) ? data[0] : data);
 }
 
 export async function loadShorelineAdminRequests() {

@@ -404,10 +404,16 @@ import {
   LITTLE_SPARKS_STATUSES,
   betaAccessAllowedForProfile,
   betaAccessStatusForProfile,
+  betaInviteClaimErrorMessage,
+  claimBetaInvite,
+  createAdminBetaInvite,
+  isMissingBetaInviteBackend,
+  loadAdminBetaInvites,
   loadShorelineAccessState,
   loadShorelineAdminRequests,
   normalizeBetaStatus,
   normalizeLittleSparksStatus,
+  revokeAdminBetaInvite,
   statusLabel,
   submitBetaAccessRequest,
   submitLittleSparksApplication,
@@ -867,6 +873,7 @@ const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
+const BETA_INVITE_SESSION_KEY = "et-beta-invite-token";
 const FORGE_MODE_SETTINGS_STORAGE_KEY = "et-tcg-forge-mode-settings";
 const ADMIN_MODE_STORAGE_PREFIX = "et-tcg-admin-mode";
 const PRIVATE_UPLOAD_BUCKET = "receipt-images";
@@ -1090,6 +1097,9 @@ function routeStateFromPath(pathname = "") {
   const [section, subSection, detailId] = segments;
 
   if (!section) return { activeTab: "dashboard" };
+  if (section === "invite" || (section === "beta" && subSection === "invite")) {
+    return { activeTab: "invite", inviteToken: decodeURIComponent(section === "invite" ? subSection || "" : detailId || "") };
+  }
   if (section === "reset-password") return { activeTab: "resetPassword" };
   if (section === "scout") {
     state.activeTab = "scout";
@@ -4202,6 +4212,8 @@ export default function App() {
   if (!initialRouteStateRef.current) initialRouteStateRef.current = loadInitialRouteState();
   const initialRouteState = initialRouteStateRef.current;
   const [activeTab, setActiveTab] = useState(initialRouteState.activeTab || "dashboard");
+  const [betaInviteToken, setBetaInviteToken] = useState(initialRouteState.inviteToken || "");
+  const betaInviteClaimInFlightRef = useRef("");
   const startupPriorityAppliedRef = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTopbarActions, setShowTopbarActions] = useState(true);
@@ -4425,10 +4437,30 @@ export default function App() {
     adminLittleSparksApplications: [],
     adminProfileUsers: [],
     adminProfileUsersReady: false,
+    adminBetaInvites: [],
+    adminBetaInvitesReady: false,
+    adminBetaInvitesMessage: "",
+    adminBetaInvitesError: "",
     message: "",
     error: "",
   });
   const [shorelineSaving, setShorelineSaving] = useState("");
+  const [adminBetaInviteForm, setAdminBetaInviteForm] = useState({
+    recipientName: "",
+    recipientEmail: "",
+    note: "",
+    expiresAt: "",
+  });
+  const [adminBetaInviteSearch, setAdminBetaInviteSearch] = useState("");
+  const [adminBetaInviteCreated, setAdminBetaInviteCreated] = useState(null);
+  const [adminBetaInviteLoading, setAdminBetaInviteLoading] = useState(false);
+  const [betaInviteClaimState, setBetaInviteClaimState] = useState({
+    status: "idle",
+    message: "",
+    error: "",
+    result: null,
+  });
+  const [betaInviteClaimAttempt, setBetaInviteClaimAttempt] = useState(0);
   const [shorelineBetaForm, setShorelineBetaForm] = useState({
     fullName: "",
     email: "",
@@ -7135,6 +7167,122 @@ export default function App() {
     } catch (error) {
       logAppError("beta_profile_access_update", error, { targetUserId: targetUser.userId, status }, "normal");
       setVaultToast(error.message || "Could not update beta access for that user.");
+    }
+  }
+
+  function updateAdminBetaInviteForm(field, value) {
+    setAdminBetaInviteForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function refreshAdminBetaInvites(searchText = adminBetaInviteSearch) {
+    if (!adminToolsVisible || !signedInWithSupabase) return;
+    setAdminBetaInviteLoading(true);
+    setShorelineState((current) => ({ ...current, adminBetaInvitesError: "", adminBetaInvitesMessage: "" }));
+    try {
+      const invites = await loadAdminBetaInvites(searchText);
+      setShorelineState((current) => ({
+        ...current,
+        adminBetaInvites: invites,
+        adminBetaInvitesReady: true,
+        adminBetaInvitesError: "",
+        adminBetaInvitesMessage: "",
+      }));
+    } catch (error) {
+      if (isMissingBetaInviteBackend(error)) {
+        setShorelineState((current) => ({
+          ...current,
+          adminBetaInvites: [],
+          adminBetaInvitesReady: false,
+          adminBetaInvitesError: "",
+          adminBetaInvitesMessage: "Secure beta invite links need the beta_invites migration before they can be created.",
+        }));
+      } else {
+        logAppError("admin_beta_invites_load", error, {}, "normal");
+        setShorelineState((current) => ({
+          ...current,
+          adminBetaInvitesError: error.message || "Could not load beta invites.",
+        }));
+      }
+    } finally {
+      setAdminBetaInviteLoading(false);
+    }
+  }
+
+  async function handleCreateAdminBetaInvite(event) {
+    event?.preventDefault?.();
+    if (!adminToolsVisible) return;
+    const recipientName = String(adminBetaInviteForm.recipientName || "").trim();
+    if (!recipientName) {
+      setShorelineState((current) => ({ ...current, adminBetaInvitesError: "Recipient name is required." }));
+      return;
+    }
+    setAdminBetaInviteLoading(true);
+    setAdminBetaInviteCreated(null);
+    setShorelineState((current) => ({ ...current, adminBetaInvitesError: "", adminBetaInvitesMessage: "" }));
+    try {
+      const expiresAt = adminBetaInviteForm.expiresAt ? new Date(adminBetaInviteForm.expiresAt).toISOString() : null;
+      const invite = await createAdminBetaInvite({
+        recipientName,
+        recipientEmail: adminBetaInviteForm.recipientEmail,
+        note: adminBetaInviteForm.note,
+        expiresAt,
+      });
+      setAdminBetaInviteCreated(invite);
+      setAdminBetaInviteForm({ recipientName: "", recipientEmail: "", note: "", expiresAt: "" });
+      setShorelineState((current) => ({
+        ...current,
+        adminBetaInvites: [invite, ...(current.adminBetaInvites || [])],
+        adminBetaInvitesReady: true,
+        adminBetaInvitesMessage: "Invite created. Copy the link now; the raw token is shown only once.",
+      }));
+      setVaultToast("Invite created. Copy the one-time link now.");
+      addAuditLog("beta_invite_create", "beta_invite", invite.id, { recipientName: invite.recipientName });
+    } catch (error) {
+      const message = isMissingBetaInviteBackend(error)
+        ? "Secure beta invite links need the beta_invites migration before they can be created."
+        : error.message || "Could not create beta invite.";
+      setShorelineState((current) => ({ ...current, adminBetaInvitesError: message }));
+      logAppError("admin_beta_invite_create", error, {}, "normal");
+    } finally {
+      setAdminBetaInviteLoading(false);
+    }
+  }
+
+  async function copyAdminBetaInviteLink(invite = {}) {
+    const link = betaInviteLinkForCreatedInvite(invite);
+    if (!link) {
+      setVaultToast("Invite token is no longer available. Create a new invite if needed.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      setVaultToast("Invite link copied.");
+    } catch {
+      setVaultToast("Copy failed. Select the link and copy it manually.");
+    }
+  }
+
+  async function handleRevokeAdminBetaInvite(invite) {
+    if (!adminToolsVisible || !invite?.id) return;
+    setAdminBetaInviteLoading(true);
+    setShorelineState((current) => ({ ...current, adminBetaInvitesError: "", adminBetaInvitesMessage: "" }));
+    try {
+      const revoked = await revokeAdminBetaInvite(invite.id);
+      setShorelineState((current) => ({
+        ...current,
+        adminBetaInvites: (current.adminBetaInvites || []).map((entry) =>
+          String(entry.id) === String(revoked.id) ? revoked : entry
+        ),
+        adminBetaInvitesMessage: "Invite revoked.",
+      }));
+      setVaultToast("Invite revoked.");
+      addAuditLog("beta_invite_revoke", "beta_invite", invite.id, { recipientName: invite.recipientName });
+    } catch (error) {
+      const message = error.message || "Could not revoke that invite.";
+      setShorelineState((current) => ({ ...current, adminBetaInvitesError: message }));
+      logAppError("admin_beta_invite_revoke", error, { inviteId: invite.id }, "normal");
+    } finally {
+      setAdminBetaInviteLoading(false);
     }
   }
 
@@ -12452,6 +12600,48 @@ export default function App() {
 
   function getAuthEmailRedirectTo() {
     return String(import.meta.env.VITE_PUBLIC_APP_URL || PRODUCTION_APP_URL).replace(/\/$/, "");
+  }
+
+  function openAuthPanel(mode = "login") {
+    setAuthError("");
+    setAuthMessage("");
+    setAuthMode(mode);
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        document.getElementById("account-access")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      });
+    }
+  }
+
+  function getStoredBetaInviteToken() {
+    if (typeof sessionStorage === "undefined") return "";
+    try {
+      return sessionStorage.getItem(BETA_INVITE_SESSION_KEY) || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function storeBetaInviteToken(token = "") {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+      const normalized = String(token || "").trim();
+      if (normalized) sessionStorage.setItem(BETA_INVITE_SESSION_KEY, normalized);
+      else sessionStorage.removeItem(BETA_INVITE_SESSION_KEY);
+    } catch {
+      // Session storage may be blocked. The route token remains the fallback.
+    }
+  }
+
+  function betaInviteLinkForToken(token = "") {
+    const normalized = String(token || "").trim();
+    if (!normalized) return "";
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : PRODUCTION_APP_URL;
+    return `${String(baseUrl || PRODUCTION_APP_URL).replace(/\/$/, "")}/invite/${encodeURIComponent(normalized)}`;
+  }
+
+  function betaInviteLinkForCreatedInvite(invite = {}) {
+    return betaInviteLinkForToken(invite.inviteToken || "");
   }
 
   function normalizeAuthErrorMessage(message = "") {
@@ -21320,6 +21510,67 @@ function renderForgeAccessState() {
   }
 
   useEffect(() => {
+    if (activeTab !== "invite") return;
+    const token = String(betaInviteToken || getStoredBetaInviteToken() || "").trim();
+    if (token && token !== betaInviteToken) setBetaInviteToken(token);
+    storeBetaInviteToken(token);
+    setBetaInviteClaimState((current) => (
+      token
+        ? current
+        : { status: "error", message: "", error: "This invite link is not valid. Check the link or request beta access.", result: null }
+    ));
+  }, [activeTab, betaInviteToken]);
+
+  useEffect(() => {
+    if (!user?.id || guestPreviewActive || activeTab === "invite") return;
+    const storedToken = getStoredBetaInviteToken();
+    if (!storedToken) return;
+    setBetaInviteToken(storedToken);
+    setActiveTab("invite");
+  }, [user?.id, guestPreviewActive, activeTab]);
+
+  useEffect(() => {
+    let active = true;
+    async function claimInviteForUser() {
+      if (activeTab !== "invite" || !user?.id || user.id === "local-beta" || guestPreviewActive) return;
+      const token = String(betaInviteToken || getStoredBetaInviteToken() || "").trim();
+      if (!token) {
+        setBetaInviteClaimState({ status: "error", message: "", error: "This invite link is not valid. Check the link or request beta access.", result: null });
+        return;
+      }
+      if (betaInviteClaimInFlightRef.current === token) return;
+      betaInviteClaimInFlightRef.current = token;
+      setBetaInviteClaimState({ status: "claiming", message: "Checking your invite...", error: "", result: null });
+      try {
+        const claim = await claimBetaInvite(token);
+        const refreshedProfile = await getCurrentUserProfile(user);
+        if (!active) return;
+        setCurrentUserProfile(refreshedProfile);
+        storeBetaInviteToken("");
+        setBetaInviteClaimState({
+          status: "success",
+          message: "Invite claimed. Your beta access is approved.",
+          error: "",
+          result: claim,
+        });
+        setVaultToast("Invite claimed. Welcome to Ember & Tide.");
+      } catch (error) {
+        if (!active) return;
+        setBetaInviteClaimState({
+          status: "error",
+          message: "",
+          error: betaInviteClaimErrorMessage(error),
+          result: null,
+        });
+      }
+    }
+    claimInviteForUser();
+    return () => {
+      active = false;
+    };
+  }, [activeTab, betaInviteToken, user?.id, guestPreviewActive, betaInviteClaimAttempt]);
+
+  useEffect(() => {
     let active = true;
     async function loadAdminRequests() {
       if (!adminToolsVisible || !signedInWithSupabase) return;
@@ -21343,6 +21594,14 @@ function renderForgeAccessState() {
       active = false;
     };
   }, [adminToolsVisible, signedInWithSupabase]);
+
+  useEffect(() => {
+    if (!adminToolsVisible || !signedInWithSupabase) return undefined;
+    const timeout = window.setTimeout(() => {
+      void refreshAdminBetaInvites(adminBetaInviteSearch);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [adminToolsVisible, signedInWithSupabase, adminBetaInviteSearch]);
 
   useEffect(() => {
     if (!localDataLoaded || guestPreviewActive || !signedInWithSupabase || !protectedAppDataAccessReady()) {
@@ -23358,6 +23617,7 @@ function renderForgeAccessState() {
   }
 
   function currentRoutePath() {
+    if (activeTab === "invite") return betaInviteToken ? `/invite/${encodeURIComponent(betaInviteToken)}` : "/invite";
     if (activeTab === "resetPassword") return "/reset-password";
     if (activeTab === "dailyTide") return "/today";
     if (activeTab === "scout") {
@@ -23396,6 +23656,7 @@ function renderForgeAccessState() {
     if (typeof window === "undefined" || typeof localStorage === "undefined") return;
     const routeState = {
       activeTab,
+      inviteToken: activeTab === "invite" ? betaInviteToken : "",
       activeWorkspaceId,
       homeSubTab,
       forgeSubTab,
@@ -23435,6 +23696,7 @@ function renderForgeAccessState() {
     }
   }, [
     activeTab,
+    betaInviteToken,
     activeWorkspaceId,
     homeSubTab,
     forgeSubTab,
@@ -29639,6 +29901,106 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderAdminBetaInviteManagement() {
+    if (!adminToolsVisible) return null;
+    const createdInviteLink = adminBetaInviteCreated ? betaInviteLinkForCreatedInvite(adminBetaInviteCreated) : "";
+    const inviteRows = shorelineState.adminBetaInvites || [];
+    const activeInviteCount = inviteRows.filter((invite) => invite.status === "active").length;
+    return (
+      <section className="settings-subsection beta-review-queue beta-invite-management">
+        <div className="compact-card-header">
+          <div>
+            <h3>Personal Beta Invites</h3>
+            <p>Create one-time invite links for specific people. Links grant normal beta access only after a signed-in user claims them through Supabase.</p>
+          </div>
+          <span className="status-badge">{activeInviteCount} active</span>
+        </div>
+        {!shorelineState.adminBetaInvitesReady && shorelineState.adminBetaInvitesMessage ? (
+          <div className="empty-state compact-empty-state">
+            <h3>Secure invite backend needed</h3>
+            <p>{shorelineState.adminBetaInvitesMessage}</p>
+          </div>
+        ) : null}
+        {shorelineState.adminBetaInvitesError ? <p className="auth-status-message error" role="alert">{shorelineState.adminBetaInvitesError}</p> : null}
+        {shorelineState.adminBetaInvitesMessage && shorelineState.adminBetaInvitesReady ? <p className="auth-status-message success" role="status">{shorelineState.adminBetaInvitesMessage}</p> : null}
+        <form className="form admin-beta-invite-form" onSubmit={handleCreateAdminBetaInvite}>
+          <div className="auth-name-grid">
+            <Field label="Recipient name">
+              <input value={adminBetaInviteForm.recipientName} onChange={(event) => updateAdminBetaInviteForm("recipientName", event.target.value)} placeholder="Person receiving this invite" />
+            </Field>
+            <Field label="Recipient email optional">
+              <input type="email" value={adminBetaInviteForm.recipientEmail} onChange={(event) => updateAdminBetaInviteForm("recipientEmail", event.target.value)} placeholder="Optional email lock" />
+            </Field>
+            <Field label="Expiration optional">
+              <input type="datetime-local" value={adminBetaInviteForm.expiresAt} onChange={(event) => updateAdminBetaInviteForm("expiresAt", event.target.value)} />
+            </Field>
+          </div>
+          <Field label="Private note optional">
+            <textarea value={adminBetaInviteForm.note} onChange={(event) => updateAdminBetaInviteForm("note", event.target.value)} placeholder="Private admin note. Never shown publicly." />
+          </Field>
+          <div className="quick-actions">
+            <button type="submit" className="ember-gradient-button" disabled={adminBetaInviteLoading}>{adminBetaInviteLoading ? "Creating..." : "Create Invite"}</button>
+            <button type="button" className="secondary-button" onClick={() => void refreshAdminBetaInvites()} disabled={adminBetaInviteLoading}>Refresh Invites</button>
+          </div>
+          <p className="compact-subtitle">Raw invite tokens are shown only once after creation. Do not post invite links publicly.</p>
+        </form>
+        {adminBetaInviteCreated && createdInviteLink ? (
+          <div className="drawer-info-card">
+            <strong>Copy this invite link now</strong>
+            <p className="compact-subtitle">This raw one-time token will not appear in invite history.</p>
+            <input readOnly value={createdInviteLink} onFocus={(event) => event.target.select()} />
+            <div className="quick-actions">
+              <button type="button" className="secondary-button" onClick={() => void copyAdminBetaInviteLink(adminBetaInviteCreated)}>Copy invite link</button>
+              <button type="button" className="ghost-button" onClick={() => setAdminBetaInviteCreated(null)}>Hide link</button>
+            </div>
+          </div>
+        ) : null}
+        <div className="compact-card-header">
+          <div>
+            <h4>Invite history</h4>
+            <p>History never shows plaintext tokens or token hashes.</p>
+          </div>
+          <input value={adminBetaInviteSearch} onChange={(event) => setAdminBetaInviteSearch(event.target.value)} placeholder="Search invites" />
+        </div>
+        <div className="inventory-list compact-inventory-list">
+          {inviteRows.length ? inviteRows.map((invite) => {
+            const canRevoke = invite.status === "active" && !invite.claimedAt && !invite.revokedAt;
+            return (
+              <article className="inventory-card compact-card" key={invite.id}>
+                <div className="compact-card-header">
+                  <div>
+                    <strong>{invite.recipientName || "Unnamed invite"}</strong>
+                    <p>{invite.recipientEmail ? maskEmail(invite.recipientEmail) : "No email lock"} | Created {invite.createdAt ? shortDate(invite.createdAt) : "date unavailable"}</p>
+                  </div>
+                  <span className={`status-badge ${invite.status}`}>{String(invite.status || "active").replace(/_/g, " ")}</span>
+                </div>
+                <p className="compact-subtitle">{invite.note || "No private note."}</p>
+                <div className="detail-grid compact-detail-grid">
+                  <DetailItem label="Audience" value={invite.audience || "beta"} />
+                  <DetailItem label="Expires" value={invite.expiresAt ? shortDate(invite.expiresAt) : "No expiration"} />
+                  <DetailItem label="Created by" value={invite.createdByEmail ? maskEmail(invite.createdByEmail) : invite.createdBy ? "Admin" : "Unknown"} />
+                  <DetailItem label="Claimed by" value={invite.claimedEmail ? maskEmail(invite.claimedEmail) : invite.claimedBy ? "Signed-in user" : "Not claimed"} />
+                  <DetailItem label="Claimed" value={invite.claimedAt ? shortDate(invite.claimedAt) : "No"} />
+                  <DetailItem label="Revoked" value={invite.revokedAt ? shortDate(invite.revokedAt) : "No"} />
+                </div>
+                {canRevoke ? (
+                  <div className="quick-actions">
+                    <button type="button" className="delete-button" onClick={() => void handleRevokeAdminBetaInvite(invite)} disabled={adminBetaInviteLoading}>Revoke Invite</button>
+                  </div>
+                ) : null}
+              </article>
+            );
+          }) : (
+            <div className="empty-state">
+              <h3>No personal invites yet</h3>
+              <p>Create a named invite for a specific beta tester. The link becomes unusable after it is claimed, expired, or revoked.</p>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   function renderBetaAdminReviewQueues() {
     if (!adminToolsVisible) return null;
     const showBetaAccess = adminReviewFilter === "All" || adminReviewFilter === "Beta Access";
@@ -29694,6 +30056,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     });
     return (
       <>
+        {(showUserManagement || showBetaAccess) ? renderAdminBetaInviteManagement() : null}
         {showUserManagement ? (
           <section className="settings-subsection beta-review-queue">
             <div className="compact-card-header">
@@ -35300,8 +35663,81 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     );
   }
 
+  function renderBetaInviteClaimPage({ signedOut = false } = {}) {
+    const tokenPresent = Boolean(String(betaInviteToken || getStoredBetaInviteToken() || "").trim());
+    const claiming = betaInviteClaimState.status === "claiming";
+    const success = betaInviteClaimState.status === "success";
+    const failed = betaInviteClaimState.status === "error";
+    const title = signedOut
+      ? "You're invited to Ember & Tide"
+      : success
+        ? "Invite claimed"
+        : failed
+          ? "We could not claim this invite"
+          : "You're invited to Ember & Tide";
+    const body = signedOut
+      ? "Create or log into your account to claim beta access."
+      : success
+        ? "Your beta access is approved. You can enter Ember & Tide now."
+        : failed
+          ? betaInviteClaimState.error
+          : "We are checking this one-time invite against the secure beta invite backend.";
+
+    return (
+      <section className="signed-out-landing panel beta-invite-panel">
+        <div className="landing-hero">
+          <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
+          <p className="section-kicker">Personal beta invite</p>
+          <h2>{title}</h2>
+          <p>{body}</p>
+          {tokenPresent ? (
+            <p className="auth-landing-note">Invite links are one-time. Do not post this link publicly.</p>
+          ) : (
+            <p className="auth-landing-note">This invite link is missing a token. Request beta access and we will review it.</p>
+          )}
+          {claiming ? <div className="route-loading-card"><span className="route-loading-spinner" aria-hidden="true" />Checking invite...</div> : null}
+          {success ? (
+            <div className="quick-actions auth-choice-row">
+              <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => { setBetaInviteToken(""); setActiveTab("dashboard"); }}>
+                Enter Ember & Tide
+              </button>
+            </div>
+          ) : null}
+          {signedOut ? (
+            <div className="quick-actions auth-choice-row">
+              <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create Account</button>
+              <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
+            </div>
+          ) : null}
+          {failed ? (
+            <div className="quick-actions auth-choice-row">
+              <button
+                type="button"
+                className="ember-gradient-button auth-choice-button"
+                onClick={() => {
+                  betaInviteClaimInFlightRef.current = "";
+                  setBetaInviteClaimState({ status: "idle", message: "", error: "", result: null });
+                  setBetaInviteClaimAttempt((current) => current + 1);
+                }}
+              >
+                Try Again
+              </button>
+              <button type="button" className="secondary-button auth-choice-button" onClick={() => { setBetaInviteToken(""); storeBetaInviteToken(""); setActiveTab("dashboard"); }}>
+                Request Beta Access
+              </button>
+              <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
+            </div>
+          ) : null}
+          {betaInviteClaimState.message ? <p className="auth-status-message success" role="status">{betaInviteClaimState.message}</p> : null}
+          {!signedOut && betaInviteClaimState.error ? <p className="auth-status-message error" role="alert">{betaInviteClaimState.error}</p> : null}
+        </div>
+      </section>
+    );
+  }
+
   if (!user && !guestPreviewActive) {
     const signedOutPublicContent = (() => {
+      if (activeTab === "invite") return renderBetaInviteClaimPage({ signedOut: true });
       if (activeTab === "kidsProgram") return renderKidsProgramPage();
       if (activeTab === "sponsor") return renderSponsorInterestPage();
       if (activeTab === "trust") return renderTrustPages();
@@ -35310,16 +35746,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       if (activeTab === "knownLimitations") return renderKnownLimitationsPage();
       return null;
     })();
-    const chooseAuthMode = (nextMode) => {
-      setAuthError("");
-      setAuthMessage("");
-      setAuthMode(nextMode);
-      if (typeof window !== "undefined") {
-        window.requestAnimationFrame(() => {
-          document.getElementById("account-access")?.scrollIntoView({ block: "start", behavior: "smooth" });
-        });
-      }
-    };
 
     return (
       <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
@@ -35349,8 +35775,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <p>A family-friendly Pokemon TCG app for fair restocks, collections, Scout reports, and community.</p>
               <p className="auth-landing-note">New accounts may need approval before full app access. We review beta access to keep Ember & Tide safe for families and collectors.</p>
               <div className="quick-actions auth-choice-row">
-                <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => chooseAuthMode("login")}>Log In</button>
-                <button type="button" className="secondary-button auth-choice-button" onClick={() => chooseAuthMode("signup")}>Create Account / Request Beta Access</button>
+                <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
+                <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create Account / Request Beta Access</button>
                 <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
               </div>
             </div>
@@ -36787,6 +37213,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       status: APP_VERSION,
     },
   ];
+
+  if (activeTab === "invite") {
+    return (
+      <div className="app app-invite">
+        <header className="header app-shell-header app-shell-header--full">
+          <h1>Ember &amp; Tide</h1>
+          <p>Personal beta invite</p>
+        </header>
+        <main className="main auth-main">
+          {renderBetaInviteClaimPage({ signedOut: false })}
+        </main>
+        {vaultToast ? (
+          <div className="vault-toast" role="status">
+            <span>{vaultToast}</span>
+            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   if (user && !guestPreviewActive && !betaAccessAllowed()) {
     return renderShorelineAccessGate();
