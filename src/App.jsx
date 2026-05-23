@@ -7475,8 +7475,26 @@ export default function App() {
       setActiveTab("kidsProgram");
       return;
     }
-    if (normalized === "market") {
+    if (normalized === "market" || normalized === "browse_market") {
       setActiveTab("market");
+      setMarketplaceView("browse");
+      if (normalized === "browse_market") {
+        setMarketplaceSearch("");
+        setMarketplaceTypeFilter("All");
+        setMarketplaceStatusFilter("Active");
+        setMarketplaceDealFilter("all");
+      }
+      return;
+    }
+    if (normalized === "create_market_alert") {
+      setActiveTab("market");
+      setMarketplaceView("saved");
+      setVaultToast("Market alert noted for beta. Save listings or products here while alert sync is still being connected.");
+      return;
+    }
+    if (normalized === "add_market_listing") {
+      setActiveTab("market");
+      openMarketplaceCreate("manual", {});
       return;
     }
     if (normalized === "expenses") {
@@ -15915,7 +15933,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   async function loadAllData() {
-    await Promise.all([loadInventory(), loadCatalog(), loadExpenses(), loadSales(), loadVehicles(), loadTrips()]);
+    await Promise.all([loadInventory(), loadCatalog(), loadExpenses(), loadSales(), loadVehicles(), loadTrips(), loadMarketplaceData()]);
   }
 
   function mapItem(row) {
@@ -16011,6 +16029,79 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       plannedSalePriceReviewedAt: row.plannedSalePriceReviewedAt || row.planned_sale_price_reviewed_at || "",
       createdAt: row.createdAt || row.created_at,
       updatedAt: row.updatedAt || row.updated_at || row.createdAt || row.created_at,
+    };
+  }
+
+  function normalizeMarketplacePhotos(value, fallback = "") {
+    if (Array.isArray(value)) return value.map((photo) => String(photo || "").trim()).filter(Boolean);
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.map((photo) => String(photo || "").trim()).filter(Boolean);
+      } catch {
+        if (value.trim()) return [value.trim()];
+      }
+    }
+    return fallback ? [fallback] : [];
+  }
+
+  function mapMarketplaceListing(row = {}) {
+    const status = normalizeListingStatus(row);
+    const sellerDisplayName = row.sellerDisplayName || row.seller_display_name || row.sellerUsername || row.seller_username || "Community seller";
+    const photos = normalizeMarketplacePhotos(row.photos, row.photoUrl || row.photo_url || row.imageUrl || row.image_url || "");
+    const sellerUserId = row.sellerUserId || row.seller_user_id || row.user_id || "";
+    return {
+      id: row.id || makeId("listing"),
+      sellerUserId,
+      seller_user_id: sellerUserId,
+      sellerDisplayName,
+      seller_display_name: sellerDisplayName,
+      sellerUsername: row.sellerUsername || row.seller_username || normalizePublicUsername(sellerDisplayName),
+      listingType: row.listingType || row.listing_type || "For Sale",
+      title: row.title || row.productName || row.product_name || "Marketplace listing",
+      description: row.description || "",
+      category: row.category || "Pokemon",
+      productName: row.productName || row.product_name || row.title || "",
+      productType: row.productType || row.product_type || "",
+      setName: row.setName || row.set_name || row.expansion || "",
+      condition: row.condition || "Unknown",
+      quantity: Number(row.quantity || 1),
+      askingPrice: Number(row.askingPrice ?? row.asking_price ?? row.price ?? 0),
+      tradeValue: Number(row.tradeValue ?? row.trade_value ?? 0),
+      locationCity: row.locationCity || row.location_city || "",
+      locationState: row.locationState || row.location_state || "",
+      pickupOnly: Boolean(row.pickupOnly ?? row.pickup_only ?? row.localPickup ?? row.local_pickup),
+      shippingAvailable: Boolean(row.shippingAvailable ?? row.shipping_available),
+      photos,
+      photoUrl: row.photoUrl || row.photo_url || photos[0] || "",
+      catalogItemId: row.catalogItemId || row.catalog_item_id || row.catalogProductId || row.catalog_product_id || "",
+      upc: row.upc || row.barcode || "",
+      sku: row.sku || "",
+      intendedForKids: Boolean(row.intendedForKids ?? row.intended_for_kids),
+      contactPreference: row.contactPreference || row.contact_preference || "Request contact",
+      sellerNotes: row.sellerNotes || row.seller_notes || "",
+      tags: row.tags || "",
+      sourceType: row.sourceType || row.source_type || "manual",
+      sourceItemId: row.sourceItemId || row.source_item_id || "",
+      status,
+      moderationStatus: row.moderationStatus || row.moderation_status || normalizeListingModerationStatus(row),
+      moderation_status: row.moderation_status || row.moderationStatus || normalizeListingModerationStatus(row),
+      visibility: row.visibility || (status === "Active" ? "public" : "private"),
+      featured: Boolean(row.featured),
+      verified: Boolean(row.verified || row.isVerified || row.is_verified || String(row.verificationStatus || row.verification_status || "").toLowerCase() === "verified"),
+      trustedSeller: Boolean(row.trustedSeller || row.trusted_seller || String(row.sellerBadge || row.seller_badge || "").toLowerCase().includes("trusted")),
+      sellerTrustScore: Number(row.sellerTrustScore ?? row.seller_trust_score ?? row.sellerRating ?? row.rating ?? 0),
+      reportCount: Number(row.reportCount ?? row.report_count ?? 0),
+      marketValue: Number(row.marketValue ?? row.market_value ?? row.marketPrice ?? row.market_price ?? row.referenceMarketValue ?? row.reference_market_value ?? 0),
+      marketPrice: Number(row.marketPrice ?? row.market_price ?? row.marketValue ?? row.market_value ?? 0),
+      msrp: Number(row.msrp ?? row.msrpPrice ?? row.msrp_price ?? 0),
+      msrpPrice: Number(row.msrpPrice ?? row.msrp_price ?? row.msrp ?? 0),
+      workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
+      ownerUserId: sellerUserId,
+      owner_user_id: sellerUserId,
+      createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+      updatedAt: row.updatedAt || row.updated_at || row.createdAt || row.created_at || "",
     };
   }
 
@@ -16443,6 +16534,195 @@ function mapCatalog(row) {
     }
     if (error) return showAppMessage("Could not load mileage trips: " + error.message);
     setMileageTrips(data.map(mapTrip));
+  }
+
+  function canUseMarketplaceBackend() {
+    return Boolean(!BETA_LOCAL_MODE && isSupabaseConfigured && supabase && user?.id && protectedAppDataAccessReady());
+  }
+
+  async function loadMarketplaceData() {
+    if (!canUseMarketplaceBackend()) {
+      setMarketplaceListings([]);
+      setMarketplaceSavedIds([]);
+      return;
+    }
+    await Promise.all([loadMarketplaceListings(), loadMarketplaceSavedListings()]);
+  }
+
+  async function loadMarketplaceCatalogReferences(listings = []) {
+    const catalogIds = [
+      ...new Set(
+        listings
+          .map((listing) => uuidOrNull(listing.catalogItemId || listing.catalog_item_id))
+          .filter(Boolean)
+      ),
+    ];
+    if (!catalogIds.length || !canUseMarketplaceBackend()) return;
+
+    const selectFields = "id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,product_name,set_name,series,product_type,barcode,upc,sku,retailer_skus,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,release_date,expansion,product_line,contents,related_cards,card_number,rarity,is_sealed,variant_count,variant_names,default_variant_id,source,source_url,admin_review_status,is_verified,duplicate_of,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at";
+    let result = await supabase
+      .from("catalog_search_lightweight")
+      .select(selectFields)
+      .in("id", catalogIds);
+    if (result.error && /catalog_search_lightweight|schema cache/i.test(result.error.message || "")) {
+      result = await supabase
+        .from("pokemon_catalog_browse")
+        .select("id,name,category,set_name,product_type,barcode,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,expansion,product_line,card_number,rarity,is_sealed,created_at,updated_at")
+        .in("id", catalogIds);
+    }
+    if (result.error) return;
+    const mapped = (result.data || []).map(mapCatalog);
+    if (!mapped.length) return;
+    setCatalogProducts((current) => mergeCatalogProductLists(mapped, current, localCatalogSeedProducts));
+  }
+
+  async function loadMarketplaceListings() {
+    if (!canUseMarketplaceBackend()) return;
+    const { data, error } = await supabase
+      .from("marketplace_listings")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error && isExpectedShorelineAccessDenial(error) && !protectedAppDataAccessReady()) {
+      setMarketplaceListings([]);
+      return;
+    }
+    if (error) {
+      showAppMessage("Could not load marketplace listings: " + error.message);
+      return;
+    }
+    const mapped = (data || []).filter((row) => !isDemoLikeRecord(row)).map(mapMarketplaceListing).filter((listing) => !isDemoLikeRecord(listing));
+    setMarketplaceListings(mapped);
+    void loadMarketplaceCatalogReferences(mapped);
+  }
+
+  async function loadMarketplaceSavedListings() {
+    if (!canUseMarketplaceBackend()) return;
+    const { data, error } = await supabase
+      .from("saved_listings")
+      .select("listing_id")
+      .order("created_at", { ascending: false });
+    if (error && isExpectedShorelineAccessDenial(error) && !protectedAppDataAccessReady()) {
+      setMarketplaceSavedIds([]);
+      return;
+    }
+    if (error) return;
+    setMarketplaceSavedIds((data || []).map((row) => row.listing_id).filter(Boolean));
+  }
+
+  function marketplaceDatabaseStatus(listing = {}) {
+    const status = normalizeListingStatus(listing);
+    const moderationStatus = normalizeListingModerationStatus(listing);
+    if (moderationStatus === "Flagged") return "Flagged";
+    if (status === "Paused" || status === "Rejected") return "Archived";
+    if (status === "Sold") return "Sold";
+    if (status === "Archived") return "Archived";
+    if (status === "Active") return adminToolsVisible ? "Active" : "Pending Review";
+    if (status === "Pending Review") return "Pending Review";
+    return "Draft";
+  }
+
+  function marketplaceListingToSupabaseRow(listing = {}) {
+    const now = new Date().toISOString();
+    const databaseStatus = marketplaceDatabaseStatus(listing);
+    const sellerDisplayName = normalizePublicUsername(
+      listing.sellerUsername ||
+      listing.sellerDisplayName ||
+      currentPublicUsername() ||
+      "community_seller"
+    );
+    const row = {
+      seller_user_id: uuidOrNull(listing.sellerUserId || listing.seller_user_id || user?.id),
+      workspace_id: uuidOrNull(listing.workspaceId || listing.workspace_id || activeWorkspace?.id),
+      seller_display_name: sellerDisplayName,
+      listing_type: listing.listingType || "For Sale",
+      title: String(listing.title || "Marketplace listing").trim(),
+      description: String(listing.description || "").trim(),
+      category: listing.category || "Pokemon",
+      product_type: listing.productType || "",
+      set_name: listing.setName || "",
+      condition: listing.condition || "Unknown",
+      quantity: Math.max(0, Number(listing.quantity || 1)),
+      asking_price: toNumber(listing.askingPrice) > 0 ? toNumber(listing.askingPrice) : null,
+      trade_value: toNumber(listing.tradeValue) > 0 ? toNumber(listing.tradeValue) : null,
+      location_city: listing.locationCity || "",
+      location_state: listing.locationState || "",
+      pickup_only: Boolean(listing.pickupOnly),
+      shipping_available: Boolean(listing.shippingAvailable),
+      photos: normalizeMarketplacePhotos(listing.photos, listing.photoUrl),
+      catalog_item_id: listing.catalogItemId || "",
+      upc: listing.upc || "",
+      sku: listing.sku || "",
+      intended_for_kids: Boolean(listing.intendedForKids),
+      contact_preference: listing.contactPreference || "Request contact",
+      seller_notes: "",
+      source_type: listing.sourceType || "manual",
+      source_item_id: "",
+      status: databaseStatus,
+      featured: Boolean(listing.featured && adminToolsVisible),
+      report_count: Number(listing.reportCount || 0),
+      updated_at: now,
+    };
+    if (uuidOrNull(listing.id)) row.id = listing.id;
+    if (adminToolsVisible && databaseStatus === "Active") {
+      row.reviewed_by = uuidOrNull(user?.id);
+      row.reviewed_at = now;
+    }
+    return row;
+  }
+
+  async function saveMarketplaceListingRecord(listing = {}) {
+    if (!canUseMarketplaceBackend()) return { source: "local", data: listing };
+    const row = marketplaceListingToSupabaseRow(listing);
+    try {
+      const query = row.id
+        ? supabase.from("marketplace_listings").upsert(row, { onConflict: "id" }).select().single()
+        : supabase.from("marketplace_listings").insert(row).select().single();
+      const { data, error } = await query;
+      if (error) throw error;
+      const mapped = mapMarketplaceListing(data);
+      return {
+        source: "supabase",
+        data: {
+          ...listing,
+          ...mapped,
+          sellerUsername: listing.sellerUsername || mapped.sellerUsername,
+          sellerDisplayName: listing.sellerDisplayName || mapped.sellerDisplayName,
+          qualityScore: listing.qualityScore,
+          qualityWarnings: listing.qualityWarnings,
+          qualityBlockers: listing.qualityBlockers,
+          safetyFlags: listing.safetyFlags,
+        },
+      };
+    } catch (error) {
+      if (!isExpectedShorelineAccessDenial(error)) {
+        showAppMessage("Marketplace listing saved locally; cloud listing sync is unavailable.");
+      }
+      return { source: "local", data: listing, error };
+    }
+  }
+
+  function marketplaceReportReasonForSupabase(reason = "") {
+    const normalized = normalizeListingReportReason(reason);
+    if (normalized === "Suspected scam" || normalized === "Fake/counterfeit product") return "Fake/scam";
+    if (normalized === "Misleading price") return "Price gouging";
+    if (normalized === "Duplicate listing") return "Duplicate";
+    if (normalized === "Sold/unavailable") return "Sold already";
+    if (["Private information", "Unsafe meetup", "Harassment/inappropriate content"].includes(normalized)) return "Inappropriate";
+    return "Other";
+  }
+
+  async function saveMarketplaceReportRecord(report = {}) {
+    if (!canUseMarketplaceBackend() || !uuidOrNull(report.listingId || report.listing_id)) return;
+    const { error } = await supabase.from("listing_reports").insert({
+      listing_id: report.listingId || report.listing_id,
+      reporter_user_id: uuidOrNull(user?.id),
+      reason: marketplaceReportReasonForSupabase(report.reason),
+      notes: report.details || report.notes || "",
+      status: "Open",
+    });
+    if (error && !isExpectedShorelineAccessDenial(error)) {
+      showAppMessage("Report saved locally; cloud report sync is unavailable.");
+    }
   }
 
   async function handleImageUpload(event, setter, folder = "misc") {
@@ -18479,6 +18759,12 @@ function renderTideTradrHeader() {
             title: "Recent Checks",
             subtitle: phase2RecentDeals[0]?.title || (tideTradrLookupProduct ? catalogTitle(tideTradrLookupProduct) : "No recent check yet"),
             onClick: () => setTideTradrSubTab("recent"),
+          },
+          {
+            key: "tidetradr-listings",
+            title: "Listings",
+            subtitle: `${marketplaceListings.filter((listing) => normalizeListingStatus(listing) === "Active").length} active`,
+            onClick: () => setTideTradrSubTab("listings"),
           },
           {
             key: "tidetradr-deal",
@@ -30390,7 +30676,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setVaultToast("Cross-listing export created.");
   }
 
-  function saveMarketplaceListing(status = "Draft") {
+  async function saveMarketplaceListing(status = "Draft") {
+    if (blockGuestSave()) return;
     const finalStatus = normalizeListingStatus(status === "Submit" ? "Pending Review" : status);
     const validationError = validateMarketplaceListingDraft(marketplaceForm, {
       isOfficialAdmin: publicIdentityForProfile(currentUserProfile).isOfficialAdminIdentity,
@@ -30416,18 +30703,26 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       qualityBlockers: quality.blockers,
       safetyFlags: quality.labels.map((label) => label.label),
     };
+    const saveResult = await saveMarketplaceListingRecord(listingForSave);
+    const savedListing = saveResult.data || listingForSave;
     setMarketplaceListings((current) =>
-      current.some((item) => item.id === listingForSave.id)
-        ? current.map((item) => (item.id === listingForSave.id ? listingForSave : item))
-        : [listingForSave, ...current]
+      current.some((item) => item.id === listingForSave.id || item.id === savedListing.id)
+        ? current.map((item) => (item.id === listingForSave.id || item.id === savedListing.id ? savedListing : item))
+        : [savedListing, ...current]
     );
     setMarketplaceForm(BLANK_MARKETPLACE_FORM);
     setListingReviewOpen(false);
     setMarketplaceSourcePicker("manual");
     setMarketplaceView("my");
     if (activeFlowModal?.type === "createListing") closeFlowModal({ force: true, reset: false });
-    void persistCrossListingChannels(listingForSave);
-    setVaultToast(finalStatus === "Draft" ? "Listing draft saved." : quality.warnings.length ? "Listing submitted for review with quality notes." : "Listing submitted for review.");
+    void persistCrossListingChannels(savedListing);
+    setVaultToast(
+      finalStatus === "Draft"
+        ? saveResult.source === "supabase" ? "Listing draft saved to your account." : "Listing draft saved locally."
+        : quality.warnings.length
+          ? "Listing submitted for review with quality notes."
+          : "Listing submitted for review."
+    );
   }
 
   function updateMarketplaceListing(listingId, updates = {}) {
@@ -30440,6 +30735,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 
   function updateMarketplaceListingStatus(listingId, status, reason = "") {
     const actor = currentPublicUsername();
+    const existing = marketplaceListings.find((listing) => listing.id === listingId);
+    const nextListing = existing ? moderateMarketplaceListing(existing, status, { reason, reviewer: actor }) : null;
     setMarketplaceListings((current) =>
       current.map((listing) =>
         listing.id === listingId
@@ -30447,6 +30744,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
           : listing
       )
     );
+    if (nextListing) void saveMarketplaceListingRecord(nextListing);
   }
 
   function editMarketplaceListing(listing = {}) {
@@ -30499,6 +30797,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     setListingReportTarget(null);
     setListingReportReason(MARKETPLACE_REPORT_REASONS[0]);
     setListingReportDetails("");
+    void saveMarketplaceReportRecord(report);
     setVaultToast("Thanks - admins will review this listing.");
   }
 
@@ -30515,14 +30814,32 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   function toggleSavedListing(listingId) {
+    const wasSaved = marketplaceSavedIds.includes(listingId);
     setMarketplaceSavedIds((current) =>
       current.includes(listingId) ? current.filter((id) => id !== listingId) : [listingId, ...current]
     );
+    if (!canUseMarketplaceBackend() || !uuidOrNull(listingId)) return;
+    const request = wasSaved
+      ? supabase.from("saved_listings").delete().eq("listing_id", listingId).eq("user_id", user.id)
+      : supabase.from("saved_listings").insert({ listing_id: listingId, user_id: user.id });
+    request.then(({ error }) => {
+      if (error && !isExpectedShorelineAccessDenial(error)) {
+        setVaultToast("Saved listing updated locally; cloud watchlist sync is unavailable.");
+      }
+    });
   }
 
   function getListingMarketReference(listing = {}) {
     const product = catalogProducts.find((item) => String(item.id) === String(listing.catalogItemId));
-    return product ? getTideTradrMarketInfo(product) : {
+    if (product) {
+      const productMarket = getTideTradrMarketInfo(product);
+      return {
+        ...productMarket,
+        currentMarketValue: toNumber(productMarket.currentMarketValue) || toNumber(listing.marketValue || listing.marketPrice || listing.referenceMarketValue),
+        msrp: toNumber(productMarket.msrp) || toNumber(listing.msrp || listing.msrpPrice),
+      };
+    }
+    return {
       currentMarketValue: toNumber(listing.marketValue || listing.marketPrice || listing.referenceMarketValue),
       msrp: toNumber(listing.msrp || listing.msrpPrice),
     };
@@ -30570,7 +30887,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       return { label: "High Markup", tone: "markup", explanation: "Meaningfully above available reference pricing." };
     }
 
-    if ((hasMarket && numericPrice <= numericMarket * 1.12) || (hasMsrp && numericPrice <= numericMsrp * 1.25)) {
+    if (hasMarket && numericPrice <= numericMarket * 1.12) {
       return { label: "Fair Price", tone: "fair", explanation: "Within a reasonable range of available reference pricing." };
     }
 
@@ -30792,15 +31109,21 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderMarketplaceSection() {
     const normalizedSearch = marketplaceSearch.trim().toLowerCase();
     const currentSellerId = currentUserProfile.userId || user?.id;
-    const publicListings = workspaceMarketplaceListings.filter((listing) => normalizeListingStatus(listing) === "Active");
-    const myListings = workspaceMarketplaceListings.filter((listing) => listing.sellerUserId === currentSellerId);
+    const marketplaceScopeListings = marketplaceListings.filter((listing) =>
+      normalizeListingStatus(listing) === "Active" ||
+      listing.sellerUserId === currentSellerId ||
+      canReviewSharedData ||
+      recordBelongsToWorkspace(listing, activeWorkspace?.id)
+    );
+    const publicListings = marketplaceScopeListings.filter((listing) => normalizeListingStatus(listing) === "Active");
+    const myListings = marketplaceScopeListings.filter((listing) => listing.sellerUserId === currentSellerId);
     const phase2ChannelDrafts = phase2MarketplaceDraftListings.filter((listing) => listing.status.toLowerCase() === "draft");
     const visibleMyListings = myListings.length ? myListings : phase2MarketplaceDraftListings;
     const draftListings = myListings.length ? myListings.filter((listing) => normalizeListingStatus(listing) === "Draft") : phase2ChannelDrafts;
-    const pendingReviewListings = workspaceMarketplaceListings.filter((listing) =>
+    const pendingReviewListings = marketplaceScopeListings.filter((listing) =>
       normalizeListingStatus(listing) === "Pending Review" && (listing.sellerUserId === currentSellerId || canReviewSharedData)
     );
-    const visibleMarketplaceListings = workspaceMarketplaceListings.filter((listing) =>
+    const visibleMarketplaceListings = marketplaceScopeListings.filter((listing) =>
       normalizeListingStatus(listing) === "Active" || listing.sellerUserId === currentSellerId || canReviewSharedData
     );
     const filteredListings = visibleMarketplaceListings.filter((listing) => {
@@ -30836,7 +31159,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       marketplaceView === "drafts" ? draftListings :
       marketplaceView === "pending" ? pendingReviewListings :
       filteredListings;
-    const selectedListing = marketplaceListings.find((listing) => listing.id === selectedListingId);
+    const selectedListing = marketplaceScopeListings.find((listing) => listing.id === selectedListingId) || marketplaceListings.find((listing) => listing.id === selectedListingId);
     const reviewListing = buildMarketplaceListing("Pending Review");
     const selectedListingClosed = selectedListing ? isMarketplaceClosedStatus(normalizeListingStatus(selectedListing)) : false;
     const selectedListingQuality = selectedListing ? getMarketplaceListingQualityReport(selectedListing) : null;
@@ -30855,7 +31178,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         </details>
         <div className="cards mini-cards">
           <div className="card"><p>Active Listings</p><h2>{publicListings.length}</h2></div>
-          <div className="card"><p>Pending Review</p><h2>{workspaceMarketplaceListings.filter((listing) => normalizeListingStatus(listing) === "Pending Review").length}</h2></div>
+          <div className="card"><p>Pending Review</p><h2>{marketplaceScopeListings.filter((listing) => normalizeListingStatus(listing) === "Pending Review").length}</h2></div>
           <div className="card"><p>My Listings</p><h2>{visibleMyListings.length}</h2></div>
           <div className="card"><p>Saved</p><h2>{marketplaceSavedIds.length}</h2></div>
         </div>
@@ -31108,7 +31431,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {renderCommunityProfileSummary(selectedListing, { compact: false, className: "marketplace-detail-profile-card" })}
             {selectedListingQuality ? renderMarketplaceQualitySummary(selectedListingQuality, { hideWhenClear: true, limit: 5 }) : null}
             <div className="catalog-detail-grid">
-              <DetailItem label="Asking Price" value={hasKnownPriceValue(selectedListing.askingPrice) ? money(selectedListing.askingPrice) : "Not set"} />
+              <DetailItem label="Asking Price" value={hasKnownPriceValue(selectedListing.askingPrice) ? money(selectedListing.askingPrice) : "Price data unavailable"} />
               <DetailItem label="Market Value" value={formatPriceDisplay(getListingMarketReference(selectedListing).currentMarketValue, { moneyFormatter: money, missingLabel: "Market value unknown" })} />
               <DetailItem label="MSRP" value={formatPriceDisplay(getListingMarketReference(selectedListing).msrp, { moneyFormatter: money, missingLabel: "MSRP unknown" })} />
               <DetailItem label="Condition" value={selectedListing.condition} />
@@ -41315,6 +41638,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                 )}
               </section>
+            ) : tideTradrSubTab === "listings" ? (
+              <>
+                {renderMarketplaceSection()}
+              </>
             ) : (
               <>
                 {false ? (

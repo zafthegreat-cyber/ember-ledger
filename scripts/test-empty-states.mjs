@@ -21,6 +21,11 @@ const dropRadar = getEmptyStateGuidance("drop radar");
 assert.match(dropRadar.body, /confirmed restock history/i);
 assert.doesNotMatch(dropRadar.body, /guaranteed/i);
 
+const market = getEmptyStateGuidance("market");
+assert.equal(market.title, "No matching deals yet.");
+assert.deepEqual(market.actions.map((action) => action.label), ["Create Alert", "Browse Market", "Add Listing"]);
+assert.doesNotMatch(market.body, /guaranteed|checkout is active|automatic payment/i);
+
 const notifications = getEmptyStateGuidance("notifications");
 assert.match(notifications.body, /Confirmed restocks/i);
 assert.equal(notifications.actionTarget, "alerts");

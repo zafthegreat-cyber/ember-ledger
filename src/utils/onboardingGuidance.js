@@ -246,10 +246,15 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Why is this a prediction?",
   },
   market: {
-    title: "No TideTradr listings or checks yet.",
-    body: "Search a product, compare value, or prepare a listing from Vault or Forge when you are ready.",
-    actionLabel: "Search TideTradr",
-    actionTarget: "market",
+    title: "No matching deals yet.",
+    body: "Browse approved TideTradr listings, create a beta alert, or add a listing for admin review when you are ready.",
+    actionLabel: "Browse Market",
+    actionTarget: "browse_market",
+    actions: [
+      { label: "Create Alert", actionTarget: "create_market_alert" },
+      { label: "Browse Market", actionTarget: "browse_market", primary: false },
+      { label: "Add Listing", actionTarget: "add_market_listing", primary: false },
+    ],
     assistPrompt: "Help me create a listing",
   },
   notifications: {
