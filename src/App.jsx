@@ -4470,6 +4470,12 @@ export default function App() {
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
   const [scoutSnapshot, setScoutSnapshot] = useState(createEmptyScoutSnapshot);
+  const [scoutBackendSync, setScoutBackendSync] = useState({
+    loaded: false,
+    loading: false,
+    error: "",
+    loadedAt: "",
+  });
   const [dealForm, setDealForm] = useState({
     productId: "",
     title: "",
@@ -6132,12 +6138,19 @@ export default function App() {
   }
 
   function favoriteSearchStore(store) {
-    const nextStores = scoutSnapshot.stores.map((candidate) =>
-      String(candidate.id) === String(store.id) ? { ...candidate, favorite: true } : candidate
-    );
+    const targetId = getScoutQuickStoreId(store) || getStoreMapStoreId(store);
+    const exists = scoutSnapshot.stores.some((candidate) => getScoutQuickStoreId(candidate) === targetId || getStoreMapStoreId(candidate) === targetId);
+    const nextStores = exists
+      ? scoutSnapshot.stores.map((candidate) =>
+        getScoutQuickStoreId(candidate) === targetId || getStoreMapStoreId(candidate) === targetId
+          ? setStoreFavoriteState(candidate, true)
+          : candidate
+      )
+      : [setStoreFavoriteState({ ...store, id: store.id || targetId }, true), ...scoutSnapshot.stores];
     setScoutSnapshot((current) => ({ ...current, stores: nextStores }));
     const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
     localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, stores: nextStores }));
+    void persistScoutStoreWatchToSupabase(store, true);
   }
 
   function renderSearchActions(result) {
@@ -10601,6 +10614,522 @@ export default function App() {
     }
   }
 
+  function scoutBackendSyncReady() {
+    return Boolean(
+      !BETA_LOCAL_MODE &&
+      !guestPreviewActive &&
+      signedInWithSupabase &&
+      isSupabaseConfigured &&
+      supabase &&
+      protectedAppDataAccessReady()
+    );
+  }
+
+  function isScoutBackendOptionalError(error) {
+    const message = String(error?.message || error?.details || error || "").toLowerCase();
+    return Boolean(
+      /does not exist|schema cache|column|relation|table|permission denied|row-level security|rls/.test(message) ||
+      error?.code === "42P01" ||
+      error?.code === "42703" ||
+      error?.code === "42501"
+    );
+  }
+
+  function scoutBackendKey(value = "") {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  }
+
+  function scoutBackendStoreMergeKey(store = {}, index = 0) {
+    const nameKey = [
+      getScoutQuickRetailer(store),
+      getScoutQuickStoreName(store),
+      store.city,
+      store.address,
+    ].map(scoutBackendKey).join("|");
+    if (nameKey.replace(/\|/g, "")) return `store:${nameKey}`;
+    return `store-id:${getScoutQuickStoreId(store) || index}`;
+  }
+
+  function scoutBackendReportMergeKey(report = {}, index = 0) {
+    const store = getScoutReportStore(report);
+    const fingerprint = [
+      report.storeId || report.store_id || store.id || store.storeId,
+      report.storeName || report.store_name || store.name || store.nickname,
+      report.productName || report.product_name || report.itemName || report.productType || report.product_type,
+      report.reportedAt || report.reported_at || report.reportTime || report.report_time || report.createdAt || report.created_at,
+      report.userId || report.user_id || report.reportedBy || report.reported_by,
+    ].map(scoutBackendKey).join("|");
+    if (fingerprint.replace(/\|/g, "")) return `report:${fingerprint}`;
+    return `report-id:${getScoutReportId(report) || index}`;
+  }
+
+  function scoutBackendGuessMergeKey(guess = {}, index = 0) {
+    return [
+      guess.id || "",
+      guess.storeId || guess.store_id || guess.storeName || guess.store_name,
+      guess.guessedDay || guess.guessed_day,
+      guess.guessedTimeWindow || guess.guessed_time_window,
+      guess.userId || guess.user_id,
+    ].map(scoutBackendKey).join("|") || `guess-${index}`;
+  }
+
+  function scoutBackendForecastMergeKey(forecast = {}, index = 0) {
+    return [
+      forecast.id || "",
+      forecast.storeId || forecast.store_id || forecast.storeName || forecast.store_name,
+      forecast.forecastDay || forecast.forecast_day || forecast.days?.[0],
+      forecast.forecastTimeWindow || forecast.forecast_time_window || forecast.windowLabel,
+    ].map(scoutBackendKey).join("|") || `forecast-${index}`;
+  }
+
+  function mergeScoutRows(currentRows = [], incomingRows = [], keyFn = (row, index) => row?.id || `row-${index}`) {
+    const map = new Map();
+    [...currentRows, ...incomingRows].filter(Boolean).forEach((row, index) => {
+      const key = keyFn(row, index);
+      const previous = map.get(key);
+      map.set(key, previous ? { ...previous, ...row } : row);
+    });
+    return [...map.values()];
+  }
+
+  function mergeScoutStores(currentRows = [], incomingRows = []) {
+    const map = new Map();
+    [...currentRows, ...incomingRows].filter(Boolean).forEach((store, index) => {
+      const key = scoutBackendStoreMergeKey(store, index);
+      const previous = map.get(key);
+      map.set(key, previous ? {
+        ...previous,
+        ...store,
+        favorite: Boolean(previous.favorite || store.favorite),
+        watchlisted: Boolean(previous.watchlisted || store.watchlisted),
+        watchlist: Boolean(previous.watchlist || store.watchlist),
+        priority: Boolean(previous.priority || store.priority),
+      } : store);
+    });
+    return [...map.values()];
+  }
+
+  function mapSupabaseStore(row = {}, watchlist = {}) {
+    const active = row.active !== false && row.is_active !== false;
+    const reportable = active && row.sells_pokemon !== false && row.reportable !== false && row.is_reportable !== false;
+    const watched = Boolean(watchlist.favorite || watchlist.watched);
+    return {
+      id: row.id || "",
+      storeId: row.id || "",
+      store_id: row.id || "",
+      name: row.nickname || row.store_name || row.name || row.retailer_store_id || "Store location",
+      storeName: row.store_name || row.name || row.nickname || "Store location",
+      store_name: row.store_name || row.name || row.nickname || "Store location",
+      nickname: row.nickname || row.store_name || row.name || "",
+      retailer: row.retailer || row.chain || "",
+      chain: row.chain || row.retailer || "",
+      storeType: row.store_type || row.type || "",
+      store_type: row.store_type || row.type || "",
+      address: row.address || "",
+      city: row.city || "",
+      state: row.state || "",
+      zip: row.zip || row.zip_code || "",
+      zipCode: row.zip_code || row.zip || "",
+      region: row.region || "",
+      county: row.county || "",
+      phone: row.phone || "",
+      website: row.website || "",
+      latitude: row.latitude,
+      longitude: row.longitude,
+      active,
+      isActive: active,
+      is_active: active,
+      reportable,
+      isReportable: reportable,
+      is_reportable: reportable,
+      pokemonStockLikelihood: row.pokemon_stock_likelihood || row.confidence || "unknown",
+      pokemon_stock_likelihood: row.pokemon_stock_likelihood || row.confidence || "unknown",
+      source: row.source || "supabase-store-directory",
+      sourceType: "supabase_store_directory",
+      source_type: "supabase_store_directory",
+      sourceUrl: row.source_url || "",
+      lastVerifiedAt: row.last_verified_at || "",
+      notes: row.notes || "",
+      favorite: watched,
+      watchlisted: watched,
+      watchlist: watched,
+      priority: Boolean(watchlist.favorite),
+      watchlistNotes: watchlist.notes || "",
+      updatedAt: row.updated_at || row.created_at || watchlist.updated_at || "",
+      createdAt: row.created_at || "",
+    };
+  }
+
+  function mapSupabaseScoutReport(row = {}, stores = []) {
+    const matchedStore = stores.find((store) => String(getScoutQuickStoreId(store)) === String(row.store_id)) || {};
+    const reportedAt = row.report_time || row.reported_at || row.created_at || row.updated_at || "";
+    const status = row.status || row.verification_status || "unverified";
+    const statusText = scoutBackendKey(status);
+    const rejected = /rejected|stale|duplicate|deleted|archived/.test(statusText);
+    const confirmed = !rejected && /confirmed|verified/.test(statusText);
+    const confidenceScore = Number(row.confidence_score ?? 0);
+    const likely = !confirmed && !rejected && confidenceScore >= 60;
+    const reportDate = String(reportedAt || "").slice(0, 10);
+    const reportTime = String(reportedAt || "").slice(11, 16);
+    const storeName = row.store_name || getScoutQuickStoreName(matchedStore) || "Store location";
+    const retailer = getScoutQuickRetailer(matchedStore) || row.retailer || "";
+    return {
+      id: row.id || makeId("store-report"),
+      reportId: row.id || "",
+      userId: row.user_id || "",
+      user_id: row.user_id || "",
+      workspaceId: row.workspace_id || "",
+      workspace_id: row.workspace_id || "",
+      storeId: row.store_id || "",
+      store_id: row.store_id || "",
+      selectedStoreId: row.store_id || "",
+      storeName,
+      store_name: storeName,
+      retailer,
+      chain: retailer,
+      city: matchedStore.city || "",
+      region: matchedStore.region || "",
+      address: matchedStore.address || "",
+      productId: row.product_id || "",
+      product_id: row.product_id || "",
+      productName: row.product_name || row.product_type || "Pokemon restock",
+      product_name: row.product_name || row.product_type || "Pokemon restock",
+      productType: row.product_type || row.report_type || "Pokemon",
+      product_type: row.product_type || row.report_type || "Pokemon",
+      productSetName: row.set_name || "",
+      setName: row.set_name || "",
+      quantity: row.quantity_estimate || row.quantity_seen || "",
+      quantityEstimate: row.quantity_estimate || row.quantity_seen || "",
+      quantity_seen: row.quantity_seen,
+      price: row.price_seen || "",
+      price_seen: row.price_seen,
+      photoUrl: row.photo_url || "",
+      photo_url: row.photo_url || "",
+      proofType: row.photo_url ? "stock_photo" : "manual",
+      proofText: row.notes || "",
+      notes: row.notes || "",
+      note: row.notes || "",
+      reportType: row.report_type || (confirmed ? "stock_on_shelf" : "other"),
+      report_type: row.report_type || (confirmed ? "restock" : "other"),
+      stockStatus: confirmed ? "confirmed_restock" : row.report_type || "reported",
+      visibility: normalizeScoutReportVisibility(row.visibility || "public"),
+      status,
+      verificationStatus: status,
+      verification_status: status,
+      verified: confirmed,
+      confidence: confirmed ? "confirmed" : likely ? "likely" : "unconfirmed",
+      confidenceScore: confidenceScore || scoutConfidenceScore(confirmed ? "confirmed" : likely ? "likely" : "unconfirmed"),
+      confidence_score: confidenceScore || scoutConfidenceScore(confirmed ? "confirmed" : likely ? "likely" : "unconfirmed"),
+      sourceType: confirmed ? "verified_user_report" : "user_report",
+      source_type: confirmed ? "verified_user_report" : "user_report",
+      sourceStatus: "supabase",
+      shouldTrainPredictions: confirmed,
+      trainingEligible: confirmed,
+      reportedAt,
+      reported_at: reportedAt,
+      submittedAt: row.created_at || reportedAt,
+      submitted_at: row.created_at || reportedAt,
+      reportDate,
+      reportTime,
+      createdAt: row.created_at || reportedAt,
+      created_at: row.created_at || reportedAt,
+      updatedAt: row.updated_at || reportedAt,
+      updated_at: row.updated_at || reportedAt,
+    };
+  }
+
+  function mapSupabaseScoutGuess(row = {}, stores = []) {
+    const matchedStore = stores.find((store) => String(getScoutQuickStoreId(store)) === String(row.store_id)) || {};
+    return {
+      id: row.id || makeId("store-guess"),
+      recordType: "guess",
+      recordKind: "community_guess",
+      eventType: "Community Guess",
+      shouldTrainPredictions: false,
+      trainingEligible: false,
+      userId: row.user_id || "",
+      user_id: row.user_id || "",
+      workspaceId: row.workspace_id || "",
+      workspace_id: row.workspace_id || "",
+      storeId: row.store_id || "",
+      store_id: row.store_id || "",
+      storeName: row.store_name || getScoutQuickStoreName(matchedStore) || "Store location",
+      store_name: row.store_name || getScoutQuickStoreName(matchedStore) || "Store location",
+      retailer: getScoutQuickRetailer(matchedStore) || "",
+      city: matchedStore.city || "",
+      guessedDay: row.guessed_day || "Unknown",
+      guessed_day: row.guessed_day || "Unknown",
+      guessedTimeWindow: row.guessed_time_window || "",
+      guessed_time_window: row.guessed_time_window || "",
+      restockPatternNotes: row.restock_pattern_notes || "User pattern note; not confirmed stock.",
+      restock_pattern_notes: row.restock_pattern_notes || "User pattern note; not confirmed stock.",
+      productType: row.product_type || "",
+      product_type: row.product_type || "",
+      confidenceSelfRating: Number(row.confidence_self_rating || 0),
+      confidence_self_rating: Number(row.confidence_self_rating || 0),
+      confidence: "guess",
+      confidenceLabel: "Community Guess",
+      status: row.status || "pending",
+      verificationStatus: row.status || "pending",
+      moderationStatus: row.status || "pending",
+      sourceType: "community_guess",
+      source_type: "community_guess",
+      sourceStatus: "supabase",
+      visibility: normalizeScoutGuessVisibility(row.visibility || "private"),
+      createdAt: row.created_at || row.updated_at || "",
+      created_at: row.created_at || row.updated_at || "",
+      updatedAt: row.updated_at || row.created_at || "",
+      updated_at: row.updated_at || row.created_at || "",
+    };
+  }
+
+  function mapSupabaseForecastWindow(row = {}, stores = []) {
+    const matchedStore = stores.find((store) => String(getScoutQuickStoreId(store)) === String(row.store_id)) || {};
+    const confidenceScore = Number(row.confidence_score || 0);
+    const confidenceKey = String(row.confidence_label || "low").toLowerCase();
+    const supportingReportCount = Number(row.supporting_report_count || 0);
+    const supportingGuessCount = Number(row.supporting_guess_count || 0);
+    const needsMoreData = supportingReportCount < 2;
+    return {
+      id: row.id || makeId("forecast-window"),
+      recordKind: "predicted_window",
+      eventType: "Predicted Drop Window",
+      storeId: row.store_id || "",
+      store_id: row.store_id || "",
+      storeName: row.store_name || getScoutQuickStoreName(matchedStore) || "Store location",
+      store_name: row.store_name || getScoutQuickStoreName(matchedStore) || "Store location",
+      retailer: getScoutQuickRetailer(matchedStore) || "",
+      city: matchedStore.city || "",
+      forecastDay: row.forecast_day || "",
+      forecast_day: row.forecast_day || "",
+      forecastTimeWindow: row.forecast_time_window || "",
+      forecast_time_window: row.forecast_time_window || "",
+      confidenceScore,
+      confidence_score: confidenceScore,
+      confidence: needsMoreData ? "needs-data" : confidenceKey,
+      confidenceKey: needsMoreData ? "needs-data" : confidenceKey,
+      confidenceLabel: needsMoreData ? "Needs more data" : confidenceKey === "high" ? "High" : confidenceKey === "medium" ? "Medium" : "Low",
+      sourceType: "prediction_cache",
+      source_type: "prediction_cache",
+      sourceLabel: "Saved Drop Radar prediction cache",
+      badges: ["Predicted", needsMoreData ? "Needs Data" : "Cached"],
+      days: [row.forecast_day].filter(Boolean),
+      groupLabel: row.forecast_day || "Needs more data",
+      windowLabel: row.forecast_time_window || "Unknown time",
+      reason: row.basis_summary || (needsMoreData ? "Needs more confirmed restocks before predictions are reliable." : "Based on saved forecast history."),
+      basisSummary: row.basis_summary || "",
+      lastConfirmedReportLabel: row.last_confirmed_report_at ? scoutReportDateTimeLabel({ submittedAt: row.last_confirmed_report_at }) : "",
+      supportingReportCount,
+      supportingGuessCount,
+      dataNeededMessage: needsMoreData ? `Low confidence: needs ${2 - supportingReportCount} more confirmed restock${2 - supportingReportCount === 1 ? "" : "s"} before predictions are reliable.` : "",
+      sortRank: needsMoreData ? 5 : 1,
+      dayDistance: row.forecast_day ? scoutForecastDayDistance(row.forecast_day) : 99,
+      createdAt: row.created_at || "",
+      updatedAt: row.updated_at || "",
+    };
+  }
+
+  async function loadScoutBackendData(options = {}) {
+    if (!scoutBackendSyncReady()) return false;
+    if (!options.force && (scoutBackendSync.loading || scoutBackendSync.loaded)) return false;
+
+    setScoutBackendSync((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const watchlistByStoreId = new Map();
+      let watchlistRows = [];
+      const watchlistResult = await supabase
+        .from("store_user_watchlist")
+        .select("store_id,favorite,watched,notes,updated_at")
+        .eq("user_id", user.id)
+        .limit(500);
+      if (watchlistResult.error && !isScoutBackendOptionalError(watchlistResult.error)) throw watchlistResult.error;
+      watchlistRows = watchlistResult.error ? [] : watchlistResult.data || [];
+      watchlistRows.forEach((row) => watchlistByStoreId.set(String(row.store_id), row));
+
+      const baseStoreSelect = "id,name,chain,nickname,address,city,state,zip,region,county,phone,website,sells_pokemon,store_type,notes,created_at,updated_at";
+      const wideStoreSelect = `${baseStoreSelect},latitude,longitude,retailer,store_name,zip_code,store_number,retailer_store_id,active,pokemon_stock_likelihood,source,source_url,last_verified_at,confidence`;
+      let storesQuery = supabase.from("stores").select(wideStoreSelect).order("updated_at", { ascending: false, nullsFirst: false }).limit(500);
+      if (!adminEditModeActive) storesQuery = storesQuery.eq("active", true);
+      let storesResult = await storesQuery;
+      if (storesResult.error && isScoutBackendOptionalError(storesResult.error)) {
+        storesResult = await supabase.from("stores").select(baseStoreSelect).order("updated_at", { ascending: false, nullsFirst: false }).limit(500);
+      }
+      if (storesResult.error && isExpectedShorelineAccessDenial(storesResult.error) && !protectedAppDataAccessReady()) return false;
+      if (storesResult.error && !isScoutBackendOptionalError(storesResult.error)) throw storesResult.error;
+      const cloudStores = (storesResult.error ? [] : storesResult.data || [])
+        .map((row) => mapSupabaseStore(row, watchlistByStoreId.get(String(row.id)) || {}))
+        .filter((store) => adminEditModeActive || store.active !== false);
+
+      const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at";
+      const reportFallbackSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status";
+      let reportsResult = await supabase
+        .from("store_reports")
+        .select(reportSelect)
+        .order("report_time", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (reportsResult.error && isScoutBackendOptionalError(reportsResult.error)) {
+        reportsResult = await supabase.from("store_reports").select(reportFallbackSelect).order("reported_at", { ascending: false, nullsFirst: false }).limit(200);
+      }
+      if (reportsResult.error && isExpectedShorelineAccessDenial(reportsResult.error) && !protectedAppDataAccessReady()) return false;
+      if (reportsResult.error && !isScoutBackendOptionalError(reportsResult.error)) throw reportsResult.error;
+      const cloudReports = (reportsResult.error ? [] : reportsResult.data || []).map((row) => mapSupabaseScoutReport(row, cloudStores));
+
+      let guessesResult = await supabase
+        .from("store_guesses")
+        .select("id,user_id,workspace_id,store_id,store_name,guessed_day,guessed_time_window,restock_pattern_notes,product_type,confidence_self_rating,visibility,created_at,updated_at")
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(150);
+      if (guessesResult.error && isExpectedShorelineAccessDenial(guessesResult.error) && !protectedAppDataAccessReady()) guessesResult = { data: [], error: null };
+      if (guessesResult.error && !isScoutBackendOptionalError(guessesResult.error)) throw guessesResult.error;
+      const cloudGuesses = (guessesResult.error ? [] : guessesResult.data || []).map((row) => mapSupabaseScoutGuess(row, cloudStores));
+
+      let forecastsResult = await supabase
+        .from("forecast_windows")
+        .select("id,store_id,store_name,forecast_day,forecast_time_window,confidence_score,confidence_label,basis_summary,last_confirmed_report_at,supporting_report_count,supporting_guess_count,created_at,updated_at")
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(150);
+      if (forecastsResult.error && !isScoutBackendOptionalError(forecastsResult.error)) throw forecastsResult.error;
+      const cloudForecasts = (forecastsResult.error ? [] : forecastsResult.data || []).map((row) => mapSupabaseForecastWindow(row, cloudStores));
+
+      setScoutSnapshot((current) => ({
+        ...current,
+        stores: mergeScoutStores(current.stores || [], cloudStores),
+        reports: mergeScoutRows(current.reports || [], cloudReports, scoutBackendReportMergeKey),
+        storeGuesses: mergeScoutRows(current.storeGuesses || [], cloudGuesses, scoutBackendGuessMergeKey),
+        forecastWindows: mergeScoutRows(current.forecastWindows || [], cloudForecasts, scoutBackendForecastMergeKey),
+      }));
+      setScoutBackendSync({
+        loaded: true,
+        loading: false,
+        error: "",
+        loadedAt: new Date().toISOString(),
+      });
+      return true;
+    } catch (error) {
+      logAppError("scout_backend_load", error, { userId: user?.id }, "normal");
+      setScoutBackendSync({
+        loaded: false,
+        loading: false,
+        error: "Scout and Drop Radar cloud data is unavailable right now. Local/manual fallback remains available.",
+        loadedAt: "",
+      });
+      return false;
+    }
+  }
+
+  function scoutBackendNumberOrNull(value) {
+    if (value === "" || value === null || value === undefined) return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function scoutReportTimeForBackend(report = {}) {
+    const raw = report.reportedAt || report.reported_at || report.submittedAt || report.submitted_at || report.createdAt || report.created_at || "";
+    if (raw) return raw;
+    const date = report.reportDate || report.report_date || getLocalDateKey();
+    const time = report.reportTime || report.report_time || getLocalTimeKey();
+    return `${date}T${time || "00:00"}:00.000Z`;
+  }
+
+  async function persistScoutReportToSupabase(report = {}) {
+    if (!scoutBackendSyncReady()) return null;
+    const storeId = uuidOrNull(report.storeId || report.store_id || report.selectedStoreId || report.selected_store_id);
+    if (!storeId) return null;
+    const reportedAt = scoutReportTimeForBackend(report);
+    const confidenceScore = Number(report.confidenceScore || report.confidence_score || scoutConfidenceScore(report.confidence || ""));
+    const confirmed = Boolean(report.verified || /confirmed|verified/i.test(`${report.status || ""} ${report.verificationStatus || report.verification_status || ""}`));
+    const payload = {
+      store_id: storeId,
+      user_id: user.id,
+      product_id: uuidOrNull(report.productId || report.product_id || report.catalogProductId || report.catalog_product_id),
+      report_type: report.report_type || report.reportType || "restock",
+      quantity_seen: scoutBackendNumberOrNull(report.quantity || report.quantitySeen || report.quantity_seen),
+      price_seen: scoutBackendNumberOrNull(report.price || report.priceSeen || report.price_seen),
+      photo_url: report.photoUrl || report.photo_url || "",
+      notes: report.notes || report.note || report.proofText || "",
+      reported_at: reportedAt,
+      verification_status: confirmed ? "verified" : "unverified",
+      workspace_id: uuidOrNull(report.workspaceId || report.workspace_id || activeWorkspaceId),
+      store_name: report.storeName || report.store_name || "",
+      product_name: report.productName || report.product_name || report.itemName || "",
+      product_type: report.productType || report.product_type || report.productCategory || "",
+      set_name: report.setName || report.set_name || report.productSetName || "",
+      quantity_estimate: String(report.quantity || report.quantityEstimate || report.quantity_estimate || ""),
+      report_time: reportedAt,
+      visibility: normalizeScoutReportVisibility(report.visibility || "public"),
+      status: confirmed ? "confirmed" : "unverified",
+      confidence_score: confidenceScore,
+    };
+    let result = await supabase.from("store_reports").insert(payload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at").single();
+    if (result.error && isScoutBackendOptionalError(result.error)) {
+      const fallbackPayload = {
+        store_id: storeId,
+        user_id: user.id,
+        product_id: payload.product_id,
+        report_type: payload.report_type,
+        quantity_seen: payload.quantity_seen,
+        price_seen: payload.price_seen,
+        photo_url: payload.photo_url,
+        notes: payload.notes,
+        reported_at: reportedAt,
+        verification_status: payload.verification_status,
+      };
+      result = await supabase.from("store_reports").insert(fallbackPayload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status").single();
+    }
+    if (result.error) {
+      logAppError("scout_report_backend_save", result.error, { storeId }, "normal");
+      return null;
+    }
+    return mapSupabaseScoutReport(result.data, getScoutQuickStores({ admin: adminEditModeActive }));
+  }
+
+  async function persistScoutGuessToSupabase(guess = {}) {
+    if (!scoutBackendSyncReady()) return null;
+    const payload = {
+      user_id: user.id,
+      workspace_id: uuidOrNull(guess.workspaceId || guess.workspace_id || activeWorkspaceId),
+      store_id: uuidOrNull(guess.storeId || guess.store_id || guess.selectedStoreId || guess.selected_store_id),
+      store_name: guess.storeName || guess.store_name || "Store location",
+      guessed_day: guess.guessedDay || guess.guessed_day || "Unknown",
+      guessed_time_window: guess.guessedTimeWindow || guess.guessed_time_window || "",
+      restock_pattern_notes: guess.restockPatternNotes || guess.restock_pattern_notes || guess.notes || "",
+      product_type: guess.productType || guess.product_type || "",
+      confidence_self_rating: scoutBackendNumberOrNull(guess.confidenceSelfRating || guess.confidence_self_rating),
+      visibility: normalizeScoutGuessVisibility(guess.visibility || "private"),
+    };
+    const { data, error } = await supabase
+      .from("store_guesses")
+      .insert(payload)
+      .select("id,user_id,workspace_id,store_id,store_name,guessed_day,guessed_time_window,restock_pattern_notes,product_type,confidence_self_rating,visibility,created_at,updated_at")
+      .single();
+    if (error) {
+      logAppError("scout_guess_backend_save", error, { storeName: payload.store_name }, "normal");
+      return null;
+    }
+    return mapSupabaseScoutGuess(data, getScoutQuickStores({ admin: adminEditModeActive }));
+  }
+
+  async function persistScoutStoreWatchToSupabase(store = {}, favorite = true) {
+    if (!scoutBackendSyncReady()) return false;
+    const storeId = uuidOrNull(getScoutQuickStoreId(store));
+    if (!storeId) return false;
+    const { error } = await supabase.from("store_user_watchlist").upsert(
+      {
+        user_id: user.id,
+        store_id: storeId,
+        favorite: Boolean(favorite),
+        watched: Boolean(favorite),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,store_id" }
+    );
+    if (error) {
+      logAppError("scout_store_watch_save", error, { storeId }, "normal");
+      return false;
+    }
+    return true;
+  }
+
   function saveTidepoolCommunity(next) {
     const payload = {
       posts: next.posts ?? tidepoolPosts,
@@ -14684,9 +15213,18 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         setQuickScoutReportStep("where");
         return;
       }
-      const nextGuesses = [guess, ...(scoutData.storeGuesses || scoutSnapshot.storeGuesses || [])]
+      const nextLocalGuesses = [guess, ...(scoutData.storeGuesses || scoutData.guesses || [])]
         .filter((entry, index, list) => list.findIndex((candidate) => String(candidate.id) === String(entry.id)) === index);
-      saveSharedScoutData({ ...scoutData, storeGuesses: nextGuesses });
+      const nextVisibleGuesses = mergeScoutRows(scoutSnapshot.storeGuesses || [], [guess], scoutBackendGuessMergeKey);
+      saveSharedScoutData({ ...scoutData, storeGuesses: nextLocalGuesses });
+      setScoutSnapshot((current) => ({ ...current, storeGuesses: nextVisibleGuesses }));
+      void persistScoutGuessToSupabase(guess).then((cloudGuess) => {
+        if (!cloudGuess) return;
+        setScoutSnapshot((current) => ({
+          ...current,
+          storeGuesses: mergeScoutRows(current.storeGuesses || [], [cloudGuess], scoutBackendGuessMergeKey),
+        }));
+      });
       setQuickScoutReportSaved(guess);
       setQuickScoutReportStep("submitted");
       setQuickScoutReportMessage("Guess saved to the planner. Forecasts will treat it as a guess, not confirmed stock.");
@@ -14701,9 +15239,18 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setQuickScoutReportStep("where");
       return;
     }
-    const nextReports = [report, ...(scoutData.reports || scoutSnapshot.reports || [])]
+    const nextLocalReports = [report, ...(scoutData.reports || [])]
       .filter((entry, index, list) => list.findIndex((candidate) => getScoutReportId(candidate) === getScoutReportId(entry)) === index);
-    saveSharedScoutData({ ...scoutData, reports: nextReports });
+    const nextVisibleReports = mergeScoutRows(scoutSnapshot.reports || [], [report], scoutBackendReportMergeKey);
+    saveSharedScoutData({ ...scoutData, reports: nextLocalReports });
+    setScoutSnapshot((current) => ({ ...current, reports: nextVisibleReports }));
+    void persistScoutReportToSupabase(report).then((cloudReport) => {
+      if (!cloudReport) return;
+      setScoutSnapshot((current) => ({
+        ...current,
+        reports: mergeScoutRows(current.reports || [], [cloudReport], scoutBackendReportMergeKey),
+      }));
+    });
     setQuickScoutReportSaved(report);
     setQuickScoutReportStep("submitted");
     setQuickScoutReportMessage("Report sent. You can add details now or later.");
@@ -19854,6 +20401,37 @@ function renderForgeHeader() {
     if (normalized !== "admin") setAdminEditMode(false);
   };
   useEffect(() => {
+    setScoutBackendSync({
+      loaded: false,
+      loading: false,
+      error: "",
+      loadedAt: "",
+    });
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!localDataLoaded) return;
+    if (!signedInWithSupabase || !protectedAppDataAccessReady()) return;
+    const scoutDataNeeded = activeTab === "scout" || activeTab === "dailyTide" || (activeTab === "adminReview" && adminToolsVisible);
+    if (!scoutDataNeeded) return;
+    void loadScoutBackendData({ force: activeTab === "adminReview" && adminToolsVisible });
+  }, [
+    activeTab,
+    adminToolsVisible,
+    localDataLoaded,
+    signedInWithSupabase,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    shorelineState.betaRequest?.status,
+  ]);
+
+  useEffect(() => {
     const email = accountEmail();
     const fullName = currentUserProfile?.fullName || currentUserProfile?.displayName || "";
     setShorelineBetaForm((current) => ({
@@ -21499,9 +22077,53 @@ function renderForgeHeader() {
     sortRank: row.confidenceKey === "needs-data" ? 5 : 1,
     dayDistance: row.commonDay ? scoutForecastDayDistance(row.commonDay) : 99,
   }));
-  const dropRadarForecastKeys = new Set([...scoutForecastPatternRows, ...scoutGuessForecastRows].map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
+  const existingForecastPreviewKeys = new Set([...scoutForecastPatternRows, ...scoutGuessForecastRows].map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
+  const cachedForecastWindowRows = (scoutSnapshot.forecastWindows || []).map((row, index) => {
+    const confidenceScore = Number(row.confidenceScore ?? row.confidence_score ?? 0);
+    const rawConfidence = String(row.confidenceKey || row.confidence || row.confidenceLabel || row.confidence_label || "low").toLowerCase();
+    const supportingReportCount = Number(row.supportingReportCount ?? row.supporting_report_count ?? 0);
+    const needsMoreData = rawConfidence === "needs-data" || supportingReportCount < 2;
+    const confidenceKey = needsMoreData ? "needs-data" : rawConfidence.includes("high") ? "high" : rawConfidence.includes("medium") ? "medium" : "low";
+    const storeName = row.storeName || row.store_name || "Store location";
+    const retailer = row.retailer || findScoutQuickStore({ id: row.storeId || row.store_id, storeName })?.retailer || "";
+    const forecastDay = row.forecastDay || row.forecast_day || row.days?.[0] || row.groupLabel || "";
+    return {
+      id: row.id || `cached-forecast-${index}`,
+      recordKind: "predicted_window",
+      eventType: "Predicted Drop Window",
+      storeId: row.storeId || row.store_id || "",
+      storeName,
+      retailer,
+      city: row.city || "",
+      confidence: confidenceKey,
+      confidenceKey,
+      confidenceLabel: needsMoreData ? "Needs more data" : confidenceKey === "high" ? "High" : confidenceKey === "medium" ? "Medium" : "Low",
+      confidenceScore,
+      sourceType: row.sourceType || row.source_type || "prediction_cache",
+      sourceLabel: row.sourceLabel || "Saved Drop Radar prediction cache",
+      badges: row.badges || ["Predicted", needsMoreData ? "Needs Data" : "Cached"],
+      days: [forecastDay].filter(Boolean),
+      groupLabel: forecastDay || "Needs more data",
+      windowLabel: row.windowLabel || row.forecastTimeWindow || row.forecast_time_window || "Unknown time",
+      products: row.products || [],
+      reason: row.dataNeededMessage || row.reason || row.basisSummary || row.basis_summary || "",
+      updatedLabel: row.updatedAt ? scoutReportDateTimeLabel({ submittedAt: row.updatedAt }) : row.updated_at ? scoutReportDateTimeLabel({ submittedAt: row.updated_at }) : "",
+      submittedBy: "",
+      lastConfirmedReportLabel: row.lastConfirmedReportLabel || (row.last_confirmed_report_at ? scoutReportDateTimeLabel({ submittedAt: row.last_confirmed_report_at }) : ""),
+      supportingReportCount,
+      supportingGuessCount: Number(row.supportingGuessCount ?? row.supporting_guess_count ?? 0),
+      trainingCount: supportingReportCount,
+      patternStrength: supportingReportCount >= 5 ? "strong" : supportingReportCount >= 3 ? "developing" : "weak",
+      dataNeededMessage: row.dataNeededMessage || (needsMoreData ? `Low confidence: needs ${Math.max(0, 2 - supportingReportCount)} more confirmed restock${Math.max(0, 2 - supportingReportCount) === 1 ? "" : "s"} before predictions are reliable.` : ""),
+      basisSummary: row.basisSummary || row.basis_summary || `${supportingReportCount} confirmed restock${supportingReportCount === 1 ? "" : "s"} used`,
+      sortRank: needsMoreData ? 5 : 1,
+      dayDistance: forecastDay ? scoutForecastDayDistance(forecastDay) : 99,
+    };
+  }).filter((row) => !existingForecastPreviewKeys.has(`${row.storeName}|${row.retailer}`.toLowerCase()));
+  const dropRadarForecastKeys = new Set([...scoutForecastPatternRows, ...scoutGuessForecastRows, ...cachedForecastWindowRows].map((row) => `${row.storeName}|${row.retailer}`.toLowerCase()));
   const scoutForecastPreviewRows = [
     ...scoutForecastPatternRows,
+    ...cachedForecastWindowRows,
     ...scoutGuessForecastRows,
     ...dropRadarForecastRows.filter((row) => !dropRadarForecastKeys.has(`${row.storeName}|${row.retailer}`.toLowerCase())),
   ].sort((a, b) => {
@@ -25115,6 +25737,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       }),
       watchlisted: nextWatchlisted,
     } : current);
+    void persistScoutStoreWatchToSupabase(row.store, nextWatchlisted);
     setVaultToast(nextWatchlisted ? `${row.name || getScoutQuickStoreName(row.store)} added to watchlist.` : `${row.name || getScoutQuickStoreName(row.store)} removed from watchlist.`);
   }
 
