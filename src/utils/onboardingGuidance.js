@@ -192,10 +192,15 @@ export const CONTEXTUAL_HELP_CARDS = {
 
 export const EMPTY_STATE_GUIDANCE = {
   vault: {
-    title: "Your Vault is empty.",
-    body: "Add your first card or sealed product to start tracking your collection. Manual entry stays available when catalog search misses something.",
-    actionLabel: "Add to Vault",
+    title: "Your collection starts here.",
+    body: "Add your first card or sealed product to start tracking what you own. Manual entry stays available when catalog search misses something.",
+    actionLabel: "Manual Add",
     actionTarget: "vault",
+    actions: [
+      { label: "Scan Card", actionTarget: "scan_card" },
+      { label: "Add Sealed Product", actionTarget: "add_sealed_product", primary: false },
+      { label: "Manual Add", actionTarget: "manual_add", primary: false },
+    ],
     assistPrompt: "Help me add my first Vault item",
   },
   forge: {

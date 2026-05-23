@@ -2273,7 +2273,7 @@ function isInventoryCardProduct(value = {}) {
 }
 
 function vaultItemDisplayImage(item = {}) {
-  return item.itemImage || item.item_image || item.imageUrl || item.image_url || getCatalogImage(item);
+  return item.displayImage || item.itemImage || item.item_image || item.imageUrl || item.image_url || item.catalogImageUrl || item.productImageUrl || getCatalogImage(item);
 }
 
 function vaultItemTypeLabel(item = {}) {
@@ -2288,16 +2288,152 @@ function vaultItemSetLabel(item = {}) {
 }
 
 function vaultItemLocationLabel(item = {}) {
-  return String(item.storageLocation || item.storage_location || item.locationSummary || item.location || "").trim();
+  return String(item.storageLocation || item.storage_location || item.locationSummary || item.physicalLocation || item.physical_location || item.location || "").trim();
+}
+
+function firstKnownVaultNumber(...values) {
+  for (const value of values) {
+    if (hasKnownPriceValue(value)) return Number(value);
+  }
+  return null;
 }
 
 function vaultItemTotalMarketValue(item = {}) {
-  return Number(item.quantity || 0) * Number(item.marketPrice || item.market_value || item.marketValue || 0);
+  const marketPrice = firstKnownVaultNumber(
+    item.marketPrice,
+    item.market_price,
+    item.marketValue,
+    item.market_value,
+    item.referenceMarketPrice,
+    item.catalogMarketPrice
+  );
+  return marketPrice === null ? 0 : Number(item.quantity || 0) * marketPrice;
 }
 
 function vaultItemLastUpdatedLabel(item = {}) {
   const raw = item.updatedAt || item.updated_at || item.lastPriceChecked || item.marketLastUpdated || item.createdAt || item.created_at || "";
   return raw ? shortDate(raw) : "Not updated";
+}
+
+function catalogReferenceName(product = {}) {
+  return String(product.name || product.productName || product.product_name || product.cardName || product.card_name || "").trim();
+}
+
+function catalogReferenceSet(product = {}) {
+  return String(product.setName || product.set_name || product.expansion || product.productLine || product.product_line || product.series || "").trim();
+}
+
+function catalogReferenceType(product = {}) {
+  return String(product.productType || product.product_type || product.catalogType || product.catalog_type || product.category || "").trim();
+}
+
+function catalogLookupToken(value = "") {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+}
+
+function catalogLookupKey(prefix, value = "") {
+  const token = catalogLookupToken(value);
+  return token ? `${prefix}:${token}` : "";
+}
+
+function catalogProductLookupKeys(product = {}) {
+  const keys = [
+    catalogLookupKey("id", product.id),
+    catalogLookupKey("catalog", product.catalogProductId || product.catalog_product_id),
+    catalogLookupKey("external", product.externalProductId || product.external_product_id),
+    catalogLookupKey("tcgplayer", product.tcgplayerProductId || product.tcgplayer_product_id),
+    catalogLookupKey("sku", product.sku),
+    catalogLookupKey("upc", product.upc || product.barcode),
+  ].filter(Boolean);
+  const name = normalizeSearchText(catalogReferenceName(product));
+  const setName = normalizeSearchText(catalogReferenceSet(product));
+  const type = normalizeSearchText(catalogReferenceType(product));
+  if (name && setName) keys.push(`name-set:${name}:${setName}`);
+  if (name && setName && type) keys.push(`name-set-type:${name}:${setName}:${type}`);
+  return [...new Set(keys)];
+}
+
+function inventoryCatalogLookupKeys(item = {}) {
+  const keys = [
+    catalogLookupKey("id", item.catalogProductId || item.catalog_product_id),
+    catalogLookupKey("catalog", item.catalogProductId || item.catalog_product_id),
+    catalogLookupKey("external", item.externalProductId || item.external_product_id || item.tideTradrProductId || item.tide_tradr_product_id),
+    catalogLookupKey("tcgplayer", item.tcgplayerProductId || item.tcgplayer_product_id),
+    catalogLookupKey("sku", item.sku),
+    catalogLookupKey("upc", item.upc || item.barcode),
+  ].filter(Boolean);
+  const name = normalizeSearchText(item.name || item.itemName || item.catalogProductName || item.catalog_product_name);
+  const setName = normalizeSearchText(item.setName || item.set_name || item.expansion || item.productLine || item.product_line);
+  const type = normalizeSearchText(item.productType || item.product_type || item.category);
+  if (name && setName) keys.push(`name-set:${name}:${setName}`);
+  if (name && setName && type) keys.push(`name-set-type:${name}:${setName}:${type}`);
+  return [...new Set(keys)];
+}
+
+function buildCatalogProductLookup(products = []) {
+  const lookup = new Map();
+  products.forEach((product) => {
+    catalogProductLookupKeys(product).forEach((key) => {
+      if (!lookup.has(key)) lookup.set(key, product);
+    });
+  });
+  return lookup;
+}
+
+function resolveCatalogProductForItem(item = {}, lookup = new Map()) {
+  for (const key of inventoryCatalogLookupKeys(item)) {
+    const product = lookup.get(key);
+    if (product) return product;
+  }
+  return null;
+}
+
+function enrichVaultItemWithCatalogData(item = {}, catalogProduct = null) {
+  if (!catalogProduct) {
+    const displayName = item.name || item.itemName || item.catalogProductName || "Vault item";
+    return { ...item, name: displayName, displayName };
+  }
+  const catalogName = catalogReferenceName(catalogProduct);
+  const catalogSet = catalogReferenceSet(catalogProduct);
+  const catalogType = catalogReferenceType(catalogProduct);
+  const catalogImageUrl = getCatalogImage(catalogProduct);
+  const itemMarket = firstKnownVaultNumber(item.marketPrice, item.market_price, item.marketValue, item.market_value);
+  const catalogMarket = firstKnownVaultNumber(
+    catalogProduct.marketPrice,
+    catalogProduct.market_price,
+    catalogProduct.marketValue,
+    catalogProduct.market_value,
+    catalogProduct.marketValueNearMint,
+    catalogProduct.market_value_near_mint
+  );
+  const itemMsrp = firstKnownVaultNumber(item.msrpPrice, item.msrp_price, item.msrp);
+  const catalogMsrp = firstKnownVaultNumber(catalogProduct.msrpPrice, catalogProduct.msrp_price, catalogProduct.msrp);
+  const resolvedMarket = itemMarket ?? catalogMarket;
+  const resolvedMsrp = itemMsrp ?? catalogMsrp;
+  const displayName = item.name || item.itemName || item.catalogProductName || catalogName || "Vault item";
+  const displayImage = vaultItemDisplayImage(item) || catalogImageUrl;
+  return {
+    ...item,
+    name: displayName,
+    displayName,
+    catalogProductId: item.catalogProductId || item.catalog_product_id || catalogProduct.id || "",
+    catalogProductName: item.catalogProductName || item.catalog_product_name || catalogName,
+    setName: item.setName || item.set_name || item.expansion || catalogSet,
+    expansion: item.expansion || item.setName || item.set_name || catalogSet,
+    productType: item.productType || item.product_type || catalogType,
+    catalogImageUrl,
+    displayImage,
+    referenceMarketPrice: catalogMarket || 0,
+    catalogMarketPrice: catalogMarket || 0,
+    marketPrice: resolvedMarket ?? Number(item.marketPrice || item.market_price || 0),
+    marketValue: resolvedMarket ?? Number(item.marketValue || item.market_value || 0),
+    marketPriceSource: item.marketPriceSource || item.market_price_source || item.marketValueSource || item.market_value_source || (catalogMarket ? "catalog" : ""),
+    marketValueSource: item.marketValueSource || item.market_value_source || item.marketPriceSource || item.market_price_source || (catalogMarket ? "catalog" : ""),
+    marketPriceConfidence: item.marketPriceConfidence || item.market_price_confidence || (catalogMarket ? "Estimated" : ""),
+    msrpPrice: resolvedMsrp ?? Number(item.msrpPrice || item.msrp_price || 0),
+    msrp: resolvedMsrp ?? Number(item.msrp || 0),
+    msrpSource: item.msrpSource || item.msrp_source || (catalogMsrp ? "msrp" : ""),
+  };
 }
 
 function uniqueSortedLabels(values = []) {
@@ -7294,6 +7430,22 @@ export default function App() {
     }
     if (normalized === "vault") {
       openProductAddFlow({ source: "onboarding-vault", destinations: { vault: true } });
+      return;
+    }
+    if (normalized === "scan_card") {
+      beginScanProduct("vault");
+      return;
+    }
+    if (normalized === "add_sealed_product") {
+      openProductAddFlow({
+        source: "onboarding-vault-sealed",
+        seed: { productType: "Sealed Product", vaultStatus: "sealed" },
+        destinations: { vault: true },
+      });
+      return;
+    }
+    if (normalized === "manual_add") {
+      openProductAddFlow({ source: "onboarding-vault-manual", seed: { manualFallback: true }, destinations: { vault: true } });
       return;
     }
     if (normalized === "forge") {
@@ -15785,6 +15937,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       salePrice: Number(row.salePrice ?? row.sale_price ?? 0),
       receiptImage: row.receiptImage || row.receipt_image || "",
       itemImage: row.itemImage || row.item_image || "",
+      imageUrl: row.imageUrl || row.image_url || row.photoUrl || row.photo_url || "",
+      photoUrl: row.photoUrl || row.photo_url || row.imageUrl || row.image_url || "",
       barcode: row.barcode || row.upc || "",
       upc: row.upc || row.barcode || "",
       catalogProductId: row.catalogProductId || row.catalog_product_id || "",
@@ -15826,6 +15980,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       listedPrice: Number(row.listedPrice ?? row.listed_price ?? 0),
       actionNotes: row.actionNotes || row.action_notes || "",
       storageLocation: row.storageLocation || row.storage_location || "",
+      location: row.location || row.location_name || "",
       physicalLocation: row.physicalLocation || row.physical_location || "",
       physicalLocationNotes: row.physicalLocationNotes || row.physical_location_notes || "",
       condition: row.condition || "",
@@ -16849,7 +17004,8 @@ function mapCatalog(row) {
   }
 
   function startEditingVaultItem(item) {
-    startEditingItem(item);
+    const rawItem = rawVaultItems.find((entry) => String(entry.id) === String(item?.id)) || inventoryGroupEntries(item)[0] || item;
+    startEditingItem(rawItem);
     setActiveTab("vault");
   }
 
@@ -18491,7 +18647,7 @@ function renderVaultHeader() {
     {
       key: "total-market",
       title: "Collection Value",
-      value: money(vaultValue),
+      value: vaultMarketValueDisplay,
       helper: "Tracked market value across owned Vault items.",
       active: vaultFilter === "all",
       onClick: () => openVaultItems("all"),
@@ -20091,8 +20247,22 @@ function renderForgeHeader() {
     .filter((entry) => entry.date)
     .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
     .slice(0, 5);
-  const vaultItems = useMemo(() => workspaceItems.filter(isVaultItemRecord), [workspaceItems]);
-  const wishlistItems = useMemo(() => workspaceItems.filter(isWishlistItemRecord), [workspaceItems]);
+  const rawVaultItems = useMemo(() => workspaceItems.filter(isVaultItemRecord), [workspaceItems]);
+  const rawWishlistItems = useMemo(() => workspaceItems.filter(isWishlistItemRecord), [workspaceItems]);
+  const vaultCatalogLookup = useMemo(
+    () => (catalogProducts.length && (rawVaultItems.length || rawWishlistItems.length)
+      ? buildCatalogProductLookup(catalogProducts)
+      : new Map()),
+    [catalogProducts, rawVaultItems.length, rawWishlistItems.length]
+  );
+  const vaultItems = useMemo(
+    () => rawVaultItems.map((item) => enrichVaultItemWithCatalogData(item, resolveCatalogProductForItem(item, vaultCatalogLookup))),
+    [rawVaultItems, vaultCatalogLookup]
+  );
+  const wishlistItems = useMemo(
+    () => rawWishlistItems.map((item) => enrichVaultItemWithCatalogData(item, resolveCatalogProductForItem(item, vaultCatalogLookup))),
+    [rawWishlistItems, vaultCatalogLookup]
+  );
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const activeVaultCardItems = useMemo(() => activeVaultItems.filter(isInventoryCardProduct), [activeVaultItems]);
   const activeVaultSealedItems = useMemo(() => activeVaultItems.filter(isInventorySealedProduct), [activeVaultItems]);
@@ -20196,8 +20366,9 @@ function renderForgeHeader() {
   const vaultCostBasis = vaultValuationSummary.totalCostBasis;
   const vaultGainLoss = vaultValue - vaultCostBasis;
   const vaultMsrpValue = vaultValuationSummary.msrpTotal;
+  const vaultMarketValueDisplay = vaultValuationSummary.marketKnownQuantity > 0 ? money(vaultValue) : "Price data unavailable";
   const vaultPortfolioStats = [
-    { key: "value", label: "Market Value", value: money(vaultValue) },
+    { key: "value", label: "Market Value", value: vaultMarketValueDisplay },
     { key: "cost", label: "Cost Basis", value: money(vaultCostBasis) },
     { key: "gain", label: "Gain / Loss", value: money(vaultGainLoss) },
     { key: "msrp", label: "MSRP Value", value: money(vaultMsrpValue) },
@@ -27510,12 +27681,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderGuidedEmptyState(key, overrides = {}) {
     const guidance = getEmptyStateGuidance(key, overrides);
     const prompt = guidance.assistPrompt || "";
+    const actions = Array.isArray(guidance.actions) ? guidance.actions.filter((action) => action?.label) : [];
     return (
       <div className={`empty-state guided-empty-state guided-empty-state--${key}`}>
         <h3>{guidance.title}</h3>
         <p>{guidance.body}</p>
         <div className="quick-actions guided-empty-actions">
-          {guidance.actionLabel ? (
+          {actions.length ? actions.map((action, index) => (
+            <button
+              key={`${action.label}-${index}`}
+              type="button"
+              className={action.primary === false || index > 0 ? "secondary-button" : ""}
+              onClick={() => runOnboardingAction(action.actionTarget || guidance.actionTarget)}
+            >
+              {action.label}
+            </button>
+          )) : guidance.actionLabel ? (
             <button type="button" className={guidance.primary === false ? "secondary-button" : ""} onClick={() => runOnboardingAction(guidance.actionTarget)}>
               {guidance.actionLabel}
             </button>
@@ -40451,7 +40632,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <div className="vault-collection-summary" aria-label="Vault owned item summary">
                 <div>
                   <span>Collection value</span>
-                  <strong>{money(vaultValue)}</strong>
+                  <strong>{vaultMarketValueDisplay}</strong>
                   <small>Known market values only</small>
                 </div>
                 <div>
@@ -40616,11 +40797,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </button>
                 ))}
               </div>
-              {editingItemId && vaultItems.some((item) => item.id === editingItemId) && (
+              {editingItemId && rawVaultItems.some((item) => item.id === editingItemId) && (
                 <VaultEditForm
                   form={itemForm}
                   setForm={updateItemForm}
-                  item={vaultItems.find((item) => item.id === editingItemId)}
+                  item={rawVaultItems.find((item) => item.id === editingItemId)}
                   catalogProducts={catalogProducts}
                   purchasers={purchaserOptions}
                   onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeWorkspace?.id })}
@@ -40726,13 +40907,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           </div>
                           <span className={statusClass("Wishlist")}>Wishlist</span>
                         </div>
-                        {item.itemImage ? (
+                        {vaultItemDisplayImage(item) ? (
                           <div className="compact-image-wrap vault-image-wrap">
-                            <img src={item.itemImage} alt={item.name} />
+                            <img src={vaultItemDisplayImage(item)} alt={item.name} />
                           </div>
                         ) : null}
                         <div className="vault-card-facts">
-                          <p><strong>Target:</strong> {money(item.targetPrice || item.marketPrice || 0)}</p>
+                          <p><strong>Target:</strong> {formatPriceDisplay(item.targetPrice || item.marketPrice, { moneyFormatter: money, missingLabel: "Price data unavailable" })}</p>
                           <p><strong>Type:</strong> {item.productType || "Not listed"}</p>
                           <p><strong>Notes:</strong> {item.wishlistNotes || item.actionNotes || item.notes || "No notes"}</p>
                         </div>
@@ -43961,7 +44142,7 @@ function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPla
           <div className="price-review-card" key={row.key}>
             <div>
               <span>{row.label}</span>
-              <strong>{row.displayValue}</strong>
+              <strong>{variant === "vault" && row.role === "market" && row.isMissing ? "Price data unavailable" : row.displayValue}</strong>
             </div>
             <div className="price-review-meta">
               <span className={`inventory-data-prompt ${row.tone}`}>{row.confidence}</span>
@@ -44116,6 +44297,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
   const totalCost = valuation.totalCostBasis || 0;
   const totalMarket = valuation.estimatedMarketValue || 0;
   const plannedTotal = valuation.plannedSaleTotal || 0;
+  const marketDisplay = priceByRole.market?.isMissing ? "Price data unavailable" : priceByRole.market?.displayValue;
   const details = [
     ["Quantity", item.quantity],
     ["Owner / Purchaser", item.purchaserSummary || itemPurchaserName(item)],
@@ -44123,7 +44305,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
     ["Cost Paid", priceByRole.cost?.displayValue],
     ["Total Cost", valuation.costKnownQuantity ? money(totalCost) : "Unknown"],
     ["MSRP", priceByRole.msrp?.displayValue],
-    ["Market Value", priceByRole.market?.displayValue],
+    ["Market Value", marketDisplay],
     ["Planned Sale Total", valuation.plannedKnownQuantity ? money(plannedTotal) : "Not set"],
     ["Set / Collection", setLabel],
     ["Product Type", itemType],
@@ -44154,7 +44336,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
           <p>{[setLabel, itemType].filter(Boolean).join(" - ") || "Collection item"}</p>
           <div className="inventory-detail-metrics">
             <div><span>Qty</span><strong>{item.quantity || 0}</strong></div>
-            <div><span>Market</span><strong>{valuation.marketKnownQuantity ? money(totalMarket) : "Unknown"}</strong></div>
+            <div><span>Market</span><strong>{valuation.marketKnownQuantity ? money(totalMarket) : "Price data unavailable"}</strong></div>
             <div><span>Planned</span><strong>{valuation.plannedKnownQuantity ? money(plannedTotal) : "Unknown"}</strong></div>
             <div><span>Cost Basis</span><strong>{money(totalCost)}</strong></div>
             <div><span>Est. Gain/Loss</span><strong>{valuation.estimatedUnrealizedGainLoss === null ? "Unknown" : money(valuation.estimatedUnrealizedGainLoss)}</strong></div>
@@ -44283,7 +44465,7 @@ function CompactInventoryCard({
 
           <div className="vault-card-facts">
             <p><span>Qty</span><strong>{quantity || 1}</strong></p>
-            <p><span>Market value</span><strong>{valuation.marketKnownQuantity ? money(totalMarket) : "Unknown"}</strong></p>
+            <p><span>Market value</span><strong>{valuation.marketKnownQuantity ? money(totalMarket) : "Price data unavailable"}</strong></p>
             <p><span>Cost basis</span><strong>{valuation.costKnownQuantity ? money(valuation.totalCostBasis) : "Unknown"}</strong></p>
             <p><span>Owner / purchaser</span><strong>{ownerSummary}</strong></p>
             <p><span>Location</span><strong>{locationLabel}</strong></p>

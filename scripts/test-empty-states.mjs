@@ -8,9 +8,10 @@ import {
 } from "../src/utils/onboardingGuidance.js";
 
 const vault = getEmptyStateGuidance("vault");
-assert.match(vault.title, /Vault/i);
+assert.equal(vault.title, "Your collection starts here.");
 assert.match(vault.body, /Manual entry/i);
 assert.equal(vault.actionTarget, "vault");
+assert.deepEqual(vault.actions.map((action) => action.label), ["Scan Card", "Add Sealed Product", "Manual Add"]);
 
 const forge = getEmptyStateGuidance("forge");
 assert.match(forge.body, /year-end review/i);

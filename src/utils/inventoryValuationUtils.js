@@ -76,7 +76,10 @@ export function inventoryHasPhoto(item = {}) {
     cleanText(item.itemImage) ||
     cleanText(item.imageUrl) ||
     cleanText(item.photoUrl) ||
-    cleanText(item.image_url)
+    cleanText(item.image_url) ||
+    cleanText(item.displayImage) ||
+    cleanText(item.catalogImageUrl) ||
+    cleanText(item.productImageUrl)
   );
 }
 
@@ -356,7 +359,7 @@ export function buildInventoryInsightCards(summary = {}, { context = "forge", mo
     return [
       { key: "quantity", label: "Total items", value: Number(summary.totalQuantity || 0), helper: `${Number(summary.itemCount || 0)} grouped record(s)` },
       { key: "cost", label: "Total cost tracked", value: money(summary.totalCostBasis || 0), helper: `${Number(summary.missingCostCount || 0)} missing cost` },
-      { key: "market", label: "Estimated collection value", value: money(summary.estimatedMarketValue || 0), helper: "Known market values only" },
+      { key: "market", label: "Estimated collection value", value: summary.marketKnownQuantity > 0 ? money(summary.estimatedMarketValue || 0) : "Price data unavailable", helper: "Known market values only" },
       { key: "gain", label: "Estimated gain/loss", value: summary.estimatedUnrealizedGainLoss === null ? "Unknown" : money(summary.estimatedUnrealizedGainLoss), helper: "Market value minus tracked cost" },
       { key: "photos", label: "Missing photos", value: Number(summary.missingPhotoCount || 0), helper: "Use clean fallback until added" },
       { key: "purchasers", label: "Purchaser breakdown", value: summary.purchaserBreakdown?.length || 0, helper: formatPurchaserTally((summary.purchaserBreakdown || []).slice(0, 2)) || "No purchasers yet" },
