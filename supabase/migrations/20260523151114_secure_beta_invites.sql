@@ -72,20 +72,7 @@ create or replace function public.admin_create_beta_invite(
   note text default null,
   expires_at timestamptz default null
 )
-returns table (
-  id uuid,
-  invite_token text,
-  invite_path text,
-  recipient_name text,
-  recipient_email text,
-  note text,
-  created_by uuid,
-  created_at timestamptz,
-  expires_at timestamptz,
-  status text,
-  audience text,
-  grants_beta_access boolean
-)
+returns jsonb
 language plpgsql
 security definer
 set search_path = public, extensions
@@ -148,20 +135,20 @@ begin
     end;
   end loop;
 
-  return query
-  select
-    inserted_invite.id,
-    raw_token as invite_token,
-    '/invite/' || raw_token as invite_path,
-    inserted_invite.recipient_name,
-    inserted_invite.recipient_email,
-    inserted_invite.note,
-    inserted_invite.created_by,
-    inserted_invite.created_at,
-    inserted_invite.expires_at,
-    public.beta_invite_status(inserted_invite.claimed_at, inserted_invite.revoked_at, inserted_invite.expires_at) as status,
-    inserted_invite.audience,
-    inserted_invite.grants_beta_access;
+  return jsonb_build_object(
+    'id', inserted_invite.id,
+    'invite_token', raw_token,
+    'invite_path', '/invite/' || raw_token,
+    'recipient_name', inserted_invite.recipient_name,
+    'recipient_email', inserted_invite.recipient_email,
+    'note', inserted_invite.note,
+    'created_by', inserted_invite.created_by,
+    'created_at', inserted_invite.created_at,
+    'expires_at', inserted_invite.expires_at,
+    'status', public.beta_invite_status(inserted_invite.claimed_at, inserted_invite.revoked_at, inserted_invite.expires_at),
+    'audience', inserted_invite.audience,
+    'grants_beta_access', inserted_invite.grants_beta_access
+  );
 end;
 $$;
 

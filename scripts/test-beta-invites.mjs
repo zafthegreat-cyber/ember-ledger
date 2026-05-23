@@ -31,7 +31,8 @@ for (const body of [createInvite, listInvites, revokeInvite]) {
 }
 
 assert.match(createInvite, /extensions\.gen_random_bytes\(32\)/i, "admin create should generate a strong random token");
-assert.match(createInvite, /raw_token as invite_token/i, "admin create should return plaintext token once");
+assert.match(createInvite, /returns jsonb/i, "admin create should return a single JSON payload");
+assert.match(createInvite, /'invite_token', raw_token/i, "admin create should return plaintext token once");
 assert.match(createInvite, /public\.beta_invite_token_hash\(raw_token\)/i, "admin create should store a hash of the token");
 assert.doesNotMatch(listInvites, /invite_token|token_hash/i, "admin list must not return plaintext tokens or hashes");
 assert.doesNotMatch(revokeInvite, /invite_token|token_hash/i, "admin revoke must not return plaintext tokens or hashes");
