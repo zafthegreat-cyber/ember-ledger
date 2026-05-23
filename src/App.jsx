@@ -401,10 +401,18 @@ import {
   betaInviteClaimErrorMessage,
   claimBetaInvite,
   createAdminBetaInvite,
+  createBetaAdminNote,
   isMissingBetaInviteBackend,
+  isMissingBetaUsersBackend,
+  isMissingRoleManagementBackend,
+  loadAdminBetaActivityEvents,
+  loadAdminBetaAdminNotes,
   loadAdminBetaInvites,
+  loadAdminRoleUsers,
+  loadRoleAuditLog,
   loadShorelineAccessState,
   loadShorelineAdminRequests,
+  recordAppActivityEvent,
   normalizeBetaStatus,
   normalizeLittleSparksStatus,
   revokeAdminBetaInvite,
@@ -412,9 +420,25 @@ import {
   submitBetaAccessRequest,
   submitLittleSparksApplication,
   updateAdminBetaAccessProfile,
+  updateAdminUserRole,
   updateBetaAccessRequestStatus,
   updateLittleSparksApplicationStatus,
 } from "./services/shorelineAccessService";
+import {
+  APP_ROLES,
+  ROLE_FILTERS,
+  appRoleForProfile,
+  canAssignAppRole,
+  canManageBeta,
+  canManageRoles,
+  canModerateReports,
+  canViewAdminDashboard,
+  isOfficialAdminProfile,
+  isOwner,
+  normalizeAppRole,
+  roleFilterMatches,
+  roleLabel,
+} from "./utils/rolePermissions";
 
 const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
 const SmartAddCatalog = lazy(() => import("./components/SmartAddCatalog"));
@@ -929,6 +953,7 @@ const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
 const BETA_INVITE_SESSION_KEY = "et-beta-invite-token";
+const WORKSPACE_INVITE_SESSION_KEY = "et-workspace-invite-id";
 const FORGE_MODE_SETTINGS_STORAGE_KEY = "et-tcg-forge-mode-settings";
 const ADMIN_MODE_STORAGE_PREFIX = "et-tcg-admin-mode";
 const PRIVATE_UPLOAD_BUCKET = "receipt-images";
@@ -1154,6 +1179,9 @@ function routeStateFromPath(pathname = "") {
   if (!section) return { activeTab: "dashboard" };
   if (section === "invite" || (section === "beta" && subSection === "invite")) {
     return { activeTab: "invite", inviteToken: decodeURIComponent(section === "invite" ? subSection || "" : detailId || "") };
+  }
+  if (section === "workspace-invite") {
+    return { activeTab: "workspaceInvite", workspaceInviteId: decodeURIComponent(subSection || "") };
   }
   if (section === "reset-password") return { activeTab: "resetPassword" };
   if (section === "scout") {
@@ -3009,11 +3037,14 @@ function normalizeWorkspaceMember(member = {}, fallback = {}) {
 
 function normalizeWorkspaceInvite(invite = {}) {
   const now = new Date().toISOString();
-  const workspaceId = invite.workspaceId || invite.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID;
-  const email = String(invite.email || "").trim().toLowerCase();
+  const workspaceId = invite.workspaceId || invite.workspace_id || invite.workspaceID || DEFAULT_PERSONAL_WORKSPACE_ID;
+  const email = String(invite.email || invite.inviteEmail || invite.invite_email || "").trim().toLowerCase();
   const role = normalizeWorkspaceRoleValue(invite.role, "viewer");
+  const invitePath = invite.invitePath || invite.invite_path || (invite.id ? `/workspace-invite/${encodeURIComponent(String(invite.id))}` : "");
+  const emailSent = Boolean(invite.emailSent ?? invite.email_sent ?? false);
+  const deliveryMethod = invite.deliveryMethod || invite.delivery_method || (emailSent ? "email" : "copy_link");
   return {
-    id: invite.id || makeId("invite"),
+    id: invite.id || invite.inviteId || invite.invite_id || makeId("invite"),
     workspaceId,
     workspace_id: workspaceId,
     email,
@@ -3024,6 +3055,18 @@ function normalizeWorkspaceInvite(invite = {}) {
     invited_by: invite.invited_by || invite.invitedBy || "",
     createdAt: invite.createdAt || invite.created_at || now,
     acceptedAt: invite.acceptedAt || invite.accepted_at || "",
+    expiresAt: invite.expiresAt || invite.expires_at || "",
+    expires_at: invite.expires_at || invite.expiresAt || "",
+    emailSent,
+    email_sent: emailSent,
+    deliveryMethod,
+    delivery_method: deliveryMethod,
+    invitePath,
+    invite_path: invitePath,
+    inviteUrl: invite.inviteUrl || invite.invite_url || "",
+    invite_url: invite.invite_url || invite.inviteUrl || "",
+    duplicatePending: Boolean(invite.duplicatePending ?? invite.duplicate_pending ?? false),
+    duplicate_pending: Boolean(invite.duplicate_pending ?? invite.duplicatePending ?? false),
   };
 }
 
@@ -3415,6 +3458,8 @@ function normalizeLocalSubscriptionProfile(savedProfile = {}) {
     subscriptionPlan: savedProfile.subscriptionPlan || savedProfile.subscription_plan || PLAN_TYPES.FREE,
     featureTier: savedProfile.featureTier || savedProfile.feature_tier || savedProfile.tier || PLAN_TYPES.FREE,
     tier: savedProfile.tier || savedProfile.featureTier || savedProfile.feature_tier || PLAN_TYPES.FREE,
+    appRole: normalizeAppRole(savedProfile.appRole || savedProfile.app_role || savedProfile.userRole || savedProfile.user_role),
+    app_role: normalizeAppRole(savedProfile.app_role || savedProfile.appRole || savedProfile.userRole || savedProfile.user_role),
     userRole: savedProfile.userRole || savedProfile.user_role || USER_ROLES.USER,
     isAdmin: Boolean(savedProfile.isAdmin || savedProfile.is_admin),
     subscriptionStatus: savedProfile.subscriptionStatus || savedProfile.subscription_status || "active",
@@ -4255,7 +4300,9 @@ export default function App() {
   const initialRouteState = initialRouteStateRef.current;
   const [activeTab, setActiveTab] = useState(initialRouteState.activeTab || "dashboard");
   const [betaInviteToken, setBetaInviteToken] = useState(initialRouteState.inviteToken || "");
+  const [workspaceInviteId, setWorkspaceInviteId] = useState(initialRouteState.workspaceInviteId || "");
   const betaInviteClaimInFlightRef = useRef("");
+  const workspaceInviteClaimInFlightRef = useRef("");
   const startupPriorityAppliedRef = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTopbarActions, setShowTopbarActions] = useState(true);
@@ -4467,6 +4514,8 @@ export default function App() {
   const [subscriptionProfile, setSubscriptionProfile] = useState({
     subscriptionPlan: PLAN_TYPES.FREE,
     tier: PLAN_TYPES.FREE,
+    appRole: APP_ROLES.USER,
+    app_role: APP_ROLES.USER,
     userRole: "user",
     isAdmin: false,
     subscriptionStatus: "active",
@@ -4497,6 +4546,16 @@ export default function App() {
     adminBetaInvitesReady: false,
     adminBetaInvitesMessage: "",
     adminBetaInvitesError: "",
+    adminBetaActivityEvents: [],
+    adminBetaActivityReady: false,
+    adminBetaAdminNotes: [],
+    adminBetaDashboardMessage: "",
+    adminBetaDashboardError: "",
+    roleManagementUsers: [],
+    roleManagementUsersReady: false,
+    roleManagementMessage: "",
+    roleManagementError: "",
+    roleAuditLog: [],
     message: "",
     error: "",
   });
@@ -4510,6 +4569,18 @@ export default function App() {
   const [adminBetaInviteSearch, setAdminBetaInviteSearch] = useState("");
   const [adminBetaInviteCreated, setAdminBetaInviteCreated] = useState(null);
   const [adminBetaInviteLoading, setAdminBetaInviteLoading] = useState(false);
+  const [betaUserSearch, setBetaUserSearch] = useState("");
+  const [betaUserFilter, setBetaUserFilter] = useState("All");
+  const [selectedBetaUserId, setSelectedBetaUserId] = useState("");
+  const [betaAdminNoteDraft, setBetaAdminNoteDraft] = useState("");
+  const [betaAdminNoteSaving, setBetaAdminNoteSaving] = useState(false);
+  const [roleManagementSearch, setRoleManagementSearch] = useState("");
+  const [roleManagementFilter, setRoleManagementFilter] = useState("All");
+  const [roleChangeTarget, setRoleChangeTarget] = useState(null);
+  const [roleChangeRole, setRoleChangeRole] = useState(APP_ROLES.USER);
+  const [roleChangeReason, setRoleChangeReason] = useState("");
+  const [roleChangeSaving, setRoleChangeSaving] = useState(false);
+  const betaActivitySessionRef = useRef("");
   const [betaInviteClaimState, setBetaInviteClaimState] = useState({
     status: "idle",
     message: "",
@@ -4581,6 +4652,15 @@ export default function App() {
     role: "viewer",
     note: "",
   });
+  const [workspaceInviteSending, setWorkspaceInviteSending] = useState(false);
+  const [workspaceInviteDelivery, setWorkspaceInviteDelivery] = useState(null);
+  const [workspaceInviteClaimState, setWorkspaceInviteClaimState] = useState({
+    status: "idle",
+    message: "",
+    error: "",
+    result: null,
+  });
+  const [workspaceInviteClaimAttempt, setWorkspaceInviteClaimAttempt] = useState(0);
   const [workspaceRenameTarget, setWorkspaceRenameTarget] = useState(null);
   const [workspaceRenameName, setWorkspaceRenameName] = useState("");
   const [workspaceRenameType, setWorkspaceRenameType] = useState("personal");
@@ -5098,6 +5178,7 @@ export default function App() {
   const hasAdminProfileSignal = Boolean(
     currentUserProfile?.isAdmin ||
     currentUserProfile?.is_admin ||
+    [APP_ROLES.OWNER, APP_ROLES.ADMIN, APP_ROLES.MODERATOR].includes(appRoleForProfile(currentUserProfile)) ||
     currentUserProfile?.adminRole ||
     currentUserProfile?.admin_role
   );
@@ -5106,6 +5187,7 @@ export default function App() {
     isAdminUser(subscriptionProfile) ||
     subscriptionProfile?.isAdmin ||
     subscriptionProfile?.is_admin ||
+    [APP_ROLES.OWNER, APP_ROLES.ADMIN, APP_ROLES.MODERATOR].includes(appRoleForProfile(subscriptionProfile)) ||
     subscriptionProfile?.adminRole ||
     subscriptionProfile?.admin_role ||
     subscriptionProfile?.isModerator ||
@@ -6983,6 +7065,11 @@ export default function App() {
         betaStatus: request.status,
         betaAccessStatus: request.status,
       }));
+      void trackBetaActivity("created_beta_request", {
+        eventContext: "beta_access",
+        entityType: "beta_access_request",
+        entityId: request.id,
+      });
       setVaultToast("Beta access request submitted.");
     } catch (error) {
       logAppError("shoreline_beta_submit", error, { userId: user?.id }, "normal");
@@ -7028,7 +7115,7 @@ export default function App() {
   }
 
   async function updateShorelineAdminStatus(type, entry, status) {
-    if (!adminToolsVisible || !entry?.id) return;
+    if (!betaAdminVisible || !entry?.id) return;
     try {
       if (type === "beta") {
         const request = await updateBetaAccessRequestStatus(entry.id, status, entry.adminNotes || "");
@@ -7178,7 +7265,7 @@ export default function App() {
   }
 
   function setUserAdminNote(targetUserId, note) {
-    if (!adminToolsVisible) return;
+    if (!betaAdminVisible) return;
     updateBetaReadinessData((current) => {
       const existing = current.userAdminNotes || [];
       const next = existing.filter((entry) => String(entry.userId) !== String(targetUserId));
@@ -7193,7 +7280,7 @@ export default function App() {
   }
 
   function setAdminProfileUserNote(targetUserId, note) {
-    if (!adminToolsVisible || !targetUserId) return;
+    if (!betaAdminVisible || !targetUserId) return;
     setShorelineState((current) => ({
       ...current,
       adminProfileUsers: (current.adminProfileUsers || []).map((entry) =>
@@ -7202,8 +7289,189 @@ export default function App() {
     }));
   }
 
+  function setAdminBetaRequestNote(requestId, note) {
+    if (!betaAdminVisible || !requestId) return;
+    setShorelineState((current) => ({
+      ...current,
+      adminBetaRequests: (current.adminBetaRequests || []).map((entry) =>
+        String(entry.id) === String(requestId) ? { ...entry, adminNotes: note } : entry
+      ),
+    }));
+  }
+
+  async function trackBetaActivity(eventType, options = {}) {
+    if (!signedInWithSupabase || guestPreviewActive || !user?.id || user.id === "local-beta") return null;
+    try {
+      return await recordAppActivityEvent(user, {
+        eventType,
+        eventContext: options.eventContext || activeTab || "",
+        entityType: options.entityType || "",
+        entityId: options.entityId || "",
+        metadata: {
+          activeTab,
+          workspaceId: activeWorkspace?.id || "",
+          ...options.metadata,
+        },
+      });
+    } catch (error) {
+      if (!isMissingBetaUsersBackend(error)) {
+        logAppError("beta_activity_event", error, { eventType }, "low");
+      }
+      return null;
+    }
+  }
+
+  async function refreshAdminBetaUsersDashboardData() {
+    if (!betaAdminVisible || !signedInWithSupabase) return;
+    setShorelineState((current) => ({
+      ...current,
+      adminBetaDashboardError: "",
+      adminBetaDashboardMessage: "",
+    }));
+    try {
+      const [activityEvents, adminNotes] = await Promise.all([
+        loadAdminBetaActivityEvents(),
+        loadAdminBetaAdminNotes(),
+      ]);
+      setShorelineState((current) => ({
+        ...current,
+        adminBetaActivityEvents: activityEvents,
+        adminBetaActivityReady: true,
+        adminBetaAdminNotes: adminNotes,
+        adminBetaDashboardError: "",
+        adminBetaDashboardMessage: "",
+      }));
+    } catch (error) {
+      if (isMissingBetaUsersBackend(error)) {
+        setShorelineState((current) => ({
+          ...current,
+          adminBetaActivityEvents: [],
+          adminBetaActivityReady: false,
+          adminBetaAdminNotes: [],
+          adminBetaDashboardError: "",
+          adminBetaDashboardMessage: "Beta activity and admin notes need the beta users activity migration before live tracking is available.",
+        }));
+      } else {
+        logAppError("admin_beta_users_dashboard_load", error, {}, "normal");
+        setShorelineState((current) => ({
+          ...current,
+          adminBetaDashboardError: error.message || "Could not load beta user activity.",
+        }));
+      }
+    }
+  }
+
+  async function handleCreateBetaAdminNote(targetUserId, betaRequestId = "") {
+    if (!betaAdminVisible || !targetUserId) return;
+    const noteText = String(betaAdminNoteDraft || "").trim();
+    if (!noteText) {
+      setVaultToast("Add a private admin note first.");
+      return;
+    }
+    setBetaAdminNoteSaving(true);
+    try {
+      const note = await createBetaAdminNote({ targetUserId, betaRequestId, note: noteText });
+      setShorelineState((current) => ({
+        ...current,
+        adminBetaAdminNotes: [note, ...(current.adminBetaAdminNotes || [])],
+      }));
+      setBetaAdminNoteDraft("");
+      setVaultToast("Private beta note saved.");
+      addAuditLog("beta_admin_note_create", "profile", targetUserId, {});
+    } catch (error) {
+      const message = isMissingBetaUsersBackend(error)
+        ? "Beta admin notes need the beta users activity migration before notes can be saved."
+        : error.message || "Could not save beta admin note.";
+      setVaultToast(message);
+      logAppError("beta_admin_note_create", error, { targetUserId }, "normal");
+    } finally {
+      setBetaAdminNoteSaving(false);
+    }
+  }
+
+  async function refreshRoleManagementData(searchText = roleManagementSearch) {
+    if (!roleManagementVisible || !signedInWithSupabase) return;
+    setShorelineState((current) => ({
+      ...current,
+      roleManagementError: "",
+      roleManagementMessage: "",
+    }));
+    try {
+      const [usersForRoles, auditRows] = await Promise.all([
+        loadAdminRoleUsers(searchText),
+        loadRoleAuditLog(),
+      ]);
+      setShorelineState((current) => ({
+        ...current,
+        roleManagementUsers: usersForRoles,
+        roleManagementUsersReady: true,
+        roleAuditLog: auditRows,
+        roleManagementError: "",
+        roleManagementMessage: "",
+      }));
+    } catch (error) {
+      if (isMissingRoleManagementBackend(error)) {
+        setShorelineState((current) => ({
+          ...current,
+          roleManagementUsers: [],
+          roleManagementUsersReady: false,
+          roleAuditLog: [],
+          roleManagementError: "",
+          roleManagementMessage: "Role Management needs the role management migration before user roles can be changed in-app.",
+        }));
+      } else {
+        logAppError("role_management_load", error, {}, "normal");
+        setShorelineState((current) => ({
+          ...current,
+          roleManagementError: error.message || "Could not load role management users.",
+        }));
+      }
+    }
+  }
+
+  function openRoleChangeConfirmation(targetUser, nextRole) {
+    if (!roleManagementVisible || !targetUser?.userId) return;
+    const normalizedRole = normalizeAppRole(nextRole);
+    const actorProfile = { ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole };
+    if (!canAssignAppRole(actorProfile, targetUser, normalizedRole)) {
+      setVaultToast("Your role cannot make that role change.");
+      return;
+    }
+    if (targetUser.protectedOfficialAdmin && !isOwner(actorProfile)) {
+      setVaultToast("Official admin accounts require owner confirmation before role changes.");
+      return;
+    }
+    setRoleChangeTarget(targetUser);
+    setRoleChangeRole(normalizedRole);
+    setRoleChangeReason("");
+  }
+
+  async function confirmRoleChange() {
+    if (!roleManagementVisible || !roleChangeTarget?.userId) return;
+    setRoleChangeSaving(true);
+    try {
+      const updated = await updateAdminUserRole(roleChangeTarget.userId, roleChangeRole, roleChangeReason);
+      setShorelineState((current) => ({
+        ...current,
+        roleManagementUsers: (current.roleManagementUsers || []).map((entry) =>
+          String(entry.userId) === String(updated.userId) ? updated : entry
+        ),
+      }));
+      setVaultToast(`${updated.displayName || "User"} role updated to ${roleLabel(updated.appRole)}.`);
+      addAuditLog("role_change", "profile", updated.userId, { role: updated.appRole });
+      setRoleChangeTarget(null);
+      setRoleChangeReason("");
+      void refreshRoleManagementData(roleManagementSearch);
+    } catch (error) {
+      logAppError("role_management_update", error, { targetUserId: roleChangeTarget.userId, role: roleChangeRole }, "normal");
+      setVaultToast(error.message || "Could not update that user role.");
+    } finally {
+      setRoleChangeSaving(false);
+    }
+  }
+
   async function updateExistingBetaUserAccess(targetUser, status) {
-    if (!adminToolsVisible || !targetUser?.userId || !BETA_REQUEST_STATUSES.includes(status)) return;
+    if (!betaAdminVisible || !targetUser?.userId || !BETA_REQUEST_STATUSES.includes(status)) return;
     try {
       const updated = await updateAdminBetaAccessProfile(targetUser.userId, status, targetUser.betaAccessNotes || "");
       if (!updated?.userId) throw new Error("No profile was returned after updating beta access.");
@@ -7236,7 +7504,7 @@ export default function App() {
   }
 
   async function refreshAdminBetaInvites(searchText = adminBetaInviteSearch) {
-    if (!adminToolsVisible || !signedInWithSupabase) return;
+    if (!betaAdminVisible || !signedInWithSupabase) return;
     setAdminBetaInviteLoading(true);
     setShorelineState((current) => ({ ...current, adminBetaInvitesError: "", adminBetaInvitesMessage: "" }));
     try {
@@ -7271,7 +7539,7 @@ export default function App() {
 
   async function handleCreateAdminBetaInvite(event) {
     event?.preventDefault?.();
-    if (!adminToolsVisible) return;
+    if (!betaAdminVisible) return;
     const recipientName = String(adminBetaInviteForm.recipientName || "").trim();
     if (!recipientName) {
       setShorelineState((current) => ({ ...current, adminBetaInvitesError: "Recipient name is required." }));
@@ -7324,7 +7592,7 @@ export default function App() {
   }
 
   async function handleRevokeAdminBetaInvite(invite) {
-    if (!adminToolsVisible || !invite?.id) return;
+    if (!betaAdminVisible || !invite?.id) return;
     setAdminBetaInviteLoading(true);
     setShorelineState((current) => ({ ...current, adminBetaInvitesError: "", adminBetaInvitesMessage: "" }));
     try {
@@ -7348,7 +7616,7 @@ export default function App() {
   }
 
   function updateBetaAccessUser(targetUser, status) {
-    if (!adminToolsVisible || !BETA_ACCESS_STATUSES.includes(status)) return;
+    if (!betaAdminVisible || !BETA_ACCESS_STATUSES.includes(status)) return;
     const now = new Date().toISOString();
     updateBetaReadinessData((current) => {
       const existing = current.betaAccessUsers || [];
@@ -12215,6 +12483,16 @@ export default function App() {
           teamMemberRows.map(normalizeWorkspaceMember).forEach((member) => memberMap.set(memberKey(member), member));
           nextMembers = [...memberMap.values()];
         }
+        let nextInvites = [];
+        const { data: inviteRows, error: inviteError } = await supabase
+          .from("workspace_invites")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (!inviteError && Array.isArray(inviteRows)) {
+          nextInvites = inviteRows.map(normalizeWorkspaceInvite).filter((invite) => invite.email);
+        } else if (inviteError && !isExpectedShorelineAccessDenial(inviteError)) {
+          setWorkspaceMessage("Workspace invites could not load. Existing members still loaded.");
+        }
 
         if (!nextWorkspaces.length) {
           const { data: createdWorkspace, error: createWorkspaceError } = await supabase
@@ -12251,6 +12529,7 @@ export default function App() {
         if (cancelled) return;
         setWorkspaces(nextWorkspaces.length ? nextWorkspaces : fallback.workspaces);
         setWorkspaceMembers(nextMembers.length ? nextMembers : fallback.members);
+        setWorkspaceInvites(nextInvites);
         setActiveWorkspaceId((current) => visibleIds.has(String(current)) ? current : personalWorkspace?.id || fallback.activeWorkspaceId);
         setWorkspaceInviteForm((current) => ({ ...current, workspaceId: personalWorkspace?.id || fallback.activeWorkspaceId }));
       } catch (error) {
@@ -12258,6 +12537,7 @@ export default function App() {
         const fallbackForUser = createDefaultWorkspaceBundle(user);
         setWorkspaces(fallbackForUser.workspaces);
         setWorkspaceMembers(fallbackForUser.members);
+        setWorkspaceInvites(fallbackForUser.invites);
         setActiveWorkspaceId(fallbackForUser.activeWorkspaceId);
         setWorkspaceInviteForm((current) => ({ ...current, workspaceId: fallbackForUser.activeWorkspaceId }));
         setWorkspaceMessage("Cloud workspace metadata could not load. Saves will use your user-owned cloud rows when available.");
@@ -12548,6 +12828,9 @@ export default function App() {
           userId: profile.userId,
           email: profile.email,
           displayName: profile.displayName,
+          appRole: profile.appRole,
+          app_role: profile.app_role,
+          userRole: profile.userRole,
           createdAt: profile.createdAt,
           updatedAt: profile.updatedAt,
           lastLoginAt: profile.lastLoginAt,
@@ -12571,6 +12854,8 @@ export default function App() {
         email: profile.email,
         displayName: profile.displayName,
         userRole: profile.userRole,
+        appRole: profile.appRole,
+        app_role: profile.app_role,
         tier: profile.tier,
         featureTier: profile.tier,
         subscriptionPlan: profile.tier,
@@ -12743,6 +13028,66 @@ export default function App() {
 
   function betaInviteLinkForCreatedInvite(invite = {}) {
     return betaInviteLinkForToken(invite.inviteToken || "");
+  }
+
+  function getStoredWorkspaceInviteId() {
+    if (typeof sessionStorage === "undefined") return "";
+    try {
+      return sessionStorage.getItem(WORKSPACE_INVITE_SESSION_KEY) || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function storeWorkspaceInviteId(inviteId = "") {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+      const normalized = String(inviteId || "").trim();
+      if (normalized) sessionStorage.setItem(WORKSPACE_INVITE_SESSION_KEY, normalized);
+      else sessionStorage.removeItem(WORKSPACE_INVITE_SESSION_KEY);
+    } catch {
+      // Session storage may be blocked. The route id remains the fallback.
+    }
+  }
+
+  function workspaceInviteLinkForInvite(invite = {}) {
+    const explicitUrl = String(invite.inviteUrl || invite.invite_url || "").trim();
+    if (explicitUrl) return explicitUrl;
+    const invitePath = String(invite.invitePath || invite.invite_path || "").trim();
+    const inviteId = String(invite.id || invite.inviteId || invite.invite_id || "").trim();
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : PRODUCTION_APP_URL;
+    const normalizedBase = String(baseUrl || PRODUCTION_APP_URL).replace(/\/$/, "");
+    if (invitePath) return `${normalizedBase}${invitePath.startsWith("/") ? "" : "/"}${invitePath}`;
+    if (inviteId) return `${normalizedBase}/workspace-invite/${encodeURIComponent(inviteId)}`;
+    return "";
+  }
+
+  async function copyWorkspaceInviteLink(invite = workspaceInviteDelivery) {
+    const inviteLink = workspaceInviteLinkForInvite(invite || {});
+    if (!inviteLink) {
+      setWorkspaceMessage("Invite link is not available yet. Try creating the invite again.");
+      return false;
+    }
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setWorkspaceMessage("Invite link copied. Send it to the invited email address.");
+      setVaultToast("Workspace invite link copied.");
+      return true;
+    } catch {
+      setWorkspaceMessage(`Copy failed. Select and copy this invite link: ${inviteLink}`);
+      return false;
+    }
+  }
+
+  function workspaceInviteClaimErrorMessage(error) {
+    const message = String(error?.message || error?.details || error || "").trim();
+    if (!message) return "This workspace invite could not be accepted. Ask the workspace admin for a new link.";
+    if (/different email|email.*match|mismatch/i.test(message)) return "This workspace invite was made for a different email. Log in with the email the invite was sent to.";
+    if (/expired/i.test(message)) return "This workspace invite has expired. Ask the workspace admin for a new invite.";
+    if (/no longer active|already.*accepted|active|removed|revoked/i.test(message)) return "This workspace invite is no longer active. Ask the workspace admin for a new invite.";
+    if (/not valid|invalid|missing|required/i.test(message)) return "This workspace invite link is not valid. Ask the workspace admin for a new invite.";
+    if (/permission|manage/i.test(message)) return "You do not have permission to accept this workspace invite.";
+    return message;
   }
 
   function normalizeAuthErrorMessage(message = "") {
@@ -13473,10 +13818,21 @@ export default function App() {
       setWorkspaceMessage("Choose a workspace and enter an email address.");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setWorkspaceMessage("Enter a valid email address for the invite.");
+      return;
+    }
+    if (!canManageWorkspaceId(workspace.id)) {
+      setWorkspaceMessage("You do not have permission to invite members to this workspace.");
+      return;
+    }
     const role = normalizeWorkspaceRoleValue(workspaceInviteForm.role, "viewer") === "owner"
       ? "viewer"
       : normalizeWorkspaceRoleValue(workspaceInviteForm.role, "viewer");
     const now = new Date().toISOString();
+    setWorkspaceInviteSending(true);
+    setWorkspaceInviteDelivery(null);
+    setWorkspaceMessage("");
     const invite = normalizeWorkspaceInvite({
       id: makeId("invite"),
       workspaceId: workspace.id,
@@ -13486,55 +13842,86 @@ export default function App() {
       status: "invited",
       invitedBy: user?.id || "local-beta",
       createdAt: now,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      emailSent: false,
+      deliveryMethod: "copy_link",
     });
 
-    if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
-      const { data: createdInvite, error: inviteError } = await supabase
-        .from("workspace_invites")
-        .insert({
-          workspace_id: workspace.id,
-          email,
-          role,
-          note: workspaceInviteForm.note,
-          status: "invited",
-          invited_by: user.id,
-        })
-        .select()
-        .single();
-      if (inviteError) {
-        setWorkspaceMessage(`Could not create invite: ${inviteError.message}`);
-        setVaultToast("Workspace invite was not sent.");
+    try {
+      if (!BETA_LOCAL_MODE && user?.id !== "local-beta" && isSupabaseConfigured && supabase) {
+        const { data: createdInvite, error: inviteError } = await supabase.rpc("create_workspace_invite", {
+          target_workspace_id: workspace.id,
+          invite_email: email,
+          invite_role: role,
+          invite_note: workspaceInviteForm.note || null,
+        });
+        if (inviteError) throw inviteError;
+        const payload = Array.isArray(createdInvite) ? createdInvite[0] : createdInvite || {};
+        const mappedInvite = normalizeWorkspaceInvite({
+          ...payload,
+          id: payload.invite_id || payload.id,
+          email: payload.invite_email || payload.email,
+          workspaceId: payload.workspace_id || workspace.id,
+          emailSent: payload.email_sent,
+          deliveryMethod: payload.delivery_method,
+          invitePath: payload.invite_path,
+          duplicatePending: payload.duplicate_pending,
+        });
+        const inviteLink = workspaceInviteLinkForInvite(mappedInvite);
+        const delivery = { ...mappedInvite, inviteUrl: inviteLink, invite_url: inviteLink };
+        setWorkspaceInvites((current) => [delivery, ...current.filter((entry) => !(
+          String(entry.email || "").toLowerCase() === email &&
+          String(entry.workspaceId || entry.workspace_id) === String(workspace.id) &&
+          entry.status === "invited"
+        ))]);
+        setWorkspaceInviteForm((current) => ({ ...current, email: "", note: "" }));
+        setWorkspaceInviteDelivery(delivery);
+        setWorkspaceMessage(
+          delivery.emailSent
+            ? `Email sent to ${email}.`
+            : `Invite created for ${email}. Email is not configured - copy and send this invite link.`
+        );
+        setVaultToast(delivery.emailSent ? "Workspace invite email sent." : "Workspace invite created. Copy the invite link.");
         return;
       }
-      const mappedInvite = normalizeWorkspaceInvite(createdInvite);
-      setWorkspaceInvites((current) => [mappedInvite, ...current.filter((entry) => !(entry.email === email && entry.workspaceId === workspace.id && entry.status === "invited"))]);
-      setWorkspaceInviteForm((current) => ({ ...current, email: "", note: "" }));
-      setWorkspaceMessage(`Invite created for ${email}. They get access after accepting with that email.`);
-      return;
-    }
 
-    setWorkspaceInvites((current) => [invite, ...current.filter((entry) => !(entry.email === email && entry.workspaceId === workspace.id && entry.status === "invited"))]);
-    setWorkspaceMembers((current) => {
-      const existingIndex = current.findIndex((entry) =>
-        String(entry.workspaceId || entry.workspace_id) === String(workspace.id) &&
-        String(entry.email || "").toLowerCase() === email
-      );
-      const pendingMember = normalizeWorkspaceMember({
-        workspaceId: workspace.id,
-        email,
-        userId: "",
-        role,
-        status: "invited",
-        invitedBy: user?.id || "local-beta",
-        createdAt: now,
+      const localInviteLink = workspaceInviteLinkForInvite(invite);
+      const localInvite = { ...invite, inviteUrl: localInviteLink, invite_url: localInviteLink };
+      setWorkspaceInvites((current) => [localInvite, ...current.filter((entry) => !(entry.email === email && entry.workspaceId === workspace.id && entry.status === "invited"))]);
+      setWorkspaceMembers((current) => {
+        const existingIndex = current.findIndex((entry) =>
+          String(entry.workspaceId || entry.workspace_id) === String(workspace.id) &&
+          String(entry.email || "").toLowerCase() === email
+        );
+        const pendingMember = normalizeWorkspaceMember({
+          workspaceId: workspace.id,
+          email,
+          userId: "",
+          role,
+          status: "invited",
+          invitedBy: user?.id || "local-beta",
+          createdAt: now,
+        });
+        if (existingIndex >= 0) {
+          return current.map((entry, index) => index === existingIndex ? pendingMember : entry);
+        }
+        return [pendingMember, ...current];
       });
-      if (existingIndex >= 0) {
-        return current.map((entry, index) => index === existingIndex ? pendingMember : entry);
-      }
-      return [pendingMember, ...current];
-    });
-    setWorkspaceInviteForm((current) => ({ ...current, email: "", note: "" }));
-    setWorkspaceMessage(`Invite created for ${email}. They get access after accepting with that email.`);
+      setWorkspaceInviteForm((current) => ({ ...current, email: "", note: "" }));
+      setWorkspaceInviteDelivery(localInvite);
+      setWorkspaceMessage(`Invite created for ${email}. Email is not configured - copy and send this invite link.`);
+    } catch (error) {
+      console.error("Could not create workspace invite", error);
+      const missingRpc = error?.code === "42883" || error?.code === "PGRST202" || /create_workspace_invite|function.*does not exist|could not find/i.test(error?.message || "");
+      setWorkspaceMessage(
+        missingRpc
+          ? "Workspace invite backend is not up to date. Apply the workspace invite delivery migration, then try again."
+          : `Could not create invite: ${error.message || "Try again."}`
+      );
+      setVaultToast("Workspace invite was not created.");
+    } finally {
+      setWorkspaceInviteSending(false);
+    }
   }
 
   function acceptWorkspaceInvite(inviteId) {
@@ -13560,6 +13947,64 @@ export default function App() {
     });
     setActiveWorkspaceId(invite.workspaceId);
     setWorkspaceMessage(`Invite accepted. You are now viewing ${workspaces.find((workspace) => workspace.id === invite.workspaceId)?.name || "that workspace"}.`);
+  }
+
+  async function claimCloudWorkspaceInvite(inviteId) {
+    const normalizedInviteId = String(inviteId || "").trim();
+    if (!normalizedInviteId) throw new Error("This workspace invite link is not valid.");
+    if (!isSupabaseConfigured || !supabase || BETA_LOCAL_MODE || user?.id === "local-beta") {
+      acceptWorkspaceInvite(normalizedInviteId);
+      return { invite_id: normalizedInviteId, status: "active" };
+    }
+    const { data, error } = await supabase.rpc("accept_workspace_invite", {
+      target_invite_id: normalizedInviteId,
+    });
+    if (error) throw error;
+    const payload = Array.isArray(data) ? data[0] : data || {};
+    const workspaceId = payload.workspace_id || payload.workspaceId || "";
+    const acceptedAt = payload.accepted_at || new Date().toISOString();
+    const role = normalizeWorkspaceRoleValue(payload.role, "viewer");
+    const email = String(payload.email || user?.email || "").trim().toLowerCase();
+
+    setWorkspaceInvites((current) => current.map((entry) => (
+      String(entry.id) === normalizedInviteId
+        ? { ...entry, status: "active", acceptedAt, accepted_at: acceptedAt }
+        : entry
+    )));
+
+    if (workspaceId) {
+      setActiveWorkspaceId(workspaceId);
+      setWorkspaceMembers((current) => {
+        const activeMember = normalizeWorkspaceMember({
+          workspaceId,
+          email,
+          userId: user?.id || "",
+          role,
+          status: "active",
+          acceptedAt,
+        });
+        return [activeMember, ...current.filter((entry) => !(
+          String(entry.workspaceId || entry.workspace_id) === String(workspaceId) &&
+          (String(entry.userId || entry.user_id) === String(user?.id || "") || String(entry.email || "").toLowerCase() === email)
+        ))];
+      });
+
+      try {
+        const { data: workspaceRow } = await supabase
+          .from("workspaces")
+          .select("*")
+          .eq("id", workspaceId)
+          .maybeSingle();
+        if (workspaceRow) {
+          const normalizedWorkspace = normalizeWorkspace(workspaceRow, createDefaultWorkspaceBundle(user || { id: "local-beta" }).workspaces[0]);
+          setWorkspaces((current) => [normalizedWorkspace, ...current.filter((workspace) => String(workspace.id) !== String(workspaceId))]);
+        }
+      } catch {
+        // The accepted membership is enough for the app; workspace metadata can reload later.
+      }
+    }
+
+    return payload;
   }
 
   function resetBetaLocalData() {
@@ -15972,6 +16417,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setScoutView("guesses");
       setVaultToast("Guess saved to Scout Planner.");
       flowModalBaselineRef.current.scoutSubmit = quickScoutReportForm;
+      void trackBetaActivity("submitted_scout_report", {
+        eventContext: "scout",
+        entityType: "scout_guess",
+        entityId: guess.id,
+        metadata: { confidence: "guess", storeId: guess.storeId || "" },
+      });
       return;
     }
     const report = buildQuickScoutReportRecord();
@@ -16001,6 +16452,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     completeDailyAction("store", { badge: "restock_reporter", points: 10 });
     setVaultToast("Report sent. You can add details now or later.");
     flowModalBaselineRef.current.scoutSubmit = quickScoutReportForm;
+    void trackBetaActivity("submitted_scout_report", {
+      eventContext: "scout",
+      entityType: "scout_report",
+      entityId: report.id,
+      metadata: { confidence: report.confidence || "", storeId: report.storeId || "" },
+    });
   }
 
   function openQuickScoutReportDetails() {
@@ -18799,6 +19256,12 @@ function addProductToTideTradrWatchlist(productId, pinned = false, workspaceId =
       ...current,
     ];
   });
+  void trackBetaActivity("watched_item", {
+    eventContext: "market",
+    entityType: "market_watch",
+    entityId: productId,
+    metadata: { pinned: Boolean(pinned), workspaceId: workspace?.id || "" },
+  });
 }
 
 function removeTideTradrWatchlistItem(id) {
@@ -21461,8 +21924,17 @@ function renderForgeAccessState() {
   const currentPlan = getUserPlan(planProfile);
   const currentTier = getUserTier(planProfile);
   const paidUser = isPaidUser(planProfile);
-  const adminUser = isAdminUser(planProfile);
+  const rolePermissionProfile = {
+    ...planProfile,
+    ...currentUserProfile,
+    email: currentUserProfile?.email || user?.email || planProfile?.email || "",
+  };
+  const actualAppRole = appRoleForProfile(rolePermissionProfile);
+  const roleAdminUser = [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(actualAppRole);
+  const roleModeratorUser = actualAppRole === APP_ROLES.MODERATOR;
+  const adminUser = isAdminUser(planProfile) || roleAdminUser;
   const explicitAdminRole = String(
+    actualAppRole ||
     currentUserProfile?.role ||
     currentUserProfile?.appRole ||
     currentUserProfile?.app_role ||
@@ -21476,6 +21948,7 @@ function renderForgeAccessState() {
     ""
   ).toLowerCase();
   const moderatorUser =
+    roleModeratorUser ||
     ["admin", "super_admin", "super-admin", "moderator"].includes(explicitAdminRole) ||
     Boolean(
       currentUserProfile?.isAdmin ||
@@ -21489,11 +21962,12 @@ function renderForgeAccessState() {
     );
   const normalizedActualRole = explicitAdminRole === "super-admin" ? "super_admin" : explicitAdminRole;
   const actualAdminRole =
+    [APP_ROLES.OWNER, APP_ROLES.ADMIN, APP_ROLES.MODERATOR].includes(normalizeAppRole(normalizedActualRole)) ? normalizeAppRole(normalizedActualRole) :
     ["admin", "super_admin", "moderator"].includes(normalizedActualRole) ? normalizedActualRole :
     adminUser ? "admin" :
     moderatorUser ? "moderator" :
     normalizedActualRole || "user";
-  const actualAdminUser = !guestPreviewActive && (adminUser || moderatorUser);
+  const actualAdminUser = !guestPreviewActive && canViewAdminDashboard({ ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole });
   const adminModeUserKey = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "anonymous");
   const adminModeStorageKey = `${ADMIN_MODE_STORAGE_PREFIX}:${adminModeUserKey}`;
   const adminModeLoaded = !actualAdminUser || adminModeStorageReady;
@@ -21549,7 +22023,7 @@ function renderForgeAccessState() {
       }
     : planProfile;
   const featureGateOptions = {
-    admin: adminViewingAsAdmin && adminUser,
+    admin: adminViewingAsAdmin && roleAdminUser,
     betaTester: !guestPreviewActive && !actualAdminUser && (BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester),
     qaUnlock: QA_UNLOCK_PAID_FEATURES,
   };
@@ -21568,6 +22042,9 @@ function renderForgeAccessState() {
           ? "Cloud sync is enabled. Sign in with Supabase to save Phase 2 workflows."
           : "Cloud sync is enabled, but Supabase URL/key configuration is missing.";
   const adminToolsVisible = adminViewingAsAdmin;
+  const roleManagementVisible = adminToolsVisible && canManageRoles({ ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole });
+  const moderatorToolsVisible = adminToolsVisible && canModerateReports({ ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole });
+  const betaAdminVisible = adminToolsVisible && canManageBeta({ ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole });
   const adminEditModeAvailable = adminViewingAsAdmin;
   const adminEditModeActive = adminEditModeAvailable && adminEditMode;
   const canReviewSharedData = adminEditModeActive;
@@ -21763,6 +22240,11 @@ function renderForgeAccessState() {
           result: claim,
         });
         setVaultToast("Invite claimed. Welcome to Ember & Tide.");
+        void trackBetaActivity("claimed_invite", {
+          eventContext: "beta_invite",
+          entityType: "beta_invite",
+          entityId: claim?.inviteId || "",
+        });
       } catch (error) {
         if (!active) return;
         setBetaInviteClaimState({
@@ -21780,9 +22262,73 @@ function renderForgeAccessState() {
   }, [activeTab, betaInviteToken, user?.id, guestPreviewActive, betaInviteClaimAttempt]);
 
   useEffect(() => {
+    if (activeTab !== "workspaceInvite") return;
+    const inviteId = String(workspaceInviteId || getStoredWorkspaceInviteId() || "").trim();
+    if (inviteId && inviteId !== workspaceInviteId) setWorkspaceInviteId(inviteId);
+    storeWorkspaceInviteId(inviteId);
+    setWorkspaceInviteClaimState((current) => (
+      inviteId
+        ? current
+        : { status: "error", message: "", error: "This workspace invite link is not valid. Ask the workspace admin for a new invite.", result: null }
+    ));
+  }, [activeTab, workspaceInviteId]);
+
+  useEffect(() => {
+    if (!user?.id || guestPreviewActive || activeTab === "workspaceInvite") return;
+    const storedInviteId = getStoredWorkspaceInviteId();
+    if (!storedInviteId) return;
+    setWorkspaceInviteId(storedInviteId);
+    setActiveTab("workspaceInvite");
+  }, [user?.id, guestPreviewActive, activeTab]);
+
+  useEffect(() => {
+    let active = true;
+    async function claimWorkspaceInviteForUser() {
+      if (activeTab !== "workspaceInvite" || !user?.id || guestPreviewActive) return;
+      const inviteId = String(workspaceInviteId || getStoredWorkspaceInviteId() || "").trim();
+      if (!inviteId) {
+        setWorkspaceInviteClaimState({
+          status: "error",
+          message: "",
+          error: "This workspace invite link is not valid. Ask the workspace admin for a new invite.",
+          result: null,
+        });
+        return;
+      }
+      if (workspaceInviteClaimInFlightRef.current === inviteId) return;
+      workspaceInviteClaimInFlightRef.current = inviteId;
+      setWorkspaceInviteClaimState({ status: "claiming", message: "Checking your workspace invite...", error: "", result: null });
+      try {
+        const claim = await claimCloudWorkspaceInvite(inviteId);
+        if (!active) return;
+        storeWorkspaceInviteId("");
+        setWorkspaceInviteClaimState({
+          status: "success",
+          message: "Workspace invite accepted. You can open that workspace now.",
+          error: "",
+          result: claim,
+        });
+        setVaultToast("Workspace invite accepted.");
+      } catch (error) {
+        if (!active) return;
+        setWorkspaceInviteClaimState({
+          status: "error",
+          message: "",
+          error: workspaceInviteClaimErrorMessage(error),
+          result: null,
+        });
+      }
+    }
+    claimWorkspaceInviteForUser();
+    return () => {
+      active = false;
+    };
+  }, [activeTab, workspaceInviteId, user?.id, guestPreviewActive, workspaceInviteClaimAttempt]);
+
+  useEffect(() => {
     let active = true;
     async function loadAdminRequests() {
-      if (!adminToolsVisible || !signedInWithSupabase) return;
+      if (!betaAdminVisible || !signedInWithSupabase) return;
       try {
         const next = await loadShorelineAdminRequests();
         if (!active) return;
@@ -21802,15 +22348,43 @@ function renderForgeAccessState() {
     return () => {
       active = false;
     };
-  }, [adminToolsVisible, signedInWithSupabase]);
+  }, [betaAdminVisible, signedInWithSupabase]);
 
   useEffect(() => {
-    if (!adminToolsVisible || !signedInWithSupabase) return undefined;
+    if (!betaAdminVisible || !signedInWithSupabase) return undefined;
     const timeout = window.setTimeout(() => {
       void refreshAdminBetaInvites(adminBetaInviteSearch);
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [adminToolsVisible, signedInWithSupabase, adminBetaInviteSearch]);
+  }, [betaAdminVisible, signedInWithSupabase, adminBetaInviteSearch]);
+
+  useEffect(() => {
+    if (!betaAdminVisible || !signedInWithSupabase) return undefined;
+    const timeout = window.setTimeout(() => {
+      void refreshAdminBetaUsersDashboardData();
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [betaAdminVisible, signedInWithSupabase]);
+
+  useEffect(() => {
+    if (!roleManagementVisible || !signedInWithSupabase) return undefined;
+    const timeout = window.setTimeout(() => {
+      void refreshRoleManagementData(roleManagementSearch);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [roleManagementVisible, signedInWithSupabase, roleManagementSearch]);
+
+  useEffect(() => {
+    if (!signedInWithSupabase || guestPreviewActive || !user?.id || user.id === "local-beta") return;
+    const key = `${user.id}:session`;
+    if (betaActivitySessionRef.current === key) return;
+    betaActivitySessionRef.current = key;
+    void trackBetaActivity("session_start", {
+      eventContext: "auth",
+      entityType: "profile",
+      entityId: user.id,
+    });
+  }, [signedInWithSupabase, guestPreviewActive, user?.id]);
 
   useEffect(() => {
     if (!localDataLoaded || guestPreviewActive || !signedInWithSupabase || !protectedAppDataAccessReady()) {
@@ -22303,6 +22877,12 @@ function renderForgeAccessState() {
       createdAt: new Date().toISOString(),
     });
     setVaultToast("Queued for admin review.");
+    void trackBetaActivity("sent_admin_support_message", {
+      eventContext: "ember_assist",
+      entityType: "admin_message",
+      entityId: result.suggestions?.[0]?.id || "",
+      metadata: { category: emberAssistEscalationDraft.category || "Other" },
+    });
   }
 
   function adminReviewerName() {
@@ -22479,7 +23059,16 @@ function renderForgeAccessState() {
           className="ember-assist-fab"
           aria-expanded={emberAssistOpen}
           aria-label="Open Ember Assist"
-          onClick={() => setEmberAssistOpen((open) => !open)}
+          onClick={() => {
+            setEmberAssistOpen((open) => {
+              if (!open) {
+                void trackBetaActivity("opened_ask_ember", {
+                  eventContext: "ember_assist",
+                });
+              }
+              return !open;
+            });
+          }}
         >
           <span aria-hidden="true">ET</span>
           <b>Ask Ember</b>
@@ -23874,6 +24463,7 @@ function renderForgeAccessState() {
 
   function currentRoutePath() {
     if (activeTab === "invite") return betaInviteToken ? `/invite/${encodeURIComponent(betaInviteToken)}` : "/invite";
+    if (activeTab === "workspaceInvite") return workspaceInviteId ? `/workspace-invite/${encodeURIComponent(workspaceInviteId)}` : "/workspace-invite";
     if (activeTab === "resetPassword") return "/reset-password";
     if (activeTab === "dailyTide") return "/today";
     if (activeTab === "scout") {
@@ -23913,6 +24503,7 @@ function renderForgeAccessState() {
     const routeState = {
       activeTab,
       inviteToken: activeTab === "invite" ? betaInviteToken : "",
+      workspaceInviteId: activeTab === "workspaceInvite" ? workspaceInviteId : "",
       activeWorkspaceId,
       homeSubTab,
       forgeSubTab,
@@ -23953,6 +24544,7 @@ function renderForgeAccessState() {
   }, [
     activeTab,
     betaInviteToken,
+    workspaceInviteId,
     activeWorkspaceId,
     homeSubTab,
     forgeSubTab,
@@ -25690,6 +26282,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       itemId: savedItem.id,
       message: `Added to ${normalizedDestination === "vault" ? "Vault" : "Forge"} as a draft.`,
     });
+    void trackBetaActivity(normalizedDestination === "vault" ? "added_vault_item" : "added_forge_item", {
+      eventContext: "market",
+      entityType: normalizedDestination === "vault" ? "vault_item" : "forge_inventory",
+      entityId: savedItem.id,
+      metadata: {
+        productId,
+        destination: normalizedDestination,
+      },
+    });
   }
 
   function openMarketAddedItem(destination = "forge", itemId = "") {
@@ -25714,9 +26315,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const productFairAssessment = getCatalogProductFairAssessment(product);
     const productReferenceParts = marketplaceReferenceParts({
       msrp: marketInfo.msrp,
-      currentMarketValue: hasCatalogMarketPrice(product) ? marketInfo.currentMarketValue : 0,
+      currentMarketValue: 0,
     });
-    const productMarketLabel = hasCatalogMarketPrice(product) ? money(marketInfo.currentMarketValue) : "Price data unavailable";
+    const productHasMarketPrice = hasCatalogMarketPrice(product);
+    const productMarketLabel = productHasMarketPrice ? money(marketInfo.currentMarketValue) : "Price data unavailable";
+    const productImageSrc = catalogImage(product);
+    const productSetName = catalogExpansionName(product) || "Set unavailable";
+    const productTypeLabel = catalogProductTypeLabel(product);
+    const showMarketMatchBadge = productHasMarketPrice && productFairAssessment.label === "Market Match";
     const productId = product.id || catalogTitle(product);
     const chooserOpen = String(marketAddChooserProductId) === String(productId);
     const confirmation = marketAddConfirmation && String(marketAddConfirmation.productId) === String(productId) ? marketAddConfirmation : null;
@@ -25724,14 +26330,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const vaultSaving = marketAddSavingKey === `vault:${productId}`;
     const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
     return (
-      <div className={`catalog-result-card market-fair-card ${chooserOpen || confirmation ? "market-result-card-expanded" : ""}`} key={product.id}>
+      <div className={`catalog-result-card market-fair-card market-mobile-product-card ${chooserOpen || confirmation ? "market-result-card-expanded" : ""}`} key={product.id}>
         <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(product)}>
           <div className="catalog-thumb">
             {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
-            {catalogImage(product) ? (
+            {productImageSrc ? (
               <>
                 <img
-                  src={catalogImage(product)}
+                  src={productImageSrc}
                   alt=""
                   onError={(event) => {
                     event.currentTarget.style.display = "none";
@@ -25739,18 +26345,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   }}
                 />
                 <div className="image-needed-placeholder" hidden>
-                  <strong>{catalogTitle(product)}</strong>
-                  <span>Image needed</span>
+                  <span>No image</span>
                 </div>
               </>
             ) : (
               <div className="image-needed-placeholder">
-                <strong>{catalogTitle(product)}</strong>
-                <span>Image needed</span>
+                <span>No image</span>
               </div>
             )}
           </div>
-          <div>
+          <div className="market-card-body">
             {showRepairMeta ? (
               <div className="catalog-result-meta-badges">
                 <span className="catalog-pill">{resultGroup}</span>
@@ -25761,19 +26365,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {!isCard && !isSealed ? <span className="status-badge warning">Needs classification review</span> : null}
               </div>
             ) : null}
-            <h3>{catalogTitle(product)}</h3>
-            <p className="market-card-context">{catalogExpansionName(product) || "Set unavailable"} | {catalogProductTypeLabel(product)}</p>
+            <h3 className="market-card-title">{catalogTitle(product)}</h3>
+            <p className="market-card-context">{productSetName}</p>
+            <p className="market-card-reference-line">{productTypeLabel}</p>
             <div className="market-card-price-row">
-              <strong>{productMarketLabel}</strong>
-              {renderFairPriceBadge(productFairAssessment)}
+              <div className="market-price-stack">
+                <strong>{productMarketLabel}</strong>
+                <span>{productHasMarketPrice ? "Market" : "Market unavailable"}</span>
+              </div>
+              {showMarketMatchBadge ? renderFairPriceBadge(productFairAssessment) : null}
             </div>
-            <p className="market-card-reference-line">
-              {productReferenceParts.length ? productReferenceParts.join(" | ") : "Price data unavailable"}
-            </p>
+            {productReferenceParts.length ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : null}
             {showRepairMeta ? (
               <>
                 <p className="catalog-result-detail-line">
-                  {catalogProductTypeLabel(product)} | {catalogExpansionName(product) || "Expansion unavailable"}
+                  {productTypeLabel} | {productSetName}
                   {isCard && product.cardNumber ? ` | #${product.cardNumber}` : ""}
                   {isSealed && marketInfo.msrp ? ` | MSRP ${money(marketInfo.msrp)}` : ""}
                 </p>
@@ -25803,9 +26409,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </button>
           <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
             {watched ? "Watched" : "Watch"}
-          </button>
-          <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "market-search-review", destinations: { forge: true, vault: false } })}>
-            Review Add
           </button>
         </div>
         {chooserOpen ? (
@@ -25964,6 +26567,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       alternateCount: 0,
       coverageWarning: null,
     }));
+    void trackBetaActivity(activeTab === "tidetradr" ? "market_search" : "catalog_search", {
+      eventContext: activeTab === "tidetradr" ? "market" : "catalog",
+      metadata: {
+        queryLength: nextQuery.length,
+        mode: detectedMode,
+        hasBarcode: Boolean(nextBarcode),
+      },
+    });
     loadImportedPokemonCatalog(nextQuery, { page: 1, mode: detectedMode === "id" ? "barcode" : detectedMode, barcode: nextBarcode, forceSearch: true });
   }
 
@@ -30334,8 +30945,402 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderBetaUsersDashboard() {
+    if (!betaAdminVisible) return null;
+    const profileUsers = shorelineState.adminProfileUsers || [];
+    const requestRows = [
+      ...(shorelineState.adminBetaRequests || []),
+      ...(betaReadinessData.betaAccessUsers || []).map((entry) => ({
+        ...entry,
+        fullName: entry.fullName || entry.displayName || "",
+        userId: entry.userId || "",
+        adminNotes: entry.adminNotes || "",
+        source: "Local fallback",
+      })),
+    ];
+    const inviteRows = shorelineState.adminBetaInvites || [];
+    const activityRows = shorelineState.adminBetaActivityEvents || [];
+    const adminNotes = shorelineState.adminBetaAdminNotes || [];
+    const nowMs = Date.now();
+    const recentCutoffMs = 30 * 24 * 60 * 60 * 1000;
+    const isRecent = (value) => {
+      const time = Date.parse(value || "");
+      return Number.isFinite(time) && nowMs - time <= recentCutoffMs;
+    };
+    const rowKey = (entry = {}) => String(entry.userId || entry.id || entry.email || entry.displayName || entry.fullName || "").toLowerCase();
+    const profileKeyFor = (entry = {}) => String(entry.userId || entry.id || entry.email || "").toLowerCase();
+    const userMap = new Map();
+    const upsertUser = (entry = {}, source = "Profile") => {
+      const key = profileKeyFor(entry);
+      if (!key) return;
+      const existing = userMap.get(key) || {};
+      userMap.set(key, {
+        ...existing,
+        ...entry,
+        userId: entry.userId || entry.id || existing.userId || "",
+        email: entry.email || existing.email || "",
+        displayName: entry.displayName || entry.fullName || existing.displayName || "Beta user",
+        fullName: entry.fullName || existing.fullName || entry.displayName || "",
+        createdAt: entry.createdAt || existing.createdAt || "",
+        lastSeenAt: entry.lastSeenAt || existing.lastSeenAt || "",
+        source: existing.source ? `${existing.source}, ${source}` : source,
+        backendProfileRow: Boolean(existing.backendProfileRow || source === "Profile"),
+      });
+    };
+    profileUsers.forEach((entry) => upsertUser(entry, "Profile"));
+    requestRows.forEach((entry) => upsertUser({
+      ...entry,
+      displayName: entry.fullName || entry.displayName || entry.email || "Beta applicant",
+      createdAt: entry.createdAt || entry.requestedAt || entry.updatedAt || "",
+      betaStatus: entry.status,
+      betaAccessStatus: entry.status,
+    }, entry.source || "Beta request"));
+    inviteRows.forEach((invite) => {
+      const inviteIdentity = invite.claimedBy || invite.claimedEmail || invite.recipientEmail;
+      if (!inviteIdentity) return;
+      upsertUser({
+        userId: invite.claimedBy || "",
+        email: invite.claimedEmail || invite.recipientEmail || "",
+        displayName: invite.recipientName || invite.claimedEmail || invite.recipientEmail || "Invited beta user",
+        createdAt: invite.claimedAt || invite.createdAt || "",
+        betaStatus: invite.claimedAt ? "approved" : "pending",
+        betaAccessStatus: invite.claimedAt ? "approved" : "pending",
+      }, invite.claimedAt ? "Claimed invite" : "Invite");
+    });
+    const betaUsers = [...userMap.values()].map((entry) => {
+      const key = rowKey(entry);
+      const userId = String(entry.userId || entry.id || "");
+      const email = String(entry.email || "").toLowerCase();
+      const matchingRequests = requestRows.filter((request) => {
+        const requestUser = String(request.userId || "").toLowerCase();
+        const requestEmail = String(request.email || "").toLowerCase();
+        return (userId && requestUser === userId.toLowerCase()) || (email && requestEmail === email);
+      });
+      const matchingInvites = inviteRows.filter((invite) => {
+        const claimedUser = String(invite.claimedBy || "").toLowerCase();
+        const claimedEmail = String(invite.claimedEmail || "").toLowerCase();
+        const recipientEmail = String(invite.recipientEmail || "").toLowerCase();
+        return (userId && claimedUser === userId.toLowerCase()) || (email && (claimedEmail === email || recipientEmail === email));
+      });
+      const matchingActivities = activityRows.filter((event) => String(event.userId || "").toLowerCase() === String(userId || "").toLowerCase());
+      const matchingNotes = adminNotes.filter((note) => String(note.targetUserId || "").toLowerCase() === String(userId || "").toLowerCase());
+      const latestActivity = matchingActivities[0];
+      const latestRequest = matchingRequests[0];
+      const latestInvite = matchingInvites[0];
+      const backendProfileRow = Boolean(entry.backendProfileRow);
+      const accessStatus = entry.isAdmin
+        ? "admin"
+        : backendProfileRow
+          ? betaAccessStatusForProfile(entry)
+          : normalizeBetaStatus(entry.betaAccessStatus || entry.betaStatus || latestRequest?.status || (latestInvite?.claimedAt ? "approved" : "pending"));
+      const accessAllowed = entry.isAdmin || (backendProfileRow ? betaAccessAllowedForProfile(entry) : accessStatus === "approved");
+      const lastActiveAt = latestActivity?.createdAt || entry.lastSeenAt || "";
+      return {
+        ...entry,
+        key,
+        accessStatus,
+        accessAllowed,
+        matchingRequests,
+        matchingInvites,
+        matchingActivities,
+        matchingNotes,
+        latestActivity,
+        latestRequest,
+        latestInvite,
+        lastActiveAt,
+        isActive: isRecent(lastActiveAt),
+        inviteSource: latestInvite?.claimedAt ? "Invite claimed" : latestInvite ? "Invited" : latestRequest ? "Request" : "Profile",
+      };
+    });
+    const pendingRequests = requestRows.filter((entry) => ["pending", "waitlist"].includes(normalizeBetaStatus(entry.status || entry.betaAccessStatus)));
+    const pendingProfileUsers = profileUsers.filter((entry) => !entry.isAdmin && !betaAccessAllowedForProfile(entry));
+    const approvedUsers = betaUsers.filter((entry) => entry.accessAllowed && !entry.isAdmin);
+    const activeUsers = approvedUsers.filter((entry) => entry.isActive);
+    const inactiveUsers = approvedUsers.filter((entry) => !entry.isActive);
+    const filteredBetaUsers = betaUsers.filter((entry) => {
+      const filter = betaUserFilter;
+      const haystack = `${entry.displayName || ""} ${entry.fullName || ""} ${entry.username || ""} ${entry.publicUsername || ""} ${entry.email || ""} ${entry.accessStatus || ""} ${entry.inviteSource || ""}`.toLowerCase();
+      const searchMatch = !betaUserSearch.trim() || haystack.includes(betaUserSearch.trim().toLowerCase());
+      if (!searchMatch) return false;
+      if (filter === "All") return true;
+      if (filter === "Pending") return ["pending", "waitlist", "not_requested"].includes(entry.accessStatus) || !entry.accessAllowed;
+      if (filter === "Approved") return entry.accessAllowed;
+      if (filter === "Denied") return ["denied", "revoked", "paused"].includes(entry.accessStatus);
+      if (filter === "Invited") return entry.matchingInvites.length > 0;
+      if (filter === "Claimed") return entry.matchingInvites.some((invite) => invite.claimedAt);
+      if (filter === "Active") return entry.isActive;
+      if (filter === "Inactive") return entry.accessAllowed && !entry.isActive;
+      if (filter === "Revoked") return entry.matchingInvites.some((invite) => invite.revokedAt || invite.status === "revoked") || entry.accessStatus === "revoked";
+      return true;
+    });
+    const selectedBetaUser = betaUsers.find((entry) => String(entry.userId || entry.email || entry.key) === String(selectedBetaUserId));
+    const overviewCards = [
+      { label: "Pending requests", value: pendingRequests.length + pendingProfileUsers.length, helper: "Requests and signed-up users awaiting access" },
+      { label: "Approved beta users", value: approvedUsers.length, helper: "Profiles with app access" },
+      { label: "Invites sent", value: inviteRows.length, helper: "Secure one-time invite rows" },
+      { label: "Invites claimed", value: inviteRows.filter((invite) => invite.claimedAt || invite.status === "claimed").length, helper: "Claimed invites only" },
+      { label: "Active beta users", value: shorelineState.adminBetaActivityReady ? activeUsers.length : "Needs migration", helper: "Recent activity in the last 30 days" },
+      { label: "Inactive users", value: shorelineState.adminBetaActivityReady ? inactiveUsers.length : "Unknown", helper: "Approved but no recent activity signal" },
+    ];
+    const filters = ["All", "Pending", "Approved", "Denied", "Invited", "Claimed", "Active", "Inactive", "Revoked"];
+    const activityLabel = (eventType = "") => String(eventType || "activity").replace(/_/g, " ");
+    const betaUserActivityCounts = (entry = {}) => ({
+      scout: entry.matchingActivities.filter((event) => /scout/.test(event.eventType || "")).length,
+      inventory: entry.matchingActivities.filter((event) => /vault|forge|item/.test(event.eventType || "")).length,
+      market: entry.matchingActivities.filter((event) => /market|watch/.test(event.eventType || "")).length,
+      assist: entry.matchingActivities.filter((event) => /ember|assist|support/.test(event.eventType || "")).length,
+    });
+
+    return (
+      <section className="settings-subsection beta-users-dashboard" aria-label="Beta Users">
+        <div className="compact-card-header">
+          <div>
+            <h3>Beta Users</h3>
+            <p>Admin-only view from request to approval, invite, joined user, and testing activity. Official Ember/Tide admins and existing admin roles only.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={() => void refreshAdminBetaUsersDashboardData()}>Refresh activity</button>
+        </div>
+        {shorelineState.adminBetaDashboardMessage ? (
+          <div className="empty-state compact-empty-state">
+            <h3>Activity tracking backend needed</h3>
+            <p>{shorelineState.adminBetaDashboardMessage}</p>
+          </div>
+        ) : null}
+        {shorelineState.adminBetaDashboardError ? <p className="auth-status-message error" role="alert">{shorelineState.adminBetaDashboardError}</p> : null}
+        <div className="beta-users-overview-grid">
+          {overviewCards.map((card) => (
+            <article className="beta-users-overview-card" key={card.label}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <small>{card.helper}</small>
+            </article>
+          ))}
+        </div>
+        <div className="beta-users-toolbar">
+          <input value={betaUserSearch} onChange={(event) => setBetaUserSearch(event.target.value)} placeholder="Search name, username, or email" />
+          <div className="segmented-control" role="tablist" aria-label="Beta user filters">
+            {filters.map((filter) => (
+              <button
+                type="button"
+                key={filter}
+                className={betaUserFilter === filter ? "active" : ""}
+                onClick={() => setBetaUserFilter(filter)}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <section className="beta-users-section">
+          <div className="compact-card-header">
+            <div>
+              <h4>Pending beta requests</h4>
+              <p>Approve or deny requests with private notes. Existing signed-up profiles are handled through the backend beta approval RPC.</p>
+            </div>
+            <span className="status-badge">{pendingRequests.length + pendingProfileUsers.length} pending</span>
+          </div>
+          <div className="beta-users-list">
+            {pendingRequests.length ? pendingRequests.map((entry) => (
+              <article className="beta-user-row-card" key={entry.id || entry.userId || entry.email}>
+                <div>
+                  <strong>{entry.fullName || entry.displayName || entry.email || "Beta request"}</strong>
+                  <p>{maskEmail(entry.email)} | {entry.createdAt ? shortDate(entry.createdAt) : "Requested date unavailable"}</p>
+                  <small>{entry.reason || entry.message || "No request message."}</small>
+                </div>
+                <span className={`status-badge ${entry.status}`}>{statusLabel(entry.status)}</span>
+                <textarea
+                  className="drawer-field"
+                  value={entry.adminNotes || ""}
+                  placeholder="Private review note"
+                  onChange={(event) => setAdminBetaRequestNote(entry.id, event.target.value)}
+                />
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => void updateShorelineAdminStatus("beta", entry, "approved")}>Approve</button>
+                  <button type="button" className="ghost-button" onClick={() => void updateShorelineAdminStatus("beta", entry, "denied")}>Deny</button>
+                </div>
+              </article>
+            )) : null}
+            {pendingProfileUsers.length ? pendingProfileUsers.map((entry) => (
+              <article className="beta-user-row-card" key={entry.userId || entry.email}>
+                <div>
+                  <strong>{entry.displayName || entry.fullName || entry.email || "Signed-up user"}</strong>
+                  <p>{maskEmail(entry.email)} | {entry.createdAt ? shortDate(entry.createdAt) : "Joined date unavailable"}</p>
+                  <small>{entry.betaAccessNotes || "Signed-up user has not been approved yet."}</small>
+                </div>
+                <span className={`status-badge ${betaAccessStatusForProfile(entry)}`}>{statusLabel(betaAccessStatusForProfile(entry))}</span>
+                <textarea
+                  className="drawer-field"
+                  value={entry.betaAccessNotes || ""}
+                  placeholder="Private beta access note"
+                  onChange={(event) => setAdminProfileUserNote(entry.userId, event.target.value)}
+                />
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" disabled={entry.isAdmin} onClick={() => void updateExistingBetaUserAccess(entry, "approved")}>Approve</button>
+                  <button type="button" className="ghost-button" disabled={entry.isAdmin} onClick={() => void updateExistingBetaUserAccess(entry, "denied")}>Deny / Revoke</button>
+                </div>
+              </article>
+            )) : null}
+            {!pendingRequests.length && !pendingProfileUsers.length ? (
+              <div className="empty-state compact-empty-state">
+                <h3>No pending beta requests</h3>
+                <p>New access requests and pending profile rows will appear here.</p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="beta-users-section">
+          <div className="compact-card-header">
+            <div>
+              <h4>Approved and invited beta users</h4>
+              <p>Searchable user list with access state, invite source, and recent activity.</p>
+            </div>
+            <span className="status-badge">{filteredBetaUsers.length} shown</span>
+          </div>
+          <div className="beta-users-list">
+            {filteredBetaUsers.length ? filteredBetaUsers.map((entry) => {
+              const counts = betaUserActivityCounts(entry);
+              return (
+                <article className="beta-user-row-card beta-user-click-card" key={entry.key || entry.userId || entry.email}>
+                  <button type="button" className="beta-user-row-main" onClick={() => setSelectedBetaUserId(entry.userId || entry.email || entry.key)}>
+                    <div>
+                      <strong>{entry.displayName || entry.fullName || "Beta user"}</strong>
+                      <p>{maskEmail(entry.email)} | {entry.username || entry.publicUsername || "No username"}</p>
+                      <small>{entry.inviteSource} | Joined {entry.createdAt ? shortDate(entry.createdAt) : "date unavailable"} | Last active {entry.lastActiveAt ? shortDate(entry.lastActiveAt) : "unavailable"}</small>
+                    </div>
+                    <span className={`status-badge ${entry.accessStatus}`}>{entry.isAdmin ? "admin" : statusLabel(entry.accessStatus)}</span>
+                  </button>
+                  <div className="detail-grid compact-detail-grid">
+                    <DetailItem label="App access" value={entry.accessAllowed ? "Allowed" : "Blocked"} />
+                    <DetailItem label="Scout reports" value={String(counts.scout)} />
+                    <DetailItem label="Vault/Forge adds" value={String(counts.inventory)} />
+                    <DetailItem label="Market/watch" value={String(counts.market)} />
+                    <DetailItem label="Ask Ember" value={String(counts.assist)} />
+                    <DetailItem label="Admin notes" value={String(entry.matchingNotes.length)} />
+                  </div>
+                  <div className="quick-actions">
+                    <button type="button" className="secondary-button" onClick={() => setSelectedBetaUserId(entry.userId || entry.email || entry.key)}>Open details</button>
+                    {entry.backendProfileRow ? <button type="button" className="ghost-button" disabled={entry.isAdmin} onClick={() => void updateExistingBetaUserAccess(entry, "denied")}>Revoke beta access</button> : null}
+                    <button type="button" className="ghost-button" onClick={() => {
+                      setAdminBetaInviteForm((current) => ({
+                        ...current,
+                        recipientName: entry.displayName || entry.fullName || "",
+                        recipientEmail: entry.email || "",
+                      }));
+                      setVaultToast("Invite form prefilled below. Create a new one-time invite if needed.");
+                    }}>Create new invite</button>
+                  </div>
+                </article>
+              );
+            }) : (
+              <div className="empty-state compact-empty-state">
+                <h3>No beta users match this view</h3>
+                <p>Try another filter or search term.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="beta-users-section beta-invite-tracking">
+          <div className="compact-card-header">
+            <div>
+              <h4>Invite tracking</h4>
+              <p>Invite history never exposes plaintext tokens or token hashes. Copy is only available for the just-created invite link.</p>
+            </div>
+            <span className="status-badge">{inviteRows.length} invites</span>
+          </div>
+          {renderAdminBetaInviteManagement()}
+        </section>
+
+        {selectedBetaUser ? (
+          <div className="location-modal-backdrop" role="presentation" onClick={() => setSelectedBetaUserId("")}>
+            <section className="location-modal beta-user-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="beta-user-detail-title" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <p>Beta user detail</p>
+                  <h2 id="beta-user-detail-title">{selectedBetaUser.displayName || selectedBetaUser.fullName || "Beta user"}</h2>
+                </div>
+                <button type="button" className="modal-close-button" aria-label="Close beta user detail" onClick={() => setSelectedBetaUserId("")}>X</button>
+              </div>
+              <div className="detail-grid compact-detail-grid">
+                <DetailItem label="Email" value={maskEmail(selectedBetaUser.email)} />
+                <DetailItem label="Username" value={selectedBetaUser.username || selectedBetaUser.publicUsername || "Not set"} />
+                <DetailItem label="Beta status" value={statusLabel(selectedBetaUser.accessStatus)} />
+                <DetailItem label="App access" value={selectedBetaUser.accessAllowed ? "Allowed" : "Blocked"} />
+                <DetailItem label="Joined" value={selectedBetaUser.createdAt ? shortDate(selectedBetaUser.createdAt) : "Unavailable"} />
+                <DetailItem label="Last active" value={selectedBetaUser.lastActiveAt ? shortDate(selectedBetaUser.lastActiveAt) : "Unavailable"} />
+                <DetailItem label="Invite source" value={selectedBetaUser.inviteSource} />
+                <DetailItem label="Source rows" value={selectedBetaUser.source || "Profile"} />
+              </div>
+              {selectedBetaUser.latestRequest ? (
+                <div className="drawer-info-card">
+                  <strong>Beta request</strong>
+                  <p>{selectedBetaUser.latestRequest.reason || selectedBetaUser.latestRequest.message || "No request message."}</p>
+                  <small>{selectedBetaUser.latestRequest.createdAt ? shortDate(selectedBetaUser.latestRequest.createdAt) : "No request date"} | {statusLabel(selectedBetaUser.latestRequest.status)}</small>
+                </div>
+              ) : null}
+              {selectedBetaUser.matchingInvites.length ? (
+                <div className="drawer-info-card">
+                  <strong>Invite info</strong>
+                  {selectedBetaUser.matchingInvites.slice(0, 3).map((invite) => (
+                    <p key={invite.id}>{invite.recipientName || "Invite"} | {invite.status} | Created {invite.createdAt ? shortDate(invite.createdAt) : "date unavailable"} | Claimed {invite.claimedAt ? shortDate(invite.claimedAt) : "no"}</p>
+                  ))}
+                </div>
+              ) : null}
+              <section className="beta-user-activity-panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>Activity summary</h3>
+                    <p>Recent app activity is based on the optional app_activity_events table.</p>
+                  </div>
+                  <span className="status-badge">{selectedBetaUser.matchingActivities.length} events</span>
+                </div>
+                <div className="beta-user-activity-list">
+                  {selectedBetaUser.matchingActivities.length ? selectedBetaUser.matchingActivities.slice(0, 12).map((event) => (
+                    <article key={event.id}>
+                      <strong>{activityLabel(event.eventType)}</strong>
+                      <span>{event.createdAt ? shortDate(event.createdAt) : "No date"} | {event.eventContext || "app"}</span>
+                    </article>
+                  )) : (
+                    <p className="compact-subtitle">No activity events yet.</p>
+                  )}
+                </div>
+              </section>
+              <section className="beta-user-activity-panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>Admin notes</h3>
+                    <p>Private notes are admin-only and never shown to beta users.</p>
+                  </div>
+                  <span className="status-badge">{selectedBetaUser.matchingNotes.length} notes</span>
+                </div>
+                <div className="beta-user-activity-list">
+                  {selectedBetaUser.matchingNotes.length ? selectedBetaUser.matchingNotes.map((note) => (
+                    <article key={note.id}>
+                      <strong>{note.createdAt ? shortDate(note.createdAt) : "Admin note"}</strong>
+                      <span>{note.note}</span>
+                    </article>
+                  )) : <p className="compact-subtitle">No admin notes yet.</p>}
+                </div>
+                {selectedBetaUser.userId ? (
+                  <div className="beta-user-note-composer">
+                    <textarea value={betaAdminNoteDraft} onChange={(event) => setBetaAdminNoteDraft(event.target.value)} placeholder="Add a private admin note" />
+                    <button type="button" className="secondary-button" disabled={betaAdminNoteSaving} onClick={() => void handleCreateBetaAdminNote(selectedBetaUser.userId, selectedBetaUser.latestRequest?.id || "")}>{betaAdminNoteSaving ? "Saving..." : "Save note"}</button>
+                  </div>
+                ) : (
+                  <p className="compact-subtitle">Backend notes require a signed-up user profile id.</p>
+                )}
+              </section>
+            </section>
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   function renderAdminBetaInviteManagement() {
-    if (!adminToolsVisible) return null;
+    if (!betaAdminVisible) return null;
     const createdInviteLink = adminBetaInviteCreated ? betaInviteLinkForCreatedInvite(adminBetaInviteCreated) : "";
     const inviteRows = shorelineState.adminBetaInvites || [];
     const activeInviteCount = inviteRows.filter((invite) => invite.status === "active").length;
@@ -30434,8 +31439,180 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderRoleManagementSection() {
+    if (!roleManagementVisible) return null;
+    const actorProfile = { ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole };
+    const roleRows = (shorelineState.roleManagementUsers || []).map((entry) => {
+      const appRole = normalizeAppRole(entry.appRole || entry.app_role || entry.userRole);
+      return {
+        ...entry,
+        appRole,
+        app_role: appRole,
+        protectedOfficialAdmin: Boolean(entry.protectedOfficialAdmin || entry.protected_official_admin || isOfficialAdminProfile(entry)),
+      };
+    });
+    const searchText = roleManagementSearch.trim().toLowerCase();
+    const visibleRoleRows = roleRows.filter((entry) => {
+      const haystack = `${entry.displayName || ""} ${entry.fullName || ""} ${entry.username || ""} ${entry.publicUsername || ""} ${entry.email || ""} ${entry.appRole || ""} ${entry.betaAccessStatus || ""}`.toLowerCase();
+      return (!searchText || haystack.includes(searchText)) && roleFilterMatches(entry, roleManagementFilter);
+    });
+    const roleCounts = {
+      owner: roleRows.filter((entry) => entry.appRole === APP_ROLES.OWNER).length,
+      admin: roleRows.filter((entry) => entry.appRole === APP_ROLES.ADMIN).length,
+      moderator: roleRows.filter((entry) => entry.appRole === APP_ROLES.MODERATOR).length,
+      betaUser: roleRows.filter((entry) => entry.appRole === APP_ROLES.BETA_USER).length,
+      user: roleRows.filter((entry) => entry.appRole === APP_ROLES.USER).length,
+    };
+    const assignableRoles = isOwner(actorProfile)
+      ? [APP_ROLES.USER, APP_ROLES.BETA_USER, APP_ROLES.MODERATOR, APP_ROLES.ADMIN, APP_ROLES.OWNER]
+      : [APP_ROLES.USER, APP_ROLES.BETA_USER, APP_ROLES.MODERATOR];
+
+    return (
+      <section className="settings-subsection role-management-panel" aria-label="Role Management">
+        <div className="compact-card-header">
+          <div>
+            <h3>Role Management</h3>
+            <p>Owner/admin-only controls for assigning beta users, moderators, admins, and owners. Role changes are handled by secure Supabase RPCs and logged.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={() => void refreshRoleManagementData(roleManagementSearch)}>Refresh roles</button>
+        </div>
+        {shorelineState.roleManagementMessage ? (
+          <div className="empty-state compact-empty-state">
+            <h3>Role backend setup needed</h3>
+            <p>{shorelineState.roleManagementMessage}</p>
+          </div>
+        ) : null}
+        {shorelineState.roleManagementError ? <p className="auth-status-message error" role="alert">{shorelineState.roleManagementError}</p> : null}
+        <div className="role-management-overview">
+          <article><span>Owners</span><strong>{roleCounts.owner}</strong></article>
+          <article><span>Admins</span><strong>{roleCounts.admin}</strong></article>
+          <article><span>Moderators</span><strong>{roleCounts.moderator}</strong></article>
+          <article><span>Beta users</span><strong>{roleCounts.betaUser}</strong></article>
+          <article><span>Users</span><strong>{roleCounts.user}</strong></article>
+        </div>
+        <div className="beta-users-toolbar">
+          <input value={roleManagementSearch} onChange={(event) => setRoleManagementSearch(event.target.value)} placeholder="Search users by name, username, or email" />
+          <div className="segmented-control" role="tablist" aria-label="Role filters">
+            {ROLE_FILTERS.map((filter) => (
+              <button
+                type="button"
+                key={filter}
+                className={roleManagementFilter === filter ? "active" : ""}
+                onClick={() => setRoleManagementFilter(filter)}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="role-warning">
+          Admins can assign moderator, beta user, and user roles. Only owners can assign owner/admin roles. Self role changes and the last owner/admin downgrade are blocked server-side.
+        </p>
+        <div className="role-management-user-grid">
+          {visibleRoleRows.length ? visibleRoleRows.map((entry) => {
+            const currentRole = normalizeAppRole(entry.appRole || entry.app_role);
+            return (
+              <article className="role-user-card" key={entry.userId || entry.email}>
+                <div className="role-user-card-main">
+                  <div>
+                    <strong>{entry.displayName || entry.fullName || entry.email || "User"}</strong>
+                    <p>{maskEmail(entry.email)} | {entry.username || entry.publicUsername || "No username"}</p>
+                    <small>Joined {entry.createdAt ? shortDate(entry.createdAt) : "date unavailable"} | Last active {entry.lastActiveAt || entry.lastSeenAt ? shortDate(entry.lastActiveAt || entry.lastSeenAt) : "unavailable"}</small>
+                  </div>
+                  <span className={`status-badge ${currentRole}`}>{roleLabel(currentRole)}</span>
+                </div>
+                <div className="detail-grid compact-detail-grid">
+                  <DetailItem label="Beta access" value={entry.appAccess ? "Allowed" : statusLabel(entry.betaAccessStatus || entry.beta_status)} />
+                  <DetailItem label="App access" value={entry.appAccess ? "true" : "false"} />
+                  <DetailItem label="Protected admin" value={entry.protectedOfficialAdmin ? "Yes" : "No"} />
+                  <DetailItem label="Plan" value={entry.planTier || entry.tier || "free"} />
+                </div>
+                <div className="role-action-grid">
+                  {assignableRoles.map((nextRole) => {
+                    const disabled = nextRole === currentRole || !canAssignAppRole(actorProfile, entry, nextRole) || (entry.protectedOfficialAdmin && !isOwner(actorProfile));
+                    return (
+                      <button
+                        type="button"
+                        className={nextRole === APP_ROLES.ADMIN || nextRole === APP_ROLES.OWNER ? "delete-button" : "secondary-button"}
+                        key={nextRole}
+                        disabled={disabled}
+                        onClick={() => openRoleChangeConfirmation(entry, nextRole)}
+                      >
+                        Make {roleLabel(nextRole)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          }) : (
+            <div className="empty-state compact-empty-state">
+              <h3>No role users match this view</h3>
+              <p>{shorelineState.roleManagementUsersReady ? "Try another search or filter." : "Apply the role management migration to load live users."}</p>
+            </div>
+          )}
+        </div>
+        <section className="role-audit-panel">
+          <div className="compact-card-header">
+            <div>
+              <h4>Recent role changes</h4>
+              <p>Audit log entries are admin-only and do not expose protected app data.</p>
+            </div>
+            <span className="status-badge">{(shorelineState.roleAuditLog || []).length} entries</span>
+          </div>
+          <div className="admin-compact-list">
+            {(shorelineState.roleAuditLog || []).slice(0, 8).map((entry) => (
+              <article className="admin-compact-row" key={entry.id}>
+                <div>
+                  <strong>{maskEmail(entry.targetEmail) || "User role changed"}</strong>
+                  <p>{roleLabel(entry.oldRole)} to {roleLabel(entry.newRole)} | {entry.createdAt ? shortDate(entry.createdAt) : "No date"}</p>
+                </div>
+                <span className="status-badge">{entry.reason || "role change"}</span>
+              </article>
+            ))}
+            {!(shorelineState.roleAuditLog || []).length ? (
+              <div className="small-empty-state"><strong>No role changes logged yet</strong><span>Role changes made through the secure RPC will appear here.</span></div>
+            ) : null}
+          </div>
+        </section>
+        {roleChangeTarget ? (
+          <div className="location-modal-backdrop" role="presentation" onClick={() => setRoleChangeTarget(null)}>
+            <section className="location-modal role-change-modal" role="dialog" aria-modal="true" aria-labelledby="role-change-title" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <p>Confirm role change</p>
+                  <h2 id="role-change-title">{roleChangeTarget.displayName || roleChangeTarget.email || "User"}</h2>
+                </div>
+                <button type="button" className="modal-close-button" aria-label="Close role confirmation" onClick={() => setRoleChangeTarget(null)}>X</button>
+              </div>
+              <p className="compact-subtitle">
+                Change this user from {roleLabel(roleChangeTarget.appRole)} to {roleLabel(roleChangeRole)}. This does not grant seller access, paid tier, or private workspace data by itself.
+              </p>
+              {roleChangeRole === APP_ROLES.ADMIN || roleChangeRole === APP_ROLES.OWNER ? (
+                <p className="role-warning">Admin and owner promotion is sensitive. Confirm the user is an official Ember & Tide operator before continuing.</p>
+              ) : null}
+              {roleChangeTarget.protectedOfficialAdmin ? (
+                <p className="role-warning">This looks like official admin Ember/Tide. Only owners should change this role.</p>
+              ) : null}
+              <Field label="Reason optional">
+                <textarea value={roleChangeReason} onChange={(event) => setRoleChangeReason(event.target.value)} placeholder="Why is this role changing?" />
+              </Field>
+              <div className="quick-actions">
+                <button type="button" className="ember-gradient-button" disabled={roleChangeSaving} onClick={() => void confirmRoleChange()}>
+                  {roleChangeSaving ? "Saving..." : `Confirm ${roleLabel(roleChangeRole)}`}
+                </button>
+                <button type="button" className="secondary-button" onClick={() => setRoleChangeTarget(null)}>Cancel</button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   function renderBetaAdminReviewQueues() {
-    if (!adminToolsVisible) return null;
+    if (!betaAdminVisible) return null;
+    const showBetaUsers = adminReviewFilter === "Beta Users";
     const showBetaAccess = adminReviewFilter === "All" || adminReviewFilter === "Beta Access";
     const showKids = adminReviewFilter === "All" || adminReviewFilter === "Kids Program Applications";
     const showSponsor = adminReviewFilter === "All" || adminReviewFilter === "Sponsor Interest";
@@ -30489,6 +31666,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     });
     return (
       <>
+        {showBetaUsers ? renderBetaUsersDashboard() : null}
         {(showUserManagement || showBetaAccess) ? renderAdminBetaInviteManagement() : null}
         {showUserManagement ? (
           <section className="settings-subsection beta-review-queue">
@@ -31345,6 +32523,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ...(shorelineState.adminBetaRequests || []).filter((entry) => ["pending", "waitlist"].includes(entry.status || "pending")),
       ...(betaReadinessData.betaAccessUsers || []).filter((entry) => ["pending", "paused"].includes(entry.status || "pending")),
     ];
+    const approvedBetaUserCount = (shorelineState.adminProfileUsers || []).filter((entry) => !entry.isAdmin && betaAccessAllowedForProfile(entry)).length;
+    const betaInviteClaimCount = (shorelineState.adminBetaInvites || []).filter((invite) => invite.claimedAt || invite.status === "claimed").length;
+    const roleManagementCount = (shorelineState.roleManagementUsers || []).length;
     const kidsApplications = [...(shorelineState.adminLittleSparksApplications || []), ...(betaReadinessData.kidsApplications || [])];
     const sponsorRows = betaReadinessData.sponsorInterest || [];
     const auditLogs = betaReadinessData.auditLogs || [];
@@ -31354,6 +32535,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const catalogCorrectionCount = suggestions.filter((suggestion) => ["Catalog Suggestions", "SKU / UPC Suggestions", "Store Suggestions"].includes(REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)])).length;
     const adminQueueRows = [
       { key: "command", title: "Trust command center", count: commandSummary.totalOpen, priority: commandSummary.totalOpen ? "Needs review" : "Clear", submittedBy: "App queues", details: "Scout, guesses, shops, Assist messages, and user issues.", filter: "Trust Command Center" },
+      { key: "roles", title: "Role management", count: roleManagementCount, priority: roleManagementVisible ? "Protected" : "Locked", submittedBy: "Profiles", details: "Assign admins, moderators, beta users, and users through secure role RPCs.", filter: "Role Management" },
+      { key: "beta-users", title: "Beta users dashboard", count: approvedBetaUserCount + betaRequests.length, priority: betaRequests.length ? "Access review" : "Track", submittedBy: "Profiles/invites", details: "Track pending, approved, invited, joined, and active beta users.", filter: "Beta Users" },
       { key: "beta", title: "Beta access requests", count: betaRequests.length, priority: betaRequests.length ? "Today" : "Clear", submittedBy: "Applicants", details: "Approve, waitlist, pause, or deny app access.", filter: "Beta Access" },
       { key: "kids", title: "Kids Program requests", count: kidsApplications.filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending_review")).length, priority: kidsApplications.length ? "High privacy" : "Clear", submittedBy: "Parents/guardians", details: "Private family requests. No child details are public.", filter: "Kids Program Applications" },
       { key: "scout", title: "Scout reports needing verification", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "High" : "Clear", submittedBy: "Scout reporters", details: "Confirm, reject, duplicate, stale, or route to review.", filter: "Scout Report Moderation" },
@@ -31380,7 +32563,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Marketplace", value: listingReviewItems.length, helper: "Listings, reports, fair trade review", filter: "Marketplace Listings" },
       { title: "Memberships / Billing", value: subscriptionProfile?.subscriptionPlan || "free", helper: "Modeled membership status only", filter: "Memberships / Billing" },
       { title: "Shops / Seller Verification", value: sponsorRows.length + shopWorkspaces.length, helper: "Card shops, sponsors, sellers", filter: "Shops / Seller Verification" },
+      { title: "Beta Users", value: approvedBetaUserCount || betaInviteClaimCount || betaRequests.length, helper: "Requests, invites, joined users", filter: "Beta Users" },
       { title: "Beta Access", value: betaRequests.length, helper: "Invite/waitlist approvals", filter: "Beta Access" },
+      { title: "Role Management", value: roleManagementCount || "Secure", helper: "Owners/admins assign roles", filter: "Role Management" },
       { title: "App Content / Admin Edit", value: adminEditModeActive ? "On" : "Off", helper: "Safe edit mode and content review", filter: "App Content / Admin Edit" },
       { title: "System Health / Logs", value: (betaReadinessData.appErrorLogs || []).length + auditLogs.length, helper: "Client errors and admin audit log", filter: "System Health / Logs" },
     ];
@@ -31434,6 +32619,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {(adminReviewFilter === "All" || adminReviewFilter === "Trust Command Center" || adminReviewFilter === "Community Guess Review") ? renderAdminCommunityGuessQueue() : null}
           {(adminReviewFilter === "All" || adminReviewFilter === "Trust Command Center" || adminReviewFilter === "Family-Friendly Shop Review") ? renderAdminShopReviewQueue() : null}
           {renderAdminTidepoolModerationQueue()}
+          {(adminReviewFilter === "All" || adminReviewFilter === "Role Management") ? renderRoleManagementSection() : null}
           {renderAdminStoreManagementSection()}
           {renderAdminAnnouncementSection()}
           <section className="settings-subsection admin-ops-section">
@@ -31512,6 +32698,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </>
       );
     }
+    if (moderatorToolsVisible && !betaAdminVisible) {
+      const moderatorSections = ["All", "Reports & Moderation", "Scout Report Moderation", "Community Guess Review", REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox"];
+      return (
+        <>
+          <PageHeader
+            className={getHeaderCardClass("panel admin-page-header")}
+            title="Moderator Command Center"
+            subtitle="Limited moderation tools for Scout reports, community guesses, flagged content, and support messages."
+            actions={<span className="status-badge">Moderator</span>}
+            tabs={moderatorSections.map((section) => ({ key: section, label: section }))}
+            activeTab={moderatorSections.includes(adminReviewFilter) ? adminReviewFilter : "All"}
+            onTabChange={setAdminReviewFilter}
+          />
+          <section className="panel approval-page">
+            <div className="drawer-info-card">
+              <strong>Limited moderator access</strong>
+              <p className="compact-subtitle">Moderators can review reports and support messages. Beta approvals, invites, role management, seller data, and admin-only queues stay hidden.</p>
+            </div>
+            {renderAdminScoutReportQueue()}
+            {renderAdminCommunityGuessQueue()}
+            {renderAdminTidepoolModerationQueue()}
+            {renderEmberAssistAdminInbox()}
+          </section>
+        </>
+      );
+    }
     const sections = [...new Set([
       "All",
       ...ADMIN_COMMAND_CENTER_FILTERS.filter((section) => section !== "All"),
@@ -31521,7 +32733,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Family / Kid Accounts",
       "Memberships / Billing",
       "Shops / Seller Verification",
+      "Beta Users",
       "Beta Access",
+      "Role Management",
       "App Content / Admin Edit",
       "System Health / Logs",
       ...Object.values(REVIEW_SECTION_LABELS),
@@ -31544,7 +32758,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const totalOpenCount = openCount + listingReviewItems.length + trustOpenCount;
     const pagedVisibleSuggestions = getPagedItems(visibleSuggestions, adminReviewPage, LONG_LIST_PAGE_SIZE);
     const pagedListingReviewItems = getPagedItems(listingReviewItems, marketplaceReviewPage, LONG_LIST_PAGE_SIZE);
-    const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Community Guess Review", "Family-Friendly Shop Review", "Store Management"]);
+    const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Community Guess Review", "Family-Friendly Shop Review", "Store Management", "Beta Users", "Role Management"]);
     return (
       <>
       <PageHeader
@@ -36168,9 +37382,92 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderWorkspaceInviteClaimPage({ signedOut = false } = {}) {
+    const inviteIdPresent = Boolean(String(workspaceInviteId || getStoredWorkspaceInviteId() || "").trim());
+    const claiming = workspaceInviteClaimState.status === "claiming";
+    const success = workspaceInviteClaimState.status === "success";
+    const failed = workspaceInviteClaimState.status === "error";
+    const title = signedOut
+      ? "You're invited to a workspace"
+      : success
+        ? "Workspace invite accepted"
+        : failed
+          ? "We could not accept this workspace invite"
+          : "You're invited to a workspace";
+    const body = signedOut
+      ? "Log in or create your account with the invited email address to join this workspace."
+      : success
+        ? "The workspace has been added to your account. You can switch to it from Settings."
+        : failed
+          ? workspaceInviteClaimState.error
+          : "We are checking this workspace invite against the secure workspace backend.";
+
+    return (
+      <section className="signed-out-landing panel beta-invite-panel">
+        <div className="landing-hero">
+          <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
+          <p className="section-kicker">Workspace invite</p>
+          <h2>{title}</h2>
+          <p>{body}</p>
+          {inviteIdPresent ? (
+            <p className="auth-landing-note">Workspace invites only work for the email address the admin invited.</p>
+          ) : (
+            <p className="auth-landing-note">This invite link is missing an invite id. Ask the workspace admin for a new link.</p>
+          )}
+          {claiming ? <div className="route-loading-card"><span className="route-loading-spinner" aria-hidden="true" />Checking invite...</div> : null}
+          {success ? (
+            <div className="quick-actions auth-choice-row">
+              <button
+                type="button"
+                className="ember-gradient-button auth-choice-button"
+                onClick={() => {
+                  setWorkspaceInviteId("");
+                  setActiveTab("dashboard");
+                }}
+              >
+                Open Ember & Tide
+              </button>
+              <button type="button" className="secondary-button auth-choice-button" onClick={() => setActiveTab("menu")}>
+                Open Settings
+              </button>
+            </div>
+          ) : null}
+          {signedOut ? (
+            <div className="quick-actions auth-choice-row">
+              <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
+              <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create Account</button>
+            </div>
+          ) : null}
+          {failed ? (
+            <div className="quick-actions auth-choice-row">
+              <button
+                type="button"
+                className="ember-gradient-button auth-choice-button"
+                onClick={() => {
+                  workspaceInviteClaimInFlightRef.current = "";
+                  setWorkspaceInviteClaimState({ status: "idle", message: "", error: "", result: null });
+                  setWorkspaceInviteClaimAttempt((current) => current + 1);
+                }}
+              >
+                Try Again
+              </button>
+              <button type="button" className="secondary-button auth-choice-button" onClick={() => { setWorkspaceInviteId(""); storeWorkspaceInviteId(""); setActiveTab("dashboard"); }}>
+                Back to Ember & Tide
+              </button>
+              <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
+            </div>
+          ) : null}
+          {workspaceInviteClaimState.message ? <p className="auth-status-message success" role="status">{workspaceInviteClaimState.message}</p> : null}
+          {!signedOut && workspaceInviteClaimState.error ? <p className="auth-status-message error" role="alert">{workspaceInviteClaimState.error}</p> : null}
+        </div>
+      </section>
+    );
+  }
+
   if (!user && !guestPreviewActive) {
     const signedOutPublicContent = (() => {
       if (activeTab === "invite") return renderBetaInviteClaimPage({ signedOut: true });
+      if (activeTab === "workspaceInvite") return renderWorkspaceInviteClaimPage({ signedOut: true });
       if (activeTab === "kidsProgram") return renderKidsProgramPage();
       if (activeTab === "sponsor") return renderSponsorInterestPage();
       if (activeTab === "trust") return renderTrustPages();
@@ -37560,6 +38857,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return String(a.name || "").localeCompare(String(b.name || ""));
     });
   const activeCollectionCount = workspaceSelectorOptions.length;
+  const selectedInviteWorkspace = workspaces.find((workspace) => String(workspace.id) === String(workspaceInviteForm.workspaceId)) || activeWorkspace;
+  const canManageInviteWorkspace = selectedInviteWorkspace ? canManageWorkspaceId(selectedInviteWorkspace.id) : canManageActiveWorkspace;
   const workspaceDeleteCounts = workspaceDeleteTarget ? workspaceRecordCountsFor(workspaceDeleteTarget.id) : null;
   const workspaceArchiveCounts = workspaceArchiveTarget ? workspaceRecordCountsFor(workspaceArchiveTarget.id) : null;
   const settingsSellerModeActive = sellerModeEnabled(userType, dashboardPreset);
@@ -37656,6 +38955,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </header>
         <main className="main auth-main">
           {renderBetaInviteClaimPage({ signedOut: false })}
+        </main>
+        {vaultToast ? (
+          <div className="vault-toast" role="status">
+            <span>{vaultToast}</span>
+            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (activeTab === "workspaceInvite") {
+    return (
+      <div className="app app-invite">
+        <header className="header app-shell-header app-shell-header--full">
+          <h1>Ember &amp; Tide</h1>
+          <p>Workspace invite</p>
+        </header>
+        <main className="main auth-main">
+          {renderWorkspaceInviteClaimPage({ signedOut: false })}
         </main>
         {vaultToast ? (
           <div className="vault-toast" role="status">
@@ -38506,15 +39825,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <form className="drawer-info-card" onSubmit={sendWorkspaceInvite}>
                     <strong>Invite member by email</strong>
                     <p className="compact-subtitle">
-                      {canManageActiveWorkspace
-                        ? "Invite by email. They cannot see data until the invite is accepted. App Admin Mode does not grant workspace access."
+                      {canManageInviteWorkspace
+                        ? "Create a workspace invite. Email delivery is not connected yet, so copy and send the invite link after it is created."
                         : "You do not have permission to invite members in this workspace."}
                     </p>
                     <select
                       className="drawer-field"
                       value={workspaceInviteForm.workspaceId}
                       onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, workspaceId: event.target.value }))}
-                      disabled={!canManageActiveWorkspace}
+                      disabled={workspaceInviteSending}
                     >
                       {workspaceSelectorOptions.map((workspace) => (
                         <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
@@ -38526,13 +39845,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       value={workspaceInviteForm.email}
                       onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, email: event.target.value }))}
                       placeholder="member@example.com"
-                      disabled={!canManageActiveWorkspace}
+                      disabled={!canManageInviteWorkspace || workspaceInviteSending}
                     />
                     <select
                       className="drawer-field"
                       value={workspaceInviteForm.role}
                       onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, role: event.target.value }))}
-                      disabled={!canManageActiveWorkspace}
+                      disabled={!canManageInviteWorkspace || workspaceInviteSending}
                     >
                       {WORKSPACE_ROLES.filter((role) => role.value !== "owner").map((role) => (
                         <option key={role.value} value={role.value}>{role.label}</option>
@@ -38543,9 +39862,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       value={workspaceInviteForm.note}
                       onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, note: event.target.value }))}
                       placeholder="Optional note"
-                      disabled={!canManageActiveWorkspace}
+                      disabled={!canManageInviteWorkspace || workspaceInviteSending}
                     />
-                    <button type="submit" className="drawer-link" disabled={!canManageActiveWorkspace}>Send Invite</button>
+                    <button type="submit" className="drawer-link" disabled={!canManageInviteWorkspace || workspaceInviteSending}>
+                      {workspaceInviteSending ? "Creating..." : "Create Invite"}
+                    </button>
+                    {workspaceInviteDelivery ? (
+                      <div className="workspace-invite-delivery" role="status">
+                        <strong>{workspaceInviteDelivery.emailSent ? "Email sent" : "Invite created"}</strong>
+                        <p className="compact-subtitle">
+                          {workspaceInviteDelivery.emailSent
+                            ? `Workspace invite email was sent to ${workspaceInviteDelivery.email}.`
+                            : "Email is not configured - copy and send this link to the invited person."}
+                        </p>
+                        <input className="drawer-field" value={workspaceInviteLinkForInvite(workspaceInviteDelivery)} readOnly onFocus={(event) => event.target.select()} aria-label="Workspace invite link" />
+                        <button type="button" className="drawer-link" onClick={() => copyWorkspaceInviteLink(workspaceInviteDelivery)}>
+                          Copy invite link
+                        </button>
+                      </div>
+                    ) : null}
                   </form>
 
                   <div className="drawer-info-card">
@@ -38574,9 +39909,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         <div className="workspace-member-row" key={invite.id}>
                           <span>
                             <strong>{invite.email}</strong>
-                            <small>{workspaces.find((workspace) => workspace.id === invite.workspaceId)?.name || "Workspace"} - {workspaceRoleLabel(invite.role)}</small>
+                            <small>
+                              {workspaces.find((workspace) => workspace.id === invite.workspaceId)?.name || "Workspace"} - {workspaceRoleLabel(invite.role)}
+                              {invite.emailSent ? " - Email sent" : " - Copy link"}
+                            </small>
                           </span>
-                          <button type="button" className="drawer-link" onClick={() => acceptWorkspaceInvite(invite.id)}>Accept locally</button>
+                          <button type="button" className="drawer-link" onClick={() => copyWorkspaceInviteLink(invite)}>Copy link</button>
+                          {BETA_LOCAL_MODE ? (
+                            <button type="button" className="drawer-link" onClick={() => acceptWorkspaceInvite(invite.id)}>Accept locally</button>
+                          ) : null}
                         </div>
                       ))}
                     </div>

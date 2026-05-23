@@ -9833,6 +9833,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 9px 10px;
   border: 1px solid var(--border-soft, rgba(15, 23, 42, 0.1));
@@ -9855,6 +9856,20 @@ textarea {
 .workspace-member-row small {
   color: var(--muted-text, #64748b);
   font-size: var(--text-meta, 0.78rem);
+}
+
+.workspace-invite-delivery {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(0, 194, 255, 0.24);
+  border-radius: 12px;
+  background: rgba(0, 194, 255, 0.08);
+  color: var(--color-heading, #f7fbff);
+}
+
+.workspace-invite-delivery .drawer-field {
+  font-size: 0.82rem;
 }
 
 .collection-manager-modal {
@@ -38190,6 +38205,315 @@ body,
   white-space: normal;
 }
 
+/* Focused Market mobile card cleanup. Keep after legacy catalog card rules. */
+.app .marketplace-section,
+.app-command-shell .marketplace-section,
+.app-shell-dark .marketplace-section {
+  padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+}
+
+.app .catalog-result-card.market-mobile-product-card,
+.app-command-shell .catalog-result-card.market-mobile-product-card,
+.app-shell-dark .catalog-result-card.market-mobile-product-card {
+  box-sizing: border-box;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.app .catalog-result-card.market-mobile-product-card .catalog-result-main,
+.app-command-shell .catalog-result-card.market-mobile-product-card .catalog-result-main,
+.app-shell-dark .catalog-result-card.market-mobile-product-card .catalog-result-main {
+  box-sizing: border-box;
+  grid-template-columns: 112px minmax(0, 1fr) !important;
+  grid-template-rows: auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.app .market-mobile-product-card .catalog-thumb,
+.app-command-shell .market-mobile-product-card .catalog-thumb,
+.app-shell-dark .market-mobile-product-card .catalog-thumb {
+  align-self: start;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  height: 112px !important;
+  max-height: 112px !important;
+  min-height: 112px !important;
+  min-width: 112px !important;
+  overflow: hidden;
+  width: 112px !important;
+}
+
+.app .market-mobile-product-card .catalog-thumb img,
+.app-command-shell .market-mobile-product-card .catalog-thumb img,
+.app-shell-dark .market-mobile-product-card .catalog-thumb img {
+  box-sizing: border-box;
+  display: block;
+  height: 100% !important;
+  max-height: 100% !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+  object-position: center;
+  width: 100% !important;
+}
+
+.app .market-mobile-product-card .image-needed-placeholder,
+.app-command-shell .market-mobile-product-card .image-needed-placeholder,
+.app-shell-dark .market-mobile-product-card .image-needed-placeholder {
+  align-items: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.12), transparent 6rem),
+    rgba(3, 10, 23, 0.84) !important;
+  border: 1px dashed rgba(124, 231, 255, 0.26);
+  border-radius: 12px;
+  color: rgba(232, 246, 255, 0.72) !important;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  padding: 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.app .market-mobile-product-card .image-needed-placeholder span,
+.app-command-shell .market-mobile-product-card .image-needed-placeholder span,
+.app-shell-dark .market-mobile-product-card .image-needed-placeholder span {
+  color: rgba(232, 246, 255, 0.78) !important;
+  font-size: 0.78rem !important;
+  font-weight: 850;
+}
+
+.app .market-mobile-product-card .market-card-body,
+.app-command-shell .market-mobile-product-card .market-card-body,
+.app-shell-dark .market-mobile-product-card .market-card-body {
+  align-content: start;
+  gap: 6px;
+  grid-template-rows: none !important;
+  min-width: 0;
+  overflow: hidden !important;
+}
+
+.app .market-mobile-product-card .market-card-title,
+.app-command-shell .market-mobile-product-card .market-card-title,
+.app-shell-dark .market-mobile-product-card .market-card-title {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere;
+}
+
+.app .market-mobile-product-card .market-card-context,
+.app .market-mobile-product-card .market-card-reference-line,
+.app-command-shell .market-mobile-product-card .market-card-context,
+.app-command-shell .market-mobile-product-card .market-card-reference-line,
+.app-shell-dark .market-mobile-product-card .market-card-context,
+.app-shell-dark .market-mobile-product-card .market-card-reference-line {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app .market-mobile-product-card .market-card-price-row,
+.app-command-shell .market-mobile-product-card .market-card-price-row,
+.app-shell-dark .market-mobile-product-card .market-card-price-row {
+  align-items: end;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.app .market-price-stack,
+.app-command-shell .market-price-stack,
+.app-shell-dark .market-price-stack {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.app .market-price-stack strong,
+.app-command-shell .market-price-stack strong,
+.app-shell-dark .market-price-stack strong {
+  color: #fff7ed !important;
+  font-size: 1.12rem !important;
+  line-height: 1.08;
+}
+
+.app .market-price-stack span,
+.app-command-shell .market-price-stack span,
+.app-shell-dark .market-price-stack span {
+  color: rgba(232, 246, 255, 0.7) !important;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.app .market-mobile-product-card .market-result-add-actions,
+.app-command-shell .market-mobile-product-card .market-result-add-actions,
+.app-shell-dark .market-mobile-product-card .market-result-add-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0;
+  min-width: 0;
+  position: static !important;
+}
+
+.app .market-mobile-product-card .market-result-add-actions button,
+.app-command-shell .market-mobile-product-card .market-result-add-actions button,
+.app-shell-dark .market-mobile-product-card .market-result-add-actions button {
+  flex: 1 1 132px;
+  min-height: 44px;
+  min-width: 0;
+  position: static !important;
+}
+
+.app .market-mobile-product-card .market-result-add-button,
+.app-command-shell .market-mobile-product-card .market-result-add-button,
+.app-shell-dark .market-mobile-product-card .market-result-add-button {
+  background: linear-gradient(135deg, #ffb74a, #f97316) !important;
+  border-color: rgba(255, 215, 128, 0.62) !important;
+  color: #1d0d04 !important;
+  font-weight: 950;
+  box-shadow: 0 12px 26px rgba(249, 115, 22, 0.26);
+}
+
+@media (max-width: 760px) {
+  .app .marketplace-section .catalog-results-grid,
+  .app-command-shell .marketplace-section .catalog-results-grid,
+  .app-shell-dark .marketplace-section .catalog-results-grid,
+  .app .tidetradr-results-panel .catalog-results-grid,
+  .app-command-shell .tidetradr-results-panel .catalog-results-grid,
+  .app-shell-dark .tidetradr-results-panel .catalog-results-grid,
+  .app .marketplace-section .catalog-result-group .catalog-results-list,
+  .app-command-shell .marketplace-section .catalog-result-group .catalog-results-list,
+  .app-shell-dark .marketplace-section .catalog-result-group .catalog-results-list,
+  .app .tidetradr-results-panel .catalog-result-group .catalog-results-list,
+  .app-command-shell .tidetradr-results-panel .catalog-result-group .catalog-results-list,
+  .app-shell-dark .tidetradr-results-panel .catalog-result-group .catalog-results-list {
+    display: grid !important;
+    gap: 12px !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .app .catalog-result-card.market-mobile-product-card,
+  .app-command-shell .catalog-result-card.market-mobile-product-card,
+  .app-shell-dark .catalog-result-card.market-mobile-product-card {
+    border-radius: 18px;
+    padding: 12px !important;
+  }
+
+  .app .catalog-result-card.market-mobile-product-card .catalog-result-main,
+  .app-command-shell .catalog-result-card.market-mobile-product-card .catalog-result-main,
+  .app-shell-dark .catalog-result-card.market-mobile-product-card .catalog-result-main {
+    gap: 12px !important;
+    grid-template-columns: 96px minmax(0, 1fr) !important;
+    padding: 0 !important;
+  }
+
+  .app .market-mobile-product-card .catalog-thumb,
+  .app-command-shell .market-mobile-product-card .catalog-thumb,
+  .app-shell-dark .market-mobile-product-card .catalog-thumb {
+    height: 96px !important;
+    max-height: 96px !important;
+    min-height: 96px !important;
+    min-width: 96px !important;
+    width: 96px !important;
+  }
+
+  .app .market-mobile-product-card .market-result-add-actions,
+  .app-command-shell .market-mobile-product-card .market-result-add-actions,
+  .app-shell-dark .market-mobile-product-card .market-result-add-actions {
+    padding-left: 108px;
+  }
+
+  .app .market-mobile-product-card .market-result-add-actions button,
+  .app-command-shell .market-mobile-product-card .market-result-add-actions button,
+  .app-shell-dark .market-mobile-product-card .market-result-add-actions button {
+    flex-basis: 112px;
+  }
+}
+
+@media (max-width: 380px) {
+  .app .market-mobile-product-card .market-result-add-actions,
+  .app-command-shell .market-mobile-product-card .market-result-add-actions,
+  .app-shell-dark .market-mobile-product-card .market-result-add-actions {
+    padding-left: 0;
+  }
+}
+
+/* Ask Ember should be a floating helper, not a mobile bottom bar. */
+.ember-assist-shell {
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  justify-items: end;
+  left: auto !important;
+  max-width: calc(100vw - 28px);
+  pointer-events: none;
+  right: 18px !important;
+  width: auto !important;
+}
+
+.ember-assist-fab {
+  border-radius: 999px !important;
+  height: 56px;
+  justify-content: center;
+  min-height: 56px !important;
+  min-width: 56px;
+  padding: 0 !important;
+  width: 56px;
+}
+
+.ember-assist-fab span {
+  height: 38px;
+  width: 38px;
+}
+
+.ember-assist-fab b {
+  display: none;
+}
+
+.ember-assist-shell.is-open .ember-assist-fab,
+.ember-assist-fab:hover,
+.ember-assist-fab:focus-visible {
+  gap: 0.45rem;
+  padding: 0 0.82rem !important;
+  width: auto;
+}
+
+.ember-assist-shell.is-open .ember-assist-fab b,
+.ember-assist-fab:hover b,
+.ember-assist-fab:focus-visible b {
+  display: inline;
+}
+
+.ember-assist-panel {
+  border-radius: 20px !important;
+  bottom: calc(64px + 0.75rem) !important;
+  left: auto !important;
+  max-height: min(68dvh, calc(100dvh - 150px));
+  right: 0 !important;
+  width: min(390px, calc(100vw - 24px)) !important;
+}
+
+@media (max-width: 640px) {
+  .ember-assist-shell {
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    left: auto !important;
+    right: 18px !important;
+    width: auto !important;
+  }
+
+  .ember-assist-panel {
+    bottom: calc(64px + 0.75rem) !important;
+    left: auto !important;
+    max-height: min(66dvh, calc(100dvh - 176px));
+    right: 0 !important;
+    width: min(360px, calc(100vw - 24px)) !important;
+  }
+}
+
 .tidetradr-shortcut-grid.quick-action-card-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(136px, 100%), 1fr));
   max-width: 100%;
@@ -38198,6 +38522,19 @@ body,
 
 .tidetradr-shortcut-grid.quick-action-card-grid > * {
   min-width: 0;
+}
+
+.app .drawer-info-card .workspace-invite-delivery {
+  border: 1px solid rgba(0, 194, 255, 0.26) !important;
+  background:
+    linear-gradient(145deg, rgba(0, 194, 255, 0.12), rgba(255, 111, 48, 0.08)),
+    rgba(5, 12, 28, 0.62) !important;
+  color: #f7fbff !important;
+}
+
+.app .drawer-info-card .workspace-invite-delivery strong,
+.app .drawer-info-card .workspace-invite-delivery p {
+  color: #f7fbff !important;
 }
 
 @media (max-width: 640px) {
@@ -38213,5 +38550,315 @@ body,
   .watch-calendar-layer-strip label,
   .watch-calendar-layer-strip button {
     min-width: 0 !important;
+  }
+}
+
+.beta-users-dashboard {
+  border: 1px solid rgba(0, 194, 255, 0.18);
+  background:
+    linear-gradient(145deg, rgba(255, 111, 48, 0.09), rgba(0, 194, 255, 0.08)),
+    rgba(5, 12, 28, 0.76);
+}
+
+.beta-users-overview-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+  margin: 1rem 0;
+}
+
+.beta-users-overview-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f7fbff;
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.9rem;
+}
+
+.beta-users-overview-card span,
+.beta-users-overview-card small {
+  color: rgba(247, 251, 255, 0.74);
+}
+
+.beta-users-overview-card strong {
+  color: #fff5dc;
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  line-height: 1.05;
+}
+
+.beta-users-toolbar {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.beta-users-toolbar input {
+  width: 100%;
+}
+
+.beta-users-section {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.beta-users-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.beta-user-row-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(3, 9, 22, 0.62);
+  color: #f7fbff;
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.9rem;
+}
+
+.beta-user-row-card strong,
+.beta-user-row-card p,
+.beta-user-row-card small {
+  color: inherit;
+  margin: 0;
+  min-width: 0;
+}
+
+.beta-user-row-card p,
+.beta-user-row-card small {
+  color: rgba(247, 251, 255, 0.74);
+}
+
+.beta-user-row-main {
+  align-items: flex-start;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.beta-user-row-main > div {
+  min-width: 0;
+}
+
+.beta-user-row-main strong,
+.beta-user-row-main p,
+.beta-user-row-main small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.beta-user-click-card:focus-within,
+.beta-user-click-card:hover {
+  border-color: rgba(255, 184, 90, 0.42);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+.beta-user-detail-drawer {
+  max-height: min(86dvh, 820px);
+  overflow-y: auto;
+}
+
+.beta-user-activity-panel {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.beta-user-activity-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.beta-user-activity-list article {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem;
+}
+
+.beta-user-activity-list strong,
+.beta-user-activity-list span {
+  color: #f7fbff;
+  overflow-wrap: anywhere;
+}
+
+.beta-user-activity-list span {
+  color: rgba(247, 251, 255, 0.72);
+}
+
+.beta-user-note-composer {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.beta-user-note-composer textarea {
+  min-height: 92px;
+}
+
+.beta-invite-tracking .beta-invite-management {
+  margin-top: 0;
+}
+
+.role-management-panel {
+  border: 1px solid rgba(255, 184, 90, 0.2);
+  background:
+    linear-gradient(145deg, rgba(255, 111, 48, 0.1), rgba(0, 194, 255, 0.06)),
+    rgba(4, 11, 26, 0.8);
+}
+
+.role-management-overview {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+  margin: 1rem 0;
+}
+
+.role-management-overview article,
+.role-user-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #f7fbff;
+  min-width: 0;
+  padding: 0.9rem;
+}
+
+.role-management-overview article {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.role-management-overview span,
+.role-user-card p,
+.role-user-card small,
+.role-warning {
+  color: rgba(247, 251, 255, 0.74);
+}
+
+.role-management-overview strong {
+  color: #fff5dc;
+  font-size: 1.4rem;
+  line-height: 1.05;
+}
+
+.role-management-user-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.role-user-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.role-user-card-main {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.role-user-card-main > div {
+  min-width: 0;
+}
+
+.role-user-card strong,
+.role-user-card p,
+.role-user-card small {
+  display: block;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.role-action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.role-action-grid button {
+  min-height: 40px;
+}
+
+.role-warning {
+  border-left: 3px solid #ffb85a;
+  margin: 0;
+  padding-left: 0.65rem;
+}
+
+.role-audit-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.role-change-modal {
+  max-height: min(86dvh, 680px);
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .beta-users-dashboard {
+    padding-inline: 0.85rem;
+  }
+
+  .beta-users-toolbar .segmented-control {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+  }
+
+  .beta-user-row-main {
+    display: grid;
+  }
+
+  .beta-user-row-card .quick-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .beta-user-detail-drawer {
+    border-radius: 18px 18px 0 0;
+    bottom: 0;
+    left: 0;
+    max-height: min(88dvh, calc(100dvh - 60px));
+    right: 0;
+    width: 100%;
+  }
+
+  .role-user-card-main {
+    display: grid;
+  }
+
+  .role-action-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .role-change-modal {
+    border-radius: 18px 18px 0 0;
+    bottom: 0;
+    left: 0;
+    max-height: min(88dvh, calc(100dvh - 60px));
+    right: 0;
+    width: 100%;
   }
 }

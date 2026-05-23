@@ -48,6 +48,8 @@ export const ADMIN_COMMAND_CENTER_FILTERS = [
   "Community Guess Review",
   "Ember Assist Inbox",
   "Family-Friendly Shop Review",
+  "Beta Users",
+  "Role Management",
   "User Issues",
   "System Health / Logs",
 ];

@@ -8,6 +8,7 @@ import {
   normalizeLittleSparksStatus,
   statusLabel,
 } from "../utils/betaAccessUtils.js";
+import { APP_ROLES, normalizeAppRole } from "../utils/rolePermissions.js";
 
 export {
   BETA_REQUEST_STATUSES,
@@ -70,6 +71,7 @@ function mapAdminBetaAccessProfile(row = {}) {
   if (!row) return null;
   const userId = row.user_id || row.userId || row.id || "";
   const userRole = row.user_role || row.userRole || "user";
+  const appRole = normalizeAppRole(row.app_role || row.appRole || row.role || userRole);
   const fullName = row.full_name || row.fullName || [row.first_name || row.firstName, row.last_name || row.lastName].filter(Boolean).join(" ");
   const displayName = row.display_name || row.displayName || fullName || row.email || "Beta user";
   const betaStatus = normalizeBetaStatus(row.beta_status || row.betaStatus || row.beta_access_status || row.betaAccessStatus);
@@ -82,8 +84,15 @@ function mapAdminBetaAccessProfile(row = {}) {
     lastName: row.last_name || row.lastName || "",
     fullName,
     displayName,
+    username: row.username || row.public_username || row.publicUsername || "",
+    publicUsername: row.public_username || row.publicUsername || row.username || "",
+    public_username: row.public_username || row.publicUsername || row.username || "",
+    appRole,
+    app_role: appRole,
     userRole,
-    isAdmin: ["admin", "moderator"].includes(String(userRole).toLowerCase()),
+    isAdmin: [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(appRole) || ["admin"].includes(String(userRole).toLowerCase()),
+    isModerator: appRole === APP_ROLES.MODERATOR || String(userRole).toLowerCase() === "moderator",
+    is_moderator: appRole === APP_ROLES.MODERATOR || String(userRole).toLowerCase() === "moderator",
     tier: row.tier || "free",
     planTier: row.plan_tier || row.planTier || row.tier || "free",
     betaStatus,
@@ -102,6 +111,36 @@ function mapAdminBetaAccessProfile(row = {}) {
     updatedAt: row.updated_at || row.updatedAt || "",
     lastSeenAt: row.last_seen_at || row.lastSeenAt || row.last_login_at || row.lastLoginAt || row.updated_at || "",
     source: "Supabase profile",
+  };
+}
+
+function mapRoleManagementUser(row = {}) {
+  if (!row) return null;
+  const base = mapAdminBetaAccessProfile(row) || {};
+  const appRole = normalizeAppRole(row.app_role || row.appRole || base.appRole || base.userRole);
+  return {
+    ...base,
+    appRole,
+    app_role: appRole,
+    role: appRole,
+    protectedOfficialAdmin: Boolean(row.protected_official_admin ?? row.protectedOfficialAdmin),
+    protected_official_admin: Boolean(row.protected_official_admin ?? row.protectedOfficialAdmin),
+    lastActiveAt: row.last_active_at || row.lastActiveAt || base.lastSeenAt || "",
+  };
+}
+
+function mapRoleAuditLog(row = {}) {
+  if (!row) return null;
+  return {
+    id: row.id || "",
+    targetUserId: row.target_user_id || row.targetUserId || "",
+    targetEmail: row.target_email || row.targetEmail || "",
+    changedBy: row.changed_by || row.changedBy || "",
+    changedByEmail: row.changed_by_email || row.changedByEmail || "",
+    oldRole: normalizeAppRole(row.old_role || row.oldRole),
+    newRole: normalizeAppRole(row.new_role || row.newRole),
+    reason: row.reason || "",
+    createdAt: row.created_at || row.createdAt || "",
   };
 }
 
@@ -148,12 +187,62 @@ function mapBetaInviteClaim(row = {}) {
   };
 }
 
+function mapAppActivityEvent(row = {}) {
+  if (!row) return null;
+  return {
+    id: row.id || "",
+    userId: row.user_id || row.userId || "",
+    eventType: row.event_type || row.eventType || "",
+    eventContext: row.event_context || row.eventContext || "",
+    entityType: row.entity_type || row.entityType || "",
+    entityId: row.entity_id || row.entityId || "",
+    metadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
+    createdAt: row.created_at || row.createdAt || "",
+  };
+}
+
+function mapBetaAdminNote(row = {}) {
+  if (!row) return null;
+  return {
+    id: row.id || "",
+    targetUserId: row.target_user_id || row.targetUserId || "",
+    betaRequestId: row.beta_request_id || row.betaRequestId || "",
+    note: row.note || "",
+    createdBy: row.created_by || row.createdBy || "",
+    createdAt: row.created_at || row.createdAt || "",
+  };
+}
+
 export function isMissingBetaInviteBackend(error) {
   const message = String(error?.message || error?.details || error || "");
   return Boolean(
     error?.code === "42883" ||
     error?.code === "PGRST202" ||
     /admin_create_beta_invite|admin_list_beta_invites|admin_revoke_beta_invite|claim_beta_invite|function.*does not exist|could not find/i.test(message)
+  );
+}
+
+export function isMissingBetaUsersBackend(error) {
+  const message = String(error?.message || error?.details || error || "");
+  return Boolean(
+    error?.code === "42P01" ||
+    error?.code === "42703" ||
+    error?.code === "PGRST200" ||
+    error?.code === "PGRST205" ||
+    /app_activity_events|beta_admin_notes|schema cache|could not find.*table|relation .* does not exist|does not exist/i.test(message)
+  );
+}
+
+export function isMissingRoleManagementBackend(error) {
+  const message = String(error?.message || error?.details || error || "");
+  return Boolean(
+    error?.code === "42P01" ||
+    error?.code === "42703" ||
+    error?.code === "42883" ||
+    error?.code === "PGRST200" ||
+    error?.code === "PGRST202" ||
+    error?.code === "PGRST205" ||
+    /app_role|role_audit_log|admin_list_users_for_roles|admin_update_user_role|schema cache|could not find|relation .* does not exist|does not exist/i.test(message)
   );
 }
 
@@ -315,6 +404,100 @@ export async function claimBetaInvite(inviteToken = "") {
   });
   if (error) throw error;
   return mapBetaInviteClaim(Array.isArray(data) ? data[0] : data);
+}
+
+export async function recordAppActivityEvent(user, payload = {}) {
+  if (!user?.id || !isSupabaseConfigured || !supabase) return null;
+  const eventType = String(payload.eventType || payload.event_type || "").trim();
+  if (!eventType) return null;
+  const row = {
+    user_id: user.id,
+    event_type: eventType,
+    event_context: String(payload.eventContext || payload.event_context || "").trim() || null,
+    entity_type: String(payload.entityType || payload.entity_type || "").trim() || null,
+    entity_id: String(payload.entityId || payload.entity_id || "").trim() || null,
+    metadata: payload.metadata && typeof payload.metadata === "object" ? payload.metadata : {},
+  };
+  const { data, error } = await supabase
+    .from("app_activity_events")
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+  return mapAppActivityEvent(data);
+}
+
+export async function loadAdminBetaActivityEvents() {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase
+    .from("app_activity_events")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return (data || []).map(mapAppActivityEvent);
+}
+
+export async function loadAdminBetaAdminNotes() {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase
+    .from("beta_admin_notes")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return (data || []).map(mapBetaAdminNote);
+}
+
+export async function createBetaAdminNote(payload = {}) {
+  if (!isSupabaseConfigured || !supabase) throw new Error("Supabase is not configured.");
+  const targetUserId = String(payload.targetUserId || payload.target_user_id || "").trim();
+  const note = String(payload.note || "").trim();
+  if (!targetUserId) throw new Error("Target user is required.");
+  if (!note) throw new Error("Admin note is required.");
+  const row = {
+    target_user_id: targetUserId,
+    beta_request_id: payload.betaRequestId || payload.beta_request_id || null,
+    note,
+  };
+  const { data, error } = await supabase
+    .from("beta_admin_notes")
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+  return mapBetaAdminNote(data);
+}
+
+export async function loadAdminRoleUsers(searchText = "") {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase.rpc("admin_list_users_for_roles", {
+    search_text: String(searchText || "").trim() || null,
+  });
+  if (error) throw error;
+  return (data || []).map(mapRoleManagementUser);
+}
+
+export async function updateAdminUserRole(targetUserId, newRole, reason = "") {
+  if (!targetUserId || !isSupabaseConfigured || !supabase) throw new Error("Target user is required.");
+  const { data, error } = await supabase.rpc("admin_update_user_role", {
+    target_user_id: targetUserId,
+    new_role: normalizeAppRole(newRole),
+    reason: String(reason || "").trim() || null,
+  });
+  if (error) throw error;
+  return mapRoleManagementUser(Array.isArray(data) ? data[0] : data);
+}
+
+export async function loadRoleAuditLog() {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase
+    .from("role_audit_log")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data || []).map(mapRoleAuditLog);
 }
 
 export async function loadShorelineAdminRequests() {

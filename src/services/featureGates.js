@@ -18,8 +18,10 @@ export const PLAN_TYPES = {
 };
 
 export const USER_ROLES = {
+  OWNER: "owner",
   ADMIN: "admin",
   MODERATOR: "moderator",
+  BETA_USER: "beta_user",
   TRUSTED_SCOUT: "trusted_scout",
   USER: "user",
 };
@@ -300,6 +302,8 @@ export const PROTECTED_SUBSCRIPTION_FIELDS = [
   "feature_tier",
   "featureTier",
   "tier",
+  "app_role",
+  "appRole",
   "user_role",
   "userRole",
   "isAdmin",
@@ -333,7 +337,9 @@ export function normalizeTier(value) {
 }
 
 export function normalizeUserRole(value) {
-  const role = String(value || USER_ROLES.USER).toLowerCase();
+  const role = String(value || USER_ROLES.USER).toLowerCase().replace(/-/g, "_");
+  if (role === "super_admin" || role === "founder") return USER_ROLES.OWNER;
+  if (role === "beta" || role === "beta_tester") return USER_ROLES.BETA_USER;
   return Object.values(USER_ROLES).includes(role) ? role : USER_ROLES.USER;
 }
 
@@ -365,8 +371,12 @@ export function isBetaTester(profile = {}) {
 export function isAdminUser(profile = {}) {
   const appMetadata = profile.app_metadata || profile.raw_app_meta_data || profile.rawAppMetaData || {};
   const role = normalizeUserRole(
-    profile.userRole ||
+    profile.appRole ||
+      profile.app_role ||
+      profile.userRole ||
       profile.user_role ||
+      appMetadata.app_role ||
+      appMetadata.appRole ||
       appMetadata.role ||
       appMetadata.user_role
   );
@@ -381,7 +391,7 @@ export function isAdminUser(profile = {}) {
     metadataFlag(profile.is_admin) ||
     metadataFlag(appMetadata.is_admin) ||
     metadataFlag(appMetadata.isAdmin);
-  return role === USER_ROLES.ADMIN || metadataAdmin || tier === PLAN_IDS.ADMIN;
+  return role === USER_ROLES.OWNER || role === USER_ROLES.ADMIN || metadataAdmin || tier === PLAN_IDS.ADMIN;
 }
 
 export function canUseFeature(userPlan = PLAN_IDS.FREE, featureKey, options = {}) {

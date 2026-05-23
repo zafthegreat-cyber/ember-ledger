@@ -2,6 +2,7 @@ import { isSupabaseConfigured, supabase } from "../supabaseClient";
 import { PLAN_TYPES, USER_ROLES, normalizeTier, normalizeUserRole } from "../constants/plans";
 import { normalizeBetaStatus, normalizeLittleSparksStatus } from "../services/shorelineAccessService";
 import { publicUsernameFromProfile } from "../utils/publicIdentity";
+import { APP_ROLES, appRoleForProfile } from "../utils/rolePermissions";
 
 const ADMIN_EMAILS = String(import.meta.env.VITE_ADMIN_EMAILS || import.meta.env.ADMIN_EMAILS || "")
   .split(",")
@@ -32,12 +33,13 @@ export function getSupabaseAuthMetadata(user = null) {
 
 export function getAdminAccessFromAuthMetadata(user = null) {
   const metadata = getSupabaseAuthMetadata(user);
-  const role = String(metadata.role || metadata.user_role || "").toLowerCase();
+  const role = normalizeUserRole(metadata.app_role || metadata.appRole || metadata.role || metadata.user_role || "");
   const tier = String(metadata.tier || metadata.feature_tier || metadata.subscription_plan || "").toLowerCase();
-  const admin = role === USER_ROLES.ADMIN || metadataFlag(metadata.is_admin) || metadataFlag(metadata.isAdmin) || tier === PLAN_TYPES.FOUNDER;
+  const admin = [USER_ROLES.OWNER, USER_ROLES.ADMIN].includes(role) || metadataFlag(metadata.is_admin) || metadataFlag(metadata.isAdmin) || tier === PLAN_TYPES.FOUNDER;
   return {
     admin,
-    userRole: admin ? USER_ROLES.ADMIN : normalizeUserRole(role),
+    userRole: admin ? USER_ROLES.ADMIN : role,
+    appRole: admin ? (role === USER_ROLES.OWNER ? APP_ROLES.OWNER : APP_ROLES.ADMIN) : appRoleForProfile({ app_role: metadata.app_role || metadata.appRole || role }),
     tier: admin ? PLAN_TYPES.FOUNDER : normalizeTier(tier),
   };
 }
@@ -79,6 +81,8 @@ export function makeFallbackUserProfile(user = null) {
     publicBio,
     public_bio: publicBio,
     bio: publicBio,
+    appRole: metadataAccess.appRole || (admin ? APP_ROLES.ADMIN : APP_ROLES.USER),
+    app_role: metadataAccess.appRole || (admin ? APP_ROLES.ADMIN : APP_ROLES.USER),
     userRole: admin ? USER_ROLES.ADMIN : USER_ROLES.USER,
     tier: admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE,
     planTier: metadata.plan_tier || metadata.planTier || (admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE),
@@ -117,8 +121,10 @@ export function mapProfileRow(row = {}, user = null) {
   const email = row.email || user?.email || "";
   const allowlisted = isAdminEmail(email);
   const metadataAccess = getAdminAccessFromAuthMetadata(user);
-  const admin = metadataAccess.admin || allowlisted;
-  const userRole = admin ? USER_ROLES.ADMIN : normalizeUserRole(row.user_role || row.userRole);
+  const rowAppRole = appRoleForProfile({ ...row, email, app_metadata: getSupabaseAuthMetadata(user) });
+  const admin = metadataAccess.admin || allowlisted || [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(rowAppRole);
+  const userRole = admin ? USER_ROLES.ADMIN : normalizeUserRole(row.user_role || row.userRole || rowAppRole);
+  const appRole = admin ? (rowAppRole === APP_ROLES.OWNER ? APP_ROLES.OWNER : APP_ROLES.ADMIN) : rowAppRole;
   const tier = admin ? PLAN_TYPES.FOUNDER : normalizeTier(row.tier);
   const firstName = row.first_name || row.firstName || "";
   const lastName = row.last_name || row.lastName || "";
@@ -154,6 +160,8 @@ export function mapProfileRow(row = {}, user = null) {
     publicBio,
     public_bio: publicBio,
     bio: publicBio,
+    appRole,
+    app_role: appRole,
     userRole,
     tier,
     planTier: row.plan_tier || row.planTier || row.tier || PLAN_TYPES.FREE,
@@ -176,7 +184,9 @@ export function mapProfileRow(row = {}, user = null) {
     onboardingCompletedAt: row.onboarding_completed_at || row.onboardingCompletedAt || "",
     onboardingPreferences: row.onboarding_preferences || row.onboardingPreferences || [],
     firstLoginSeen: Boolean(row.first_login_seen || row.firstLoginSeen),
-    isAdmin: userRole === USER_ROLES.ADMIN,
+    isAdmin: [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(appRole),
+    isModerator: appRole === APP_ROLES.MODERATOR,
+    is_moderator: appRole === APP_ROLES.MODERATOR,
     createdAt: row.created_at || row.createdAt || "",
     updatedAt: row.updated_at || row.updatedAt || "",
     lastLoginAt: row.last_login_at || row.lastLoginAt || "",
@@ -210,6 +220,7 @@ export async function createUserProfileIfMissing(user = null) {
     display_name: metadata.display_name || metadata.displayName || fullName || user.email?.split("@")[0] || "User",
     preferred_region: metadata.preferred_region || metadata.preferredRegion || "Hampton Roads / 757",
     user_role: USER_ROLES.USER,
+    app_role: APP_ROLES.USER,
     tier: PLAN_TYPES.FREE,
     plan_tier: PLAN_TYPES.FREE,
     subscription_status: "none",
