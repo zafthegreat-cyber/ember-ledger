@@ -11088,7 +11088,7 @@ export default function App() {
       setPhase2SyncStatus({
         source: "shoreline",
         kind: "access_pending",
-        label: "Shoreline access",
+        label: "Beta access",
         message: "Full app sync waits until beta access is approved.",
       });
       return undefined;
@@ -11759,8 +11759,8 @@ export default function App() {
         setAuthTermsAccepted(false);
         setAuthBetaAcknowledged(false);
       }
-      setAuthMessage(authMode === "signup" ? "Account created. Request access from the Shoreline screen." : "Signed in.");
-      setVaultToast(authMode === "signup" ? "Account created. Request access from the Shoreline screen." : "Signed in.");
+      setAuthMessage(authMode === "signup" ? "Account created. Request beta access from the welcome screen." : "Signed in.");
+      setVaultToast(authMode === "signup" ? "Account created. Request beta access from the welcome screen." : "Signed in.");
     } catch (error) {
       const message = normalizeAuthErrorMessage(error.message);
       setAuthError(message);
@@ -19797,7 +19797,7 @@ function renderForgeHeader() {
         setShorelineState((current) => ({ ...current, ...next, loading: false, error: "" }));
       } catch (error) {
         if (!active) return;
-        setShorelineState((current) => ({ ...current, loading: false, error: "Access request tables are not available yet. An admin needs to apply the Shoreline migration." }));
+        setShorelineState((current) => ({ ...current, loading: false, error: "We could not load access requests right now. Please try again or contact support." }));
         logAppError("shoreline_access_load", error, { userId: user.id }, "normal");
       }
     }
@@ -19806,6 +19806,28 @@ function renderForgeHeader() {
       active = false;
     };
   }, [user?.id, guestPreviewActive]);
+
+  async function refreshShorelineAccessStatus() {
+    if (!user?.id || user.id === "local-beta") return;
+    setShorelineState((current) => ({ ...current, loading: true, error: "", message: "" }));
+    try {
+      const next = await loadShorelineAccessState(user);
+      setShorelineState((current) => ({
+        ...current,
+        ...next,
+        loading: false,
+        error: "",
+        message: "Access status checked. If you were just approved, the full app will unlock after refresh or sign-in.",
+      }));
+    } catch (error) {
+      setShorelineState((current) => ({
+        ...current,
+        loading: false,
+        error: "We could not check your access right now. Please try again in a moment.",
+      }));
+      logAppError("shoreline_access_refresh", error, { userId: user.id }, "normal");
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -28106,7 +28128,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               )) : (
                 <div className="empty-state">
                   <h3>No beta requests yet</h3>
-                  <p>Signed-in users submit requests from the Shoreline Access screen.</p>
+                  <p>Signed-in users submit requests from the beta access welcome screen.</p>
                 </div>
               )}
             </div>
@@ -33505,6 +33527,16 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       if (activeTab === "knownLimitations") return renderKnownLimitationsPage();
       return null;
     })();
+    const chooseAuthMode = (nextMode) => {
+      setAuthError("");
+      setAuthMessage("");
+      setAuthMode(nextMode);
+      if (typeof window !== "undefined") {
+        window.requestAnimationFrame(() => {
+          document.getElementById("account-access")?.scrollIntoView({ block: "start", behavior: "smooth" });
+        });
+      }
+    };
 
     return (
       <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
@@ -33522,7 +33554,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
 >
   Ember & Tide
 </h1>
-          <p>Log in to sync Ember & Tide across your collection, market checks, restocks, and The Forge.</p>
+          <p>A family-friendly Pokemon TCG app for fair restocks, collections, and community.</p>
         </header>
         <main className="main auth-main">
           {signedOutPublicContent || (
@@ -33530,13 +33562,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="landing-hero">
               <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
               <p className="section-kicker">Private beta</p>
-              <h2>Track. Trade. Thrive.</h2>
-              <p>Built for collectors. Powered by community.</p>
-              <p>Ember & Tide started after a child was pushed out of the hobby by scalpers who cleared shelves and said Pokemon was not for kids anymore. We believe Pokemon collecting should still be fun, fair, and family-friendly.</p>
-              <div className="quick-actions">
-                <button type="button" onClick={() => setAuthMode("signup")}>Request Beta Access</button>
-                <button type="button" className="secondary-button" onClick={startGuestPreview}>Preview App</button>
-                <button type="button" className="secondary-button" onClick={() => { startGuestPreview(); setActiveTab("kidsProgram"); }}>Learn About the Kids Program</button>
+              <h2>Fair collecting starts here.</h2>
+              <p>A family-friendly Pokemon TCG app for fair restocks, collections, Scout reports, and community.</p>
+              <p className="auth-landing-note">New accounts may need approval before full app access. We review beta access to keep Ember & Tide safe for families and collectors.</p>
+              <div className="quick-actions auth-choice-row">
+                <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => chooseAuthMode("login")}>Log In</button>
+                <button type="button" className="secondary-button auth-choice-button" onClick={() => chooseAuthMode("signup")}>Create Account / Request Beta Access</button>
+                <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
               </div>
             </div>
             <figure className="landing-promo-art">
@@ -33571,7 +33603,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             </footer>
           </section>
           )}
-          <section className="panel auth-panel signed-out-auth-card">
+          <section className="panel auth-panel signed-out-auth-card" id="account-access">
             {authMode === "reset" ? (
               <>
                 <h2>Reset Password</h2>
@@ -33605,10 +33637,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               </>
             ) : (
               <>
-                <h2>{authMode === "login" ? "Log In" : "Create Account"}</h2>
+                <h2>{authMode === "login" ? "Log In" : "Create your account"}</h2>
                 {authMode === "signup" ? (
-                  <p className="compact-subtitle">Create a free account to save inventory, reports, scans, and settings.</p>
-                ) : null}
+                  <p className="compact-subtitle">Create your account first. New accounts may need beta approval before full app access.</p>
+                ) : (
+                  <p className="compact-subtitle">Use your approved Ember & Tide account to continue.</p>
+                )}
                 <form onSubmit={handleAuth} className="form auth-form" noValidate>
                   {authMode === "signup" ? (
                     <div className="auth-name-grid">
@@ -33660,8 +33694,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   ) : null}
                   {authError ? <p className="auth-status-message error" role="alert">{authError}</p> : null}
                   {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
-                  <button type="submit" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Sign Up"}</button>
+                  <button type="submit" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account / Request Beta Access"}</button>
                 </form>
+                <p className="auth-beta-note">We review new accounts to keep Ember & Tide safe for families and collectors. You&apos;ll see a welcome screen while your access is pending.</p>
                 <div className="auth-link-stack" aria-label="Account options">
                   {authMode === "login" ? (
                     <>
@@ -33680,7 +33715,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                           setAuthBetaAcknowledged(false);
                         }}
                       >
-                        Need an account? Sign up
+                        Create Account / Request Beta Access
+                      </button>
+                      <button type="button" className="auth-text-button" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>
+                        Need help?
                       </button>
                       <button type="button" className="auth-text-button auth-preview-link" onClick={startGuestPreview}>
                         Preview the app
@@ -33703,6 +33741,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                         }}
                       >
                         Back to Log In
+                      </button>
+                      <button type="button" className="auth-text-button" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>
+                        Need help?
                       </button>
                       <button type="button" className="auth-text-button auth-preview-link" onClick={startGuestPreview}>
                         Preview the app
@@ -33727,25 +33768,34 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderShorelineAccessGate() {
     const betaStatus = normalizeBetaStatus(shorelineState.betaRequest?.status || currentUserProfile?.betaStatus || currentUserProfile?.betaAccessStatus);
     const sparksStatus = littleSparksStatus();
+    const accessStatusUpdatedAt = shorelineState.betaRequest?.updatedAt || shorelineState.betaRequest?.createdAt || currentUserProfile?.updatedAt;
     return (
       <div className="app app-shoreline-access">
         <main className="main shoreline-access-main">
           <section className="shoreline-hero glass-panel">
             <div className="shoreline-brand-mark" aria-hidden="true">
-              <span>◆</span>
+              <span>E&amp;T</span>
             </div>
             <div>
-              <p className="section-kicker">Ember &amp; Tide access</p>
-              <h1>You&apos;re on the shoreline 🔥🌊</h1>
+              <p className="section-kicker">Beta access</p>
+              <h1>Your access request is pending.</h1>
               <p>
-                Request beta access or apply for the Little Sparks Kids Program. Once approved, you&apos;ll unlock the full Ember &amp; Tide app experience.
+                Thanks for joining Ember &amp; Tide. We review beta access to keep the community safe and family-friendly.
               </p>
+              <p className="compact-subtitle">Once approved, your full app access will unlock after you refresh or sign in again.</p>
+              <div className="shoreline-action-row">
+                <button type="button" className="ember-gradient-button" onClick={() => void refreshShorelineAccessStatus()} disabled={shorelineState.loading}>
+                  {shorelineState.loading ? "Checking..." : "Check Again"}
+                </button>
+                <button type="button" className="secondary-button" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Contact Support</button>
+                <button type="button" className="secondary-button" onClick={signOut}>Back to Login</button>
+              </div>
             </div>
             <div className="shoreline-status-grid" aria-label="Access status">
               <article className="glass-card compact-card">
                 <span className={`status-badge ${betaStatus}`}>{statusLabel(betaStatus)}</span>
                 <strong>Beta access</strong>
-                <small>{shorelineState.betaRequest?.updatedAt ? `Updated ${shortDate(shorelineState.betaRequest.updatedAt)}` : "No approved beta access yet"}</small>
+                <small>{accessStatusUpdatedAt ? `Updated ${shortDate(accessStatusUpdatedAt)}` : "Waiting for review"}</small>
               </article>
               <article className="glass-card compact-card">
                 <span className={`status-badge ${sparksStatus}`}>{statusLabel(sparksStatus)}</span>
@@ -33753,7 +33803,6 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <small>{shorelineState.littleSparksApplication?.updatedAt ? `Updated ${shortDate(shorelineState.littleSparksApplication.updatedAt)}` : "No application yet"}</small>
               </article>
             </div>
-            <button type="button" className="secondary-button" onClick={signOut}>Log out</button>
           </section>
 
           {shorelineState.loading ? <div className="glass-card shoreline-message">Loading access status...</div> : null}

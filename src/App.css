@@ -27297,6 +27297,36 @@ textarea::placeholder {
   padding: 22px !important;
 }
 
+.auth-choice-row {
+  align-items: center;
+  gap: 10px !important;
+}
+
+.auth-choice-button {
+  min-height: 46px !important;
+  padding-inline: 16px !important;
+  font-weight: 900 !important;
+}
+
+.auth-landing-note,
+.auth-beta-note {
+  border: 1px solid rgba(121, 233, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(3, 10, 23, 0.48);
+  color: rgba(244, 250, 255, 0.82) !important;
+  padding: 10px 12px;
+}
+
+.auth-beta-note {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.auth-help-link {
+  color: rgba(214, 247, 255, 0.9) !important;
+}
+
 .auth-form {
   gap: 12px !important;
 }
@@ -27509,18 +27539,76 @@ textarea::placeholder {
     grid-template-columns: minmax(0, 1fr) !important;
     padding: 18px !important;
     min-height: 0;
+    gap: 12px !important;
   }
 
   .landing-promo-art {
-    min-height: 260px;
+    display: none !important;
   }
 
-  .signed-out-landing .landing-feature-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  .signed-out-landing .landing-feature-grid,
+  .signed-out-landing .landing-link-row,
+  .signed-out-landing .brand-legal-footer {
+    display: none !important;
+  }
+
+  .signed-out-landing.panel .landing-brand-mark {
+    width: 72px !important;
+    height: 72px !important;
+  }
+
+  .signed-out-landing.panel h2 {
+    max-width: 100%;
+    line-height: 1.02 !important;
+  }
+
+  .signed-out-landing.panel p {
+    font-size: 0.95rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .signed-out-landing .quick-actions.auth-choice-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .auth-choice-button,
+  .signed-out-auth-card button[type="submit"] {
+    width: 100% !important;
+    min-height: 48px !important;
   }
 
   .signed-out-auth-card {
-    margin: 12px auto 0 !important;
+    margin: 8px auto 0 !important;
+    padding: 16px !important;
+  }
+
+  .signed-out-auth-card h2 {
+    font-size: clamp(1.45rem, 8vw, 1.95rem) !important;
+  }
+
+  .auth-link-stack {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .auth-text-button {
+    min-height: 40px !important;
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+    padding: 8px 10px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(121, 233, 255, 0.16) !important;
+    background: rgba(5, 12, 28, 0.55) !important;
+    color: rgba(238, 249, 255, 0.92) !important;
+    text-decoration: none !important;
+  }
+
+  .auth-name-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .mobile-bottom-nav {
@@ -27704,7 +27792,8 @@ html body .standard-page-header .vault-command-overview button.vault-overview-ca
 }
 
 .shoreline-brand-mark span {
-  font-size: 34px;
+  font-size: 22px;
+  font-weight: 950;
   color: #ff7a3d;
   filter: drop-shadow(0 0 14px rgba(88, 213, 232, 0.9));
 }
@@ -27736,6 +27825,17 @@ html body .standard-page-header .vault-command-overview button.vault-overview-ca
 .shoreline-message {
   margin: 16px 0 0;
   padding: 12px 14px;
+}
+
+.shoreline-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.shoreline-action-row button {
+  min-height: 44px;
 }
 
 .shoreline-error {
@@ -27825,6 +27925,15 @@ html body .standard-page-header .vault-command-overview button.vault-overview-ca
   }
 
   .shoreline-hero .secondary-button {
+    width: 100%;
+  }
+
+  .shoreline-action-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .shoreline-action-row button {
     width: 100%;
   }
 }
