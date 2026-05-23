@@ -314,7 +314,17 @@ async function main() {
     }, returnValue);
     try {
       await fn();
-      return await page.evaluate(() => window.__etSmokeConfirmMessages || []);
+      const nativeMessages = await page.evaluate(() => window.__etSmokeConfirmMessages || []);
+      const appDialog = page.locator(".app-confirmation-dialog").last();
+      if (await appDialog.isVisible({ timeout: 800 }).catch(() => false)) {
+        const dialogText = await appDialog.innerText();
+        const actionButtons = appDialog.locator(".app-confirmation-actions button");
+        if (returnValue) await actionButtons.last().click();
+        else await actionButtons.first().click();
+        await appDialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+        return [...nativeMessages, dialogText];
+      }
+      return nativeMessages;
     } finally {
       await page.evaluate(() => {
         if (window.__etSmokeOriginalConfirm) window.confirm = window.__etSmokeOriginalConfirm;
@@ -1033,15 +1043,13 @@ async function main() {
     if (price) {
       await form.getByLabel("Price / MSRP").fill(price);
     }
-    if (reportDate) {
-      const reportDateInput = form.getByRole("textbox", { name: "Report date" });
-      await reportDateInput.fill(reportDate);
-      assert.equal(await reportDateInput.inputValue(), reportDate);
-    }
-    if (reportTime) {
-      const reportTimeInput = form.getByRole("textbox", { name: "Report time" });
-      await reportTimeInput.fill(reportTime);
-      assert.equal(await reportTimeInput.inputValue(), reportTime);
+    if (reportDate || reportTime) {
+      const visitDateTimeInput = form.getByLabel(/Visit date & time/i);
+      const currentValue = await visitDateTimeInput.inputValue();
+      const [currentDate = new Date().toISOString().slice(0, 10), currentTime = "12:00"] = currentValue.split("T");
+      const nextVisitDateTime = `${reportDate || currentDate}T${reportTime || currentTime || "12:00"}`;
+      await visitDateTimeInput.fill(nextVisitDateTime);
+      assert.equal(await visitDateTimeInput.inputValue(), nextVisitDateTime);
     }
     if (stockLeft) {
       const stockButton = form.getByRole("button", { name: new RegExp(stockLeft, "i") }).first();
@@ -1695,7 +1703,10 @@ async function main() {
     });
     assert.equal(Number(editedExpense?.amount), 111.11);
 
-    await overflowAction(vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).first(), "Delete Expense");
+    const acceptedExpenseDelete = await withConfirmStub(true, async () => {
+      await overflowAction(vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).first(), "Delete Expense");
+    });
+    assert.match(acceptedExpenseDelete.join("\n"), /Delete expense\?/);
     await page.waitForTimeout(300);
     assert.equal(await vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).count(), 0);
     await vendorModal.getByRole("button", { name: "Close", exact: true }).click();

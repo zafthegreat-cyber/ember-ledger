@@ -1,4 +1,4 @@
-import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
@@ -954,6 +954,59 @@ const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
 const BETA_INVITE_SESSION_KEY = "et-beta-invite-token";
 const WORKSPACE_INVITE_SESSION_KEY = "et-workspace-invite-id";
+const TOAST_AUTO_DISMISS_MS = {
+  success: 4200,
+  info: 4600,
+  warning: 6500,
+  error: 7800,
+};
+const TOAST_TYPE_LABELS = {
+  success: "Success",
+  info: "Info",
+  warning: "Warning",
+  error: "Error",
+};
+const TOAST_ICON_LABELS = {
+  success: "✓",
+  info: "i",
+  warning: "!",
+  error: "!",
+};
+const SCOUT_VISIT_TIME_FUTURE_GRACE_MS = 15 * 60 * 1000;
+const SCOUT_BACKFILL_OLD_DAYS = 30;
+function toastTypeFromMessage(message = "") {
+  const text = String(message || "").toLowerCase();
+  if (/\b(error|failed|failure|could not|couldn't|unable|denied|invalid|unavailable|not configured|not created|blocked|permission|try again)\b/.test(text)) return "error";
+  if (/\b(warning|review|pending|confirm|unavailable|missing|staged|needs|not connected|local only)\b/.test(text)) return "warning";
+  if (/\b(saved|submitted|complete|completed|success|synced|added|updated|created|copied|sent|approved|restored|archived|deleted|removed|logged|exported|imported|claimed|revoked)\b/.test(text)) return "success";
+  return "info";
+}
+
+function normalizeToastPayload(input, fallback = {}) {
+  if (typeof input === "string") {
+    return {
+      type: fallback.type || toastTypeFromMessage(input),
+      title: input,
+      message: fallback.message || "",
+      actionLabel: fallback.actionLabel || "",
+      onAction: fallback.onAction,
+      durationMs: fallback.durationMs,
+      persist: fallback.persist,
+    };
+  }
+  const payload = input && typeof input === "object" ? input : {};
+  const title = String(payload.title || payload.message || fallback.title || "Ember & Tide update").trim();
+  const message = payload.title ? payload.message || fallback.message || "" : "";
+  return {
+    type: ["success", "error", "warning", "info"].includes(payload.type) ? payload.type : (fallback.type || toastTypeFromMessage(`${title} ${message}`)),
+    title,
+    message,
+    actionLabel: payload.actionLabel || fallback.actionLabel || "",
+    onAction: payload.onAction || fallback.onAction,
+    durationMs: payload.durationMs || fallback.durationMs,
+    persist: Boolean(payload.persist ?? fallback.persist),
+  };
+}
 const FORGE_MODE_SETTINGS_STORAGE_KEY = "et-tcg-forge-mode-settings";
 const ADMIN_MODE_STORAGE_PREFIX = "et-tcg-admin-mode";
 const PRIVATE_UPLOAD_BUCKET = "receipt-images";
@@ -1243,6 +1296,23 @@ function getLocalTimeKey(date = new Date()) {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+function getLocalDateInputKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLocalDateTimeInputValue(date = new Date()) {
+  return `${getLocalDateInputKey(date)}T${getLocalTimeKey(date)}`;
+}
+
+function getYesterdayDateInputKey() {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return getLocalDateInputKey(date);
 }
 
 function createEmptyScoutSnapshot() {
@@ -4442,6 +4512,12 @@ export default function App() {
   const [scoutReportsPage, setScoutReportsPage] = useState(1);
   const [scoutScoreModalOpen, setScoutScoreModalOpen] = useState(false);
   const [selectedScoutReport, setSelectedScoutReport] = useState(null);
+  const [scoutDateTimeEdit, setScoutDateTimeEdit] = useState({
+    report: null,
+    value: "",
+    message: "",
+    saving: false,
+  });
   const [scoutReportModerationTarget, setScoutReportModerationTarget] = useState(null);
   const [selectedVaultSetId, setSelectedVaultSetId] = useState("");
   const scoutReportsRef = useRef(null);
@@ -4471,7 +4547,11 @@ export default function App() {
   const [vaultPotentialDuplicate, setVaultPotentialDuplicate] = useState(null);
   const [vaultSaving, setVaultSaving] = useState(false);
   const [vaultMoving, setVaultMoving] = useState(false);
-  const [vaultToast, setVaultToast] = useState("");
+  const [appToasts, setAppToasts] = useState([]);
+  const toastIdRef = useRef(0);
+  const [confirmationState, setConfirmationState] = useState(null);
+  const confirmationResolverRef = useRef(null);
+  const confirmationCancelRef = useRef(null);
   const [tideTradrSubTab, setTideTradrSubTab] = useState(initialRouteState.tideTradrSubTab || "overview");
   const [marketWatchPage, setMarketWatchPage] = useState(1);
   const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
@@ -5313,6 +5393,98 @@ export default function App() {
     { key: "settings", label: "Settings", target: "menu" },
   ];
   const topbarSectionValue = activeTab === "menu" ? "settings" : activeMainTab || "home";
+  const dismissToast = useCallback((toastId) => {
+    setAppToasts((current) => current.filter((toast) => toast.id !== toastId));
+  }, []);
+  const showToast = useCallback((input, fallback = {}) => {
+    const payload = normalizeToastPayload(input, fallback);
+    const id = `toast-${Date.now()}-${toastIdRef.current += 1}`;
+    const toast = {
+      id,
+      createdAt: Date.now(),
+      durationMs: payload.durationMs || TOAST_AUTO_DISMISS_MS[payload.type] || TOAST_AUTO_DISMISS_MS.info,
+      ...payload,
+    };
+    setAppToasts((current) => [toast, ...current.filter((entry) => entry.title !== toast.title || entry.message !== toast.message)].slice(0, 3));
+    return id;
+  }, []);
+  const showSuccessToast = useCallback((title, details = {}) => showToast({ ...details, type: "success", title, message: details.message }), [showToast]);
+  const showErrorToast = useCallback((title, details = {}) => showToast({ ...details, type: "error", title, message: details.message }), [showToast]);
+  const showWarningToast = useCallback((title, details = {}) => showToast({ ...details, type: "warning", title, message: details.message }), [showToast]);
+  const showInfoToast = useCallback((title, details = {}) => showToast({ ...details, type: "info", title, message: details.message }), [showToast]);
+  const setVaultToast = useCallback((message, details = {}) => {
+    if (!message) {
+      setAppToasts([]);
+      return "";
+    }
+    return showToast(String(message), details);
+  }, [showToast]);
+  const requestConfirmation = useCallback((options = {}) => new Promise((resolve) => {
+    confirmationResolverRef.current = resolve;
+    setConfirmationState({
+      id: `confirm-${Date.now()}`,
+      title: options.title || "Confirm action?",
+      message: options.message || options.body || "Please confirm before continuing.",
+      confirmLabel: options.confirmLabel || "Confirm",
+      cancelLabel: options.cancelLabel || "Cancel",
+      destructive: Boolean(options.destructive),
+      details: options.details || "",
+      busyLabel: options.busyLabel || "",
+    });
+  }), []);
+  const closeConfirmation = useCallback((confirmed) => {
+    const resolver = confirmationResolverRef.current;
+    confirmationResolverRef.current = null;
+    setConfirmationState(null);
+    if (resolver) resolver(Boolean(confirmed));
+  }, []);
+  const confirmDestructive = useCallback((options = {}) => requestConfirmation({
+    ...options,
+    destructive: true,
+    confirmLabel: options.confirmLabel || "Delete",
+  }), [requestConfirmation]);
+  useEffect(() => {
+    if (!appToasts.length) return undefined;
+    const timers = appToasts
+      .filter((toast) => !toast.persist)
+      .map((toast) => window.setTimeout(() => dismissToast(toast.id), toast.durationMs || TOAST_AUTO_DISMISS_MS.info));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [appToasts, dismissToast]);
+  useEffect(() => {
+    if (!confirmationState) return undefined;
+    const previousFocus = document.activeElement;
+    const dialog = document.getElementById("app-confirmation-dialog");
+    const focusableSelector = "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])";
+    const focusFirst = () => {
+      const focusable = Array.from(dialog?.querySelectorAll(focusableSelector) || []).filter((element) => !element.disabled);
+      (confirmationCancelRef.current || focusable[0])?.focus?.();
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeConfirmation(false);
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll(focusableSelector)).filter((element) => !element.disabled);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.setTimeout(focusFirst, 0);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [confirmationState, closeConfirmation]);
   const showAppMessage = (message) => {
     setVaultToast(String(message || "Something went wrong."));
     return false;
@@ -7593,6 +7765,12 @@ export default function App() {
 
   async function handleRevokeAdminBetaInvite(invite) {
     if (!betaAdminVisible || !invite?.id) return;
+    const confirmed = await confirmDestructive({
+      title: "Revoke invite?",
+      message: `This will deactivate the one-time invite for ${invite.recipientName || invite.recipientEmail || "this recipient"}. It cannot be claimed after revocation.`,
+      confirmLabel: "Revoke invite",
+    });
+    if (!confirmed) return;
     setAdminBetaInviteLoading(true);
     setShorelineState((current) => ({ ...current, adminBetaInvitesError: "", adminBetaInvitesMessage: "" }));
     try {
@@ -11472,7 +11650,7 @@ export default function App() {
       report.storeId || report.store_id || store.id || store.storeId,
       report.storeName || report.store_name || store.name || store.nickname,
       report.productName || report.product_name || report.itemName || report.productType || report.product_type,
-      report.reportedAt || report.reported_at || report.reportTime || report.report_time || report.createdAt || report.created_at,
+      report.observedAt || report.observed_at || report.reportedAt || report.reported_at || report.reportTime || report.report_time || report.createdAt || report.created_at,
       report.userId || report.user_id || report.reportedBy || report.reported_by,
     ].map(scoutBackendKey).join("|");
     if (fingerprint.replace(/\|/g, "")) return `report:${fingerprint}`;
@@ -11578,15 +11756,17 @@ export default function App() {
 
   function mapSupabaseScoutReport(row = {}, stores = []) {
     const matchedStore = stores.find((store) => String(getScoutQuickStoreId(store)) === String(row.store_id)) || {};
-    const reportedAt = row.report_time || row.reported_at || row.created_at || row.updated_at || "";
+    const observedAt = row.observed_at || row.report_time || row.reported_at || row.created_at || row.updated_at || "";
+    const reportedAt = observedAt;
     const status = row.status || row.verification_status || "unverified";
     const statusText = scoutBackendKey(status);
     const rejected = /rejected|stale|duplicate|deleted|archived/.test(statusText);
     const confirmed = !rejected && /confirmed|verified/.test(statusText);
     const confidenceScore = Number(row.confidence_score ?? 0);
     const likely = !confirmed && !rejected && confidenceScore >= 60;
-    const reportDate = String(reportedAt || "").slice(0, 10);
-    const reportTime = String(reportedAt || "").slice(11, 16);
+    const reportedDate = reportedAt ? new Date(reportedAt) : null;
+    const reportDate = reportedDate && !Number.isNaN(reportedDate.getTime()) ? getLocalDateInputKey(reportedDate) : String(reportedAt || "").slice(0, 10);
+    const reportTime = reportedDate && !Number.isNaN(reportedDate.getTime()) ? getLocalTimeKey(reportedDate) : String(reportedAt || "").slice(11, 16);
     const storeName = row.store_name || getScoutQuickStoreName(matchedStore) || "Store location";
     const retailer = getScoutQuickRetailer(matchedStore) || row.retailer || "";
     return {
@@ -11641,6 +11821,8 @@ export default function App() {
       sourceStatus: "supabase",
       shouldTrainPredictions: confirmed,
       trainingEligible: confirmed,
+      observedAt,
+      observed_at: observedAt,
       reportedAt,
       reported_at: reportedAt,
       submittedAt: row.created_at || reportedAt,
@@ -11734,7 +11916,7 @@ export default function App() {
       windowLabel: row.forecast_time_window || "Unknown time",
       reason: row.basis_summary || (needsMoreData ? "Needs more confirmed restocks before predictions are reliable." : "Based on saved forecast history."),
       basisSummary: row.basis_summary || "",
-      lastConfirmedReportLabel: row.last_confirmed_report_at ? scoutReportDateTimeLabel({ submittedAt: row.last_confirmed_report_at }) : "",
+      lastConfirmedReportLabel: row.last_confirmed_report_at ? scoutReportDateTimeLabel({ observedAt: row.last_confirmed_report_at }) : "",
       supportingReportCount,
       supportingGuessCount,
       dataNeededMessage: needsMoreData ? `Low confidence: needs ${2 - supportingReportCount} more confirmed restock${2 - supportingReportCount === 1 ? "" : "s"} before predictions are reliable.` : "",
@@ -11776,12 +11958,12 @@ export default function App() {
         .map((row) => mapSupabaseStore(row, watchlistByStoreId.get(String(row.id)) || {}))
         .filter((store) => adminEditModeActive || store.active !== false);
 
-      const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at";
+      const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at";
       const reportFallbackSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status";
       let reportsResult = await supabase
         .from("store_reports")
         .select(reportSelect)
-        .order("report_time", { ascending: false, nullsFirst: false })
+        .order("observed_at", { ascending: false, nullsFirst: false })
         .limit(200);
       if (reportsResult.error && isScoutBackendOptionalError(reportsResult.error)) {
         reportsResult = await supabase.from("store_reports").select(reportFallbackSelect).order("reported_at", { ascending: false, nullsFirst: false }).limit(200);
@@ -11840,18 +12022,20 @@ export default function App() {
   }
 
   function scoutReportTimeForBackend(report = {}) {
-    const raw = report.reportedAt || report.reported_at || report.submittedAt || report.submitted_at || report.createdAt || report.created_at || "";
+    const raw = report.observedAt || report.observed_at || report.report_time || report.reportedAt || report.reported_at || "";
     if (raw) return raw;
-    const date = report.reportDate || report.report_date || getLocalDateKey();
+    const date = report.reportDate || report.report_date || getLocalDateInputKey();
     const time = report.reportTime || report.report_time || getLocalTimeKey();
     return `${date}T${time || "00:00"}:00.000Z`;
   }
 
   async function persistScoutReportToSupabase(report = {}) {
-    if (!scoutBackendSyncReady()) return null;
-    const storeId = uuidOrNull(report.storeId || report.store_id || report.selectedStoreId || report.selected_store_id);
-    if (!storeId) return null;
-    const reportedAt = scoutReportTimeForBackend(report);
+    if (!scoutBackendSyncReady()) {
+      return { ok: false, skipped: true, reason: "backend_unavailable" };
+    }
+    const rawStoreId = report.storeId || report.store_id || report.selectedStoreId || report.selected_store_id || "";
+    const storeId = uuidOrNull(rawStoreId);
+    const observedAt = scoutReportTimeForBackend(report);
     const confidenceScore = Number(report.confidenceScore || report.confidence_score || scoutConfidenceScore(report.confidence || ""));
     const confirmed = Boolean(report.verified || /confirmed|verified/i.test(`${report.status || ""} ${report.verificationStatus || report.verification_status || ""}`));
     const payload = {
@@ -11863,7 +12047,8 @@ export default function App() {
       price_seen: scoutBackendNumberOrNull(report.price || report.priceSeen || report.price_seen),
       photo_url: report.photoUrl || report.photo_url || "",
       notes: report.notes || report.note || report.proofText || "",
-      reported_at: reportedAt,
+      observed_at: observedAt,
+      reported_at: observedAt,
       verification_status: confirmed ? "verified" : "unverified",
       workspace_id: uuidOrNull(report.workspaceId || report.workspace_id || activeWorkspaceId),
       store_name: report.storeName || report.store_name || "",
@@ -11871,12 +12056,12 @@ export default function App() {
       product_type: report.productType || report.product_type || report.productCategory || "",
       set_name: report.setName || report.set_name || report.productSetName || "",
       quantity_estimate: String(report.quantity || report.quantityEstimate || report.quantity_estimate || ""),
-      report_time: reportedAt,
+      report_time: observedAt,
       visibility: normalizeScoutReportVisibility(report.visibility || "public"),
       status: confirmed ? "confirmed" : "unverified",
       confidence_score: confidenceScore,
     };
-    let result = await supabase.from("store_reports").insert(payload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at").single();
+    let result = await supabase.from("store_reports").insert(payload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at").single();
     if (result.error && isScoutBackendOptionalError(result.error)) {
       const fallbackPayload = {
         store_id: storeId,
@@ -11887,16 +12072,21 @@ export default function App() {
         price_seen: payload.price_seen,
         photo_url: payload.photo_url,
         notes: payload.notes,
-        reported_at: reportedAt,
+        reported_at: observedAt,
         verification_status: payload.verification_status,
       };
       result = await supabase.from("store_reports").insert(fallbackPayload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status").single();
     }
     if (result.error) {
-      logAppError("scout_report_backend_save", result.error, { storeId }, "normal");
-      return null;
+      logAppError("scout_report_backend_save", result.error, { storeId: rawStoreId || storeId, storeName: payload.store_name }, "normal");
+      return { ok: false, error: result.error, reason: "backend_save_failed" };
     }
-    return mapSupabaseScoutReport(result.data, getScoutQuickStores({ admin: adminEditModeActive }));
+    return {
+      ok: true,
+      report: mapSupabaseScoutReport(result.data, getScoutQuickStores({ admin: adminEditModeActive })),
+      source: "supabase",
+      usedDirectoryStoreFallback: Boolean(rawStoreId && !storeId),
+    };
   }
 
   async function persistScoutGuessToSupabase(guess = {}) {
@@ -13527,6 +13717,7 @@ export default function App() {
       setActiveWorkspaceId(mappedWorkspace.id);
       setWorkspaceInviteForm((current) => ({ ...current, workspaceId: mappedWorkspace.id }));
       setWorkspaceMessage(`${mappedWorkspace.name} created. Personal data was not moved or shared.`);
+      setVaultToast("Workspace created.");
       return;
     }
 
@@ -13536,6 +13727,7 @@ export default function App() {
     setActiveWorkspaceId(workspace.id);
     setWorkspaceInviteForm((current) => ({ ...current, workspaceId: workspace.id }));
     setWorkspaceMessage(`${workspace.name} created. Personal data was not moved or shared.`);
+    setVaultToast("Workspace created.");
   }
 
   function openWorkspaceRename(workspace = activeWorkspace) {
@@ -13910,6 +14102,7 @@ export default function App() {
       setWorkspaceInviteForm((current) => ({ ...current, email: "", note: "" }));
       setWorkspaceInviteDelivery(localInvite);
       setWorkspaceMessage(`Invite created for ${email}. Email is not configured - copy and send this invite link.`);
+      setVaultToast("Workspace invite created. Copy the invite link.");
     } catch (error) {
       console.error("Could not create workspace invite", error);
       const missingRpc = error?.code === "42883" || error?.code === "PGRST202" || /create_workspace_invite|function.*does not exist|could not find/i.test(error?.message || "");
@@ -14007,10 +14200,12 @@ export default function App() {
     return payload;
   }
 
-  function resetBetaLocalData() {
-    const confirmed = window.confirm(
-      "Clear private beta data on this device? This cannot be undone."
-    );
+  async function resetBetaLocalData() {
+    const confirmed = await confirmDestructive({
+      title: "Clear private beta data?",
+      message: "This clears saved beta records on this device, including local Vault, Forge, Scout, Tidepool, workspace, and suggestion data. This cannot be undone.",
+      confirmLabel: "Clear local data",
+    });
 
     if (!confirmed) return false;
 
@@ -14075,6 +14270,8 @@ export default function App() {
     setItemForm(blankItem);
     setCatalogForm(blankCatalog);
     setActiveTab("dashboard");
+    setVaultToast("Local beta data cleared.");
+    return true;
   }
 
   function buildVaultItemFromForm() {
@@ -15829,7 +16026,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       photoUrl: "",
       stockLeft: "not_sure",
       dateMode: "today",
-      reportDate: getLocalDateKey(now),
+      reportDate: getLocalDateInputKey(now),
       reportTime: getLocalTimeKey(now),
       dayOfWeek: SCOUT_WEEKDAYS[now.getDay()],
       guessedTimeWindow: "",
@@ -15980,13 +16177,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setQuickScoutReportForm((current) => {
       const next = { ...current, [field]: value };
       if (field === "dateMode") {
-        if (value === "today") next.reportDate = getLocalDateKey();
-        if (value === "yesterday") next.reportDate = getYesterdayDateKey();
+        if (value === "today") next.reportDate = getLocalDateInputKey();
+        if (value === "yesterday") next.reportDate = getYesterdayDateInputKey();
       }
       if (field === "reportDate") {
-        next.dateMode = value === getLocalDateKey()
+        next.dateMode = value === getLocalDateInputKey()
           ? "today"
-          : value === getYesterdayDateKey()
+          : value === getYesterdayDateInputKey()
             ? "yesterday"
             : "pick_date";
         const parsedDate = new Date(`${value}T00:00:00`);
@@ -16012,7 +16209,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setQuickScoutReportForm((current) => ({
       ...current,
       dateMode: preset === "yesterday" ? "yesterday" : preset === "earlier_today" ? "earlier_today" : "today",
-      reportDate: getLocalDateKey(date),
+      reportDate: getLocalDateInputKey(date),
       reportTime: getLocalTimeKey(date),
       dayOfWeek: SCOUT_WEEKDAYS[date.getDay()],
     }));
@@ -16040,9 +16237,91 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function quickScoutDateLabel(form = quickScoutReportForm) {
     if (form.dateMode === "not_sure") return "Not sure";
     if (form.dateMode === "day_only") return form.dayOfWeek || "Day not selected";
-    if (form.dateMode === "earlier_today") return `${form.reportDate || getLocalDateKey()} at ${form.reportTime || "earlier today"}`;
-    const dateLabel = form.dateMode === "yesterday" ? getYesterdayDateKey() : form.reportDate || getLocalDateKey();
+    if (form.dateMode === "earlier_today") return `${form.reportDate || getLocalDateInputKey()} at ${form.reportTime || "earlier today"}`;
+    const dateLabel = form.dateMode === "yesterday" ? getYesterdayDateInputKey() : form.reportDate || getLocalDateInputKey();
     return `${dateLabel}${form.reportTime ? ` at ${form.reportTime}` : ""}`;
+  }
+
+  function quickScoutVisitDateTimeValue(form = quickScoutReportForm) {
+    const date = form.reportDate || getLocalDateInputKey();
+    const time = form.reportTime || getLocalTimeKey();
+    return `${String(date).slice(0, 10)}T${String(time || "00:00").slice(0, 5)}`;
+  }
+
+  function updateQuickScoutVisitDateTime(value = "") {
+    const [date = "", time = ""] = String(value || "").split("T");
+    setQuickScoutReportMessage("");
+    setQuickScoutReportForm((current) => {
+      const parsedDate = date ? new Date(`${date}T00:00:00`) : null;
+      const next = {
+        ...current,
+        reportDate: date,
+        reportTime: time.slice(0, 5),
+        dateMode: date === getLocalDateInputKey()
+          ? "today"
+          : date === getYesterdayDateInputKey()
+            ? "yesterday"
+            : "pick_date",
+      };
+      if (parsedDate && !Number.isNaN(parsedDate.getTime())) next.dayOfWeek = SCOUT_WEEKDAYS[parsedDate.getDay()];
+      return next;
+    });
+  }
+
+  function parseScoutVisitDateTime(date = "", time = "") {
+    const dateText = String(date || "").slice(0, 10);
+    const timeText = String(time || "").slice(0, 5);
+    if (!dateText || !timeText) return { ok: false, message: "Add a visit date and time before submitting." };
+    const parsed = new Date(`${dateText}T${timeText}`);
+    if (Number.isNaN(parsed.getTime())) return { ok: false, message: "Use a valid visit date and time." };
+    return {
+      ok: true,
+      date: dateText,
+      time: timeText,
+      parsed,
+      iso: parsed.toISOString(),
+    };
+  }
+
+  function validateScoutVisitDateTime(form = quickScoutReportForm, options = {}) {
+    const parsed = parseScoutVisitDateTime(form.reportDate, form.reportTime);
+    if (!parsed.ok) return parsed;
+    const nowMs = Date.now();
+    const futureMs = parsed.parsed.getTime() - nowMs;
+    const oldMs = nowMs - parsed.parsed.getTime();
+    if (futureMs > SCOUT_VISIT_TIME_FUTURE_GRACE_MS) {
+      return {
+        ...parsed,
+        ok: Boolean(options.allowFutureConfirmation),
+        needsFutureConfirmation: Boolean(options.allowFutureConfirmation),
+        message: "Visit time is in the future. Use a past visit time unless an admin is correcting the report.",
+      };
+    }
+    return {
+      ...parsed,
+      oldBackfill: oldMs > SCOUT_BACKFILL_OLD_DAYS * 24 * 60 * 60 * 1000,
+    };
+  }
+
+  function scoutReportObservedAt(report = {}) {
+    if (report.observedAt || report.observed_at) return report.observedAt || report.observed_at;
+    if (report.report_time && String(report.report_time).includes("T")) return report.report_time;
+    if (report.reportedAt || report.reported_at) return report.reportedAt || report.reported_at;
+    if (report.reportDate || report.report_date) {
+      const parsed = new Date(`${String(report.reportDate || report.report_date).slice(0, 10)}T${String(report.reportTime || report.time || "00:00").slice(0, 5)}`);
+      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    }
+    return report.createdAt || report.created_at || report.submittedAt || report.submitted_at || "";
+  }
+
+  function scoutReportSubmittedAt(report = {}) {
+    return report.submittedAt || report.submitted_at || report.createdAt || report.created_at || report.reportedAt || report.reported_at || "";
+  }
+
+  function scoutReportDateTimeInputValue(report = {}) {
+    const observedAt = scoutReportObservedAt(report);
+    const parsed = observedAt ? new Date(observedAt) : new Date();
+    return getLocalDateTimeInputValue(Number.isNaN(parsed.getTime()) ? new Date() : parsed);
   }
 
   function normalizeScoutReportVisibility(value = "") {
@@ -16158,6 +16437,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (stepKey === "product" && !quickScoutReportForm.productCategory && !currentType.isGuess) return "Choose a product category before continuing.";
     if (stepKey === "review" && !quickScoutReportReady()) return scoutWizardStepError("where") || scoutWizardStepError("details") || "Complete the missing Scout report details before submitting.";
     if (stepKey === "review" && quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before submitting.";
+    if (["details", "review"].includes(stepKey) && !currentType.isGuess) {
+      const visitValidation = validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
+      if (!visitValidation.ok) return visitValidation.message;
+    }
     return "";
   }
 
@@ -16199,12 +16482,18 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const selectedStore = storeSelection.store || {};
     const confidenceBadge = quickScoutConfidenceBadge(quickScoutReportForm, type, storeSelection);
     const timestampSourceDate = quickScoutReportForm.dateMode === "yesterday"
-      ? getYesterdayDateKey()
+      ? getYesterdayDateInputKey()
       : quickScoutReportForm.dateMode === "pick_date" || quickScoutReportForm.dateMode === "today"
-        ? quickScoutReportForm.reportDate || getLocalDateKey()
-        : getLocalDateKey();
-    const reportedAt = new Date(`${timestampSourceDate}T${quickScoutReportForm.reportTime || getLocalTimeKey()}`).toISOString();
-    const productName = quickScoutReportForm.productName.trim();
+        ? quickScoutReportForm.reportDate || getLocalDateInputKey()
+        : getLocalDateInputKey();
+    const visitValidation = validateScoutVisitDateTime({ reportDate: timestampSourceDate, reportTime: quickScoutReportForm.reportTime }, { allowFutureConfirmation: true });
+    const observedAt = visitValidation.ok ? visitValidation.iso : new Date(`${timestampSourceDate}T${quickScoutReportForm.reportTime || getLocalTimeKey()}`).toISOString();
+    const submittedAt = new Date().toISOString();
+    const productName = quickScoutReportForm.productName.trim()
+      || quickScoutReportForm.catalogProductName
+      || quickScoutReportForm.productType
+      || quickScoutReportForm.productCategory
+      || type.label;
     const storeName = storeSelection.storeName;
     const retailer = storeSelection.retailer;
     const notes = [
@@ -16292,12 +16581,18 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       store_follow_preference: quickScoutReportForm.storeFollowPreference || "verified_restocks",
       reportDate: timestampSourceDate,
       reportTime: quickScoutReportForm.reportTime,
-      report_time: reportedAt,
+      observedAt,
+      observed_at: observedAt,
+      report_time: observedAt,
       dayOfWeek: quickScoutReportForm.dayOfWeek,
-      reportedAt,
-      submittedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      reportedAt: observedAt,
+      reported_at: observedAt,
+      submittedAt,
+      submitted_at: submittedAt,
+      createdAt: submittedAt,
+      created_at: submittedAt,
+      updatedAt: submittedAt,
+      updated_at: submittedAt,
       userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
       displayName: publicProfileLabel(),
       username: currentPublicUsername(),
@@ -16319,7 +16614,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       ? quickScoutReportForm.dayOfWeek
       : quickScoutReportForm.dateMode === "not_sure"
         ? "Unknown"
-        : new Date(`${quickScoutReportForm.reportDate || getLocalDateKey()}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" });
+        : new Date(`${quickScoutReportForm.reportDate || getLocalDateInputKey()}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" });
     const id = makeId("store-guess");
     const now = new Date().toISOString();
     const workspaceId = activeWorkspaceId || currentUserProfile?.workspaceId || currentUserProfile?.workspace_id || "";
@@ -16372,7 +16667,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     };
   }
 
-  function submitQuickScoutReport(event) {
+  async function submitQuickScoutReport(event) {
     event?.preventDefault?.();
     if (guestPreviewActive) {
       setQuickScoutReportMessage("Create a free account to submit reports and build forecasts.");
@@ -16387,6 +16682,27 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     const currentType = quickScoutReportTypeMeta();
     const scoutData = getSharedScoutData();
+    const visitValidation = currentType.isGuess
+      ? { ok: true, oldBackfill: false }
+      : validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
+    if (!visitValidation.ok) {
+      setQuickScoutReportMessage(visitValidation.message || "Add a valid visit date and time before submitting.");
+      setQuickScoutReportStep("details");
+      showErrorToast("Couldn’t submit Scout report.", { message: visitValidation.message || "Add a valid visit date and time." });
+      return;
+    }
+    if (visitValidation.needsFutureConfirmation) {
+      const confirmedFutureVisit = await requestConfirmation({
+        title: "Use a future visit time?",
+        message: "This report is dated more than 15 minutes in the future. Only use this when correcting a report intentionally.",
+        confirmLabel: "Use this time",
+        cancelLabel: "Edit time",
+      });
+      if (!confirmedFutureVisit) {
+        setQuickScoutReportStep("details");
+        return;
+      }
+    }
     if (currentType.isGuess) {
       if (!currentUserCanSubmitScoutGuess) {
         setQuickScoutReportMessage(DROP_RADAR_GUESS_LOCKED_MESSAGE);
@@ -16433,30 +16749,70 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     const nextLocalReports = [report, ...(scoutData.reports || [])]
       .filter((entry, index, list) => list.findIndex((candidate) => getScoutReportId(candidate) === getScoutReportId(entry)) === index);
-    const nextVisibleReports = mergeScoutRows(scoutSnapshot.reports || [], [report], scoutBackendReportMergeKey);
-    saveSharedScoutData({ ...scoutData, reports: nextLocalReports });
-    setScoutSnapshot((current) => ({ ...current, reports: nextVisibleReports }));
-    void persistScoutReportToSupabase(report).then((cloudReport) => {
-      if (!cloudReport) return;
+    try {
+      saveSharedScoutData({ ...scoutData, reports: nextLocalReports });
       setScoutSnapshot((current) => ({
         ...current,
-        reports: mergeScoutRows(current.reports || [], [cloudReport], scoutBackendReportMergeKey),
+        reports: mergeScoutRows(current.reports || [], [report], scoutBackendReportMergeKey),
       }));
-    });
-    setQuickScoutReportSaved(report);
+    } catch (error) {
+      logAppError("scout_report_local_save", error, { storeName: report.storeName || report.store_name || "" }, "normal");
+      setQuickScoutReportMessage("Couldn't save Scout report. Please try again.");
+      showErrorToast("Couldn't save Scout report.", { message: "Your device could not save the report locally." });
+      return;
+    }
+
+    let savedReport = report;
+    let backendSaveResult = { ok: false, skipped: true, reason: "not_attempted" };
+    try {
+      backendSaveResult = await persistScoutReportToSupabase(report);
+      if (backendSaveResult?.ok && backendSaveResult.report) {
+        savedReport = backendSaveResult.report;
+        const latestScoutData = getSharedScoutData();
+        const mergedReports = mergeScoutRows(latestScoutData.reports || [], [savedReport], scoutBackendReportMergeKey)
+          .sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a));
+        saveSharedScoutData({ ...latestScoutData, reports: mergedReports });
+        setScoutSnapshot((current) => ({
+          ...current,
+          reports: mergeScoutRows(current.reports || [], [savedReport], scoutBackendReportMergeKey),
+        }));
+      }
+    } catch (error) {
+      backendSaveResult = { ok: false, error, reason: "backend_save_failed" };
+      logAppError("scout_report_backend_save_unhandled", error, { storeName: report.storeName || report.store_name || "" }, "normal");
+    }
+
+    const savedToCloud = Boolean(backendSaveResult?.ok);
+    const savedLocallyOnly = !savedToCloud;
+    const scoutSaveMessage = savedToCloud
+      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Scout report submitted.")
+      : "Scout report saved locally. Cloud sync is unavailable right now.";
+    setQuickScoutReportSaved(savedReport);
     setQuickScoutReportStep("submitted");
-    setQuickScoutReportMessage("Report sent. You can add details now or later.");
+    setQuickScoutReportMessage(savedToCloud
+      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Report sent. You can add details now or later.")
+      : "Report saved on this device and is visible in Scout. Cloud sync is unavailable right now.");
     setScoutReportFilter("Latest");
     setScoutReportsPage(1);
     setScoutView("reports");
     completeDailyAction("store", { badge: "restock_reporter", points: 10 });
-    setVaultToast("Report sent. You can add details now or later.");
+    if (savedLocallyOnly) {
+      showWarningToast("Scout report saved locally.", {
+        message: backendSaveResult?.reason === "backend_unavailable"
+          ? "Cloud sync is not available in this session, but the report is visible in Scout."
+          : "Cloud sync failed, but the report is visible in Scout on this device.",
+      });
+    } else {
+      setVaultToast(scoutSaveMessage, {
+        message: visitValidation.oldBackfill ? "The visit time was saved for an earlier store check." : "You can add details now or later.",
+      });
+    }
     flowModalBaselineRef.current.scoutSubmit = quickScoutReportForm;
     void trackBetaActivity("submitted_scout_report", {
       eventContext: "scout",
       entityType: "scout_report",
-      entityId: report.id,
-      metadata: { confidence: report.confidence || "", storeId: report.storeId || "" },
+      entityId: savedReport.id || report.id,
+      metadata: { confidence: savedReport.confidence || report.confidence || "", storeId: savedReport.storeId || report.storeId || "", savedToCloud },
     });
   }
 
@@ -18337,7 +18693,12 @@ function mapCatalog(row) {
       return;
     }
     if (updateIds.length > 1) {
-      const confirmed = window.confirm(`Apply ${money(nextPrice)} to ${entrySummary} in this grouped Forge item? Sold entries will not change.`);
+      const confirmed = await requestConfirmation({
+        title: "Apply grouped price update?",
+        message: `Apply ${money(nextPrice)} to ${entrySummary} in this grouped Forge item? Sold entries will not change.`,
+        confirmLabel: "Apply update",
+        cancelLabel: "Cancel",
+      });
       if (!confirmed) return;
     }
     const changedAt = new Date().toISOString();
@@ -18482,18 +18843,29 @@ function mapCatalog(row) {
     const itemToDelete = items.find((item) => item.id === id);
     if (!ensureWorkspaceEditor(itemToDelete?.workspaceId || itemToDelete?.workspace_id || activeWorkspace?.id)) return false;
     const deleteContext = inventoryDeleteContext(itemToDelete);
-    const confirmed = window.confirm(`${deleteContext.title}\n${deleteContext.body}`);
+    const confirmed = await confirmDestructive({
+      title: deleteContext.title,
+      message: `${deleteContext.body} This cannot be undone.`,
+      confirmLabel: normalizeInventoryDestination(itemToDelete) === "wishlist" ? "Remove item" : "Delete item",
+    });
 
     if (!confirmed) return false;
 
     if (BETA_LOCAL_MODE) {
+      const previousItems = items;
       setItems(items.filter((item) => item.id !== id));
       if (editingItemId === id) {
         setEditingItemId(null);
         setItemForm(blankItem);
       }
-      if (normalizeInventoryDestination(itemToDelete) === "vault") setVaultToast(deleteContext.toast);
-      else showAppMessage(deleteContext.toast);
+      showToast({
+        type: "success",
+        title: deleteContext.toast,
+        message: "Removed on this device.",
+        actionLabel: "Undo",
+        onAction: () => setItems(previousItems),
+        durationMs: 6500,
+      });
       return true;
     }
 
@@ -18504,8 +18876,7 @@ function mapCatalog(row) {
       setEditingItemId(null);
       setItemForm(blankItem);
     }
-    if (normalizeInventoryDestination(itemToDelete) === "vault") setVaultToast(deleteContext.toast);
-    else showAppMessage(deleteContext.toast);
+    setVaultToast(deleteContext.toast);
     return true;
   }
   async function updateItemStatus(item, newStatus) {
@@ -20385,6 +20756,7 @@ function renderForgeAccessState() {
       setEditingExpenseId(null);
       setExpenseForm(blankExpense);
       if (activeFlowModal?.type === "addExpense") closeFlowModal({ force: true, reset: false });
+      setVaultToast(editingExpenseId ? "Expense updated." : "Expense added.");
       return;
     }
 
@@ -20425,6 +20797,7 @@ function renderForgeAccessState() {
     setEditingExpenseId(null);
     setExpenseForm(blankExpense);
     if (activeFlowModal?.type === "addExpense") closeFlowModal({ force: true, reset: false });
+    setVaultToast(editingExpenseId ? "Expense updated." : "Expense added.");
   }
 
   function startEditingExpense(expense) {
@@ -20437,6 +20810,12 @@ function renderForgeAccessState() {
   async function deleteExpense(id) {
     const expense = expenses.find((entry) => entry.id === id);
     if (!ensureWorkspaceEditor(expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id)) return;
+    const confirmed = await confirmDestructive({
+      title: "Delete expense?",
+      message: `This removes ${expense?.vendor || "this expense"} from Forge business expenses. This cannot be undone.`,
+      confirmLabel: "Delete expense",
+    });
+    if (!confirmed) return;
     const expenseVendorKey = normalizeExpenseVendor(expense?.vendor).key;
     const remainingInGroup = expenses.filter((entry) =>
       entry.id !== id &&
@@ -20450,12 +20829,14 @@ function renderForgeAccessState() {
         setExpenseForm(blankExpense);
       }
       if (selectedExpenseVendorKey === expenseVendorKey && remainingInGroup <= 0) setSelectedExpenseVendorKey("");
+      setVaultToast("Expense deleted.");
       return;
     }
     const { error } = await supabase.from("business_expenses").delete().eq("id", id);
     if (error) return showAppMessage("Could not delete expense: " + error.message);
     setExpenses(expenses.filter((expense) => expense.id !== id));
     if (selectedExpenseVendorKey === expenseVendorKey && remainingInGroup <= 0) setSelectedExpenseVendorKey("");
+    setVaultToast("Expense deleted.");
   }
 
   function clearExpenseFilters() {
@@ -20530,6 +20911,7 @@ function renderForgeAccessState() {
     setVehicles(editingVehicleId ? vehicles.map((v) => (v.id === editingVehicleId ? mapped : v)) : [mapped, ...vehicles]);
     setEditingVehicleId(null);
     setVehicleForm({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
+    setVaultToast(editingVehicleId ? "Vehicle updated." : "Vehicle added.");
   }
 
   function startEditingVehicle(vehicle) {
@@ -20538,9 +20920,17 @@ function renderForgeAccessState() {
   }
 
   async function deleteVehicle(id) {
+    const vehicle = vehicles.find((entry) => entry.id === id);
+    const confirmed = await confirmDestructive({
+      title: "Delete vehicle?",
+      message: `This removes ${vehicle?.name || "this vehicle"} from mileage tracking. This cannot be undone.`,
+      confirmLabel: "Delete vehicle",
+    });
+    if (!confirmed) return;
     const { error } = await supabase.from("vehicles").delete().eq("id", id);
     if (error) return showAppMessage("Could not delete vehicle: " + error.message);
     setVehicles(vehicles.filter((vehicle) => vehicle.id !== id));
+    setVaultToast("Vehicle deleted.");
   }
 
   function calculateTripCosts(form) {
@@ -20603,6 +20993,7 @@ function renderForgeAccessState() {
       setEditingTripId(null);
       setTripForm(blankTrip);
       if (activeFlowModal?.type === "addMileage") closeFlowModal({ force: true, reset: false });
+      setVaultToast(editingTripId ? "Mileage trip updated." : "Mileage logged.");
       return;
     }
 
@@ -20617,6 +21008,7 @@ function renderForgeAccessState() {
     setEditingTripId(null);
     setTripForm(blankTrip);
     if (activeFlowModal?.type === "addMileage") closeFlowModal({ force: true, reset: false });
+    setVaultToast(editingTripId ? "Mileage trip updated." : "Mileage logged.");
   }
 
   function startEditingTrip(trip) {
@@ -20629,17 +21021,25 @@ function renderForgeAccessState() {
   async function deleteTrip(id) {
     const trip = mileageTrips.find((entry) => entry.id === id);
     if (!ensureWorkspaceEditor(trip?.workspaceId || trip?.workspace_id || activeWorkspace?.id)) return;
+    const confirmed = await confirmDestructive({
+      title: "Delete mileage log?",
+      message: `This removes ${trip?.purpose || "this mileage trip"} from Forge mileage records. This cannot be undone.`,
+      confirmLabel: "Delete mileage",
+    });
+    if (!confirmed) return;
     if (BETA_LOCAL_MODE || user?.id === "local-beta") {
       setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
       if (editingTripId === id) {
         setEditingTripId(null);
         setTripForm(blankTrip);
       }
+      setVaultToast("Mileage log deleted.");
       return;
     }
     const { error } = await supabase.from("mileage_trips").delete().eq("id", id);
     if (error) return showAppMessage("Could not delete trip: " + error.message);
     setMileageTrips(mileageTrips.filter((trip) => trip.id !== id));
+    setVaultToast("Mileage log deleted.");
   }
 
   async function addSale(event) {
@@ -20650,6 +21050,7 @@ function renderForgeAccessState() {
     const item = forgeInventoryItems.find((i) => String(i.id) === String(saleForm.itemId));
     const targetWorkspaceId = item?.workspaceId || item?.workspace_id || activeForgeWorkspace?.id || activeWorkspace?.id;
     if (!ensureWorkspaceEditor(targetWorkspaceId)) return;
+    const saleWasEditing = Boolean(editingSaleId);
 
     const saleBuild = buildSalesRecordFromDraft(saleForm, item || {}, {
       id: editingSaleId || makeId("sale"),
@@ -20726,6 +21127,7 @@ function renderForgeAccessState() {
       } else {
         setActiveTab("sales");
       }
+      setVaultToast(saleWasEditing ? "Sale updated." : "Sale added.");
       return;
     }
 
@@ -20761,6 +21163,7 @@ function renderForgeAccessState() {
     } else {
       setActiveTab("sales");
     }
+    setVaultToast(saleWasEditing ? "Sale updated." : "Sale added.");
   }
 
   function startEditingSale(sale) {
@@ -20792,17 +21195,25 @@ function renderForgeAccessState() {
   async function deleteSale(id) {
     const sale = sales.find((entry) => entry.id === id);
     if (!ensureWorkspaceEditor(sale?.workspaceId || sale?.workspace_id || activeWorkspace?.id)) return;
+    const confirmed = await confirmDestructive({
+      title: "Delete sale?",
+      message: `This removes the sale record for ${sale?.itemName || "this item"}. Inventory quantity is not automatically restored. This cannot be undone.`,
+      confirmLabel: "Delete sale",
+    });
+    if (!confirmed) return;
     if (BETA_LOCAL_MODE || user?.id === "local-beta") {
       setSales(sales.filter((sale) => sale.id !== id));
       if (editingSaleId === id) {
         setEditingSaleId(null);
         setSaleForm(blankSale);
       }
+      setVaultToast("Sale deleted.");
       return;
     }
     const { error } = await supabase.from("sales_records").delete().eq("id", id);
     if (error) return showAppMessage("Could not delete sale: " + error.message);
     setSales(sales.filter((sale) => sale.id !== id));
+    setVaultToast("Sale deleted.");
   }
 
   function downloadCSV(filename, rows) {
@@ -20816,6 +21227,7 @@ function renderForgeAccessState() {
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+    setVaultToast("Export complete.");
   }
 
   function downloadBackup() {
@@ -20828,6 +21240,7 @@ function renderForgeAccessState() {
     link.click();
     URL.revokeObjectURL(url);
     setBackupImportMessage("Backup exported. Keep this file somewhere safe before clearing browser data or switching phones.");
+    setVaultToast("Backup exported.");
   }
 
   function downloadYearEndTaxSummary(format = "csv") {
@@ -21065,13 +21478,18 @@ function renderForgeAccessState() {
     return Array.from(map.values());
   }
 
-  function applyBetaBackupImport(mode) {
+  async function applyBetaBackupImport(mode) {
     if (!backupImportPreview) return;
-    const confirmed = window.confirm(
-      mode === "replace"
-        ? "Replace current private beta data with this backup? This overwrites data on this device."
-        : "Merge this backup into current private beta data?"
-    );
+    const confirmed = await requestConfirmation({
+      title: mode === "replace" ? "Replace private beta data?" : "Merge backup data?",
+      message: mode === "replace"
+        ? "This overwrites current private beta data on this device with the selected backup."
+        : "This merges the selected backup into current private beta data on this device.",
+      details: mode === "replace" ? "This cannot be undone unless you have another backup." : "Existing records with matching IDs may be updated.",
+      confirmLabel: mode === "replace" ? "Replace data" : "Merge data",
+      cancelLabel: "Cancel",
+      destructive: mode === "replace",
+    });
     if (!confirmed) return;
 
     const data = normalizeBackupPayload(backupImportPreview.payload);
@@ -21172,6 +21590,7 @@ function renderForgeAccessState() {
     }
 
     setBackupImportMessage(`${mode === "replace" ? "Replaced" : "Merged"} beta backup successfully on this device.`);
+    setVaultToast(`${mode === "replace" ? "Backup restored" : "Backup merged"}.`);
     setBackupImportPreview(null);
   }
 
@@ -22933,6 +23352,10 @@ function renderForgeAccessState() {
       ? updateList(scoutData.guesses || scoutSnapshot.guesses || [])
       : scoutData.guesses;
     const converted = normalizeCommunityGuessModerationStatus(patched) === "Converted to Confirmed";
+    const convertedParsedVisit = patched.date || patched.reportDate || patched.report_date
+      ? new Date(`${patched.date || patched.reportDate || patched.report_date}T${patched.time || patched.reportTime || patched.report_time || "00:00"}`)
+      : null;
+    const convertedObservedAt = patched.reportedAt || patched.reported_at || (convertedParsedVisit && !Number.isNaN(convertedParsedVisit.getTime()) ? convertedParsedVisit.toISOString() : "");
     const reports = scoutData.reports || scoutSnapshot.reports || [];
     const convertedReport = converted ? {
       ...patched,
@@ -22947,6 +23370,11 @@ function renderForgeAccessState() {
       stock_status: "in_stock",
       reportDate: patched.date || patched.reportDate || patched.report_date || "",
       reportTime: patched.time || patched.reportTime || patched.report_time || "",
+      observedAt: convertedObservedAt,
+      observed_at: convertedObservedAt,
+      reportedAt: convertedObservedAt,
+      reported_at: convertedObservedAt,
+      report_time: convertedObservedAt,
       itemName: patched.productType || patched.product_type || patched.productName || "Pokemon restock",
       productName: patched.productType || patched.product_type || patched.productName || "Pokemon restock",
       productCategory: patched.productCategory || patched.product_category || patched.productType || "Pokemon",
@@ -23393,12 +23821,16 @@ function renderForgeAccessState() {
     { label: "Price changes", value: recentMarketUpdates[0]?.name || "No catalog changes", updatedAt: recentMarketUpdates[0]?.createdAt || "Local catalog" },
     { label: "Store limit changes", value: scoutSnapshot.stores.find((store) => store.limitPolicy || store.limit_policy)?.limitPolicy || "No limits logged", updatedAt: scoutLastUpdated },
   ];
-  const scoutReportsByStore = useMemo(() => (scoutSnapshot.reports || []).filter((report) => !isScoutGuessRow(report)).reduce((acc, report) => {
-    const storeId = report.storeId || report.store_id || "";
-    if (!storeId) return acc;
-    acc[storeId] = [...(acc[storeId] || []), report];
-    return acc;
-  }, {}), [scoutSnapshot.reports]);
+  const scoutReportsByStore = useMemo(() => {
+    const grouped = (scoutSnapshot.reports || []).filter((report) => !isScoutGuessRow(report)).reduce((acc, report) => {
+      const storeId = report.storeId || report.store_id || "";
+      if (!storeId) return acc;
+      acc[storeId] = [...(acc[storeId] || []), report];
+      return acc;
+    }, {});
+    Object.values(grouped).forEach((reports) => reports.sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a)));
+    return grouped;
+  }, [scoutSnapshot.reports]);
   const scoutStoreMap = useMemo(() => (scoutSnapshot.stores || []).reduce((acc, store) => {
     acc[String(store.id)] = store;
     return acc;
@@ -23497,7 +23929,7 @@ function renderForgeAccessState() {
   }
 
   function scoutReportDateTimeLabel(report = {}) {
-    const rawTimestamp = report.reportedAt || report.reported_at || report.submittedAt || report.submitted_at || report.createdAt || report.created_at || "";
+    const rawTimestamp = scoutReportObservedAt(report);
     if (rawTimestamp) {
       const parsed = new Date(rawTimestamp);
       if (!Number.isNaN(parsed.getTime())) {
@@ -23518,6 +23950,14 @@ function renderForgeAccessState() {
       return `${parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}${time ? ` at ${time}` : ""}`;
     }
     return [date, time].filter(Boolean).join(" ");
+  }
+
+  function scoutReportSubmittedDateTimeLabel(report = {}) {
+    const rawTimestamp = scoutReportSubmittedAt(report);
+    if (!rawTimestamp) return "Submitted time unavailable";
+    const parsed = new Date(rawTimestamp);
+    if (Number.isNaN(parsed.getTime())) return "Submitted time unavailable";
+    return parsed.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
   }
 
   function scoutReportConfidenceBadge(report = {}) {
@@ -23729,7 +24169,7 @@ function renderForgeAccessState() {
   }
 
   function scoutReportSortTime(row = {}) {
-    const raw = row.reportedAt || row.reported_at || row.submittedAt || row.submitted_at || row.createdAt || row.created_at || "";
+    const raw = scoutReportObservedAt(row);
     if (raw) {
       const parsed = new Date(raw);
       if (!Number.isNaN(parsed.getTime())) return parsed.getTime();
@@ -23808,11 +24248,7 @@ function renderForgeAccessState() {
   const homeScoutPreview = useMemo(() => scoutSnapshot.stores
     .map((store) => {
       const storeReports = scoutReportsByStore[store.id] || [];
-      const latestReport = [...storeReports].sort((a, b) => {
-        const aDate = `${a.reportDate || a.report_date || ""}T${a.reportTime || a.report_time || "00:00"}`;
-        const bDate = `${b.reportDate || b.report_date || ""}T${b.reportTime || b.report_time || "00:00"}`;
-        return new Date(bDate) - new Date(aDate);
-      })[0];
+      const latestReport = [...storeReports].sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a))[0];
       const score = Math.min(95, 25 + storeReports.length * 15 + (store.status === "Found" ? 25 : 0));
       return { store, latestReport, score, reportCount: storeReports.length };
     })
@@ -23939,8 +24375,8 @@ function renderForgeAccessState() {
     const windowLabel = scoutForecastWindowLabel(days, pattern.usualTimeWindow || latest.timeWindow || latest.time_window, groupLabel);
     const products = scoutForecastProducts(latest);
     const reason = scoutForecastReason(latest, pattern) || `Based on ${confirmedSupportCount} confirmed restock${confirmedSupportCount === 1 ? "" : "s"} at this store.`;
-    const updatedAt = latest.reportedAt || latest.reported_at || latest.updatedAt || latest.updated_at || latest.submittedAt || latest.submitted_at || latest.createdAt || latest.created_at || pattern.lastConfirmedRestockAt || "";
-    const updatedLabel = updatedAt ? scoutReportDateTimeLabel({ submittedAt: updatedAt }) : "";
+    const updatedAt = scoutReportObservedAt(latest) || latest.updatedAt || latest.updated_at || pattern.lastConfirmedRestockAt || "";
+    const updatedLabel = updatedAt ? scoutReportDateTimeLabel({ observedAt: updatedAt }) : "";
     const submittedBy = latest.submittedBy || latest.submitted_by || latest.username || latest.userName || latest.user_name || "";
     const confidenceScore = confirmedSupportCount >= 5 ? 82 : confirmedSupportCount >= 3 ? 62 : 38;
     const confidenceKey = confirmedSupportCount >= 5 ? "high" : confirmedSupportCount >= 3 ? "medium" : "low";
@@ -24006,7 +24442,7 @@ function renderForgeAccessState() {
         windowLabel: scoutForecastWindowLabel([guess.guessedDay].filter(Boolean), guess.guessedTimeWindow, "Unknown window"),
         products: guess.productType ? [guess.productType] : [],
         reason: guess.restockPatternNotes,
-        updatedLabel: guess.updatedAt ? scoutReportDateTimeLabel({ submittedAt: guess.updatedAt }) : "",
+        updatedLabel: guess.updatedAt ? scoutReportDateTimeLabel({ observedAt: guess.updatedAt }) : "",
         submittedBy: guess.submittedBy || "",
         lastConfirmedReportLabel: "",
         supportingReportCount: 0,
@@ -24082,9 +24518,9 @@ function renderForgeAccessState() {
       windowLabel: row.windowLabel || row.forecastTimeWindow || row.forecast_time_window || "Unknown time",
       products: row.products || [],
       reason: row.dataNeededMessage || row.reason || row.basisSummary || row.basis_summary || "",
-      updatedLabel: row.updatedAt ? scoutReportDateTimeLabel({ submittedAt: row.updatedAt }) : row.updated_at ? scoutReportDateTimeLabel({ submittedAt: row.updated_at }) : "",
+      updatedLabel: row.updatedAt ? scoutReportDateTimeLabel({ observedAt: row.updatedAt }) : row.updated_at ? scoutReportDateTimeLabel({ observedAt: row.updated_at }) : "",
       submittedBy: "",
-      lastConfirmedReportLabel: row.lastConfirmedReportLabel || (row.last_confirmed_report_at ? scoutReportDateTimeLabel({ submittedAt: row.last_confirmed_report_at }) : ""),
+      lastConfirmedReportLabel: row.lastConfirmedReportLabel || (row.last_confirmed_report_at ? scoutReportDateTimeLabel({ observedAt: row.last_confirmed_report_at }) : ""),
       supportingReportCount,
       supportingGuessCount: Number(row.supportingGuessCount ?? row.supporting_guess_count ?? 0),
       trainingCount: supportingReportCount,
@@ -24219,7 +24655,7 @@ function renderForgeAccessState() {
   const watchCalendarReportEvents = scoutReportRows
     .map((report, index) => {
       const store = getScoutReportStore(report);
-      const rawDate = String(report.reportDate || report.report_date || report.createdAt || report.created_at || report.reportedAt || report.reported_at || "").slice(0, 10);
+      const rawDate = String(scoutReportObservedAt(report) || "").slice(0, 10);
       const dateKey = rawDate || watchCalendarTodayKey;
       if (dateKey < watchCalendarTodayKey || dateKey > watchCalendarRangeEndKey) return null;
       const items = normalizeScoutReportItems(report);
@@ -24242,7 +24678,7 @@ function renderForgeAccessState() {
         layerKeys: ["localRestocks", "retailDrops", confidenceKey === "confirmed" ? "confirmedRestocks" : "predictedDrops", isFollowedStore ? "followedStores" : ""].filter(Boolean),
         eventType: confidenceKey === "confirmed" ? "Confirmed Restock" : "Local Store Watch",
         locationType: "store",
-        timeLabel: report.reportTime || report.report_time || "Reported",
+        timeLabel: scoutReportDateTimeLabel(report),
         confidenceLabel: confidenceKey === "confirmed" ? "Confirmed Restock" : scoutForecastConfidenceLabel(confidenceKey),
         confidenceKey,
         sourceLabel: scoutSourceTypeLabel(report.sourceType || report.source_type || "user_report"),
@@ -24404,9 +24840,7 @@ function renderForgeAccessState() {
       const regionDiff = String(aStore.city || aStore.region || "").localeCompare(String(bStore.city || bStore.region || ""));
       if (regionDiff) return regionDiff;
     }
-    const aDate = `${a.reportDate || a.report_date || a.createdAt || ""}T${a.reportTime || a.report_time || "00:00"}`;
-    const bDate = `${b.reportDate || b.report_date || b.createdAt || ""}T${b.reportTime || b.report_time || "00:00"}`;
-    return new Date(bDate) - new Date(aDate);
+    return scoutReportSortTime(b) - scoutReportSortTime(a);
   });
   const regionalScoutForecastPreviewRows = scoutForecastPreviewRows.filter(scoutForecastMatchesAreaFilters);
   const regionalScoutGuessRows = scoutGuessRows.filter(scoutForecastMatchesAreaFilters);
@@ -26888,7 +27322,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     });
   }
 
-  function runDropRadarReset() {
+  async function runDropRadarReset() {
     if (!adminEditModeActive) {
       setVaultToast("Admin Edit Mode is required to reset Drop Radar data.");
       return;
@@ -26902,8 +27336,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       setVaultToast(`Type ${DROP_RADAR_CONFIRMATION_TEXT} before running the full reset.`);
       return;
     }
-    if (!dropRadarResetSelections.full && !window.confirm("Reset selected Drop Radar data? Raw Scout reports, stores, follows, Vault, Forge, Market, Kids, and Tidepool data will not be cleared.")) {
-      return;
+    if (!dropRadarResetSelections.full) {
+      const confirmed = await requestConfirmation({
+        title: "Reset selected Drop Radar data?",
+        message: "Raw Scout reports, stores, follows, Vault, Forge, Market, Kids, and Tidepool data will not be cleared.",
+        details: "Only the selected Drop Radar training or prediction data will be reset.",
+        confirmLabel: "Reset selected data",
+        cancelLabel: "Cancel",
+        destructive: true,
+      });
+      if (!confirmed) return;
     }
     const scoutData = getSharedScoutData();
     const nextScout = applyDropRadarReset(scoutData, dropRadarResetSelections);
@@ -27042,6 +27484,148 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     setScoutReportModerationTarget({ report, actionKey });
   }
 
+  function canEditScoutReportDateTime(report = {}) {
+    return Boolean(report && getScoutReportId(report) && adminEditModeActive);
+  }
+
+  function buildScoutReportDateTimePatch(report = {}, observedAt = "") {
+    const parsed = observedAt ? new Date(observedAt) : new Date();
+    const safeDate = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+    const visitDate = getLocalDateInputKey(safeDate);
+    const visitTime = getLocalTimeKey(safeDate);
+    const now = new Date().toISOString();
+    return {
+      ...report,
+      observedAt,
+      observed_at: observedAt,
+      reportedAt: observedAt,
+      reported_at: observedAt,
+      report_time: observedAt,
+      reportDate: visitDate,
+      report_date: visitDate,
+      reportTime: visitTime,
+      updatedAt: now,
+      updated_at: now,
+    };
+  }
+
+  async function persistScoutReportDateTimeToSupabase(report = {}, observedAt = "") {
+    if (!scoutBackendSyncReady()) return null;
+    const reportId = uuidOrNull(getScoutReportId(report));
+    if (!reportId) return null;
+    const now = new Date().toISOString();
+    const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at";
+    let result = await supabase
+      .from("store_reports")
+      .update({
+        observed_at: observedAt,
+        reported_at: observedAt,
+        report_time: observedAt,
+        updated_at: now,
+      })
+      .eq("id", reportId)
+      .select(reportSelect)
+      .single();
+    if (result.error && isScoutBackendOptionalError(result.error)) {
+      result = await supabase
+        .from("store_reports")
+        .update({
+          reported_at: observedAt,
+          report_time: observedAt,
+          updated_at: now,
+        })
+        .eq("id", reportId)
+        .select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at")
+        .single();
+    }
+    if (result.error) throw result.error;
+    return mapSupabaseScoutReport(result.data, getScoutQuickStores({ admin: adminEditModeActive }));
+  }
+
+  function saveScoutReportDateTimeLocally(report = {}, observedAt = "") {
+    const reportId = getScoutReportId(report);
+    const patchedReport = buildScoutReportDateTimePatch(report, observedAt);
+    const scoutData = getSharedScoutData();
+    const baseReports = (scoutData.reports || scoutSnapshot.reports || []).filter(Boolean);
+    const nextReports = baseReports.some((candidate) => String(getScoutReportId(candidate)) === String(reportId))
+      ? baseReports.map((candidate) => String(getScoutReportId(candidate)) === String(reportId) ? buildScoutReportDateTimePatch(candidate, observedAt) : candidate)
+      : [patchedReport, ...baseReports];
+    saveSharedScoutData({ ...scoutData, reports: nextReports });
+    setSelectedScoutReport((current) => {
+      if (!current || String(getScoutReportId(current)) !== String(reportId)) return current;
+      return nextReports.find((candidate) => String(getScoutReportId(candidate)) === String(reportId)) || patchedReport;
+    });
+    return nextReports.find((candidate) => String(getScoutReportId(candidate)) === String(reportId)) || patchedReport;
+  }
+
+  function openScoutReportDateTimeEditor(report = {}) {
+    if (!canEditScoutReportDateTime(report)) {
+      showErrorToast("Permission denied.", { message: "Only admins or moderators can edit Scout report visit times." });
+      return;
+    }
+    setScoutDateTimeEdit({
+      report,
+      value: scoutReportDateTimeInputValue(report),
+      message: "",
+      saving: false,
+    });
+  }
+
+  async function saveScoutReportDateTimeEdit(event) {
+    event?.preventDefault?.();
+    const report = scoutDateTimeEdit.report;
+    if (!report || !canEditScoutReportDateTime(report)) {
+      showErrorToast("Permission denied.", { message: "Only admins or moderators can edit Scout report visit times." });
+      return;
+    }
+    const [date = "", time = ""] = String(scoutDateTimeEdit.value || "").split("T");
+    const validation = validateScoutVisitDateTime({ reportDate: date, reportTime: time }, { allowFutureConfirmation: adminEditModeActive });
+    if (!validation.ok) {
+      setScoutDateTimeEdit((current) => ({ ...current, message: validation.message || "Use a valid visit date and time." }));
+      showErrorToast("Couldn’t update report date.", { message: validation.message || "Use a valid visit date and time." });
+      return;
+    }
+    if (validation.needsFutureConfirmation) {
+      const confirmed = await requestConfirmation({
+        title: "Use a future visit time?",
+        message: "This report is dated more than 15 minutes in the future. Only use this when correcting a report intentionally.",
+        confirmLabel: "Use this time",
+        cancelLabel: "Edit time",
+      });
+      if (!confirmed) return;
+    }
+    const oldObservedAt = scoutReportObservedAt(report);
+    setScoutDateTimeEdit((current) => ({ ...current, saving: true, message: "" }));
+    try {
+      const cloudReport = await persistScoutReportDateTimeToSupabase(report, validation.iso);
+      const updatedReport = saveScoutReportDateTimeLocally(cloudReport || report, validation.iso);
+      setScoutDateTimeEdit({ report: null, value: "", message: "", saving: false });
+      showSuccessToast(validation.oldBackfill ? "Backfilled report saved." : "Scout report date updated.", {
+        message: validation.oldBackfill ? "The visit time now reflects the older store check." : "The Scout timeline now uses the updated visit time.",
+      });
+      if (adminEditModeActive) {
+        void trackBetaActivity("scout_report_datetime_updated", {
+          eventContext: "scout_admin",
+          entityType: "scout_report",
+          entityId: getScoutReportId(updatedReport),
+          metadata: {
+            oldObservedAt,
+            newObservedAt: validation.iso,
+            changedBy: currentUserProfile?.email || currentPublicUsername() || user?.id || "",
+          },
+        });
+      }
+    } catch (error) {
+      logAppError("scout_report_datetime_update", error, { reportId: getScoutReportId(report) }, "normal");
+      setScoutDateTimeEdit((current) => ({
+        ...current,
+        saving: false,
+        message: error?.message || "Couldn’t update this report date. Please try again.",
+      }));
+      showErrorToast("Couldn’t update report date.", { message: "Please try again in a moment." });
+    }
+  }
+
   function getScoutReportAdminActions(report) {
     if (!adminEditModeActive) return [];
     return [
@@ -27154,6 +27738,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const distanceLabel = Number.isFinite(distance) ? `${distance.toFixed(1)} mi` : "";
     const reporterReputation = report.reporterReputation || report.reporter_reputation || report.trustScore || report.trust_score || "";
     const reporterProfile = publicCommunityProfile(report);
+    const visitLabel = scoutReportDateTimeLabel(report);
+    const submittedLabel = scoutReportSubmittedDateTimeLabel(report);
+    const canEditVisitTime = canEditScoutReportDateTime(report);
     return (
       <article className="scout-report-compact-card" key={reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -27165,7 +27752,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span className={`status-badge scout-report-status ${statusClass(statusLabel)}`}>{statusLabel}</span>
           </div>
           <div className="scout-report-meta">
-            <span>{scoutReportDateTimeLabel(report)}</span>
+            <span>Visit: {visitLabel}</span>
+            {!compact && adminEditModeActive ? <span>Submitted: {submittedLabel}</span> : null}
             {distanceLabel ? <span>{distanceLabel}</span> : null}
             {stockStatus ? <span>{stockStatus}</span> : null}
             {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
@@ -27207,6 +27795,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <OverflowMenu
             actions={[
               { label: "View", onClick: () => setSelectedScoutReport(report) },
+              ...(canEditVisitTime ? [{ label: "Edit date/time", onClick: () => openScoutReportDateTimeEditor(report) }] : []),
               { label: "Edit", onClick: () => editScoutReport(report) },
               ...getScoutReportAdminActions(report),
             ]}
@@ -29162,7 +29751,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     setVaultToast(mode === "Merged" ? "Suggestion merged into shared data." : "Suggestion approved and applied.");
   }
 
-  function reviewSuggestion(suggestion, action) {
+  async function reviewSuggestion(suggestion, action) {
     if (!canReviewSharedData) {
       setVaultToast("Admin role required to review shared data suggestions.");
       return;
@@ -29173,7 +29762,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     if (["reject", "merge", "duplicate"].includes(action)) {
       const actionLabel = action === "reject" ? "reject this suggestion" : action === "merge" ? "merge this suggestion into shared data" : "mark this suggestion as a duplicate";
-      if (!window.confirm(`Confirm admin action: ${actionLabel}?`)) return;
+      const confirmed = await requestConfirmation({
+        title: "Confirm admin action?",
+        message: `This will ${actionLabel}.`,
+        confirmLabel: action === "reject" ? "Reject suggestion" : action === "merge" ? "Merge suggestion" : "Mark duplicate",
+        cancelLabel: "Cancel",
+        destructive: action === "reject",
+      });
+      if (!confirmed) return;
     }
     if (action === "approve") {
       applyApprovedSuggestion(suggestion, "Approved");
@@ -35292,7 +35888,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         : [
             ["Quantity", quickScoutReportForm.quantity || "Not specified"],
             ["Stock left", quickScoutStockLeftLabel()],
-            ["When", quickScoutDateLabel()],
+            ["Visit date & time", quickScoutDateLabel()],
           ]),
       ["Visibility", scoutVisibilityOptionLabel(quickScoutReportForm.visibility || (currentType.isGuess ? "private" : "public"), currentType.isGuess)],
       ["Store follow", (quickScoutReportForm.storeFollowPreference || "verified_restocks").replace(/_/g, " ")],
@@ -35376,12 +35972,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       const savedSignalType = currentType.isGuess
         ? "Community Guess (not confirmed stock)"
         : (quickScoutReportSaved?.confidence === "verified" ? "Verified Scout report" : "Submitted Scout report");
+      const savedToCloud = quickScoutReportSaved?.sourceStatus === "supabase";
       return (
         <section className="scout-quick-report-v2 scout-quick-report-sent">
           <div className="scout-quick-report-success">
-            <span>Sent</span>
+            <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Sent" : "Saved locally"}</span>
             <h3>{quickScoutReportMessage || "Report sent. You can add details now or later."}</h3>
-            <p>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store"} now appears in {currentType.isGuess ? "Guesses Planner" : "Scout reports"} as a local beta record.</p>
+            <p>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store"} now appears in {currentType.isGuess ? "Guesses Planner" : "Scout reports"}{currentType.isGuess ? "." : savedToCloud ? " as a synced Scout report." : " on this device."}</p>
           </div>
           <div className="scout-report-review-grid scout-submit-confirmation-grid" aria-label="Submitted Scout report confirmation">
             <div>
@@ -35397,7 +35994,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>{savedStockStatus}</strong>
             </div>
             <div>
-              <span>Submitted time</span>
+              <span>Visit time</span>
               <strong>{savedSubmittedTime}</strong>
             </div>
             <div>
@@ -35775,13 +36372,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 Price / MSRP
                 <input inputMode="decimal" value={quickScoutReportForm.price} onChange={(event) => updateQuickScoutReportForm("price", event.target.value)} placeholder="Optional" />
               </label>
-              <label>
-                Report date
-                <input type="date" value={quickScoutReportForm.reportDate} onChange={(event) => updateQuickScoutReportForm("reportDate", event.target.value)} />
-              </label>
-              <label>
-                Report time
-                <input type="time" value={quickScoutReportForm.reportTime} onChange={(event) => updateQuickScoutReportForm("reportTime", event.target.value)} />
+              <label className="scout-visit-time-field">
+                <span>Visit date &amp; time</span>
+                <input
+                  type="datetime-local"
+                  value={quickScoutVisitDateTimeValue()}
+                  onChange={(event) => updateQuickScoutVisitDateTime(event.target.value)}
+                  required
+                />
+                <small>Use this if you are backfilling a store visit from earlier.</small>
               </label>
             </div>
             <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
@@ -37160,7 +37759,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }, [selectedCatalogDetailId]);
 
   useEffect(() => {
-    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || aiAssistReview || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || selectedScoutReport || scoutReportModerationTarget || tidepoolFlagTarget || adminConfirmAction || feedbackDialog);
+    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || aiAssistReview || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || selectedScoutReport || scoutDateTimeEdit.report || scoutReportModerationTarget || tidepoolFlagTarget || adminConfirmAction || feedbackDialog);
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
@@ -37239,6 +37838,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         setScoutReportModerationTarget(null);
         return;
       }
+      if (scoutDateTimeEdit.report) {
+        event.preventDefault();
+        if (!scoutDateTimeEdit.saving) setScoutDateTimeEdit({ report: null, value: "", message: "", saving: false });
+        return;
+      }
       if (selectedScoutReport) {
         event.preventDefault();
         setSelectedScoutReport(null);
@@ -37256,7 +37860,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, aiAssistReview, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportModerationTarget, tidepoolFlagTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, aiAssistReview, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutDateTimeEdit.report, scoutDateTimeEdit.saving, scoutReportModerationTarget, tidepoolFlagTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (activeTab === "resetPassword") {
     return (
@@ -37300,12 +37904,73 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </button>
           </section>
         </main>
-        {vaultToast ? (
-          <div className="vault-toast" role="status">
-            <span>{vaultToast}</span>
-            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
+        {renderToastViewport()}
+        {renderConfirmationModal()}
+      </div>
+    );
+  }
+
+  function renderToastViewport() {
+    if (!appToasts.length) return null;
+    return (
+      <div className="app-toast-viewport" aria-live="polite" aria-relevant="additions removals">
+        {appToasts.map((toast) => {
+          const type = ["success", "error", "warning", "info"].includes(toast.type) ? toast.type : "info";
+          return (
+            <article className={`app-toast app-toast--${type}`} key={toast.id} role={type === "error" ? "alert" : "status"}>
+              <span className="app-toast-icon" aria-hidden="true">{TOAST_ICON_LABELS[type] || "i"}</span>
+              <div className="app-toast-copy">
+                <strong className="app-toast-title">{toast.title}</strong>
+                {toast.message ? <span className="app-toast-message">{toast.message}</span> : null}
+              </div>
+              {toast.actionLabel && typeof toast.onAction === "function" ? (
+                <button
+                  type="button"
+                  className="app-toast-action"
+                  onClick={() => {
+                    toast.onAction?.();
+                    dismissToast(toast.id);
+                  }}
+                >
+                  {toast.actionLabel}
+                </button>
+              ) : null}
+              <button type="button" className="app-toast-dismiss" aria-label={`Dismiss ${TOAST_TYPE_LABELS[type] || "toast"}`} onClick={() => dismissToast(toast.id)}>×</button>
+            </article>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function renderConfirmationModal() {
+    if (!confirmationState) return null;
+    return (
+      <div className="app-confirmation-backdrop" role="presentation" onClick={() => closeConfirmation(false)}>
+        <section
+          id="app-confirmation-dialog"
+          className={`app-confirmation-dialog${confirmationState.destructive ? " app-confirmation-dialog--danger" : ""}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="app-confirmation-title"
+          aria-describedby="app-confirmation-message"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="app-confirmation-mark" aria-hidden="true">{confirmationState.destructive ? "!" : "✓"}</div>
+          <div className="app-confirmation-copy">
+            <h2 id="app-confirmation-title">{confirmationState.title}</h2>
+            <p id="app-confirmation-message">{confirmationState.message}</p>
+            {confirmationState.details ? <p className="compact-subtitle">{confirmationState.details}</p> : null}
           </div>
-        ) : null}
+          <div className="app-confirmation-actions">
+            <button type="button" className="secondary-button" ref={confirmationCancelRef} onClick={() => closeConfirmation(false)}>
+              {confirmationState.cancelLabel || "Cancel"}
+            </button>
+            <button type="button" className={confirmationState.destructive ? "delete-button" : "ember-gradient-button"} onClick={() => closeConfirmation(true)}>
+              {confirmationState.confirmLabel || "Confirm"}
+            </button>
+          </div>
+        </section>
       </div>
     );
   }
@@ -37694,12 +38359,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             )}
           </section>
         </main>
-        {vaultToast ? (
-          <div className="vault-toast" role="status">
-            <span>{vaultToast}</span>
-            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
-          </div>
-        ) : null}
+        {renderToastViewport()}
+        {renderConfirmationModal()}
       </div>
     );
   }
@@ -37818,12 +38479,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </form>
           </section>
         </main>
-        {vaultToast ? (
-          <div className="vault-toast" role="status">
-            <span>{vaultToast}</span>
-            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
-          </div>
-        ) : null}
+        {renderToastViewport()}
+        {renderConfirmationModal()}
 
         {watchCalendarView === "month" ? (
           <div className="watch-month-panel">
@@ -37963,7 +38620,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const latestScoutStoreName = latestScoutStore?.name || latestScoutReport?.storeName || latestScoutReport?.store_name || bestScoutStore?.name || (followedStores.length ? "your followed stores" : "nearby stores");
     const latestScoutItem = latestScoutReport?.itemName || latestScoutReport?.item_name || latestScoutReport?.productName || latestScoutReport?.product_name || "Pokemon stock";
     const latestScoutTime = latestScoutReport
-      ? shortDate(latestScoutReport.reportedAt || latestScoutReport.reported_at || latestScoutReport.createdAt || latestScoutReport.created_at)
+      ? shortDate(scoutReportObservedAt(latestScoutReport))
       : "";
     const receiptsNeedingReviewCount = forgeReceiptsNeedingReviewCount;
     const forgeReviewCount = receiptsNeedingReviewCount + needsMarketCheckItems.length + missingSalePriceItems.length;
@@ -38411,7 +39068,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const latestScoutStoreName = latestScoutStore?.name || latestScoutReport?.storeName || latestScoutReport?.store_name || bestScoutStore?.name || (followedStores.length ? "your followed stores" : "nearby stores");
     const latestScoutItem = latestScoutReport?.itemName || latestScoutReport?.item_name || latestScoutReport?.productName || latestScoutReport?.product_name || "Pokemon stock";
     const latestScoutTime = latestScoutReport
-      ? shortDate(latestScoutReport.reportedAt || latestScoutReport.reported_at || latestScoutReport.createdAt || latestScoutReport.created_at)
+      ? shortDate(scoutReportObservedAt(latestScoutReport))
       : "";
     const receiptsNeedingReviewCount = forgeReceiptsNeedingReviewCount;
     const forgePricingTaskCount = needsMarketCheckItems.length + missingSalePriceItems.length;
@@ -38956,12 +39613,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <main className="main auth-main">
           {renderBetaInviteClaimPage({ signedOut: false })}
         </main>
-        {vaultToast ? (
-          <div className="vault-toast" role="status">
-            <span>{vaultToast}</span>
-            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
-          </div>
-        ) : null}
+        {renderToastViewport()}
+        {renderConfirmationModal()}
       </div>
     );
   }
@@ -38976,12 +39629,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <main className="main auth-main">
           {renderWorkspaceInviteClaimPage({ signedOut: false })}
         </main>
-        {vaultToast ? (
-          <div className="vault-toast" role="status">
-            <span>{vaultToast}</span>
-            <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
-          </div>
-        ) : null}
+        {renderToastViewport()}
+        {renderConfirmationModal()}
       </div>
     );
   }
@@ -41416,6 +42065,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             {renderScoutReportCard(selectedScoutReport)}
             <div className="location-modal-actions modal-sticky-footer">
+              {canEditScoutReportDateTime(selectedScoutReport) ? (
+                <button type="button" onClick={() => openScoutReportDateTimeEditor(selectedScoutReport)}>Edit date/time</button>
+              ) : null}
               <button type="button" onClick={() => editScoutReport(selectedScoutReport)}>Edit</button>
               {adminEditModeActive ? (
                 <OverflowMenu
@@ -41426,6 +42078,49 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="ghost-button" onClick={() => setSelectedScoutReport(null)}>Close</button>
             </div>
           </section>
+        </div>
+      ) : null}
+
+      {scoutDateTimeEdit.report ? (
+        <div className="location-modal-backdrop" role="presentation" onClick={() => !scoutDateTimeEdit.saving && setScoutDateTimeEdit({ report: null, value: "", message: "", saving: false })}>
+          <form className="location-modal scout-date-time-edit-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-date-time-edit-title" onClick={(event) => event.stopPropagation()} onSubmit={saveScoutReportDateTimeEdit}>
+            <div className="modal-title-row modal-sticky-header">
+              <div>
+                <h2 id="scout-date-time-edit-title">Edit visit date &amp; time</h2>
+                <p>{getScoutReportStore(scoutDateTimeEdit.report).name || scoutDateTimeEdit.report.storeName || "Scout report"}</p>
+              </div>
+              <button
+                type="button"
+                className="modal-close-button"
+                aria-label="Close date/time editor"
+                disabled={scoutDateTimeEdit.saving}
+                onClick={() => setScoutDateTimeEdit({ report: null, value: "", message: "", saving: false })}
+              >
+                X
+              </button>
+            </div>
+            <div className="scout-date-time-edit-body">
+              <label>
+                <span>Visit date &amp; time</span>
+                <input
+                  type="datetime-local"
+                  value={scoutDateTimeEdit.value}
+                  onChange={(event) => setScoutDateTimeEdit((current) => ({ ...current, value: event.target.value, message: "" }))}
+                  required
+                />
+                <small>Use this if you are backfilling a store visit from earlier.</small>
+              </label>
+              <div className="scout-date-time-comparison">
+                <DetailItem label="Current visit" value={scoutReportDateTimeLabel(scoutDateTimeEdit.report)} />
+                <DetailItem label="Submitted" value={scoutReportSubmittedDateTimeLabel(scoutDateTimeEdit.report)} />
+              </div>
+              {scoutDateTimeEdit.message ? <p className="form-error">{scoutDateTimeEdit.message}</p> : null}
+            </div>
+            <div className="location-modal-actions modal-sticky-footer">
+              <button type="submit" disabled={scoutDateTimeEdit.saving}>{scoutDateTimeEdit.saving ? "Saving..." : "Save visit time"}</button>
+              <button type="button" className="ghost-button" disabled={scoutDateTimeEdit.saving} onClick={() => setScoutDateTimeEdit({ report: null, value: "", message: "", saving: false })}>Cancel</button>
+            </div>
+          </form>
         </div>
       ) : null}
 
@@ -41537,12 +42232,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
       ) : null}
 
-      {vaultToast ? (
-        <div className={`vault-toast ${/failed|could not|error|unavailable|denied/i.test(vaultToast) ? "toast-warning" : /saved|submitted|complete|success|synced|added/i.test(vaultToast) ? "toast-success" : ""}`} role="status">
-          <span>{vaultToast}</span>
-          <button type="button" className="ghost-button" onClick={() => setVaultToast("")}>Dismiss</button>
-        </div>
-      ) : null}
+      {renderToastViewport()}
+      {renderConfirmationModal()}
 
       {legacyVaultAddModalEnabled && showVaultAddForm ? (
         <div className="location-modal-backdrop vault-add-backdrop" role="presentation" onClick={() => closeVaultAddModal()}>

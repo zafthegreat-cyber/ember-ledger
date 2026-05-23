@@ -152,7 +152,7 @@ function reportProductName(report = {}) {
 }
 
 function reportTimestamp(report = {}) {
-  return firstValue(report.reportedAt, report.reported_at, report.submittedAt, report.submitted_at, report.createdAt, report.created_at, report.reportDate, report.report_date);
+  return firstValue(report.observedAt, report.observed_at, report.reportedAt, report.reported_at, report.submittedAt, report.submitted_at, report.createdAt, report.created_at, report.reportDate, report.report_date);
 }
 
 function isHiddenFromNormalUsers(row = {}) {

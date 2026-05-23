@@ -162,7 +162,7 @@ function hasDropRadarStore(row = {}) {
 }
 
 function hasDropRadarDate(row = {}) {
-  return Boolean(row.date || row.reportDate || row.report_date || row.reportedAt || row.reported_at || row.createdAt || row.created_at);
+  return Boolean(row.date || row.reportDate || row.report_date || row.observedAt || row.observed_at || row.reportedAt || row.reported_at || row.createdAt || row.created_at);
 }
 
 function hasRestockSeenSignal(row = {}) {
@@ -363,6 +363,21 @@ function restockTimeWindow(timeString = "") {
   return "Evening";
 }
 
+function localDateKeyFromTimestamp(value = "") {
+  const parsed = value ? new Date(value) : null;
+  if (!parsed || Number.isNaN(parsed.getTime())) return "";
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function localTimeKeyFromTimestamp(value = "") {
+  const parsed = value ? new Date(value) : null;
+  if (!parsed || Number.isNaN(parsed.getTime())) return "";
+  return `${String(parsed.getHours()).padStart(2, "0")}:${String(parsed.getMinutes()).padStart(2, "0")}`;
+}
+
 function mostCommonValue(values = []) {
   const counts = values.filter(Boolean).reduce((acc, value) => {
     acc[value] = (acc[value] || 0) + 1;
@@ -374,7 +389,7 @@ function mostCommonValue(values = []) {
 function entryTimestamp(entry = {}) {
   const date = entry.date || entry.reportDate || entry.report_date || "";
   const time = entry.time || entry.reportTime || entry.report_time || "";
-  const reportedAt = entry.reportedAt || entry.reported_at || entry.createdAt || entry.created_at || "";
+  const reportedAt = entry.observedAt || entry.observed_at || entry.reportedAt || entry.reported_at || entry.createdAt || entry.created_at || "";
   const raw = reportedAt || (date ? `${String(date).slice(0, 10)}T${time || "00:00"}` : "");
   const parsed = raw ? new Date(raw) : null;
   return parsed && !Number.isNaN(parsed.getTime()) ? parsed.getTime() : 0;
@@ -391,8 +406,11 @@ function normalizeTrainingEntry(entry = {}, stores = []) {
     chain: entry.retailer || entry.chain || "",
     city: entry.city || "",
   };
-  const date = entry.date || entry.reportDate || entry.report_date || "";
-  const time = entry.time || entry.reportTime || entry.report_time || "";
+  const observedAt = entry.observedAt || entry.observed_at || entry.reportedAt || entry.reported_at || "";
+  const observedDate = localDateKeyFromTimestamp(observedAt) || (observedAt ? String(observedAt).slice(0, 10) : "");
+  const observedTime = localTimeKeyFromTimestamp(observedAt) || (observedAt ? String(observedAt).slice(11, 16) : "");
+  const date = entry.date || entry.reportDate || entry.report_date || observedDate || "";
+  const time = entry.time || entry.reportTime || entry.report_time || observedTime || "";
   return {
     ...entry,
     store,

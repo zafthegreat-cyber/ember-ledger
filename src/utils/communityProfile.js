@@ -131,7 +131,7 @@ export function communityGuessIsApproved(row = {}) {
 }
 
 function contributionDate(row = {}) {
-  const value = row.updatedAt || row.updated_at || row.submittedAt || row.submitted_at || row.createdAt || row.created_at || row.reportedAt || row.reported_at || "";
+  const value = row.observedAt || row.observed_at || row.updatedAt || row.updated_at || row.submittedAt || row.submitted_at || row.createdAt || row.created_at || row.reportedAt || row.reported_at || "";
   const time = value ? new Date(value).getTime() : 0;
   return Number.isFinite(time) ? time : 0;
 }
