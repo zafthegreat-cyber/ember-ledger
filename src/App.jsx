@@ -4977,6 +4977,7 @@ export default function App() {
   const flowModalBaselineRef = useRef({});
   const quickScoutWizardTouchRef = useRef(0);
   const marketAddLastActionRef = useRef({ key: "", time: 0 });
+  const phase2AppPreferencesAppliedRef = useRef("");
 
   function openMenuDrawer(sectionKey = "") {
     setQuickAddMenuOpen(false);
@@ -7003,6 +7004,8 @@ export default function App() {
             publicUsername,
             public_bio: publicBio,
             publicBio,
+            preferred_region: preferredRegion,
+            preferredRegion,
           },
         });
         if (authProfileError) throw authProfileError;
@@ -7307,7 +7310,7 @@ export default function App() {
         [key]: value,
       },
     }));
-    setVaultToast("In-app alert preference saved.");
+    setVaultToast("In-app category preference saved locally for this beta.");
   }
 
   function markNotificationRead(notificationId) {
@@ -10868,11 +10871,13 @@ export default function App() {
       enabled: Boolean(value),
       channels: { inApp: true },
       filters: {},
-    }).then((result) => updatePhase2Status(result, "Alert preference saved locally."));
+    }).then((result) => {
+      updatePhase2Status(result, "Alert preference saved locally.");
+      setVaultToast(result.source === "supabase" ? "Scout alert preference synced." : "Scout alert preference saved locally.");
+    });
     try {
       const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
       localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, alertSettings: nextAlertSettings }));
-      setVaultToast("Preference saved.");
     } catch (error) {
       console.warn("Unable to save Scout alert preference", error);
       setVaultToast("Could not save preference right now.");
@@ -12017,6 +12022,67 @@ export default function App() {
     user?.id,
     activeWorkspaceId,
     guestPreviewActive,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    shorelineState.betaRequest?.status,
+  ]);
+
+  useEffect(() => {
+    if (!localDataLoaded || guestPreviewActive) return;
+    if (user?.id && user.id !== "local-beta" && (!currentProfileLoadedForUser() || !betaAccessAllowed())) return;
+    const preferences = phase2Data.appPreferences;
+    if (!preferences) return;
+
+    const preferenceKey = JSON.stringify({
+      userId: user?.id || "local-beta",
+      workspaceId: activeWorkspaceId || "",
+      updatedAt: preferences.updated_at || preferences.updatedAt || "",
+      dashboardPreset: preferences.dashboard_preset || preferences.dashboardPreset || "",
+      enabledHomeCards: preferences.enabled_home_cards || preferences.enabledHomeCards || null,
+      enabledDashboardSections: preferences.enabled_dashboard_sections || preferences.enabledDashboardSections || null,
+    });
+    if (phase2AppPreferencesAppliedRef.current === preferenceKey) return;
+    phase2AppPreferencesAppliedRef.current = preferenceKey;
+
+    const savedPresetValue = preferences.dashboard_preset || preferences.dashboardPreset || "";
+    const savedPreset = savedPresetValue ? normalizeDashboardPreset(savedPresetValue) : "";
+    if (savedPreset) {
+      const userTypeForPreset = {
+        collector: "collector",
+        seller: "seller",
+        budget_parent: "budget",
+        restock_scout: "scout",
+        full_business: "all_in_one",
+      }[savedPreset];
+      if (userTypeForPreset) setUserType(userTypeForPreset);
+      setDashboardPreset(savedPreset);
+    }
+
+    const savedHomeCards = preferences.enabled_home_cards || preferences.enabledHomeCards;
+    if (savedHomeCards && typeof savedHomeCards === "object" && !Array.isArray(savedHomeCards)) {
+      setHomeStatsEnabled(normalizeHomeStatsEnabled(savedHomeCards, userType));
+    }
+
+    const savedSections = preferences.enabled_dashboard_sections || preferences.enabledDashboardSections;
+    if (savedSections) {
+      const nextPreset = savedPreset || dashboardPreset;
+      const layoutInput = Array.isArray(savedSections) ? { sections: savedSections } : savedSections;
+      setDashboardLayout(normalizeDashboardLayout(layoutInput, nextPreset));
+    }
+  }, [
+    localDataLoaded,
+    guestPreviewActive,
+    user?.id,
+    activeWorkspaceId,
+    phase2Data.appPreferences,
+    dashboardPreset,
+    userType,
     currentUserProfile?.id,
     currentUserProfile?.userId,
     currentUserProfile?.appAccess,
@@ -36536,6 +36602,88 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   const workspaceArchiveCounts = workspaceArchiveTarget ? workspaceRecordCountsFor(workspaceArchiveTarget.id) : null;
   const settingsSellerModeActive = sellerModeEnabled(userType, dashboardPreset);
   const activeForgeModeSummary = forgeModeSummary(forgeModeSettings, activeForgeWorkspace);
+  const settingsFollowedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+  const settingsProfilePersistenceLabel = guestPreviewActive
+    ? "Read-only preview"
+    : signedInWithSupabase && currentUserProfile?.source?.startsWith("supabase")
+      ? "Supabase profile"
+      : signedInWithSupabase
+        ? "Supabase auth/profile fallback"
+        : "Local beta";
+  const settingsAppPreferencePersistenceLabel = phase2SyncStatus.source === "supabase"
+    ? "Supabase app_user_preferences"
+    : phase2SyncStatus.label || "Local only";
+  const settingsScoutAlertPersistenceLabel = phase2SyncStatus.source === "supabase"
+    ? "Supabase notification_preferences"
+    : "Local only";
+  const settingsStoreAlertPersistenceLabel = scoutBackendSync.loaded
+    ? "Supabase store_user_watchlist when store IDs are cloud-backed"
+    : "Loads with Scout/store routes";
+  const settingsTrustSourceLabel = phase2Data.userTrustProfile
+    ? "Supabase user_trust_profiles"
+    : scoutSnapshot.scoutProfile?.trustScore || scoutSnapshot.scoutProfile?.rewardPoints
+      ? "Scout activity summary"
+      : "Derived when activity exists";
+  const settingsFamilyStatusLabel = littleSparksStatus() === "not_applied"
+    ? "No Kids Program request"
+    : statusLabel(littleSparksStatus());
+  const settingsSectionRows = [
+    {
+      title: "Profile",
+      body: "Name, public username, and account identity.",
+      status: settingsProfilePersistenceLabel,
+    },
+    {
+      title: "Workspace & Forge Identity",
+      body: "Personal, business, or Ember & Tide Forge behavior.",
+      status: BETA_LOCAL_MODE ? "Local workspace settings" : "Workspace scoped",
+    },
+    {
+      title: "Experience Mode",
+      body: `Current: ${dashboardPresetLabel(dashboardPreset)}. Hearth and Today priorities follow this mode.`,
+      status: settingsAppPreferencePersistenceLabel,
+    },
+    {
+      title: "Notification Preferences",
+      body: "Scout routing can sync when supported; detailed in-app categories stay local in beta.",
+      status: settingsScoutAlertPersistenceLabel,
+    },
+    {
+      title: "Store Alerts",
+      body: `${settingsFollowedStores.length} followed store${settingsFollowedStores.length === 1 ? "" : "s"} currently visible.`,
+      status: settingsStoreAlertPersistenceLabel,
+    },
+    {
+      title: "Privacy & Data",
+      body: "Business data, Scout location, exports, and support requests stay scoped to your account/workspace.",
+      status: "Private by default",
+    },
+    {
+      title: "Trust & Reputation",
+      body: `${scoutGuessPoints} Scout points. Public cards hide private email and admin notes.`,
+      status: settingsTrustSourceLabel,
+    },
+    {
+      title: "Family & Child Profiles",
+      body: "Parent controls, Kids Program status, and no child private messaging.",
+      status: settingsFamilyStatusLabel,
+    },
+    {
+      title: "Account/Security",
+      body: signedInWithSupabase ? "Password reset and Supabase session controls." : "Sign in to save account settings.",
+      status: signedInWithSupabase ? "Supabase Auth" : "Sign-in required",
+    },
+    {
+      title: "Help & Support",
+      body: "Report bugs, request features, refresh/update help, and FAQ.",
+      status: "Beta feedback queue",
+    },
+    {
+      title: "About Ember & Tide",
+      body: "Protect the spark. Follow the tide.",
+      status: APP_VERSION,
+    },
+  ];
 
   if (user && !guestPreviewActive && !betaAccessAllowed()) {
     return renderShorelineAccessGate();
@@ -37027,6 +37175,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <form className="drawer-info-card" onSubmit={saveProfileSettings} noValidate>
                       <strong>Profile Settings</strong>
                       <p className="compact-subtitle">Your full name is private by default and used for account, Kids Program, and admin review context.</p>
+                      <dl className="drawer-status-list">
+                        <div><dt>Profile source</dt><dd>{settingsProfilePersistenceLabel}</dd></div>
+                        <div><dt>Display name / region</dt><dd>{signedInWithSupabase ? "Supabase profile" : "Local beta"}</dd></div>
+                        <div><dt>Username / bio</dt><dd>{signedInWithSupabase ? "Account metadata" : "Local beta"}</dd></div>
+                      </dl>
                       <div className="profile-public-preview settings-highlight-card">
                         <span>Public identity preview</span>
                         {renderCommunityProfileSummary(publicProfileForCurrentUser({
@@ -37489,22 +37642,11 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <strong>Settings</strong>
                     <p className="compact-subtitle">Control your Ember & Tide experience without changing private data or workspace ownership.</p>
                     <div className="settings-section-grid">
-                      {[
-                        ["Profile", "Name, public username, and account identity."],
-                        ["Workspace & Forge Identity", "Personal, business, or Ember & Tide Forge behavior."],
-                        ["Experience Mode", "Simple, Collector, or Seller view priorities."],
-                        ["Notification Preferences", "Restocks, price drops, Kids Program, offers, announcements, and Daily Tide."],
-                        ["Store Alerts", "Followed stores, verified restocks, all signals, digest, or off."],
-                        ["Privacy & Data", "Business data privacy, Scout location use, exports, and support requests."],
-                        ["Trust & Reputation", "Scout accuracy, fair pricing, community helper badges, and trust rules."],
-                        ["Family & Child Profiles", "Parent controls, Kids Program status, and no child private messaging."],
-                        ["Account/Security", "Password reset and signed-in account controls."],
-                        ["Help & Support", "Report bugs, request features, refresh/update help, and FAQ."],
-                        ["About Ember & Tide", "Protect the spark. Follow the tide."],
-                      ].map(([title, body]) => (
-                        <article className="settings-section-card" key={title}>
-                          <strong>{title}</strong>
-                          <span>{body}</span>
+                      {settingsSectionRows.map((row) => (
+                        <article className="settings-section-card" key={row.title}>
+                          <strong>{row.title}</strong>
+                          <span>{row.body}</span>
+                          <small className="status-badge">{row.status}</small>
                         </article>
                       ))}
                     </div>
@@ -37513,6 +37655,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   <div className="drawer-info-card experience-mode-settings-card">
                     <strong>Experience Mode</strong>
                     <p className="compact-subtitle">This changes what Hearth and Today&apos;s Tide prioritize. Mobile navigation stays stable unless seller personalization is already supported.</p>
+                    <p className="compact-subtitle">Persistence: {settingsAppPreferencePersistenceLabel}. Card density remains local-only until a backend field exists.</p>
                     <div className="settings-mode-grid">
                       {[
                         { key: "budget", title: "Simple", helper: "Parents, families, and new collectors.", active: normalizeUserType(userType) === "budget" || normalizeDashboardPreset(dashboardPreset) === "budget_parent" },
@@ -37574,9 +37717,22 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                       <button type="button" className="drawer-link" onClick={disableLocationTracking}>Turn Off Location</button>
                     </div>
                   </div>
+                  <div className="drawer-info-card store-alert-settings-card">
+                    <strong>Store Alerts</strong>
+                    <p className="compact-subtitle">Followed stores power favorite-store alerts and regional Scout context. Store follows sync to Supabase when the store comes from the cloud directory; manual/local stores remain local fallback.</p>
+                    <dl className="drawer-status-list">
+                      <div><dt>Followed stores</dt><dd>{settingsFollowedStores.length}</dd></div>
+                      <div><dt>Persistence</dt><dd>{settingsStoreAlertPersistenceLabel}</dd></div>
+                      <div><dt>Store data</dt><dd>{scoutBackendSync.loaded ? "Cloud + local fallback" : scoutBackendSync.loading ? "Loading Scout stores" : "Open Scout or Regional Stores to load"}</dd></div>
+                    </dl>
+                    <div className="drawer-inline-actions">
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); })}>Open Store Directory</button>
+                      <button type="button" className="secondary-button" onClick={() => runMenuAction(() => { setActiveTab("scout"); setScoutView("alerts"); })}>Open Store Alerts</button>
+                    </div>
+                  </div>
                   <div className="drawer-info-card">
                     <strong>In-app Alert Preferences</strong>
-                    <p className="compact-subtitle">{IN_APP_ALERT_DISCLOSURE} These controls decide what appears in the Ember & Tide alert center.</p>
+                    <p className="compact-subtitle">{IN_APP_ALERT_DISCLOSURE} These category toggles are local beta preferences. Scout alert routing below uses {settingsScoutAlertPersistenceLabel} when available.</p>
                     <div className="ai-helper-note">
                       <span>Draft clearer alert copy without sending anything.</span>
                       <button type="button" className="secondary-button" onClick={() => void runNotificationCopyAiAssist()}>Draft notification</button>
@@ -37627,26 +37783,32 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                   </div>
                   <div className="drawer-info-card settings-privacy-trust-card">
                     <strong>Privacy, Trust & Family</strong>
+                    <p className="compact-subtitle">Privacy controls describe current behavior. Data requests are admin-reviewed; family details and admin notes are not public.</p>
                     <div className="settings-section-grid compact">
                       <article className="settings-section-card">
                         <strong>Business data privacy</strong>
                         <span>Your Forge inventory, receipts, sales, and mileage stay private to you and authorized workspace members.</span>
+                        <small className="status-badge">{commandDeskSellerAccess ? "Seller/admin private" : "Hidden from non-sellers"}</small>
                       </article>
                       <article className="settings-section-card">
                         <strong>Location usage for Scout</strong>
                         <span>Device location is optional and only used for nearby stores and restock signals.</span>
+                        <small className="status-badge">{locationSettings.trackingEnabled ? "Device location on" : "Manual/local"}</small>
                       </article>
                       <article className="settings-section-card">
                         <strong>Trust & reputation</strong>
                         <span>Photos, accurate reports, fair pricing, and helpful community activity improve trust.</span>
+                        <small className="status-badge">{settingsTrustSourceLabel}</small>
                       </article>
                       <article className="settings-section-card">
                         <strong>Family & child profiles</strong>
                         <span>Parent-approved access only. No private child messaging. Parent-approved trades only.</span>
+                        <small className="status-badge">{settingsFamilyStatusLabel}</small>
                       </article>
                       <article className="settings-section-card">
                         <strong>Help & Support</strong>
                         <span>Use Feedback / Help for bugs, feature requests, refresh/update help, or account support.</span>
+                        <small className="status-badge">Local/admin review</small>
                       </article>
                     </div>
                   </div>

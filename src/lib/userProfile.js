@@ -52,6 +52,7 @@ export function makeFallbackUserProfile(user = null) {
   const admin = metadataAccess.admin || isAdminEmail(email) || (isLocalhost() && LOCAL_DEV_ADMIN);
   const now = new Date().toISOString();
   const displayName = fullName || metadata.display_name || metadata.displayName || (email ? email.split("@")[0] : "Local Beta");
+  const publicBio = metadata.public_bio || metadata.publicBio || metadata.bio || "";
   const publicUsername = publicUsernameFromProfile({
     ...metadata,
     email,
@@ -75,6 +76,9 @@ export function makeFallbackUserProfile(user = null) {
     username: publicUsername,
     publicUsername,
     public_username: publicUsername,
+    publicBio,
+    public_bio: publicBio,
+    bio: publicBio,
     userRole: admin ? USER_ROLES.ADMIN : USER_ROLES.USER,
     tier: admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE,
     planTier: metadata.plan_tier || metadata.planTier || (admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE),
@@ -121,6 +125,7 @@ export function mapProfileRow(row = {}, user = null) {
   const fullName = row.full_name || row.fullName || [firstName, lastName].filter(Boolean).join(" ");
   const displayName = row.display_name || row.displayName || fullName || email.split("@")[0] || "User";
   const metadata = user?.user_metadata || user?.raw_user_meta_data || user?.rawUserMetaData || {};
+  const publicBio = row.public_bio || row.publicBio || row.bio || metadata.public_bio || metadata.publicBio || metadata.bio || "";
   const publicUsername = publicUsernameFromProfile({
     ...metadata,
     ...row,
@@ -146,6 +151,9 @@ export function mapProfileRow(row = {}, user = null) {
     username: publicUsername,
     publicUsername,
     public_username: publicUsername,
+    publicBio,
+    public_bio: publicBio,
+    bio: publicBio,
     userRole,
     tier,
     planTier: row.plan_tier || row.planTier || row.tier || PLAN_TYPES.FREE,

@@ -522,8 +522,24 @@ export async function saveNotificationPreference(ctx = {}, preference = {}) {
   };
 
   try {
-    const query = row.workspace_id
-      ? ctx.supabase.from("notification_preferences").upsert(row, { onConflict: "user_id,workspace_id,alert_type" }).select().single()
+    const { data: existing, error: selectError } = await (row.workspace_id
+      ? ctx.supabase
+          .from("notification_preferences")
+          .select("id")
+          .eq("user_id", row.user_id)
+          .eq("workspace_id", row.workspace_id)
+          .eq("alert_type", row.alert_type)
+          .limit(1)
+      : ctx.supabase
+          .from("notification_preferences")
+          .select("id")
+          .eq("user_id", row.user_id)
+          .is("workspace_id", null)
+          .eq("alert_type", row.alert_type)
+          .limit(1));
+    if (selectError) throw selectError;
+    const query = existing?.[0]?.id
+      ? ctx.supabase.from("notification_preferences").update(row).eq("id", existing[0].id).select().single()
       : ctx.supabase.from("notification_preferences").insert(row).select().single();
     const { data, error } = await query;
     if (error) throw error;
