@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   detectCatalogSearchMode,
   getCachedCatalogRecommendations,
@@ -93,7 +93,9 @@ export default function SmartCatalogSearchBox({
   const requestId = useRef(0);
   const abortRef = useRef(null);
   const mapRowRef = useRef(mapRow);
-  const cleanedValue = normalizeCatalogQuery(value);
+  const deferredValue = useDeferredValue(value);
+  const cleanedValue = normalizeCatalogQuery(deferredValue);
+  const immediateCleanedValue = normalizeCatalogQuery(value);
   const showTiming = isCatalogSearchDebugEnabled();
 
   function titleForProduct(product = {}) {
@@ -151,7 +153,7 @@ export default function SmartCatalogSearchBox({
   }, [closeSignal]);
 
   useEffect(() => {
-    const mode = detectCatalogSearchMode(value);
+    const mode = detectCatalogSearchMode(deferredValue);
     const exactIdentifier = ["barcode", "id"].includes(mode);
     if (!cleanedValue || (cleanedValue.length < 2 && !exactIdentifier)) {
       setSuggestions([]);
@@ -163,7 +165,7 @@ export default function SmartCatalogSearchBox({
     }
 
     if (!isSupabaseConfigured || !supabase) {
-      const localSuggestions = buildLocalSuggestions(value).slice(0, maxSuggestions);
+      const localSuggestions = buildLocalSuggestions(deferredValue).slice(0, maxSuggestions);
       setSuggestions(localSuggestions);
       setLoading(false);
       setErrorMessage("");
@@ -180,7 +182,7 @@ export default function SmartCatalogSearchBox({
     abortRef.current = controller;
 
     const cached = getCachedCatalogRecommendations({
-      query: value,
+      query: deferredValue,
       productGroup,
       dataFilter,
       limit: maxSuggestions,
@@ -189,7 +191,7 @@ export default function SmartCatalogSearchBox({
       const filteredSuggestions = typeof suggestionFilter === "function"
         ? (cached.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
         : (cached.suggestions || []);
-      const nextSuggestions = dedupeSuggestionList([...buildLocalSuggestions(value), ...filteredSuggestions]).slice(0, maxSuggestions);
+      const nextSuggestions = dedupeSuggestionList([...buildLocalSuggestions(deferredValue), ...filteredSuggestions]).slice(0, maxSuggestions);
       setSuggestions(nextSuggestions);
       setLoading(false);
       setErrorMessage("");
@@ -209,7 +211,7 @@ export default function SmartCatalogSearchBox({
       try {
         const result = await getCatalogRecommendations({
           supabase,
-          query: value,
+          query: deferredValue,
           productGroup,
           dataFilter,
           mapRow: mapRowRef.current,
@@ -220,7 +222,7 @@ export default function SmartCatalogSearchBox({
         const filteredSuggestions = typeof suggestionFilter === "function"
           ? (result.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
           : (result.suggestions || []);
-        const nextSuggestions = dedupeSuggestionList([...buildLocalSuggestions(value), ...filteredSuggestions]).slice(0, maxSuggestions);
+        const nextSuggestions = dedupeSuggestionList([...buildLocalSuggestions(deferredValue), ...filteredSuggestions]).slice(0, maxSuggestions);
         setSuggestions(nextSuggestions);
         setOpen(true);
         setActiveIndex(nextSuggestions.length ? 0 : -1);
@@ -236,13 +238,13 @@ export default function SmartCatalogSearchBox({
       } finally {
         if (requestId.current === currentRequestId) setLoading(false);
       }
-    }, 300);
+    }, 180);
 
     return () => {
       window.clearTimeout(timer);
       controller?.abort?.();
     };
-  }, [cleanedValue, dataFilter, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, supabase, suggestionFilter, value]);
+  }, [cleanedValue, dataFilter, deferredValue, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, supabase, suggestionFilter]);
 
   const groupedSuggestions = useMemo(() => {
     return suggestions.reduce((groups, suggestion, index) => {
@@ -308,12 +310,11 @@ export default function SmartCatalogSearchBox({
             limit: maxSuggestions,
           });
           const cachedSuggestions = cached?.suggestions || [];
-          const localSuggestions = buildLocalSuggestions(nextValue);
           setSuggestions([]);
           setErrorMessage("");
           setActiveIndex(-1);
           if (cached) {
-            const nextSuggestions = dedupeSuggestionList([...localSuggestions, ...cachedSuggestions]).slice(0, maxSuggestions);
+            const nextSuggestions = dedupeSuggestionList(cachedSuggestions).slice(0, maxSuggestions);
             setSuggestions(nextSuggestions);
             setLoading(false);
             setActiveIndex(nextSuggestions.length ? 0 : -1);
@@ -344,7 +345,7 @@ export default function SmartCatalogSearchBox({
           {showTiming && !loading && !errorMessage && lastTiming?.elapsedMs ? (
             <div className="smart-catalog-suggestion-status">Search completed in {lastTiming.elapsedMs}ms via {lastTiming.sourceName || "catalog"} ({lastTiming.cacheState || "miss"}).</div>
           ) : null}
-          {!loading && !errorMessage && suggestions.length === 0 ? (
+          {!loading && !errorMessage && suggestions.length === 0 && immediateCleanedValue.length >= 2 ? (
             <div className="smart-catalog-suggestion-status smart-catalog-empty-state">
               <span>{emptyMessage}</span>
               {typeof renderEmptyActions === "function" ? renderEmptyActions() : null}

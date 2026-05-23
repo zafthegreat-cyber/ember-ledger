@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
@@ -4290,6 +4290,7 @@ export default function App() {
   const quickAddButtonRef = useRef(null);
   const quickAddMenuRef = useRef(null);
   const [appSearchQuery, setAppSearchQuery] = useState("");
+  const deferredAppSearchQuery = useDeferredValue(appSearchQuery);
   const [menuSectionsOpen, setMenuSectionsOpen] = useState({});
   const [feedbackDialog, setFeedbackDialog] = useState(null);
   const [feedbackForm, setFeedbackForm] = useState({
@@ -4416,6 +4417,7 @@ export default function App() {
   const [vaultSubTab, setVaultSubTab] = useState(initialRouteState.vaultSubTab || "overview");
   const [vaultFilter, setVaultFilter] = useState(initialRouteState.vaultFilter || "all");
   const [vaultSearch, setVaultSearch] = useState(initialRouteState.vaultSearch || "");
+  const deferredVaultSearch = useDeferredValue(vaultSearch);
   const [vaultTypeFilter, setVaultTypeFilter] = useState("all");
   const [vaultSetFilter, setVaultSetFilter] = useState("all");
   const [vaultLocationFilter, setVaultLocationFilter] = useState("all");
@@ -4670,6 +4672,7 @@ export default function App() {
     source: "manual",
   });
   const [inventorySearch, setInventorySearch] = useState("");
+  const deferredInventorySearch = useDeferredValue(inventorySearch);
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
   const [inventoryPhysicalLocationFilter, setInventoryPhysicalLocationFilter] = useState("All");
@@ -4834,6 +4837,7 @@ export default function App() {
     notes: "",
   });
   const [importCatalogSearch, setImportCatalogSearch] = useState("");
+  const deferredImportCatalogSearch = useDeferredValue(importCatalogSearch);
   const [forgeImportForm, setForgeImportForm] = useState(FORGE_IMPORT_BLANK);
   const [backupImportPreview, setBackupImportPreview] = useState(null);
   const [backupImportMessage, setBackupImportMessage] = useState("");
@@ -6140,7 +6144,7 @@ export default function App() {
   }
 
   const appSearchResults = useMemo(() => {
-    const queryInfo = expandSearchQuery(appSearchQuery);
+    const queryInfo = expandSearchQuery(deferredAppSearchQuery);
     userSearchAliases.forEach((entry) => {
       const alias = normalizeSearchText(entry.alias);
       const canonical = normalizeSearchText(entry.canonical);
@@ -6304,14 +6308,14 @@ export default function App() {
       .filter((result) => result.score > 25)
       .sort((a, b) => b.score - a.score)
       .slice(0, 24);
-  }, [appSearchQuery, catalogProducts, items, marketPriceCache, scoutSnapshot, tidepoolPosts, userSearchAliases]);
+  }, [deferredAppSearchQuery, catalogProducts, items, marketPriceCache, scoutSnapshot, tidepoolPosts, userSearchAliases]);
 
   const appSearchSuggestion = useMemo(() => {
-    const queryInfo = expandSearchQuery(appSearchQuery);
+    const queryInfo = expandSearchQuery(deferredAppSearchQuery);
     if (queryInfo.normalized.length < 2 || appSearchResults.length > 0) return "";
     const alias = SEARCH_ALIAS_ENTRIES.find((entry) => normalizeSearchText(entry.alias).startsWith(queryInfo.tokens[0] || ""));
     return alias?.canonical || "";
-  }, [appSearchQuery, appSearchResults.length]);
+  }, [deferredAppSearchQuery, appSearchResults.length]);
 
   function closeSearchResults() {
     setAppSearchQuery("");
@@ -10739,12 +10743,12 @@ export default function App() {
   }
 
   const importCatalogSearchResults = useMemo(() => {
-    const query = String(importCatalogSearch || "").trim();
+    const query = String(deferredImportCatalogSearch || "").trim();
     if (query.length < 2) return [];
     return getBestCatalogMatches(query, catalogProducts)
       .slice(0, 8)
       .map((candidate) => candidate.product || candidate.item || candidate);
-  }, [importCatalogSearch, catalogProducts]);
+  }, [deferredImportCatalogSearch, catalogProducts]);
 
   function renderInventoryImportAssistant() {
     if (!importAssistantOpen) return null;
@@ -21300,7 +21304,7 @@ function renderForgeAccessState() {
       ].filter(Boolean).some((value) => String(value).toLowerCase().includes(vaultCatalogSearchTerm));
     })
     .slice(0, 4), [catalogProducts, vaultCatalogSearchTerm]);
-  const visibleVaultItems = useMemo(() => searchVaultItems(filterVaultItems(vaultItems, vaultFilter), vaultSearch)
+  const visibleVaultItems = useMemo(() => searchVaultItems(filterVaultItems(vaultItems, vaultFilter), deferredVaultSearch)
     .filter((item) => {
       if (vaultTypeFilter !== "all" && vaultItemTypeLabel(item) !== vaultTypeFilter) return false;
       if (vaultSetFilter !== "all" && vaultItemSetLabel(item) !== vaultSetFilter) return false;
@@ -21332,7 +21336,7 @@ function renderForgeAccessState() {
       if (vaultSort === "highestRoi") return bRoi - aRoi;
       if (vaultSort === "quantity") return Number(b.quantity || 0) - Number(a.quantity || 0);
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    }), [vaultItems, vaultFilter, vaultSearch, vaultSort, vaultTypeFilter, vaultSetFilter, vaultLocationFilter, vaultOwnerFilter, vaultValueFilter]);
+    }), [vaultItems, vaultFilter, deferredVaultSearch, vaultSort, vaultTypeFilter, vaultSetFilter, vaultLocationFilter, vaultOwnerFilter, vaultValueFilter]);
   const vaultValue = vaultValuationSummary.estimatedMarketValue;
   const homeStatsProfile = { userType, homeStatsEnabled };
   const wishlistValue = useMemo(() => wishlistItems.reduce(
@@ -24068,33 +24072,42 @@ function renderForgeAccessState() {
     },
   ];
 
-  const filteredItems = forgeInventoryItems.filter((item) => {
-    const search = inventorySearch.toLowerCase();
-    const matchesSearch =
-      item.name.toLowerCase().includes(search) ||
-      item.sku.toLowerCase().includes(search) ||
-      itemPurchaserName(item).toLowerCase().includes(search) ||
-      item.category.toLowerCase().includes(search) ||
-      String(item.store || "").toLowerCase().includes(search) ||
-      forgePhysicalLocationLabel(item).toLowerCase().includes(search) ||
-      String(item.physicalLocationNotes || "").toLowerCase().includes(search) ||
-      String(item.barcode || "").toLowerCase().includes(search) ||
-      String(item.status || "").toLowerCase().includes(search);
+  const filteredItems = useMemo(() => {
+    const search = deferredInventorySearch.toLowerCase();
+    return forgeInventoryItems.filter((item) => {
+      const purchaserName = itemPurchaserName(item);
+      const physicalLocation = forgePhysicalLocationLabel(item);
+      const matchesSearch =
+        String(item.name || "").toLowerCase().includes(search) ||
+        String(item.sku || "").toLowerCase().includes(search) ||
+        purchaserName.toLowerCase().includes(search) ||
+        String(item.category || "").toLowerCase().includes(search) ||
+        String(item.store || "").toLowerCase().includes(search) ||
+        physicalLocation.toLowerCase().includes(search) ||
+        String(item.physicalLocationNotes || "").toLowerCase().includes(search) ||
+        String(item.barcode || "").toLowerCase().includes(search) ||
+        String(item.status || "").toLowerCase().includes(search);
 
-    const matchesStatus = inventoryStatusFilter === "All" || item.status === inventoryStatusFilter;
-    const matchesPurchaser =
-      inventoryPurchaserFilter === "All" ||
-      (inventoryPurchaserFilter === "Unassigned" && itemPurchaserName(item) === "Unassigned purchaser") ||
-      item.purchaserId === inventoryPurchaserFilter ||
-      itemPurchaserName(item) === inventoryPurchaserFilter;
-    const itemPhysicalLocation = forgePhysicalLocationLabel(item);
-    const matchesPhysicalLocation =
-      inventoryPhysicalLocationFilter === "All" ||
-      (inventoryPhysicalLocationFilter === "No Location" && !itemPhysicalLocation) ||
-      itemPhysicalLocation === inventoryPhysicalLocationFilter;
-    return matchesSearch && matchesStatus && matchesPurchaser && matchesPhysicalLocation;
-  });
-const sortedFilteredItems = [...filteredItems].sort((a, b) => {
+      const matchesStatus = inventoryStatusFilter === "All" || item.status === inventoryStatusFilter;
+      const matchesPurchaser =
+        inventoryPurchaserFilter === "All" ||
+        (inventoryPurchaserFilter === "Unassigned" && purchaserName === "Unassigned purchaser") ||
+        item.purchaserId === inventoryPurchaserFilter ||
+        purchaserName === inventoryPurchaserFilter;
+      const matchesPhysicalLocation =
+        inventoryPhysicalLocationFilter === "All" ||
+        (inventoryPhysicalLocationFilter === "No Location" && !physicalLocation) ||
+        physicalLocation === inventoryPhysicalLocationFilter;
+      return matchesSearch && matchesStatus && matchesPurchaser && matchesPhysicalLocation;
+    });
+  }, [
+    forgeInventoryItems,
+    deferredInventorySearch,
+    inventoryStatusFilter,
+    inventoryPurchaserFilter,
+    inventoryPhysicalLocationFilter,
+  ]);
+const sortedFilteredItems = useMemo(() => [...filteredItems].sort((a, b) => {
   const aQty = Number(a.quantity || 0);
   const bQty = Number(b.quantity || 0);
 
@@ -24131,7 +24144,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   }
 
   return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-});
+}), [filteredItems, inventorySort]);
 
   const groupedVisibleVaultItems = useMemo(() => buildGroupedInventoryItems(visibleVaultItems, "vault"), [visibleVaultItems]);
   const groupedSortedFilteredItems = useMemo(() => buildGroupedInventoryItems(sortedFilteredItems, "forge"), [sortedFilteredItems]);
@@ -24180,11 +24193,14 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     [workspaceWatchlist]
   );
   const catalogProductsForFiltering = useMemo(
-    () => catalogSearchHasRun && catalogPagedResultSet.size
-      ? catalogPagedResultIds
-          .map((id) => catalogProductsById.get(String(id)))
-          .filter(Boolean)
-      : catalogProducts,
+    () => {
+      if (!catalogSearchHasRun) return [];
+      return catalogPagedResultSet.size
+        ? catalogPagedResultIds
+            .map((id) => catalogProductsById.get(String(id)))
+            .filter(Boolean)
+        : catalogProducts;
+    },
     [catalogSearchHasRun, catalogPagedResultSet, catalogPagedResultIds, catalogProductsById, catalogProducts]
   );
   const filteredCatalogProducts = useMemo(() => catalogProductsForFiltering.filter((product) => {
@@ -24288,6 +24304,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     watchedCatalogProductIds,
   ]);
   const catalogOptionSummary = useMemo(() => {
+    const optionProducts = catalogSearchHasRun ? catalogProductsForFiltering : [];
     const setNames = new Set();
     const typeNames = new Set(SEALED_PRODUCT_TYPES);
     const eraNames = new Set();
@@ -24300,7 +24317,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     let upcCount = localCatalogProductUpcs.length;
     let marketPriceCount = 0;
 
-    for (const product of catalogProducts) {
+    for (const product of optionProducts) {
       if (product.setName || product.expansion) setNames.add(product.setName || product.expansion);
       if (product.productType) typeNames.add(product.productType);
       if (product.productLine) eraNames.add(product.productLine);
@@ -24327,12 +24344,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       catalogConditionOptions: ["All", ...conditionNames].sort(),
       sealedCatalogCount: sealedCount,
       cardCatalogCount: cardCount,
-      catalogDuplicateWarnings: flagCatalogDuplicates(catalogProducts),
-      catalogValidationWarnings: validateCatalogImport(catalogProducts),
+      catalogDuplicateWarnings: flagCatalogDuplicates(optionProducts),
+      catalogValidationWarnings: validateCatalogImport(optionProducts),
       catalogUpcCount: upcCount,
       catalogMarketPriceCount: marketPriceCount,
     };
-  }, [catalogProducts, localCatalogProductUpcs]);
+  }, [catalogSearchHasRun, catalogProductsForFiltering, localCatalogProductUpcs]);
   const {
     catalogSetOptions,
     catalogTypeOptions,
