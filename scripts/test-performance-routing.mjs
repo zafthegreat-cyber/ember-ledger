@@ -8,6 +8,7 @@ const read = (filePath) => fs.readFileSync(path.join(root, filePath), "utf8");
 
 const app = read("src/App.jsx");
 const catalogSeed = read("src/data/pokemonProductCatalog.js");
+const storeSeed = read("src/data/virginiaStoresSeed.js");
 const pkg = JSON.parse(read("package.json"));
 
 assert.match(app, /const catalogSeedWarmNeeded = Boolean/);
@@ -21,6 +22,11 @@ assert.match(catalogSeed, /generated\/sealedProducts\.json\?url/);
 assert.match(catalogSeed, /export async function loadPokemonProductCatalog/);
 assert.match(catalogSeed, /fetch\(importedSealedProductsUrl/);
 assert.doesNotMatch(catalogSeed, /import importedSealedProducts from "\.\/generated\/sealedProducts\.json"/);
+
+assert.match(storeSeed, /generated\/virginiaStores\.json\?url/);
+assert.match(storeSeed, /export async function loadVirginiaStoresSeed/);
+assert.match(storeSeed, /fetch\(generatedVirginiaStoresUrl/);
+assert.doesNotMatch(storeSeed, /import generatedVirginiaStores from "\.\/generated\/virginiaStores\.json"/);
 
 assert.match(app, /const emberAssistContext = useMemo/);
 assert.match(app, /const emberAssistStarterPrompts = useMemo/);

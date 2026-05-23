@@ -10761,8 +10761,13 @@ export default function App() {
     virginiaStoreSeedStatusRef.current = "loading";
     setVirginiaStoreSeedStatus("loading");
     virginiaStoreSeedLoadRef.current = import("./data/virginiaStoresSeed")
-      .then((storeModule) => {
-        setVirginiaStoreSeed(Array.isArray(storeModule.VIRGINIA_STORES_SEED) ? storeModule.VIRGINIA_STORES_SEED : []);
+      .then((storeModule) => (
+        typeof storeModule.loadVirginiaStoresSeed === "function"
+          ? storeModule.loadVirginiaStoresSeed()
+          : storeModule.VIRGINIA_STORES_SEED
+      ))
+      .then((seedStores) => {
+        setVirginiaStoreSeed(Array.isArray(seedStores) ? seedStores : []);
         virginiaStoreSeedStatusRef.current = "ready";
         setVirginiaStoreSeedStatus("ready");
       })

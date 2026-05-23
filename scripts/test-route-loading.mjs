@@ -12,6 +12,7 @@ function check(label, passed, details = "") {
 }
 
 const app = read("src/App.jsx");
+const storeSeed = read("src/data/virginiaStoresSeed.js");
 const smartSearch = read("src/components/SmartCatalogSearchBox.jsx");
 const smartInventory = read("src/components/SmartAddInventory.jsx");
 const smartCatalog = read("src/components/SmartAddCatalog.jsx");
@@ -51,6 +52,13 @@ check(
   "Virginia store seed is dynamically imported after the app shell loads",
   !/from\s+["']\.\/data\/virginiaStoresSeed["']/.test(app) &&
     app.includes('import("./data/virginiaStoresSeed")')
+);
+
+check(
+  "Generated store directory is fetched as on-demand JSON, not bundled as startup JS",
+  storeSeed.includes('generated/virginiaStores.json?url') &&
+    storeSeed.includes("export async function loadVirginiaStoresSeed") &&
+    !/import\s+generatedVirginiaStores\s+from\s+["']\.\/generated\/virginiaStores\.json["']/.test(storeSeed)
 );
 
 check(

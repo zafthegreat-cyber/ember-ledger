@@ -35,7 +35,7 @@ import { buildSuggestedRoute, confidenceLabel, explainRouteChoice, numericDistan
 import { SUGGESTION_TYPES, submitSuggestion } from "../utils/suggestionReviewUtils";
 import { sanitizeScoutLocalData } from "../utils/betaDataCleanup";
 import { DEFAULT_VIRGINIA_REGION, POKEMON_STOCK_LIKELIHOOD_OPTIONS, VIRGINIA_REGIONS, VIRGINIA_RETAILERS, VIRGINIA_STORE_STATE } from "../data/storeGroups";
-import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS } from "../data/virginiaStoresSeed";
+import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS, loadVirginiaStoresSeed } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
 import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import { DROP_RADAR_GUESS_LOCKED_MESSAGE, MIN_SCOUT_POINTS_FOR_GUESS, canSubmitScoutGuess, getScoutPoints, shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
@@ -1711,7 +1711,8 @@ export default function Scout({
   async function loadStores() {
     if (BETA_LOCAL_SCOUT) {
       const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
-      const savedStores = dedupeStoresByChainAddress(saved.stores?.length ? [...STATEWIDE_SEED_STORES, ...saved.stores] : STATEWIDE_SEED_STORES)
+      const statewideSeedStores = await loadVirginiaStoresSeed().catch(() => STATEWIDE_SEED_STORES);
+      const savedStores = dedupeStoresByChainAddress(saved.stores?.length ? [...statewideSeedStores, ...saved.stores] : statewideSeedStores)
         .map((store) => normalizeImportedStore(store));
       const savedReports = saved.reports || [];
       const savedTidepoolReports = saved.tidepoolReports || [];

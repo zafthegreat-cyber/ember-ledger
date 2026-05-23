@@ -10,7 +10,7 @@ import easternShore from "../../seeds/stores/virginia-eastern-shore.json";
 import southside from "../../seeds/stores/virginia-southside.json";
 import southwest from "../../seeds/stores/virginia-southwest.json";
 import otherVirginia from "../../seeds/stores/virginia-other.json";
-import generatedVirginiaStores from "./generated/virginiaStores.json";
+import generatedVirginiaStoresUrl from "./generated/virginiaStores.json?url";
 import { dedupeStoresByChainAddress, normalizeImportedStoreBatch } from "../utils/storeImportUtils";
 import { DEFAULT_VIRGINIA_REGION, VIRGINIA_STORE_STATE } from "./storeGroups";
 
@@ -38,16 +38,44 @@ const LOCAL_VIRGINIA_STORES = VIRGINIA_STORE_SEED_BATCHES.flatMap((batch) =>
   })
 );
 
-const GENERATED_VIRGINIA_STORES = normalizeImportedStoreBatch(generatedVirginiaStores, {
+const LOCAL_VIRGINIA_STORES_SEED = dedupeStoresByChainAddress(LOCAL_VIRGINIA_STORES);
+let generatedVirginiaStoresPromise = null;
+
+async function loadGeneratedVirginiaStores() {
+  if (!generatedVirginiaStoresPromise) {
+    generatedVirginiaStoresPromise = fetch(generatedVirginiaStoresUrl, { cache: "force-cache" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Could not load Virginia store directory: ${response.status}`);
+        return response.json();
+      })
+      .then((rows) => (Array.isArray(rows) ? rows : []));
+  }
+  return generatedVirginiaStoresPromise;
+}
+
+function normalizeGeneratedVirginiaStores(rows = []) {
+  return normalizeImportedStoreBatch(rows, {
   region: "Virginia statewide",
   state: VIRGINIA_STORE_STATE,
   source: "openstreetmap-overpass-cache",
-});
+  });
+}
 
-export const VIRGINIA_STORES_SEED = dedupeStoresByChainAddress([
-  ...LOCAL_VIRGINIA_STORES,
-  ...GENERATED_VIRGINIA_STORES,
-]);
+export async function loadVirginiaStoresSeed() {
+  if (typeof fetch !== "function") return LOCAL_VIRGINIA_STORES_SEED;
+  try {
+    const generatedStores = normalizeGeneratedVirginiaStores(await loadGeneratedVirginiaStores());
+    return dedupeStoresByChainAddress([
+      ...LOCAL_VIRGINIA_STORES,
+      ...generatedStores,
+    ]);
+  } catch (error) {
+    console.warn("Could not load generated Virginia store directory. Using local store seeds only.", error);
+    return LOCAL_VIRGINIA_STORES_SEED;
+  }
+}
+
+export const VIRGINIA_STORES_SEED = LOCAL_VIRGINIA_STORES_SEED;
 
 export const VIRGINIA_STORE_SEED_STATUS = [
   ...VIRGINIA_STORE_SEED_BATCHES.map((batch) => ({
@@ -59,7 +87,21 @@ export const VIRGINIA_STORE_SEED_STATUS = [
   {
     region: "Virginia statewide",
     source: "openstreetmap-overpass-cache",
-    count: generatedVirginiaStores.length,
+    count: "On demand",
     instructions: "Cached directory matches only. Scout restock confidence still comes from user reports and history.",
   },
 ];
+
+export async function loadVirginiaStoreSeedStatus() {
+  if (typeof fetch !== "function") return VIRGINIA_STORE_SEED_STATUS;
+  try {
+    const generatedRows = await loadGeneratedVirginiaStores();
+    return VIRGINIA_STORE_SEED_STATUS.map((status) =>
+      status.source === "openstreetmap-overpass-cache"
+        ? { ...status, count: generatedRows.length }
+        : status
+    );
+  } catch {
+    return VIRGINIA_STORE_SEED_STATUS;
+  }
+}
