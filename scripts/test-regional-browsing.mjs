@@ -9,6 +9,12 @@ import {
   buildStoreProfileSummary,
   matchesStoreDirectoryFilters,
 } from "../src/utils/storeProfileUtils.js";
+import {
+  getStoreDirectoryAliases,
+  normalizeImportedStore,
+} from "../src/utils/storeImportUtils.js";
+import { storeMatchesSearch } from "../src/utils/storeSearchUtils.js";
+import { matchDropRadarStore } from "../src/utils/dropRadarUtils.mjs";
 
 const familyShop = {
   id: "vb-family-shop",
@@ -109,6 +115,45 @@ assert.equal(hrBucket.communityGuessCount, 1);
 const cityBuckets = buildRegionalCityBuckets([familyProfile, adminInactiveProfile], { state: "Virginia", region: "Hampton Roads / 757" }, { admin: true });
 assert.equal(cityBuckets.some((bucket) => bucket.city === "Virginia Beach" && bucket.storeCount === 1), true);
 assert.equal(cityBuckets.some((bucket) => bucket.city === "Norfolk" && bucket.storeCount === 1), true);
+
+const firstColonialTarget = normalizeImportedStore({
+  chain: "Target",
+  name: "Target - Hilltop",
+  nickname: "Hilltop Target",
+  address: "525 First Colonial Rd",
+  city: "Virginia Beach",
+  state: "Virginia",
+  zip: "23451",
+  confidence: "local_seed",
+});
+assert.ok(getStoreDirectoryAliases(firstColonialTarget).includes("FC"));
+assert.ok(firstColonialTarget.aliases.includes("First Colonial Target"));
+assert.equal(firstColonialTarget.directorySourceLabel, "Local seed");
+assert.equal(firstColonialTarget.restockSignalStatus, "not_verified_restock_signal");
+assert.equal(storeMatchesSearch(firstColonialTarget, "FC"), true);
+assert.equal(storeMatchesSearch(firstColonialTarget, "First Colonial Target"), true);
+assert.equal(matchDropRadarStore("FC 5/12 15:24 Pokemon restock", [firstColonialTarget]).matched, true);
+
+const pembrokeTarget = normalizeImportedStore({
+  chain: "Target",
+  name: "Target - Pembroke",
+  nickname: "Pembroke Target",
+  city: "Virginia Beach",
+  state: "Virginia",
+  confidence: "local_seed",
+});
+const greenbrierBn = normalizeImportedStore({
+  chain: "Barnes & Noble",
+  name: "Barnes & Noble - Chesapeake",
+  nickname: "Greenbrier Barnes & Noble",
+  city: "Chesapeake",
+  state: "Virginia",
+  confidence: "local_seed",
+});
+assert.equal(storeMatchesSearch(pembrokeTarget, "Pem T"), true);
+assert.equal(matchDropRadarStore("Pem T 5/12 15:24 Pokemon restock", [pembrokeTarget]).matched, true);
+assert.equal(storeMatchesSearch(greenbrierBn, "GB B&N"), true);
+assert.equal(matchDropRadarStore("GB B&N 4/23 12:00 stocked", [greenbrierBn]).matched, true);
 
 const areaAnswer = buildEmberAssistFallbackResponse("How do I browse by area?", { page: "scout" });
 assert.match(areaAnswer.answer, /State, Region, and City filters|Browse by Area/i);

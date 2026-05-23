@@ -265,7 +265,17 @@ export function matchDropRadarStore(input = "", stores = []) {
       const storeName = normalizeDropRadarText(getStoreName(store));
       const rawName = normalizeDropRadarText(store.name || "");
       const retailer = normalizeDropRadarText(getStoreRetailer(store));
-      return (storeName === aliasStoreKey || rawName === aliasStoreKey) && (!aliasRetailer || retailer === aliasRetailer);
+      const aliases = [
+        ...(Array.isArray(store.aliases) ? store.aliases : []),
+        ...(Array.isArray(store.searchAliases) ? store.searchAliases : []),
+        ...(Array.isArray(store.search_aliases) ? store.search_aliases : []),
+      ].map(normalizeDropRadarText);
+      return (
+        storeName === aliasStoreKey ||
+        rawName === aliasStoreKey ||
+        aliases.includes(normalizeDropRadarText(alias.alias)) ||
+        aliases.includes(aliasStoreKey)
+      ) && (!aliasRetailer || retailer === aliasRetailer);
     });
     return {
       matched: Boolean(matchedStore),

@@ -7,6 +7,7 @@ Ember & Tide keeps product and store reference data in local generated JSON file
 - Product catalog and reference prices: public TCGCSV JSON for Pokemon TCG category `3`.
 - Virginia store directory: OpenStreetMap Overpass API, cached locally.
 - Existing local store seed files still take priority when a generated directory match overlaps, so local nicknames such as `FC`, `GB`, and `GB B&N` are preserved.
+- Store shorthand aliases are normalized during import/loading. `RM T`, `Pem T`, `FC`, `GB`, and `GB B&N` stay search-friendly for Scout and Drop Radar without marking those rows as verified restock signals.
 
 This sync does not scrape TCGplayer pages, retailer websites, or require API secrets.
 
@@ -49,6 +50,7 @@ The script writes deterministic generated data from public source records and lo
 - Reference prices are joined by source productId when available. Low-confidence fallback matching is for review only and must not power automatic fair-price labels.
 - Missing stores can still be entered manually in Scout.
 - OSM directory matches are not verified restock signals. Scout restock confidence still comes from reports and history.
+- Directory rows carry a `Directory match`/`Local seed` source label and a `not_verified_restock_signal` status so UI copy can keep store existence separate from confirmed restock history.
 
 ## Options
 

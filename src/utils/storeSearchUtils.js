@@ -1,4 +1,4 @@
-import { numericDistance } from "./routeUtils";
+import { numericDistance } from "./routeUtils.js";
 
 export function normalizeStoreSearch(value) {
   return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -40,6 +40,9 @@ export function storeMatchesSearch(store = {}, query = "") {
     store.advertisingPartner ? "advertising partner" : "",
     store.pokemonStockLikelihood,
     store.notes,
+    ...(Array.isArray(store.aliases) ? store.aliases : []),
+    ...(Array.isArray(store.searchAliases) ? store.searchAliases : []),
+    ...(Array.isArray(store.search_aliases) ? store.search_aliases : []),
   ].some((value) => normalizeStoreSearch(value).includes(search));
 }
 

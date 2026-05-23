@@ -1,4 +1,4 @@
-import { getStoreGroup, STORE_GROUP_ORDER } from "./storeGroupingUtils";
+import { getStoreGroup, STORE_GROUP_ORDER } from "./storeGroupingUtils.js";
 
 export function numericDistance(store = {}) {
   const value = Number(store.distanceMiles || store.distance || store.miles || 0);

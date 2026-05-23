@@ -81,6 +81,14 @@ const STORE_CHAIN_PATTERNS = [
   "Kohl's",
 ];
 
+const STORE_DIRECTORY_SOURCE_LABELS = {
+  directory_match: "Directory match",
+  local_seed: "Local seed",
+  admin_store_management: "Admin managed",
+  user_store_suggestion: "User suggested",
+  unverified: "Unverified directory row",
+};
+
 function slug(value) {
   return String(value || "")
     .trim()
@@ -98,6 +106,44 @@ function normalizeSearch(value) {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function uniqueAliases(values = []) {
+  const seen = new Set();
+  return values
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = normalizeSearch(value);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function storeDirectoryAliases(store = {}) {
+  const chain = normalizeSearch(store.chain || store.retailer || "");
+  const text = normalizeSearch([
+    store.nickname,
+    store.name,
+    store.storeName,
+    store.address,
+    store.city,
+    store.notes,
+  ].filter(Boolean).join(" "));
+  const aliases = Array.isArray(store.aliases)
+    ? [...store.aliases]
+    : String(store.aliases || store.searchAliases || store.search_aliases || "")
+      .split(/[|,]/)
+      .map((value) => value.trim());
+
+  if (chain === "target" && /\b(redmill|red mill|red mill commons|nimmo)\b/.test(text)) aliases.push("RM T", "Redmill T", "Redmill Target", "Red Mill Target");
+  if (chain === "target" && /\bpembroke\b/.test(text)) aliases.push("Pem T", "Pembroke T", "Pembroke Target");
+  if (chain === "target" && /\b(first colonial|hilltop)\b/.test(text)) aliases.push("FC", "FC Target", "First Colonial Target", "Hilltop Target");
+  if (chain === "target" && /\bgreenbrier\b/.test(text)) aliases.push("GB", "GB Target", "Greenbrier", "Greenbrier Target");
+  if (chain === "barnes and noble" && /\bgreenbrier\b/.test(text)) aliases.push("GB B&N", "GB Barnes", "Greenbrier Barnes", "Greenbrier Barnes & Noble");
+
+  return uniqueAliases(aliases);
 }
 
 function numberOrEmpty(value) {
@@ -580,7 +626,7 @@ function osmStoreFromElement(element = {}) {
   const chain = normalizeChainName(tags.brand || tags.operator || name);
   const lat = element.lat ?? element.center?.lat ?? "";
   const lon = element.lon ?? element.center?.lon ?? "";
-  return {
+  const store = {
     id: `osm-${element.type}-${element.id}`,
     storeId: `osm-${element.type}-${element.id}`,
     source: "OpenStreetMap Overpass",
@@ -613,6 +659,11 @@ function osmStoreFromElement(element = {}) {
     },
     confidence: "directory_match",
     sourceConfidence: "directory_match",
+    source_confidence: "directory_match",
+    directorySourceLabel: STORE_DIRECTORY_SOURCE_LABELS.directory_match,
+    directory_source_label: STORE_DIRECTORY_SOURCE_LABELS.directory_match,
+    restockSignalStatus: "not_verified_restock_signal",
+    restock_signal_status: "not_verified_restock_signal",
     pokemonConfidence: "unknown",
     pokemonStockLikelihood: "unknown",
     carriesPokemonLikely: STORE_CHAIN_PATTERNS.some((pattern) => normalizeSearch(chain).includes(normalizeSearch(pattern))) || /card|hobby|game|toy|book/.test(normalizeSearch(`${tags.shop || ""} ${name}`)),
@@ -623,6 +674,8 @@ function osmStoreFromElement(element = {}) {
     updatedAt: SYNC_TIMESTAMP,
     createdAt: SYNC_TIMESTAMP,
   };
+  const aliases = storeDirectoryAliases(store);
+  return { ...store, aliases, searchAliases: aliases, search_aliases: aliases };
 }
 
 function isRelevantOsmStore(store = {}) {
@@ -647,6 +700,13 @@ async function readExistingStoreSeeds() {
         region: store.region || parsed.region || "",
         state: store.state || parsed.state || "Virginia",
         confidence: store.confidence || "local_seed",
+        sourceConfidence: store.sourceConfidence || store.source_confidence || store.confidence || "local_seed",
+        source_confidence: store.source_confidence || store.sourceConfidence || store.confidence || "local_seed",
+        directorySourceLabel: store.directorySourceLabel || store.directory_source_label || STORE_DIRECTORY_SOURCE_LABELS.local_seed,
+        directory_source_label: store.directory_source_label || store.directorySourceLabel || STORE_DIRECTORY_SOURCE_LABELS.local_seed,
+        restockSignalStatus: store.restockSignalStatus || store.restock_signal_status || "not_verified_restock_signal",
+        restock_signal_status: store.restock_signal_status || store.restockSignalStatus || "not_verified_restock_signal",
+        aliases: storeDirectoryAliases(store),
         sourceUpdatedAt: SYNC_TIMESTAMP,
       });
     }

@@ -42,6 +42,70 @@ const REGION_ALIASES = {
   "other virginia": "Other Virginia",
 };
 
+const STORE_DIRECTORY_SOURCE_LABELS = {
+  directory_match: "Directory match",
+  local_seed: "Local seed",
+  admin_store_management: "Admin managed",
+  user_store_suggestion: "User suggested",
+  unverified: "Unverified directory row",
+};
+
+function normalizeAliasText(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function uniqueAliases(values = []) {
+  const seen = new Set();
+  return values
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = normalizeAliasText(value);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+export function getStoreDirectoryAliases(store = {}) {
+  const chain = normalizeAliasText(store.chain || store.retailer || "");
+  const text = normalizeAliasText([
+    store.nickname,
+    store.name,
+    store.storeName,
+    store.address,
+    store.city,
+    store.notes,
+  ].filter(Boolean).join(" "));
+  const aliases = Array.isArray(store.aliases)
+    ? [...store.aliases]
+    : String(store.aliases || store.searchAliases || store.search_aliases || "")
+      .split(/[|,]/)
+      .map((value) => value.trim());
+
+  if (chain === "target" && /\b(redmill|red mill|red mill commons|nimmo)\b/.test(text)) {
+    aliases.push("RM T", "Redmill T", "Redmill Target", "Red Mill Target");
+  }
+  if (chain === "target" && /\bpembroke\b/.test(text)) {
+    aliases.push("Pem T", "Pembroke T", "Pembroke Target");
+  }
+  if (chain === "target" && /\b(first colonial|hilltop)\b/.test(text)) {
+    aliases.push("FC", "FC Target", "First Colonial Target", "Hilltop Target");
+  }
+  if (chain === "target" && /\bgreenbrier\b/.test(text)) {
+    aliases.push("GB", "GB Target", "Greenbrier", "Greenbrier Target");
+  }
+  if (chain === "barnes and noble" && /\bgreenbrier\b/.test(text)) {
+    aliases.push("GB B&N", "GB Barnes", "Greenbrier Barnes", "Greenbrier Barnes & Noble");
+  }
+
+  return uniqueAliases(aliases);
+}
+
 export function normalizeChainName(value = "") {
   const text = String(value || "").trim();
   const lower = text.toLowerCase();
@@ -123,6 +187,8 @@ export function normalizeImportedStore(row = {}, defaults = {}) {
   const storeName = row.storeName || row.store_name || row.name || row.official_name || "";
   const zipCode = String(row.zipCode || row.zip_code || row.postal_code || row.zip || "");
   const pokemonStockLikelihood = normalizePokemonStockLikelihood(row.pokemonStockLikelihood || row.pokemon_stock_likelihood || row.pokemonConfidence || row.pokemon_confidence || confidence.pokemonConfidence);
+  const sourceConfidence = row.sourceConfidence || row.source_confidence || row.confidence || "unverified";
+  const directorySourceLabel = row.directorySourceLabel || row.directory_source_label || STORE_DIRECTORY_SOURCE_LABELS[sourceConfidence] || STORE_DIRECTORY_SOURCE_LABELS.unverified;
   const normalized = normalizeStoreExpansionFields(normalizeStoreGroup({
     storeId: row.storeId || row.id || "",
     id: row.id || row.storeId || "",
@@ -161,7 +227,13 @@ export function normalizeImportedStore(row = {}, defaults = {}) {
     last_verified_at: row.last_verified_at || row.lastVerifiedAt || row.lastVerified || row.last_verified || "",
     verifiedBy: row.verifiedBy || row.verified_by || "",
     verified_by: row.verified_by || row.verifiedBy || "",
-    confidence: row.confidence || row.sourceConfidence || row.source_confidence || "unverified",
+    confidence: row.confidence || sourceConfidence,
+    sourceConfidence,
+    source_confidence: sourceConfidence,
+    directorySourceLabel,
+    directory_source_label: directorySourceLabel,
+    restockSignalStatus: row.restockSignalStatus || row.restock_signal_status || "not_verified_restock_signal",
+    restock_signal_status: row.restock_signal_status || row.restockSignalStatus || "not_verified_restock_signal",
     notes: row.notes || "Restock days: Unknown. Truck days: Unknown. Purchase limits: Unknown.",
     userAdded: Boolean(row.userAdded || row.user_added),
     userEdited: Boolean(row.userEdited || row.user_edited),
@@ -205,7 +277,8 @@ export function normalizeImportedStore(row = {}, defaults = {}) {
     updatedAt: row.updatedAt || row.updated_at || "seed",
   }));
   const id = normalized.id || normalized.storeId || makeStoreId(normalized);
-  return { ...normalized, id, storeId: id };
+  const aliases = getStoreDirectoryAliases({ ...normalized, id, storeId: id });
+  return { ...normalized, id, storeId: id, aliases, searchAliases: aliases, search_aliases: aliases };
 }
 
 export function normalizeImportedStoreBatch(rows = [], defaults = {}) {
