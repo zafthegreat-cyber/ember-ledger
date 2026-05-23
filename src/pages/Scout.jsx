@@ -684,6 +684,7 @@ const styles = {
     fontWeight: 700,
     border: "1px solid #e5e7eb",
     background: "#f8fafc",
+    color: "#334155",
   },
   badgeFound: {
     background: "#ecfdf5",

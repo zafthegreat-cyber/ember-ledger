@@ -1046,7 +1046,7 @@
   padding: 5px 9px;
   border-radius: 999px;
   border: 1px solid rgba(124, 231, 255, 0.22);
-  background: rgba(124, 231, 255, 0.1);
+  background-color: #073344;
   color: #dffbff;
   font-size: 0.72rem;
   font-weight: 800;
@@ -1055,14 +1055,14 @@
 .todays-tide-source-badge.source-forge,
 .todays-tide-source-badge.source-admin {
   border-color: rgba(255, 122, 26, 0.3);
-  background: rgba(255, 122, 26, 0.12);
+  background-color: #4a2718;
   color: #fff1c8;
 }
 
 .todays-tide-source-badge.source-kids,
 .todays-tide-source-badge.source-announcement {
   border-color: rgba(255, 207, 92, 0.32);
-  background: rgba(255, 207, 92, 0.12);
+  background-color: #453314;
   color: #fff1c8;
 }
 
@@ -36701,7 +36701,16 @@ body,
 .app-command-shell .web-command-tools--quiet {
   border-style: dashed;
   border-color: rgba(246, 194, 74, 0.2);
-  background: rgba(246, 194, 74, 0.055);
+  background-color: #172033;
+  background-image: linear-gradient(145deg, rgba(246, 194, 74, 0.12), rgba(20, 184, 166, 0.055));
+}
+
+.app-command-shell .web-command-tools--quiet .web-command-tools-heading strong {
+  color: #fff7ed;
+}
+
+.app-command-shell .web-command-tools--quiet .web-command-tools-heading span {
+  color: #dbeafe;
 }
 
 .app-command-shell .web-command-tools-heading {
@@ -38053,5 +38062,47 @@ body,
   .ember-assist-message.is-assistant {
     margin-left: 0;
     margin-right: 0;
+  }
+}
+
+/* Phase 17 beta QA: calendar filters should wrap instead of pushing off-canvas. */
+.watch-calendar-layer-strip {
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  max-width: 100%;
+  overflow-x: visible;
+  width: 100%;
+}
+
+.watch-calendar-layer-strip label,
+.watch-calendar-layer-strip button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.tidetradr-shortcut-grid.quick-action-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(136px, 100%), 1fr));
+  max-width: 100%;
+  overflow: clip;
+}
+
+.tidetradr-shortcut-grid.quick-action-card-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .tidepool-filter-grid,
+  .watch-calendar-layer-strip,
+  .chip-row,
+  .vault-view-strip,
+  .standard-page-header-tabs {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+
+  .watch-calendar-layer-strip label,
+  .watch-calendar-layer-strip button {
+    min-width: 0 !important;
   }
 }

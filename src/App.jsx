@@ -1025,7 +1025,7 @@ const WATCH_CALENDAR_LAYER_OPTIONS = [
   { key: "adminInternal", label: "Admin/internal", adminOnly: true },
   { key: "localRestocks", label: "Local restocks" },
   { key: "onlineRestocks", label: "Online restocks" },
-  { key: "pokemonReleases", label: "Pokémon releases" },
+  { key: "pokemonReleases", label: "Pokemon releases" },
   { key: "expansionReleases", label: "Expansion releases" },
   { key: "retailDrops", label: "Retail drops" },
   { key: "userGuesses", label: "User guesses" },
