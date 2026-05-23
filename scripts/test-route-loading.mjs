@@ -49,6 +49,22 @@ check(
 );
 
 check(
+  "Catalog search UI and full search service are lazy-loaded",
+  !/import\s+SmartCatalogSearchBox\s+from\s+["']\.\/components\/SmartCatalogSearchBox["']/.test(app) &&
+    app.includes('const SmartCatalogSearchBox = lazy(() => import("./components/SmartCatalogSearchBox"))') &&
+    app.includes('import("./services/pokemonCatalogSearch")') &&
+    app.includes('from "./services/pokemonCatalogSearchCore"') &&
+    !/from\s+["']\.\/services\/pokemonCatalogSearch["']/.test(app)
+);
+
+check(
+  "Ember Assist heavy answer brain is lazy-loaded after launcher render",
+  app.includes('from "./utils/emberAssistLite"') &&
+    app.includes('import("./utils/emberAssist")') &&
+    !/from\s+["']\.\/utils\/emberAssist["']/.test(app)
+);
+
+check(
   "Virginia store seed is dynamically imported after the app shell loads",
   !/from\s+["']\.\/data\/virginiaStoresSeed["']/.test(app) &&
     app.includes('import("./data/virginiaStoresSeed")')

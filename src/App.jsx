@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
-import SmartCatalogSearchBox from "./components/SmartCatalogSearchBox";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
 import { APP_VERSION, checkForEmberTideUpdate, refreshEmberTideApp } from "./appUpdate";
 import { CATALOG_IMPORT_STATUS, SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/sharedPokemonCatalog";
@@ -70,8 +69,7 @@ import {
   updateSuggestionRecord,
 } from "./utils/suggestionReviewUtils";
 import { MARKET_PRICE_CACHE_KEY, loadPriceCache, savePriceCache, updateCachedMarketPrice } from "./services/priceCacheService";
-import { CATALOG_PAGE_SIZE, detectCatalogSearchMode, hasCatalogSearchCriteria, searchPokemonCatalog } from "./services/pokemonCatalogSearch";
-import { analyzeCatalogSearch } from "./data/catalogSearchAliases.mjs";
+import { CATALOG_PAGE_SIZE, detectCatalogSearchMode, hasCatalogSearchCriteria } from "./services/pokemonCatalogSearchCore";
 import {
   getBestAvailableMarketPrice,
   refreshCatalogMarketItems,
@@ -347,7 +345,6 @@ import {
 import {
   EMBER_ASSIST_ESCALATION_CATEGORIES,
   buildEmberAssistContext,
-  buildEmberAssistFallbackResponse,
   clearEmberAssistThread,
   filterEmberAssistMessagesForUser,
   getEmberAssistStarterPrompts,
@@ -356,8 +353,7 @@ import {
   makeEmberAssistAdminMessage,
   saveEmberAssistThread,
   shouldShowEmberAssistEntry,
-  shouldOfferAdminEscalation,
-} from "./utils/emberAssist";
+} from "./utils/emberAssistLite";
 import {
   ADMIN_COMMAND_CENTER_FILTERS,
   COMMUNITY_GUESS_MODERATION_STATUSES,
@@ -417,6 +413,7 @@ import {
 
 const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
 const SmartAddCatalog = lazy(() => import("./components/SmartAddCatalog"));
+const SmartCatalogSearchBox = lazy(() => import("./components/SmartCatalogSearchBox"));
 const BackupExportImport = lazy(() => import("./components/BackupExportImport"));
 const MarketPriceHistoryPanel = lazy(() => import("./components/MarketPriceHistoryPanel"));
 const Scout = lazy(() => import("./pages/Scout"));
@@ -429,6 +426,36 @@ const BRAND_ASSETS = {
 };
 
 const LOCAL_CATALOG_SEED_SOURCE = "local_catalog_seed";
+let pokemonCatalogSearchModulePromise = null;
+let catalogAliasModulePromise = null;
+let emberAssistBrainModulePromise = null;
+
+function loadPokemonCatalogSearchModule() {
+  if (!pokemonCatalogSearchModulePromise) {
+    pokemonCatalogSearchModulePromise = import("./services/pokemonCatalogSearch");
+  }
+  return pokemonCatalogSearchModulePromise;
+}
+
+async function searchPokemonCatalogOnDemand(options = {}) {
+  const catalogSearchModule = await loadPokemonCatalogSearchModule();
+  return catalogSearchModule.searchPokemonCatalog(options);
+}
+
+async function analyzeCatalogSearchOnDemand(query = "") {
+  if (!catalogAliasModulePromise) {
+    catalogAliasModulePromise = import("./data/catalogSearchAliases.mjs");
+  }
+  const catalogAliasModule = await catalogAliasModulePromise;
+  return catalogAliasModule.analyzeCatalogSearch(query);
+}
+
+function loadEmberAssistBrainModule() {
+  if (!emberAssistBrainModulePromise) {
+    emberAssistBrainModulePromise = import("./utils/emberAssist");
+  }
+  return emberAssistBrainModulePromise;
+}
 
 function normalizeLocalCatalogSeedProducts(products = []) {
   return Array.isArray(products)
@@ -3923,6 +3950,14 @@ function LazyToolBoundary({ label, children }) {
     <Suspense fallback={<RouteChunkFallback label={label} />}>
       {children}
     </Suspense>
+  );
+}
+
+function LazySmartCatalogSearchBox(props) {
+  return (
+    <LazyToolBoundary label="Preparing catalog search...">
+      <SmartCatalogSearchBox {...props} />
+    </LazyToolBoundary>
   );
 }
 
@@ -7542,7 +7577,7 @@ export default function App() {
     let alternateKinds = [];
     let alternateCount = 0;
     try {
-      result = await searchPokemonCatalog({
+      result = await searchPokemonCatalogOnDemand({
         supabase,
         query: searchTerm,
         barcode,
@@ -7649,7 +7684,7 @@ export default function App() {
     });
     setCatalogSearchHasRun(true);
     const totalCount = result.count ?? null;
-    const coverageWarning = buildCatalogSealedCoverageWarning({
+    const coverageWarning = await buildCatalogSealedCoverageWarning({
       query: cleanedSearch || searchTerm,
       productGroup,
       products: combinedProducts,
@@ -10782,7 +10817,7 @@ export default function App() {
     return virginiaStoreSeedLoadRef.current;
   }
 
-  const catalogSeedWarmNeeded = Boolean(
+  const catalogWorkflowWarmNeeded = Boolean(
     quickAddMenuOpen ||
     quickAddWizard.step !== "start" ||
     showInventoryScanner ||
@@ -10790,19 +10825,25 @@ export default function App() {
     receiptScanOpen ||
     importAssistantOpen ||
     dealFinderOpen ||
-    selectedCatalogDetailId ||
-    submittedCatalogSearch ||
-    submittedCatalogBarcodeSearch ||
-    catalogSearch ||
-    catalogBarcodeSearch ||
+    selectedCatalogDetailId
+  );
+  const catalogRouteWarmNeeded = Boolean(
     ["vault", "inventory", "market", "addInventory", "addSale", "sales", "expenses", "reports"].includes(activeTab) ||
     (activeTab === "adminReview" && hasAdminProfileSignal)
+  );
+  const catalogQueryWarmNeeded = Boolean(
+    activeTab === "market" &&
+    (submittedCatalogSearch || submittedCatalogBarcodeSearch || catalogSearch || catalogBarcodeSearch)
+  );
+  const catalogSeedWarmNeeded = Boolean(
+    catalogWorkflowWarmNeeded ||
+    catalogRouteWarmNeeded ||
+    catalogQueryWarmNeeded
   );
   const catalogSeedUrgent = Boolean(
     quickAddMenuOpen ||
     quickAddWizard.step !== "start" ||
-    submittedCatalogSearch ||
-    submittedCatalogBarcodeSearch ||
+    (activeTab === "market" && (submittedCatalogSearch || submittedCatalogBarcodeSearch)) ||
     activeTab === "market" ||
     activeTab === "vault" ||
     activeTab === "inventory"
@@ -12736,7 +12777,7 @@ export default function App() {
     if (!query || query.length < 2) return [];
     if (isSupabaseConfigured && supabase) {
       try {
-        const result = await searchPokemonCatalog({
+        const result = await searchPokemonCatalogOnDemand({
           supabase,
           query,
           mode: detectCatalogSearchMode(query),
@@ -13402,7 +13443,7 @@ export default function App() {
     }
     if (isSupabaseConfigured && supabase && lookupValue.length >= 2) {
       try {
-        const result = await searchPokemonCatalog({
+        const result = await searchPokemonCatalogOnDemand({
           supabase,
           query: exactIdentifier ? normalizedLookupCode || lookupValue : lookupValue,
           barcode: exactIdentifier ? normalizedLookupCode || lookupValue : "",
@@ -17662,7 +17703,7 @@ function renderTideTradrHeader() {
       )}
     >
       <form className="catalog-search-form" onSubmit={submitCatalogSearch}>
-        <SmartCatalogSearchBox
+        <LazySmartCatalogSearchBox
           value={catalogSearch}
           onChange={updateCatalogSearchInput}
           onSearch={submitCatalogSearch}
@@ -20254,10 +20295,14 @@ function renderForgeHeader() {
     }
   }
 
-  function sendEmberAssistMessage(text = emberAssistInput) {
+  async function sendEmberAssistMessage(text = emberAssistInput) {
     const question = String(text || "").trim();
     if (!question) return;
     const userMessage = { id: makeId("ember-user"), role: "user", text: question, createdAt: new Date().toISOString() };
+    const {
+      buildEmberAssistFallbackResponse,
+      shouldOfferAdminEscalation,
+    } = await loadEmberAssistBrainModule();
     const answer = buildEmberAssistFallbackResponse(question, emberAssistContext);
     const assistantMessage = {
       id: makeId("ember-assist"),
@@ -22332,9 +22377,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
     return [...found];
   }
 
-  function buildCatalogSealedCoverageWarning({ query = "", productGroup = "All", products = [], totalCount = null, result = null } = {}) {
+  async function buildCatalogSealedCoverageWarning({ query = "", productGroup = "All", products = [], totalCount = null, result = null } = {}) {
     if (productGroup !== "Sealed") return null;
-    const analysis = analyzeCatalogSearch(query);
+    const analysis = await analyzeCatalogSearchOnDemand(query);
     const setMatch = analysis.setMatches?.[0];
     if (!setMatch) return null;
     const normalizedQuery = normalizeSearchText(query);
@@ -31679,7 +31724,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             <div className="scout-report-product-search">
               <label>
                 <span>Catalog search or manual product</span>
-                <SmartCatalogSearchBox
+                <LazySmartCatalogSearchBox
                   value={quickScoutReportForm.productName}
                   onChange={(value) => updateQuickScoutReportForm("productName", value)}
                   onSearch={(value) => updateQuickScoutReportForm("productName", value)}
@@ -32230,7 +32275,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       <div className="flow-modal-stack vault-catalog-search-flow">
         <form className="catalog-search-form" onSubmit={runVaultCatalogSearch}>
           <Field label="Search TideTradr Catalog">
-            <SmartCatalogSearchBox
+            <LazySmartCatalogSearchBox
               value={vaultCatalogSearchQuery}
               onChange={setVaultCatalogSearchQuery}
               onSearch={(value) => runVaultCatalogSearch(null, value)}
@@ -32608,7 +32653,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <>
                   <div className="add-item-search-card">
                     <Field label="Search product, card, UPC, or set">
-                      <SmartCatalogSearchBox
+                      <LazySmartCatalogSearchBox
                         value={multiDestinationCatalogQuery}
                         onChange={(value) => {
                           setMultiDestinationMessage("");
@@ -37396,7 +37441,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
             {vaultAddMode === "catalog" ? (
               <div className="vault-add-tab-panel">
                 <Field label="Search TideTradr catalog">
-                  <SmartCatalogSearchBox
+                  <LazySmartCatalogSearchBox
                     value={vaultForm.tideTradrSearch || ""}
                     onChange={(value) => updateVaultForm("tideTradrSearch", value)}
                     onSelectSuggestion={selectVaultCatalogRecommendation}
@@ -40341,7 +40386,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                     <p>Search products, check market values, watch items, and compare deals.</p>
                   </div>
                   <form className="catalog-search-form" onSubmit={submitCatalogSearch}>
-                    <SmartCatalogSearchBox
+                    <LazySmartCatalogSearchBox
                       value={catalogSearch}
                       onChange={updateCatalogSearchInput}
                       onSearch={submitCatalogSearch}

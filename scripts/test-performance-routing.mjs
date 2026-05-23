@@ -12,11 +12,23 @@ const storeSeed = read("src/data/virginiaStoresSeed.js");
 const pkg = JSON.parse(read("package.json"));
 
 assert.match(app, /const catalogSeedWarmNeeded = Boolean/);
+assert.match(app, /const catalogWorkflowWarmNeeded = Boolean/);
+assert.match(app, /const catalogRouteWarmNeeded = Boolean/);
+assert.match(app, /const catalogQueryWarmNeeded = Boolean/);
+assert.match(app, /activeTab === "market" &&\s*\(\s*submittedCatalogSearch/);
 assert.match(app, /const storeSeedWarmNeeded = Boolean/);
 assert.match(app, /loadLocalCatalogSeed\(catalogSeedUrgent \? "active catalog flow" : "deferred catalog flow"\)/);
 assert.match(app, /loadVirginiaStoreSeed\("store directory route"\)/);
 assert.doesNotMatch(app, /requestIdleCallback\(loadLocalCatalogSeed,\s*\{\s*timeout:\s*1500\s*\}/);
 assert.doesNotMatch(app, /requestIdleCallback\(loadVirginiaStoreSeed,\s*\{\s*timeout:\s*1800\s*\}/);
+assert.match(app, /from "\.\/services\/pokemonCatalogSearchCore"/);
+assert.match(app, /import\("\.\/services\/pokemonCatalogSearch"\)/);
+assert.match(app, /const SmartCatalogSearchBox = lazy\(\(\) => import\("\.\/components\/SmartCatalogSearchBox"\)\)/);
+assert.doesNotMatch(app, /import SmartCatalogSearchBox from "\.\/components\/SmartCatalogSearchBox"/);
+assert.doesNotMatch(app, /from "\.\/services\/pokemonCatalogSearch"/);
+assert.match(app, /from "\.\/utils\/emberAssistLite"/);
+assert.match(app, /import\("\.\/utils\/emberAssist"\)/);
+assert.doesNotMatch(app, /from "\.\/utils\/emberAssist"/);
 
 assert.match(catalogSeed, /generated\/sealedProducts\.json\?url/);
 assert.match(catalogSeed, /export async function loadPokemonProductCatalog/);
