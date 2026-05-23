@@ -28382,6 +28382,12 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       const entryEmail = String(entry.email || "").toLowerCase();
       return (user?.id && entryUser === String(user.id)) || (email && entryEmail === email.toLowerCase());
     });
+    const safeKidProgramProjects = phase2RecentKidProjects
+      .filter((project) => adminToolsVisible || String(project.status || "planning").toLowerCase() !== "archived")
+      .slice(0, 4);
+    const kidProgramProjectCount = safeKidProgramProjects.length;
+    const kidProgramTargetPacks = safeKidProgramProjects.reduce((sum, project) => sum + Number(project.targetPackCount || 0), 0);
+    const kidProgramScheduledEvents = safeKidProgramProjects.filter((project) => project.eventDate).length;
     const sparkSafetyRules = [
       "Parent-approved access only.",
       "No private child messaging.",
@@ -28396,9 +28402,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
         value: activeApplication ? sparkProgramStatusLabel(activeApplication.status || "interest_submitted") : "No open requests",
         detail: activeApplication ? "Your family request is private and waiting for review." : "Parent or guardian starts every Kids Program request.",
       },
-      { key: "missions", title: "Kid Missions", value: "Coming soon", detail: "Simple collecting goals that teach care, fairness, and patience." },
-      { key: "giveaways", title: "Giveaways", value: "When available", detail: "Kids packs and giveaways may open when Ember & Tide has safe inventory to share." },
-      { key: "events", title: "Drops / Events", value: "Announced only", detail: "Kid-friendly drops and events appear through Announcements or Ember Watch when confirmed." },
+      { key: "missions", title: "Kid Missions", value: kidProgramProjectCount ? `${kidProgramProjectCount} saved plan${kidProgramProjectCount === 1 ? "" : "s"}` : "Coming soon", detail: "Simple collecting goals that teach care, fairness, and patience." },
+      { key: "giveaways", title: "Giveaways", value: kidProgramTargetPacks ? `${kidProgramTargetPacks} planned pack${kidProgramTargetPacks === 1 ? "" : "s"}` : "When available", detail: "Kids packs and giveaways may open when Ember & Tide has safe inventory to share." },
+      { key: "events", title: "Drops / Events", value: kidProgramScheduledEvents ? `${kidProgramScheduledEvents} scheduled` : "Announced only", detail: "Kid-friendly drops and events appear through Announcements or Ember Watch when confirmed." },
       { key: "rewards", title: "Rewards", value: "Spark points", detail: "Positive collecting habits, not pressure to spend or flip." },
       { key: "rules", title: "Safety Rules", value: "Always on", detail: "No private child messaging, no scalper pricing, and parent-approved trades only." },
     ];
@@ -28504,7 +28510,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <h3>No open requests yet.</h3>
               <p>Start with a parent-approved interest request. We will never promise inventory, but The Spark helps Ember & Tide understand what local families are hoping to find.</p>
               <div className="quick-actions">
-                <button type="button" onClick={scrollToSparkRequest}>Submit a kid wish/request</button>
+                <button type="button" onClick={scrollToSparkRequest}>Request Kid Access</button>
                 <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
               </div>
             </div>
@@ -28518,6 +28524,36 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <span className="status-badge">{sparkProgramStatusLabel(activeApplication.status || "interest_submitted")}</span>
             </div>
           )}
+
+          {safeKidProgramProjects.length ? (
+            <section className="spark-private-request-card spark-program-projects-card" aria-label="Private Kids Program project activity">
+              <div>
+                <span>Saved Kids Program activity</span>
+                <h3>Private family-safe plans</h3>
+                <p>Pack plans, events, and giveaway prep are shown only in your signed-in view. Child/family details and admin notes are not public.</p>
+              </div>
+              <div className="home-list compact-home-list">
+                {safeKidProgramProjects.map((project) => {
+                  const itemCount = phase2KidProjectItemCounts[project.id] || 0;
+                  const statusLabel = String(project.status || "planning").replace(/_/g, " ");
+                  return (
+                    <div className="home-list-row" key={project.id}>
+                      <span>
+                        <strong>{project.name || "Kids Program plan"}</strong>
+                        <small>
+                          {project.targetPackCount || 0} planned pack{Number(project.targetPackCount || 0) === 1 ? "" : "s"}
+                          {" | "}
+                          {itemCount} item{itemCount === 1 ? "" : "s"}
+                          {project.eventDate ? ` | Event date set` : ""}
+                        </small>
+                      </span>
+                      <b>{statusLabel}</b>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
 
           <form id="spark-request-flow" className="form beta-form-card spark-request-flow" onSubmit={submitKidsProgramApplication} noValidate>
             <div className="spark-request-heading">
@@ -31643,7 +31679,13 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
   function renderTidepoolCommunity() {
     const sourceLabel = BETA_LOCAL_MODE ? "Private Beta" : "Cloud";
     const visiblePosts = filteredTidepoolPosts.length;
-    const localPosts = tidepoolPosts.filter((post) => !post.state || String(post.state).toUpperCase() === "VA" || Boolean(post.city || post.zip)).length;
+    const tidepoolViewerId = currentUserProfile.userId || "local-beta";
+    const visibleTidepoolPostsForViewer = tidepoolPostsWithCounts.filter((post) => canViewTidepoolPost(post, {
+      isAdmin: adminEditModeActive,
+      currentUserId: tidepoolViewerId,
+    }));
+    const visibleTidepoolPostIds = new Set(visibleTidepoolPostsForViewer.map((post) => post.postId));
+    const localPosts = visibleTidepoolPostsForViewer.filter((post) => !post.state || String(post.state).toUpperCase() === "VA" || Boolean(post.city || post.zip)).length;
     const canCreateTidepoolPost = canUserCreateTidepoolPost({
       betaAccessAllowed: betaAccessAllowed(),
       guestPreviewActive,
@@ -31661,9 +31703,9 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
       return badges;
     };
     const tidepoolStats = [
-      { label: "Posts", value: tidepoolPosts.length },
-      { label: "Comments", value: tidepoolComments.length },
-      { label: "Reactions", value: tidepoolReactions.length },
+      { label: "Posts", value: visibleTidepoolPostsForViewer.length },
+      { label: "Comments", value: tidepoolComments.filter((comment) => visibleTidepoolPostIds.has(comment.postId) && comment.status !== "removed").length },
+      { label: "Reactions", value: tidepoolReactions.filter((reaction) => visibleTidepoolPostIds.has(reaction.postId)).length },
       { label: "Local", value: localPosts },
     ];
 
@@ -31704,7 +31746,7 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               <h2>{tidepoolFilter === "Feed" ? "Community feed" : tidepoolFilter}</h2>
               <p>Browse local posts, safe trade talk, events, and collector questions without turning Tidepool into a marketplace clone.</p>
             </div>
-            <span className="status-badge">{visiblePosts} visible</span>
+            <span className="status-badge">{sourceLabel} | {visiblePosts} visible</span>
           </div>
 
           <div className="tidepool-feed-grid">
@@ -31714,7 +31756,10 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
                 <p>Start a family-safe community post, ask a question, or share a local update after admin review.</p>
                 <div className="quick-actions">
                   <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
-                  <button type="button" className="secondary-button" onClick={() => setTidepoolFilter("Feed")}>Open Feed</button>
+                  <button type="button" className="secondary-button" onClick={() => {
+                    setTidepoolFilter("Local");
+                    setVaultToast("Use Save / Follow on public Tidepool posts to build your local collector list.");
+                  }}>Follow Local Collectors</button>
                 </div>
               </div>
             ) : null}
@@ -31723,7 +31768,8 @@ const sortedFilteredItems = [...filteredItems].sort((a, b) => {
               const locationParts = [post.city, post.state].filter(Boolean);
               const locationLabel = locationParts.length ? locationParts.join(", ") : post.zip ? `ZIP ${post.zip}` : "Community post";
               const postDate = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : "No date";
-              const preview = post.body || "No post body yet.";
+              const publicSummary = publicTidepoolPostSummary(post);
+              const preview = publicSummary.bodyPreview || "No post body yet.";
               const postCategory = normalizeTidepoolPostCategory(post.postType || post.category);
               const postStatus = normalizeTidepoolPostStatus(post);
               const sourceBadge = post.sourceType === "mock" || post.sourceType === "demo" ? "Demo" : post.sourceType === "admin" ? "Admin" : "User";

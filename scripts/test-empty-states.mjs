@@ -32,9 +32,16 @@ const notifications = getEmptyStateGuidance("notifications");
 assert.match(notifications.body, /Confirmed restocks/i);
 assert.equal(notifications.actionTarget, "alerts");
 
+const tidepool = getEmptyStateGuidance("tidepool");
+assert.equal(tidepool.title, "The Tidepool is quiet right now.");
+assert.deepEqual(tidepool.actions.map((action) => action.label), ["Start a Post", "Follow Local Collectors"]);
+assert.match(tidepool.body, /reviewed before they appear publicly/i);
+
 const kids = getEmptyStateGuidance("kids");
+assert.equal(kids.title, "No open requests yet.");
 assert.match(kids.body, /parent/i);
 assert.match(kids.body, /does not guarantee/i);
+assert.deepEqual(kids.actions.map((action) => action.label), ["Request Kid Access", "View Rules"]);
 
 assert.equal(getEmptyStateGuidance("unknown").title, EMPTY_STATE_GUIDANCE.vault.title);
 

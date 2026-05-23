@@ -274,6 +274,10 @@ export const EMPTY_STATE_GUIDANCE = {
     body: "Start with a family-safe question, local update, shop note, or kid-friendly collecting win. New posts are reviewed before they appear publicly.",
     actionLabel: "Start a Post",
     actionTarget: "tidepool",
+    actions: [
+      { label: "Start a Post", actionTarget: "tidepool" },
+      { label: "Follow Local Collectors", actionTarget: "tidepool_follow", primary: false },
+    ],
     assistPrompt: "How do I post safely?",
   },
   admin: {
@@ -284,10 +288,14 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "What needs review?",
   },
   kids: {
-    title: "The Spark starts with a parent.",
+    title: "No open requests yet.",
     body: "Parent or guardian submits kid/family interest when ready. Program availability depends on inventory and does not guarantee products.",
-    actionLabel: "Join The Spark",
+    actionLabel: "Request Kid Access",
     actionTarget: "kids_program",
+    actions: [
+      { label: "Request Kid Access", actionTarget: "kids_program" },
+      { label: "View Rules", actionTarget: "kids_rules", primary: false },
+    ],
     assistPrompt: "How does The Spark work?",
   },
   stores: {
