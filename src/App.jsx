@@ -224,9 +224,14 @@ import {
   getProductImageUrl,
 } from "./utils/productDisplayUtils";
 import {
+  buildForgeGroupSaleHistory,
   buildPlannedSalePricePatch,
   groupedInventoryEntryIds,
+  groupedInventoryUnsoldEntryIds,
+  inventoryEntryIsSold,
+  inventoryProductIdentityGroupKey,
   plannedSalePriceUpdateSummary,
+  summarizeForgeGroupedInventoryStatus,
 } from "./utils/inventoryDetailUtils";
 import {
   INVENTORY_VALUATION_COPY,
@@ -3144,30 +3149,7 @@ function itemPurchaserKey(item = {}) {
 }
 
 function inventoryProductGroupKey(item = {}, context = "inventory") {
-  const strongId = [
-    item.catalogProductId,
-    item.catalog_product_id,
-    item.catalogItemId,
-    item.catalog_item_id,
-    item.externalProductId,
-    item.external_product_id,
-    item.tcgplayerProductId,
-    item.tcgplayer_product_id,
-    item.barcode,
-    item.upc,
-    item.sku,
-  ]
-    .map((value) => String(value || "").trim().toLowerCase())
-    .find(Boolean);
-
-  if (strongId) return `${context}:id:${strongId}`;
-
-  const name = normalizeSearchText(item.name || item.itemName || item.catalogProductName || "");
-  if (!name) return `${context}:row:${item.id || makeId("inventory-group")}`;
-  const setName = normalizeSearchText(item.setName || item.set_name || item.expansion || item.productLine || "");
-  const productType = normalizeSearchText(item.productType || item.product_type || item.category || "");
-  const variant = normalizeSearchText([item.variant, item.finish, item.printing, item.language, item.conditionName || item.condition].filter(Boolean).join(" "));
-  return `${context}:name:${name}|set:${setName}|type:${productType}|variant:${variant}`;
+  return inventoryProductIdentityGroupKey(item, context);
 }
 
 function summarizeBreakdownRows(rows = [], options = {}) {
@@ -3206,7 +3188,8 @@ function summarizeBreakdownRows(rows = [], options = {}) {
     .sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name));
 }
 
-function buildGroupedInventoryItems(rows = [], context = "inventory") {
+function buildGroupedInventoryItems(rows = [], context = "inventory", options = {}) {
+  const { sales = [] } = options;
   const groups = new Map();
   rows.forEach((row) => {
     const key = inventoryProductGroupKey(row, context);
@@ -3222,10 +3205,14 @@ function buildGroupedInventoryItems(rows = [], context = "inventory") {
       if (safeQuantity <= 0) return Number(primary[field] || 0);
       return groupRows.reduce((sum, row) => sum + Number(row.quantity || 0) * Number(row[field] || 0), 0) / safeQuantity;
     };
-    const latestUpdatedAt = groupRows
+    const saleHistory = context === "forge" ? buildForgeGroupSaleHistory(groupRows, sales) : [];
+    const statusSummary = context === "forge" ? summarizeForgeGroupedInventoryStatus(groupRows, saleHistory) : null;
+    const latestUpdatedAt = [
+      ...groupRows
       .map((row) => row.updatedAt || row.updated_at || row.createdAt || row.created_at || "")
-      .filter(Boolean)
-      .sort();
+        .filter(Boolean),
+      ...saleHistory.map((sale) => sale.activityDate || sale.saleDate || sale.createdAt || ""),
+    ].filter(Boolean).sort();
     const latestTimestamp = latestUpdatedAt[latestUpdatedAt.length - 1] || primary.updatedAt || primary.createdAt || "";
     const purchaserBreakdown = summarizeBreakdownRows(groupRows, { type: "purchaser" });
     const locationBreakdown = summarizeBreakdownRows(groupRows, { type: "location" });
@@ -3249,6 +3236,11 @@ function buildGroupedInventoryItems(rows = [], context = "inventory") {
       salePrice: weighted("salePrice"),
       msrpPrice: weighted("msrpPrice"),
       valuationSummary: buildGroupedInventoryValuation({ ...primary, rawItems: groupRows, quantity: safeQuantity }, { context }),
+      saleHistory,
+      statusSummary,
+      soldQuantity: statusSummary?.soldQuantity || 0,
+      listedQuantity: statusSummary?.listedQuantity || 0,
+      totalActivityQuantity: statusSummary?.totalQuantity || safeQuantity,
       purchaserBreakdown,
       locationBreakdown,
       purchaserSummary,
@@ -17871,7 +17863,15 @@ function mapCatalog(row) {
   async function quickUpdatePlannedSalePrice(item = {}) {
     if (!item?.id || !ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
     const current = Number(item.salePrice || item.plannedSalePrice || item.planned_sale_price || 0);
-    const entrySummary = plannedSalePriceUpdateSummary(item);
+    const allEntrySummary = plannedSalePriceUpdateSummary(item);
+    const updateIds = groupedInventoryUnsoldEntryIds(item);
+    const entrySummary = updateIds.length === groupedInventoryEntryIds(item).length
+      ? allEntrySummary
+      : `${updateIds.length} unsold ${updateIds.length === 1 ? "entry" : "entries"}`;
+    if (!updateIds.length) {
+      showAppMessage("No unsold Forge entries are available for a grouped planned price update. Edit sold records individually.");
+      return;
+    }
     const input = window.prompt(`Update planned sale price for ${item.name || "this item"} (${entrySummary})`, current ? current.toFixed(2) : "");
     if (input == null) return;
     const nextPrice = Number.parseFloat(String(input).trim());
@@ -17879,8 +17879,11 @@ function mapCatalog(row) {
       showAppMessage("Planned sale price must be a valid number.");
       return;
     }
+    if (updateIds.length > 1) {
+      const confirmed = window.confirm(`Apply ${money(nextPrice)} to ${entrySummary} in this grouped Forge item? Sold entries will not change.`);
+      if (!confirmed) return;
+    }
     const changedAt = new Date().toISOString();
-    const updateIds = groupedInventoryEntryIds(item);
     setItems((currentItems) => currentItems.map((entry) => updateIds.includes(entry.id)
       ? { ...entry, ...buildPlannedSalePricePatch(entry, nextPrice, changedAt) }
       : entry));
@@ -24072,42 +24075,81 @@ function renderForgeAccessState() {
     },
   ];
 
-  const filteredItems = useMemo(() => {
-    const search = deferredInventorySearch.toLowerCase();
-    return forgeInventoryItems.filter((item) => {
-      const purchaserName = itemPurchaserName(item);
-      const physicalLocation = forgePhysicalLocationLabel(item);
-      const matchesSearch =
-        String(item.name || "").toLowerCase().includes(search) ||
-        String(item.sku || "").toLowerCase().includes(search) ||
-        purchaserName.toLowerCase().includes(search) ||
-        String(item.category || "").toLowerCase().includes(search) ||
-        String(item.store || "").toLowerCase().includes(search) ||
-        physicalLocation.toLowerCase().includes(search) ||
-        String(item.physicalLocationNotes || "").toLowerCase().includes(search) ||
-        String(item.barcode || "").toLowerCase().includes(search) ||
-        String(item.status || "").toLowerCase().includes(search);
+  const groupedForgeInventoryItems = useMemo(
+    () => buildGroupedInventoryItems(forgeInventoryItems, "forge", { sales: workspaceSales }),
+    [forgeInventoryItems, workspaceSales]
+  );
 
-      const matchesStatus = inventoryStatusFilter === "All" || item.status === inventoryStatusFilter;
+  const filteredForgeGroups = useMemo(() => {
+    const search = deferredInventorySearch.toLowerCase().trim();
+    return groupedForgeInventoryItems.filter((item) => {
+      const entries = inventoryGroupEntries(item);
+      const saleHistory = Array.isArray(item.saleHistory) ? item.saleHistory : [];
+      const searchableText = [
+        item.name,
+        item.sku,
+        item.category,
+        item.store,
+        item.expansion,
+        item.setName,
+        item.productType,
+        item.barcode,
+        item.status,
+        item.purchaserSummary,
+        item.locationSummary,
+        item.notes,
+        ...entries.flatMap((entry) => [
+          itemPurchaserName(entry),
+          entry.store,
+          entry.sourceLocation,
+          entry.externalProductSource,
+          forgePhysicalLocationLabel(entry),
+          entry.physicalLocationNotes,
+          entry.notes,
+          entry.purchaseDate,
+          entry.createdAt,
+          entry.created_at,
+          entry.status,
+        ]),
+        ...saleHistory.flatMap((sale) => [
+          sale.platform,
+          sale.buyerName,
+          sale.saleDate,
+          sale.activityDate,
+          sale.referenceId,
+          sale.notes,
+        ]),
+      ].filter(Boolean).join(" ").toLowerCase();
+      const matchesSearch = !search || searchableText.includes(search);
+      const matchesStatus = inventoryStatusFilter === "All" ||
+        entries.some((entry) => entry.status === inventoryStatusFilter) ||
+        (inventoryStatusFilter === "Sold" && Number(item.statusSummary?.soldQuantity || 0) > 0);
       const matchesPurchaser =
         inventoryPurchaserFilter === "All" ||
-        (inventoryPurchaserFilter === "Unassigned" && purchaserName === "Unassigned purchaser") ||
-        item.purchaserId === inventoryPurchaserFilter ||
-        purchaserName === inventoryPurchaserFilter;
+        entries.some((entry) => {
+          const purchaserName = itemPurchaserName(entry);
+          return (inventoryPurchaserFilter === "Unassigned" && purchaserName === "Unassigned purchaser") ||
+            entry.purchaserId === inventoryPurchaserFilter ||
+            entry.purchaser_id === inventoryPurchaserFilter ||
+            purchaserName === inventoryPurchaserFilter;
+        });
       const matchesPhysicalLocation =
         inventoryPhysicalLocationFilter === "All" ||
-        (inventoryPhysicalLocationFilter === "No Location" && !physicalLocation) ||
-        physicalLocation === inventoryPhysicalLocationFilter;
+        entries.some((entry) => {
+          const physicalLocation = forgePhysicalLocationLabel(entry);
+          return (inventoryPhysicalLocationFilter === "No Location" && !physicalLocation) ||
+            physicalLocation === inventoryPhysicalLocationFilter;
+        });
       return matchesSearch && matchesStatus && matchesPurchaser && matchesPhysicalLocation;
     });
   }, [
-    forgeInventoryItems,
+    groupedForgeInventoryItems,
     deferredInventorySearch,
     inventoryStatusFilter,
     inventoryPurchaserFilter,
     inventoryPhysicalLocationFilter,
   ]);
-const sortedFilteredItems = useMemo(() => [...filteredItems].sort((a, b) => {
+const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((a, b) => {
   const aQty = Number(a.quantity || 0);
   const bQty = Number(b.quantity || 0);
 
@@ -24143,14 +24185,17 @@ const sortedFilteredItems = useMemo(() => [...filteredItems].sort((a, b) => {
     return String(a.name || "").localeCompare(String(b.name || ""));
   }
 
-  return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-}), [filteredItems, inventorySort]);
+  return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+}), [filteredForgeGroups, inventorySort]);
 
   const groupedVisibleVaultItems = useMemo(() => buildGroupedInventoryItems(visibleVaultItems, "vault"), [visibleVaultItems]);
-  const groupedSortedFilteredItems = useMemo(() => buildGroupedInventoryItems(sortedFilteredItems, "forge"), [sortedFilteredItems]);
+  const filteredForgeEntryCount = useMemo(
+    () => groupedSortedFilteredItems.reduce((sum, group) => sum + inventoryGroupEntries(group).length, 0),
+    [groupedSortedFilteredItems]
+  );
   const selectedVaultDetailItem = groupedVisibleVaultItems.find((item) => item.id === selectedVaultDetailId)
     || vaultItems.find((item) => item.id === selectedVaultDetailId);
-  const selectedForgeDetailItem = groupedSortedFilteredItems.find((item) => item.id === selectedForgeDetailId)
+  const selectedForgeDetailItem = groupedSortedFilteredItems.find((item) => item.groupId === selectedForgeDetailId || item.id === selectedForgeDetailId)
     || forgeInventoryItems.find((item) => item.id === selectedForgeDetailId);
   const pagedVaultItems = getPagedItems(groupedVisibleVaultItems, vaultPage, LONG_LIST_PAGE_SIZE);
   const pagedForgeInventory = getPagedItems(groupedSortedFilteredItems, forgeInventoryPage, LONG_LIST_PAGE_SIZE);
@@ -44739,7 +44784,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <p>Physical location: {inventoryPhysicalLocationFilter === "All" ? "All" : inventoryPhysicalLocationFilter === "No Location" ? "Unassigned" : inventoryPhysicalLocationFilter}</p>
 
               <p>
-              Showing {pagedForgeInventory.start || 0}-{pagedForgeInventory.end || 0} of {groupedSortedFilteredItems.length} grouped products ({sortedFilteredItems.length} entries)
+              Showing {pagedForgeInventory.start || 0}-{pagedForgeInventory.end || 0} of {groupedSortedFilteredItems.length} grouped products ({filteredForgeEntryCount} entries)
               </p>
 
               <p>{inventorySearch ? ` - Search: ${inventorySearch}` : ""}</p>
@@ -44774,6 +44819,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 item={selectedForgeDetailItem}
                 onClose={() => setSelectedForgeDetailId("")}
                 onEdit={startEditingItem}
+                onEditSale={startEditingSale}
                 onDelete={(item) => { deleteItem(item.id); setSelectedForgeDetailId(""); }}
                 onCreateListing={(item) => openMarketplaceCreate("forge", item)}
                 onQuickUpdateMarketValue={quickUpdateMarketValue}
@@ -44794,10 +44840,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 renderGuidedEmptyState("forge", { actionLabel: "Add first Forge item", actionTarget: "forge" })
               ) : pagedForgeInventory.items.map((item) => (
                 <CompactInventoryCard
-                  key={item.id}
+                  key={item.groupId || item.id}
                   item={item}
                   onRestock={prepareRestock}
-                  onViewDetails={(forgeItem) => setSelectedForgeDetailId(forgeItem.id)}
+                  onViewDetails={(forgeItem) => setSelectedForgeDetailId(forgeItem.groupId || forgeItem.id)}
                   onEdit={startEditingItem}
                   onDelete={deleteItem}
                   onStatusChange={updateItemStatus}
@@ -45855,8 +45901,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
   );
 }
 
-function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDeleteEntry, onMoveEntryToForge, onCopyEntryToForge }) {
+function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDeleteEntry, onEditSale, onMoveEntryToForge, onCopyEntryToForge }) {
   const entries = inventoryGroupEntries(item).filter(Boolean);
+  const saleHistory = Array.isArray(item?.saleHistory) ? item.saleHistory : [];
   const purchaserBreakdown = item?.purchaserBreakdown?.length
     ? item.purchaserBreakdown
     : summarizeBreakdownRows(entries, { type: "purchaser" });
@@ -45865,6 +45912,35 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
     : summarizeBreakdownRows(entries, { type: "location" });
   const valuation = item?.valuationSummary || buildGroupedInventoryValuation(item, { context: variant });
   const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: variant });
+  const activityRows = [
+    ...entries.map((entry) => {
+      const date = entry.purchaseDate || entry.purchase_date || entry.createdAt || entry.created_at || "";
+      const source = entry.store || entry.sourceLocation || entry.source_location || entry.externalProductSource || entry.external_product_source || entry.vendor || "";
+      return {
+        id: `purchase-${entry.id || date}`,
+        type: "purchase",
+        date,
+        title: `Bought ${Number(entry.quantity || 0)}${source ? ` at ${source}` : ""}`,
+        meta: [itemPurchaserName(entry), hasValue(entry.unitCost) ? `${money(entry.unitCost)} each` : "", entry.notes].filter(Boolean).join(" - "),
+      };
+    }),
+    ...saleHistory.map((sale) => {
+      const date = sale.activityDate || sale.saleDate || sale.sale_date || sale.createdAt || sale.created_at || "";
+      return {
+        id: `sale-${sale.id || date}`,
+        type: "sale",
+        date,
+        title: `Sold ${Number(sale.quantitySold || sale.quantity_sold || 0)}${sale.platform ? ` on ${sale.platform}` : ""}`,
+        meta: [
+          hasValue(sale.finalSalePrice) ? `${money(sale.finalSalePrice)} each` : "",
+          hasValue(sale.netProfit || sale.estimatedProfitLoss) ? `Profit ${money(sale.netProfit || sale.estimatedProfitLoss)}` : "",
+          sale.referenceId ? `Ref ${sale.referenceId}` : "",
+          sale.notes,
+        ].filter(Boolean).join(" - "),
+        sale,
+      };
+    }),
+  ].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
   if (!entries.length) return null;
 
   return (
@@ -45928,14 +46004,42 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
       <details className="individual-entry-details">
         <summary>Individual entries</summary>
         <div className="individual-entry-list">
-          {entries.map((entry) => (
+          {entries.map((entry) => {
+            const source = entry.store || entry.sourceLocation || entry.source_location || entry.externalProductSource || entry.external_product_source || entry.vendor || "Not listed";
+            const quantity = Number(entry.quantity || 0);
+            const unitCost = Number(entry.unitCost || entry.unit_cost || 0);
+            const totalCost = quantity * unitCost;
+            const entryDate = entry.purchaseDate || entry.purchase_date || entry.createdAt || entry.created_at || "";
+            const variantText = [
+              entry.conditionName || entry.condition_name || entry.condition,
+              entry.finish,
+              entry.language,
+              entry.variant || entry.variantName || entry.productVariant,
+              entry.sealedCondition || entry.sealed_condition,
+            ].filter(Boolean).join(" / ");
+            const plannedPrice = entry.salePrice || entry.plannedSalePrice || entry.planned_sale_price;
+            const actualSalePrice = entry.actualSalePrice || entry.actual_sale_price || entry.soldPrice || entry.sold_price;
+            const receiptUrl = entry.receiptImage || entry.receipt_image || entry.receiptImageUrl || entry.receipt_image_url;
+            return (
             <div className="individual-entry-card" key={entry.id}>
               <div>
                 <strong>{itemPurchaserName(entry)}</strong>
                 <p>{inventoryEntryLabel(entry)}</p>
-                {entry.purchaseDate || entry.createdAt || entry.created_at ? (
-                  <small>{shortDate(entry.purchaseDate || entry.createdAt || entry.created_at)}</small>
-                ) : null}
+                {entryDate ? <small>{shortDate(entryDate)}</small> : null}
+                <div className="entry-detail-grid">
+                  <span><b>Date purchased</b>{entryDate ? shortDate(entryDate) : "Not set"}</span>
+                  <span><b>Source</b>{source}</span>
+                  <span><b>Quantity</b>{quantity}</span>
+                  <span><b>Unit cost</b>{unitCost ? money(unitCost) : "Unknown"}</span>
+                  <span><b>Total cost</b>{unitCost ? money(totalCost) : "Unknown"}</span>
+                  <span><b>Variant</b>{variantText || "Standard"}</span>
+                  <span><b>Planned price</b>{hasValue(plannedPrice) ? money(plannedPrice) : "Not set"}</span>
+                  <span><b>Actual sale</b>{hasValue(actualSalePrice) ? money(actualSalePrice) : inventoryEntryIsSold(entry) ? "Sold record needed" : "Not sold"}</span>
+                  {entry.saleDate || entry.sale_date ? <span><b>Sale date</b>{shortDate(entry.saleDate || entry.sale_date)}</span> : null}
+                  {entry.listingPlatform || entry.platform ? <span><b>Platform</b>{entry.listingPlatform || entry.platform}</span> : null}
+                  {entry.notes ? <span className="wide"><b>Notes</b>{entry.notes}</span> : null}
+                  {receiptUrl ? <a className="wide" href={receiptUrl} target="_blank" rel="noreferrer">Open receipt/photo reference</a> : null}
+                </div>
               </div>
               <div className="individual-entry-actions">
                 {variant === "vault" ? (
@@ -45948,9 +46052,39 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
                 <button type="button" className="ghost-button" onClick={() => onDeleteEntry?.(entry)}>Delete</button>
               </div>
             </div>
-          ))}
+          );})}
         </div>
       </details>
+
+      {variant === "forge" ? (
+        <section className="forge-group-activity">
+          <div className="compact-card-header">
+            <div>
+              <h5>Sale history & activity</h5>
+              <p className="compact-subtitle">Each purchase and sale stays separate even though the parent card is grouped.</p>
+            </div>
+            <span className="neon-chip">{saleHistory.length} sale{saleHistory.length === 1 ? "" : "s"}</span>
+          </div>
+          {activityRows.length ? (
+            <div className="forge-group-activity-list">
+              {activityRows.map((row) => (
+                <div className={`forge-group-activity-row is-${row.type}`} key={row.id}>
+                  <time>{row.date ? shortDate(row.date) : "No date"}</time>
+                  <div>
+                    <strong>{row.title}</strong>
+                    {row.meta ? <small>{row.meta}</small> : null}
+                  </div>
+                  {row.type === "sale" && row.sale ? (
+                    <button type="button" className="secondary-button" onClick={() => onEditSale?.(row.sale)}>Edit sale</button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="compact-subtitle">No activity records are tied to this grouped item yet.</p>
+          )}
+        </section>
+      ) : null}
     </section>
   );
 }
@@ -46001,12 +46135,15 @@ function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPla
   );
 }
 
-function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateListing, onQuickUpdateMarketValue, onQuickUpdateSalePrice }) {
+function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onQuickUpdateMarketValue, onQuickUpdateSalePrice }) {
   if (!item) return null;
   const detailImage = item.itemImage || vaultItemDisplayImage(item);
   const setLabel = item.setName || item.expansion || "";
   const productType = item.productType || "Forge inventory";
   const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "forge" });
+  const statusSummary = item.statusSummary || summarizeForgeGroupedInventoryStatus(inventoryGroupEntries(item), item.saleHistory || []);
+  const primaryEntry = inventoryGroupEntries(item)[0] || item;
+  const nextSellEntry = inventoryGroupEntries(item).find((entry) => Number(entry.quantity || 0) > 0 && !inventoryEntryIsSold(entry)) || primaryEntry;
   const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: "forge" });
   const priceFields = buildPriceReviewFields(item, { context: "forge", moneyFormatter: money });
   const priceByRole = Object.fromEntries(priceFields.map((field) => [field.role, field]));
@@ -46021,6 +46158,12 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
     ["Market Value", priceByRole.market?.displayValue],
     ["Total Market", valuation.marketKnownQuantity ? money(totalMarket) : "Unknown"],
     ["Planned Sale Total", valuation.plannedKnownQuantity ? money(plannedTotal) : "Not set"],
+    ["Saved Entries", item.groupedEntryCount || inventoryGroupEntries(item).length],
+    ["Total Activity Qty", statusSummary.totalQuantity],
+    ["Currently Held", statusSummary.currentQuantity],
+    ["Listed Qty", statusSummary.listedQuantity],
+    ["Sold Qty", statusSummary.soldQuantity],
+    ["Most Recent Activity", item.updatedAt ? shortDate(item.updatedAt) : ""],
     ["Product Type", productType],
     ["Set / Collection", setLabel],
     ["Release Year", item.releaseYear],
@@ -46059,6 +46202,8 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
           <p>{[setLabel, productType].filter(Boolean).join(" - ") || "Business inventory"}</p>
           <div className="inventory-detail-metrics">
             <div><span>Qty</span><strong>{item.quantity || 0}</strong></div>
+            <div><span>Total</span><strong>{statusSummary.totalQuantity || item.quantity || 0}</strong></div>
+            <div><span>Sold</span><strong>{statusSummary.soldQuantity || 0}</strong></div>
             <div><span>Market</span><strong>{valuation.marketKnownQuantity ? money(totalMarket) : "Unknown"}</strong></div>
             <div><span>Planned</span><strong>{valuation.plannedKnownQuantity ? money(plannedTotal) : "Unknown"}</strong></div>
             <div><span>Cost Basis</span><strong>{money(totalCost)}</strong></div>
@@ -46092,6 +46237,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
         variant="forge"
         onEditEntry={onEdit}
         onDeleteEntry={onDelete}
+        onEditSale={onEditSale}
       />
       <LazyToolBoundary label="Loading price history...">
         <MarketPriceHistoryPanel
@@ -46109,12 +46255,12 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onSell, onCreateList
         />
       </LazyToolBoundary>
       <div className="quick-actions">
-        <button type="button" onClick={() => onSell(item)}>Sell</button>
+        <button type="button" onClick={() => onSell(nextSellEntry)}>Sell individual entry</button>
         <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review Market Value</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
-        <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
-        <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Forge Item</button>
+        <button type="button" className="secondary-button" onClick={() => onEdit(primaryEntry)}>Edit primary entry</button>
+        <button type="button" className="secondary-button" onClick={() => onDelete(primaryEntry)}>Delete primary entry</button>
       </div>
     </div>
   );
@@ -46340,13 +46486,27 @@ function CompactInventoryCard({
       </div>
     );
   }
+  const statusSummary = item.statusSummary || summarizeForgeGroupedInventoryStatus(inventoryGroupEntries(item), item.saleHistory || []);
+  const purchaserRows = Array.isArray(item.purchaserBreakdown) ? item.purchaserBreakdown.slice(0, 3) : [];
+  const forgeImage = item.itemImage || vaultItemDisplayImage(item);
+  const lastActivity = item.updatedAt || item.createdAt || item.created_at || "";
+  const primaryEntry = inventoryGroupEntries(item)[0] || item;
+  const nextSellEntry = inventoryGroupEntries(item).find((entry) => Number(entry.quantity || 0) > 0 && !inventoryEntryIsSold(entry)) || primaryEntry;
+  const openGroupedCard = (event) => {
+    if (event.target.closest("button, a, input, select, textarea, summary, [role='button']")) return;
+    onViewDetails?.(item);
+  };
   return (
-    <div className="inventory-card compact-card forge-inventory-card">
+    <div
+      className={`inventory-card compact-card forge-inventory-card ${item.isGroupedInventory ? "is-grouped" : ""}`}
+      onClick={openGroupedCard}
+    >
       <div className="compact-card-header">
         <div className="compact-title-block">
           <h3>{item.name}</h3>
           <div className="forge-card-facts">
             <span className="forge-card-quantity">Qty {item.quantity || 0}</span>
+            <span className="forge-card-quantity">{statusSummary.totalQuantity || item.quantity || 0} total</span>
             {item.locationSummary || physicalLocation ? <span className="neon-chip forge-location-pill">{item.locationSummary || physicalLocation}</span> : null}
             {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
           </div>
@@ -46359,9 +46519,9 @@ function CompactInventoryCard({
         </div>
       </div>
 
-      {item.itemImage ? (
+      {forgeImage ? (
         <div className="compact-image-wrap">
-          <img src={item.itemImage} alt={item.name} />
+          <img src={forgeImage} alt={item.name} loading="lazy" />
           <span>{getImageSourceLabel(item)}{item.itemImageNeedsReview ? " • Needs review" : ""}</span>
         </div>
       ) : (
@@ -46371,6 +46531,21 @@ function CompactInventoryCard({
           <b>Image needed</b>
         </div>
       )}
+
+      <div className="forge-group-status-row" aria-label="Grouped Forge status summary">
+        <span>{statusSummary.currentQuantity || item.quantity || 0} held</span>
+        <span>{statusSummary.listedQuantity || 0} listed</span>
+        <span>{statusSummary.soldQuantity || 0} sold</span>
+        {lastActivity ? <span>Updated {shortDate(lastActivity)}</span> : null}
+      </div>
+
+      {purchaserRows.length ? (
+        <div className="forge-purchaser-breakdown-mini" aria-label="Purchaser quantity breakdown">
+          {purchaserRows.map((row) => (
+            <span key={row.key || row.name}>{row.name}: {row.quantity}</span>
+          ))}
+        </div>
+      ) : null}
 
   <div className="compact-metrics">
     <div>
@@ -46431,18 +46606,18 @@ function CompactInventoryCard({
 
       <div className="compact-actions forge-card-actions">
         <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
-        <button type="button" className="secondary-button" onClick={() => onSell?.(item)}>Sell</button>
+        <button type="button" className="secondary-button" onClick={() => onSell?.(nextSellEntry)}>Sell</button>
         <OverflowMenu
           buttonLabel="More"
           actions={[
-            { label: "Edit", onClick: () => onEdit?.(item) },
+            { label: "Edit primary entry", onClick: () => onEdit?.(primaryEntry) },
             { label: "Review Market Value", onClick: () => onQuickUpdateMarketValue?.(item) },
             { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
             { label: "List", onClick: () => onCreateListing?.(item) },
             { label: "Restock", onClick: () => onRestock?.(item) },
-            { label: "Change Status", onClick: () => onEdit?.(item) },
+            { label: "Change Status", onClick: () => onEdit?.(primaryEntry) },
           ]}
-          onDelete={() => onDelete?.(item.id)}
+          onDelete={() => onDelete?.(primaryEntry.id)}
           deleteLabel="Delete Forge item"
         />
       </div>

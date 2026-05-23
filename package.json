@@ -41,6 +41,7 @@
     "test:workspace-identity": "node --no-warnings scripts/test-workspace-identity.mjs",
     "test:app-fallbacks": "node --no-warnings scripts/test-app-fallbacks.mjs",
     "test:quick-add": "node --no-warnings scripts/test-quick-add-routing.mjs",
+    "test:forge-grouped-inventory": "node --no-warnings scripts/test-forge-grouped-inventory.mjs",
     "test:inventory-detail": "node --no-warnings scripts/test-inventory-detail-utils.mjs",
     "test:product-display": "node --no-warnings scripts/test-product-display.mjs",
     "test:route-loading": "node --no-warnings scripts/test-route-loading.mjs",

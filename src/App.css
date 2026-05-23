@@ -1240,6 +1240,15 @@
   box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
+.forge-inventory-card.is-grouped {
+  cursor: pointer;
+}
+
+.forge-inventory-card.is-grouped:focus-visible {
+  outline: 2px solid rgba(32, 215, 255, 0.9);
+  outline-offset: 3px;
+}
+
 .forge-inventory-card .compact-card-header {
   display: flex;
   align-items: flex-start;
@@ -1308,6 +1317,32 @@
 .forge-inventory-card .purchaser-summary-pill {
   border-color: rgba(255, 194, 71, 0.22);
   color: #ffe3a8;
+}
+
+.forge-group-status-row,
+.forge-purchaser-breakdown-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.forge-group-status-row span,
+.forge-purchaser-breakdown-mini span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(248, 251, 255, 0.82);
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.forge-purchaser-breakdown-mini span {
+  border-color: rgba(255, 194, 71, 0.2);
+  color: #ffe8b8;
 }
 
 .forge-inventory-card .compact-image-wrap {
@@ -1648,11 +1683,83 @@
   color: rgba(248, 251, 255, 0.64);
 }
 
+.entry-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.entry-detail-grid span,
+.entry-detail-grid a {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(2, 8, 20, 0.45);
+  color: rgba(248, 251, 255, 0.8);
+  font-size: 0.76rem;
+  text-decoration: none;
+}
+
+.entry-detail-grid b {
+  color: rgba(189, 243, 255, 0.84);
+  font-size: 0.67rem;
+  text-transform: uppercase;
+}
+
+.entry-detail-grid .wide {
+  grid-column: 1 / -1;
+}
+
 .individual-entry-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
+}
+
+.forge-group-activity {
+  display: grid;
+  gap: 10px;
+}
+
+.forge-group-activity-list {
+  display: grid;
+  gap: 8px;
+}
+
+.forge-group-activity-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.forge-group-activity-row.is-sale {
+  border-color: rgba(255, 194, 71, 0.16);
+  background: rgba(255, 194, 71, 0.055);
+}
+
+.forge-group-activity-row time {
+  color: rgba(189, 243, 255, 0.78);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.forge-group-activity-row strong {
+  color: #fff7ed;
+}
+
+.forge-group-activity-row small {
+  display: block;
+  margin-top: 3px;
 }
 
 .mileage-vehicle-detail-modal .flow-modal-body {
@@ -1708,7 +1815,9 @@
   }
 
   .breakdown-columns,
-  .individual-entry-card {
+  .individual-entry-card,
+  .entry-detail-grid,
+  .forge-group-activity-row {
     grid-template-columns: 1fr;
   }
 
