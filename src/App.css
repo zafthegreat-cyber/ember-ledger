@@ -20261,6 +20261,22 @@ button.home-metric-card small,
   color: var(--color-heading);
 }
 
+.scout-historical-import-badge {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+}
+
+.scout-report-historical-note {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  color: #7c4a03;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
 .scout-report-general-details {
   display: grid;
   gap: 3px;

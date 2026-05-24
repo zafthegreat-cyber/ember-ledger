@@ -11769,6 +11769,12 @@ export default function App() {
     const reportTime = reportedDate && !Number.isNaN(reportedDate.getTime()) ? getLocalTimeKey(reportedDate) : String(reportedAt || "").slice(11, 16);
     const storeName = row.store_name || getScoutQuickStoreName(matchedStore) || "Store location";
     const retailer = getScoutQuickRetailer(matchedStore) || row.retailer || "";
+    const sourceType = row.source_type || (confirmed ? "verified_user_report" : "user_report");
+    const confidence = row.confidence || (confirmed ? "confirmed" : likely ? "likely" : "unconfirmed");
+    const importedByAdmin = Boolean(row.imported_by_admin);
+    const reportStatus = row.report_status || "";
+    const historicalImport = sourceType === "historical_import" || importedByAdmin || Boolean(row.imported_batch);
+    const historicalStockPositive = historicalImport && ["stock_seen", "vendor_seen", "leftover_stock"].includes(reportStatus);
     return {
       id: row.id || makeId("store-report"),
       reportId: row.id || "",
@@ -11807,20 +11813,34 @@ export default function App() {
       note: row.notes || "",
       reportType: row.report_type || (confirmed ? "stock_on_shelf" : "other"),
       report_type: row.report_type || (confirmed ? "restock" : "other"),
-      stockStatus: confirmed ? "confirmed_restock" : row.report_type || "reported",
+      reportStatus,
+      report_status: reportStatus,
+      stockStatus: reportStatus || (confirmed ? "confirmed_restock" : row.report_type || "reported"),
       visibility: normalizeScoutReportVisibility(row.visibility || "public"),
       status,
       verificationStatus: status,
       verification_status: status,
       verified: confirmed,
-      confidence: confirmed ? "confirmed" : likely ? "likely" : "unconfirmed",
-      confidenceScore: confidenceScore || scoutConfidenceScore(confirmed ? "confirmed" : likely ? "likely" : "unconfirmed"),
-      confidence_score: confidenceScore || scoutConfidenceScore(confirmed ? "confirmed" : likely ? "likely" : "unconfirmed"),
-      sourceType: confirmed ? "verified_user_report" : "user_report",
-      source_type: confirmed ? "verified_user_report" : "user_report",
+      confidence,
+      confidenceScore: confidenceScore || scoutConfidenceScore(confidence),
+      confidence_score: confidenceScore || scoutConfidenceScore(confidence),
+      sourceType,
+      source_type: sourceType,
+      sourceLabel: row.source_label || "",
+      source_label: row.source_label || "",
+      submittedByDisplay: row.submitted_by_display || "",
+      submitted_by_display: row.submitted_by_display || "",
+      importedBatch: row.imported_batch || "",
+      imported_batch: row.imported_batch || "",
+      importedByAdmin,
+      imported_by_admin: importedByAdmin,
+      scoutPointsAwarded: row.scout_points_awarded !== false,
+      scout_points_awarded: row.scout_points_awarded !== false,
+      importKey: row.import_key || "",
+      import_key: row.import_key || "",
       sourceStatus: "supabase",
-      shouldTrainPredictions: confirmed,
-      trainingEligible: confirmed,
+      shouldTrainPredictions: confirmed || historicalStockPositive,
+      trainingEligible: confirmed || historicalStockPositive,
       observedAt,
       observed_at: observedAt,
       reportedAt,
@@ -11958,7 +11978,7 @@ export default function App() {
         .map((row) => mapSupabaseStore(row, watchlistByStoreId.get(String(row.id)) || {}))
         .filter((store) => adminEditModeActive || store.active !== false);
 
-      const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at";
+      const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,source_type,source_label,submitted_by_display,confidence,imported_batch,imported_by_admin,scout_points_awarded,import_key,report_status,created_at,updated_at";
       const reportFallbackSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status";
       let reportsResult = await supabase
         .from("store_reports")
@@ -12060,8 +12080,17 @@ export default function App() {
       visibility: normalizeScoutReportVisibility(report.visibility || "public"),
       status: confirmed ? "confirmed" : "unverified",
       confidence_score: confidenceScore,
+      source_type: report.sourceType || report.source_type || (confirmed ? "verified_user_report" : "user_report"),
+      source_label: report.sourceLabel || report.source_label || "",
+      submitted_by_display: report.submittedByDisplay || report.submitted_by_display || "",
+      confidence: report.confidence || (confirmed ? "confirmed" : "unconfirmed"),
+      imported_batch: report.importedBatch || report.imported_batch || null,
+      imported_by_admin: Boolean(report.importedByAdmin || report.imported_by_admin),
+      scout_points_awarded: report.scoutPointsAwarded ?? report.scout_points_awarded ?? true,
+      import_key: report.importKey || report.import_key || null,
+      report_status: report.reportStatus || report.report_status || null,
     };
-    let result = await supabase.from("store_reports").insert(payload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at").single();
+    let result = await supabase.from("store_reports").insert(payload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,source_type,source_label,submitted_by_display,confidence,imported_batch,imported_by_admin,scout_points_awarded,import_key,report_status,created_at,updated_at").single();
     if (result.error && isScoutBackendOptionalError(result.error)) {
       const fallbackPayload = {
         store_id: storeId,
@@ -16349,6 +16378,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (normalized === "confirmed") return 95;
     if (normalized === "likely") return 72;
     if (normalized === "possible") return 48;
+    if (normalized === "unverified_historical") return 25;
     if (normalized === "unconfirmed") return 34;
     if (normalized === "rumor") return 30;
     if (normalized === "guess") return 22;
@@ -23886,6 +23916,7 @@ function renderForgeAccessState() {
   }
 
   function scoutReportStatusLabel(report = {}) {
+    if (isHistoricalScoutImport(report)) return "Historical";
     const rawStatus = String(report.verificationStatus || report.verification_status || report.status || "").toLowerCase();
     if (report.verified || rawStatus === "verified" || rawStatus === "confirmed") return "Confirmed";
     if (rawStatus === "pending") return "Pending";
@@ -23906,11 +23937,24 @@ function renderForgeAccessState() {
       customer_service: "Customer service",
       limit_posted: "Limit posted",
       unknown: "Unknown / not sure",
+      stock_seen: "Stock seen",
+      vendor_seen: "Vendor seen",
+      leftover_stock: "Leftover stock",
     };
     return labels[String(value || "").toLowerCase()] || "";
   }
 
+  function isHistoricalScoutImport(report = {}) {
+    const source = String(report.sourceType || report.source_type || "").toLowerCase();
+    return source === "historical_import" || Boolean(report.importedByAdmin || report.imported_by_admin || report.importedBatch || report.imported_batch);
+  }
+
+  function historicalScoutImportNotice() {
+    return "Pulled from Facebook groups, friends, or admin notes. Not live verified.";
+  }
+
   function scoutSourceTypeLabel(value = "") {
+    if (String(value || "").toLowerCase() === "historical_import") return "Historical import";
     return String(value || "user_report")
       .replace(/_/g, " ")
       .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -23966,6 +24010,9 @@ function renderForgeAccessState() {
     const rawStatus = String(report.verificationStatus || report.verification_status || report.status || "").toLowerCase();
     const rawConfidence = String(report.confidenceLevel || report.confidence_level || report.confidence || "").toLowerCase();
     const reporterScore = Number(report.reporterReputation || report.reporter_reputation || report.trustScore || report.trust_score || 0);
+    if (isHistoricalScoutImport(report) || rawConfidence === "unverified_historical") {
+      return scoutConfidenceBadgeMeta("unconfirmed");
+    }
     if (
       report.verified ||
       rawStatus.includes("confirmed") ||
@@ -27514,7 +27561,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const reportId = uuidOrNull(getScoutReportId(report));
     if (!reportId) return null;
     const now = new Date().toISOString();
-    const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at";
+    const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,source_type,source_label,submitted_by_display,confidence,imported_batch,imported_by_admin,scout_points_awarded,import_key,report_status,created_at,updated_at";
     let result = await supabase
       .from("store_reports")
       .update({
@@ -27728,16 +27775,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const note = report.note || report.notes || report.reportText || report.report_text || "";
     const photoUrls = scoutReportPhotoUrls(report);
     const photo = photoUrls[0] || "";
-    const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status);
+    const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status || report.reportStatus || report.report_status);
     const aiPending = Boolean(photo && !itemsSeen.length) || report.needsReview || report.needs_review;
     const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
     const confidenceBadge = scoutReportConfidenceBadge(report);
+    const historicalImport = isHistoricalScoutImport(report);
     const proofType = report.proofType || report.proof_type || "";
     const proofLabel = photo ? "Photo proof" : proofType ? quickScoutProofLabel(proofType) : "No proof";
     const distance = Number(store.distanceMiles ?? store.distance_miles ?? store.distance ?? report.distanceMiles ?? report.distance_miles ?? report.distance);
     const distanceLabel = Number.isFinite(distance) ? `${distance.toFixed(1)} mi` : "";
     const reporterReputation = report.reporterReputation || report.reporter_reputation || report.trustScore || report.trust_score || "";
     const reporterProfile = publicCommunityProfile(report);
+    const submittedByLabel = isCurrentUserScoutReport(report)
+      ? "You"
+      : report.submittedByDisplay || report.submitted_by_display || reporterProfile.publicUsernameLabel;
     const visitLabel = scoutReportDateTimeLabel(report);
     const submittedLabel = scoutReportSubmittedDateTimeLabel(report);
     const canEditVisitTime = canEditScoutReportDateTime(report);
@@ -27758,13 +27809,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {stockStatus ? <span>{stockStatus}</span> : null}
             {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
             <span>{proofLabel}</span>
-            <span>Submitted by {isCurrentUserScoutReport(report) ? "You" : reporterProfile.publicUsernameLabel}</span>
+            <span>Submitted by {submittedByLabel}</span>
           </div>
           <div className="scout-signal-badge-row" aria-label="Scout signal trust">
             <span className={`scout-confidence-pill scout-confidence-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
+            {historicalImport ? <span className="mini-badge scout-historical-import-badge">Historical import</span> : null}
             <span className="mini-badge">{proofLabel}</span>
             {reporterReputation ? <span className="mini-badge">Reporter rep {reporterReputation}</span> : null}
           </div>
+          {historicalImport ? <p className="scout-report-historical-note">{historicalScoutImportNotice()}</p> : null}
           {renderCommunityProfileSummary(report, { compact: true, className: "scout-report-profile-card" })}
           <div className="scout-report-items">
             <strong>Items seen</strong>

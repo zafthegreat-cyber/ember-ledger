@@ -68,12 +68,16 @@ export function normalizeDropRadarStoreKey(input = {}) {
 }
 
 export function isDropRadarHistoricalIntel(row = {}) {
-  const source = normalizeDropRadarText(`${row.source || ""} ${row.sourceType || row.source_type || ""} ${row.type || ""} ${row.id || ""}`);
+  const source = normalizeDropRadarText(`${row.source || ""} ${row.sourceLabel || row.source_label || ""} ${row.sourceType || row.source_type || ""} ${row.type || ""} ${row.id || ""} ${row.confidence || ""} ${row.importedBatch || row.imported_batch || ""}`);
   return (
+    row.importedByAdmin === true ||
+    row.imported_by_admin === true ||
+    source.includes("historical import") ||
     source.includes("manual historical backfill") ||
     source.includes("historical manual") ||
     source.includes("historical backfill") ||
     source.includes("seed intel") ||
+    source.includes("unverified historical") ||
     source.includes("text screenshot") ||
     source.includes("group chat")
   );
@@ -166,8 +170,11 @@ function hasDropRadarDate(row = {}) {
 }
 
 function hasRestockSeenSignal(row = {}) {
-  const text = normalizeDropRadarText(`${row.stockStatus || row.stock_status || ""} ${row.reportType || row.report_type || ""} ${row.quickReportType || ""} ${row.sourceText || row.source_text || ""} ${row.notes || ""}`);
+  const text = normalizeDropRadarText(`${row.reportStatus || row.report_status || ""} ${row.stockStatus || row.stock_status || ""} ${row.reportType || row.report_type || ""} ${row.quickReportType || ""} ${row.sourceText || row.source_text || ""} ${row.notes || ""}`);
   return (
+    text.includes("stock seen") ||
+    text.includes("vendor seen") ||
+    text.includes("leftover stock") ||
     text.includes("restock") ||
     text.includes("in stock") ||
     text.includes("stock on shelf") ||
@@ -177,15 +184,31 @@ function hasRestockSeenSignal(row = {}) {
   );
 }
 
+function isEmptyOrNoStockSignal(row = {}) {
+  const text = normalizeDropRadarText(`${row.reportStatus || row.report_status || ""} ${row.stockStatus || row.stock_status || ""} ${row.reportType || row.report_type || ""} ${row.sourceText || row.source_text || ""} ${row.notes || ""}`);
+  return (
+    text.includes("empty shelf") ||
+    text.includes("still empty") ||
+    text.includes("no stock") ||
+    text.includes("no pokemon") ||
+    text.includes("checked but nothing") ||
+    text.includes("nothing found") ||
+    text === "empty" ||
+    text.includes(" empty ")
+  );
+}
+
 export function isDropRadarConfirmedTrainingEntry(row = {}) {
   if (!row || row.shouldTrainPredictions === false) return false;
   if (isDropRadarCommunityGuess(row) || isDropRadarPlaceholderForecast(row) || isDropRadarRejectedOrDeleted(row)) return false;
+  if (isEmptyOrNoStockSignal(row)) return false;
   if (!hasDropRadarStore(row) || !hasDropRadarDate(row)) return false;
 
   const source = normalizeDropRadarText(`${row.source || ""} ${row.sourceType || row.source_type || ""} ${row.proofSource || row.proof_source || ""}`);
   const confidence = normalizeDropRadarText(`${row.confidence || ""} ${row.confidenceLevel || row.confidence_level || ""} ${row.confidenceLabel || row.confidence_label || ""}`);
   const status = normalizeDropRadarText(`${row.status || ""} ${row.verificationStatus || row.verification_status || ""}`);
   const isManualTraining = source.includes("manual training restock") || source.includes("admin manual training");
+  const isHistoricalIntel = isDropRadarHistoricalIntel(row);
   const hasStrongProof = source.includes("photo") || source.includes("receipt") || source.includes("trusted reporter") || source.includes("manual admin entry") || source.includes("manual shorthand");
   const isSubmittedRestockReport = (source.includes("user report") || source.includes("photo report")) && hasRestockSeenSignal(row) && !row.needsReview && !row.needs_review;
   const confidenceIsUsable = (
@@ -196,10 +219,11 @@ export function isDropRadarConfirmedTrainingEntry(row = {}) {
     status.includes("confirmed") ||
     status.includes("verified") ||
     isManualTraining ||
+    isHistoricalIntel ||
     hasStrongProof ||
     isSubmittedRestockReport
   );
-  return Boolean((hasRestockSeenSignal(row) || isManualTraining || isDropRadarHistoricalIntel(row)) && confidenceIsUsable);
+  return Boolean((hasRestockSeenSignal(row) || isManualTraining || isHistoricalIntel) && confidenceIsUsable);
 }
 
 export function dropRadarRecordKind(row = {}) {
@@ -468,13 +492,19 @@ export function buildDropRadarPredictions({ stores = [], reports = [], trainingR
     const [commonWindow, commonWindowCount] = mostCommonValue(sorted.map((entry) => entry.timeWindow));
     const [commonProduct] = mostCommonValue(sorted.map((entry) => entry.productCategory));
     const trainingCount = sorted.length;
+    const historicalCount = sorted.filter(isDropRadarHistoricalIntel).length;
     const patternStrength = trainingCount >= 5 ? "strong" : trainingCount >= 3 ? "developing" : "weak";
     const confidenceLabel = trainingCount < minEntries ? "Needs more data" : patternStrength === "strong" ? "High" : patternStrength === "developing" ? "Medium" : "Low";
     const confidenceKey = trainingCount < minEntries ? "needs-data" : patternStrength === "strong" ? "high" : patternStrength === "developing" ? "medium" : "low";
+    const observationLabel = historicalCount === trainingCount && historicalCount > 0
+      ? "historical restock observation"
+      : historicalCount > 0
+        ? "restock signal"
+        : "confirmed restock";
     const nextLikelyWindow = commonDay && commonWindow ? `${commonDay}, ${commonWindow}` : commonDay || commonWindow || "Needs more data";
-    const dataNeededMessage = trainingCount < minEntries ? `Low confidence: needs ${minEntries - trainingCount} more confirmed restock${minEntries - trainingCount === 1 ? "" : "s"} before predictions are reliable.` : "";
+    const dataNeededMessage = trainingCount < minEntries ? `Low confidence: needs ${minEntries - trainingCount} more ${observationLabel}${minEntries - trainingCount === 1 ? "" : "s"} before predictions are reliable.` : "";
     const reason = dataNeededMessage || [
-      `Based on ${trainingCount} confirmed restock${trainingCount === 1 ? "" : "s"} at this store`,
+      `Based on ${trainingCount} ${observationLabel}${trainingCount === 1 ? "" : "s"} at this store`,
       commonDay ? `${commonDayCount} happened on ${commonDay}` : "",
       commonWindow ? `${commonWindowCount} fell in ${commonWindow}` : "",
     ].filter(Boolean).join("; ");
@@ -500,7 +530,7 @@ export function buildDropRadarPredictions({ stores = [], reports = [], trainingR
       dataNeededMessage,
       products: commonProduct ? [commonProduct] : [],
       reason,
-      sourceLabel: "Confirmed Scout/restock history",
+      sourceLabel: historicalCount ? "Historical Scout import / restock history" : "Confirmed Scout/restock history",
       entries: sorted,
     };
   }).sort((a, b) => {

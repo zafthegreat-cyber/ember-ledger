@@ -70,6 +70,7 @@
     "test:scout-reputation": "node --no-warnings scripts/test-scout-reputation.mjs",
     "test:scout-report-datetime": "node --no-warnings scripts/test-scout-report-datetime.mjs",
     "test:scout-report-save-flow": "node --no-warnings scripts/test-scout-report-save-flow.mjs",
+    "test:historical-scout-import": "node --no-warnings scripts/test-historical-scout-import.mjs",
     "test:tidepool-community": "node --no-warnings scripts/test-tidepool-community.mjs",
     "test:tidepool-moderation": "node --no-warnings scripts/test-tidepool-moderation.mjs",
     "test:tidetradr-safety": "node --no-warnings scripts/test-tidetradr-safety.mjs",
@@ -81,6 +82,8 @@
     "import:va-stores": "node pokemon_market_ingestion_kit/import_va_stores_to_supabase.mjs",
     "seed:stores:virginia": "node scripts/import-virginia-stores.cjs",
     "seed:stores:virginia:dry": "node scripts/import-virginia-stores.cjs --dry-run",
+    "seed:scout:historical": "node --use-system-ca scripts/import-historical-scout-reports.mjs",
+    "seed:scout:historical:dry": "node scripts/import-historical-scout-reports.mjs --dry-run",
     "backend:dev": "npm --prefix backend run dev",
     "backend:build": "npm --prefix backend run build",
     "backend:start": "npm --prefix backend run start"

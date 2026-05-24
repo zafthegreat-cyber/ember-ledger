@@ -1089,6 +1089,7 @@ function summarizeReportItem(item = {}, money = formatScoutMoney) {
 }
 
 function scoutReportStatusLabel(report = {}) {
+  if (String(report.sourceType || report.source_type || "").toLowerCase() === "historical_import" || report.importedByAdmin || report.imported_by_admin) return "Historical";
   const raw = String(report.verificationStatus || report.verification_status || report.status || "").toLowerCase();
   if (report.verified || raw === "verified") return "Verified";
   if (raw === "pending") return "Pending";
@@ -1102,6 +1103,9 @@ const SCOUT_STOCK_STATUS_OPTIONS = [
   { value: "low_stock", label: "Low stock", storeStatus: "Low" },
   { value: "empty", label: "Empty", storeStatus: "Sold Out", reportType: "Store Restock Report" },
   { value: "vendor_stocking", label: "Vendor stocking", storeStatus: "Found" },
+  { value: "stock_seen", label: "Stock seen", storeStatus: "Found" },
+  { value: "vendor_seen", label: "Vendor seen", storeStatus: "Found" },
+  { value: "leftover_stock", label: "Leftover stock", storeStatus: "Found" },
   { value: "behind_counter", label: "Behind counter", storeStatus: "Found" },
   { value: "customer_service", label: "Customer service", storeStatus: "Found" },
   { value: "limit_posted", label: "Limit posted", storeStatus: "Found", reportType: "Purchase Limit Update" },
@@ -1159,6 +1163,7 @@ function friendlyScoutTimestamp(report = {}) {
 }
 
 function scoutSourceTypeLabel(value = "") {
+  if (String(value || "").toLowerCase() === "historical_import") return "Historical import";
   return String(value || "user_report")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -4066,10 +4071,12 @@ async function handleUpdateStore(e) {
     const note = report.note || report.notes || report.reportText || report.report_text || "";
     const photoUrls = getScoutReportPhotoUrls(report);
     const photo = photoUrls[0] || "";
-    const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status);
+    const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status || report.reportStatus || report.report_status);
     const aiPending = Boolean(photo && !itemsSeen.length) || report.needsReview || report.needs_review;
     const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
     const confidence = report.confidence || "";
+    const historicalImport = String(report.sourceType || report.source_type || "").toLowerCase() === "historical_import" || report.importedByAdmin || report.imported_by_admin;
+    const submittedByLabel = isUserOwnedScoutReport(report) ? "You" : report.submittedByDisplay || report.submitted_by_display || report.displayName || report.reportedBy || report.reported_by || "Scout user";
     return (
       <article className="scout-report-compact-card scout-page-report-card" key={report.id || report.reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -4086,8 +4093,17 @@ async function handleUpdateStore(e) {
             {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
             {confidence ? <span>Confidence: {confidence}</span> : null}
             {adminMode && report.visibility ? <span>{scoutVisibilityLabel(report.visibility)}</span> : null}
-            <span>Submitted by {isUserOwnedScoutReport(report) ? "You" : report.displayName || report.reportedBy || report.reported_by || "Scout user"}</span>
+            <span>Submitted by {submittedByLabel}</span>
           </div>
+          {historicalImport ? (
+            <div className="scout-signal-badge-row" aria-label="Historical Scout import">
+              <span className="mini-badge scout-historical-import-badge">Historical import</span>
+              <span className="mini-badge">Unverified historical</span>
+            </div>
+          ) : null}
+          {historicalImport ? (
+            <p className="scout-report-historical-note">Pulled from Facebook groups, friends, or admin notes. Not live verified.</p>
+          ) : null}
           <div className="scout-report-items">
             <strong>Items seen</strong>
             {visibleItems.length ? visibleItems.map((item, index) => (
