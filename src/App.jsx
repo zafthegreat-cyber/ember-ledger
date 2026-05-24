@@ -226,11 +226,13 @@ import {
 import {
   buildForgeGroupSaleHistory,
   buildPlannedSalePricePatch,
+  compareInventoryGroupsAlphabetically,
   groupedInventoryEntryIds,
   groupedInventoryUnsoldEntryIds,
   inventoryEntryIsSold,
   inventoryProductIdentityGroupKey,
   plannedSalePriceUpdateSummary,
+  restoreSaleItemsToInventory,
   summarizeForgeGroupedInventoryStatus,
 } from "./utils/inventoryDetailUtils";
 import {
@@ -4791,6 +4793,7 @@ export default function App() {
   });
   const [expenses, setExpenses] = useState([]);
   const [sales, setSales] = useState([]);
+  const restoredSaleInventoryIdsRef = useRef(new Set());
   const [vehicles, setVehicles] = useState([]);
   const [mileageTrips, setMileageTrips] = useState([]);
 
@@ -4828,7 +4831,7 @@ export default function App() {
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("All");
   const [inventoryPurchaserFilter, setInventoryPurchaserFilter] = useState("All");
   const [inventoryPhysicalLocationFilter, setInventoryPhysicalLocationFilter] = useState("All");
-  const [inventorySort, setInventorySort] = useState("newest");
+  const [inventorySort, setInventorySort] = useState("az");
   const [forgeInventoryPage, setForgeInventoryPage] = useState(1);
   const [catalogSearch, setCatalogSearch] = useState(initialRouteState.catalogSearch || "");
   const [submittedCatalogSearch, setSubmittedCatalogSearch] = useState(initialRouteState.submittedCatalogSearch || "");
@@ -17858,6 +17861,8 @@ function mapCatalog(row) {
       referenceId: row.referenceId || row.reference_id || row.orderId || row.order_id || row.transactionId || row.transaction_id || "",
       receiptImage: row.receiptImage || row.receipt_image || row.receiptImageUrl || row.receipt_image_url || row.referenceImage || row.reference_image || "",
       receiptImageUrl: row.receiptImageUrl || row.receipt_image_url || row.receiptImage || row.receipt_image || row.referenceImage || row.reference_image || "",
+      saleItems: row.saleItems || row.sale_items || row.items || row.lineItems || row.line_items || [],
+      inventoryRestoredAt: row.inventoryRestoredAt || row.inventory_restored_at || "",
       notes: row.notes || "",
       workspaceId: row.workspaceId || row.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID,
       workspace_id: row.workspace_id || row.workspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
@@ -21224,26 +21229,132 @@ function renderForgeAccessState() {
 
   async function deleteSale(id) {
     const sale = sales.find((entry) => entry.id === id);
+    if (!sale) {
+      showAppMessage("Sale could not be found.");
+      return;
+    }
     if (!ensureWorkspaceEditor(sale?.workspaceId || sale?.workspace_id || activeWorkspace?.id)) return;
     const confirmed = await confirmDestructive({
       title: "Delete sale?",
-      message: `This removes the sale record for ${sale?.itemName || "this item"}. Inventory quantity is not automatically restored. This cannot be undone.`,
+      message: `Delete this sale and return the items to inventory? This removes the sale record for ${sale?.itemName || "this item"}.`,
       confirmLabel: "Delete sale",
     });
     if (!confirmed) return;
+    const now = new Date().toISOString();
+    const saleId = String(id);
+    const restoreLocally = () => {
+      if (restoredSaleInventoryIdsRef.current.has(saleId)) {
+        return {
+          ok: true,
+          alreadyRestored: true,
+          items,
+          restoredLines: [],
+          missingLines: [],
+          updatedItems: [],
+        };
+      }
+      return restoreSaleItemsToInventory(items, sale, { now });
+    };
+    const markSaleInventoryRestored = () => {
+      restoredSaleInventoryIdsRef.current.add(saleId);
+      setSales((current) => current.map((entry) => (
+        String(entry.id) === saleId ? { ...entry, inventoryRestoredAt: now } : entry
+      )));
+    };
+    const applyRestoredItems = (restoration) => {
+      if (!restoration.alreadyRestored) {
+        setItems(restoration.items);
+        restoredSaleInventoryIdsRef.current.add(saleId);
+      }
+    };
+    const inventoryRestoreFailureMessage = "Sale could not be deleted because inventory could not be restored.";
     if (BETA_LOCAL_MODE || user?.id === "local-beta") {
+      const restoration = restoreLocally();
+      if (!restoration.ok) {
+        showAppMessage(inventoryRestoreFailureMessage);
+        return;
+      }
+      applyRestoredItems(restoration);
       setSales(sales.filter((sale) => sale.id !== id));
       if (editingSaleId === id) {
         setEditingSaleId(null);
         setSaleForm(blankSale);
       }
-      setVaultToast("Sale deleted.");
+      setVaultToast("Sale deleted. Items returned to inventory.");
       return;
     }
+
+    const isMissingRpc = (error) => {
+      const message = String(error?.message || "");
+      return error?.code === "42883"
+        || error?.code === "PGRST202"
+        || /function .*delete_sale_and_restore_inventory.* does not exist/i.test(message)
+        || /could not find the function .*delete_sale_and_restore_inventory/i.test(message);
+    };
+
+    const { error: rpcError } = await supabase.rpc("delete_sale_and_restore_inventory", { target_sale_id: id });
+    if (!rpcError) {
+      const restoration = restoreLocally();
+      if (restoration.ok) {
+        applyRestoredItems(restoration);
+      } else {
+        await loadAllData();
+      }
+      setSales((current) => current.filter((saleEntry) => saleEntry.id !== id));
+      if (editingSaleId === id) {
+        setEditingSaleId(null);
+        setSaleForm(blankSale);
+      }
+      setVaultToast("Sale deleted. Items returned to inventory.");
+      return;
+    }
+
+    if (!isMissingRpc(rpcError)) {
+      console.error("Could not delete sale and restore inventory", rpcError);
+      showAppMessage(inventoryRestoreFailureMessage);
+      return;
+    }
+
+    const restoration = restoreLocally();
+    if (!restoration.ok) {
+      showAppMessage(inventoryRestoreFailureMessage);
+      return;
+    }
+
+    if (!restoration.alreadyRestored) {
+      for (const restoredItem of restoration.updatedItems) {
+        const updatePayload = {
+          quantity: Number(restoredItem.quantity || 0),
+          updated_at: restoredItem.updated_at || now,
+        };
+        if (restoredItem.status) updatePayload.status = restoredItem.status;
+        const { error: restoreError } = await supabase
+          .from("inventory_items")
+          .update(updatePayload)
+          .eq("id", restoredItem.id);
+        if (restoreError) {
+          console.error("Could not restore inventory before deleting sale", restoreError);
+          showAppMessage(inventoryRestoreFailureMessage);
+          await loadAllData();
+          return;
+        }
+      }
+      applyRestoredItems(restoration);
+    }
+
     const { error } = await supabase.from("sales_records").delete().eq("id", id);
-    if (error) return showAppMessage("Could not delete sale: " + error.message);
+    if (error) {
+      console.error("Inventory restored, but sale delete failed", error);
+      markSaleInventoryRestored();
+      showAppMessage("Sale inventory was restored, but the sale record could not be deleted. Please refresh before retrying.");
+      return;
+    }
     setSales(sales.filter((sale) => sale.id !== id));
-    setVaultToast("Sale deleted.");
+    if (editingSaleId === id) {
+      setEditingSaleId(null);
+      setSaleForm(blankSale);
+    }
+    setVaultToast("Sale deleted. Items returned to inventory.");
   }
 
   function downloadCSV(filename, rows) {
@@ -25237,28 +25348,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   const aRoi = aCost > 0 ? ((aMarket - aCost) / aCost) * 100 : 0;
   const bRoi = bCost > 0 ? ((bMarket - bCost) / bCost) * 100 : 0;
+  const byName = compareInventoryGroupsAlphabetically(a, b);
 
   if (inventorySort === "highestProfit") {
-    return bProfit - aProfit;
+    return (bProfit - aProfit) || byName;
   }
 
   if (inventorySort === "highestMarket") {
-    return bQty * bMarket - aQty * aMarket;
+    return (bQty * bMarket - aQty * aMarket) || byName;
   }
 
   if (inventorySort === "highestRoi") {
-    return bRoi - aRoi;
+    return (bRoi - aRoi) || byName;
   }
 
   if (inventorySort === "lowestStock") {
-    return aQty - bQty;
+    return (aQty - bQty) || byName;
   }
 
   if (inventorySort === "az") {
-    return String(a.name || "").localeCompare(String(b.name || ""));
+    return byName;
   }
 
-  return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+  return byName;
 }), [filteredForgeGroups, inventorySort]);
 
   const groupedVisibleVaultItems = useMemo(() => buildGroupedInventoryItems(visibleVaultItems, "vault"), [visibleVaultItems]);

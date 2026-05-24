@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 
 import {
   buildForgeGroupSaleHistory,
+  compareInventoryGroupsAlphabetically,
   groupedInventoryUnsoldEntryIds,
   inventoryProductIdentityGroupKey,
+  restoreSaleItemsToInventory,
   saleMatchesInventoryGroup,
   summarizeForgeGroupedInventoryStatus,
 } from "../src/utils/inventoryDetailUtils.js";
@@ -115,5 +117,65 @@ const groupedItem = {
   ],
 };
 assert.deepEqual(groupedInventoryUnsoldEntryIds(groupedItem), ["unsold-1", "listed-1"]);
+
+const alphabetizedGroups = [
+  { id: "z", name: "  Zapdos Collection" },
+  { id: "a", name: "alakazam ex Box" },
+  { id: "b", rawItems: [{ name: "Booster Bundle" }] },
+].sort(compareInventoryGroupsAlphabetically);
+assert.deepEqual(
+  alphabetizedGroups.map((item) => item.id),
+  ["a", "b", "z"],
+  "grouped inventory cards should sort alphabetically by trimmed display name"
+);
+
+const singleRestore = restoreSaleItemsToInventory(
+  [{ ...miniTinZena, quantity: 7, status: "In Stock" }],
+  { id: "sale-restore-1", itemId: miniTinZena.id, itemName: miniTinZena.name, quantitySold: 3 },
+  { now: "2026-05-23T12:00:00.000Z" }
+);
+assert.equal(singleRestore.ok, true);
+assert.equal(singleRestore.items[0].quantity, 10, "deleting a sale should restore quantity to the linked inventory item");
+assert.equal(singleRestore.updatedItems.length, 1);
+
+const groupedRestore = restoreSaleItemsToInventory(
+  [
+    { ...miniTinZena, quantity: 4, purchaserName: "Zena" },
+    { ...miniTinDillon, quantity: 1, purchaserName: "Dillon" },
+  ],
+  {
+    id: "sale-restore-2",
+    saleItems: [
+      { itemId: miniTinZena.id, itemName: miniTinZena.name, quantitySold: 1, purchaserName: "Zena" },
+      { itemId: miniTinDillon.id, itemName: miniTinDillon.name, quantitySold: 2, purchaserName: "Dillon" },
+    ],
+  },
+  { now: "2026-05-23T12:00:00.000Z" }
+);
+assert.equal(groupedRestore.ok, true);
+assert.deepEqual(
+  groupedRestore.items.map((item) => item.quantity),
+  [5, 3],
+  "multi-item sales should restore each linked purchaser/person inventory bucket"
+);
+
+const alreadyRestored = restoreSaleItemsToInventory(
+  groupedRestore.items,
+  {
+    id: "sale-restore-2",
+    inventoryRestoredAt: "2026-05-23T12:00:00.000Z",
+    saleItems: [
+      { itemId: miniTinZena.id, itemName: miniTinZena.name, quantitySold: 1, purchaserName: "Zena" },
+      { itemId: miniTinDillon.id, itemName: miniTinDillon.name, quantitySold: 2, purchaserName: "Dillon" },
+    ],
+  },
+  { now: "2026-05-23T12:05:00.000Z" }
+);
+assert.equal(alreadyRestored.alreadyRestored, true);
+assert.deepEqual(
+  alreadyRestored.items.map((item) => item.quantity),
+  [5, 3],
+  "already restored sales should not add inventory twice"
+);
 
 console.log("Forge grouped inventory tests passed.");

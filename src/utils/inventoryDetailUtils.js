@@ -12,6 +12,42 @@ export function normalizeInventoryGroupText(value) {
     .trim();
 }
 
+export function inventoryGroupDisplayName(item = {}) {
+  const entries = Array.isArray(item.rawItems) && item.rawItems.length ? item.rawItems : [item];
+  const firstEntry = entries[0] || {};
+  const name = item.name
+    || item.itemName
+    || item.item_name
+    || item.productName
+    || item.product_name
+    || item.catalogProductName
+    || item.catalog_product_name
+    || firstEntry.name
+    || firstEntry.itemName
+    || firstEntry.item_name
+    || firstEntry.productName
+    || firstEntry.product_name
+    || firstEntry.catalogProductName
+    || firstEntry.catalog_product_name
+    || "";
+
+  return String(name).trim();
+}
+
+export function compareInventoryGroupsAlphabetically(a = {}, b = {}) {
+  const byName = inventoryGroupDisplayName(a).localeCompare(inventoryGroupDisplayName(b), undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+
+  if (byName !== 0) return byName;
+
+  return String(a.groupId || a.id || "").localeCompare(String(b.groupId || b.id || ""), undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+}
+
 export function inventoryVariantSignature(item = {}) {
   return [
     item.variant,
@@ -97,7 +133,213 @@ export function groupedInventoryUnsoldEntryIds(item = {}) {
 }
 
 export function saleRecordInventoryId(sale = {}) {
-  return String(sale.itemId || sale.item_id || sale.linkedInventoryItemId || sale.linked_inventory_item_id || "").trim();
+  return String(
+    sale.itemId
+    || sale.item_id
+    || sale.linkedInventoryItemId
+    || sale.linked_inventory_item_id
+    || sale.inventoryItemId
+    || sale.inventory_item_id
+    || ""
+  ).trim();
+}
+
+function saleLineInventoryId(line = {}) {
+  return saleRecordInventoryId(line);
+}
+
+function saleLineQuantity(line = {}) {
+  const quantity = Number(line.quantitySold ?? line.quantity_sold ?? line.quantity ?? line.qty ?? 0);
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+}
+
+function saleLineName(line = {}) {
+  return line.itemName
+    || line.item_name
+    || line.manualItemName
+    || line.manual_item_name
+    || line.name
+    || line.productName
+    || line.product_name
+    || "";
+}
+
+function inventoryItemName(item = {}) {
+  return item.name
+    || item.itemName
+    || item.item_name
+    || item.productName
+    || item.product_name
+    || item.catalogProductName
+    || item.catalog_product_name
+    || "";
+}
+
+function purchaserIdentity(record = {}) {
+  return normalizeInventoryGroupText(
+    record.purchaserId
+    || record.purchaser_id
+    || record.purchaserName
+    || record.purchaser_name
+    || record.originalBuyer
+    || record.original_buyer
+    || record.buyerName
+    || record.buyer_name
+    || record.buyer
+    || record.owner
+    || "",
+  );
+}
+
+export function saleInventoryRestoreLines(sale = {}) {
+  const lineCollections = [
+    sale.saleItems,
+    sale.sale_items,
+    sale.items,
+    sale.lineItems,
+    sale.line_items,
+  ];
+  const explicitLines = lineCollections.find((value) => Array.isArray(value) && value.length);
+
+  if (explicitLines) {
+    return explicitLines
+      .map((line) => ({
+        itemId: saleLineInventoryId(line),
+        itemName: saleLineName(line),
+        purchaserKey: purchaserIdentity(line),
+        quantity: saleLineQuantity(line),
+        rawLine: line,
+      }))
+      .filter((line) => line.quantity > 0 && (line.itemId || line.itemName));
+  }
+
+  const itemId = saleRecordInventoryId(sale);
+  const quantity = saleLineQuantity(sale);
+  if (!itemId || !quantity) return [];
+
+  return [{
+    itemId,
+    itemName: saleLineName(sale),
+    purchaserKey: purchaserIdentity(sale),
+    quantity,
+    rawLine: sale,
+  }];
+}
+
+function saleAlreadyRestoredInventory(sale = {}) {
+  return Boolean(
+    sale.inventoryRestoredAt
+    || sale.inventory_restored_at
+    || sale.restoredToInventory
+    || sale.restored_to_inventory
+  );
+}
+
+function findInventoryRestoreIndex(items, line, usedIndexes) {
+  const itemId = String(line.itemId || "");
+  if (itemId) {
+    const exactIndex = items.findIndex((item) => String(item.id || "") === itemId);
+    if (exactIndex >= 0) return exactIndex;
+  }
+
+  const lineName = normalizeInventoryGroupText(line.itemName);
+  if (!lineName) return -1;
+
+  const nameMatches = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item, index }) => !usedIndexes.has(index)
+      && normalizeInventoryGroupText(inventoryItemName(item)) === lineName);
+
+  if (!nameMatches.length) return -1;
+
+  if (line.purchaserKey) {
+    const purchaserMatch = nameMatches.find(({ item }) => purchaserIdentity(item) === line.purchaserKey);
+    if (purchaserMatch) return purchaserMatch.index;
+  }
+
+  return nameMatches[0].index;
+}
+
+export function restoreSaleItemsToInventory(inventoryItems = [], sale = {}, options = {}) {
+  const now = options.now || new Date().toISOString();
+
+  if (saleAlreadyRestoredInventory(sale)) {
+    return {
+      ok: true,
+      alreadyRestored: true,
+      items: inventoryItems,
+      restoredLines: [],
+      missingLines: [],
+      updatedItems: [],
+    };
+  }
+
+  const restoreLines = saleInventoryRestoreLines(sale);
+  if (!restoreLines.length) {
+    return {
+      ok: true,
+      items: inventoryItems,
+      restoredLines: [],
+      missingLines: [],
+      updatedItems: [],
+    };
+  }
+
+  const nextItems = inventoryItems.map((item) => ({ ...item }));
+  const usedIndexes = new Set();
+  const missingLines = [];
+  const restoredLines = [];
+  const updatedById = new Map();
+
+  restoreLines.forEach((line) => {
+    const itemIndex = findInventoryRestoreIndex(nextItems, line, usedIndexes);
+    if (itemIndex < 0) {
+      missingLines.push(line);
+      return;
+    }
+
+    usedIndexes.add(itemIndex);
+    const currentItem = nextItems[itemIndex];
+    const previousQuantity = Number(currentItem.quantity || 0);
+    const nextQuantity = previousQuantity + line.quantity;
+    const currentStatus = String(currentItem.status || "").trim();
+    const normalizedStatus = normalizeInventoryGroupText(currentStatus);
+    const nextStatus = normalizedStatus === "sold" || normalizedStatus === "out of stock" ? "In Stock" : currentStatus;
+    const updatedItem = {
+      ...currentItem,
+      quantity: nextQuantity,
+      status: nextStatus,
+      updatedAt: now,
+      updated_at: now,
+    };
+
+    nextItems[itemIndex] = updatedItem;
+    if (updatedItem.id) updatedById.set(String(updatedItem.id), updatedItem);
+    restoredLines.push({
+      ...line,
+      itemId: updatedItem.id || line.itemId,
+      previousQuantity,
+      nextQuantity,
+    });
+  });
+
+  if (missingLines.length) {
+    return {
+      ok: false,
+      items: inventoryItems,
+      restoredLines: [],
+      missingLines,
+      updatedItems: [],
+    };
+  }
+
+  return {
+    ok: true,
+    items: nextItems,
+    restoredLines,
+    missingLines: [],
+    updatedItems: Array.from(updatedById.values()),
+  };
 }
 
 export function saleMatchesInventoryEntry(sale = {}, entry = {}) {
