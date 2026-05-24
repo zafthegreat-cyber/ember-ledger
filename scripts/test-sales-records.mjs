@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 
 import {
+  buildSalesReviewView,
   buildSalesExportRows,
   buildSalesRecordFromDraft,
   calculateSalesRecordTotals,
+  groupSalesRecordsByDate,
+  groupSalesRecordsByItem,
   normalizeSalesPlatform,
+  sortSalesRecords,
   summarizeSalesRecords,
   validateManualSaleDraft,
 } from "../src/utils/businessTaxRecords.js";
@@ -104,5 +108,44 @@ const rows = buildSalesExportRows([manual.sale, linked.sale]);
 assert.equal(rows.length, 2);
 assert.ok(rows.some((row) => row.platform === "Whatnot" && row.receiptOrReference === "Attached/reference present"));
 assert.ok(rows.every((row) => row.section === "Sale record"));
+
+const olderLinked = buildSalesRecordFromDraft({
+  itemId: linkedItem.id,
+  saleDate: "2026-05-01",
+  platform: "eBay",
+  quantitySold: 1,
+  finalSalePrice: 59.99,
+  platformFees: 6,
+  shippingCost: 4,
+  referenceId: "EBAY-1",
+}, linkedItem, { id: "sale-older", workspaceId: "workspace-ember-tide", workspaceName: "Ember & Tide" });
+
+const newestFirst = sortSalesRecords([manual.sale, linked.sale, olderLinked.sale], "newest");
+assert.deepEqual(newestFirst.map((sale) => sale.id), ["sale-linked", "sale-manual", "sale-older"]);
+
+const oldestFirst = sortSalesRecords([manual.sale, linked.sale, olderLinked.sale], "oldest");
+assert.deepEqual(oldestFirst.map((sale) => sale.id), ["sale-older", "sale-manual", "sale-linked"]);
+
+const dateGroups = groupSalesRecordsByDate([manual.sale, linked.sale, olderLinked.sale]);
+assert.equal(dateGroups[0].label, "2026-05-13");
+assert.equal(dateGroups[0].records.length, 1);
+assert.equal(dateGroups.find((group) => group.label === "2026-05-12").grossSales, manual.sale.grossSale);
+
+const itemGroups = groupSalesRecordsByItem([manual.sale, linked.sale, olderLinked.sale]);
+const linkedGroup = itemGroups.find((group) => group.itemName === "Prismatic Evolutions ETB");
+assert.ok(linkedGroup, "same linked sold items should group together");
+assert.equal(linkedGroup.records.length, 2);
+assert.equal(linkedGroup.quantitySold, 3);
+assert.equal(Number(linkedGroup.grossSales.toFixed(2)), 194.97);
+
+const rangedView = buildSalesReviewView([manual.sale, linked.sale, olderLinked.sale], {
+  viewMode: "item",
+  dateFrom: "2026-05-12",
+  dateTo: "2026-05-13",
+});
+assert.equal(rangedView.filtersActive, true);
+assert.equal(rangedView.filteredSales.length, 2);
+assert.equal(rangedView.sortedSales[0].id, "sale-linked");
+assert.equal(rangedView.itemGroups.find((group) => group.itemName === "Prismatic Evolutions ETB").quantitySold, 2);
 
 console.log("Sales record tests passed.");

@@ -526,6 +526,218 @@ export function summarizeSalesRecords(sales = [], options = {}) {
   };
 }
 
+function salesDateSortValue(sale = {}) {
+  const value = recordDateValue(sale);
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
+
+function salesRecordIdentityText(value = "") {
+  return cleanText(value)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export function compareSalesRecordsByDate(a = {}, b = {}, direction = "newest") {
+  const dateA = salesDateSortValue(a);
+  const dateB = salesDateSortValue(b);
+  if (dateA && dateB && dateA !== dateB) {
+    return direction === "oldest" ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
+  }
+  if (dateA && !dateB) return -1;
+  if (!dateA && dateB) return 1;
+  const createdA = String(a.createdAt || a.created_at || "");
+  const createdB = String(b.createdAt || b.created_at || "");
+  if (createdA !== createdB) {
+    return direction === "oldest" ? createdA.localeCompare(createdB) : createdB.localeCompare(createdA);
+  }
+  return String(a.itemName || a.item_name || "").localeCompare(String(b.itemName || b.item_name || ""), undefined, { sensitivity: "base", numeric: true });
+}
+
+export function filterSalesRecordsByDateRange(sales = [], options = {}) {
+  const from = String(options.from || options.dateFrom || "").slice(0, 10);
+  const to = String(options.to || options.dateTo || "").slice(0, 10);
+  return sales.filter((sale) => {
+    const saleDate = salesDateSortValue(sale);
+    if ((from || to) && !saleDate) return false;
+    if (from && saleDate < from) return false;
+    if (to && saleDate > to) return false;
+    return true;
+  });
+}
+
+export function sortSalesRecords(sales = [], direction = "newest") {
+  const resolvedDirection = direction === "oldest" ? "oldest" : "newest";
+  return [...sales].sort((a, b) => compareSalesRecordsByDate(a, b, resolvedDirection));
+}
+
+function saleLineCollections(sale = {}) {
+  return [
+    sale.saleItems,
+    sale.sale_items,
+    sale.items,
+    sale.lineItems,
+    sale.line_items,
+  ].find((value) => Array.isArray(value) && value.length) || [];
+}
+
+function normalizeSaleLineRecord(sale = {}, line = null, index = 0, totalLineQuantity = 0) {
+  const normalizedSale = normalizeSalesRecord(sale);
+  const rawLine = line || sale;
+  const quantitySold = Math.max(0, toNumber(rawLine.quantitySold ?? rawLine.quantity_sold ?? rawLine.quantity ?? rawLine.qty, normalizedSale.quantitySold || 1));
+  const finalSalePrice = Math.max(0, toNumber(rawLine.finalSalePrice ?? rawLine.final_sale_price ?? rawLine.salePriceEach ?? rawLine.sale_price_each ?? rawLine.salePrice ?? rawLine.sale_price, normalizedSale.finalSalePrice));
+  const explicitGross = rawLine.grossSale ?? rawLine.gross_sale ?? rawLine.grossSaleAmount ?? rawLine.gross_sale_amount;
+  const proportionalShare = totalLineQuantity > 0 && normalizedSale.quantitySold > 0 ? quantitySold / totalLineQuantity : 1;
+  const grossSale = explicitGross !== undefined && explicitGross !== null && String(explicitGross) !== ""
+    ? Math.max(0, toNumber(explicitGross, 0))
+    : finalSalePrice > 0
+      ? quantitySold * finalSalePrice
+      : normalizedSale.grossSale * proportionalShare;
+  const itemName = cleanText(
+    rawLine.itemName
+    || rawLine.item_name
+    || rawLine.manualItemName
+    || rawLine.manual_item_name
+    || rawLine.productName
+    || rawLine.product_name
+    || rawLine.name
+    || normalizedSale.itemName
+  ) || "Sale item";
+  const itemId = rawLine.itemId
+    || rawLine.item_id
+    || rawLine.linkedInventoryItemId
+    || rawLine.linked_inventory_item_id
+    || rawLine.inventoryItemId
+    || rawLine.inventory_item_id
+    || normalizedSale.itemId
+    || "";
+  const sku = rawLine.sku || rawLine.upc || rawLine.barcode || normalizedSale.sku || "";
+  return {
+    ...normalizedSale,
+    lineId: `${normalizedSale.id || "sale"}-${index}`,
+    saleId: normalizedSale.id,
+    itemId,
+    linkedInventoryItemId: itemId,
+    itemName,
+    sku,
+    quantitySold,
+    finalSalePrice,
+    grossSale,
+    netProceeds: normalizedSale.netProceeds * proportionalShare,
+    costBasis: normalizedSale.costBasis * proportionalShare,
+    estimatedProfitLoss: normalizedSale.estimatedProfitLoss * proportionalShare,
+    netProfit: normalizedSale.estimatedProfitLoss * proportionalShare,
+    parentSale: normalizedSale,
+  };
+}
+
+export function salesRecordItemGroupKey(record = {}) {
+  const itemId = cleanText(record.itemId || record.item_id || record.linkedInventoryItemId || record.linked_inventory_item_id || "");
+  if (itemId) return `item:${itemId.toLowerCase()}`;
+  const sku = salesRecordIdentityText(record.sku || record.upc || record.barcode || "");
+  if (sku) return `sku:${sku}`;
+  const name = salesRecordIdentityText(record.itemName || record.item_name || record.manualItemName || record.manual_item_name || "");
+  return `name:${name || "sale-item"}`;
+}
+
+export function flattenSalesRecordLines(sales = []) {
+  return sales.flatMap((sale) => {
+    const lines = saleLineCollections(sale);
+    if (!lines.length) return [normalizeSaleLineRecord(sale)];
+    const totalLineQuantity = lines.reduce((sum, line) => sum + Math.max(0, toNumber(line.quantitySold ?? line.quantity_sold ?? line.quantity ?? line.qty, 1)), 0);
+    return lines.map((line, index) => normalizeSaleLineRecord(sale, line, index, totalLineQuantity));
+  });
+}
+
+export function groupSalesRecordsByDate(sales = [], options = {}) {
+  const direction = options.direction === "oldest" ? "oldest" : "newest";
+  const groups = new Map();
+  sortSalesRecords(sales, direction).forEach((sale) => {
+    const date = salesDateSortValue(sale) || "undated";
+    if (!groups.has(date)) {
+      groups.set(date, {
+        key: `date:${date}`,
+        label: date === "undated" ? "Undated sales" : date,
+        date,
+        records: [],
+        quantitySold: 0,
+        grossSales: 0,
+        estimatedProfitLoss: 0,
+      });
+    }
+    const normalizedSale = normalizeSalesRecord(sale);
+    const group = groups.get(date);
+    group.records.push(normalizedSale);
+    group.quantitySold += normalizedSale.quantitySold;
+    group.grossSales += normalizedSale.grossSale;
+    group.estimatedProfitLoss += normalizedSale.estimatedProfitLoss;
+  });
+  return [...groups.values()];
+}
+
+export function groupSalesRecordsByItem(sales = [], options = {}) {
+  const direction = options.direction === "oldest" ? "oldest" : "newest";
+  const groups = new Map();
+  flattenSalesRecordLines(sales).forEach((line) => {
+    const key = salesRecordItemGroupKey(line);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        itemName: line.itemName || "Sale item",
+        sku: line.sku || "",
+        records: [],
+        quantitySold: 0,
+        grossSales: 0,
+        netProceeds: 0,
+        estimatedProfitLoss: 0,
+        latestSaleDate: "",
+        platforms: new Set(),
+      });
+    }
+    const group = groups.get(key);
+    group.records.push(line);
+    group.quantitySold += line.quantitySold;
+    group.grossSales += line.grossSale;
+    group.netProceeds += line.netProceeds;
+    group.estimatedProfitLoss += line.estimatedProfitLoss;
+    group.platforms.add(line.platform || "Other");
+    const saleDate = salesDateSortValue(line);
+    if (saleDate && (!group.latestSaleDate || saleDate > group.latestSaleDate)) group.latestSaleDate = saleDate;
+  });
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      platforms: [...group.platforms].sort((a, b) => a.localeCompare(b)),
+      records: sortSalesRecords(group.records, direction),
+    }))
+    .sort((a, b) => {
+      if (a.latestSaleDate !== b.latestSaleDate) return String(b.latestSaleDate).localeCompare(String(a.latestSaleDate));
+      return a.itemName.localeCompare(b.itemName, undefined, { sensitivity: "base", numeric: true });
+    });
+}
+
+export function buildSalesReviewView(sales = [], options = {}) {
+  const viewMode = options.viewMode || "newest";
+  const dateFrom = options.dateFrom || options.from || "";
+  const dateTo = options.dateTo || options.to || "";
+  const filteredSales = filterSalesRecordsByDateRange(sales, { from: dateFrom, to: dateTo });
+  const direction = viewMode === "oldest" ? "oldest" : "newest";
+  const sortedSales = sortSalesRecords(filteredSales, direction);
+  return {
+    viewMode,
+    dateFrom,
+    dateTo,
+    filtersActive: Boolean(dateFrom || dateTo),
+    filteredSales,
+    sortedSales,
+    dateGroups: groupSalesRecordsByDate(filteredSales, { direction }),
+    itemGroups: groupSalesRecordsByItem(filteredSales, { direction }),
+  };
+}
+
 export function buildSalesExportRows(sales = []) {
   return sales.map((sale) => {
     const normalized = normalizeSalesRecord(sale);

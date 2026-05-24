@@ -37,8 +37,9 @@ assert.equal(isLikelyChunkLoadError(new Error("regular form validation error")),
 assert.equal(shouldExposeFallbackErrorDetails("production"), false);
 assert.equal(shouldExposeFallbackErrorDetails("development"), true);
 
-assert.match(indexHtml, /Ember & Tide is updating/);
-assert.match(indexHtml, /We're refreshing the app so everything stays smooth/);
+assert.match(indexHtml, /Loading Ember & Tide\.\.\./);
+assert.match(indexHtml, /If this takes more than a few seconds, refresh the page\./);
+assert.doesNotMatch(indexHtml, /Ember & Tide is updating/);
 assert.match(indexHtml, /Refresh app/);
 assert.match(indexHtml, /Go to homepage/);
 assert.match(indexHtml, /<noscript>/);

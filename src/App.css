@@ -2057,6 +2057,16 @@
     min-width: 0;
   }
 
+  .sales-view-mode-grid,
+  .sales-date-range-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-group-toggle {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .expense-group-list,
   .expense-record-list {
     grid-template-columns: 1fr;
@@ -38212,6 +38222,111 @@ body,
 
 .sales-record-card .sales-record-metrics {
   margin: 0.75rem 0;
+}
+
+.sales-review-controls {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(132, 226, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(5, 14, 27, 0.7);
+}
+
+.sales-view-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sales-view-mode-grid button,
+.sales-group-toggle {
+  min-height: 44px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.82);
+  color: var(--et-readable-text);
+  text-align: left;
+}
+
+.sales-view-mode-grid button {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+}
+
+.sales-view-mode-grid button strong,
+.sales-group-toggle strong {
+  color: #fff7ed;
+}
+
+.sales-view-mode-grid button span,
+.sales-group-toggle small {
+  color: var(--et-readable-muted);
+  font-size: 0.78rem;
+}
+
+.sales-view-mode-grid button.active {
+  border-color: rgba(255, 186, 73, 0.78);
+  background: linear-gradient(135deg, rgba(255, 106, 19, 0.28), rgba(56, 189, 248, 0.14));
+  box-shadow: 0 10px 28px rgba(255, 106, 19, 0.12);
+}
+
+.sales-date-range-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.sales-date-range-controls label {
+  min-width: 0;
+}
+
+.sales-grouped-list {
+  display: grid;
+  gap: 14px;
+}
+
+.sales-group-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  background: rgba(8, 18, 34, 0.82);
+}
+
+.sales-group-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.sales-group-toggle span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.sales-group-toggle b {
+  color: #ffba49;
+  white-space: nowrap;
+}
+
+.sales-group-details {
+  display: grid;
+  gap: 10px;
+}
+
+.sales-record-card-nested {
+  margin: 0;
+  border-radius: 14px !important;
+  background: rgba(3, 10, 20, 0.62) !important;
 }
 
 .ember-assist-shell {

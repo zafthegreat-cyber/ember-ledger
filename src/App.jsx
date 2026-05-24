@@ -328,6 +328,7 @@ import {
 import {
   SALES_PLATFORM_OPTIONS,
   buildSalesExportRows,
+  buildSalesReviewView,
   buildMileageExportRows,
   buildTaxRecordExportRows,
   buildYearEndTaxSummary,
@@ -5216,6 +5217,10 @@ export default function App() {
   const [expenseFilterPayment, setExpenseFilterPayment] = useState("all");
   const [expenseDateFrom, setExpenseDateFrom] = useState("");
   const [expenseDateTo, setExpenseDateTo] = useState("");
+  const [salesViewMode, setSalesViewMode] = useState("newest");
+  const [salesDateFrom, setSalesDateFrom] = useState("");
+  const [salesDateTo, setSalesDateTo] = useState("");
+  const [expandedSalesGroupKey, setExpandedSalesGroupKey] = useState("");
   const [selectedExpenseVendorKey, setSelectedExpenseVendorKey] = useState("");
   const [selectedMileageVehicleKey, setSelectedMileageVehicleKey] = useState("");
   const [taxSummaryYear, setTaxSummaryYear] = useState(() => String(new Date().getFullYear()));
@@ -20946,6 +20951,12 @@ function renderForgeAccessState() {
     setExpenseDateTo("");
   }
 
+  function clearSalesDateRange() {
+    setSalesDateFrom("");
+    setSalesDateTo("");
+    setExpandedSalesGroupKey("");
+  }
+
   function expenseLinkedItemLabel(expense = {}) {
     if (!expense.linkedItemId) return "";
     return forgeInventoryItems.find((item) => String(item.id) === String(expense.linkedItemId))?.name || "Linked Forge item";
@@ -22124,6 +22135,14 @@ function renderForgeAccessState() {
   const estimatedProfitAfterMarketing = estimatedProfit - totalMarketingSpend;
   const estimatedProfitAfterExpenses = estimatedProfit - totalExpenses;
   const salesSummary = useMemo(() => summarizeSalesRecords(workspaceSales), [workspaceSales]);
+  const salesReviewView = useMemo(
+    () => buildSalesReviewView(workspaceSales, {
+      viewMode: salesViewMode,
+      dateFrom: salesDateFrom,
+      dateTo: salesDateTo,
+    }),
+    [workspaceSales, salesViewMode, salesDateFrom, salesDateTo]
+  );
   const totalSalesRevenue = salesSummary.grossSales;
   const totalSalesProfit = salesSummary.estimatedProfitLoss;
   const totalItemsSold = salesSummary.itemsSold;
@@ -40502,6 +40521,124 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     });
   }
 
+  function renderForgeSaleCard(sale = {}, options = {}) {
+    const actionSale = sale.parentSale || sale;
+    const saleId = actionSale.id || sale.saleId || sale.id;
+    return (
+      <div className={options.nested ? "inventory-card sales-record-card sales-record-card-nested" : "inventory-card sales-record-card"} key={`${options.keyPrefix || "sale"}-${sale.lineId || sale.id || saleId}`}>
+        <div className="compact-card-header">
+          <div>
+            <h3>{sale.itemName}</h3>
+            <p>{sale.platform} | {sale.saleDate || shortDate(sale.createdAt) || "No date"} | Qty {sale.quantitySold}</p>
+          </div>
+          <span className="status-badge">{sale.itemId ? "Linked inventory" : "Manual sale"}</span>
+        </div>
+        <div className="preview-grid sales-record-metrics">
+          <div><span>Gross</span><strong>{money(sale.grossSale)}</strong></div>
+          <div><span>Net proceeds</span><strong>{money(sale.netProceeds || sale.grossSale - sale.platformFees - sale.shippingCost)}</strong></div>
+          <div><span>Cost basis</span><strong>{money(sale.costBasis || sale.itemCost)}</strong></div>
+          <div><span>Profit/loss</span><strong>{money(sale.estimatedProfitLoss || sale.netProfit)}</strong></div>
+        </div>
+        <p className="compact-subtitle">
+          Fees {money((sale.platformFees || 0) + (sale.paymentProcessingFees || 0))} | Shipping/supplies {money((sale.shippingCost || 0) + (sale.suppliesCost || 0))}
+          {sale.referenceId || sale.receiptImage ? " | Reference attached" : " | Missing sale reference"}
+        </p>
+        {sale.notes ? <p>Notes: {sale.notes}</p> : null}
+        {saleId ? (
+          <OverflowMenu
+            onEdit={() => startEditingSale(actionSale)}
+            onDelete={() => deleteSale(saleId)}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderForgeSalesList() {
+    if (!salesReviewView.filteredSales.length) {
+      return (
+        <section className="panel">
+          <h2>Forge Sales</h2>
+          <div className="small-empty-state">
+            <strong>{salesReviewView.filtersActive ? "No sales in this date range." : "No sales records yet."}</strong>
+            <span>{salesReviewView.filtersActive ? "Clear the date range or choose a wider window." : getEmptyStateGuidance("sales").body}</span>
+            {salesReviewView.filtersActive ? <button type="button" className="secondary-button" onClick={clearSalesDateRange}>Clear date range</button> : null}
+          </div>
+        </section>
+      );
+    }
+
+    if (salesViewMode === "date") {
+      return (
+        <section className="panel sales-grouped-list">
+          <h2>Forge Sales by Date</h2>
+          {salesReviewView.dateGroups.map((group) => (
+            <article className="sales-group-card" key={group.key}>
+              <div className="compact-card-header">
+                <div>
+                  <h3>{group.label}</h3>
+                  <p>{group.records.length} sale{group.records.length === 1 ? "" : "s"} | Qty {group.quantitySold}</p>
+                </div>
+                <span className="status-badge">{money(group.grossSales)}</span>
+              </div>
+              <div className="preview-grid sales-record-metrics">
+                <div><span>Revenue</span><strong>{money(group.grossSales)}</strong></div>
+                <div><span>Profit/loss</span><strong>{money(group.estimatedProfitLoss)}</strong></div>
+              </div>
+              <div className="sales-group-details">
+                {group.records.map((sale) => renderForgeSaleCard(sale, { nested: true, keyPrefix: group.key }))}
+              </div>
+            </article>
+          ))}
+        </section>
+      );
+    }
+
+    if (salesViewMode === "item") {
+      return (
+        <section className="panel sales-grouped-list">
+          <h2>Forge Sales by Item</h2>
+          {salesReviewView.itemGroups.map((group) => {
+            const expanded = expandedSalesGroupKey === group.key;
+            return (
+              <article className={expanded ? "sales-group-card expanded" : "sales-group-card"} key={group.key}>
+                <button
+                  type="button"
+                  className="sales-group-toggle"
+                  aria-expanded={expanded}
+                  onClick={() => setExpandedSalesGroupKey((current) => current === group.key ? "" : group.key)}
+                >
+                  <span>
+                    <strong>{group.itemName}</strong>
+                    <small>{group.records.length} sale record{group.records.length === 1 ? "" : "s"} | Qty {group.quantitySold} | Latest {group.latestSaleDate || "No date"}</small>
+                  </span>
+                  <b>{expanded ? "Hide" : "Details"}</b>
+                </button>
+                <div className="preview-grid sales-record-metrics">
+                  <div><span>Revenue</span><strong>{money(group.grossSales)}</strong></div>
+                  <div><span>Net proceeds</span><strong>{money(group.netProceeds)}</strong></div>
+                  <div><span>Profit/loss</span><strong>{money(group.estimatedProfitLoss)}</strong></div>
+                </div>
+                {group.platforms.length ? <p className="compact-subtitle">Channels: {group.platforms.join(", ")}</p> : null}
+                {expanded ? (
+                  <div className="sales-group-details">
+                    {group.records.map((sale) => renderForgeSaleCard(sale, { nested: true, keyPrefix: group.key }))}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </section>
+      );
+    }
+
+    return (
+      <ListPanel title="Forge Sales" emptyText={getEmptyStateGuidance("sales").body}>
+        {salesReviewView.sortedSales.map((sale) => renderForgeSaleCard(sale))}
+      </ListPanel>
+    );
+  }
+
   if (activeTab === "invite") {
     return (
       <div className="app app-invite">
@@ -47908,35 +48045,44 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <p className="compact-subtitle">Sales import mapping is coming soon. Manual sale entry is available now, and uploaded files can be staged from Import File.</p>
                 </div>
               </div>
-            </section>
-            <ListPanel title="Forge Sales" emptyText={getEmptyStateGuidance("sales").body}>
-              {workspaceSales.map((sale) => (
-                <div className="inventory-card sales-record-card" key={sale.id}>
-                  <div className="compact-card-header">
-                    <div>
-                      <h3>{sale.itemName}</h3>
-                      <p>{sale.platform} | {sale.saleDate || shortDate(sale.createdAt) || "No date"} | Qty {sale.quantitySold}</p>
-                    </div>
-                    <span className="status-badge">{sale.itemId ? "Linked inventory" : "Manual sale"}</span>
-                  </div>
-                  <div className="preview-grid sales-record-metrics">
-                    <div><span>Gross</span><strong>{money(sale.grossSale)}</strong></div>
-                    <div><span>Net proceeds</span><strong>{money(sale.netProceeds || sale.grossSale - sale.platformFees - sale.shippingCost)}</strong></div>
-                    <div><span>Cost basis</span><strong>{money(sale.costBasis || sale.itemCost)}</strong></div>
-                    <div><span>Profit/loss</span><strong>{money(sale.estimatedProfitLoss || sale.netProfit)}</strong></div>
-                  </div>
-                  <p className="compact-subtitle">
-                    Fees {money((sale.platformFees || 0) + (sale.paymentProcessingFees || 0))} | Shipping/supplies {money((sale.shippingCost || 0) + (sale.suppliesCost || 0))}
-                    {sale.referenceId || sale.receiptImage ? " | Reference attached" : " | Missing sale reference"}
-                  </p>
-                  {sale.notes && <p>Notes: {sale.notes}</p>}
-                  <OverflowMenu
-                    onEdit={() => startEditingSale(sale)}
-                    onDelete={() => deleteSale(sale.id)}
-                  />
+              <div className="sales-review-controls" aria-label="Sales sort grouping and date range">
+                <div className="sales-view-mode-grid" role="group" aria-label="Sales view mode">
+                  {[
+                    { key: "newest", label: "Newest", helper: "Newest to oldest" },
+                    { key: "oldest", label: "Oldest", helper: "Oldest to newest" },
+                    { key: "date", label: "By date", helper: "Date sections" },
+                    { key: "item", label: "Same items", helper: "Grouped items" },
+                  ].map((mode) => (
+                    <button
+                      key={mode.key}
+                      type="button"
+                      className={salesViewMode === mode.key ? "active" : ""}
+                      aria-pressed={salesViewMode === mode.key}
+                      onClick={() => {
+                        setSalesViewMode(mode.key);
+                        setExpandedSalesGroupKey("");
+                      }}
+                    >
+                      <strong>{mode.label}</strong>
+                      <span>{mode.helper}</span>
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </ListPanel>
+                <div className="sales-date-range-controls">
+                  <Field label="From">
+                    <input type="date" value={salesDateFrom} onChange={(event) => setSalesDateFrom(event.target.value)} />
+                  </Field>
+                  <Field label="To">
+                    <input type="date" value={salesDateTo} onChange={(event) => setSalesDateTo(event.target.value)} />
+                  </Field>
+                  {salesReviewView.filtersActive ? <button type="button" className="secondary-button" onClick={clearSalesDateRange}>Clear range</button> : null}
+                </div>
+                <p className="compact-subtitle">
+                  Showing {salesReviewView.filteredSales.length} of {workspaceSales.length} sale record{workspaceSales.length === 1 ? "" : "s"}.
+                </p>
+              </div>
+            </section>
+            {renderForgeSalesList()}
           </>
         )}
 
