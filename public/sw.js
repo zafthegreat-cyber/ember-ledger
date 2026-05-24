@@ -1,4 +1,4 @@
-const CACHE_NAME = "ember-tide-pwa-v3";
+const CACHE_NAME = "ember-tide-pwa-v4";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
