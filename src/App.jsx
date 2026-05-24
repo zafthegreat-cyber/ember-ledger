@@ -16434,6 +16434,30 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     return report.submittedAt || report.submitted_at || report.createdAt || report.created_at || report.reportedAt || report.reported_at || "";
   }
 
+  function scoutReportFreshnessMeta(report = {}) {
+    const rawStatus = String(report.status || report.verificationStatus || report.verification_status || "").toLowerCase();
+    const expiresAt = report.expiresAt || report.expires_at || "";
+    if (rawStatus.includes("expired") || rawStatus.includes("stale")) {
+      return { key: "expired", label: rawStatus.includes("stale") ? "Old" : "Expired", helper: "This report should not be treated as current stock." };
+    }
+    if (expiresAt) {
+      const expiresTime = new Date(expiresAt).getTime();
+      if (!Number.isNaN(expiresTime) && expiresTime < Date.now()) {
+        return { key: "expired", label: "Expired", helper: "This report is past its configured freshness window." };
+      }
+    }
+    const rawTimestamp = scoutReportObservedAt(report);
+    if (!rawTimestamp) return { key: "unknown", label: "Freshness unknown", helper: "Visit time was not added." };
+    const observedTime = new Date(rawTimestamp).getTime();
+    if (Number.isNaN(observedTime)) return { key: "unknown", label: "Freshness unknown", helper: "Visit time could not be read." };
+    const ageMs = Date.now() - observedTime;
+    if (ageMs < 0) return { key: "fresh", label: "Fresh", helper: "Visit time is very recent." };
+    const ageHours = ageMs / 3600000;
+    if (ageHours < 2) return { key: "fresh", label: "Fresh", helper: "Reported under 2 hours ago." };
+    if (ageHours <= 8) return { key: "aging", label: "Aging", helper: "Reported 2 to 8 hours ago; confirm before relying on it." };
+    return { key: "old", label: "Old", helper: "Reported over 8 hours ago; do not treat as live stock." };
+  }
+
   function scoutReportDateTimeInputValue(report = {}) {
     const observedAt = scoutReportObservedAt(report);
     const parsed = observedAt ? new Date(observedAt) : new Date();
@@ -16461,11 +16485,16 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function scoutConfidenceScore(value = "") {
     const normalized = String(value || "").toLowerCase();
+    if (normalized === "admin_reviewed" || normalized === "admin-reviewed") return 96;
     if (normalized === "verified") return 95;
     if (normalized === "confirmed") return 95;
+    if (normalized === "community_confirmed" || normalized === "community-confirmed") return 82;
+    if (normalized === "photo" || normalized === "photo_attached") return 62;
     if (normalized === "likely") return 72;
+    if (normalized === "needs_confirmation") return 56;
     if (normalized === "possible") return 48;
     if (normalized === "unverified_historical") return 25;
+    if (normalized === "historical") return 25;
     if (normalized === "unconfirmed") return 34;
     if (normalized === "rumor") return 30;
     if (normalized === "guess") return 22;
@@ -16474,26 +16503,58 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function scoutConfidenceBadgeMeta(value = "unconfirmed") {
     const key = String(value || "").toLowerCase();
+    if (key === "admin_reviewed" || key === "admin-reviewed") {
+      return {
+        key: "admin-reviewed",
+        label: "Admin reviewed",
+        helper: "Reviewed by an Ember & Tide admin or moderator.",
+        score: 96,
+      };
+    }
     if (key === "verified" || key === "confirmed" || key === "high") {
       return {
         key: "verified",
         label: "Verified",
-        helper: "Photo, receipt, trusted reporter, or admin confirmation.",
+        helper: "Confirmed by admin review, trusted confirmation, or verified source.",
         score: 95,
+      };
+    }
+    if (key === "community_confirmed" || key === "community-confirmed") {
+      return {
+        key: "community-confirmed",
+        label: "Community confirmed",
+        helper: "Multiple Scout signals support this report.",
+        score: 82,
+      };
+    }
+    if (key === "photo" || key === "photo_attached") {
+      return {
+        key: "photo",
+        label: "Photo attached",
+        helper: "Photo proof is attached, but this still needs confirmation before it is verified.",
+        score: 62,
       };
     }
     if (key === "likely" || key === "medium") {
       return {
         key: "likely",
-        label: "Likely",
-        helper: "Supported by store history, multiple signals, or a stronger pattern.",
+        label: "Needs confirmation",
+        helper: "Helpful signal, but it still needs another Scout or admin review.",
         score: 72,
+      };
+    }
+    if (key === "historical" || key === "unverified_historical") {
+      return {
+        key: "historical",
+        label: "Historical import",
+        helper: historicalScoutImportNotice(),
+        score: 25,
       };
     }
     return {
       key: "unconfirmed",
-      label: "Unconfirmed",
-      helper: "Single report with no proof yet.",
+      label: "Unverified",
+      helper: "Single report with no proof or confirmation yet.",
       score: 34,
     };
   }
@@ -16516,7 +16577,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function quickScoutConfidenceBadge(form = quickScoutReportForm, type = quickScoutReportTypeMeta(form.reportType), storeSelection = resolveQuickScoutStoreSelection(form)) {
     const proofType = String(form.proofType || "").toLowerCase();
     if (form.photoUrl || ["stock_photo", "receipt", "screenshot"].includes(proofType)) {
-      return scoutConfidenceBadgeMeta("verified");
+      return scoutConfidenceBadgeMeta("photo");
     }
     if (type?.confidence === "likely" || quickScoutStoreHasHistory(storeSelection) || Number(form.confidenceSelfRating || 0) >= 70) {
       return scoutConfidenceBadgeMeta("likely");
@@ -24220,18 +24281,30 @@ function renderForgeAccessState() {
     const rawConfidence = String(report.confidenceLevel || report.confidence_level || report.confidence || "").toLowerCase();
     const reporterScore = Number(report.reporterReputation || report.reporter_reputation || report.trustScore || report.trust_score || 0);
     if (isHistoricalScoutImport(report) || rawConfidence === "unverified_historical") {
-      return scoutConfidenceBadgeMeta("unconfirmed");
+      return scoutConfidenceBadgeMeta("historical");
+    }
+    if (rawStatus.includes("admin") && rawStatus.includes("review")) {
+      return scoutConfidenceBadgeMeta("admin_reviewed");
     }
     if (
       report.verified ||
       rawStatus.includes("confirmed") ||
       rawStatus.includes("verified") ||
       rawConfidence === "verified" ||
-      photoUrls.length ||
-      ["stock_photo", "receipt", "screenshot"].includes(proofType) ||
       reporterScore >= 85
     ) {
       return scoutConfidenceBadgeMeta("verified");
+    }
+    if (
+      rawConfidence === "community_confirmed" ||
+      rawStatus.includes("community_confirmed") ||
+      rawStatus.includes("community confirmed") ||
+      Number(report.confirmationCount || report.confirmation_count || report.communityConfirmations || report.community_confirmations || 0) >= 2
+    ) {
+      return scoutConfidenceBadgeMeta("community_confirmed");
+    }
+    if (photoUrls.length || ["stock_photo", "receipt", "screenshot"].includes(proofType)) {
+      return scoutConfidenceBadgeMeta("photo");
     }
     const store = getScoutReportStore(report);
     const storeId = report.storeId || report.store_id || store.id || "";
@@ -27997,6 +28070,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const aiPending = Boolean(photo && !itemsSeen.length) || report.needsReview || report.needs_review;
     const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
     const confidenceBadge = scoutReportConfidenceBadge(report);
+    const freshnessMeta = scoutReportFreshnessMeta(report);
     const historicalImport = isHistoricalScoutImport(report);
     const proofType = report.proofType || report.proof_type || "";
     const proofLabel = photo ? "Photo proof" : proofType ? quickScoutProofLabel(proofType) : "No proof";
@@ -28022,6 +28096,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="scout-report-meta">
             <span>Visit: {visitLabel}</span>
+            <span>Freshness: {freshnessMeta.label}</span>
             {!compact && adminEditModeActive ? <span>Submitted: {submittedLabel}</span> : null}
             {distanceLabel ? <span>{distanceLabel}</span> : null}
             {stockStatus ? <span>{stockStatus}</span> : null}
@@ -28030,9 +28105,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>Submitted by {submittedByLabel}</span>
           </div>
           <div className="scout-signal-badge-row" aria-label="Scout signal trust">
-            <span className={`scout-confidence-pill scout-confidence-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
+            <span className={`scout-trust-pill scout-trust-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
+            <span className={`scout-freshness-pill scout-freshness-pill--${freshnessMeta.key}`} title={freshnessMeta.helper}>{freshnessMeta.label}</span>
             {historicalImport ? <span className="mini-badge scout-historical-import-badge">Historical import</span> : null}
-            <span className="mini-badge">{proofLabel}</span>
+            {proofLabel !== "No proof" ? <span className="mini-badge">{proofLabel}</span> : null}
             {reporterReputation ? <span className="mini-badge">Reporter rep {reporterReputation}</span> : null}
           </div>
           {historicalImport ? <p className="scout-report-historical-note">{historicalScoutImportNotice()}</p> : null}
@@ -28063,6 +28139,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
         <div className="scout-report-side">
           {photo ? <img src={photo} alt="" /> : <span>No photo attached</span>}
+          {adminEditModeActive && !/confirmed|historical/i.test(statusLabel) ? (
+            <button type="button" className="secondary-button scout-report-confirm-button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>
+              Confirm
+            </button>
+          ) : null}
           <OverflowMenu
             actions={[
               { label: "View", onClick: () => setSelectedScoutReport(report) },
@@ -35228,7 +35309,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       const isGuess = quickScoutReportTypeMeta(quickScoutReportForm.reportType)?.isGuess;
       return {
         title: isGuess ? "Add Scout Guess" : "Quick Scout Report",
-        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Log what you saw, where, and proof source before Scout review.",
+        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Select item, choose store, add proof, then review before submitting.",
         size: "medium",
       };
     }
@@ -36083,20 +36164,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .slice(0, 8);
     const recommendedStoreRows = filteredStoreRows.slice(0, locationAvailable ? 6 : 4);
     const wizardSteps = [
-      { key: "product", label: "What" },
-      { key: "where", label: "Where" },
-      { key: "details", label: "Proof" },
-      { key: "review", label: "Review" },
+      { key: "product", label: "What", title: "Select item" },
+      { key: "where", label: "Where", title: "Select store/location" },
+      { key: "details", label: "Proof", title: "Add details/photo" },
+      { key: "review", label: "Review", title: "Final review" },
     ];
     const activeStepIndex = Math.max(0, wizardSteps.findIndex((step) => step.key === quickScoutReportStep));
     const activeWizardStep = wizardSteps[activeStepIndex] || wizardSteps[0];
     const confidenceBadge = quickScoutConfidenceBadge(quickScoutReportForm, currentType, storeSelection);
+    const scoutPointsRemaining = Math.max(0, MIN_SCOUT_POINTS_FOR_GUESS - scoutGuessPoints);
+    const scoutPointsProgress = Math.min(100, Math.round((scoutGuessPoints / Math.max(1, MIN_SCOUT_POINTS_FOR_GUESS)) * 100));
     const summaryRows = [
       [currentType.isGuess ? "Planner type" : "Report type", currentType.label],
       ["Reporting at", storeSelection.valid ? storeSelection.storeName : "Store not selected"],
       ["Retailer", storeSelection.valid ? storeSelection.retailer : "Not selected"],
       ["Proof/source", quickScoutProofLabel()],
-      ["Confidence", confidenceBadge?.label || "Unconfirmed"],
+      ["Photo", quickScoutReportForm.photoUrl ? "Attached" : "No photo attached"],
+      ["Trust state", confidenceBadge?.label || "Unverified"],
       ["Product/category", [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ") || "Pokemon"],
       ...(currentType.isGuess
         ? [
@@ -36242,7 +36326,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="scout-report-progress">
           <div>
             <strong>Step {activeStepIndex + 1} of {wizardSteps.length}</strong>
-            <span>{activeWizardStep.label}</span>
+            <span>{activeWizardStep.title || activeWizardStep.label}</span>
           </div>
           <div className="scout-report-progress-track" aria-hidden="true">
             <i style={{ width: `${((activeStepIndex + 1) / wizardSteps.length) * 100}%` }} />
@@ -36271,11 +36355,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <span>{currentType.isGuess ? "Timing" : "Status"}: {selectedStockSummary}</span>
           <span>Product: {selectedProductSummary}</span>
         </div>
+        <div className="scout-flow-guidance-card" aria-live="polite">
+          <div>
+            <strong>Scout Points</strong>
+            <span>{scoutGuessPoints} / {MIN_SCOUT_POINTS_FOR_GUESS} points for community guesses</span>
+          </div>
+          <div className="scout-points-meter" aria-hidden="true">
+            <i style={{ width: `${scoutPointsProgress}%` }} />
+          </div>
+          <p>
+            {currentUserCanSubmitScoutGuess
+              ? "Guess/planner notes stay separate from confirmed stock reports."
+              : `${scoutPointsRemaining} more point${scoutPointsRemaining === 1 ? "" : "s"} unlock community guess notes. Accurate reports and photos help.`}
+          </p>
+        </div>
 
         {quickScoutReportStep === "product" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
-              <span>What</span>
+              <span>Step 1</span>
               <div>
                 <h3>What did you see?</h3>
                 <p>Search the catalog, pick a common product chip, or type a manual product. Status and quantity stay visible before you move on.</p>
@@ -36395,7 +36493,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {quickScoutReportStep === "where" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
-              <span>Where</span>
+              <span>Step 2</span>
               <div>
                 <h3>Choose the store or location</h3>
                 <p>{locationAvailable ? "Recommended stores appear first. You can still search or enter a missing store." : "Location is off. Search by city/store or enter a manual location; proof helps the community trust the update."}</p>
@@ -36506,10 +36604,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {quickScoutReportStep === "details" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
-              <span>Proof</span>
+              <span>Step 3</span>
               <div>
-                <h3>Proof / confidence</h3>
-                <p>Choose how much proof you have. The confidence badge is visible before review and never claims certainty.</p>
+                <h3>Add details and proof</h3>
+                <p>Photos and notes help, but reports stay unverified until the community or an admin confirms them.</p>
               </div>
             </div>
             <div className="scout-confidence-preview">
@@ -36577,10 +36675,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {quickScoutReportStep === "details" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
-              <span>Details</span>
+              <span>Step 3</span>
               <div>
                 <h3>Time and remaining stock</h3>
-                <p>These details help Tide Watch explain why a store may have a likely or possible watch window.</p>
+                <p>These details help Scout history without making weak forecasts sound certain.</p>
               </div>
             </div>
             <div className="scout-report-detail-grid">
@@ -36635,7 +36733,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {quickScoutReportStep === "review" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
-              <span>Review</span>
+              <span>Step 4</span>
               <div>
                 <h3>Review and submit</h3>
                 <p>Nothing is shared until you submit this report.</p>
@@ -36679,6 +36777,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="scout-location-trust-note">
               <strong>{confidenceBadge.label}</strong>
               <span>{confidenceBadge.helper}</span>
+            </div>
+            <div className="scout-location-trust-note">
+              <strong>Privacy and freshness</strong>
+              <span>Reports are shared by store, not private address. Old reports are kept for history and should not be treated as live stock.</span>
             </div>
           </section>
         ) : null}
@@ -37120,6 +37222,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <strong>{MULTI_DESTINATION_STEP_LABELS[multiDestinationStep] || "Review and Add"}</strong>
           <span>Step {currentStepIndex + 1} of {MULTI_DESTINATION_STEPS.length}: select the item, choose where it belongs, add only the needed details, then review.</span>
         </div>
+        <div className="quick-add-flow-summary" aria-live="polite">
+          <div>
+            <span>Item</span>
+            <strong>{selectedItemSummary}</strong>
+          </div>
+          <div>
+            <span>Destination</span>
+            <strong>{selectedDestinationOptions.length ? selectedDestinationOptions.map((option) => option.title).join(", ") : "Choose Vault or Forge next"}</strong>
+          </div>
+        </div>
         <div className="multi-destination-wizard-stepper" aria-label="Add item progress">
           {MULTI_DESTINATION_STEPS.map((step, index) => (
             <span
@@ -37151,7 +37263,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <section className="flow-form-section">
           <div className="add-item-step-heading">
             <h3>Select the item first</h3>
-            <p>Search TideTradr, pick a recent item, or use manual add when the product is not in the catalog yet. Can't find it in the catalog? Add it manually and keep tracking.</p>
+            <p>Search TideTradr, pick a recent item, or use manual add when the product is not in the catalog yet. You will choose Vault, Forge, Wishlist, or Market on the next step.</p>
           </div>
           <div className="flow-form-grid">
             <div className="catalog-selector-panel add-item-search-panel">
@@ -37297,8 +37409,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
                   {itemSearchQuery && !supabaseCatalogStatus.loading && !itemSearchResults.length ? (
                     <div className="empty-state small-empty-state add-item-no-results">
-                      <h3>No results found</h3>
-                      <p>Try a shorter search like ETB, tin, booster bundle, a set name, UPC, or SKU.</p>
+                      <h3>Can&apos;t find item?</h3>
+                      <p>Try a shorter search like ETB, tin, booster bundle, a set name, UPC, or SKU. If it still is not there, add it manually now or suggest it for admin catalog review.</p>
                       <div className="catalog-chip-row add-item-chip-row" aria-label="Alternate catalog search terms">
                         {ADD_ITEM_NO_RESULT_HINTS.map((hint) => {
                           const value = hint.replace(/^Try\s+/i, "").replace(/\s+instead of.*$/i, "");
@@ -37458,6 +37570,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {multiDestinationStep === "destination" ? (
         <section className="flow-form-section">
           <h3>Destinations</h3>
+          <div className="quick-add-destination-helper">
+            <strong>Where should this item go?</strong>
+            <span>Vault is for your collection. Forge is for business inventory. Wishlist and Market are optional tracking destinations.</span>
+          </div>
           {fieldError("destination") ? (
             <p className="field-error destination-field-error" role="alert" data-validation-field="destination">
               {fieldError("destination")}
@@ -42730,7 +42846,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="flow-modal-body">
               {renderFlowModalContent()}
             </div>
-            <div className="location-modal-actions modal-sticky-footer flow-modal-footer">
+            <div className={`location-modal-actions modal-sticky-footer flow-modal-footer ${activeFlowModal?.type === "scoutSubmit" ? "flow-modal-footer--scout-inline" : ""}`}>
               {activeFlowModal?.type === "scoutSubmit" ? (
                 <>
                   <button type="button" className="secondary-button" onClick={quickScoutReportStep === "product" ? () => closeFlowModal() : goBackScoutWizardStep}>

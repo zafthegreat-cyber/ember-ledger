@@ -1146,7 +1146,7 @@ function getScoutReportNowParts(date = new Date()) {
 }
 
 function friendlyScoutTimestamp(report = {}) {
-  const rawDate = report.reportedAt || report.reported_at || report.submittedAt || report.submitted_at || report.createdAt || report.created_at || report.reportDate || report.report_date || "";
+  const rawDate = report.observedAt || report.observed_at || report.reportedAt || report.reported_at || report.submittedAt || report.submitted_at || report.createdAt || report.created_at || report.reportDate || report.report_date || "";
   const rawTime = report.reportTime || report.report_time || "";
   const parsed = rawDate
     ? new Date(String(rawDate).includes("T") ? rawDate : `${String(rawDate).slice(0, 10)}T${rawTime || "00:00"}`)
@@ -1160,6 +1160,17 @@ function friendlyScoutTimestamp(report = {}) {
     return `Today at ${parsed.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
   }
   return parsed.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function scoutFreshnessLabel(report = {}) {
+  const rawDate = report.observedAt || report.observed_at || report.reportedAt || report.reported_at || report.createdAt || report.created_at || "";
+  if (!rawDate) return "Freshness unknown";
+  const parsed = new Date(rawDate);
+  if (Number.isNaN(parsed.getTime())) return "Freshness unknown";
+  const ageHours = (Date.now() - parsed.getTime()) / 3600000;
+  if (ageHours < 2) return "Fresh";
+  if (ageHours <= 8) return "Aging";
+  return "Old";
 }
 
 function scoutSourceTypeLabel(value = "") {
@@ -4077,6 +4088,14 @@ async function handleUpdateStore(e) {
     const confidence = report.confidence || "";
     const historicalImport = String(report.sourceType || report.source_type || "").toLowerCase() === "historical_import" || report.importedByAdmin || report.imported_by_admin;
     const submittedByLabel = isUserOwnedScoutReport(report) ? "You" : report.submittedByDisplay || report.submitted_by_display || report.displayName || report.reportedBy || report.reported_by || "Scout user";
+    const freshnessLabel = scoutFreshnessLabel(report);
+    const trustLabel = historicalImport
+      ? "Historical import"
+      : report.verified || String(report.verificationStatus || report.verification_status || "").toLowerCase().includes("verified")
+        ? "Verified"
+        : photo
+          ? "Photo attached"
+          : "Needs confirmation";
     return (
       <article className="scout-report-compact-card scout-page-report-card" key={report.id || report.reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -4088,19 +4107,20 @@ async function handleUpdateStore(e) {
             <span className={`status-badge scout-report-status scout-report-status-${status.toLowerCase().replace(/\s+/g, "-")}`}>{status}</span>
           </div>
           <div className="scout-report-meta">
-            <span>{friendlyScoutTimestamp(report)}</span>
+            <span>Visit: {friendlyScoutTimestamp(report)}</span>
+            <span>Freshness: {freshnessLabel}</span>
             {stockStatus ? <span>{stockStatus}</span> : null}
             {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
-            {confidence ? <span>Confidence: {confidence}</span> : null}
+            {confidence ? <span>Signal: {confidence}</span> : null}
             {adminMode && report.visibility ? <span>{scoutVisibilityLabel(report.visibility)}</span> : null}
             <span>Submitted by {submittedByLabel}</span>
           </div>
-          {historicalImport ? (
-            <div className="scout-signal-badge-row" aria-label="Historical Scout import">
-              <span className="mini-badge scout-historical-import-badge">Historical import</span>
-              <span className="mini-badge">Unverified historical</span>
-            </div>
-          ) : null}
+          <div className="scout-signal-badge-row" aria-label="Scout signal trust">
+            <span className="mini-badge">{trustLabel}</span>
+            <span className="mini-badge">{freshnessLabel}</span>
+            {photo ? <span className="mini-badge">Photo attached</span> : null}
+            {historicalImport ? <span className="mini-badge scout-historical-import-badge">Historical import</span> : null}
+          </div>
           {historicalImport ? (
             <p className="scout-report-historical-note">Pulled from Facebook groups, friends, or admin notes. Not live verified.</p>
           ) : null}

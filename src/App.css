@@ -34526,12 +34526,286 @@ body,
   color: #fff3d0;
 }
 
+.app .scout-confidence-pill--photo,
+.app-command-shell .scout-confidence-pill--photo,
+.app-shell-dark .scout-confidence-pill--photo {
+  border-color: rgba(255, 184, 92, 0.45);
+  background: rgba(92, 48, 12, 0.72);
+  color: #fff3d0;
+}
+
+.app .scout-confidence-pill--admin-reviewed,
+.app .scout-confidence-pill--community-confirmed,
+.app-command-shell .scout-confidence-pill--admin-reviewed,
+.app-command-shell .scout-confidence-pill--community-confirmed,
+.app-shell-dark .scout-confidence-pill--admin-reviewed,
+.app-shell-dark .scout-confidence-pill--community-confirmed {
+  border-color: rgba(120, 255, 190, 0.42);
+  background: rgba(6, 78, 59, 0.72);
+  color: #d8ffe5;
+}
+
+.app .scout-confidence-pill--historical,
+.app-command-shell .scout-confidence-pill--historical,
+.app-shell-dark .scout-confidence-pill--historical {
+  border-color: rgba(183, 148, 244, 0.38);
+  background: rgba(57, 38, 89, 0.72);
+  color: #eadcff;
+}
+
 .app .scout-confidence-pill--unconfirmed,
 .app-command-shell .scout-confidence-pill--unconfirmed,
 .app-shell-dark .scout-confidence-pill--unconfirmed {
   border-color: rgba(124, 231, 255, 0.32);
   background: rgba(8, 27, 49, 0.78);
   color: #dff7ff;
+}
+
+/* Pass 3A: Scout flow and Quick Add clarity */
+.app .flow-modal-footer--scout-inline,
+.app-command-shell .flow-modal-footer--scout-inline,
+.app-shell-dark .flow-modal-footer--scout-inline {
+  display: none !important;
+}
+
+.app .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+.app-command-shell .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+.app-shell-dark .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-body {
+  padding-bottom: 112px;
+}
+
+.app .scout-report-wizard,
+.app .guided-quick-add,
+.app-command-shell .scout-report-wizard,
+.app-command-shell .guided-quick-add,
+.app-shell-dark .scout-report-wizard,
+.app-shell-dark .guided-quick-add {
+  padding-bottom: 88px;
+}
+
+.app .scout-wizard-footer,
+.app .guided-quick-add-footer,
+.app-command-shell .scout-wizard-footer,
+.app-command-shell .guided-quick-add-footer,
+.app-shell-dark .scout-wizard-footer,
+.app-shell-dark .guided-quick-add-footer {
+  position: static !important;
+  margin-top: 14px !important;
+  padding-top: 12px !important;
+}
+
+.app .scout-flow-guidance-card,
+.app-command-shell .scout-flow-guidance-card,
+.app-shell-dark .scout-flow-guidance-card,
+.app .quick-add-flow-summary,
+.app-command-shell .quick-add-flow-summary,
+.app-shell-dark .quick-add-flow-summary,
+.app .quick-add-destination-helper,
+.app-command-shell .quick-add-destination-helper,
+.app-shell-dark .quick-add-destination-helper {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.18);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(124, 231, 255, 0.12), transparent 9rem),
+    rgba(5, 15, 30, 0.9) !important;
+  color: #f8fbff !important;
+}
+
+.app .scout-flow-guidance-card > div:first-child,
+.app-command-shell .scout-flow-guidance-card > div:first-child,
+.app-shell-dark .scout-flow-guidance-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app .scout-flow-guidance-card strong,
+.app .quick-add-flow-summary strong,
+.app .quick-add-destination-helper strong,
+.app-command-shell .scout-flow-guidance-card strong,
+.app-command-shell .quick-add-flow-summary strong,
+.app-command-shell .quick-add-destination-helper strong,
+.app-shell-dark .scout-flow-guidance-card strong,
+.app-shell-dark .quick-add-flow-summary strong,
+.app-shell-dark .quick-add-destination-helper strong {
+  color: #fff7ed !important;
+  line-height: 1.2;
+}
+
+.app .scout-flow-guidance-card span,
+.app .scout-flow-guidance-card p,
+.app .quick-add-flow-summary span,
+.app .quick-add-destination-helper span,
+.app-command-shell .scout-flow-guidance-card span,
+.app-command-shell .scout-flow-guidance-card p,
+.app-command-shell .quick-add-flow-summary span,
+.app-command-shell .quick-add-destination-helper span,
+.app-shell-dark .scout-flow-guidance-card span,
+.app-shell-dark .scout-flow-guidance-card p,
+.app-shell-dark .quick-add-flow-summary span,
+.app-shell-dark .quick-add-destination-helper span {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.74) !important;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.app .scout-points-meter,
+.app-command-shell .scout-points-meter,
+.app-shell-dark .scout-points-meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app .scout-points-meter i,
+.app-command-shell .scout-points-meter i,
+.app-shell-dark .scout-points-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff7a1a, #ffd166, #2bd9ff);
+}
+
+.app .scout-trust-pill,
+.app .scout-freshness-pill,
+.app-command-shell .scout-trust-pill,
+.app-command-shell .scout-freshness-pill,
+.app-shell-dark .scout-trust-pill,
+.app-shell-dark .scout-freshness-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 231, 255, 0.22);
+  background: rgba(8, 27, 49, 0.78);
+  color: #dff7ff;
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.app .scout-trust-pill--verified,
+.app .scout-trust-pill--admin-reviewed,
+.app-command-shell .scout-trust-pill--verified,
+.app-command-shell .scout-trust-pill--admin-reviewed,
+.app-shell-dark .scout-trust-pill--verified,
+.app-shell-dark .scout-trust-pill--admin-reviewed {
+  border-color: rgba(120, 255, 190, 0.42);
+  background: rgba(6, 78, 59, 0.72);
+  color: #d8ffe5;
+}
+
+.app .scout-trust-pill--community-confirmed,
+.app-command-shell .scout-trust-pill--community-confirmed,
+.app-shell-dark .scout-trust-pill--community-confirmed {
+  border-color: rgba(124, 231, 255, 0.42);
+  background: rgba(8, 47, 73, 0.78);
+  color: #dff7ff;
+}
+
+.app .scout-trust-pill--photo,
+.app .scout-trust-pill--likely,
+.app-command-shell .scout-trust-pill--photo,
+.app-command-shell .scout-trust-pill--likely,
+.app-shell-dark .scout-trust-pill--photo,
+.app-shell-dark .scout-trust-pill--likely {
+  border-color: rgba(255, 184, 92, 0.45);
+  background: rgba(92, 48, 12, 0.72);
+  color: #fff3d0;
+}
+
+.app .scout-trust-pill--historical,
+.app-command-shell .scout-trust-pill--historical,
+.app-shell-dark .scout-trust-pill--historical {
+  border-color: rgba(183, 148, 244, 0.38);
+  background: rgba(57, 38, 89, 0.72);
+  color: #eadcff;
+}
+
+.app .scout-freshness-pill--fresh,
+.app-command-shell .scout-freshness-pill--fresh,
+.app-shell-dark .scout-freshness-pill--fresh {
+  border-color: rgba(120, 255, 190, 0.42);
+  background: rgba(6, 78, 59, 0.72);
+  color: #d8ffe5;
+}
+
+.app .scout-freshness-pill--aging,
+.app-command-shell .scout-freshness-pill--aging,
+.app-shell-dark .scout-freshness-pill--aging {
+  border-color: rgba(255, 184, 92, 0.45);
+  background: rgba(92, 48, 12, 0.72);
+  color: #fff3d0;
+}
+
+.app .scout-freshness-pill--old,
+.app .scout-freshness-pill--expired,
+.app-command-shell .scout-freshness-pill--old,
+.app-command-shell .scout-freshness-pill--expired,
+.app-shell-dark .scout-freshness-pill--old,
+.app-shell-dark .scout-freshness-pill--expired {
+  border-color: rgba(255, 107, 107, 0.4);
+  background: rgba(127, 29, 29, 0.62);
+  color: #ffd8d8;
+}
+
+.app .scout-signal-badge-row,
+.app-command-shell .scout-signal-badge-row,
+.app-shell-dark .scout-signal-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.app .scout-report-confirm-button,
+.app-command-shell .scout-report-confirm-button,
+.app-shell-dark .scout-report-confirm-button {
+  width: 100%;
+  min-height: 40px;
+}
+
+.app .quick-add-flow-summary,
+.app-command-shell .quick-add-flow-summary,
+.app-shell-dark .quick-add-flow-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app .quick-add-flow-summary > div,
+.app-command-shell .quick-add-flow-summary > div,
+.app-shell-dark .quick-add-flow-summary > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .app .quick-add-flow-summary,
+  .app-command-shell .quick-add-flow-summary,
+  .app-shell-dark .quick-add-flow-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .app .scout-flow-guidance-card > div:first-child,
+  .app-command-shell .scout-flow-guidance-card > div:first-child,
+  .app-shell-dark .scout-flow-guidance-card > div:first-child {
+    display: grid;
+  }
 }
 
 .app .scout-follow-chip,
