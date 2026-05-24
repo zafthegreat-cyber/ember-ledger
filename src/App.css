@@ -130,6 +130,692 @@
   background: var(--cream);
 }
 
+/* Scout page perfection pass: compact, trust-focused mobile Scout UI. */
+.app-scout {
+  --scout-surface: rgba(7, 18, 35, 0.86);
+  --scout-card: rgba(10, 23, 42, 0.78);
+  --scout-border: rgba(132, 226, 255, 0.18);
+  --scout-cyan: var(--et-tide, #2bd9ff);
+  --scout-ember: var(--et-ember, #ff7a18);
+  --scout-muted: rgba(232, 246, 255, 0.72);
+}
+
+.app-scout .main,
+.app-scout.app-command-shell {
+  padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-scout .standard-page-header.scout-summary-card {
+  display: grid !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  padding: 14px !important;
+  border-radius: 22px !important;
+  border-color: var(--scout-border) !important;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(43, 217, 255, 0.13), transparent 30%),
+    linear-gradient(145deg, rgba(6, 17, 33, 0.96), rgba(3, 9, 21, 0.98)) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22) !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card::before,
+.app-scout .standard-page-header.scout-summary-card::after {
+  opacity: 0.22 !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-main {
+  min-height: 0 !important;
+  align-content: start !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 5vw, 2rem) !important;
+  letter-spacing: 0 !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy p {
+  max-width: 52ch;
+  margin-top: 4px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-submit-primary,
+.app-scout .scout-submit-primary {
+  min-height: 44px !important;
+  border: 1px solid rgba(255, 190, 102, 0.48) !important;
+  background: linear-gradient(135deg, #ff8a1c, #ff6a00) !important;
+  color: #1c0f05 !important;
+  font-weight: 950 !important;
+  box-shadow: 0 12px 28px rgba(255, 122, 24, 0.24) !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .secondary-button {
+  min-height: 40px !important;
+  background: rgba(6, 20, 38, 0.64) !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs {
+  width: 100%;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs button {
+  min-width: max-content;
+  border-radius: 999px !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs button.active,
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs button[aria-selected="true"] {
+  border-color: rgba(255, 138, 28, 0.52) !important;
+  background: rgba(255, 122, 24, 0.15) !important;
+  color: #fff4dc !important;
+}
+
+.app-scout .scout-header-trust-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app-scout .scout-header-trust-row::-webkit-scrollbar {
+  display: none;
+}
+
+.app-scout .scout-header-trust-row span {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 6px 9px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(6, 20, 38, 0.58);
+  color: var(--scout-muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.app-scout .scout-dashboard-overview.scout-nearby-dashboard {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-scout .scout-nearby-cta-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  padding: 16px !important;
+  border-color: rgba(43, 217, 255, 0.24) !important;
+  background:
+    radial-gradient(circle at 90% 12%, rgba(43, 217, 255, 0.19), transparent 28%),
+    radial-gradient(circle at 6% 100%, rgba(255, 122, 24, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(9, 24, 43, 0.92), rgba(4, 12, 27, 0.96)) !important;
+  overflow: hidden;
+}
+
+.app-scout .scout-nearby-cta-copy {
+  min-width: 0;
+}
+
+.app-scout .scout-nearby-cta-copy h2 {
+  margin: 3px 0 5px;
+  color: #fff7ed !important;
+  font-size: clamp(1.25rem, 5vw, 1.75rem);
+  line-height: 1.08;
+}
+
+.app-scout .scout-nearby-cta-copy p {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--scout-muted) !important;
+  font-size: 0.88rem;
+  line-height: 1.42;
+}
+
+.app-scout .scout-nearby-cta-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.app-scout .scout-nearby-quiet-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.app-scout .scout-nearby-quiet-stats span {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(4, 14, 28, 0.62);
+  color: rgba(232, 246, 255, 0.76);
+  font-size: 0.72rem;
+}
+
+.app-scout .scout-nearby-quiet-stats strong {
+  color: var(--scout-cyan);
+}
+
+.app-scout .scout-nearby-list-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px !important;
+}
+
+.app-scout .scout-nearby-list-card .compact-card-header {
+  gap: 10px;
+}
+
+.app-scout .scout-nearby-list-card .compact-card-header h2 {
+  font-size: 1.05rem !important;
+}
+
+.app-scout .scout-nearby-list-card .compact-card-header p {
+  font-size: 0.78rem;
+}
+
+.app-scout .scout-nearby-report-list,
+.app-scout .scout-preview-list {
+  display: grid;
+  gap: 10px;
+}
+
+.app-scout .scout-report-compact-card {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: 62px minmax(0, 1fr) 28px;
+  gap: 10px;
+  align-items: center;
+  min-height: 92px;
+  padding: 10px 8px 10px 10px !important;
+  border-radius: 18px !important;
+  border-color: rgba(132, 226, 255, 0.16) !important;
+  background:
+    linear-gradient(145deg, rgba(12, 27, 48, 0.86), rgba(5, 14, 29, 0.92)) !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.app-scout .scout-report-compact-card:hover,
+.app-scout .scout-report-compact-card:focus-within {
+  border-color: rgba(43, 217, 255, 0.34) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(43, 217, 255, 0.1), transparent 7rem),
+    linear-gradient(145deg, rgba(13, 31, 54, 0.92), rgba(6, 16, 33, 0.96)) !important;
+}
+
+.app-scout .scout-report-card-main {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.app-scout .scout-report-side {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
+.app-scout .scout-report-side > img,
+.app-scout .scout-report-side > span:first-child {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  border: 1px solid rgba(132, 226, 255, 0.18);
+  background: rgba(3, 11, 23, 0.85);
+  object-fit: contain;
+}
+
+.app-scout .scout-report-side > span:first-child {
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  color: rgba(232, 246, 255, 0.62);
+  font-size: 0.62rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.app-scout .scout-report-side .overflow-menu {
+  position: absolute;
+  top: 8px;
+  right: 34px;
+}
+
+.app-scout .scout-report-open-affordance {
+  grid-column: 3;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent !important;
+  color: rgba(232, 246, 255, 0.74) !important;
+  box-shadow: none !important;
+}
+
+.app-scout .scout-report-open-affordance span {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.app-scout .scout-report-title-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.app-scout .scout-report-title-row h3 {
+  margin: 0;
+  overflow: hidden;
+  color: #fff8ed !important;
+  font-size: 0.92rem !important;
+  line-height: 1.16;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-scout .scout-report-title-row .scout-report-product-line {
+  display: -webkit-box;
+  max-width: 100%;
+  margin: 2px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  color: rgba(248, 251, 255, 0.9) !important;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.app-scout .scout-report-title-row .scout-report-location-line {
+  margin: 1px 0 0;
+  overflow: hidden;
+  color: rgba(232, 246, 255, 0.64) !important;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-scout .scout-report-status {
+  display: none !important;
+}
+
+.app-scout .scout-report-meta {
+  display: flex !important;
+  gap: 6px;
+  margin-top: 6px;
+  overflow: hidden;
+  color: rgba(232, 246, 255, 0.62) !important;
+  font-size: 0.68rem !important;
+  line-height: 1.2;
+}
+
+.app-scout .scout-report-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-scout .scout-signal-badge-row {
+  gap: 5px !important;
+  margin-top: 7px;
+}
+
+.app-scout .scout-trust-pill,
+.app-scout .scout-freshness-pill {
+  min-height: 22px !important;
+  padding: 4px 7px !important;
+  font-size: 0.64rem !important;
+}
+
+.app-scout .scout-trust-pill--admin-reviewed {
+  border-color: rgba(43, 165, 255, 0.4) !important;
+  background: rgba(8, 47, 92, 0.58) !important;
+  color: #dff3ff !important;
+}
+
+.app-scout .scout-trust-pill--likely,
+.app-scout .scout-trust-pill--unconfirmed {
+  border-color: rgba(246, 194, 74, 0.38) !important;
+  background: rgba(92, 58, 12, 0.42) !important;
+  color: #fff2c3 !important;
+}
+
+.app-scout .scout-freshness-pill--unknown {
+  border-color: rgba(132, 226, 255, 0.22) !important;
+  background: rgba(6, 20, 38, 0.62) !important;
+  color: rgba(232, 246, 255, 0.82) !important;
+}
+
+.app-scout .scout-report-compact-card.is-compact .scout-report-items,
+.app-scout .scout-report-compact-card.is-compact .scout-report-profile-card,
+.app-scout .scout-report-compact-card.is-compact .scout-report-notes,
+.app-scout .scout-report-compact-card.is-compact .scout-report-historical-note,
+.app-scout .scout-report-compact-card.is-compact .mini-badge:not(.scout-historical-import-badge) {
+  display: none !important;
+}
+
+.app-scout .scout-historical-import-badge {
+  border-color: rgba(183, 148, 244, 0.34) !important;
+  background: rgba(57, 38, 89, 0.52) !important;
+  color: #eadcff !important;
+}
+
+.app-scout .scout-empty-signal-state {
+  min-height: 210px;
+  place-items: center;
+  text-align: center;
+}
+
+.app-scout .scout-empty-signal-state button {
+  min-height: 44px;
+  border-color: rgba(255, 190, 102, 0.48) !important;
+  background: linear-gradient(135deg, #ff8a1c, #ff6a00) !important;
+  color: #1c0f05 !important;
+}
+
+.app-scout .scout-subpage-panel,
+.app-scout .scout-combined-header,
+.app-scout .store-map-filters,
+.app-scout .store-map-canvas,
+.app-scout .store-map-card,
+.app-scout .store-map-detail-reports {
+  border-color: rgba(132, 226, 255, 0.16) !important;
+  background:
+    linear-gradient(145deg, rgba(10, 23, 42, 0.84), rgba(5, 14, 29, 0.92)) !important;
+  color: #f8fbff !important;
+}
+
+.app-scout .store-map-hero {
+  min-height: 0 !important;
+  padding: 14px !important;
+  border-color: rgba(132, 226, 255, 0.16) !important;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(43, 217, 255, 0.14), transparent 34%),
+    rgba(6, 18, 34, 0.9) !important;
+}
+
+.app-scout .store-map-hero .section-hero-art {
+  opacity: 0.38;
+}
+
+.app-scout .store-map-canvas {
+  min-height: min(56vh, 430px);
+  background:
+    linear-gradient(rgba(43, 217, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43, 217, 255, 0.055) 1px, transparent 1px),
+    radial-gradient(circle at 46% 44%, rgba(43, 217, 255, 0.18), transparent 32%),
+    rgba(4, 14, 28, 0.92) !important;
+  background-size: 32px 32px, 32px 32px, auto, auto !important;
+}
+
+.app-scout .store-map-pin {
+  box-shadow: 0 0 0 4px rgba(43, 217, 255, 0.08), 0 10px 22px rgba(0, 0, 0, 0.32) !important;
+}
+
+.app-scout .store-map-pin--restock-signal,
+.app-scout .store-map-pin--stock-reported {
+  background: linear-gradient(135deg, #38e8a8, #2bd9ff) !important;
+}
+
+.app-scout .store-map-pin--low-stock {
+  background: linear-gradient(135deg, #f6c24a, #ff8a1c) !important;
+}
+
+.app-scout .store-map-pin--empty-shelves {
+  background: linear-gradient(135deg, #ff5f76, #8d2232) !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] {
+  border-color: rgba(132, 226, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(43, 217, 255, 0.14), transparent 26%),
+    linear-gradient(145deg, rgba(8, 20, 38, 0.98), rgba(3, 9, 22, 0.98)) !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app-scout .scout-report-progress,
+.app-scout .scout-current-selection-strip,
+.app-scout .scout-flow-guidance-card,
+.app-scout .scout-report-step-card,
+.app-scout .scout-report-store-card,
+.app-scout .scout-selected-product-card {
+  border-color: rgba(132, 226, 255, 0.16) !important;
+  background:
+    linear-gradient(145deg, rgba(10, 23, 42, 0.78), rgba(5, 14, 29, 0.9)) !important;
+  color: #f8fbff !important;
+}
+
+.app-scout .scout-report-step-header h3,
+.app-scout .scout-report-progress strong,
+.app-scout .scout-selected-product-copy strong,
+.app-scout .scout-report-store-main strong {
+  color: #fff8ed !important;
+}
+
+.app-scout .scout-report-step-header p,
+.app-scout .scout-current-selection-strip span,
+.app-scout .scout-report-store-main p,
+.app-scout .scout-report-store-meta span {
+  color: var(--scout-muted) !important;
+}
+
+.app-scout .scout-report-step-pill.active,
+.app-scout .scout-report-choice-card.selected,
+.app-scout .scout-stock-status-button.selected,
+.app-scout .scout-follow-chip.active {
+  border-color: rgba(43, 217, 255, 0.46) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(43, 217, 255, 0.17), transparent 8rem),
+    rgba(9, 33, 56, 0.92) !important;
+  box-shadow: 0 0 18px rgba(43, 217, 255, 0.12) !important;
+}
+
+.app-scout .scout-quick-report-success {
+  place-items: center;
+  text-align: center;
+}
+
+.app-scout .scout-quick-report-success h3 {
+  color: #fff8ed !important;
+}
+
+.app-scout .scout-quick-report-success p,
+.app-scout .scout-quick-report-success small {
+  max-width: 38ch;
+  color: var(--scout-muted) !important;
+}
+
+@media (max-width: 640px) {
+  .app-scout .standard-page-header.scout-summary-card {
+    margin: 8px 10px 0 !important;
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-store-suggestion-link {
+    display: none !important;
+  }
+
+  .app-scout .scout-header-trust-row {
+    display: none;
+  }
+
+  .app-scout .scout-nearby-cta-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-inline: 10px;
+    padding: 14px !important;
+  }
+
+  .app-scout .scout-nearby-cta-actions {
+    justify-items: stretch;
+  }
+
+  .app-scout .scout-nearby-quiet-stats {
+    justify-content: flex-start;
+  }
+
+  .app-scout .scout-nearby-list-card,
+  .app-scout .scout-subpage-panel,
+  .app-scout .scout-combined-header {
+    margin-inline: 10px;
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-scout .scout-nearby-list-card .compact-card-header,
+  .app-scout .scout-subpage-panel .compact-card-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .app-scout .scout-nearby-list-card .compact-card-header p {
+    display: none;
+  }
+
+  .app-scout .scout-report-compact-card {
+    grid-template-columns: 56px minmax(0, 1fr) 24px;
+    min-height: 84px;
+    gap: 8px;
+    padding: 9px 7px 9px 9px !important;
+  }
+
+  .app-scout .scout-report-side > img,
+  .app-scout .scout-report-side > span:first-child {
+    width: 52px;
+    height: 52px;
+    border-radius: 13px;
+  }
+
+  .app-scout .scout-report-title-row h3 {
+    font-size: 0.84rem !important;
+  }
+
+  .app-scout .scout-report-title-row .scout-report-product-line {
+    font-size: 0.72rem;
+  }
+
+  .app-scout .scout-report-location-line,
+  .app-scout .scout-report-meta {
+    font-size: 0.64rem !important;
+  }
+
+  .app-scout .scout-report-meta span:nth-child(n+4) {
+    display: none;
+  }
+
+  .app-scout .scout-trust-pill,
+  .app-scout .scout-freshness-pill {
+    font-size: 0.6rem !important;
+    min-height: 20px !important;
+    padding-inline: 6px !important;
+  }
+
+  .app-scout .scout-report-side .overflow-menu {
+    display: none;
+  }
+
+  .app-scout .store-map-page,
+  .app-scout .store-map-layout,
+  .app-scout .store-map-card-list {
+    gap: 10px;
+  }
+
+  .app-scout .store-map-hero {
+    display: none !important;
+  }
+
+  .app-scout .store-map-filters,
+  .app-scout .store-map-canvas,
+  .app-scout .store-map-card {
+    margin-inline: 10px;
+    border-radius: 18px !important;
+  }
+
+  .app-scout .store-map-canvas {
+    min-height: 360px;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] {
+    max-height: calc(100dvh - 18px) !important;
+  }
+
+  .app-scout .scout-report-stepper {
+    display: flex !important;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .app-scout .scout-report-stepper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-scout .scout-report-step-pill {
+    flex: 0 0 auto;
+    min-width: 72px;
+  }
+
+  .app-scout .scout-current-selection-strip {
+    display: none !important;
+  }
+
+  .app-scout .scout-flow-guidance-card {
+    display: none !important;
+  }
+
+  .app-scout .scout-report-step-header p {
+    font-size: 0.78rem;
+  }
+
+  .app-scout .scout-stock-status-grid,
+  .app-scout .scout-report-type-grid,
+  .app-scout .scout-report-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Global confirmation and toast feedback */
 .app-toast-viewport {
   position: fixed !important;
@@ -42490,5 +43176,368 @@ body {
 
   .smart-setup-footer button {
     width: 100%;
+  }
+}
+
+/* Final Scout visual override layer. Keep this after legacy page rules. */
+.app-command-shell.app-scout {
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app-command-shell.app-scout .standard-page-header.panel.scout-summary-card,
+.app-command-shell.app-scout .standard-page-header.scout-summary-card,
+.app.app-scout .standard-page-header.panel.scout-summary-card,
+.app.app-scout .standard-page-header.scout-summary-card {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  padding: 14px !important;
+  border-radius: 22px !important;
+  border-color: rgba(132, 226, 255, 0.2) !important;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(43, 217, 255, 0.12), transparent 28%),
+    linear-gradient(145deg, rgba(6, 17, 33, 0.96), rgba(3, 9, 21, 0.98)) !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22) !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-main,
+.app.app-scout .scout-summary-card .standard-page-header-main {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  min-height: 0 !important;
+  align-content: start !important;
+  gap: 10px !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card :is(.section-hero-art, .feature-hero-scene, .hero-orbit, .concept-deck),
+.app.app-scout .scout-summary-card :is(.section-hero-art, .feature-hero-scene, .hero-orbit, .concept-deck) {
+  display: none !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-copy h2,
+.app.app-scout .scout-summary-card .standard-page-header-copy h2 {
+  margin: 0 !important;
+  font-size: clamp(1.35rem, 5vw, 1.85rem) !important;
+  line-height: 1.06 !important;
+  letter-spacing: 0 !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-copy p,
+.app.app-scout .scout-summary-card .standard-page-header-copy p {
+  margin: 4px 0 0 !important;
+  max-width: 42ch !important;
+  color: rgba(232, 246, 255, 0.74) !important;
+  font-size: 0.84rem !important;
+  line-height: 1.38 !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions,
+.app.app-scout .scout-summary-card .standard-page-header-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary,
+.app.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary {
+  min-height: 42px !important;
+  border-color: rgba(255, 190, 102, 0.48) !important;
+  background: linear-gradient(135deg, #ff8a1c, #ff6a00) !important;
+  color: #1c0f05 !important;
+  font-weight: 950 !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-stores-link,
+.app.app-scout .scout-summary-card .standard-page-header-actions .scout-stores-link {
+  min-width: 86px !important;
+  min-height: 42px !important;
+  border-color: rgba(132, 226, 255, 0.22) !important;
+  background: rgba(8, 22, 42, 0.82) !important;
+  color: rgba(248, 251, 255, 0.9) !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-store-suggestion-link,
+.app.app-scout .scout-summary-card .standard-page-header-actions .scout-store-suggestion-link {
+  display: none !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-tabs,
+.app.app-scout .scout-summary-card .standard-page-header-tabs {
+  display: flex !important;
+  grid-template-columns: none !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  gap: 7px !important;
+  overflow-x: auto !important;
+  padding: 5px !important;
+  border-radius: 999px !important;
+  scrollbar-width: none !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-tabs::-webkit-scrollbar,
+.app.app-scout .scout-summary-card .standard-page-header-tabs::-webkit-scrollbar {
+  display: none !important;
+}
+
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-tabs button,
+.app.app-scout .scout-summary-card .standard-page-header-tabs button {
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  min-height: 34px !important;
+  padding: 7px 11px !important;
+  border-radius: 999px !important;
+  font-size: 0.72rem !important;
+}
+
+.app-command-shell.app-scout .scout-dashboard-overview.scout-nearby-dashboard,
+.app.app-scout .scout-dashboard-overview.scout-nearby-dashboard {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app-command-shell.app-scout .scout-nearby-cta-card,
+.app.app-scout .scout-nearby-cta-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 14px !important;
+  align-items: end !important;
+  padding: 16px !important;
+  border-radius: 20px !important;
+  border-color: rgba(43, 217, 255, 0.24) !important;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(43, 217, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 8% 100%, rgba(255, 122, 24, 0.11), transparent 32%),
+    linear-gradient(145deg, rgba(9, 24, 43, 0.92), rgba(4, 12, 27, 0.96)) !important;
+}
+
+.app-command-shell.app-scout .scout-nearby-cta-copy h2,
+.app.app-scout .scout-nearby-cta-copy h2 {
+  margin: 2px 0 5px !important;
+  color: #fff7ed !important;
+  font-size: clamp(1.25rem, 5vw, 1.75rem) !important;
+  line-height: 1.08 !important;
+}
+
+.app-command-shell.app-scout .scout-nearby-cta-copy p,
+.app.app-scout .scout-nearby-cta-copy p {
+  margin: 0 !important;
+  color: rgba(232, 246, 255, 0.74) !important;
+  font-size: 0.86rem !important;
+  line-height: 1.4 !important;
+}
+
+.app-command-shell.app-scout .scout-nearby-cta-actions,
+.app.app-scout .scout-nearby-cta-actions {
+  display: grid !important;
+  gap: 9px !important;
+  justify-items: end !important;
+}
+
+.app-command-shell.app-scout .scout-nearby-cta-actions .scout-submit-primary,
+.app.app-scout .scout-nearby-cta-actions .scout-submit-primary {
+  min-width: 176px !important;
+}
+
+.app-command-shell.app-scout .scout-report-compact-card,
+.app.app-scout .scout-report-compact-card {
+  display: grid !important;
+  grid-template-columns: 60px minmax(0, 1fr) 26px !important;
+  gap: 9px !important;
+  align-items: center !important;
+  min-height: 86px !important;
+  padding: 9px !important;
+  border-radius: 18px !important;
+}
+
+.app-command-shell.app-scout .scout-report-side,
+.app.app-scout .scout-report-side {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+
+.app-command-shell.app-scout .scout-report-card-main,
+.app.app-scout .scout-report-card-main {
+  grid-column: 2 !important;
+  min-width: 0 !important;
+}
+
+.app-command-shell.app-scout .scout-report-open-affordance,
+.app.app-scout .scout-report-open-affordance {
+  grid-column: 3 !important;
+}
+
+@media (max-width: 640px) {
+  .app-command-shell.app-scout > .header,
+  .app-command-shell.app-scout .header,
+  .app.app-scout > .header,
+  .app.app-scout .header {
+    display: none !important;
+  }
+
+  .app-command-shell.app-scout .topbar,
+  .app.app-scout .topbar {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    min-height: 54px !important;
+    margin: 8px 10px !important;
+    padding: 8px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-command-shell.app-scout .topbar-brand-copy small,
+  .app-command-shell.app-scout .topbar-workspace-chip small,
+  .app-command-shell.app-scout .topbar-quick-add-button,
+  .app-command-shell.app-scout .topbar-profile-button,
+  .app.app-scout .topbar-brand-copy small,
+  .app.app-scout .topbar-workspace-chip small,
+  .app.app-scout .topbar-quick-add-button,
+  .app.app-scout .topbar-profile-button {
+    display: none !important;
+  }
+
+  .app-command-shell.app-scout .topbar-brand,
+  .app.app-scout .topbar-brand {
+    min-width: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-command-shell.app-scout .topbar-brand-mark,
+  .app.app-scout .topbar-brand-mark {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .app-command-shell.app-scout .topbar-workspace-chip,
+  .app.app-scout .topbar-workspace-chip {
+    min-width: 0 !important;
+    min-height: 42px !important;
+    padding: 0 12px !important;
+  }
+
+  .app-command-shell.app-scout .topbar-workspace-chip span,
+  .app.app-scout .topbar-workspace-chip span {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .app-command-shell.app-scout .app-search,
+  .app.app-scout .app-search {
+    display: none !important;
+  }
+
+  .app-command-shell.app-scout .topbar-command-actions,
+  .app.app-scout .topbar-command-actions {
+    display: flex !important;
+    gap: 7px !important;
+    min-width: 0 !important;
+  }
+
+  .app-command-shell.app-scout .ember-assist-shell,
+  .app.app-scout .ember-assist-shell {
+    display: none !important;
+  }
+
+  .app-command-shell.app-scout .standard-page-header.panel.scout-summary-card,
+  .app-command-shell.app-scout .standard-page-header.scout-summary-card,
+  .app.app-scout .standard-page-header.panel.scout-summary-card,
+  .app.app-scout .standard-page-header.scout-summary-card {
+    margin: 8px 10px 0 !important;
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .app-command-shell.app-scout .scout-header-trust-row,
+  .app.app-scout .scout-header-trust-row {
+    display: none !important;
+  }
+
+  .app-command-shell.app-scout .scout-nearby-cta-card,
+  .app.app-scout .scout-nearby-cta-card {
+    grid-template-columns: 1fr !important;
+    margin-inline: 10px !important;
+    padding: 14px !important;
+  }
+
+  .app-command-shell.app-scout .scout-nearby-cta-actions,
+  .app.app-scout .scout-nearby-cta-actions {
+    justify-items: stretch !important;
+  }
+
+  .app-command-shell.app-scout .scout-nearby-cta-actions .scout-submit-primary,
+  .app.app-scout .scout-nearby-cta-actions .scout-submit-primary {
+    min-width: 0 !important;
+  }
+
+  .app-command-shell.app-scout .scout-nearby-list-card,
+  .app-command-shell.app-scout .scout-subpage-panel,
+  .app-command-shell.app-scout .scout-combined-header,
+  .app.app-scout .scout-nearby-list-card,
+  .app.app-scout .scout-subpage-panel,
+  .app.app-scout .scout-combined-header {
+    margin-inline: 10px !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-command-shell.app-scout .scout-report-side > img,
+  .app-command-shell.app-scout .scout-report-side > span:first-child,
+  .app.app-scout .scout-report-side > img,
+  .app.app-scout .scout-report-side > span:first-child {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  .app-command-shell.app-scout .scout-report-compact-card,
+  .app.app-scout .scout-report-compact-card {
+    grid-template-columns: 54px minmax(0, 1fr) 22px !important;
+    min-height: 82px !important;
+  }
+
+  .app-command-shell.app-scout .store-map-hero,
+  .app.app-scout .store-map-hero {
+    display: none !important;
+  }
+
+  .app-command-shell.app-scout .scout-compact-filterbar,
+  .app.app-scout .scout-compact-filterbar {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    border: 1px solid rgba(132, 226, 255, 0.16) !important;
+    border-radius: 18px !important;
+    background: rgba(5, 14, 29, 0.92) !important;
+    color: rgba(232, 246, 255, 0.78) !important;
+  }
+
+  .app-command-shell.app-scout .scout-compact-filterbar label,
+  .app.app-scout .scout-compact-filterbar label {
+    display: grid !important;
+    gap: 5px !important;
+    min-width: 0 !important;
+    color: rgba(232, 246, 255, 0.62) !important;
+    font-size: 0.62rem !important;
+    font-weight: 850 !important;
+    letter-spacing: 0.02em !important;
+    text-transform: uppercase !important;
+  }
+
+  .app-command-shell.app-scout .scout-compact-filterbar select,
+  .app.app-scout .scout-compact-filterbar select {
+    width: 100% !important;
+    min-height: 40px !important;
+    border: 1px solid rgba(132, 226, 255, 0.22) !important;
+    border-radius: 13px !important;
+    background: rgba(8, 22, 42, 0.96) !important;
+    color: #f8fbff !important;
+    font-size: 0.78rem !important;
+    font-weight: 850 !important;
   }
 }

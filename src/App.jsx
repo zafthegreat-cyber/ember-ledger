@@ -20646,7 +20646,7 @@ function renderScoutHeader() {
   const scoutTabs = [
     { key: "overview", label: "Nearby" },
     { key: "reports", label: "Following" },
-    { key: "stores", label: "Map" },
+    { key: "storeMap", label: "Map" },
     { key: "myReports", label: "My Reports" },
     { key: "alerts", label: "Drop Watch" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
@@ -20679,10 +20679,10 @@ function renderScoutHeader() {
   return (
     <PageHeader
       className={getHeaderCardClass("panel scout-summary-card")}
-      title="Scout Signals"
-      subtitle="Nearby reports, followed stores, and freshness labels stay separate from guesses."
+      title="Scout"
+      subtitle="Fresh nearby signals, honest trust labels, and family-safe store reports."
       tabs={scoutTabs}
-      activeTab={activeScoutPage === "reports" && scoutReportFilter === "My Reports" ? "myReports" : activeScoutPage === "predictions" || activeScoutPage === "guesses" ? "forecast" : activeScoutPage === "storeMap" ? "stores" : activeScoutPage}
+      activeTab={activeScoutPage === "reports" && scoutReportFilter === "My Reports" ? "myReports" : activeScoutPage === "stores" && scoutStoresMode === "map" ? "storeMap" : activeScoutPage === "predictions" || activeScoutPage === "guesses" ? "forecast" : activeScoutPage}
       onTabChange={changeScoutPage}
       actions={(
         <>
@@ -20691,58 +20691,20 @@ function renderScoutHeader() {
         }}>
           Submit Report
         </button>
-          <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Add Store Suggestion</button>
+          <button type="button" className="secondary-button scout-stores-link" onClick={() => {
+            setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+            setScoutStoresMode("list");
+            setScoutView("stores");
+          }}>Stores</button>
+          <button type="button" className="secondary-button scout-store-suggestion-link" onClick={() => openQuickAddAction("storeSuggestion")}>Add Store Suggestion</button>
         </>
       )}
     >
-      <QuickActionGrid
-        className="scout-main-actions"
-        ariaLabel="Scout quick actions"
-        actions={[
-          {
-            key: "scout-map",
-            title: "Nearby Stores",
-            subtitle: "Stores and distance",
-            className: "scout-hero-nav-tile",
-            onClick: () => {
-              setScoutSubTabTarget({ tab: "storeMap", id: Date.now() });
-              setScoutStoresMode("map");
-              setScoutView("stores");
-            },
-          },
-          {
-            key: "scout-ember-watch",
-            title: "Drop Watch",
-            subtitle: `${watchCalendarHomeCounts.week} signals this week`,
-            className: "scout-hero-nav-tile",
-            onClick: () => {
-              setWatchCalendarView("today");
-              setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
-              setScoutView("alerts");
-            },
-          },
-          {
-            key: "scout-stores",
-            title: "Following",
-            subtitle: `${scoutStoreCount} stores you can track`,
-            className: "scout-hero-nav-tile",
-            onClick: () => {
-              setScoutSubTabTarget({ tab: "stores", id: Date.now() });
-              setScoutView("stores");
-            },
-          },
-          {
-            key: "scout-reports",
-            title: "My Reports",
-            subtitle: `${scoutRecentReportCount} recent`,
-            className: "scout-hero-nav-tile",
-            onClick: () => {
-              setScoutReportFilter("My Reports");
-              setScoutView("reports");
-            },
-          },
-        ]}
-      />
+      <div className="scout-header-trust-row" aria-label="Scout trust summary">
+        <span>{scoutStoreCount} stores tracked</span>
+        <span>{scoutRecentReportCount} recent signals</span>
+        <span>Trust score {scoutTrustScore}</span>
+      </div>
     </PageHeader>
   );
 }
@@ -28343,6 +28305,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const photoUrls = scoutReportPhotoUrls(report);
     const photo = photoUrls[0] || "";
     const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status || report.reportStatus || report.report_status);
+    const primaryItem = visibleItems[0] || {};
+    const primaryItemName = primaryItem.productName
+      || report.productName
+      || report.product_name
+      || report.itemName
+      || report.item_name
+      || stockStatus
+      || "Pokemon signal";
+    const productImage = photo
+      || primaryItem.imageUrl
+      || primaryItem.image_url
+      || primaryItem.productImageUrl
+      || primaryItem.product_image_url
+      || report.productImageUrl
+      || report.product_image_url
+      || "";
     const aiPending = Boolean(photo && !itemsSeen.length) || report.needsReview || report.needs_review;
     const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
     const confidenceBadge = scoutReportConfidenceBadge(report);
@@ -28361,24 +28339,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const submittedLabel = scoutReportSubmittedDateTimeLabel(report);
     const canEditVisitTime = canEditScoutReportDateTime(report);
     return (
-      <article className="scout-report-compact-card" key={reportId || `${storeName}-${note}`}>
+      <article className={`scout-report-compact-card scout-report-card--${freshnessMeta.key} scout-report-card--trust-${confidenceBadge.key}${compact ? " is-compact" : ""}`} key={reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
           <div className="scout-report-title-row">
             <div>
               <h3>{storeName}</h3>
-              <p>{retailer}{area ? ` | ${area}` : ""}</p>
+              <p className="scout-report-product-line">{primaryItemName}</p>
+              <p className="scout-report-location-line">{retailer}{area ? ` | ${area}` : ""}</p>
             </div>
             <span className={`status-badge scout-report-status ${statusClass(statusLabel)}`}>{statusLabel}</span>
           </div>
           <div className="scout-report-meta">
-            <span>Visit: {visitLabel}</span>
-            <span>Freshness: {freshnessMeta.label}</span>
+            <span>{visitLabel}</span>
+            <span>{freshnessMeta.helper}</span>
             {!compact && adminEditModeActive ? <span>Submitted: {submittedLabel}</span> : null}
             {distanceLabel ? <span>{distanceLabel}</span> : null}
             {stockStatus ? <span>{stockStatus}</span> : null}
-            {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
-            <span>{proofLabel}</span>
-            <span>Submitted by {submittedByLabel}</span>
+            {sourceLabel && !compact ? <span>Source: {sourceLabel}</span> : null}
+            {proofLabel !== "No proof" ? <span>{proofLabel}</span> : null}
+            <span>{submittedByLabel}</span>
           </div>
           <div className="scout-signal-badge-row" aria-label="Scout signal trust">
             <span className={`scout-trust-pill scout-trust-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
@@ -28414,7 +28393,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {!compact && (note || (!stockStatus && !photo)) ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
         </div>
         <div className="scout-report-side">
-          {photo ? <img src={photo} alt="" /> : <span>No photo attached</span>}
+          {productImage ? <img src={productImage} alt="" /> : <span>No image</span>}
           {adminEditModeActive && !/confirmed|historical/i.test(statusLabel) ? (
             <button type="button" className="secondary-button scout-report-confirm-button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>
               Confirm
@@ -28429,6 +28408,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ]}
           />
         </div>
+        <button type="button" className="scout-report-open-affordance" aria-label={`View Scout report for ${storeName}`} onClick={() => setSelectedScoutReport(report)}>
+          <span aria-hidden="true">&gt;</span>
+        </button>
       </article>
     );
   }
@@ -29689,7 +29671,52 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderScoutOverviewPanel() {
-    const latestReports = scoutReportRows.slice(0, 3);
+    const latestReports = scoutReportRows.slice(0, 5);
+    const freshReportCount = scoutReportRows.filter((report) => scoutReportFreshnessMeta(report).key === "fresh").length;
+    const needsConfirmationCount = scoutReportRows.filter((report) => ["likely", "unconfirmed"].includes(scoutReportConfidenceBadge(report).key)).length;
+    return (
+      <section className="scout-dashboard-overview scout-nearby-dashboard" aria-label="Scout nearby signals">
+        <article className="panel scout-nearby-cta-card">
+          <div className="scout-nearby-cta-copy">
+            <span className="section-kicker">Nearby Scout</span>
+            <h2>Help another family.</h2>
+            <p>Your report can make the difference. Share what you saw, where you saw it, and whether it is still fresh.</p>
+          </div>
+          <div className="scout-nearby-cta-actions">
+            <button type="button" className="scout-submit-primary" onClick={() => openScoutSubmitFlow({ source: "scout-nearby-hero" })}>
+              Submit Scout Report
+            </button>
+            <div className="scout-nearby-quiet-stats" aria-label="Scout signal summary">
+              <span><strong>{freshReportCount}</strong> fresh</span>
+              <span><strong>{needsConfirmationCount}</strong> need confirmation</span>
+            </div>
+          </div>
+        </article>
+
+        <article className="panel scout-overview-card scout-nearby-list-card">
+          <div className="compact-card-header">
+            <div>
+              <h2>Nearby Signals</h2>
+              <p>Freshness and trust labels keep live reports separate from old or unconfirmed notes.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => {
+              setScoutReportFilter("Latest");
+              setScoutReportsPage(1);
+              setScoutView("reports");
+            }}>View all</button>
+          </div>
+          <div className="scout-preview-list scout-nearby-report-list">
+            {latestReports.length ? latestReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
+              <div className="empty-state scout-empty-signal-state">
+                <h3>No signals yet</h3>
+                <p>Be the first to report something in your area. Reports are shared by store, not private address.</p>
+                <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-nearby-empty" })}>Submit Scout Report</button>
+              </div>
+            )}
+          </div>
+        </article>
+      </section>
+    );
     const forecastRows = scoutForecastPreviewRows.slice(0, 5);
     const scoutRadarRows = (forecastRows.length ? forecastRows : (scoutSnapshot.stores || []).slice(0, 5).map((store, index) => ({
       id: store.id || `store-${index}`,
@@ -35823,8 +35850,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "scoutSubmit") {
       const isGuess = quickScoutReportTypeMeta(quickScoutReportForm.reportType)?.isGuess;
       return {
-        title: isGuess ? "Add Scout Guess" : "Quick Scout Report",
-        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Select item, choose store, add proof, then review before submitting.",
+        title: isGuess ? "Add Scout Guess" : "Submit Scout Report",
+        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "What you saw, where you saw it, proof details, then review.",
         size: "medium",
       };
     }
@@ -36732,7 +36759,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ? catalogProducts.find((product) => String(product.id) === String(quickScoutReportForm.catalogProductId))
       : null;
     const renderScoutSelectionBadge = (label = "Selected") => (
-      <span className="scout-selection-badge" aria-hidden="true">✓ {label}</span>
+      <span className="scout-selection-badge" aria-hidden="true">{label}</span>
     );
     const selectScoutCatalogProduct = (product = {}) => {
       const known = buildCatalogAutofillDetails(product);
@@ -36807,9 +36834,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return (
         <section className="scout-quick-report-v2 scout-quick-report-sent">
           <div className="scout-quick-report-success">
-            <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Sent" : "Saved locally"}</span>
-            <h3>{quickScoutReportMessage || "Report sent. You can add details now or later."}</h3>
-            <p>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store"} now appears in {currentType.isGuess ? "Guesses Planner" : "Scout reports"}{currentType.isGuess ? "." : savedToCloud ? " as a synced Scout report." : " on this device."}</p>
+            <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Submitted" : "Saved locally"}</span>
+            <h3>{currentType.isGuess ? "Scout note saved." : "Scout report submitted!"}</h3>
+            <p>{currentType.isGuess ? "Your planning note stays separate from live stock reports." : "Thanks. Your report helps families find product and keeps the community informed."}</p>
+            {quickScoutReportMessage ? <small>{quickScoutReportMessage}</small> : null}
           </div>
           <div className="scout-report-review-grid scout-submit-confirmation-grid" aria-label="Submitted Scout report confirmation">
             <div>
@@ -36834,7 +36862,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </div>
           <div className="quick-actions">
-            <button type="button" onClick={openQuickScoutReportDetails}>Add details</button>
+            <button type="button" onClick={openQuickScoutReportDetails}>View my report</button>
             <button type="button" className="secondary-button" onClick={() => closeFlowModal({ force: true, reset: true })}>Done</button>
           </div>
         </section>
