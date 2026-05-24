@@ -61,6 +61,7 @@
     "test:beta-users-dashboard": "node --no-warnings scripts/test-beta-users-dashboard.mjs",
     "test:role-management": "node --no-warnings scripts/test-role-management.mjs",
     "test:toast-confirmations": "node --no-warnings scripts/test-toast-confirmations.mjs",
+    "test:menu-full-page-routes": "node --no-warnings scripts/test-menu-full-page-routes.mjs",
     "test:moderation-queues": "node --no-warnings scripts/test-moderation-queues.mjs",
     "test:notifications": "node --no-warnings scripts/test-notifications.mjs",
     "test:alert-generation": "node --no-warnings scripts/test-alert-generation.mjs",

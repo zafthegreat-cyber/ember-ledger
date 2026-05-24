@@ -1267,12 +1267,18 @@ function routeStateFromPath(pathname = "") {
   if (section === "whats-new" || section === "changelog") return { activeTab: "whatsNew" };
   if (section === "known-limitations") return { activeTab: "knownLimitations" };
   if (section === "kids-program") return { activeTab: "kidsProgram" };
-  if (section === "profile" && subSection === "progress") return { activeTab: "profileProgress" };
+  if (section === "profile") return { activeTab: subSection === "progress" ? "profileProgress" : "profile" };
+  if (section === "account") return { activeTab: "account" };
+  if (section === "collections" || section === "workspaces") return { activeTab: "collections" };
+  if (section === "data-backup" || section === "backup") return { activeTab: "dataBackup" };
+  if (section === "tcg-os") return { activeTab: "tcgOs" };
+  if (section === "help" || section === "support") return { activeTab: "help" };
+  if (section === "moderator" || section === "moderation") return { activeTab: "moderator" };
   if (section === "reports" || section === "business-reports" || section === "exports") return { activeTab: "reports", forgeSubTab: "overview" };
   if (section === "admin" || section === "admin-review") return { activeTab: "adminReview" };
   if (section === "partner" || section === "sponsor") return { activeTab: "sponsor" };
   if (section === "privacy" || section === "terms" || section === "trust") return { activeTab: "trust" };
-  if (section === "settings") return { activeTab: "menu" };
+  if (section === "settings") return { activeTab: "settings" };
   return { activeTab: "dashboard" };
 }
 
@@ -5242,11 +5248,52 @@ export default function App() {
   const marketAddLastActionRef = useRef({ key: "", time: 0 });
   const phase2AppPreferencesAppliedRef = useRef("");
 
+  function utilityTabForMenuSection(sectionKey = "") {
+    return {
+      account: "account",
+      workspace: "collections",
+      collections: "collections",
+      data: "dataBackup",
+      dataBackup: "dataBackup",
+      feedback: "help",
+      help: "help",
+      settings: "settings",
+      tcg_os: "tcgOs",
+      "tcg-os": "tcgOs",
+      tcgOs: "tcgOs",
+      profile: "profile",
+      admin: "adminReview",
+      moderator: "moderator",
+      beta_foundations: "kidsProgram",
+      community: "tidepool",
+      subscription: "membership",
+      plan: "membership",
+    }[sectionKey] || "";
+  }
+
+  function openUtilityPage(sectionKey = "") {
+    if (!confirmLeaveVaultWork()) return;
+    const nextTab = utilityTabForMenuSection(sectionKey) || sectionKey || "settings";
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    setMenuOpen(false);
+    setMenuSectionsOpen({});
+    if (nextTab === "moderator") {
+      setAdminReviewFilter((current) => current === "All" ? "Scout Report Review" : current);
+    }
+    setActiveTab(nextTab);
+  }
+
   function openMenuDrawer(sectionKey = "") {
     setQuickAddMenuOpen(false);
     setSearchExpanded(false);
+    const utilityTab = utilityTabForMenuSection(sectionKey);
+    if (utilityTab) {
+      openUtilityPage(sectionKey);
+      return;
+    }
     setMenuOpen(true);
-    if (sectionKey) setMenuSectionsOpen({ [sectionKey]: true });
+    setMenuSectionsOpen({});
   }
 
   function openEmberWatchSection() {
@@ -5306,11 +5353,19 @@ export default function App() {
       { key: "tidepool-main", label: "Tidepool", target: "tidepool" },
       { key: "kids-program", label: "Kids Program: The Spark", target: "kidsProgram" },
       { key: "announcements", label: "Announcements", target: "whatsNew" },
-      { key: "settings", label: "Settings", target: "menu" },
+      { key: "settings", label: "Settings", target: "settings" },
     ] },
   ];
 
   const activeBetaPageLabels = {
+    settings: "Settings",
+    account: "Account",
+    collections: "Collections",
+    dataBackup: "Data & Backup",
+    tcgOs: "TCG OS",
+    profile: "Profile",
+    help: "Help & Support",
+    moderator: "Moderator",
     kidsProgram: "Kids Program: The Spark",
     sponsor: "Sponsor Interest",
     trust: "Trust Pages",
@@ -5368,9 +5423,9 @@ export default function App() {
     { key: "spark", label: "Kids Program: The Spark", helper: "Family-safe collecting", icon: "spark", action: () => setActiveTab("kidsProgram") },
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
-    { key: "profile", label: "Profile", helper: "Public username and progress", icon: "settings", action: () => setActiveTab("profileProgress") },
-    { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openMenuDrawer("settings") },
-    { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openMenuDrawer("feedback") },
+    { key: "profile", label: "Profile", helper: "Public username and progress", icon: "settings", action: () => openUtilityPage("profile") },
+    { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
+    { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
   ];
   const desktopCommandDeskTools = [
     commandDeskSellerAccess ? { key: "receipts", label: "Receipts Review", helper: "Review receipts and expenses", icon: "clipboard", action: () => setActiveTab("expenses") } : null,
@@ -5387,15 +5442,13 @@ export default function App() {
     { key: "spark", label: "Kids Program: The Spark", helper: "Parent-safe requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
     { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
     { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
-    { key: "profile", label: "Profile", helper: "Public username and account progress.", icon: "settings", action: () => setActiveTab("profileProgress") },
-    { key: "settings", label: "Settings", helper: "Notifications, collections, and preferences.", icon: "settings", keepOpen: true, action: () => setMenuSectionsOpen({ settings: true }) },
-    { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and Refresh App.", icon: "search", keepOpen: true, action: () => setMenuSectionsOpen({ feedback: true }) },
+    { key: "profile", label: "Profile", helper: "Public username and account progress.", icon: "settings", action: () => openUtilityPage("profile") },
   ].filter(Boolean);
   const topbarSectionOptions = [
     ...mainTabs,
-    { key: "settings", label: "Settings", target: "menu" },
+    { key: "settings", label: "Settings", target: "settings" },
   ];
-  const topbarSectionValue = activeTab === "menu" ? "settings" : activeMainTab || "home";
+  const topbarSectionValue = activeTab === "menu" || activeTab === "settings" ? "settings" : activeMainTab || "home";
   const dismissToast = useCallback((toastId) => {
     setAppToasts((current) => current.filter((toast) => toast.id !== toastId));
   }, []);
@@ -5886,7 +5939,7 @@ export default function App() {
     const tab = topbarSectionOptions.find((option) => option.key === value);
     if (!tab) return;
     if (tab.key === "settings") {
-      openMenuDrawer("settings");
+      openUtilityPage("settings");
       return;
     }
     navigateMainTab(tab);
@@ -5910,9 +5963,15 @@ export default function App() {
     if (item.key === "spark") return activeTab === "kidsProgram";
     if (item.key === "announcements") return activeTab === "whatsNew";
     if (item.key === "ember-watch") return activeTab === "scout" && scoutView === "alerts";
-    if (item.key === "profile") return activeTab === "profileProgress";
-    if (item.key === "help") return menuOpen && Boolean(menuSectionsOpen.feedback);
-    if (item.key === "settings") return activeTab === "menu" || menuOpen;
+    if (item.key === "profile") return activeTab === "profile" || activeTab === "profileProgress";
+    if (item.key === "help") return activeTab === "help";
+    if (item.key === "settings") return activeTab === "settings" || activeTab === "menu";
+    if (item.key === "account") return activeTab === "account";
+    if (item.key === "collections") return activeTab === "collections";
+    if (item.key === "data-backup") return activeTab === "dataBackup";
+    if (item.key === "tcg-os") return activeTab === "tcgOs";
+    if (item.key === "admin") return activeTab === "adminReview";
+    if (item.key === "moderator") return activeTab === "moderator";
     if (item.key === "receipts") return activeTab === "expenses";
     if (item.key === "mileage") return activeTab === "mileage";
     if (item.key === "sales") return activeTab === "reports" || activeTab === "sales";
@@ -6147,13 +6206,12 @@ export default function App() {
       return;
     }
     if (modeKey === "settings") {
-      setActiveTab("menu");
-      setMenuOpen(true);
+      openUtilityPage("settings");
       return;
     }
     if (modeKey === "admin") {
-      setActiveTab(adminToolsVisible ? "adminReview" : "menu");
-      setMenuOpen(!adminToolsVisible);
+      if (adminToolsVisible) setActiveTab("adminReview");
+      else openUtilityPage("settings");
     }
   }
 
@@ -6698,6 +6756,11 @@ export default function App() {
   }
 
   function toggleMenuSection(key) {
+    const utilityTab = utilityTabForMenuSection(key);
+    if (utilityTab) {
+      openUtilityPage(key);
+      return;
+    }
     setMenuSectionsOpen((current) => (current[key] ? {} : { [key]: true }));
   }
 
@@ -8368,20 +8431,21 @@ export default function App() {
 
   function renderMenuPullDown(key, title, summary, children, icon = "plus") {
     const open = Boolean(menuSectionsOpen[key]);
+    const utilityDestination = utilityTabForMenuSection(key);
     const iconNode = typeof icon === "string"
       ? <AppNavIcon kind={icon} className="drawer-section-svg" />
       : icon;
     return (
       <div className={open ? "drawer-collapsible open" : "drawer-collapsible"} key={key}>
-        <button type="button" className="drawer-collapsible-toggle" onClick={() => toggleMenuSection(key)}>
+        <button type="button" className="drawer-collapsible-toggle" onClick={() => utilityDestination ? openUtilityPage(key) : toggleMenuSection(key)}>
           <span className="drawer-section-icon" aria-hidden="true">{iconNode}</span>
           <span className="drawer-section-copy">
             <strong>{title}</strong>
             <small>{summary}</small>
           </span>
-          <b>{open ? "Hide ^" : "Open v"}</b>
+          <b>{utilityDestination ? "Open >" : open ? "Hide ^" : "Open v"}</b>
         </button>
-        {open ? <div className="drawer-collapsible-body">{children}</div> : null}
+        {!utilityDestination && open ? <div className="drawer-collapsible-body">{children}</div> : null}
       </div>
     );
   }
@@ -10299,8 +10363,7 @@ export default function App() {
 
   function openLocationSettingsFromPrompt() {
     setLocationPromptOpen(false);
-    setMenuSectionsOpen({ settings: true });
-    setMenuOpen(true);
+    openUtilityPage("settings");
   }
 
   function openInventoryImportAssistant(context = "Vault", options = {}) {
@@ -25082,6 +25145,14 @@ function renderForgeAccessState() {
     if (activeTab === "links") return "/links";
     if (activeTab === "whatsNew") return "/whats-new";
     if (activeTab === "knownLimitations") return "/known-limitations";
+    if (activeTab === "settings") return "/settings";
+    if (activeTab === "account") return "/account";
+    if (activeTab === "collections") return "/collections";
+    if (activeTab === "dataBackup") return "/data-backup";
+    if (activeTab === "tcgOs") return "/tcg-os";
+    if (activeTab === "profile") return "/profile";
+    if (activeTab === "help") return "/help";
+    if (activeTab === "moderator") return "/moderator";
     if (activeTab === "profileProgress") return "/profile/progress";
     if (activeTab === "adminReview") return "/admin";
     if (activeTab === "membership") return "/settings";
@@ -39768,6 +39839,669 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     },
   ];
 
+  function renderUtilityPageShell({ title, subtitle, children, actions = null, className = "" }) {
+    return (
+      <div className={`utility-page ${className}`.trim()}>
+        <PageHeader
+          className={getHeaderCardClass("panel utility-page-header")}
+          title={title}
+          subtitle={subtitle}
+          actions={(
+            <div className="utility-page-header-actions">
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>
+              <button type="button" onClick={() => setMenuOpen(true)}>Menu</button>
+              {actions}
+            </div>
+          )}
+        />
+        <div className="utility-page-layout">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  function renderProfileSettingsCard({ compact = false } = {}) {
+    if (guestPreviewActive) {
+      return (
+        <div className="drawer-info-card utility-card">
+          <strong>Profile is read-only in preview</strong>
+          <p className="compact-subtitle">Create or log into an account to save your public username, display name, and region.</p>
+          <button type="button" className="drawer-link" onClick={() => { setAuthMode("signup"); openUtilityPage("account"); }}>Create Account</button>
+        </div>
+      );
+    }
+    return (
+      <form className="drawer-info-card utility-card" onSubmit={saveProfileSettings} noValidate>
+        <strong>Profile Basics</strong>
+        <p className="compact-subtitle">Your full name is private by default. Public username and bio can appear in Scout, Marketplace, and Tidepool.</p>
+        <dl className="drawer-status-list">
+          <div><dt>Profile source</dt><dd>{settingsProfilePersistenceLabel}</dd></div>
+          <div><dt>Display name / region</dt><dd>{signedInWithSupabase ? "Supabase profile" : "Local beta"}</dd></div>
+          <div><dt>Username / bio</dt><dd>{signedInWithSupabase ? "Account metadata" : "Local beta"}</dd></div>
+        </dl>
+        {!compact ? (
+          <div className="profile-public-preview settings-highlight-card">
+            <span>Public identity preview</span>
+            {renderCommunityProfileSummary(publicProfileForCurrentUser({
+              publicBio: profileForm.publicBio,
+              scoutPoints: scoutGuessPoints,
+            }), { compact: false, className: "settings-community-profile-preview" })}
+            <small>Private email and child/family details stay hidden from public views.</small>
+          </div>
+        ) : null}
+        <div className="drawer-two-column">
+          <input className="drawer-field" value={profileForm.firstName} onChange={(event) => setProfileForm((current) => ({ ...current, firstName: event.target.value }))} placeholder="First name" autoComplete="given-name" />
+          <input className="drawer-field" value={profileForm.lastName} onChange={(event) => setProfileForm((current) => ({ ...current, lastName: event.target.value }))} placeholder="Last name" autoComplete="family-name" />
+        </div>
+        <input className="drawer-field" value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} placeholder="Display name" />
+        <label className="settings-field-group">
+          <span>Public username</span>
+          <input
+            className="drawer-field"
+            value={profileForm.publicUsername}
+            onChange={(event) => setProfileForm((current) => ({ ...current, publicUsername: normalizePublicUsername(event.target.value) }))}
+            placeholder="public_username"
+            autoComplete="nickname"
+          />
+          <small>Shown publicly instead of private account details. Ember & Tide staff, support, moderator, and official names are protected.</small>
+          {publicIdentityForProfile({ ...currentUserProfile, email: accountEmail() }).isOfficialAdminIdentity ? (
+            <small className="status-badge verified-badge">Official Ember & Tide admin identity: {publicProfileLabel()}</small>
+          ) : null}
+        </label>
+        <label className="settings-field-group">
+          <span>Short public bio</span>
+          <textarea
+            className="drawer-field"
+            rows={3}
+            value={profileForm.publicBio}
+            onChange={(event) => setProfileForm((current) => ({ ...current, publicBio: event.target.value.slice(0, 160) }))}
+            placeholder="Optional: collector, parent helper, Scout, or seller note."
+          />
+          <small>Optional and public. Do not include private family details, exact locations, or child information.</small>
+        </label>
+        <select className="drawer-field" value={profileForm.preferredRegion} onChange={(event) => setProfileForm((current) => ({ ...current, preferredRegion: event.target.value }))}>
+          {["Hampton Roads / 757", "Richmond / Central Virginia", "Northern Virginia", "Fredericksburg", "Charlottesville / Albemarle", "Roanoke / Southwest Virginia", "Lynchburg", "Shenandoah Valley", "Eastern Shore", "Southside Virginia", "Other Virginia"].map((region) => (
+            <option key={region} value={region}>{region}</option>
+          ))}
+        </select>
+        <p className="compact-subtitle">Email: {accountEmail() || "Not signed in"}. Email changes require a separate auth-safe flow.</p>
+        <button type="submit" className="drawer-link" disabled={profileSaving}>{profileSaving ? "Saving..." : "Save Profile"}</button>
+      </form>
+    );
+  }
+
+  function renderAccountPage() {
+    return renderUtilityPageShell({
+      title: "Account",
+      subtitle: "Sign in, account status, private beta access, and security actions.",
+      className: "account-utility-page",
+      children: (
+        <>
+          <div className="drawer-info-card account-status-card utility-card">
+            <div>
+              <h3>{accountStatusTitle}</h3>
+              <p className="compact-subtitle">{accountStatusDescription}</p>
+            </div>
+            <dl className="drawer-status-list">
+              <div><dt>App Version</dt><dd>{APP_VERSION}</dd></div>
+              <div><dt>Account</dt><dd>{guestPreviewActive ? "Guest preview" : signedInWithSupabase ? "Supabase" : "Private beta"}</dd></div>
+              <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
+              <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
+              <div><dt>Data</dt><dd>{guestPreviewActive ? "Read-only preview" : cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
+            </dl>
+            {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
+          </div>
+
+          {guestPreviewActive ? (
+            <div className="drawer-info-card utility-card">
+              <strong>Preview mode</strong>
+              <p className="compact-subtitle">You can browse the app, but saving inventory, reports, scans, and settings requires a free account.</p>
+              <div className="drawer-inline-actions">
+                <button type="button" className="drawer-link" onClick={exitGuestPreview}>Back to Log In</button>
+                <button type="button" className="drawer-link" onClick={() => { exitGuestPreview(); setAuthMode("signup"); }}>Sign Up</button>
+              </div>
+            </div>
+          ) : !signedInWithSupabase ? (
+            authMode === "reset" ? (
+              <form className="drawer-info-card utility-card" onSubmit={handlePasswordResetRequest} noValidate>
+                <strong>Reset password</strong>
+                <p className="compact-subtitle">Enter your account email and we&apos;ll send a password reset link.</p>
+                {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
+                <input className="drawer-field" type="email" value={passwordResetEmail} onChange={(event) => setPasswordResetEmail(event.target.value)} placeholder="Email" autoComplete="email" />
+                {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
+                {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
+                <div className="drawer-inline-actions">
+                  <button type="submit" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured}>{passwordResetLoading ? "Sending..." : "Send reset link"}</button>
+                  <button type="button" className="drawer-link" onClick={() => { setPasswordResetError(""); setPasswordResetMessage(""); setAuthMode("login"); }}>Back to Sign In</button>
+                </div>
+              </form>
+            ) : (
+              <form className="drawer-info-card utility-card" onSubmit={handleAuth} noValidate>
+                <strong>{authMode === "login" ? "Log in" : "Create Account / Request Beta Access"}</strong>
+                <p className="compact-subtitle">New accounts may need approval before full app access.</p>
+                {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
+                {authMode === "signup" ? (
+                  <>
+                    <div className="drawer-two-column">
+                      <input className="drawer-field" type="text" value={authFirstName} onChange={(event) => setAuthFirstName(event.target.value)} placeholder="First name" autoComplete="given-name" />
+                      <input className="drawer-field" type="text" value={authLastName} onChange={(event) => setAuthLastName(event.target.value)} placeholder="Last name" autoComplete="family-name" />
+                    </div>
+                    <input className="drawer-field" type="text" value={authPublicUsername} onChange={(event) => setAuthPublicUsername(normalizePublicUsername(event.target.value))} placeholder="public_username" autoComplete="nickname" />
+                    <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p>
+                    <label className="checkbox-row"><input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} /><span>{SIGNUP_TERMS_TEXT}</span></label>
+                    <label className="checkbox-row"><input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} /><span>{SIGNUP_BETA_ACK_TEXT}</span></label>
+                  </>
+                ) : null}
+                <input className="drawer-field" type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="Email" autoComplete="email" />
+                <input className="drawer-field" type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="Password" autoComplete={authMode === "login" ? "current-password" : "new-password"} />
+                {authError ? <p className="auth-status-message error" role="alert">{authError}</p> : null}
+                {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
+                {authMode === "login" ? <button type="button" className="auth-text-button drawer-auth-link" onClick={openPasswordResetRequest}>Forgot password?</button> : null}
+                <div className="drawer-inline-actions">
+                  <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account / Request Beta Access"}</button>
+                  <button type="button" className="drawer-link" onClick={() => { setAuthError(""); setAuthMessage(""); setAuthMode(authMode === "login" ? "signup" : "login"); }}>{authMode === "login" ? "Create Account" : "Use Login"}</button>
+                </div>
+              </form>
+            )
+          ) : (
+            <div className="drawer-info-card utility-card">
+              <strong>{actualAdminUser ? "Signed in with admin role" : "Signed in"}</strong>
+              <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase private beta records on this device.</p>
+              {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
+              {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
+              <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Send Password Reset Email"}</button>
+              <button type="button" className="drawer-link logout-link" onClick={signOut}>Log Out</button>
+            </div>
+          )}
+
+          <div className="drawer-info-card utility-card">
+            <strong>Account shortcuts</strong>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={() => openUtilityPage("profile")}>Edit Profile</button>
+              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Profile Progress</button>
+              <button type="button" className="drawer-link" onClick={() => setActiveTab("mySuggestions")}>My Suggestions</button>
+            </div>
+          </div>
+        </>
+      ),
+    });
+  }
+
+  function renderSettingsPage() {
+    return renderUtilityPageShell({
+      title: "Settings",
+      subtitle: "Experience mode, notifications, appearance, Scout preferences, and dashboard display.",
+      className: "settings-utility-page",
+      children: (
+        <>
+          <div className="drawer-info-card settings-command-overview utility-card utility-card-wide">
+            <strong>Settings overview</strong>
+            <p className="compact-subtitle">Control your Ember & Tide experience without changing private data or workspace ownership.</p>
+            <div className="settings-section-grid">
+              {settingsSectionRows.map((row) => (
+                <article className="settings-section-card" key={row.title}>
+                  <strong>{row.title}</strong>
+                  <span>{row.body}</span>
+                  <small className="status-badge">{row.status}</small>
+                </article>
+              ))}
+            </div>
+          </div>
+          {renderOnboardingSettingsCard()}
+          <div className="drawer-info-card experience-mode-settings-card utility-card">
+            <strong>Experience Mode</strong>
+            <p className="compact-subtitle">This changes what Hearth and Today&apos;s Tide prioritize. Persistence: {settingsAppPreferencePersistenceLabel}.</p>
+            <div className="settings-mode-grid">
+              {[
+                { key: "budget", title: "Simple", helper: "Parents, families, and new collectors.", active: normalizeUserType(userType) === "budget" || normalizeDashboardPreset(dashboardPreset) === "budget_parent" },
+                { key: "collector", title: "Collector", helper: "Vault, Scout, Market, and Tidepool.", active: normalizeUserType(userType) === "collector" && normalizeDashboardPreset(dashboardPreset) !== "seller" },
+                { key: "seller", title: "Seller", helper: "Forge, receipts, mileage, inventory, and sales.", active: normalizeUserType(userType) === "seller" || normalizeDashboardPreset(dashboardPreset) === "seller" },
+              ].map((mode) => (
+                <button key={mode.key} type="button" className={mode.active ? "settings-mode-card active" : "settings-mode-card"} aria-pressed={mode.active} onClick={() => applyHomeViewPreset(mode.key)}>
+                  <strong>{mode.title}</strong>
+                  <span>{mode.helper}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="drawer-info-card utility-card">
+            <strong>Appearance</strong>
+            <p className="compact-subtitle">Current density: {dashboardCardStyle}. Keep the beta compact on mobile, or switch to a roomier card style.</p>
+            <div className="drawer-inline-actions">
+              {DASHBOARD_CARD_STYLES.map((style) => (
+                <button key={style} type="button" className={dashboardCardStyle === style ? "drawer-link active" : "drawer-link"} onClick={() => updateDashboardCardStyle(style)}>
+                  {style.charAt(0).toUpperCase() + style.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="drawer-info-card utility-card">
+            <strong>Location & Scout Preferences</strong>
+            <p className="compact-subtitle">Location is used for nearby Scout stores and alerts. Device location stays off unless you enable it.</p>
+            <input className="drawer-field" value={locationSettings.manualLocation} onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, trackingEnabled: false })} placeholder="ZIP or city" />
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={saveManualLocation}>Save Location</button>
+              <button type="button" className="drawer-link" onClick={enableLocationTracking}>Use Device Location</button>
+              <button type="button" className="drawer-link" onClick={disableLocationTracking}>Turn Off Location</button>
+            </div>
+          </div>
+          <div className="drawer-info-card store-alert-settings-card utility-card">
+            <strong>Store Alerts</strong>
+            <p className="compact-subtitle">Followed stores power favorite-store alerts and regional Scout context.</p>
+            <dl className="drawer-status-list">
+              <div><dt>Followed stores</dt><dd>{settingsFollowedStores.length}</dd></div>
+              <div><dt>Persistence</dt><dd>{settingsStoreAlertPersistenceLabel}</dd></div>
+              <div><dt>Store data</dt><dd>{scoutBackendSync.loaded ? "Cloud + local fallback" : scoutBackendSync.loading ? "Loading Scout stores" : "Open Scout or Regional Stores to load"}</dd></div>
+            </dl>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); }}>Open Store Directory</button>
+              <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("alerts"); }}>Open Store Alerts</button>
+            </div>
+          </div>
+          <div className="drawer-info-card utility-card utility-card-wide">
+            <strong>Notification Preferences</strong>
+            <p className="compact-subtitle">{IN_APP_ALERT_DISCLOSURE} These category toggles are local beta preferences. Scout alert routing uses {settingsScoutAlertPersistenceLabel} when available.</p>
+            <div className="menu-toggle-list">
+              {NOTIFICATION_PREFERENCE_ROWS.map((row) => (
+                <label className="toggle-row" key={row.key}>
+                  <span><strong>{row.label}</strong><small>{row.description}</small></span>
+                  <input type="checkbox" checked={effectiveNotificationPreferences[row.key] !== false} onChange={(event) => updateNotificationPreference(row.key, event.target.checked)} />
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="drawer-info-card settings-privacy-trust-card utility-card utility-card-wide">
+            <strong>Privacy, Trust & Family</strong>
+            <p className="compact-subtitle">Privacy controls describe current behavior. Data requests are admin-reviewed; family details and admin notes are not public.</p>
+            <div className="settings-section-grid compact">
+              <article className="settings-section-card"><strong>Business data privacy</strong><span>Your Forge inventory, receipts, sales, and mileage stay private to you and authorized workspace members.</span><small className="status-badge">{commandDeskSellerAccess ? "Seller/admin private" : "Hidden from non-sellers"}</small></article>
+              <article className="settings-section-card"><strong>Location usage for Scout</strong><span>Device location is optional and only used for nearby stores and restock signals.</span><small className="status-badge">{locationSettings.trackingEnabled ? "Device location on" : "Manual/local"}</small></article>
+              <article className="settings-section-card"><strong>Trust & reputation</strong><span>Photos, accurate reports, fair pricing, and helpful community activity improve trust.</span><small className="status-badge">{settingsTrustSourceLabel}</small></article>
+              <article className="settings-section-card"><strong>Family & child profiles</strong><span>Parent-approved access only. No private child messaging. Parent-approved trades only.</span><small className="status-badge">{settingsFamilyStatusLabel}</small></article>
+            </div>
+          </div>
+          <div className="drawer-info-card utility-card utility-card-wide">
+            <strong>Dashboard Display Settings</strong>
+            <p className="compact-subtitle">Choose which Home cards and sections are visible. This changes dashboard display only.</p>
+            <div className="menu-toggle-list">
+              {menuHomeStatRows.map((row) => (
+                <label className="toggle-row" key={row.key}>
+                  <span><strong>{row.label}</strong></span>
+                  <input
+                    type="checkbox"
+                    checked={row.key === "alerts" ? scoutSnapshot.alertSettings?.showHomeActiveAlerts !== false : row.key === "marketUpdates" ? scoutSnapshot.alertSettings?.showHomeMarketUpdates !== false : homeStatsEnabled[row.key] !== false}
+                    onChange={(event) => {
+                      if (row.key === "alerts") return updateScoutAlertPreference("showHomeActiveAlerts", event.target.checked);
+                      if (row.key === "marketUpdates") return updateScoutAlertPreference("showHomeMarketUpdates", event.target.checked);
+                      return updateHomeStatsEnabled({ [row.key]: event.target.checked });
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        </>
+      ),
+    });
+  }
+
+  function renderCollectionsPage() {
+    return renderUtilityPageShell({
+      title: "Collections",
+      subtitle: "Switch collections, manage workspaces, invite members, and keep personal data separate.",
+      className: "collections-utility-page",
+      children: (
+        <>
+          <div className="drawer-info-card utility-card">
+            <strong>Current collection</strong>
+            <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this collection.</p>
+            <div className="settings-active-workspace-card">
+              <span>Active workspace</span>
+              <strong>{activeWorkspace?.name || "My Personal Space"}</strong>
+              <small>{workspaceTypeLabel(activeWorkspace?.type)} - {workspaceRoleLabel(activeWorkspaceRole)}</small>
+            </div>
+            <Field label="Collection">
+              <select value={activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID} onChange={(event) => changeActiveWorkspace(event.target.value)}>
+                {workspaceSelectorOptions.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>{workspace.name} - {workspaceTypeLabel(workspace.type)}</option>
+                ))}
+              </select>
+            </Field>
+            <dl className="drawer-status-list">
+              <div><dt>Type</dt><dd>{workspaceTypeLabel(activeWorkspace?.type)}</dd></div>
+              <div><dt>Workspace role</dt><dd>{workspaceRoleLabel(activeWorkspaceRole)}</dd></div>
+              <div><dt>Vault items</dt><dd>{vaultItems.length}</dd></div>
+              <div><dt>Forge items</dt><dd>{forgeInventoryItems.length}</dd></div>
+            </dl>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>Edit Collection</button>
+              <button type="button" className="secondary-button" onClick={() => setCollectionManagerOpen(true)}>Manage Collections</button>
+            </div>
+          </div>
+
+          <form className="drawer-info-card forge-identity-settings-card utility-card utility-card-wide" onSubmit={saveWorkspaceIdentitySettings} noValidate>
+            <div className="compact-card-header">
+              <div>
+                <strong>Workspace &amp; Forge Identity</strong>
+                <p className="compact-subtitle">Control whether Forge acts like your private seller space, a business workspace, or Ember &amp; Tide branded workspace.</p>
+              </div>
+              <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
+            </div>
+            <Field label="Workspace name">
+              <input value={workspaceIdentityForm.workspaceName} onChange={(event) => updateWorkspaceIdentityForm({ workspaceName: event.target.value })} maxLength={WORKSPACE_NAME_MAX_LENGTH} disabled={!canEditActiveWorkspace} placeholder="Workspace name" />
+            </Field>
+            <div className="drawer-two-column">
+              <Field label="Business / shop name">
+                <input value={workspaceIdentityForm.businessName} onChange={(event) => updateWorkspaceIdentityForm({ businessName: event.target.value })} disabled={!canEditActiveWorkspace} placeholder="Optional business name" />
+              </Field>
+              <Field label="Public display label">
+                <input value={workspaceIdentityForm.displayLabel} onChange={(event) => updateWorkspaceIdentityForm({ displayLabel: event.target.value })} disabled={!canEditActiveWorkspace} placeholder="Optional display label" />
+              </Field>
+            </div>
+            <Field label="Shop nickname">
+              <input value={workspaceIdentityForm.shopName} onChange={(event) => updateWorkspaceIdentityForm({ shopName: event.target.value })} disabled={!canEditActiveWorkspace} placeholder="Optional nickname, DBA, or internal label" />
+            </Field>
+            <div className="settings-mode-grid forge-identity-mode-grid" role="group" aria-label="Forge display mode">
+              {FORGE_IDENTITY_MODE_OPTIONS.map((mode) => {
+                const disabled = mode.value === "ember_tide" && !emberTideForgeWorkspace;
+                const active = normalizeForgeIdentityMode(workspaceIdentityForm.forgeIdentityMode) === mode.value;
+                return (
+                  <button
+                    key={mode.value}
+                    type="button"
+                    className={active ? "settings-mode-card active" : "settings-mode-card"}
+                    aria-pressed={active}
+                    disabled={disabled || !canEditActiveWorkspace}
+                    onClick={() => updateWorkspaceIdentityForm({
+                      forgeIdentityMode: mode.value,
+                      defaultForgeMode: mode.value,
+                      useEmberTideBranding: mode.value === "ember_tide",
+                    })}
+                  >
+                    <strong>{mode.label}</strong>
+                    <span>{mode.description}</span>
+                    {disabled ? <small>Ember &amp; Tide workspace access is not available yet.</small> : null}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="menu-toggle-list">
+              <label className="toggle-row forge-mode-toggle">
+                <span><strong>Use Ember &amp; Tide branding</strong><small>Use Ember &amp; Tide naming in Forge where you have access.</small></span>
+                <input type="checkbox" checked={workspaceIdentityForm.useEmberTideBranding} disabled={!canEditActiveWorkspace || !emberTideForgeWorkspace} onChange={(event) => updateWorkspaceIdentityForm({ useEmberTideBranding: event.target.checked, forgeIdentityMode: event.target.checked ? "ember_tide" : "business", defaultForgeMode: event.target.checked ? "ember_tide" : "business" })} />
+              </label>
+              <label className="toggle-row forge-mode-toggle">
+                <span><strong>Keep personal Forge separate</strong><small>Personal Forge stays available as its own private option.</small></span>
+                <input type="checkbox" checked={workspaceIdentityForm.keepPersonalForgeSeparate} disabled={!canEditActiveWorkspace} onChange={(event) => updateWorkspaceIdentityForm({ keepPersonalForgeSeparate: event.target.checked })} />
+              </label>
+            </div>
+            <dl className="drawer-status-list forge-mode-summary">
+              <div><dt>Forge mode</dt><dd>{forgeIdentityModeLabel(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
+              <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
+              <div><dt>Workspace records</dt><dd>{workspaceRecordCountsFor(activeWorkspace?.id).total} linked</dd></div>
+            </dl>
+            {workspaceIdentityMessage ? <p className="flow-inline-message is-info" role="status">{workspaceIdentityMessage}</p> : null}
+            <div className="drawer-inline-actions">
+              <button type="submit" className="drawer-link" disabled={!canEditActiveWorkspace}>Save Workspace Identity</button>
+              <button type="button" className="secondary-button" onClick={resetWorkspaceIdentityForm}>Cancel / Reset</button>
+              <button type="button" className="secondary-button" onClick={() => openWorkspaceArchive(activeWorkspace)} disabled={!canManageActiveWorkspace || activeCollectionCount <= 1 || isProtectedWorkspace(activeWorkspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })}>Archive Workspace</button>
+            </div>
+          </form>
+
+          <form className="drawer-info-card utility-card" onSubmit={createWorkspace}>
+            <strong>Create workspace</strong>
+            <p className="compact-subtitle">New workspaces start empty. Existing personal data stays private until you intentionally add or move items.</p>
+            <input className="drawer-field" value={workspaceForm.name} onChange={(event) => setWorkspaceForm((current) => ({ ...current, name: event.target.value }))} placeholder="Collection name" />
+            <select className="drawer-field" value={workspaceForm.type} onChange={(event) => setWorkspaceForm((current) => ({ ...current, type: event.target.value }))}>
+              {WORKSPACE_TYPES.filter((type) => !["personal", "shared_collection", "team"].includes(type.value)).map((type) => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+            <button type="submit" className="drawer-link">Create Collection</button>
+          </form>
+
+          <form className="drawer-info-card utility-card" onSubmit={sendWorkspaceInvite}>
+            <strong>Invite member by email</strong>
+            <p className="compact-subtitle">{canManageInviteWorkspace ? "Create a workspace invite. Email delivery is not connected yet, so copy and send the invite link after it is created." : "You do not have permission to invite members in this workspace."}</p>
+            <select className="drawer-field" value={workspaceInviteForm.workspaceId} onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, workspaceId: event.target.value }))} disabled={workspaceInviteSending}>
+              {workspaceSelectorOptions.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
+            </select>
+            <input className="drawer-field" type="email" value={workspaceInviteForm.email} onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, email: event.target.value }))} placeholder="member@example.com" disabled={!canManageInviteWorkspace || workspaceInviteSending} />
+            <select className="drawer-field" value={workspaceInviteForm.role} onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, role: event.target.value }))} disabled={!canManageInviteWorkspace || workspaceInviteSending}>
+              {WORKSPACE_ROLES.filter((role) => role.value !== "owner").map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+            </select>
+            <input className="drawer-field" value={workspaceInviteForm.note} onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, note: event.target.value }))} placeholder="Optional note" disabled={!canManageInviteWorkspace || workspaceInviteSending} />
+            <button type="submit" className="drawer-link" disabled={!canManageInviteWorkspace || workspaceInviteSending}>{workspaceInviteSending ? "Creating..." : "Create Invite"}</button>
+            {workspaceInviteDelivery ? (
+              <div className="workspace-invite-delivery" role="status">
+                <strong>{workspaceInviteDelivery.emailSent ? "Email sent" : "Invite created"}</strong>
+                <p className="compact-subtitle">{workspaceInviteDelivery.emailSent ? `Workspace invite email was sent to ${workspaceInviteDelivery.email}.` : "Email is not configured - copy and send this link to the invited person."}</p>
+                <input className="drawer-field" value={workspaceInviteLinkForInvite(workspaceInviteDelivery)} readOnly onFocus={(event) => event.target.select()} aria-label="Workspace invite link" />
+                <button type="button" className="drawer-link" onClick={() => copyWorkspaceInviteLink(workspaceInviteDelivery)}>Copy invite link</button>
+              </div>
+            ) : null}
+          </form>
+
+          <div className="drawer-info-card utility-card">
+            <strong>Members</strong>
+            <div className="workspace-member-list">
+              {workspaceMembers.filter((member) => String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id)).map((member) => (
+                <div className="workspace-member-row" key={`${member.workspaceId}-${member.userId || member.email || member.role}`}>
+                  <span><strong>{member.email || (member.userId === "local-beta" ? "You" : member.userId || "Invited user")}</strong><small>{workspaceRoleLabel(member.role)} - {member.status === "active" ? "Active" : "Invite pending"}</small></span>
+                </div>
+              ))}
+              {!workspaceMembers.filter((member) => String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id)).length ? <p className="compact-subtitle">No members yet. Invite someone by email.</p> : null}
+            </div>
+          </div>
+          {workspaceMessage ? <p className="compact-subtitle">{workspaceMessage}</p> : null}
+        </>
+      ),
+    });
+  }
+
+  function renderDataBackupPage() {
+    return renderUtilityPageShell({
+      title: "Data & Backup",
+      subtitle: "Export, import, clear private beta data, review sync status, and submit privacy requests.",
+      className: "data-backup-utility-page",
+      children: (
+        <>
+          <div className="drawer-info-card utility-card">
+            <strong>Optional Cloud Sync</strong>
+            <p className="compact-subtitle">{BETA_LOCAL_MODE ? "Your beta data is stored on this device unless you export it or connect cloud sync. Cloud sync is not active yet." : isSupabaseConfigured ? "Cloud sync is enabled for QA. Sign in to save Phase 2 workflows to Supabase." : "Cloud sync is enabled for QA, but Supabase URL/key configuration is missing."}</p>
+            <dl className="drawer-status-list">
+              <div><dt>Current mode</dt><dd>{BETA_LOCAL_MODE ? "Private beta" : "Cloud-ready"}</dd></div>
+              <div><dt>Preference</dt><dd>{cloudSyncPreference === "cloud" ? "Cloud sync access requested" : "Keep local"}</dd></div>
+            </dl>
+            <div className="drawer-inline-actions">
+              <button type="button" className={cloudSyncPreference === "local" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("local")}>Keep Private Beta Local</button>
+              <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync Access</button>
+            </div>
+          </div>
+          <div className="utility-card-wide">
+            <LazyToolBoundary label="Loading backup tools...">
+              <BackupExportImport
+                storageStatus={storageStatus}
+                importPreview={backupImportPreview}
+                importMessage={backupImportMessage}
+                onExport={downloadBackup}
+                onImportFile={handleBackupFileUpload}
+                onApplyImport={applyBetaBackupImport}
+                onClearDemoData={resetBetaLocalData}
+              />
+            </LazyToolBoundary>
+          </div>
+          <div className="drawer-info-card utility-card">
+            <strong>Collection transfer and bulk add</strong>
+            <p className="compact-subtitle">Bring in a CSV, copied list, seller list, or manually staged batch. Every row goes through review before anything is saved.</p>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={() => openInventoryImportAssistant("Vault", { mode: BATCH_INTAKE_MODES.TRANSFER, sourceType: "spreadsheet_csv", source: "data-menu-import" })}>Import / Transfer Collection</button>
+              <button type="button" className="drawer-link" onClick={() => openBulkAddFlow("Mixed")}>Bulk Add Items</button>
+            </div>
+          </div>
+          <form className="drawer-info-card utility-card" onSubmit={submitDataRequest} noValidate>
+            <strong>Privacy / Data Requests</strong>
+            <p className="compact-subtitle">Beta requests create admin review items. Nothing is automatically deleted without a safe process.</p>
+            <select className="drawer-field" value={dataRequestForm.requestType} onChange={(event) => setDataRequestForm((current) => ({ ...current, requestType: event.target.value }))}>
+              {DATA_REQUEST_TYPES.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
+            </select>
+            <input className="drawer-field" type="email" value={dataRequestForm.email || accountEmail()} onChange={(event) => setDataRequestForm((current) => ({ ...current, email: event.target.value }))} placeholder="Email" />
+            <textarea className="drawer-field" value={dataRequestForm.message} onChange={(event) => setDataRequestForm((current) => ({ ...current, message: event.target.value }))} placeholder="Optional details" />
+            <button type="submit" className="drawer-link">Submit Privacy Request</button>
+            <button type="button" className="drawer-link" onClick={() => setActiveTab("trust")}>Open Privacy / Terms</button>
+          </form>
+        </>
+      ),
+    });
+  }
+
+  function renderTcgOsPage() {
+    return renderUtilityPageShell({
+      title: "TCG OS",
+      subtitle: "A hub for Collect, Sell, Find, Share, Know, Decide, Scan, and Give.",
+      className: "tcg-os-utility-page",
+      children: (
+        <>
+          <div className="drawer-info-card utility-card utility-card-wide">
+            <strong>App identity</strong>
+            <p className="compact-subtitle">Vault = collect. Forge = sell. Scout = find. Tidepool = share. Catalog = know. Deal Finder = decide. Scanner = add anything.</p>
+            <div className="tcg-os-link-grid">
+              {TCG_OS_MODES.map((mode) => (
+                <button type="button" className="drawer-link" key={mode.key} onClick={() => openOperatingSystemFeature(mode.key)}>
+                  <strong>{mode.title}</strong>
+                  <small>{mode.verb}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="drawer-info-card utility-card utility-card-wide">
+            <strong>More tools</strong>
+            <div className="tcg-os-link-grid">
+              {APP_STRUCTURE_LINKS.map((link) => (
+                <button type="button" className="drawer-link" key={link.key} onClick={() => openOperatingSystemFeature(link.key)}>
+                  <strong>{link.label}</strong>
+                  <small>{link.description}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="drawer-info-card utility-card utility-card-wide">
+            <strong>Universal data uses admin approval</strong>
+            <p className="compact-subtitle">Users can suggest changes, but shared store/catalog/identifier defaults should be reviewed before becoming universal data.</p>
+            <div className="universal-data-chip-grid">
+              {UNIVERSAL_DATA_ENTITIES.map((entity) => <span key={entity}>{entity}</span>)}
+            </div>
+          </div>
+        </>
+      ),
+    });
+  }
+
+  function renderHelpPage() {
+    return renderUtilityPageShell({
+      title: "Help & Support",
+      subtitle: "Feedback, bug reports, refresh tools, and support messages.",
+      className: "help-utility-page",
+      children: (
+        <>
+          <div className="drawer-info-card app-support-card utility-card">
+            <strong>App Support</strong>
+            <p className="compact-subtitle">Having issues after an update? Refresh Ember & Tide to load the newest version.</p>
+            <dl className="drawer-status-list">
+              <div><dt>Loaded version</dt><dd>{APP_VERSION}</dd></div>
+              <div><dt>Update status</dt><dd>{appUpdate.available ? "Update available" : "Up to date"}</dd></div>
+            </dl>
+            <button type="button" className="drawer-link" disabled={appRefreshInProgress} onClick={() => void handleSafeAppRefresh()}>{appRefreshInProgress ? "Refreshing..." : "Refresh App"}</button>
+          </div>
+          <div className="drawer-info-card utility-card">
+            <strong>Feedback types</strong>
+            <p className="compact-subtitle">{BETA_FEEDBACK_TYPES.slice(0, 6).join(", ")} and more.</p>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("feedback")}>Send Feedback</button>
+              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("bug")}>Report a Bug</button>
+              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("feature")}>Request a Feature</button>
+            </div>
+          </div>
+          <div className="drawer-info-card utility-card">
+            <strong>Data quality help</strong>
+            <p className="compact-subtitle">Report incorrect catalog, store, or market-price data for admin review.</p>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("catalog_data")}>Report Bad Catalog Data</button>
+              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("store_data")}>Report Bad Store Data</button>
+              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("market_data")}>Report Wrong Market Price</button>
+            </div>
+          </div>
+          <div className="drawer-info-card utility-card">
+            <strong>Guides</strong>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={restartOnboarding}>App Guide / Replay Onboarding</button>
+              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Profile Progress</button>
+              <button type="button" className="drawer-link" onClick={() => setActiveTab("trust")}>Privacy / Terms / Rules</button>
+              {adminToolsVisible ? <button type="button" className="drawer-link" onClick={() => void runFeedbackAiSummary()}>Summarize feedback</button> : null}
+            </div>
+          </div>
+        </>
+      ),
+    });
+  }
+
+  function renderProfilePage() {
+    return renderUtilityPageShell({
+      title: "Profile",
+      subtitle: "Public username, display name, Marketplace/Tidepool identity, and beta status.",
+      className: "profile-utility-page",
+      children: (
+        <>
+          {renderProfileSettingsCard()}
+          <div className="drawer-info-card utility-card">
+            <strong>Profile status</strong>
+            <dl className="drawer-status-list">
+              <div><dt>Beta access</dt><dd>{betaAccessAllowed() ? "Approved" : "Pending or limited"}</dd></div>
+              <div><dt>Public label</dt><dd>{publicProfileLabel()}</dd></div>
+              <div><dt>Scout points</dt><dd>{scoutGuessPoints}</dd></div>
+            </dl>
+            <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Open Profile Progress</button>
+          </div>
+        </>
+      ),
+    });
+  }
+
+  function renderModeratorPage() {
+    if (!moderatorToolsVisible && !actualAdminUser) {
+      return renderUtilityPageShell({
+        title: "Moderator",
+        subtitle: "Moderator tools are protected.",
+        className: "moderator-utility-page",
+        children: (
+          <div className="drawer-info-card utility-card">
+            <strong>Permission Denied</strong>
+            <p className="compact-subtitle">You do not have moderator access for Ember & Tide.</p>
+          </div>
+        ),
+      });
+    }
+    return renderUtilityPageShell({
+      title: "Moderator",
+      subtitle: "Limited review tools for reports, flagged content, and support queues.",
+      className: "moderator-utility-page",
+      children: (
+        <>
+          <div className="drawer-info-card utility-card">
+            <strong>Review queues</strong>
+            <p className="compact-subtitle">Moderator access is limited to review and support surfaces. Role Management and owner/admin controls stay hidden.</p>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={() => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); }}>Scout reports needing review</button>
+              <button type="button" className="drawer-link" onClick={() => { setAdminReviewFilter("Reports & Moderation"); setActiveTab("adminReview"); }}>Flagged reports/content</button>
+              <button type="button" className="drawer-link" onClick={() => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); }}>Support messages</button>
+            </div>
+          </div>
+        </>
+      ),
+    });
+  }
+
   if (activeTab === "invite") {
     return (
       <div className="app app-invite">
@@ -41171,7 +41905,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {signedInWithSupabase ? (
                 <button type="button" className="logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
               ) : (
-                <button type="button" className="secondary-button" onClick={() => { setAuthMode("login"); setMenuSectionsOpen({ account: true }); }}>
+                <button type="button" className="secondary-button" onClick={() => { setAuthMode("login"); openUtilityPage("account"); }}>
                   Sign In
                 </button>
               )}
@@ -41399,8 +42133,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="secondary-button" onClick={() => setCollectionManagerOpen(false)}>Close</button>
               <button type="button" onClick={() => {
                 setCollectionManagerOpen(false);
-                setMenuOpen(true);
-                setMenuSectionsOpen((current) => ({ ...current, workspace: true }));
+                openUtilityPage("collections");
               }}>
                 Create Collection
               </button>
@@ -43648,6 +44381,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "links" && renderLinksPage()}
         {!activeTabLocked && activeTab === "whatsNew" && renderWhatsNewPage()}
         {!activeTabLocked && activeTab === "knownLimitations" && renderKnownLimitationsPage()}
+        {!activeTabLocked && activeTab === "settings" && renderSettingsPage()}
+        {!activeTabLocked && activeTab === "account" && renderAccountPage()}
+        {!activeTabLocked && activeTab === "collections" && renderCollectionsPage()}
+        {!activeTabLocked && activeTab === "dataBackup" && renderDataBackupPage()}
+        {!activeTabLocked && activeTab === "tcgOs" && renderTcgOsPage()}
+        {!activeTabLocked && activeTab === "profile" && renderProfilePage()}
+        {!activeTabLocked && activeTab === "help" && renderHelpPage()}
+        {!activeTabLocked && activeTab === "moderator" && renderModeratorPage()}
         {!activeTabLocked && activeTab === "profileProgress" && renderProfileProgressPage()}
         {!activeTabLocked && activeTab === "membership" && renderMembershipFoundation()}
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
@@ -43715,7 +44456,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   { key: "search-tidetradr", title: "Search TideTradr", subtitle: "Find values and products", onClick: () => { setActiveTab("market"); setTideTradrSubTab("overview"); } },
                   { key: "check-deal", title: "Check Deal", subtitle: "Compare asking price", onClick: () => { setActiveTab("market"); openDealFinderModal(); } },
                   { key: "add-to-forge", title: "Add Item", subtitle: "Default destination: Forge", onClick: () => openQuickAddAction("inventory") },
-                  { key: "export-backup", title: "Export Backup", subtitle: "Save private beta data", onClick: () => { setMenuSectionsOpen({ data: true }); setMenuOpen(true); } },
+                  { key: "export-backup", title: "Export Backup", subtitle: "Save private beta data", onClick: () => openUtilityPage("data") },
                 ]}
               />
             </section>
@@ -45195,35 +45936,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </>
         )}
 
-        {activeTab === "menu" && (
-          <>
-            <PageHeader
-              className={getHeaderCardClass("panel settings-page-header")}
-              title="Settings"
-              subtitle="Account, mode, dashboard, alerts, and subscription."
-              actions={<button type="button" onClick={() => setMenuOpen(true)}>Open Menu</button>}
-              summary={(
-                <div className="settings-header-summary">
-                  <span>{activeWorkspace?.name || "My Personal Space"}</span>
-                  <span>{TIER_LABELS[currentTier] || currentPlan}</span>
-                  <span>{user.email}</span>
-                </div>
-              )}
-            />
-            <section className="panel settings-onboarding-panel">
-              {renderOnboardingSettingsCard()}
-              <div className="drawer-info-card onboarding-help-card">
-                <strong>Quick setup help</strong>
-                <p className="compact-subtitle">Use this guide to keep first-run help, workspace setup, alerts, and Ember Assist prompts easy to find.</p>
-                <div className="drawer-chip-row">
-                  {["Vault vs Forge", "Scout trust", "Alerts", "Workspace identity"].map((label) => (
-                    <span className="status-badge" key={label}>{label}</span>
-                  ))}
-                </div>
-              </div>
-            </section>
-          </>
-        )}
+        {activeTab === "menu" && renderSettingsPage()}
 
         {activeTab === "market" && (
           <>
