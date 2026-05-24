@@ -448,7 +448,7 @@ import {
   selectAdaptiveDesktopMainKeys,
   selectAdaptiveHearthQuickActionKeys,
   selectAdaptiveMenuKeys,
-  selectSmartQuickAddKeys,
+  selectSmartQuickAddActionPlan,
 } from "./utils/adaptiveUi";
 
 const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
@@ -4440,6 +4440,7 @@ export default function App() {
     itemType: "",
     detailMethod: "",
     message: "",
+    moreOpen: false,
   });
   const [lockedFeatureKey, setLockedFeatureKey] = useState("");
   const [adminViewMode, setAdminViewMode] = useState("admin");
@@ -16283,6 +16284,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemType: "",
       detailMethod: "",
       message: "",
+      moreOpen: false,
     });
     openFlowModal("addActionSheet", { size: "medium", source });
   }
@@ -35862,6 +35864,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         size: "large",
       };
     }
+    if (activeFlowModal?.type === "addActionSheet") {
+      return { title: "Quick Add", description: "Pick a quick action.", size: activeFlowModal?.size || "medium" };
+    }
     return { title: "Add", description: "Create a new record.", size: activeFlowModal?.size || "medium" };
   }
 
@@ -35896,25 +35901,40 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       option.destination !== "forge" || adaptiveUiState.showSellerTools || adaptiveUiState.showAdminTools
     ));
     const quickChoiceByKey = {
-      vault: { key: "vault", title: "Add to Vault", helper: "Search or scan, then save to collection.", destination: "vault", itemType: "sealed", detailMethod: "catalog_search", icon: "vault" },
-      forge: { key: "forge", title: "Add to Forge", helper: "Add business inventory with review first.", destination: "forge", itemType: "sealed", detailMethod: "catalog_search", icon: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
-      scout: { key: "scout", title: "Scout Report", helper: "Item, store, proof, then review.", destination: "scout", itemType: "store_report", detailMethod: "store_picker", icon: "scout" },
-      sale: { key: "sale", title: "Add Sale", helper: "Record sale, platform, fees, and profit.", action: "sale", icon: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
-      receipt: { key: "receipt", title: "Add Receipt", helper: "Upload or enter receipt details.", destination: "forge", itemType: "receipt", detailMethod: "receipt_upload", icon: "receipt", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
-      mileage: { key: "mileage", title: "Add Mileage", helper: "Log a business trip by vehicle.", destination: "forge", itemType: "mileage", detailMethod: "mileage_picker", icon: "mileage", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
-      missing: { key: "missing", title: "Request Missing Item", helper: "Use when catalog search cannot find it.", action: "suggestCatalogItem", destination: "market", itemType: "photo_import", detailMethod: "manual_entry", icon: "search" },
-      quickFind: { key: "quickFind", title: "Search / Scan Item", helper: "Look up a card, sealed product, UPC, or SKU.", action: "quickFind", icon: "search" },
-      spark: { key: "spark", title: "The Spark", helper: "Parent-safe Kids Program request.", action: "kidsRequest", icon: "spark" },
-      store: { key: "store", title: "Add Store", helper: "Suggest a missing store for Scout.", action: "storeSuggestion", icon: "scout" },
-      reviewMissing: { key: "reviewMissing", title: "Review Missing Item", helper: "Open protected catalog review.", action: "reviewMissingCatalog", icon: "search" },
-      announcement: { key: "announcement", title: "Add Announcement", helper: "Open announcement tools.", action: "addAnnouncement", icon: "bell" },
+      vault: { key: "vault", title: "Add to Vault", helper: "Save to collection", destination: "vault", itemType: "sealed", detailMethod: "catalog_search", icon: "vault", tone: "vault" },
+      forge: { key: "forge", title: "Add to Forge", helper: "Business inventory", destination: "forge", itemType: "sealed", detailMethod: "catalog_search", icon: "forge", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      scout: { key: "scout", title: "Scout Report", helper: "Share a find", destination: "scout", itemType: "store_report", detailMethod: "store_picker", icon: "scout", tone: "scout" },
+      sale: { key: "sale", title: "Add Sale", helper: "Record sale", action: "sale", icon: "forge", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      receipt: { key: "receipt", title: "Add Receipt", helper: "Upload receipt", destination: "forge", itemType: "receipt", detailMethod: "receipt_upload", icon: "receipt", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      mileage: { key: "mileage", title: "Add Mileage", helper: "Log trip", destination: "forge", itemType: "mileage", detailMethod: "mileage_picker", icon: "mileage", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      expense: { key: "expense", title: "Add Expense", helper: "Track costs", action: "expense", icon: "expense", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      missing: { key: "missing", title: "Request Missing Item", helper: "Request or add", action: "suggestCatalogItem", destination: "market", itemType: "photo_import", detailMethod: "manual_entry", icon: "search", tone: "warning" },
+      quickFind: { key: "quickFind", title: "Search / Scan Item", helper: "Find by name, UPC, or SKU", action: "quickFind", icon: "search", tone: "search" },
+      spark: { key: "spark", title: "The Spark", helper: "Kids program", action: "kidsRequest", icon: "spark", tone: "spark" },
+      store: { key: "store", title: "Add Store", helper: "Suggest store", action: "storeSuggestion", icon: "scout", tone: "scout" },
+      reviewMissing: { key: "reviewMissing", title: "Review Missing Item", helper: "Catalog review", action: "reviewMissingCatalog", icon: "search", tone: "admin" },
+      announcement: { key: "announcement", title: "Add Announcement", helper: "Admin update", action: "addAnnouncement", icon: "bell", tone: "admin" },
     };
-    const quickChoices = selectSmartQuickAddKeys(adaptiveUiState, {
+    const quickAddActionPlan = selectSmartQuickAddActionPlan(adaptiveUiState, {
       forgeAvailable: Boolean(activeForgeWorkspace),
       currentPage: activeTab,
-    })
+    });
+    const quickChoices = quickAddActionPlan.visibleKeys
       .map((key) => quickChoiceByKey[key])
       .filter(Boolean);
+    const overflowChoices = quickAddActionPlan.overflowKeys
+      .map((key) => quickChoiceByKey[key])
+      .filter(Boolean);
+    const quickAddContextLabel = adaptiveUiState.routeContext?.label || "Current page";
+    const quickAddModeCopy = adaptiveUiState.showAdminTools
+      ? "Admin shortcuts are permission-safe."
+      : adaptiveUiState.showSellerTools
+        ? "Seller tools active. Forge actions stay first."
+        : adaptiveUiState.familyMode
+          ? "Family collector view. Seller tools stay hidden unless enabled."
+          : adaptiveUiState.scoutMode
+            ? "Scout helper view. Reports stay first."
+            : "Collector view. Seller tools stay hidden.";
     const detailMethodOptions = [
       { key: "catalog_search", title: "Search catalog", helper: "Best for cards and sealed Pokemon products.", types: ["card", "sealed", "listing", "photo_import"] },
       { key: "scan", title: "Scan barcode/card", helper: "Open scanner review before saving.", types: ["card", "sealed", "photo_import"] },
@@ -35961,6 +35981,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         itemType: choice.itemType,
         detailMethod: choice.detailMethod || defaultDetailForType(choice.itemType),
         message: "",
+        moreOpen: false,
       });
     };
     const selectDestination = (destination) => {
@@ -36053,18 +36074,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <>
             <div className="guided-quick-add-hero">
               <div>
-                <small className="adaptive-mode-chip">{adaptiveUiState.modeLabel}</small>
-                <strong>What are you adding?</strong>
-                <p>Choose one path. Each flow stays short and reviews before anything saves.</p>
+                <div className="guided-quick-context-row">
+                  <small className="adaptive-mode-chip">{adaptiveUiState.modeLabel}</small>
+                  <small className="guided-context-chip">{quickAddContextLabel}</small>
+                </div>
+                <strong>Quick Add</strong>
+                <p>{quickAddModeCopy}</p>
               </div>
               <span aria-hidden="true">+</span>
             </div>
             <div className="guided-quick-choice-grid">
-              {quickChoices.map((choice) => (
+              {quickChoices.map((choice, index) => (
                 <button
                   key={choice.key}
                   type="button"
-                  className={`guided-quick-choice ${choice.disabled ? "is-disabled" : ""}`}
+                  className={`guided-quick-choice guided-quick-choice--${choice.tone || choice.key} ${index === 0 ? "is-primary" : ""} ${choice.disabled ? "is-disabled" : ""}`}
                   onClick={() => selectQuickChoice(choice)}
                   aria-disabled={choice.disabled ? "true" : "false"}
                 >
@@ -36074,6 +36098,38 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
               ))}
             </div>
+            {overflowChoices.length ? (
+              <section className="guided-quick-more">
+                <button
+                  type="button"
+                  className="secondary-button guided-quick-more-toggle"
+                  onClick={() => updateGuidedQuickAdd({ moreOpen: !quickAddWizard.moreOpen })}
+                  aria-expanded={quickAddWizard.moreOpen ? "true" : "false"}
+                >
+                  {quickAddWizard.moreOpen ? "Hide more actions" : "More actions"}
+                </button>
+                {quickAddWizard.moreOpen ? (
+                  <div className="guided-quick-more-grid">
+                    {overflowChoices.map((choice) => (
+                      <button
+                        key={choice.key}
+                        type="button"
+                        className={`guided-quick-choice guided-quick-choice--compact guided-quick-choice--${choice.tone || choice.key} ${choice.disabled ? "is-disabled" : ""}`}
+                        onClick={() => selectQuickChoice(choice)}
+                        aria-disabled={choice.disabled ? "true" : "false"}
+                      >
+                        <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={choice.icon || choice.key} /></span>
+                        <strong>{choice.title}</strong>
+                        <small>{choice.helper}</small>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+            <p className="quick-add-missing-help">
+              Can't find it? Request it or add manually.
+            </p>
           </>
         ) : (
           <>

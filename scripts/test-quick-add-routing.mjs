@@ -6,6 +6,11 @@ import {
   normalizeQuickAddDestinations,
   quickAddDestinationNames,
 } from "../src/utils/quickAddRouting.js";
+import {
+  resolveAdaptiveUiState,
+  selectSmartQuickAddActionPlan,
+  selectSmartQuickAddKeys,
+} from "../src/utils/adaptiveUi.js";
 
 assert.deepEqual(
   normalizeQuickAddDestinations({ forge: true, vault: false, ignored: true }),
@@ -57,5 +62,45 @@ assert.equal(
   }),
   "Collector Chest saved to Vault x1 and Forge x2 (Dillon)."
 );
+
+const collectorState = resolveAdaptiveUiState({ currentRoute: "dashboard" });
+const collectorQuickAdd = selectSmartQuickAddKeys(collectorState, { currentPage: "dashboard", forgeAvailable: true });
+assert.deepEqual(collectorQuickAdd, ["vault", "scout", "missing", "quickFind"]);
+assert.equal(collectorQuickAdd.some((key) => ["forge", "sale", "receipt", "mileage", "expense", "reviewMissing"].includes(key)), false);
+
+const familyState = resolveAdaptiveUiState({
+  currentRoute: "dashboard",
+  setupPreferences: { purposes: ["collect_pokemon_with_my_family_kids"], enabledToolsets: ["the_spark_kids_program"] },
+});
+const familyPlan = selectSmartQuickAddActionPlan(familyState, { currentPage: "dashboard", forgeAvailable: true });
+assert.deepEqual(familyPlan.visibleKeys, ["vault", "scout", "missing", "spark"]);
+assert.deepEqual(familyPlan.overflowKeys, ["quickFind"]);
+
+const sellerState = resolveAdaptiveUiState({
+  currentRoute: "forge",
+  setupPreferences: { primaryMode: "casual_seller", enabledToolsets: ["forge_seller_tools", "sales_tracking"] },
+});
+const sellerPlan = selectSmartQuickAddActionPlan(sellerState, { currentPage: "forge", forgeAvailable: true });
+assert.deepEqual(sellerPlan.visibleKeys, ["forge", "sale", "receipt", "mileage", "vault", "missing"]);
+assert.deepEqual(sellerPlan.overflowKeys, ["quickFind"]);
+
+const businessState = resolveAdaptiveUiState({
+  currentRoute: "forge",
+  setupPreferences: { primaryMode: "business_seller", businessTools: "yes_i_need_sales_expenses_mileage_receipts" },
+});
+const businessPlan = selectSmartQuickAddActionPlan(businessState, { currentPage: "forge", forgeAvailable: true });
+assert.deepEqual(businessPlan.visibleKeys, ["forge", "sale", "receipt", "mileage", "vault", "missing"]);
+assert.ok(businessPlan.overflowKeys.includes("expense"));
+assert.ok(businessPlan.visibleKeys.length <= 6);
+
+const adminState = resolveAdaptiveUiState({ currentRoute: "admin", adminToolsVisible: true });
+const adminQuickAdd = selectSmartQuickAddKeys(adminState, { currentPage: "admin", forgeAvailable: true });
+assert.ok(adminQuickAdd.includes("reviewMissing"));
+assert.ok(adminQuickAdd.includes("store"));
+assert.equal(collectorQuickAdd.includes("reviewMissing"), false);
+
+assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "scout", forgeAvailable: true })[0], "scout");
+assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "vault", forgeAvailable: true })[0], "vault");
+assert.equal(selectSmartQuickAddKeys(sellerState, { currentPage: "market", forgeAvailable: true })[0], "vault");
 
 console.log("Quick Add routing tests passed.");

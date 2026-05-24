@@ -36,6 +36,18 @@ function clampActionKeys(keys = [], maxVisible = 6) {
   return keys.filter(Boolean).slice(0, maxVisible);
 }
 
+function uniqueActionKeys(keys = []) {
+  return [...new Set(keys.filter(Boolean))];
+}
+
+function hasBusinessQuickAddTools(state = {}) {
+  return Boolean(
+    state.smartSetupFlags?.wantsBusinessTools ||
+    state.smartSetup?.recommendedPlanType === SMART_SETUP_PLAN_TYPES.BUSINESS_SELLER ||
+    state.smartSetup?.primaryMode === "business_seller"
+  );
+}
+
 function countValue(value) {
   if (Array.isArray(value)) return value.length;
   const number = Number(value);
@@ -296,33 +308,67 @@ export function resolveAdaptiveUiState({
 }
 
 export function selectSmartQuickAddKeys(state = {}, { forgeAvailable = false, currentPage = "" } = {}) {
+  return selectSmartQuickAddActionPlan(state, { forgeAvailable, currentPage }).visibleKeys;
+}
+
+export function selectSmartQuickAddActionPlan(state = {}, { forgeAvailable = false, currentPage = "", maxVisible = 6 } = {}) {
   const pageKey = resolveSmartRouteContext(currentPage || state.routeContext?.key).key;
+  const businessTools = hasBusinessQuickAddTools(state);
+  let orderedKeys = [];
+
+  let visibleLimit = maxVisible;
 
   if (state.showAdminTools) {
-    return clampActionKeys(["reviewMissing", "store", "scout", "vault", forgeAvailable ? "forge" : "", "missing"], 6);
+    if (pageKey === "scout") {
+      orderedKeys = ["scout", "reviewMissing", "store", "vault", forgeAvailable ? "forge" : "", "missing", "announcement", "quickFind"];
+    } else {
+      orderedKeys = ["reviewMissing", "store", "announcement", "scout", "vault", forgeAvailable ? "forge" : "", "missing", "quickFind"];
+    }
+  } else if (state.showSellerTools) {
+    if (pageKey === "scout") {
+      orderedKeys = ["scout", "missing", "forge", "vault", "sale", "receipt", "quickFind", "mileage"];
+    } else if (pageKey === "vault") {
+      orderedKeys = ["vault", "forge", "sale", "receipt", "missing", "mileage", "quickFind"];
+    } else if (pageKey === "forge") {
+      orderedKeys = businessTools
+        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "expense", "quickFind"]
+        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind"];
+    } else if (pageKey === "market") {
+      orderedKeys = businessTools
+        ? ["vault", "forge", "sale", "receipt", "missing", "mileage", "expense", "quickFind"]
+        : ["vault", "forge", "sale", "missing", "receipt", "mileage", "quickFind"];
+    } else {
+      orderedKeys = businessTools
+        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "expense", "quickFind"]
+        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind"];
+    }
+  } else if (state.familyMode) {
+    visibleLimit = Math.min(maxVisible, 4);
+    if (pageKey === "scout") orderedKeys = ["scout", "vault", "missing", "spark", "quickFind"];
+    else if (pageKey === "vault") orderedKeys = ["vault", "scout", "missing", "spark", "quickFind"];
+    else orderedKeys = ["vault", "scout", "missing", "spark", "quickFind"];
+  } else if (state.scoutMode) {
+    visibleLimit = Math.min(maxVisible, 4);
+    if (pageKey === "vault") orderedKeys = ["vault", "scout", "quickFind", "missing"];
+    else orderedKeys = ["scout", "vault", "quickFind", "missing"];
+  } else if (pageKey === "scout") {
+    visibleLimit = Math.min(maxVisible, 4);
+    orderedKeys = ["scout", "vault", "missing", "quickFind"];
+  } else if (pageKey === "vault") {
+    visibleLimit = Math.min(maxVisible, 4);
+    orderedKeys = ["vault", "quickFind", "scout", "missing"];
+  } else if (pageKey === "market") {
+    visibleLimit = Math.min(maxVisible, 4);
+    orderedKeys = ["quickFind", "vault", "scout", "missing"];
+  } else {
+    visibleLimit = Math.min(maxVisible, 4);
+    orderedKeys = ["vault", "scout", "missing", "quickFind"];
   }
 
-  if (state.showSellerTools) {
-    if (pageKey === "forge") return clampActionKeys(["forge", "sale", "receipt", "mileage", "vault", "missing"], 6);
-    if (pageKey === "market") return clampActionKeys(["quickFind", "forge", "vault", "sale", "missing"], 6);
-    return clampActionKeys(["forge", "sale", "receipt", "mileage", "vault", "missing"], 6);
-  }
-
-  if (state.scoutMode) {
-    if (pageKey === "vault") return clampActionKeys(["vault", "scout", "quickFind", "missing"], 4);
-    return clampActionKeys(["scout", "vault", "quickFind", "missing"], 4);
-  }
-
-  if (state.familyMode) {
-    if (pageKey === "scout") return clampActionKeys(["scout", "vault", "spark", "missing", "quickFind"], 5);
-    if (pageKey === "vault") return clampActionKeys(["vault", "quickFind", "scout", "spark", "missing"], 5);
-    return clampActionKeys(["vault", "scout", "spark", "missing", "quickFind"], 5);
-  }
-
-  if (pageKey === "scout") return clampActionKeys(["scout", "vault", "missing", "quickFind"], 4);
-  if (pageKey === "vault") return clampActionKeys(["vault", "quickFind", "scout", "missing"], 4);
-  if (pageKey === "market") return clampActionKeys(["quickFind", "vault", "scout", "missing"], 4);
-  return clampActionKeys(["vault", "scout", "missing", "quickFind"], 4);
+  const allKeys = uniqueActionKeys(orderedKeys);
+  const visibleKeys = clampActionKeys(allKeys, visibleLimit);
+  const overflowKeys = allKeys.filter((key) => !visibleKeys.includes(key));
+  return { pageKey, visibleKeys, overflowKeys, allKeys, businessTools };
 }
 
 export function selectAdaptiveQuickAddKeys(state = {}, options = {}) {
