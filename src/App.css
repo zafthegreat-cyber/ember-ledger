@@ -43730,3 +43730,548 @@ body {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Vault collection portfolio polish */
+.app-vault {
+  --vault-purple: #b794f4;
+  --vault-cyan: #7ce7ff;
+  --vault-surface: rgba(7, 18, 36, 0.9);
+  --vault-surface-strong: rgba(4, 13, 28, 0.96);
+  --vault-border: rgba(183, 148, 244, 0.18);
+}
+
+.app-vault .main {
+  padding-bottom: calc(var(--bottom-nav-offset, 88px) + env(safe-area-inset-bottom, 0px) + 56px);
+}
+
+.app-vault .standard-page-header.vault-command-center {
+  gap: 10px;
+  padding: clamp(12px, 2.6vw, 18px) !important;
+  border-color: var(--vault-border) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(183, 148, 244, 0.08), transparent 12rem),
+    linear-gradient(145deg, rgba(8, 25, 47, 0.94), rgba(4, 12, 26, 0.96)) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2), 0 0 20px rgba(124, 231, 255, 0.04);
+}
+
+.app-vault .vault-command-center .standard-page-header-main {
+  align-items: center;
+  gap: 12px;
+}
+
+.app-vault .vault-command-center .standard-page-header-copy h2 {
+  color: #fff7ed;
+  font-size: clamp(1.45rem, 4.6vw, 2rem);
+  letter-spacing: 0;
+}
+
+.app-vault .vault-command-center .standard-page-header-copy p {
+  max-width: 44rem;
+  color: rgba(232, 246, 255, 0.76);
+}
+
+.app-vault .vault-command-center .section-hero-art {
+  opacity: 0.36;
+  filter: saturate(0.92);
+}
+
+.app-vault .vault-command-quick-add {
+  min-height: 38px;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 122, 26, 0.34) !important;
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.96), rgba(255, 184, 92, 0.92)) !important;
+  color: #241003 !important;
+  box-shadow: 0 8px 18px rgba(255, 122, 26, 0.16);
+}
+
+.app-vault .vault-settings-link {
+  min-height: 38px;
+  padding: 0 13px !important;
+  border-radius: 999px !important;
+}
+
+.app-vault .vault-command-center .standard-page-header-actions {
+  align-items: center;
+  gap: 8px;
+}
+
+.app-vault .vault-command-center .ai-assist-menu {
+  opacity: 0.82;
+}
+
+.app-vault .vault-command-center .standard-page-header-summary {
+  gap: 6px;
+}
+
+.app-vault .vault-command-center .standard-page-header-label {
+  color: rgba(124, 231, 255, 0.72);
+}
+
+.app-vault .vault-command-center .vault-command-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.app-vault .vault-command-center .vault-overview-card {
+  box-sizing: border-box;
+  min-height: 88px;
+  padding: 10px !important;
+  border-color: rgba(183, 148, 244, 0.16) !important;
+  border-radius: 15px !important;
+  background:
+    linear-gradient(145deg, rgba(12, 27, 49, 0.9), rgba(5, 15, 30, 0.88)) !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.app-vault .vault-command-center .vault-overview-card.is-active,
+.app-vault .vault-command-center .vault-overview-card:hover,
+.app-vault .vault-command-center .vault-overview-card:focus-visible {
+  border-color: rgba(124, 231, 255, 0.36) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 231, 255, 0.12), transparent 8rem),
+    linear-gradient(145deg, rgba(13, 32, 57, 0.96), rgba(6, 17, 34, 0.95)) !important;
+  transform: translateY(-1px);
+}
+
+.app-vault .vault-command-center .vault-overview-title {
+  display: inline-block !important;
+  width: auto !important;
+  max-width: 100% !important;
+  background: transparent !important;
+  color: rgba(232, 246, 255, 0.7) !important;
+  font-size: 0.66rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.03em !important;
+  line-height: 1.08 !important;
+  text-decoration: none !important;
+  text-transform: uppercase !important;
+  white-space: normal;
+}
+
+.app-vault .vault-command-center .vault-overview-card strong {
+  background: transparent !important;
+  color: #f8fbff !important;
+  font-size: clamp(1.05rem, 3.7vw, 1.45rem) !important;
+  line-height: 1.12 !important;
+  text-decoration: none !important;
+  overflow-wrap: anywhere;
+}
+
+.app-vault .vault-command-center .vault-overview-card span:last-child {
+  color: rgba(232, 246, 255, 0.66) !important;
+  font-size: 0.68rem !important;
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere;
+}
+
+.app-vault .vault-collection-panel {
+  display: grid;
+  gap: 12px;
+  padding: clamp(12px, 3vw, 18px) !important;
+  border-color: rgba(124, 231, 255, 0.12) !important;
+  background:
+    linear-gradient(180deg, rgba(7, 18, 36, 0.88), rgba(4, 12, 26, 0.92)) !important;
+}
+
+.app-vault .vault-collection-heading {
+  align-items: start;
+  gap: 12px;
+}
+
+.app-vault .vault-collection-heading h2 {
+  color: #fff7ed;
+  font-size: clamp(1.18rem, 4vw, 1.45rem);
+}
+
+.app-vault .vault-collection-heading p {
+  max-width: 44rem;
+  color: rgba(232, 246, 255, 0.72);
+}
+
+.app-vault .vault-heading-actions {
+  gap: 8px;
+}
+
+.app-vault .vault-collection-summary {
+  gap: 9px;
+}
+
+.app-vault .vault-collection-summary > div {
+  min-height: 78px;
+  padding: 10px;
+  border-color: rgba(183, 148, 244, 0.14) !important;
+  border-radius: 14px;
+  background: rgba(3, 12, 26, 0.62);
+  overflow: hidden;
+}
+
+.app-vault .vault-collection-summary span,
+.app-vault .vault-collection-summary small {
+  color: rgba(232, 246, 255, 0.66);
+}
+
+.app-vault .vault-collection-summary strong {
+  color: #f8fbff;
+  font-size: 1.14rem;
+}
+
+.app-vault .vault-detail-disclosure > summary {
+  min-height: 42px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(3, 12, 26, 0.58);
+  color: rgba(232, 246, 255, 0.82);
+}
+
+.app-vault .vault-filter-panel {
+  grid-template-columns: minmax(240px, 1.4fr) repeat(3, minmax(150px, 1fr));
+  border-color: rgba(124, 231, 255, 0.14) !important;
+  background: rgba(4, 13, 28, 0.78);
+}
+
+.app-vault .vault-view-strip {
+  padding: 2px;
+}
+
+.app-vault .vault-view-strip button {
+  min-height: 38px;
+  border-radius: 999px !important;
+}
+
+.app-vault .vault-collection-panel .compact-inventory-list {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.app-vault .vault-collection-panel .vault-item-card {
+  gap: 12px;
+  padding: 14px !important;
+  border-color: rgba(183, 148, 244, 0.14) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(183, 148, 244, 0.09), transparent 10rem),
+    rgba(6, 17, 34, 0.94) !important;
+}
+
+.app-vault .vault-card-topline h3 {
+  font-size: 0.98rem;
+}
+
+.app-vault .vault-card-main {
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.app-vault .vault-collection-panel .vault-image-wrap {
+  width: 92px;
+  height: 92px;
+  border-radius: 15px;
+}
+
+.app-vault .vault-collection-panel .vault-card-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.app-vault .vault-collection-panel .vault-card-facts p {
+  padding: 8px 9px;
+  border-radius: 11px;
+}
+
+.app-vault .vault-collection-panel .vault-card-facts span {
+  font-size: 0.62rem;
+}
+
+.app-vault .vault-collection-panel .vault-card-facts strong {
+  font-size: 0.8rem;
+}
+
+.app-vault .vault-collection-panel .vault-card-actions {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.app-vault .vault-collection-panel .vault-card-actions .secondary-button {
+  color: rgba(232, 246, 255, 0.86) !important;
+  background: rgba(8, 27, 49, 0.76) !important;
+}
+
+.app-vault .vault-detail-card {
+  border-color: rgba(183, 148, 244, 0.18) !important;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(183, 148, 244, 0.12), transparent 14rem),
+    var(--vault-surface) !important;
+  color: #f8fbff;
+}
+
+.app-vault .vault-detail-card .inventory-detail-hero,
+.app-vault .vault-detail-card .catalog-detail-grid,
+.app-vault .vault-detail-card .price-review-panel,
+.app-vault .vault-detail-card .inventory-breakdown-panel {
+  border-color: rgba(124, 231, 255, 0.12) !important;
+  background: rgba(3, 12, 26, 0.48) !important;
+}
+
+.app-vault .vault-empty-state,
+.app-vault .guided-empty-state--vault,
+.app-vault .small-empty-state {
+  border-color: rgba(255, 184, 92, 0.2) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 122, 26, 0.12), transparent 13rem),
+    rgba(5, 15, 30, 0.92) !important;
+}
+
+@media (max-width: 780px) {
+  .app-command-shell.app-vault > .app-shell-header {
+    display: none !important;
+  }
+
+  .app-command-shell.app-vault > .topbar {
+    min-height: 0;
+    margin: 6px 10px 8px;
+    padding: 6px !important;
+    gap: 6px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-command-shell.app-vault .topbar-brand {
+    min-height: 34px;
+    padding: 5px 7px !important;
+  }
+
+  .app-command-shell.app-vault .topbar-brand-copy small,
+  .app-command-shell.app-vault .topbar-workspace-chip small,
+  .app-command-shell.app-vault .topbar-quick-add-button,
+  .app-command-shell.app-vault .topbar-profile-button {
+    display: none !important;
+  }
+
+  .app-command-shell.app-vault .topbar-workspace-chip,
+  .app-command-shell.app-vault .topbar .menu-button,
+  .app-command-shell.app-vault .topbar .app-search-toggle {
+    min-height: 34px !important;
+    padding: 5px 8px !important;
+    border-radius: 999px !important;
+  }
+
+  .app-command-shell.app-vault .topbar-workspace-chip {
+    max-width: 142px;
+  }
+
+  .app-command-shell.app-vault .topbar-workspace-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-command-shell.app-vault .topbar:not(.topbar-search-open) .app-search {
+    display: none !important;
+  }
+
+  .app-vault .standard-page-header.vault-command-center {
+    margin-inline: 10px;
+    padding: 12px !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-vault .vault-command-center .section-hero-art {
+    display: none;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-actions {
+    display: flex !important;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: auto;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-actions > * {
+    min-width: 0;
+    width: auto !important;
+    flex: 0 0 auto !important;
+  }
+
+  .app-vault .vault-command-center .ai-assist-menu {
+    display: none !important;
+  }
+
+  .app-vault .vault-command-center .vault-command-overview {
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: minmax(146px, 42vw) !important;
+    grid-template-columns: none !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 2px 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .app-vault .vault-command-center .vault-command-overview::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-vault .vault-command-center .vault-overview-card {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    scroll-snap-align: start;
+  }
+
+  .app-vault .vault-filter-panel {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-vault .main {
+    padding-bottom: calc(var(--bottom-nav-offset, 92px) + env(safe-area-inset-bottom, 0px) + 86px);
+  }
+
+  .app-command-shell.app-vault .ember-assist-shell,
+  .app.app-vault .ember-assist-shell {
+    display: none !important;
+  }
+
+  .app-vault .standard-page-header.vault-command-center,
+  .app-vault .vault-collection-panel {
+    margin-inline: 6px;
+    border-radius: 20px !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-copy h2 {
+    font-size: 1.42rem;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-copy p {
+    font-size: 0.84rem;
+    line-height: 1.35;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-actions {
+    gap: 7px;
+  }
+
+  .app-vault .vault-command-quick-add,
+  .app-vault .vault-settings-link {
+    min-height: 36px !important;
+    padding-inline: 12px !important;
+    font-size: 0.82rem !important;
+    width: auto !important;
+    min-width: 92px !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-tabs {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-tabs button {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding-inline: 10px;
+    font-size: 0.78rem;
+  }
+
+  .app-vault .vault-command-center .vault-command-overview {
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: minmax(142px, 43vw) !important;
+    grid-template-columns: none !important;
+    gap: 8px;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 3px;
+    scroll-snap-type: x proximity;
+  }
+
+  .app-vault .vault-command-center .vault-overview-card {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 86px;
+    scroll-snap-align: start;
+  }
+
+  .app-vault .vault-command-center .vault-overview-card strong {
+    font-size: 1rem !important;
+  }
+
+  .app-vault .vault-command-center .vault-overview-card span:last-child {
+    display: block;
+    overflow: visible;
+  }
+
+  .app-vault .vault-collection-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-vault .vault-collection-summary > div {
+    min-height: 74px;
+  }
+
+  .app-vault .vault-filter-panel {
+    grid-template-columns: 1fr 1fr;
+    padding: 9px;
+    gap: 8px;
+  }
+
+  .app-vault .vault-filter-panel .vault-search-field,
+  .app-vault .vault-filter-panel .vault-clear-filters {
+    grid-column: 1 / -1;
+  }
+
+  .app-vault .vault-filter-panel label span {
+    font-size: 0.68rem;
+  }
+
+  .app-vault .vault-collection-panel .compact-inventory-list {
+    grid-template-columns: 1fr;
+  }
+
+  .app-vault .vault-card-main {
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .app-vault .vault-collection-panel .vault-image-wrap {
+    width: 82px;
+    height: 82px;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .app-vault .vault-heading-actions {
+    display: flex;
+    gap: 7px;
+  }
+
+  .app-vault .vault-heading-actions button {
+    min-height: 38px !important;
+    padding-inline: 12px !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-vault .vault-collection-summary,
+  .app-vault .vault-collection-panel .vault-card-facts {
+    grid-template-columns: 1fr;
+  }
+}
