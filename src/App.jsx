@@ -383,11 +383,7 @@ import {
   upsertNotificationState,
 } from "./utils/notificationCenterUtils";
 import {
-  CONTEXTUAL_HELP_CARDS,
-  ONBOARDING_ASSIST_PROMPTS,
-  ONBOARDING_GOALS,
   ONBOARDING_PERSISTENCE_NOTE,
-  ONBOARDING_WELCOME_COPY,
   buildOnboardingChecklist,
   getEmptyStateGuidance,
   normalizeOnboardingGoalKeys,
@@ -4446,8 +4442,9 @@ export default function App() {
     message: "",
     consent: false,
   });
-  const [onboardingStep, setOnboardingStep] = useState(1);
   const [onboardingChoices, setOnboardingChoices] = useState([]);
+  const [hearthStartHereExpanded, setHearthStartHereExpanded] = useState(false);
+  const [hearthDetailsExpanded, setHearthDetailsExpanded] = useState(false);
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const [userSearchAliases, setUserSearchAliases] = useState([]);
   const [aliasDraft, setAliasDraft] = useState({ alias: "", canonical: "", type: "personal" });
@@ -5405,15 +5402,12 @@ export default function App() {
       : activeTab === "market" || activeTab === "catalog"
           ? "tideTradr"
           : "forge";
-  const sellerMobilePrimaryTab = isSellerExperience
-    ? { key: "forge", label: "Forge", icon: "forge", target: "inventory", ariaLabel: "Forge Workshop" }
-    : { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" };
   const mobileBottomTabs = [
     { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     { key: "scout", label: "Scout", icon: "scout", target: "scout" },
     { key: "quickAdd", label: "Add", icon: "plus", center: true, action: () => openAddActionSheet("mobile-dock") },
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    sellerMobilePrimaryTab,
+    { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" },
   ];
   const desktopSidebarItems = [
     { key: "home", label: "Hearth Home", helper: "What should I do next?", icon: "home", target: "dashboard" },
@@ -5427,11 +5421,12 @@ export default function App() {
     { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
     { key: "spark", label: "Kids Program: The Spark", helper: "Family-safe collecting", icon: "spark", action: () => setActiveTab("kidsProgram") },
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
+    hasAdminProfileSignal ? { key: "admin", label: "Admin", helper: "Command center", icon: "settings", target: "adminReview" } : null,
     { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
     { key: "profile", label: "Profile", helper: "Public username and progress", icon: "settings", action: () => openUtilityPage("profile") },
     { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
-  ];
+  ].filter(Boolean);
   const desktopCommandDeskTools = [
     commandDeskSellerAccess ? { key: "receipts", label: "Receipts Review", helper: "Review receipts and expenses", icon: "clipboard", action: () => setActiveTab("expenses") } : null,
     commandDeskSellerAccess ? { key: "mileage", label: "Mileage Reports", helper: "Trips and vehicle costs", icon: "calendar", action: () => setActiveTab("mileage") } : null,
@@ -8251,16 +8246,19 @@ export default function App() {
   function getOnboardingProgressSnapshot() {
     const notificationPrefs = normalizeNotificationPreferences(betaReadinessData.notificationPreferences || {});
     const hasAnyAlertEnabled = Object.values(notificationPrefs).some((value) => value !== false);
+    const onboardingState = normalizeOnboardingState(betaReadinessData.onboarding || {});
     return {
       hasPublicUsername: Boolean(publicUsernameFromProfile(currentUserProfile)),
       hasWorkspaceIdentity: Boolean(activeWorkspace?.name || activeForgeWorkspace?.name || forgeModeSettings?.forgeIdentityMode),
       vaultItems: activeVaultItems.length,
       forgeItems: forgeInventoryItems.length,
       scoutReports: scoutReportRows.length,
+      homeAreaSet: Boolean(locationSettings.manualLocation || locationSettings.trackingEnabled),
       followedStores: (scoutSnapshot.stores || []).filter((store) => store.favorite || store.priority || store.watchlisted || store.watchlist).length,
       savedProducts: workspaceWatchlist.length + wishlistItems.length,
       alertsConfigured: hasAnyAlertEnabled,
       emberAssistAsked: emberAssistMessages.some((message) => message.role === "user"),
+      scoutPointsLearned: (onboardingState.manualChecklist || []).includes("scout_points"),
       kidsProgramReviewed: activeTab === "kidsProgram",
       kidsApplicationSubmitted: Boolean((betaReadinessData.kidsApplications || []).length || shorelineState.littleSparksApplication),
     };
@@ -8272,12 +8270,6 @@ export default function App() {
         ? onboardingChoices
         : betaReadinessData.onboarding?.goals || betaReadinessData.onboarding?.preferences || []
     );
-  }
-
-  function toggleOnboardingGoal(goalKey) {
-    const normalized = normalizeOnboardingGoalKeys([goalKey])[0];
-    if (!normalized) return;
-    setOnboardingChoices((current) => toggleArrayValue(normalizeOnboardingGoalKeys(current), normalized));
   }
 
   function toggleOnboardingChecklistItem(itemKey) {
@@ -8299,6 +8291,24 @@ export default function App() {
     });
   }
 
+  function markOnboardingChecklistItem(itemKey) {
+    updateBetaReadinessData((current) => {
+      const onboarding = normalizeOnboardingState(current.onboarding || {});
+      const manual = new Set(onboarding.manualChecklist || []);
+      manual.add(itemKey);
+      return {
+        ...current,
+        onboarding: {
+          ...(current.onboarding || {}),
+          firstLoginSeen: true,
+          goals: onboarding.goals,
+          preferences: onboarding.goals,
+          manualChecklist: [...manual],
+        },
+      };
+    });
+  }
+
   function runOnboardingAction(target = "") {
     const normalized = String(target || "").toLowerCase();
     if (normalized === "profile") {
@@ -8306,7 +8316,7 @@ export default function App() {
       return;
     }
     if (normalized === "settings" || normalized === "alerts") {
-      openMenuDrawer("settings");
+      openUtilityPage("settings");
       setMenuSectionsOpen((current) => ({ ...current, settings: true }));
       return;
     }
@@ -8351,6 +8361,12 @@ export default function App() {
     }
     if (normalized === "ember_assist") {
       setEmberAssistOpen(true);
+      return;
+    }
+    if (normalized === "scout_points") {
+      markOnboardingChecklistItem("scout_points");
+      setEmberAssistOpen(true);
+      sendEmberAssistMessage("How do Scout points work?");
       return;
     }
     if (normalized === "kids_program") {
@@ -8424,8 +8440,8 @@ export default function App() {
   }
 
   function restartOnboarding() {
-    setOnboardingStep(1);
     setOnboardingChoices([]);
+    setHearthStartHereExpanded(true);
     updateBetaReadinessData((current) => ({
       ...current,
       onboarding: { ...(current.onboarding || {}), completedAt: "", dismissedAt: "", firstLoginSeen: false, preferences: [], goals: [], manualChecklist: [], completedChecklist: [] },
@@ -30647,46 +30663,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       goals: selectedGoals,
     });
     const checklistSummary = onboardingChecklistSummary(checklist);
-    const firstPaths = [
-      { label: "Track my collection", goal: "collector_vault", target: "vault" },
-      { label: "Track business inventory", goal: "seller_forge", target: "forge" },
-      { label: "Submit Scout reports", goal: "scout_reports", target: "scout_report" },
-      { label: "Find restock windows", goal: "scout_reports", target: "stores" },
-      { label: "Join the Kids Program", goal: "spark_parent", target: "kids_program" },
-      { label: "Explore TideTradr", goal: "collector_vault", target: "market" },
-      { label: "Set up alerts", goal: "parent_family", target: "alerts" },
-    ];
-    const helpCards = ["vault_forge", "quick_add", "scout_trust", "alerts", "workspace_identity", "business_records"]
-      .map((key) => CONTEXTUAL_HELP_CARDS[key])
+    const startHereKeys = ["vault", "scout_report", "kids_program", "home_area", "scout_points", "follow"];
+    const startHereRows = startHereKeys
+      .map((key) => checklist.find((item) => item.key === key))
       .filter(Boolean);
-    const selectPathAndContinue = (entry) => {
-      setOnboardingChoices((current) => [...new Set([...normalizeOnboardingGoalKeys(current), entry.goal])]);
-      setOnboardingStep(2);
-    };
+    const visibleRows = hearthStartHereExpanded ? startHereRows : startHereRows.slice(0, 3);
     return (
-      <section className="panel beta-onboarding-panel first-run-onboarding-panel" aria-label="First-run onboarding">
+      <section className="panel beta-onboarding-panel first-run-onboarding-panel hearth-start-here-panel" aria-label="Start Here onboarding">
         <div className="compact-card-header">
           <div>
-            <p className="section-kicker">First-run guide</p>
-            <h2>Welcome to Ember & Tide</h2>
-            <p>{ONBOARDING_WELCOME_COPY}</p>
+            <p className="section-kicker">Start Here</p>
+            <h2>Build your Hearth in a few calm steps</h2>
+            <p>Add one item, one Scout signal, and one home area. You can skip this and replay it from Settings.</p>
           </div>
-          {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">Step {onboardingStep} of 3</span>}
+          {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">{checklistSummary.label}</span>}
         </div>
-        <div className="quick-actions">
-          {ONBOARDING_ASSIST_PROMPTS.slice(0, 3).map((prompt) => (
-            <button
-              type="button"
-              className="secondary-button"
-              key={prompt}
-              onClick={() => {
-                setEmberAssistOpen(true);
-                sendEmberAssistMessage(prompt);
-              }}
-            >
-              {prompt}
-            </button>
-          ))}
+        <div className="onboarding-checklist-header hearth-start-here-progress">
+          <div className="onboarding-progress-track" aria-label={`Onboarding ${checklistSummary.percent}% complete`}>
+            <i style={{ width: `${checklistSummary.percent}%` }} />
+          </div>
+          <span>{ONBOARDING_PERSISTENCE_NOTE}</span>
         </div>
         {completedAt ? (
           <div className="onboarding-complete-summary">
@@ -30696,62 +30692,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="secondary-button" onClick={restartOnboarding}>Restart onboarding</button>
             </div>
           </div>
-        ) : onboardingStep === 1 ? (
-          <>
-            <div className="onboarding-starting-path-grid">
-              {firstPaths.map((entry) => (
-                <button type="button" className="onboarding-path-card" key={entry.label} onClick={() => selectPathAndContinue(entry)}>
-                  <strong>{entry.label}</strong>
-                  <span>{ONBOARDING_GOALS.find((goal) => goal.key === entry.goal)?.description}</span>
-                </button>
-              ))}
-            </div>
-            <div className="beta-foundation-grid onboarding-help-card-grid">
-              {helpCards.map((card) => (
-                <article className="beta-readiness-card onboarding-help-card" key={card.title}>
-                  <span>{card.title}</span>
-                  <strong>{card.body}</strong>
-                </article>
-              ))}
-            </div>
-            <div className="quick-actions">
-              <button type="button" onClick={() => setOnboardingStep(2)}>Start Walkthrough</button>
-              <button type="button" className="secondary-button" onClick={completeOnboarding}>Skip for now</button>
-            </div>
-          </>
-        ) : onboardingStep === 2 ? (
-          <>
-            <div className="beta-choice-grid">
-              {ONBOARDING_GOALS.map((goal) => (
-                <button
-                  type="button"
-                  className={selectedGoals.includes(goal.key) ? "choice-pill active onboarding-goal-pill" : "choice-pill onboarding-goal-pill"}
-                  aria-pressed={selectedGoals.includes(goal.key)}
-                  key={goal.key}
-                  onClick={() => toggleOnboardingGoal(goal.key)}
-                >
-                  <strong>{goal.label}</strong>
-                  <span>{goal.description}</span>
-                </button>
-              ))}
-            </div>
-            <div className="quick-actions">
-              <button type="button" onClick={() => setOnboardingStep(3)}>Next</button>
-              <button type="button" className="secondary-button" onClick={() => setOnboardingStep(1)}>Back</button>
-            </div>
-          </>
         ) : (
           <>
-            <div className="onboarding-checklist-header">
-              <strong>{checklistSummary.label}</strong>
-              <div className="onboarding-progress-track" aria-label={`Onboarding ${checklistSummary.percent}% complete`}>
-                <i style={{ width: `${checklistSummary.percent}%` }} />
-              </div>
-              <span>{ONBOARDING_PERSISTENCE_NOTE}</span>
-            </div>
-            <div className="onboarding-checklist-grid">
-              {checklist.map((item) => (
-                <article className={item.completed ? "onboarding-checklist-item is-complete" : "onboarding-checklist-item"} key={item.key}>
+            <div className="hearth-start-here-list">
+              {visibleRows.map((item) => (
+                <article className={item.completed ? "onboarding-checklist-item hearth-start-here-row is-complete" : "onboarding-checklist-item hearth-start-here-row"} key={item.key}>
                   <label>
                     <input type="checkbox" checked={item.completed} onChange={() => toggleOnboardingChecklistItem(item.key)} />
                     <span>
@@ -30763,9 +30708,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </article>
               ))}
             </div>
-            <div className="quick-actions">
-              <button type="button" onClick={completeOnboarding}>Finish onboarding</button>
-              <button type="button" className="secondary-button" onClick={() => setOnboardingStep(2)}>Back</button>
+            {hearthStartHereExpanded ? (
+              <div className="hearth-start-here-note" role="note">
+                <strong>Safety note</strong>
+                <p>Exact user location is never shown publicly. Scout reports are shared by store, not private address, and Kids Program details stay careful.</p>
+              </div>
+            ) : null}
+            <div className="quick-actions hearth-start-here-actions">
+              {startHereRows.length > 3 ? (
+                <button type="button" className="secondary-button" onClick={() => setHearthStartHereExpanded((current) => !current)}>
+                  {hearthStartHereExpanded ? "Show less" : "View all steps"}
+                </button>
+              ) : null}
+              <button type="button" onClick={completeOnboarding}>{checklistSummary.percent >= 100 ? "Finish onboarding" : "Skip for now"}</button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  setEmberAssistOpen(true);
+                  sendEmberAssistMessage("What should I do first?");
+                }}
+              >
+                Ask Ember
+              </button>
             </div>
           </>
         )}
@@ -39096,6 +39061,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ],
     };
     const priorityCards = (modePriorityCards[hearthMode] || modePriorityCards.collector).filter(Boolean);
+    const visiblePriorityCards = hearthDetailsExpanded ? priorityCards : priorityCards.slice(0, 3);
+    const hiddenPriorityCount = Math.max(0, priorityCards.length - visiblePriorityCards.length);
     const fallbackCards = getStartedCards.filter((card) => {
       if (card.key === "start-collection") return !activeVaultItems.length;
       if (card.key === "follow-stores") return !(scoutSnapshot.reports || []).length;
@@ -39105,16 +39072,37 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return false;
     });
     const recentRows = homeRecentActivity.length ? homeRecentActivity : [];
+    const hearthSnapshotLabel = hearthMode === "seller"
+      ? `${forgeInventoryItems.length} Forge items`
+      : hearthMode === "admin"
+        ? `${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length} review items`
+        : `${activeVaultItems.length} Vault items`;
+    const hearthSupportRows = [
+      { label: "Beta", value: betaAccessAllowed() ? "Approved" : "Limited", helper: "Features may change during beta." },
+      { label: "App", value: APP_VERSION, helper: appUpdate.available ? "Update available." : "Current build loaded." },
+      { label: "Support", value: "Feedback ready", helper: "Bug, missing item, wrong store, bad report, or feature request." },
+    ];
+    const hearthKnownIssues = [
+      "Catalog and photos are still being expanded.",
+      "Forecasts are limited during beta.",
+      "Some stores and regions are still being added.",
+    ];
     return (
       <div className={`dashboard-layout home-clean-layout hearth-command-layout hearth-command-view hearth-mode-${hearthMode}`}>
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card home-summary-card hearth-command-hero hearth-command-hero-compact")}
           title="Hearth Home"
-          subtitle="What should I do next?"
+          subtitle="A calm place to see what matters next."
+          summaryLabel="Beta home base"
+          summary={(
+            <div className="hearth-status-summary" aria-label="Hearth beta status summary">
+              <span><strong>{hearthModeLabel}</strong><small>Experience</small></span>
+              <span><strong>{hearthSnapshotLabel}</strong><small>Snapshot</small></span>
+              <span><strong>{notificationUnreadCount ? `${notificationUnreadCount} alert${notificationUnreadCount === 1 ? "" : "s"}` : "No alerts"}</strong><small>In-app only</small></span>
+            </div>
+          )}
           actions={<button type="button" onClick={() => openAddActionSheet("home")}>Quick Add</button>}
         />
-
-        {shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null}
 
         <section className={`panel hearth-best-action-card hearth-best-action-${hearthMode}`} aria-label="Today's best action">
           <div className="hearth-best-action-copy">
@@ -39128,6 +39116,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="hearth-best-action-buttons">
               <button type="button" onClick={bestAction.onPrimary}>{bestAction.primaryLabel}</button>
               {bestAction.secondaryLabel ? <button type="button" className="secondary-button" onClick={bestAction.onSecondary}>{bestAction.secondaryLabel}</button> : null}
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("dailyTide")}>View Today&apos;s Tide</button>
             </div>
           </div>
           <div className="hearth-best-action-art" aria-hidden="true">
@@ -39137,6 +39126,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span className="hearth-art-card hearth-art-card-two" />
           </div>
         </section>
+
+        {shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null}
 
         <section className="panel hearth-quick-actions-panel" aria-label="Hearth quick actions">
           <div className="compact-card-header">
@@ -39159,7 +39150,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </section>
 
         <section className="hearth-priority-grid" aria-label="Personalized priorities">
-          {priorityCards.map((card) => (
+          {visiblePriorityCards.map((card) => (
             <article className={`panel hearth-priority-card hearth-accent-${card.accent || "tide"}`} key={card.key}>
               <div>
                 <p className="section-kicker">{card.eyebrow}</p>
@@ -39194,6 +39185,36 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </section>
         ) : null}
+
+        <section className="panel hearth-beta-support-panel" aria-label="Beta support and known issues">
+          <div className="compact-card-header">
+            <div>
+              <h2>Beta Support</h2>
+              <p>Use feedback when something feels confusing, broken, missing, or unsafe.</p>
+            </div>
+            <span className="status-badge">Beta</span>
+          </div>
+          <div className="hearth-support-grid">
+            {hearthSupportRows.map((row) => (
+              <article className="hearth-support-card" key={row.label}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+                <small>{row.helper}</small>
+              </article>
+            ))}
+          </div>
+          <div className="hearth-known-issues">
+            <strong>Known during beta</strong>
+            <ul>
+              {hearthKnownIssues.map((issue) => <li key={issue}>{issue}</li>)}
+            </ul>
+          </div>
+          <div className="quick-actions hearth-support-actions">
+            <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("bug")}>Report a Bug</button>
+            <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("catalog_data")}>Missing Item</button>
+            <button type="button" className="secondary-button" onClick={() => openUtilityPage("help")}>Known Issues</button>
+          </div>
+        </section>
 
         <section className="panel hearth-recent-panel" aria-label="Recent activity">
           <div className="compact-card-header">
@@ -40067,6 +40088,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ))}
             </div>
           </div>
+          <div className="drawer-info-card beta-support-card utility-card">
+            <strong>Private beta status</strong>
+            <p className="compact-subtitle">You are using an active beta build. Features, labels, and forecasts may change as testing continues.</p>
+            <dl className="drawer-status-list">
+              <div><dt>Access</dt><dd>{betaAccessAllowed() ? "Approved beta" : "Pending or limited"}</dd></div>
+              <div><dt>Version</dt><dd>{APP_VERSION}</dd></div>
+              <div><dt>Support</dt><dd>Known Issues and Feedback live in Help.</dd></div>
+            </dl>
+            <button type="button" className="secondary-button" onClick={() => openUtilityPage("help")}>Open Help & Support</button>
+          </div>
           {renderOnboardingSettingsCard()}
           <div className="drawer-info-card experience-mode-settings-card utility-card">
             <strong>Experience Mode</strong>
@@ -40433,6 +40464,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </dl>
             <button type="button" className="drawer-link" disabled={appRefreshInProgress} onClick={() => void handleSafeAppRefresh()}>{appRefreshInProgress ? "Refreshing..." : "Refresh App"}</button>
           </div>
+          <div className="drawer-info-card beta-support-card utility-card utility-card-wide">
+            <div className="compact-card-header">
+              <div>
+                <strong>Beta notes, release info, and known issues</strong>
+                <p className="compact-subtitle">This is the honest beta support view: what changed, what is limited, and how to report problems.</p>
+              </div>
+              <span className="status-badge">Beta</span>
+            </div>
+            <dl className="drawer-status-list">
+              <div><dt>App version</dt><dd>{APP_VERSION}</dd></div>
+              <div><dt>Latest focus</dt><dd>Hearth, onboarding, support states, and dark UI cleanup.</dd></div>
+              <div><dt>Feedback</dt><dd>{BETA_FEEDBACK_TYPES.slice(0, 5).join(", ")}</dd></div>
+            </dl>
+            <div className="beta-known-issues-grid">
+              {KNOWN_LIMITATIONS.slice(0, 6).map((issue) => (
+                <article className="beta-known-issue-card" key={issue}>
+                  <strong>{issue}</strong>
+                  <span>Beta limitation</span>
+                </article>
+              ))}
+            </div>
+          </div>
           <div className="drawer-info-card utility-card">
             <strong>Feedback types</strong>
             <p className="compact-subtitle">{BETA_FEEDBACK_TYPES.slice(0, 6).join(", ")} and more.</p>
@@ -40590,6 +40643,31 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             </article>
           ))}
+          {hiddenPriorityCount ? (
+            <button type="button" className="panel hearth-priority-card hearth-view-details-card" onClick={() => setHearthDetailsExpanded(true)}>
+              <div>
+                <p className="section-kicker">View details</p>
+                <h3>{hiddenPriorityCount} more Hearth detail{hiddenPriorityCount === 1 ? "" : "s"}</h3>
+                <p>Keep the home screen calm. Open deeper stats only when you need them.</p>
+              </div>
+              <div className="hearth-priority-card-footer">
+                <strong>More</strong>
+                <span className="secondary-button">Show details</span>
+              </div>
+            </button>
+          ) : hearthDetailsExpanded && priorityCards.length > 3 ? (
+            <button type="button" className="panel hearth-priority-card hearth-view-details-card" onClick={() => setHearthDetailsExpanded(false)}>
+              <div>
+                <p className="section-kicker">Calm view</p>
+                <h3>Hide extra details</h3>
+                <p>Return Hearth to the simpler summary.</p>
+              </div>
+              <div className="hearth-priority-card-footer">
+                <strong>Less</strong>
+                <span className="secondary-button">Show less</span>
+              </div>
+            </button>
+          ) : null}
         </section>
       );
     }

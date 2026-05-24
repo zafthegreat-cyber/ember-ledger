@@ -13,9 +13,9 @@ export const APP_LOAD_FALLBACK_COPY = {
   },
   error: {
     eyebrow: "Ember & Tide",
-    title: "Something washed out",
-    body: "Ember & Tide had trouble loading this screen.",
-    helper: "Refresh the app and we'll try again.",
+    title: "We couldn't load this screen",
+    body: "Ember & Tide had trouble opening this part of the app.",
+    helper: "Refresh the app, return home, or send feedback if it keeps happening.",
   },
   chunk: {
     eyebrow: "Ember & Tide",

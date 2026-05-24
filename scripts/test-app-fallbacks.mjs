@@ -27,8 +27,8 @@ assert.match(updatingCopy.title, /updating/i);
 assert.match(updatingCopy.body, /refreshing the app/i);
 
 const errorCopy = getAppLoadFallbackCopy("error");
-assert.match(errorCopy.title, /Something washed out/i);
-assert.match(errorCopy.body, /trouble loading this screen/i);
+assert.match(errorCopy.title, /couldn't load this screen/i);
+assert.match(errorCopy.body, /trouble opening this part/i);
 
 const chunkError = new Error("Failed to fetch dynamically imported module");
 assert.equal(isLikelyChunkLoadError(chunkError), true);
@@ -52,7 +52,7 @@ assert.match(main, /shouldExposeFallbackErrorDetails\(import\.meta\.env\.MODE\)/
 assert.match(main, /createRoot\(document\.getElementById\("root"\)\)\.render/);
 assert.match(main, /<App \/>/);
 
-assert.match(fallbackComponent, /Something washed out|APP_LOAD_FALLBACK_COPY|getAppLoadFallbackCopy/);
+assert.match(fallbackComponent, /APP_LOAD_FALLBACK_COPY|getAppLoadFallbackCopy/);
 assert.match(fallbackComponent, /Refresh app/);
 assert.match(fallbackComponent, /Return home/);
 assert.match(fallbackComponent, /showDetails/);

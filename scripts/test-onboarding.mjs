@@ -67,9 +67,11 @@ const checklist = buildOnboardingChecklist(
     vaultItems: 1,
     forgeItems: 0,
     scoutReports: 2,
+    homeAreaSet: true,
     followedStores: 0,
     savedProducts: 1,
     alertsConfigured: true,
+    scoutPointsLearned: false,
     emberAssistAsked: false,
     kidsProgramReviewed: false,
   },
@@ -79,6 +81,9 @@ assert.equal(checklist.find((item) => item.key === "profile").completed, true);
 assert.equal(checklist.find((item) => item.key === "forge").completed, false);
 assert.equal(checklist.find((item) => item.key === "ember_assist").completed, true);
 assert.equal(checklist.find((item) => item.key === "follow").completed, true);
+assert.equal(checklist.find((item) => item.key === "home_area").completed, true);
+assert.equal(checklist.find((item) => item.key === "scout_points").completed, false);
+assert.equal(checklist.find((item) => item.key === "kids_program").title, "Learn about The Spark");
 
 const summary = onboardingChecklistSummary(checklist);
 assert.ok(summary.completed > 0);

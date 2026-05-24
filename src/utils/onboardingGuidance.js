@@ -82,8 +82,8 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   },
   {
     key: "vault",
-    title: "Add first Vault item",
-    description: "Start your collection record with a card, sealed product, or manual fallback.",
+    title: "Add your first item",
+    description: "Start with one card, sealed product, or manual fallback so Hearth can personalize next steps.",
     actionLabel: "Add to Vault",
     actionTarget: "vault",
   },
@@ -96,15 +96,36 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   },
   {
     key: "scout_report",
-    title: "Submit first Scout report",
+    title: "Submit your first Scout report",
     description: "Confirmed store reports help the community and train Drop Radar safely.",
     actionLabel: "Submit Report",
     actionTarget: "scout_report",
   },
   {
+    key: "kids_program",
+    title: "Learn about The Spark",
+    description: "Review parent-managed Kids Program rules before sharing family details.",
+    actionLabel: "Open The Spark",
+    actionTarget: "kids_program",
+  },
+  {
+    key: "home_area",
+    title: "Set your home area",
+    description: "Use a ZIP or city so Scout can prioritize nearby stores without showing your exact location publicly.",
+    actionLabel: "Set Area",
+    actionTarget: "settings",
+  },
+  {
+    key: "scout_points",
+    title: "Learn Scout Points",
+    description: "Scout Points are trust signals from useful confirmed reports, not a promise of restocks.",
+    actionLabel: "Learn Points",
+    actionTarget: "scout_points",
+  },
+  {
     key: "follow",
-    title: "Follow favorite stores/products",
-    description: "Watch the stores and products that matter before alerts start getting useful.",
+    title: "Favorite your first stores",
+    description: "Follow the stores that matter before alerts and local Scout highlights get useful.",
     actionLabel: "Open Scout",
     actionTarget: "stores",
   },
@@ -121,13 +142,6 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
     description: "Use the corner assistant when you are not sure where something belongs.",
     actionLabel: "Ask Ember",
     actionTarget: "ember_assist",
-  },
-  {
-    key: "kids_program",
-    title: "Review Kids Program",
-    description: "The Spark is parent-managed and never promises inventory.",
-    actionLabel: "Open The Spark",
-    actionTarget: "kids_program",
   },
 ];
 
@@ -191,9 +205,16 @@ export const CONTEXTUAL_HELP_CARDS = {
 };
 
 export const EMPTY_STATE_GUIDANCE = {
+  hearth: {
+    title: "Your Hearth is ready.",
+    body: "Add one item, follow one store, or submit one Scout report to make Hearth feel personal.",
+    actionLabel: "Quick Add",
+    actionTarget: "vault",
+    assistPrompt: "What should I do first?",
+  },
   vault: {
-    title: "Your collection starts here.",
-    body: "Add your first card or sealed product to start tracking what you own. Manual entry stays available when catalog search misses something.",
+    title: "Your Vault is ready.",
+    body: "Add your first item and keep your collection protected. Manual entry stays available when catalog search misses something.",
     actionLabel: "Manual Add",
     actionTarget: "vault",
     actions: [
@@ -204,8 +225,8 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Help me add my first Vault item",
   },
   forge: {
-    title: "Ready to track your first sale?",
-    body: "Add a receipt, product, or mileage trip to start building business history for year-end review.",
+    title: "Your workshop is ready.",
+    body: "Start tracking inventory, expenses, mileage, and planned sales. Forge keeps records organized for later review.",
     actionLabel: "Add Receipt",
     actionTarget: "forge",
     actions: [
@@ -237,8 +258,8 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Help me add a sale",
   },
   scout: {
-    title: "No Scout reports yet.",
-    body: "Choose the exact store, product, stock status, and time before saving. Confirmed reports matter more than guesses.",
+    title: "No local signals yet.",
+    body: "Be the first Scout to help another family. Reports are shared by store, not private address.",
     actionLabel: "Submit Scout Report",
     actionTarget: "scout_report",
     assistPrompt: "Help me submit a report",
@@ -251,8 +272,8 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Why is this a prediction?",
   },
   market: {
-    title: "No matching deals yet.",
-    body: "Browse approved TideTradr listings, create a beta alert, or add a listing for admin review when you are ready.",
+    title: "Search products, compare prices, and find fair deals.",
+    body: "Browse approved listings, create a beta alert, or add a listing for admin review when you are ready.",
     actionLabel: "Browse Market",
     actionTarget: "browse_market",
     actions: [
@@ -263,7 +284,7 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Help me create a listing",
   },
   notifications: {
-    title: "No in-app alerts yet.",
+    title: "No alerts yet.",
     body: "Confirmed restocks, possible Drop Radar windows, Kids Program updates, admin message statuses, and Forge reminders will appear here when useful.",
     actionLabel: "Alert Settings",
     actionTarget: "alerts",
@@ -271,7 +292,7 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   tidepool: {
     title: "The Tidepool is quiet right now.",
-    body: "Start with a family-safe question, local update, shop note, or kid-friendly collecting win. New posts are reviewed before they appear publicly.",
+    body: "Start the first community post and help keep collecting positive. New posts are reviewed before they appear publicly.",
     actionLabel: "Start a Post",
     actionTarget: "tidepool",
     actions: [
@@ -281,15 +302,15 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "How do I post safely?",
   },
   admin: {
-    title: "No pending reviews.",
-    body: "Scout reports, guesses, family-friendly shops, Spark requests, and Ember Assist messages will appear here when they need a human check.",
+    title: "No items need review right now.",
+    body: "Scout reports, guesses, family-friendly shops, Spark requests, and support messages will appear here when they need a human check.",
     actionLabel: "Open Admin Queue",
     actionTarget: "admin",
     assistPrompt: "What needs review?",
   },
   kids: {
     title: "No open requests yet.",
-    body: "Parent or guardian submits kid/family interest when ready. Program availability depends on inventory and does not guarantee products.",
+    body: "Parent or guardian submits kid/family interest when ready. Private family details stay private, and availability does not guarantee products.",
     actionLabel: "Request Kid Access",
     actionTarget: "kids_program",
     actions: [
@@ -304,6 +325,20 @@ export const EMPTY_STATE_GUIDANCE = {
     actionLabel: "View Stores",
     actionTarget: "stores",
     assistPrompt: "Help me follow a store",
+  },
+  quick_add: {
+    title: "Quick Add is ready.",
+    body: "Search, scan, or add manually. Choose Vault for owned collection, Forge for seller inventory, or Scout for a store report.",
+    actionLabel: "Open Quick Add",
+    actionTarget: "vault",
+    assistPrompt: "How do I add inventory?",
+  },
+  settings: {
+    title: "Settings are ready.",
+    body: "Profile, notifications, privacy, and beta preferences live here. Settings that are local-only stay labeled honestly.",
+    actionLabel: "Open Profile",
+    actionTarget: "profile",
+    assistPrompt: "Help me set up Ember & Tide",
   },
 };
 
@@ -374,6 +409,9 @@ export function buildOnboardingChecklist(progress = {}, onboarding = {}) {
     vault: Number(progress.vaultItems || 0) > 0,
     forge: Number(progress.forgeItems || 0) > 0,
     scout_report: Number(progress.scoutReports || 0) > 0,
+    kids_program: Boolean(progress.kidsProgramReviewed || progress.kidsApplicationSubmitted),
+    home_area: Boolean(progress.homeAreaSet),
+    scout_points: Boolean(progress.scoutPointsLearned),
     follow: Number(progress.followedStores || 0) > 0 || Number(progress.savedProducts || 0) > 0,
     alerts: Boolean(progress.alertsConfigured),
     ember_assist: Boolean(progress.emberAssistAsked),
