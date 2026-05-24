@@ -20304,19 +20304,38 @@ function renderDealFinderContent() {
 }
 
 function renderTideTradrHeader() {
+  const marketTabs = [
+    { key: "overview", label: "For You" },
+    { key: "nearRetail", label: "Near Retail" },
+    { key: "watch", label: "Watchlist" },
+    { key: "recent", label: "Recent" },
+    { key: "listings", label: "Following" },
+  ];
+  const activeMarketTab = marketCatalogDealFilter === "nearRetail" && tideTradrSubTab === "overview"
+    ? "nearRetail"
+    : ["watch", "recent", "listings"].includes(tideTradrSubTab)
+      ? tideTradrSubTab
+      : "overview";
+  const changeMarketTab = (nextTab) => {
+    if (nextTab === "nearRetail") {
+      setMarketCatalogDealFilter("nearRetail");
+      setTideTradrSubTab("overview");
+      return;
+    }
+    if (nextTab === "overview") setMarketCatalogDealFilter("all");
+    setTideTradrSubTab(nextTab);
+  };
   return (
     <PageHeader
       className={getHeaderCardClass("panel tidetradr-summary-card")}
       title="Market / Exchange"
-      subtitle="Fair trades. Real value. Stronger together."
+      subtitle="Search products, compare fair prices, and keep watches simple."
+      tabs={marketTabs}
+      activeTab={activeMarketTab}
+      onTabChange={changeMarketTab}
       actions={(
         <>
           <button type="button" onClick={() => openQuickFindFlow({ source: "market" })}>Quick Find</button>
-          {renderAiAssistActions([
-            { label: "Suggest search aliases", onClick: () => void runCatalogAiAssist() },
-            { label: "Help identify item", onClick: () => void runItemIdentificationAssist(catalogSearch || submittedCatalogSearch) },
-            { label: "Explain variants", onClick: () => void runVariantAssist(catalogSearch || submittedCatalogSearch) },
-          ])}
         </>
       )}
     >
@@ -20380,11 +20399,11 @@ function renderScoutHeader() {
   const scoutRecentReportCount = (scoutSnapshot.reports || []).length || (scoutSnapshot.tidepoolReports || []).length;
   const scoutTrustScore = Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0;
   const scoutTabs = [
-    { key: "overview", label: "Overview" },
-    { key: "reports", label: "Signals Feed" },
-    { key: "forecast", label: "Tide Watch" },
-    { key: "stores", label: "Stores" },
-    { key: "alerts", label: "Ember Watch" },
+    { key: "overview", label: "Nearby" },
+    { key: "reports", label: "Following" },
+    { key: "stores", label: "Map" },
+    { key: "myReports", label: "My Reports" },
+    { key: "alerts", label: "Drop Watch" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
   ].filter(Boolean);
 
@@ -20416,9 +20435,9 @@ function renderScoutHeader() {
     <PageHeader
       className={getHeaderCardClass("panel scout-summary-card")}
       title="Scout Signals"
-      subtitle="What is available near me? Verified sightings, likely restocks, and unconfirmed tips stay clearly labeled."
+      subtitle="Nearby reports, followed stores, and freshness labels stay separate from guesses."
       tabs={scoutTabs}
-      activeTab={activeScoutPage === "myReports" ? "reports" : activeScoutPage === "predictions" || activeScoutPage === "guesses" ? "forecast" : activeScoutPage === "storeMap" ? "stores" : activeScoutPage}
+      activeTab={activeScoutPage === "reports" && scoutReportFilter === "My Reports" ? "myReports" : activeScoutPage === "predictions" || activeScoutPage === "guesses" ? "forecast" : activeScoutPage === "storeMap" ? "stores" : activeScoutPage}
       onTabChange={changeScoutPage}
       actions={(
         <>
@@ -20428,11 +20447,6 @@ function renderScoutHeader() {
           Submit Report
         </button>
           <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Add Store Suggestion</button>
-          {renderAiAssistActions([
-            { label: "Summarize store activity", onClick: () => void summarizeScoutStore(scoutForecastPreviewRows[0] || scoutReportRows[0] || {}) },
-            { label: "Summarize store history", onClick: () => void runStoreDirectoryAiAssist() },
-            { label: "Explain forecast", onClick: () => void explainScoutForecast(scoutForecastPreviewRows[0] || {}) },
-          ])}
         </>
       )}
     >
@@ -20443,7 +20457,7 @@ function renderScoutHeader() {
           {
             key: "scout-map",
             title: "Nearby Stores",
-            subtitle: "Map, distance, and store signals",
+            subtitle: "Stores and distance",
             className: "scout-hero-nav-tile",
             onClick: () => {
               setScoutSubTabTarget({ tab: "storeMap", id: Date.now() });
@@ -20453,7 +20467,7 @@ function renderScoutHeader() {
           },
           {
             key: "scout-ember-watch",
-            title: "Tide Watch",
+            title: "Drop Watch",
             subtitle: `${watchCalendarHomeCounts.week} signals this week`,
             className: "scout-hero-nav-tile",
             onClick: () => {
@@ -20464,7 +20478,7 @@ function renderScoutHeader() {
           },
           {
             key: "scout-stores",
-            title: "Store Following",
+            title: "Following",
             subtitle: `${scoutStoreCount} stores you can track`,
             className: "scout-hero-nav-tile",
             onClick: () => {
@@ -20474,20 +20488,13 @@ function renderScoutHeader() {
           },
           {
             key: "scout-reports",
-            title: "Signals Feed",
+            title: "My Reports",
             subtitle: `${scoutRecentReportCount} recent`,
             className: "scout-hero-nav-tile",
             onClick: () => {
-              setScoutReportFilter("Latest");
+              setScoutReportFilter("My Reports");
               setScoutView("reports");
             },
-          },
-          {
-            key: "scout-score",
-            title: "Scout Score",
-            subtitle: `${scoutTrustScore} trust score`,
-            className: "scout-hero-stat-tile",
-            onClick: () => setScoutScoreModalOpen(true),
           },
         ]}
       />
@@ -20629,7 +20636,6 @@ function renderVaultHeader() {
       onClick: () => openVaultItems("moved_to_forge"),
     });
   }
-
   return (
     <PageHeader
       className={getHeaderCardClass("panel vault-command-center")}
@@ -35324,15 +35330,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAddActionSheetContent() {
-    const normalizedMode = normalizeUserType(userType);
-    const normalizedPreset = normalizeDashboardPreset(dashboardPreset);
-    const sellerModeRequested =
-      ["seller", "all_in_one"].includes(normalizedMode) ||
-      ["seller", "full_business"].includes(normalizedPreset);
-    const simpleModeRequested =
-      ["budget", "parent"].includes(normalizedMode) ||
-      ["simple", "budget_parent"].includes(normalizedPreset);
-    const kidsRelevant = adminToolsVisible || simpleModeRequested || Boolean(shorelineState.littleSparksApplication || (betaReadinessData.kidsApplications || [])[0]);
     const steps = [
       { key: "where", label: "Where" },
       { key: "what", label: "What" },
@@ -35359,13 +35356,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const quickChoices = [
       { key: "vault", title: "Add to Vault", helper: "Search or scan, then save to collection.", destination: "vault", itemType: "sealed", detailMethod: "catalog_search", icon: "vault" },
       { key: "forge", title: "Add to Forge", helper: "Add business inventory with review first.", destination: "forge", itemType: "sealed", detailMethod: "catalog_search", icon: "forge", disabled: !activeForgeWorkspace },
-      { key: "scout", title: "Scout Report", helper: "Step through item, store, proof, then submit.", destination: "scout", itemType: "store_report", detailMethod: "store_picker", icon: "scout" },
+      { key: "scout", title: "Scout Report", helper: "Item, store, proof, then review.", destination: "scout", itemType: "store_report", detailMethod: "store_picker", icon: "scout" },
       { key: "receipt", title: "Add Receipt", helper: "Upload or enter receipt details.", destination: "forge", itemType: "receipt", detailMethod: "receipt_upload", icon: "receipt", disabled: !activeForgeWorkspace },
-      { key: "listing", title: "Add Listing", helper: "Create a marketplace draft.", destination: "market", itemType: "listing", detailMethod: "manual_entry", icon: "market" },
       { key: "mileage", title: "Add Mileage", helper: "Log a business trip by vehicle.", destination: "forge", itemType: "mileage", detailMethod: "mileage_picker", icon: "mileage", disabled: !activeForgeWorkspace },
-      { key: "scan", title: "Import / Scan", helper: "Scan, photo lookup, or bulk import.", destination: "", itemType: "photo_import", detailMethod: "scan", icon: "scan" },
-      kidsRelevant ? { key: "kids", title: "Kids Request", helper: "Open the Spark path for parent-safe requests.", destination: "kids", itemType: "kids_request", detailMethod: "manual_entry", icon: "spark" } : null,
-    ].filter(Boolean);
+      { key: "missing", title: "Request Missing Item", helper: "Use when catalog search cannot find it.", action: "suggestCatalogItem", destination: "market", itemType: "photo_import", detailMethod: "manual_entry", icon: "search" },
+    ];
     const detailMethodOptions = [
       { key: "catalog_search", title: "Search catalog", helper: "Best for cards and sealed Pokemon products.", types: ["card", "sealed", "listing", "photo_import"] },
       { key: "scan", title: "Scan barcode/card", helper: "Open scanner review before saving.", types: ["card", "sealed", "photo_import"] },
@@ -35400,6 +35395,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const selectQuickChoice = (choice) => {
       if (choice.disabled) {
         updateGuidedQuickAdd({ message: `${choice.title} is unavailable until Forge is available.` });
+        return;
+      }
+      if (choice.action) {
+        runAddSheetAction(choice.action);
         return;
       }
       setQuickAddWizard({
@@ -35501,7 +35500,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="guided-quick-add-hero">
               <div>
                 <strong>What are you adding?</strong>
-                <p>Pick a starting path. You will review the destination, item type, and details before anything can save.</p>
+                <p>Choose one path. Each flow stays short and reviews before anything saves.</p>
               </div>
               <span aria-hidden="true">+</span>
             </div>
@@ -39203,6 +39202,38 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Forecasts are limited during beta.",
       "Some stores and regions are still being added.",
     ];
+    const hearthSnapshotCards = [
+      {
+        key: "scout",
+        label: "Scout",
+        title: latestScoutReport ? latestScoutStoreName : "No fresh local signal yet",
+        detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` | ${latestScoutTime}` : ""}` : "Submit or follow stores to help the map.",
+        value: scoutReportRows.length || 0,
+        cta: "Open Scout",
+        onClick: () => setActiveTab("scout"),
+        accent: "scout",
+      },
+      {
+        key: "vault-forge",
+        label: sellerAccessVisible ? "Forge" : "Vault",
+        title: sellerAccessVisible ? `${forgeInventoryItems.length} Forge item${forgeInventoryItems.length === 1 ? "" : "s"}` : `${activeVaultItems.length} Vault item${activeVaultItems.length === 1 ? "" : "s"}`,
+        detail: sellerAccessVisible ? `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} tracked.` : `${vaultMarketValueDisplay} known collection value.`,
+        value: sellerAccessVisible ? forgeReviewCount : activeVaultItems.length,
+        cta: sellerAccessVisible ? "Open Forge" : "Open Vault",
+        onClick: () => setActiveTab(sellerAccessVisible ? "inventory" : "vault"),
+        accent: sellerAccessVisible ? "forge" : "vault",
+      },
+      {
+        key: "spark",
+        label: "The Spark",
+        title: kidsApplication ? "Kids Program tracked" : "Parent-safe collecting",
+        detail: kidsApplication ? statusLabel(kidsApplication.status || "pending") : "Requests and family-safe guidance.",
+        value: kidsApplication ? "Active" : "Ready",
+        cta: "Open Spark",
+        onClick: () => setActiveTab("kidsProgram"),
+        accent: "spark",
+      },
+    ];
     return (
       <div className={`dashboard-layout home-clean-layout hearth-command-layout hearth-command-view hearth-mode-${hearthMode}`}>
         <PageHeader
@@ -39243,6 +39274,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
         </section>
 
+        <section className="hearth-mobile-snapshot-grid" aria-label="Hearth compact snapshots">
+          {hearthSnapshotCards.map((card) => (
+            <button type="button" className={`hearth-mobile-snapshot-card hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
+              <span>{card.label}</span>
+              <strong>{card.title}</strong>
+              <small>{card.detail}</small>
+              <b>{card.cta}</b>
+            </button>
+          ))}
+        </section>
+
         {shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null}
 
         <section className="panel hearth-quick-actions-panel" aria-label="Hearth quick actions">
@@ -39253,7 +39295,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </div>
           <div className="hearth-quick-action-grid">
-            {quickActions.map((action) => (
+            {quickActions.slice(0, 4).map((action) => (
               <button type="button" className="hearth-quick-action" key={action.key} onClick={action.onClick}>
                 <span className="hearth-quick-action-icon" aria-hidden="true"><AppNavIcon kind={action.icon} /></span>
                 <span>
@@ -45780,63 +45822,66 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               </div>
 
-              <div className="inventory-insight-panel vault-insight-panel" aria-label="Vault collection valuation insights">
-                <div className="inventory-insight-heading">
-                  <div>
-                    <h3>Collection insights</h3>
-                    <p>{INVENTORY_VALUATION_COPY.vaultDisclaimer}</p>
-                  </div>
-                  <span className="trust-badge trust-badge--secure">Estimated</span>
-                </div>
-                <div className="inventory-insight-grid">
-                  {vaultInsightCards.map((card) => (
-                    <div className="inventory-insight-card" key={card.key}>
-                      <span>{card.label}</span>
-                      <strong>{card.value}</strong>
-                      <small>{card.helper}</small>
+              <details className="mobile-ux-disclosure vault-detail-disclosure">
+                <summary>View collection insights</summary>
+                <div className="inventory-insight-panel vault-insight-panel" aria-label="Vault collection valuation insights">
+                  <div className="inventory-insight-heading">
+                    <div>
+                      <h3>Collection insights</h3>
+                      <p>{INVENTORY_VALUATION_COPY.vaultDisclaimer}</p>
                     </div>
-                  ))}
-                </div>
-                <div className="price-reliability-summary" aria-label="Vault valuation reliability">
-                  <div>
-                    <h4>Valuation reliability</h4>
-                    <p>Valuation is estimated from items with known values. Items with missing or manual prices may need review.</p>
+                    <span className="trust-badge trust-badge--secure">Estimated</span>
                   </div>
-                  <div className="price-reliability-card-row">
-                    {vaultPriceReliabilityCards.slice(0, 5).map((card) => (
-                      <span className="price-reliability-card" key={card.key}>
-                        <b>{card.value}</b>
-                        <small>{card.label}</small>
-                      </span>
+                  <div className="inventory-insight-grid">
+                    {vaultInsightCards.map((card) => (
+                      <div className="inventory-insight-card" key={card.key}>
+                        <span>{card.label}</span>
+                        <strong>{card.value}</strong>
+                        <small>{card.helper}</small>
+                      </div>
                     ))}
                   </div>
-                </div>
-                <div className="inventory-insight-split">
-                  <div>
-                    <h4>Purchaser breakdown</h4>
-                    <div className="inventory-mini-list">
-                      {vaultValuationSummary.purchaserBreakdown.slice(0, 4).map((row) => (
-                        <p key={row.key || row.name}>
-                          <span>{row.name}</span>
-                          <strong>{row.quantity} item{row.quantity === 1 ? "" : "s"}</strong>
-                          <small>{money(row.totalCostBasis)} tracked cost</small>
-                        </p>
-                      ))}
-                      {!vaultValuationSummary.purchaserBreakdown.length ? <small>No purchaser records yet.</small> : null}
+                  <div className="price-reliability-summary" aria-label="Vault valuation reliability">
+                    <div>
+                      <h4>Valuation reliability</h4>
+                      <p>Valuation is estimated from items with known values. Items with missing or manual prices may need review.</p>
                     </div>
-                  </div>
-                  <div>
-                    <h4>Missing data prompts</h4>
-                    <div className="inventory-prompt-row">
-                      {vaultValuationPrompts.length ? vaultValuationPrompts.slice(0, 5).map((prompt) => (
-                        <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
-                          {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+                    <div className="price-reliability-card-row">
+                      {vaultPriceReliabilityCards.slice(0, 5).map((card) => (
+                        <span className="price-reliability-card" key={card.key}>
+                          <b>{card.value}</b>
+                          <small>{card.label}</small>
                         </span>
-                      )) : <span className="inventory-data-prompt success">Core details look filled in</span>}
+                      ))}
+                    </div>
+                  </div>
+                  <div className="inventory-insight-split">
+                    <div>
+                      <h4>Purchaser breakdown</h4>
+                      <div className="inventory-mini-list">
+                        {vaultValuationSummary.purchaserBreakdown.slice(0, 4).map((row) => (
+                          <p key={row.key || row.name}>
+                            <span>{row.name}</span>
+                            <strong>{row.quantity} item{row.quantity === 1 ? "" : "s"}</strong>
+                            <small>{money(row.totalCostBasis)} tracked cost</small>
+                          </p>
+                        ))}
+                        {!vaultValuationSummary.purchaserBreakdown.length ? <small>No purchaser records yet.</small> : null}
+                      </div>
+                    </div>
+                    <div>
+                      <h4>Missing data prompts</h4>
+                      <div className="inventory-prompt-row">
+                        {vaultValuationPrompts.length ? vaultValuationPrompts.slice(0, 5).map((prompt) => (
+                          <span className={`inventory-data-prompt ${prompt.tone}`} key={prompt.key}>
+                            {prompt.label}{prompt.count ? ` (${prompt.count})` : ""}
+                          </span>
+                        )) : <span className="inventory-data-prompt success">Core details look filled in</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </details>
 
               <div className="vault-toolbar vault-filter-panel">
                 <label className="vault-filter-field vault-search-field">
@@ -49138,7 +49183,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             className={`${tab.center ? "mobile-dock-add" : "mobile-dock-item"} ${activeMainTab === tab.key || (tab.key === "menu" && menuOpen) ? "active" : ""}`.trim()}
             aria-current={activeMainTab === tab.key || (tab.key === "menu" && menuOpen) ? "page" : undefined}
             onClick={() => tab.action ? tab.action() : navigateMainTab(tab)}
-            aria-label={tab.center ? "Open Quick Add command center" : tab.ariaLabel || tab.label}
+            aria-label={tab.ariaLabel || tab.label}
           >
             <span className="mobile-tab-icon" aria-hidden="true">
               <AppNavIcon kind={tab.icon || "home"} />
