@@ -337,6 +337,20 @@ export function createEmptyBetaReadinessData() {
       goals: [],
       manualChecklist: [],
       firstLoginSeen: false,
+      smartSetup: {
+        completedAt: "",
+        dismissedAt: "",
+        purposes: [],
+        enabledToolsets: [],
+        primaryMode: "not_sure",
+        businessTools: "maybe_later",
+        homeArea: "",
+        favoriteStores: [],
+        hiddenStores: [],
+        hideIrrelevantStores: false,
+        preferredRadius: "",
+        recommendedPlanType: "",
+      },
     },
   };
 }

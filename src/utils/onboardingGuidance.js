@@ -164,7 +164,7 @@ export const CONTEXTUAL_HELP_CARDS = {
   },
   quick_add: {
     title: "Quick Add destinations",
-    body: "Choose Vault for personal collection, Forge for sellable/business inventory, Scout for a report, and Expenses or Mileage for business records.",
+    body: "Quick Add adapts to your mode. Collectors see Vault, Scout, and missing-item paths first; seller tools add Forge, sales, receipts, and mileage.",
     prompt: "How do I add inventory?",
   },
   scout_trust: {
@@ -328,7 +328,7 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   quick_add: {
     title: "Quick Add is ready.",
-    body: "Search, scan, or add manually. Choose Vault for owned collection, Forge for seller inventory, or Scout for a store report.",
+    body: "Search, scan, or add manually. Ember & Tide shows the paths that fit your current mode first.",
     actionLabel: "Open Quick Add",
     actionTarget: "vault",
     assistPrompt: "How do I add inventory?",
@@ -383,6 +383,7 @@ export function normalizeOnboardingState(onboarding = {}) {
     goals,
     preferences: goals,
     manualChecklist: [...new Set(manualChecklist.map(normalizeKey).filter(Boolean))],
+    smartSetup: onboarding.smartSetup || onboarding.smart_setup || {},
   };
 }
 

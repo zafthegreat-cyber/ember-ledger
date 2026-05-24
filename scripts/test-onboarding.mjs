@@ -10,6 +10,11 @@ import {
   onboardingGoalRows,
   shouldShowFirstRunOnboarding,
 } from "../src/utils/onboardingGuidance.js";
+import {
+  SMART_SETUP_PLAN_TYPES,
+  normalizeSmartSetupPreferences,
+  recommendSmartSetup,
+} from "../src/utils/adaptiveUi.js";
 
 assert.ok(ONBOARDING_GOALS.some((goal) => goal.key === "parent_family"), "parent/family goal should exist");
 assert.ok(ONBOARDING_GOALS.some((goal) => goal.key === "seller_forge"), "seller/business goal should exist");
@@ -91,5 +96,54 @@ assert.equal(summary.total, checklist.length);
 assert.match(summary.label, /complete/);
 
 assert.equal(onboardingGoalRows(["local shop/card shop partner"])[0].key, "local_shop_partner");
+
+const collectorSetup = recommendSmartSetup({
+  purposes: ["collect_pokemon_with_my_family_kids"],
+  enabledToolsets: ["vault_collection_tracking", "the_spark_kids_program"],
+  primaryMode: "collector_parent",
+  businessTools: "no_i_only_collect",
+});
+assert.equal(collectorSetup.planType, SMART_SETUP_PLAN_TYPES.COLLECTOR_FAMILY);
+assert.ok(collectorSetup.includes.includes("Vault"), "collector setup should include Vault");
+assert.ok(collectorSetup.hides.includes("Forge"), "collector setup should hide Forge by default");
+
+const sellerSetup = recommendSmartSetup({
+  purposes: ["sell_trade_and_track_inventory"],
+  enabledToolsets: ["forge_seller_tools", "sales_tracking", "receipts_and_expenses"],
+  primaryMode: "casual_seller",
+});
+assert.equal(sellerSetup.planType, SMART_SETUP_PLAN_TYPES.SELLER);
+assert.ok(sellerSetup.includes.includes("Forge"), "seller setup should include Forge");
+
+const businessSetup = recommendSmartSetup({
+  enabledToolsets: ["mileage_tracking", "sales_tracking", "receipts_and_expenses"],
+  primaryMode: "business_seller",
+  businessTools: "yes_i_need_year_end_export_tax_support_later",
+});
+assert.equal(businessSetup.planType, SMART_SETUP_PLAN_TYPES.BUSINESS_SELLER);
+assert.ok(businessSetup.includes.includes("Mileage"), "business seller setup should include mileage");
+
+const blockedAdminSetup = recommendSmartSetup({
+  purposes: ["run_or_manage_ember_tide_tools"],
+  enabledToolsets: ["admin_tools"],
+}, { adminAllowed: false });
+assert.notEqual(blockedAdminSetup.planType, SMART_SETUP_PLAN_TYPES.ADMIN, "admin recommendation should require admin permission");
+
+const allowedAdminSetup = recommendSmartSetup({
+  purposes: ["run_or_manage_ember_tide_tools"],
+  enabledToolsets: ["admin_tools"],
+}, { adminAllowed: true });
+assert.equal(allowedAdminSetup.planType, SMART_SETUP_PLAN_TYPES.ADMIN);
+
+const normalizedSmartSetup = normalizeSmartSetupPreferences({
+  purposes: ["Track my personal collection", "Track my personal collection"],
+  enabledToolsets: "Vault collection tracking, Scout restock reports",
+  primary_user_mode: "Collector / Parent",
+  setup_completed_at: "2026-05-24T12:00:00.000Z",
+});
+assert.deepEqual(normalizedSmartSetup.purposes, ["track_my_personal_collection"]);
+assert.deepEqual(normalizedSmartSetup.enabledToolsets, ["vault_collection_tracking", "scout_restock_reports"]);
+assert.equal(normalizedSmartSetup.primaryMode, "collector_parent");
+assert.equal(normalizedSmartSetup.completedAt, "2026-05-24T12:00:00.000Z");
 
 console.log("Onboarding guidance tests passed.");

@@ -438,6 +438,18 @@ import {
   roleFilterMatches,
   roleLabel,
 } from "./utils/rolePermissions";
+import {
+  adaptiveForgeAccessMessage,
+  normalizeSmartSetupPreferences,
+  recommendSmartSetup,
+  resolveAdaptiveUiState,
+  resolveHearthSmartNextAction,
+  selectAdaptiveCommandDeskKeys,
+  selectAdaptiveDesktopMainKeys,
+  selectAdaptiveHearthQuickActionKeys,
+  selectAdaptiveMenuKeys,
+  selectSmartQuickAddKeys,
+} from "./utils/adaptiveUi";
 
 const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
 const SmartAddCatalog = lazy(() => import("./components/SmartAddCatalog"));
@@ -2079,6 +2091,44 @@ const HOME_VIEW_PRESETS = {
     stats: HOME_STAT_KEYS,
   },
 };
+const SMART_SETUP_PURPOSE_OPTIONS = [
+  { key: "collect_pokemon_with_my_family_kids", label: "Collect Pokemon with my family/kids" },
+  { key: "track_my_personal_collection", label: "Track my personal collection" },
+  { key: "find_fair_prices_and_restocks", label: "Find fair prices and restocks" },
+  { key: "sell_trade_and_track_inventory", label: "Sell/trade and track inventory" },
+  { key: "help_report_store_stock", label: "Help report store stock" },
+  { key: "the_spark_kids_program", label: "Join The Spark / Kids Program" },
+  { key: "run_or_manage_ember_tide_tools", label: "Run or manage Ember & Tide tools" },
+  { key: "i_m_a_card_shop_or_partner", label: "I'm a card shop or partner" },
+];
+const SMART_SETUP_TOOL_OPTIONS = [
+  { key: "vault_collection_tracking", label: "Vault collection tracking" },
+  { key: "scout_restock_reports", label: "Scout restock reports" },
+  { key: "market_price_checks", label: "Market price checks" },
+  { key: "forge_seller_tools", label: "Forge seller tools" },
+  { key: "receipts_and_expenses", label: "Receipts and expenses" },
+  { key: "mileage_tracking", label: "Mileage tracking" },
+  { key: "sales_tracking", label: "Sales tracking" },
+  { key: "the_spark_kids_program", label: "The Spark / Kids Program" },
+  { key: "tidepool_community", label: "Tidepool community" },
+  { key: "admin_tools", label: "Admin tools" },
+  { key: "family_friendly_shop_tools_later", label: "Family-friendly shop tools later" },
+];
+const SMART_SETUP_PRIMARY_MODE_OPTIONS = [
+  { key: "collector_parent", label: "Collector / parent" },
+  { key: "casual_seller", label: "Casual seller" },
+  { key: "business_seller", label: "Business seller" },
+  { key: "admin", label: "Ember & Tide admin" },
+  { key: "card_shop_partner", label: "Card shop / partner" },
+  { key: "not_sure", label: "Not sure yet" },
+];
+const SMART_SETUP_BUSINESS_OPTIONS = [
+  { key: "no_i_only_collect", label: "No, I only collect" },
+  { key: "maybe_later", label: "Maybe later" },
+  { key: "yes_i_need_sales_expenses_mileage_receipts", label: "Yes, I need sales/expenses/mileage/receipts" },
+  { key: "yes_i_need_year_end_export_tax_support_later", label: "Yes, I need year-end export/tax support later" },
+];
+const SMART_SETUP_STEPS = ["purpose", "tools", "mode", "business", "location", "recommendation"];
 const DASHBOARD_CARD_STYLES = ["compact", "comfortable", "detailed"];
 const DASHBOARD_PRESETS = ["simple", "collector", "seller", "budget_parent", "restock_scout", "full_business"];
 const DASHBOARD_SECTIONS = [
@@ -4443,6 +4493,9 @@ export default function App() {
     consent: false,
   });
   const [onboardingChoices, setOnboardingChoices] = useState([]);
+  const [smartSetupOpen, setSmartSetupOpen] = useState(false);
+  const [smartSetupStep, setSmartSetupStep] = useState(SMART_SETUP_STEPS[0]);
+  const [smartSetupDraft, setSmartSetupDraft] = useState(() => normalizeSmartSetupPreferences());
   const [hearthStartHereExpanded, setHearthStartHereExpanded] = useState(false);
   const [hearthDetailsExpanded, setHearthDetailsExpanded] = useState(false);
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
@@ -5327,16 +5380,60 @@ export default function App() {
   );
   const adminHeavyDataVisible = !guestPreviewActive && earlyAdminProfileSignal && adminModeStorageReady && adminViewMode === "admin";
   const commandDeskSellerAccess = isSellerExperience || hasAdminProfileSignal;
+  const adaptiveAdminNavVisible = Boolean(
+    !guestPreviewActive &&
+    adminModeStorageReady &&
+    adminViewMode === "admin" &&
+    canManageBeta(currentUserProfile)
+  );
+  const adaptiveModeratorNavVisible = Boolean(
+    !guestPreviewActive &&
+    adminModeStorageReady &&
+    adminViewMode === "admin" &&
+    canViewAdminDashboard(currentUserProfile)
+  );
+  const smartSetupPreferences = normalizeSmartSetupPreferences(betaReadinessData.onboarding?.smartSetup || {});
+  const smartSetupRecommendation = recommendSmartSetup(smartSetupPreferences, { adminAllowed: adaptiveAdminNavVisible });
+  const smartSetupSellerIntent = [
+    "seller",
+    "business_seller",
+    "yes_i_need_sales_expenses_mileage_receipts",
+    "yes_i_need_year_end_export_tax_support_later",
+  ].some((key) => (
+    smartSetupPreferences.primaryMode === key ||
+    smartSetupPreferences.businessTools === key ||
+    smartSetupPreferences.enabledToolsets.includes(key) ||
+    smartSetupPreferences.purposes.includes(key)
+  ));
+  const adaptiveUiState = resolveAdaptiveUiState({
+    userType: currentUserProfile?.userType || currentUserProfile?.user_type || userType,
+    dashboardPreset: currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset || dashboardPreset,
+    isSellerExperience,
+    sellerToolsEnabled: sellerModeEnabled(userType, dashboardPreset) || smartSetupSellerIntent,
+    adminToolsVisible: adaptiveAdminNavVisible,
+    moderatorToolsVisible: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible,
+    currentRoute: activeTab,
+    enabledFeatures: {
+      forgeAvailable: commandDeskSellerAccess,
+      adminReviewAvailable: adaptiveAdminNavVisible,
+      scannerAvailable: true,
+    },
+    setupPreferences: smartSetupPreferences,
+  });
+  const adaptiveSellerToolsVisible = adaptiveUiState.showSellerTools;
 
-  const mainTabs = [
-    { key: "home", label: "Hearth Home", icon: "home", target: "dashboard" },
-    { key: "today", label: "Today's Tide", icon: "calendar", target: "dailyTide" },
-    { key: "scout", label: "Scout Signals", icon: "scout", target: "scout" },
-    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    { key: "tideTradr", label: "Market", icon: "market", target: "market" },
-    commandDeskSellerAccess ? { key: "forge", label: "Forge Workshop", icon: "forge", target: "inventory" } : null,
-    { key: "tidepool", label: "Tidepool", icon: "pool", target: "tidepool" },
-  ].filter(Boolean);
+  const mainTabByKey = {
+    home: { key: "home", label: "Hearth Home", icon: "home", target: "dashboard" },
+    today: { key: "today", label: "Today's Tide", icon: "calendar", target: "dailyTide" },
+    scout: { key: "scout", label: "Scout Signals", icon: "scout", target: "scout" },
+    vault: { key: "vault", label: "Vault", icon: "vault", target: "vault" },
+    tideTradr: { key: "tideTradr", label: "Market", icon: "market", target: "market" },
+    forge: { key: "forge", label: "Forge Workshop", icon: "forge", target: "inventory" },
+    tidepool: { key: "tidepool", label: "Tidepool", icon: "pool", target: "tidepool" },
+  };
+  const mainTabs = selectAdaptiveDesktopMainKeys(adaptiveUiState)
+    .map((key) => mainTabByKey[key])
+    .filter(Boolean);
 
   const navSections = [
     {
@@ -5409,41 +5506,78 @@ export default function App() {
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
     { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" },
   ];
-  const desktopSidebarItems = [
-    { key: "home", label: "Hearth Home", helper: "What should I do next?", icon: "home", target: "dashboard" },
-    { key: "today", label: "Today's Tide", helper: "Today's attention list", icon: "calendar", target: "dailyTide" },
-    { key: "scout", label: "Scout Signals", helper: "Nearby verified restocks", icon: "scout", target: "scout" },
-    { key: "vault", label: "Vault", helper: "Your collection", icon: "vault", target: "vault" },
-    { key: "tideTradr", label: "Market", helper: "TideTradr fair prices and deals", icon: "market", target: "market" },
-    commandDeskSellerAccess ? { key: "forge", label: "Forge Workshop", helper: "Business command desk", icon: "forge", target: "inventory" } : null,
-  ].filter(Boolean);
+  const desktopSidebarByKey = {
+    home: { key: "home", label: "Hearth Home", helper: "What should I do next?", icon: "home", target: "dashboard" },
+    today: { key: "today", label: "Today's Tide", helper: "Today's attention list", icon: "calendar", target: "dailyTide" },
+    scout: { key: "scout", label: "Scout Signals", helper: "Nearby verified restocks", icon: "scout", target: "scout" },
+    vault: { key: "vault", label: "Vault", helper: "Your collection", icon: "vault", target: "vault" },
+    tideTradr: { key: "tideTradr", label: "Market", helper: "TideTradr fair prices and deals", icon: "market", target: "market" },
+    forge: { key: "forge", label: "Forge Workshop", helper: "Business command desk", icon: "forge", target: "inventory" },
+    tidepool: { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
+  };
+  const desktopSidebarItems = selectAdaptiveDesktopMainKeys(adaptiveUiState)
+    .map((key) => desktopSidebarByKey[key])
+    .filter(Boolean);
+  const desktopMoreByKey = {
+    tidepool: { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
+    spark: { key: "spark", label: "Kids Program: The Spark", helper: "Family-safe collecting", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    announcements: { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
+    admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin", helper: "Command center", icon: "settings", target: "adminReview" } : null,
+    moderator: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible ? { key: "moderator", label: "Moderator", helper: "Limited review tools", icon: "settings", target: "moderator" } : null,
+    "ember-watch": { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
+    profile: { key: "profile", label: "Profile", helper: "Public username and progress", icon: "settings", action: () => openUtilityPage("profile") },
+    settings: { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
+    help: { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
+  };
   const desktopMoreItems = [
-    { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
     { key: "spark", label: "Kids Program: The Spark", helper: "Family-safe collecting", icon: "spark", action: () => setActiveTab("kidsProgram") },
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
-    hasAdminProfileSignal ? { key: "admin", label: "Admin", helper: "Command center", icon: "settings", target: "adminReview" } : null,
     { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
     { key: "profile", label: "Profile", helper: "Public username and progress", icon: "settings", action: () => openUtilityPage("profile") },
     { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
-  ].filter(Boolean);
-  const desktopCommandDeskTools = [
-    commandDeskSellerAccess ? { key: "receipts", label: "Receipts Review", helper: "Review receipts and expenses", icon: "clipboard", action: () => setActiveTab("expenses") } : null,
-    commandDeskSellerAccess ? { key: "mileage", label: "Mileage Reports", helper: "Trips and vehicle costs", icon: "calendar", action: () => setActiveTab("mileage") } : null,
-    commandDeskSellerAccess ? { key: "sales", label: "Sales & Profit", helper: "Sales, margin, and exports", icon: "forge", action: () => setActiveTab("reports") } : null,
-    commandDeskSellerAccess ? { key: "inventory", label: "Inventory Tools", helper: "Products and bulk review", icon: "vault", target: "inventory" } : null,
-    hasAdminProfileSignal ? { key: "moderation", label: "Review Queues", helper: "Scout, market, kids, and feedback", icon: "settings", target: "adminReview" } : null,
-    hasAdminProfileSignal ? { key: "announcements-admin", label: "Announcement Manager", helper: "Draft and review New Stuff", icon: "bell", target: "adminReview" } : null,
-  ].filter(Boolean);
-  const mobileMenuDestinations = [
-    commandDeskSellerAccess ? { key: "forge", label: "Forge Workshop", helper: "Seller inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" } : null,
-    ...(isSellerExperience ? [{ key: "market", label: "Market", helper: "Fair prices and TideTradr search.", icon: "market", target: "market" }] : []),
-    { key: "tidepool", label: "Tidepool", helper: "Community posts and trusted trade talk.", icon: "pool", target: "tidepool" },
-    { key: "spark", label: "Kids Program: The Spark", helper: "Parent-safe requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
-    { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
-    { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
-    { key: "profile", label: "Profile", helper: "Public username and account progress.", icon: "settings", action: () => openUtilityPage("profile") },
-  ].filter(Boolean);
+  ].map((item) => desktopMoreByKey[item.key] || item).filter(Boolean);
+  const desktopCommandDeskByKey = {
+    admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Beta, invites, roles, and system review", icon: "settings", target: "adminReview" } : null,
+    betaUsers: adaptiveAdminNavVisible ? { key: "betaUsers", label: "Beta Users", helper: "Requests, approvals, and invites", icon: "settings", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
+    reportReview: adaptiveModeratorNavVisible ? { key: "reportReview", label: "Report Review", helper: "Scout and moderation queues", icon: "scout", action: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); } } : null,
+    feedbackInbox: adaptiveAdminNavVisible ? { key: "feedbackInbox", label: "Feedback Inbox", helper: "Support messages and beta feedback", icon: "bell", action: () => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); } } : null,
+    moderation: adaptiveModeratorNavVisible ? { key: "moderation", label: "Moderation", helper: "Community and marketplace review", icon: "settings", target: "adminReview" } : null,
+    receipts: { key: "receipts", label: "Receipts Review", helper: "Review receipts and expenses", icon: "clipboard", action: () => setActiveTab("expenses") },
+    mileage: { key: "mileage", label: "Mileage Reports", helper: "Trips and vehicle costs", icon: "calendar", action: () => setActiveTab("mileage") },
+    sales: { key: "sales", label: "Sales & Profit", helper: "Sales, margin, and exports", icon: "forge", action: () => setActiveTab("reports") },
+    inventory: { key: "inventory", label: "Inventory Tools", helper: "Products and bulk review", icon: "vault", target: "inventory" },
+    taxCenter: { key: "taxCenter", label: "Tax Support", helper: "Year-end summaries and exports", icon: "clipboard", action: () => setActiveTab("reports") },
+  };
+  const desktopCommandDeskTools = selectAdaptiveCommandDeskKeys(adaptiveUiState)
+    .map((key) => desktopCommandDeskByKey[key])
+    .filter(Boolean);
+  const mobileMenuByKey = {
+    forge: { key: "forge", label: "Forge Workshop", helper: "Seller inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" },
+    sales: { key: "sales", label: "Sales", helper: "Sales records and profit review.", icon: "forge", action: () => setActiveTab("sales") },
+    receipts: { key: "receipts", label: "Receipts", helper: "Receipt review and business expenses.", icon: "clipboard", action: () => setActiveTab("expenses") },
+    mileage: { key: "mileage", label: "Mileage", helper: "Trips and vehicle costs.", icon: "calendar", action: () => setActiveTab("mileage") },
+    taxCenter: { key: "taxCenter", label: "Tax Center", helper: "Reports and export support.", icon: "clipboard", action: () => setActiveTab("reports") },
+    market: { key: "market", label: "Market", helper: "Fair prices and TideTradr search.", icon: "market", target: "market" },
+    tidepool: { key: "tidepool", label: "Tidepool", helper: "Community posts and trusted trade talk.", icon: "pool", target: "tidepool" },
+    spark: { key: "spark", label: "Kids Program: The Spark", helper: "Parent-safe requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    announcements: { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
+    "emberWatch": { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
+    profile: { key: "profile", label: "Profile", helper: "Public username and account progress.", icon: "settings", action: () => openUtilityPage("profile") },
+    account: { key: "account", label: "Account", helper: "Sign-in, beta status, and app version.", icon: "settings", action: () => openUtilityPage("account") },
+    help: { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and support.", icon: "search", action: () => openUtilityPage("help") },
+    settings: { key: "settings", label: "Settings", helper: "Profile, workspace, alerts, and privacy.", icon: "settings", action: () => openUtilityPage("settings") },
+    admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Protected approvals, reviews, and roles.", icon: "settings", target: "adminReview" } : null,
+    betaUsers: adaptiveAdminNavVisible ? { key: "betaUsers", label: "Beta Users", helper: "Track requests, invites, and joined users.", icon: "settings", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
+    invites: adaptiveAdminNavVisible ? { key: "invites", label: "Invites", helper: "Invite tracking and copy-link fallback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
+    reportReview: adaptiveModeratorNavVisible ? { key: "reportReview", label: "Report Review", helper: "Scout reports and moderation queues.", icon: "scout", action: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); } } : null,
+    missingCatalog: adaptiveAdminNavVisible ? { key: "missingCatalog", label: "Missing Catalog", helper: "Catalog corrections and SKU review.", icon: "search", action: () => { setAdminReviewFilter("Catalog Suggestions"); setActiveTab("adminReview"); } } : null,
+    feedbackInbox: adaptiveAdminNavVisible ? { key: "feedbackInbox", label: "Feedback Inbox", helper: "Support messages and beta feedback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); } } : null,
+    moderation: adaptiveModeratorNavVisible ? { key: "moderation", label: "Moderation", helper: "Community and marketplace review.", icon: "settings", target: "adminReview" } : null,
+  };
+  const mobileMenuDestinations = selectAdaptiveMenuKeys(adaptiveUiState)
+    .map((key) => mobileMenuByKey[key])
+    .filter(Boolean);
   const topbarSectionOptions = [
     ...mainTabs,
     { key: "settings", label: "Settings", target: "settings" },
@@ -5975,8 +6109,9 @@ export default function App() {
     if (item.key === "receipts") return activeTab === "expenses";
     if (item.key === "mileage") return activeTab === "mileage";
     if (item.key === "sales") return activeTab === "reports" || activeTab === "sales";
+    if (item.key === "taxCenter") return activeTab === "reports";
     if (item.key === "inventory") return activeTab === "inventory";
-    if (item.key === "moderation" || item.key === "announcements-admin") return activeTab === "adminReview";
+    if (["betaUsers", "reportReview", "feedbackInbox", "missingCatalog", "moderation", "announcements-admin"].includes(item.key)) return activeTab === "adminReview";
     return activeMainTab === item.key;
   }
 
@@ -6022,7 +6157,7 @@ export default function App() {
             </span>
             <span>
               <strong>More</strong>
-              <small>Tidepool, Spark, settings, and help</small>
+              <small>Spark, announcements, settings, and help</small>
             </span>
           </summary>
           <div className="web-command-more-list">
@@ -8450,7 +8585,107 @@ export default function App() {
     setVaultToast("Onboarding restarted.");
   }
 
+  function smartSetupGoalsFor(setup = {}) {
+    const normalized = normalizeSmartSetupPreferences(setup);
+    const values = new Set([
+      ...normalized.purposes,
+      ...normalized.enabledToolsets,
+      normalized.primaryMode,
+      normalized.businessTools,
+      normalized.recommendedPlanType,
+    ]);
+    const goals = [];
+    if (values.has("collect_pokemon_with_my_family_kids") || values.has("the_spark_kids_program") || values.has("collector_parent")) goals.push("parent_family");
+    if (values.has("track_my_personal_collection") || values.has("vault_collection_tracking")) goals.push("collector_vault");
+    if (values.has("sell_trade_and_track_inventory") || values.has("forge_seller_tools") || values.has("sales_tracking") || values.has("casual_seller") || values.has("business_seller")) goals.push("seller_forge");
+    if (values.has("help_report_store_stock") || values.has("scout_restock_reports") || values.has("find_fair_prices_and_restocks")) goals.push("scout_reports");
+    if (values.has("i_m_a_card_shop_or_partner") || values.has("card_shop_partner")) goals.push("local_shop_partner");
+    if (values.has("the_spark_kids_program")) goals.push("spark_parent");
+    return [...new Set(goals.length ? goals : ["collector_vault"])];
+  }
+
+  function openSmartSetupFlow({ reset = false } = {}) {
+    const source = reset ? {} : smartSetupPreferences;
+    setSmartSetupDraft(normalizeSmartSetupPreferences({
+      ...source,
+      homeArea: source.homeArea || locationSettings.manualLocation || locationSettings.selectedSavedLocation || "",
+    }));
+    setSmartSetupStep(SMART_SETUP_STEPS[0]);
+    setSmartSetupOpen(true);
+  }
+
+  function updateSmartSetupDraft(updates = {}) {
+    setSmartSetupDraft((current) => normalizeSmartSetupPreferences({ ...current, ...updates }));
+  }
+
+  function toggleSmartSetupListValue(field, value) {
+    setSmartSetupDraft((current) => {
+      const normalized = normalizeSmartSetupPreferences(current);
+      const set = new Set(normalized[field] || []);
+      if (set.has(value)) set.delete(value);
+      else set.add(value);
+      return normalizeSmartSetupPreferences({ ...normalized, [field]: [...set] });
+    });
+  }
+
+  function applySmartSetupMode(recommendation, setup) {
+    if (recommendation.planType === "business_seller") {
+      applyHomeViewPreset("all_in_one");
+      updateForgeModeSettings({ personalForgeEnabled: true });
+      return;
+    }
+    if (recommendation.planType === "seller") {
+      applyHomeViewPreset("seller");
+      updateForgeModeSettings({ personalForgeEnabled: true });
+      return;
+    }
+    if (recommendation.planType === "scout_helper") {
+      applyHomeViewPreset("scout");
+      return;
+    }
+    if (recommendation.planType === "collector_family" && (setup.purposes.includes("collect_pokemon_with_my_family_kids") || setup.enabledToolsets.includes("the_spark_kids_program"))) {
+      applyHomeViewPreset("budget");
+      return;
+    }
+    applyHomeViewPreset("collector");
+  }
+
+  function saveSmartSetup({ complete = true, dismiss = false } = {}) {
+    const now = new Date().toISOString();
+    const normalized = normalizeSmartSetupPreferences(smartSetupDraft);
+    const recommendation = recommendSmartSetup(normalized, { adminAllowed: adaptiveAdminNavVisible });
+    const nextSetup = {
+      ...normalized,
+      recommendedPlanType: recommendation.planType,
+      recommendedPlanLabel: recommendation.label,
+      setupCompletedAt: complete ? now : normalized.setupCompletedAt,
+      completedAt: complete ? now : normalized.completedAt,
+      dismissedAt: dismiss ? now : normalized.dismissedAt,
+    };
+    const goals = smartSetupGoalsFor(nextSetup);
+    updateBetaReadinessData((current) => ({
+      ...current,
+      onboarding: {
+        ...(current.onboarding || {}),
+        firstLoginSeen: true,
+        goals,
+        preferences: goals,
+        smartSetup: nextSetup,
+      },
+    }));
+    setOnboardingChoices(goals);
+    if (String(nextSetup.homeArea || "").trim()) {
+      updateLocationSettings({ mode: "manual", manualLocation: nextSetup.homeArea.trim(), trackingEnabled: false });
+    }
+    if (complete) applySmartSetupMode(recommendation, nextSetup);
+    setSmartSetupOpen(false);
+    setSmartSetupStep(SMART_SETUP_STEPS[0]);
+    setVaultToast(complete ? `Recommended setup saved: ${recommendation.label}.` : "Smart setup saved for later.");
+  }
+
   function renderMenuPullDown(key, title, summary, children, icon = "plus") {
+    const smartLauncherMenuEnabled = true;
+    if (smartLauncherMenuEnabled) return null;
     const open = Boolean(menuSectionsOpen[key]);
     const utilityDestination = utilityTabForMenuSection(key);
     const iconNode = typeof icon === "string"
@@ -17056,6 +17291,16 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       });
     }
     if (action === "suggestCatalogCorrection") return openFeedbackDialog("catalog_data", { page: "TideTradr", topic: "Catalog correction" });
+    if (action === "reviewMissingCatalog") {
+      setAdminReviewFilter("Catalog Suggestions");
+      setActiveTab("adminReview");
+      return;
+    }
+    if (action === "addAnnouncement") {
+      setAdminReviewFilter("Announcements");
+      setActiveTab("adminReview");
+      return;
+    }
     if (action === "scanProduct") return beginScanProduct("none");
     if (action === "pictureLookup") return openPictureLookupFlow("none");
     if (action === "scanVault") return openVaultScanFlow();
@@ -20825,11 +21070,12 @@ function renderForgeHeader() {
 }
 
 function renderForgeAccessState() {
+  const forgeAccessMessage = adaptiveForgeAccessMessage(adaptiveUiState);
   return (
-    <section className="panel empty-state forge-workspace-unavailable" aria-label="Forge access required">
+    <section className="panel empty-state forge-workspace-unavailable adaptive-forge-intro" aria-label="Forge access required">
       <span className="trust-badge trust-badge--secure">Private Forge</span>
       <h2>Forge Workshop is for seller records.</h2>
-      <p>Business inventory, receipts, mileage, sales, and profit views stay hidden unless your account has seller or admin access.</p>
+      <p>{forgeAccessMessage || "Business inventory, receipts, mileage, sales, and profit views stay hidden unless seller tools are enabled."}</p>
       <div className="quick-actions">
         <button type="button" onClick={() => openMenuDrawer("settings")}>Review account settings</button>
         <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Return to Hearth</button>
@@ -23407,6 +23653,30 @@ function renderForgeAccessState() {
     reports: "business_reports",
   }[activeTab];
   const activeTabLocked = Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
+  useEffect(() => {
+    if (smartSetupOpen) return;
+    if (guestPreviewActive || activeTabLocked) return;
+    if (!localDataLoaded || !betaAccessAllowed()) return;
+    if (!user || user.id === "local-beta") return;
+    if (smartSetupPreferences.completedAt || smartSetupPreferences.dismissedAt) return;
+    openSmartSetupFlow();
+  }, [
+    smartSetupOpen,
+    guestPreviewActive,
+    activeTabLocked,
+    localDataLoaded,
+    user?.id,
+    currentUserProfile?.id,
+    currentUserProfile?.userId,
+    currentUserProfile?.appAccess,
+    currentUserProfile?.app_access,
+    currentUserProfile?.betaStatus,
+    currentUserProfile?.beta_status,
+    currentUserProfile?.betaAccessStatus,
+    currentUserProfile?.beta_access_status,
+    smartSetupPreferences.completedAt,
+    smartSetupPreferences.dismissedAt,
+  ]);
   function shouldRenderFirstRunOnboarding() {
     const onboardingState = normalizeOnboardingState(betaReadinessData.onboarding || {});
     if (activeTabLocked) return false;
@@ -30874,6 +31144,230 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderSmartSetupSettingsCard() {
+    return (
+      <div className="drawer-info-card smart-setup-settings-card utility-card utility-card-wide">
+        <div className="compact-card-header">
+          <div>
+            <strong>App setup</strong>
+            <p className="compact-subtitle">Shape Ember & Tide around how you collect. You can change this anytime.</p>
+          </div>
+          <span className="status-badge">{smartSetupRecommendation.label}</span>
+        </div>
+        <dl className="drawer-status-list">
+          <div><dt>Recommended setup</dt><dd>{smartSetupRecommendation.summary}</dd></div>
+          <div><dt>Tools shown first</dt><dd>{smartSetupRecommendation.includes.slice(0, 5).join(", ")}</dd></div>
+          <div><dt>Hidden for now</dt><dd>{smartSetupRecommendation.hides.slice(0, 4).join(", ")}</dd></div>
+          <div><dt>Persistence</dt><dd>{settingsAppPreferencePersistenceLabel}</dd></div>
+        </dl>
+        <div className="drawer-inline-actions">
+          <button type="button" className="drawer-link" onClick={() => openSmartSetupFlow({ reset: false })}>Change my tools</button>
+          <button type="button" className="drawer-link" onClick={() => openSmartSetupFlow({ reset: true })}>Change recommended setup</button>
+          <button type="button" className="secondary-button" onClick={() => {
+            const sellerSetup = normalizeSmartSetupPreferences({
+              ...smartSetupPreferences,
+              enabledToolsets: [...new Set([...(smartSetupPreferences.enabledToolsets || []), "forge_seller_tools", "sales_tracking", "receipts_and_expenses"])],
+              primaryMode: "casual_seller",
+              businessTools: "maybe_later",
+            });
+            setSmartSetupDraft(sellerSetup);
+            const recommendation = recommendSmartSetup(sellerSetup, { adminAllowed: adaptiveAdminNavVisible });
+            applySmartSetupMode(recommendation, sellerSetup);
+            updateBetaReadinessData((current) => ({
+              ...current,
+              onboarding: {
+                ...(current.onboarding || {}),
+                smartSetup: {
+                  ...sellerSetup,
+                  recommendedPlanType: recommendation.planType,
+                  recommendedPlanLabel: recommendation.label,
+                  completedAt: sellerSetup.completedAt || new Date().toISOString(),
+                  setupCompletedAt: sellerSetup.setupCompletedAt || new Date().toISOString(),
+                },
+              },
+            }));
+            setVaultToast("Seller tools are on. Forge, sales, and receipts are available.");
+          }}>Turn on seller tools</button>
+          {adaptiveUiState.showSellerTools ? (
+            <button type="button" className="secondary-button" onClick={() => {
+              const collectorSetup = normalizeSmartSetupPreferences({
+                ...smartSetupPreferences,
+                enabledToolsets: (smartSetupPreferences.enabledToolsets || []).filter((key) => !["forge_seller_tools", "sales_tracking", "receipts_and_expenses", "mileage_tracking"].includes(key)),
+                primaryMode: "collector_parent",
+                businessTools: "no_i_only_collect",
+              });
+              setSmartSetupDraft(collectorSetup);
+              const recommendation = recommendSmartSetup(collectorSetup, { adminAllowed: adaptiveAdminNavVisible });
+              applySmartSetupMode(recommendation, collectorSetup);
+              updateBetaReadinessData((current) => ({
+                ...current,
+                onboarding: {
+                  ...(current.onboarding || {}),
+                  smartSetup: {
+                    ...collectorSetup,
+                    recommendedPlanType: recommendation.planType,
+                    recommendedPlanLabel: recommendation.label,
+                    completedAt: collectorSetup.completedAt || new Date().toISOString(),
+                    setupCompletedAt: collectorSetup.setupCompletedAt || new Date().toISOString(),
+                  },
+                },
+              }));
+              setVaultToast("Seller tools are tucked away. Collector setup is active.");
+            }}>Turn off seller tools</button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  function renderSmartSetupModal() {
+    if (!smartSetupOpen) return null;
+    const stepIndex = SMART_SETUP_STEPS.indexOf(smartSetupStep);
+    const safeStepIndex = stepIndex >= 0 ? stepIndex : 0;
+    const step = SMART_SETUP_STEPS[safeStepIndex];
+    const recommendation = recommendSmartSetup(smartSetupDraft, { adminAllowed: adaptiveAdminNavVisible });
+    const goNext = () => setSmartSetupStep(SMART_SETUP_STEPS[Math.min(safeStepIndex + 1, SMART_SETUP_STEPS.length - 1)]);
+    const goBack = () => setSmartSetupStep(SMART_SETUP_STEPS[Math.max(safeStepIndex - 1, 0)]);
+    const renderChipGrid = (options, field) => (
+      <div className="smart-setup-chip-grid">
+        {options.map((option) => {
+          const selected = (smartSetupDraft[field] || []).includes(option.key);
+          const adminOnlyDisabled = option.key === "admin_tools" && !adaptiveAdminNavVisible;
+          return (
+            <button
+              type="button"
+              key={option.key}
+              className={selected ? "smart-setup-chip selected" : "smart-setup-chip"}
+              aria-pressed={selected}
+              disabled={adminOnlyDisabled}
+              onClick={() => toggleSmartSetupListValue(field, option.key)}
+            >
+              <strong>{option.label}</strong>
+              {adminOnlyDisabled ? <small>Only approved admins can use this.</small> : null}
+            </button>
+          );
+        })}
+      </div>
+    );
+    const renderRadioGrid = (options, field) => (
+      <div className="smart-setup-card-grid">
+        {options.map((option) => {
+          const selected = smartSetupDraft[field] === option.key;
+          const adminOnlyDisabled = option.key === "admin" && !adaptiveAdminNavVisible;
+          return (
+            <button
+              type="button"
+              key={option.key}
+              className={selected ? "smart-setup-choice selected" : "smart-setup-choice"}
+              aria-pressed={selected}
+              disabled={adminOnlyDisabled}
+              onClick={() => updateSmartSetupDraft({ [field]: option.key })}
+            >
+              <strong>{option.label}</strong>
+              {adminOnlyDisabled ? <small>Admin setup appears only for approved admins.</small> : null}
+            </button>
+          );
+        })}
+      </div>
+    );
+    return (
+      <div className="location-modal-backdrop smart-setup-backdrop" role="presentation" onClick={() => saveSmartSetup({ complete: false, dismiss: true })}>
+        <section className="location-modal flow-modal flow-modal-medium smart-setup-modal" role="dialog" aria-modal="true" aria-labelledby="smart-setup-title" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-title-row modal-sticky-header">
+            <div>
+              <p className="section-kicker">Smart Setup</p>
+              <h2 id="smart-setup-title">Let&apos;s shape Ember & Tide around how you collect.</h2>
+              <p>You can change this anytime in Settings. We&apos;ll keep business and admin tools out of the way unless you need them.</p>
+            </div>
+            <button type="button" className="modal-close-button" aria-label="Skip Smart Setup" onClick={() => saveSmartSetup({ complete: false, dismiss: true })}>X</button>
+          </div>
+          <div className="smart-setup-progress" aria-label={`Setup step ${safeStepIndex + 1} of ${SMART_SETUP_STEPS.length}`}>
+            {SMART_SETUP_STEPS.map((item, index) => <span key={item} className={index <= safeStepIndex ? "active" : ""} />)}
+          </div>
+          <div className="flow-modal-body smart-setup-body">
+            {step === "purpose" ? (
+              <div className="smart-setup-step">
+                <h3>What brings you to Ember & Tide?</h3>
+                <p>Select any that fit. This only changes what the app shows first.</p>
+                {renderChipGrid(SMART_SETUP_PURPOSE_OPTIONS, "purposes")}
+              </div>
+            ) : null}
+            {step === "tools" ? (
+              <div className="smart-setup-step">
+                <h3>Which tools do you want?</h3>
+                <p>Pick what matters now. Extra tools can stay hidden until later.</p>
+                {renderChipGrid(SMART_SETUP_TOOL_OPTIONS, "enabledToolsets")}
+              </div>
+            ) : null}
+            {step === "mode" ? (
+              <div className="smart-setup-step">
+                <h3>Are you mostly a collector or seller?</h3>
+                <p>Not sure is fine. Ember & Tide can start simple.</p>
+                {renderRadioGrid(SMART_SETUP_PRIMARY_MODE_OPTIONS, "primaryMode")}
+              </div>
+            ) : null}
+            {step === "business" ? (
+              <div className="smart-setup-step">
+                <h3>Do you want business or tax-support tools?</h3>
+                <p>No pressure. Seller tools are available when you&apos;re ready.</p>
+                {renderRadioGrid(SMART_SETUP_BUSINESS_OPTIONS, "businessTools")}
+              </div>
+            ) : null}
+            {step === "location" ? (
+              <div className="smart-setup-step">
+                <h3>Home area and store preferences</h3>
+                <p>Scout uses store-level preferences. Exact user location is never shown publicly.</p>
+                <label className="settings-field-group">
+                  <span>Home area / region</span>
+                  <input className="drawer-field" value={smartSetupDraft.homeArea} onChange={(event) => updateSmartSetupDraft({ homeArea: event.target.value })} placeholder="ZIP, city, or region" />
+                </label>
+                <label className="settings-field-group">
+                  <span>Favorite stores</span>
+                  <input className="drawer-field" value={(smartSetupDraft.favoriteStores || []).join(", ").replace(/_/g, " ")} onChange={(event) => updateSmartSetupDraft({ favoriteStores: event.target.value.split(",").map((row) => row.trim()).filter(Boolean) })} placeholder="Target, Walmart, Barnes & Noble..." />
+                </label>
+                <label className="checkbox-row">
+                  <input type="checkbox" checked={smartSetupDraft.hideIrrelevantStores} onChange={(event) => updateSmartSetupDraft({ hideIrrelevantStores: event.target.checked })} />
+                  <span>Hide stores I do not care about where possible</span>
+                </label>
+              </div>
+            ) : null}
+            {step === "recommendation" ? (
+              <div className="smart-setup-step smart-setup-recommendation">
+                <span className="status-badge">Recommended</span>
+                <h3>{recommendation.label} setup</h3>
+                <p>{recommendation.summary}</p>
+                <p className="compact-subtitle">{recommendation.why}</p>
+                <div className="smart-setup-summary-grid">
+                  <article>
+                    <strong>Main tools shown</strong>
+                    {recommendation.includes.map((item) => <span key={item}>{item}</span>)}
+                  </article>
+                  <article>
+                    <strong>Hidden or quieter for now</strong>
+                    {recommendation.hides.map((item) => <span key={item}>{item}</span>)}
+                  </article>
+                </div>
+                {recommendation.planType === "partner_shop" ? <p className="smart-setup-note">Partner Shop Mode is documented as a future mode only. No payment, shop, or billing tools were enabled.</p> : null}
+              </div>
+            ) : null}
+          </div>
+          <div className="location-modal-actions modal-sticky-footer smart-setup-footer">
+            <button type="button" className="secondary-button" onClick={() => saveSmartSetup({ complete: false, dismiss: true })}>Skip for now</button>
+            {safeStepIndex > 0 ? <button type="button" className="secondary-button" onClick={goBack}>Back</button> : null}
+            {step === "recommendation" ? (
+              <>
+                <button type="button" className="secondary-button" onClick={() => { saveSmartSetup({ complete: true }); openUtilityPage("settings"); }}>Customize manually</button>
+                <button type="button" onClick={() => saveSmartSetup({ complete: true })}>Use recommended setup</button>
+              </>
+            ) : (
+              <button type="button" onClick={goNext}>Continue</button>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   function renderKidsProgramPage() {
     const email = accountEmail();
     const activeApplication = (betaReadinessData.kidsApplications || []).find((entry) => {
@@ -35351,14 +35845,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "details", label: "Details" },
       { key: "review", label: "Review" },
     ];
-    const destinationOptions = [
+    const allDestinationOptions = [
       { key: "vault", title: "Vault", helper: "Personal collection, trade binder, or family collection.", icon: "vault" },
       { key: "forge", title: "Forge", helper: activeForgeWorkspace ? "Business inventory, receipts, sales, and seller records." : "Forge workspace is unavailable right now.", icon: "forge", disabled: !activeForgeWorkspace },
       { key: "scout", title: "Scout", helper: "Store report, restock signal, or location observation.", icon: "scout" },
       { key: "market", title: "Market", helper: "Marketplace listing or fair-price action.", icon: "market" },
       { key: "kids", title: "Kids Program", helper: "Parent-safe request or Spark update.", icon: "spark" },
     ];
-    const itemTypeOptions = [
+    const destinationOptions = allDestinationOptions.filter((option) => (
+      option.key !== "forge" || adaptiveUiState.showSellerTools || adaptiveUiState.showAdminTools
+    ));
+    const allItemTypeOptions = [
       { key: "card", title: "Card", helper: "Single, promo, slab, or variant.", destination: "" },
       { key: "sealed", title: "Sealed product", helper: "ETB, tin, blister, bundle, box, or deck.", destination: "" },
       { key: "receipt", title: "Receipt", helper: "Upload or review purchase proof.", destination: "forge" },
@@ -35368,14 +35865,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "photo_import", title: "Photo/import", helper: "Scan, photo lookup, CSV, or bulk entry.", destination: "" },
       { key: "kids_request", title: "Kids request", helper: "Parent-approved Spark request.", destination: "kids" },
     ];
-    const quickChoices = [
-      { key: "vault", title: "Add to Vault", helper: "Search or scan, then save to collection.", destination: "vault", itemType: "sealed", detailMethod: "catalog_search", icon: "vault" },
-      { key: "forge", title: "Add to Forge", helper: "Add business inventory with review first.", destination: "forge", itemType: "sealed", detailMethod: "catalog_search", icon: "forge", disabled: !activeForgeWorkspace },
-      { key: "scout", title: "Scout Report", helper: "Item, store, proof, then review.", destination: "scout", itemType: "store_report", detailMethod: "store_picker", icon: "scout" },
-      { key: "receipt", title: "Add Receipt", helper: "Upload or enter receipt details.", destination: "forge", itemType: "receipt", detailMethod: "receipt_upload", icon: "receipt", disabled: !activeForgeWorkspace },
-      { key: "mileage", title: "Add Mileage", helper: "Log a business trip by vehicle.", destination: "forge", itemType: "mileage", detailMethod: "mileage_picker", icon: "mileage", disabled: !activeForgeWorkspace },
-      { key: "missing", title: "Request Missing Item", helper: "Use when catalog search cannot find it.", action: "suggestCatalogItem", destination: "market", itemType: "photo_import", detailMethod: "manual_entry", icon: "search" },
-    ];
+    const itemTypeOptions = allItemTypeOptions.filter((option) => (
+      option.destination !== "forge" || adaptiveUiState.showSellerTools || adaptiveUiState.showAdminTools
+    ));
+    const quickChoiceByKey = {
+      vault: { key: "vault", title: "Add to Vault", helper: "Search or scan, then save to collection.", destination: "vault", itemType: "sealed", detailMethod: "catalog_search", icon: "vault" },
+      forge: { key: "forge", title: "Add to Forge", helper: "Add business inventory with review first.", destination: "forge", itemType: "sealed", detailMethod: "catalog_search", icon: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      scout: { key: "scout", title: "Scout Report", helper: "Item, store, proof, then review.", destination: "scout", itemType: "store_report", detailMethod: "store_picker", icon: "scout" },
+      sale: { key: "sale", title: "Add Sale", helper: "Record sale, platform, fees, and profit.", action: "sale", icon: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      receipt: { key: "receipt", title: "Add Receipt", helper: "Upload or enter receipt details.", destination: "forge", itemType: "receipt", detailMethod: "receipt_upload", icon: "receipt", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      mileage: { key: "mileage", title: "Add Mileage", helper: "Log a business trip by vehicle.", destination: "forge", itemType: "mileage", detailMethod: "mileage_picker", icon: "mileage", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      missing: { key: "missing", title: "Request Missing Item", helper: "Use when catalog search cannot find it.", action: "suggestCatalogItem", destination: "market", itemType: "photo_import", detailMethod: "manual_entry", icon: "search" },
+      quickFind: { key: "quickFind", title: "Search / Scan Item", helper: "Look up a card, sealed product, UPC, or SKU.", action: "quickFind", icon: "search" },
+      spark: { key: "spark", title: "The Spark", helper: "Parent-safe Kids Program request.", action: "kidsRequest", icon: "spark" },
+      store: { key: "store", title: "Add Store", helper: "Suggest a missing store for Scout.", action: "storeSuggestion", icon: "scout" },
+      reviewMissing: { key: "reviewMissing", title: "Review Missing Item", helper: "Open protected catalog review.", action: "reviewMissingCatalog", icon: "search" },
+      announcement: { key: "announcement", title: "Add Announcement", helper: "Open announcement tools.", action: "addAnnouncement", icon: "bell" },
+    };
+    const quickChoices = selectSmartQuickAddKeys(adaptiveUiState, {
+      forgeAvailable: Boolean(activeForgeWorkspace),
+      currentPage: activeTab,
+    })
+      .map((key) => quickChoiceByKey[key])
+      .filter(Boolean);
     const detailMethodOptions = [
       { key: "catalog_search", title: "Search catalog", helper: "Best for cards and sealed Pokemon products.", types: ["card", "sealed", "listing", "photo_import"] },
       { key: "scan", title: "Scan barcode/card", helper: "Open scanner review before saving.", types: ["card", "sealed", "photo_import"] },
@@ -35409,7 +35921,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }));
     const selectQuickChoice = (choice) => {
       if (choice.disabled) {
-        updateGuidedQuickAdd({ message: `${choice.title} is unavailable until Forge is available.` });
+        updateGuidedQuickAdd({ message: choice.disabledMessage || `${choice.title} is unavailable right now.` });
         return;
       }
       if (choice.action) {
@@ -35514,6 +36026,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <>
             <div className="guided-quick-add-hero">
               <div>
+                <small className="adaptive-mode-chip">{adaptiveUiState.modeLabel}</small>
                 <strong>What are you adding?</strong>
                 <p>Choose one path. Each flow stays short and reviews before anything saves.</p>
               </div>
@@ -38889,25 +39402,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderHearthHomeCommandView() {
-    const normalizedMode = normalizeUserType(userType);
-    const normalizedPreset = normalizeDashboardPreset(dashboardPreset);
-    const simpleModeRequested =
-      ["budget", "parent"].includes(normalizedMode) ||
-      ["simple", "budget_parent"].includes(normalizedPreset);
-    const sellerAccessVisible = commandDeskSellerAccess;
-    const hearthMode = adminToolsVisible
-      ? "admin"
-      : sellerAccessVisible
-        ? "seller"
-        : simpleModeRequested
-          ? "simple"
-          : "collector";
-    const hearthModeLabel = {
-      admin: "Admin command view",
-      seller: "Seller command view",
-      simple: "Simple family view",
-      collector: "Collector command view",
-    }[hearthMode];
+    const sellerAccessVisible = adaptiveSellerToolsVisible;
+    const hearthMode = adminToolsVisible ? "admin" : adaptiveUiState.hearthMode;
+    const hearthAdaptiveState = adminToolsVisible
+      ? { ...adaptiveUiState, showAdminTools: true, showModeratorTools: true, showSellerTools: false }
+      : adaptiveUiState;
+    const hearthModeLabel = adminToolsVisible ? "Admin command view" : adaptiveUiState.modeLabel;
     const activeAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement).slice(0, 3);
     const currentScopedUserId = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta");
     const currentScopedEmail = String(accountEmail() || "").trim().toLowerCase();
@@ -38975,6 +39475,51 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const receiptsNeedingReviewCount = forgeReceiptsNeedingReviewCount;
     const forgeReviewCount = receiptsNeedingReviewCount + needsMarketCheckItems.length + missingSalePriceItems.length;
     const kidsApplication = userKidsApplicationRows[0] || null;
+    const hearthFreshReports = scoutReportRows.filter((report) => {
+      const observedAt = new Date(scoutReportObservedAt(report)).getTime();
+      return Number.isFinite(observedAt) && (Date.now() - observedAt) < 2 * 60 * 60 * 1000;
+    }).length;
+    const hearthSmartGuidance = resolveHearthSmartNextAction(hearthAdaptiveState, {
+      vaultItems: activeVaultItems.length,
+      scoutReports: scoutReportRows.length,
+      freshScoutReports: hearthFreshReports,
+      hasTrustedScoutSignal: Boolean(latestScoutReport && isConfirmedScoutSignal(latestScoutReport)),
+      pendingAdminCount: pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length + pendingFeedbackCount + pendingSuggestionCount + marketReviewCount,
+      kidsProgramFocus: Boolean(adaptiveUiState.familyMode && !kidsApplication),
+    });
+    const renderSmartGuidanceAction = () => {
+      if (!hearthSmartGuidance) return null;
+      if (hearthSmartGuidance.key === "admin_review") return {
+        ...hearthSmartGuidance,
+        onPrimary: () => setActiveTab("adminReview"),
+        onSecondary: () => setActiveTab("dashboard"),
+      };
+      if (hearthSmartGuidance.key === "seller_progress") return {
+        ...hearthSmartGuidance,
+        onPrimary: () => setActiveTab("inventory"),
+        onSecondary: () => openAddActionSheet("hearth-seller"),
+      };
+      if (hearthSmartGuidance.key === "spark_focus") return {
+        ...hearthSmartGuidance,
+        onPrimary: () => setActiveTab("kidsProgram"),
+        onSecondary: () => openQuickAddAction("vaultItem"),
+      };
+      if (hearthSmartGuidance.key === "first_scout_report") return {
+        ...hearthSmartGuidance,
+        onPrimary: () => openQuickAddAction("storeReport"),
+        onSecondary: () => setActiveTab("scout"),
+      };
+      if (hearthSmartGuidance.key === "fresh_scout_signals") return {
+        ...hearthSmartGuidance,
+        onPrimary: () => setActiveTab("scout"),
+        onSecondary: () => openQuickAddAction("storeReport"),
+      };
+      return {
+        ...hearthSmartGuidance,
+        onPrimary: () => openQuickAddAction("vaultItem"),
+        onSecondary: () => setActiveTab(hearthSmartGuidance.key === "start_collection" ? "market" : "scout"),
+      };
+    };
     const catalogFreshnessSource = supabaseImportStatus.lastPriceChecked || catalogImportStatus.lastImportedAt || marketPriceCache.lastSync || "";
     const catalogFreshnessLabel = catalogFreshnessSource ? shortDate(catalogFreshnessSource) : "";
     const getStartedCards = [
@@ -39086,8 +39631,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           secondaryLabel: "Check Market",
           onSecondary: () => setActiveTab("market"),
         };
+        const sellerGuidance = renderSmartGuidanceAction();
+        if (sellerGuidance?.key === "seller_progress") return sellerGuidance;
       }
       if (hearthMode === "simple") {
+        const simpleGuidance = renderSmartGuidanceAction();
+        if (["spark_focus", "start_collection", "first_scout_report", "fresh_scout_signals", "default_collection"].includes(simpleGuidance?.key)) return simpleGuidance;
         if (latestScoutReport) return {
           badge: latestScoutReport.verified ? "Verified" : "Scout",
           title: `${latestScoutStoreName} has a recent Scout signal`,
@@ -39108,6 +39657,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         };
       }
       if (hearthMode === "collector") {
+        const collectorGuidance = renderSmartGuidanceAction();
+        if (["start_collection", "first_scout_report", "fresh_scout_signals", "default_collection"].includes(collectorGuidance?.key)) return collectorGuidance;
         if (bestMarketMover) return {
           badge: "Market",
           title: `${bestMarketMover.name || bestMarketMover.productName || bestMarketMover.cardName || "A watched item"} needs a price check`,
@@ -39155,12 +39706,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onSecondary: () => openAddActionSheet("hearth-calm"),
       };
     })();
-    const quickActions = [
-      { key: "quick-add", label: "Quick Add", helper: "Add anything.", icon: "plus", onClick: () => openAddActionSheet("hearth") },
-      { key: "scout-report", label: "Scout Report", helper: "Share a find.", icon: "scout", onClick: () => openQuickAddAction("storeReport") },
-      { key: "vault", label: "Open Vault", helper: "My collection.", icon: "vault", onClick: () => setActiveTab("vault") },
-      { key: "forge", label: "Open Forge", helper: "My business.", icon: "forge", onClick: () => setActiveTab("inventory") },
-    ];
+    const quickActionByKey = {
+      quickAdd: { key: "quick-add", label: "Quick Add", helper: "Add anything.", icon: "plus", onClick: () => openAddActionSheet("hearth") },
+      scoutReport: { key: "scout-report", label: "Scout Report", helper: "Share a find.", icon: "scout", onClick: () => openQuickAddAction("storeReport") },
+      vault: { key: "vault", label: "Open Vault", helper: "My collection.", icon: "vault", onClick: () => setActiveTab("vault") },
+      market: { key: "market", label: "Open Market", helper: "Fair prices.", icon: "market", onClick: () => setActiveTab("market") },
+      spark: { key: "spark", label: "The Spark", helper: "Family fun.", icon: "spark", onClick: () => setActiveTab("kidsProgram") },
+      forge: { key: "forge", label: "Open Forge", helper: "My business.", icon: "forge", onClick: () => setActiveTab("inventory") },
+      addSale: { key: "add-sale", label: "Add Sale", helper: "Record revenue.", icon: "forge", onClick: () => openQuickAddAction("sale") },
+      addReceipt: { key: "add-receipt", label: "Add Receipt", helper: "Track cost.", icon: "receipt", onClick: () => openQuickAddAction("receipt") },
+      admin: { key: "admin", label: "Admin", helper: "Review queue.", icon: "settings", onClick: () => setActiveTab("adminReview") },
+    };
+    const quickActions = selectAdaptiveHearthQuickActionKeys(hearthAdaptiveState)
+      .map((key) => quickActionByKey[key])
+      .filter(Boolean)
+      .slice(0, 4);
     const modePriorityCards = {
       admin: [
         { key: "beta", eyebrow: "Beta Access", title: "Access requests", value: pendingBetaRequests, detail: "Pending or paused beta access rows.", cta: "Review", onClick: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); }, accent: "admin" },
@@ -39213,10 +39773,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const hearthHour = new Date().getHours();
     const hearthGreeting = hearthHour < 12 ? "Good morning" : hearthHour < 18 ? "Good afternoon" : "Good evening";
     const hearthAvatarInitial = (hearthGreetingName || "E").slice(0, 1).toUpperCase();
-    const hearthFreshReports = scoutReportRows.filter((report) => {
-      const reportTime = new Date(report.observedAt || report.observed_at || report.createdAt || report.created_at || 0).getTime();
-      return Number.isFinite(reportTime) && Date.now() - reportTime <= 24 * 60 * 60 * 1000;
-    }).length;
     const hearthScoutTrustScore = Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0;
     const hearthHeroStats = [
       { key: "fresh", label: "Fresh reports", value: hearthFreshReports || scoutReportRows.length || 0, tone: "tide" },
@@ -40237,6 +40793,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </dl>
             <button type="button" className="secondary-button" onClick={() => openUtilityPage("help")}>Open Help & Support</button>
           </div>
+          {renderSmartSetupSettingsCard()}
           {renderOnboardingSettingsCard()}
           <div className="drawer-info-card experience-mode-settings-card utility-card">
             <strong>Experience Mode</strong>
@@ -40893,7 +41450,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   return (
-    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
+    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -41164,7 +41721,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="menu-command-links-header">
                   <div>
                     <strong>Command Menu</strong>
-                    <p>Daily actions stay in the bottom dock. Deeper tools live here.</p>
+                    <p>{adaptiveUiState.modeLabel}. Daily actions stay in the bottom dock; deeper tools live here.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => openAddActionSheet("menu")}>
                     Quick Add
@@ -43484,6 +44041,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
       ) : null}
 
+      {renderSmartSetupModal()}
       {renderToastViewport()}
       {renderConfirmationModal()}
 
