@@ -134,9 +134,7 @@ import {
   BRAND_LEGAL_NOTICE,
   DATA_REQUEST_TYPES,
   DEFAULT_NOTIFICATION_SETTINGS,
-  FOR_PARENTS_COPY,
   KIDS_PROGRAM_ACCESS_OPTIONS,
-  KIDS_PROGRAM_ANTI_RESALE_COPY,
   KIDS_PROGRAM_COPY,
   KNOWN_LIMITATIONS,
   PRODUCTION_APP_URL,
@@ -31386,7 +31384,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .slice(0, 4);
     const kidProgramProjectCount = safeKidProgramProjects.length;
     const kidProgramTargetPacks = safeKidProgramProjects.reduce((sum, project) => sum + Number(project.targetPackCount || 0), 0);
-    const kidProgramScheduledEvents = safeKidProgramProjects.filter((project) => project.eventDate).length;
+    const kidProgramEventCards = safeKidProgramProjects.filter((project) => project.eventDate).slice(0, 3);
+    const kidProgramScheduledEvents = kidProgramEventCards.length;
     const sparkSafetyRules = [
       "Parent-approved access only.",
       "No private child messaging.",
@@ -31394,18 +31393,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "No scalper pricing.",
       "Retail-first access when inventory allows.",
     ];
+    const sparkProgramCards = [
+      { key: "packs", icon: "✦", title: "Kids Packs", detail: "Fair starter packs." },
+      { key: "giveaways", icon: "★", title: "Giveaways", detail: "Family-friendly chances." },
+      { key: "events", icon: "◌", title: "Events", detail: "General-area events." },
+      { key: "learn", icon: "◇", title: "Learn & Grow", detail: "Kind collecting tips." },
+    ];
+    const sparkLearningCards = [
+      "Card care basics",
+      "Trading kindly",
+      "Set collecting",
+      "How to spot fair prices",
+    ];
     const sparkSections = [
       {
         key: "parent-requests",
-        title: "Parent Requests",
-        value: activeApplication ? sparkProgramStatusLabel(activeApplication.status || "interest_submitted") : "No open requests",
-        detail: activeApplication ? "Your family request is private and waiting for review." : "Parent or guardian starts every Kids Program request.",
+        title: "Request status",
+        value: activeApplication ? sparkProgramStatusLabel(activeApplication.status || "interest_submitted") : "Not requested",
+        detail: activeApplication ? "Your family request is private and waiting for review." : "A parent or guardian can start when ready.",
       },
-      { key: "missions", title: "Kid Missions", value: kidProgramProjectCount ? `${kidProgramProjectCount} saved plan${kidProgramProjectCount === 1 ? "" : "s"}` : "Coming soon", detail: "Simple collecting goals that teach care, fairness, and patience." },
-      { key: "giveaways", title: "Giveaways", value: kidProgramTargetPacks ? `${kidProgramTargetPacks} planned pack${kidProgramTargetPacks === 1 ? "" : "s"}` : "When available", detail: "Kids packs and giveaways may open when Ember & Tide has safe inventory to share." },
-      { key: "events", title: "Drops / Events", value: kidProgramScheduledEvents ? `${kidProgramScheduledEvents} scheduled` : "Announced only", detail: "Kid-friendly drops and events appear through Announcements or Ember Watch when confirmed." },
-      { key: "rewards", title: "Rewards", value: "Spark points", detail: "Positive collecting habits, not pressure to spend or flip." },
-      { key: "rules", title: "Safety Rules", value: "Always on", detail: "No private child messaging, no scalper pricing, and parent-approved trades only." },
+      { key: "packs", title: "Kids packs", value: kidProgramTargetPacks ? `${kidProgramTargetPacks} planned` : "Warming up", detail: "Inventory-limited and reviewed for fair access." },
+      { key: "events", title: "Events", value: kidProgramScheduledEvents ? `${kidProgramScheduledEvents} scheduled` : "Coming soon", detail: "General area only. No private addresses." },
     ];
     const requestSteps = [
       "Child/family request",
@@ -31417,72 +31425,88 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const requestAccessSummary = kidsProgramForm.requestedAccess.length ? kidsProgramForm.requestedAccess.join(", ") : "Not selected yet";
     const scrollToSparkRequest = () => document.getElementById("spark-request-flow")?.scrollIntoView({ behavior: "smooth", block: "start" });
     const scrollToSparkRules = () => document.getElementById("spark-safety-rules")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const scrollToSparkDetails = () => document.getElementById("spark-program-sections")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return (
       <>
         <PageHeader
-          className={getHeaderCardClass("panel page-summary-card kids-spark-header")}
-          title="Kids Program: The Spark"
-          subtitle="How do we help young collectors safely? Parent-safe first, cute second."
-          actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
-          summary={(
-            <div className="settings-header-summary">
-              <span>Protect the spark. Help families collect fairly.</span>
-              <span>{KIDS_PROGRAM_ANTI_RESALE_COPY}</span>
-              <span>Inventory and program availability may vary; requests are not guaranteed.</span>
-            </div>
-          )}
+          className={getHeaderCardClass("panel page-summary-card kids-spark-header spark-page-header")}
+          title="The Spark"
+          subtitle="Kids Program"
+          actions={null}
+          summary={<p className="spark-header-mission-line">Helping families keep collecting fun, fair, and kid-friendly. Parent-safe requests. No private child messaging.</p>}
         />
-        <section className="panel spark-mascot-panel">
-          <div className="spark-mascot" aria-hidden="true">
-            <span className="spark-mascot-flame" />
-            <span className="spark-mascot-face" />
+
+        <section className="panel spark-mission-card">
+          <div className="spark-mission-orb" aria-hidden="true">
+            <span />
           </div>
-          <div className="spark-mascot-copy">
-            <h2>The Spark</h2>
-            <p>Parent-approved requests, safe collecting missions, giveaways/events when available, and retail-price opportunities when inventory allows. No private child messaging. No guaranteed fulfillment.</p>
-            <div className="spark-status-grid">
-              <div><span>Parent Requests</span><strong>{activeApplication ? "1 private" : "0 open"}</strong></div>
-              <div><span>Fair Access</span><strong>Retail-first</strong></div>
-            </div>
-            <div className="quick-actions spark-action-row">
-              <button type="button" onClick={scrollToSparkRequest}>Join The Spark</button>
-              <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("announcements")}>Follow Announcements</button>
-              <button type="button" className="secondary-button" onClick={openPokemonWatchCalendar}>View kid-friendly drops</button>
+          <div className="spark-mission-copy">
+            <p className="section-kicker">The Spark mission</p>
+            <h2>Bring Pokemon back to kids.</h2>
+            <p>Kids packs, giveaways, family-friendly events, and learning support should feel safe, fair, and parent-managed.</p>
+            <div className="spark-mission-facts" aria-label="The Spark guardrails">
+              <span>Parent-managed</span>
+              <span>Admin-reviewed</span>
             </div>
           </div>
+          <button
+            type="button"
+            className="hearth-primary-cta spark-primary-cta"
+            onClick={activeApplication ? scrollToSparkDetails : scrollToSparkRequest}
+          >
+            {activeApplication ? "View status" : "Request access"}
+          </button>
         </section>
+
         {adminToolsVisible ? (
-          <section className="panel ai-page-helper-panel">
-            <div className="compact-card-header">
-              <div>
-                <h3>Admin AI Assist</h3>
-                <p>Application summaries are review-only. Admins make final Kids Program decisions.</p>
-              </div>
-              <button type="button" className="secondary-button" onClick={() => void runKidsProgramAiAssist(activeApplication)}>
-                Summarize application
-              </button>
+          <section className="panel spark-admin-shortcut">
+            <span className="status-badge trust-badge--kid">Admin</span>
+            <div>
+              <strong>Kids Program review stays in Admin Command Center.</strong>
+              <p>Application summaries are review-only. Admins make final decisions.</p>
             </div>
+            <button type="button" className="secondary-button" onClick={() => void runKidsProgramAiAssist(activeApplication)}>
+              Summarize
+            </button>
           </section>
         ) : null}
+
         <section className="panel kids-program-layout spark-program-layout">
-          <div className="spark-section-grid" aria-label="Kids Program sections">
+          <section id="spark-program-sections" className="spark-section-block" aria-label="Kids Program sections">
+            <div className="compact-card-header">
+              <div>
+                <h3>What The Spark supports</h3>
+                <p>Four safe ways we help families collect.</p>
+              </div>
+            </div>
+            <div className="spark-section-grid">
+              {sparkProgramCards.map((section) => (
+                <button type="button" className="spark-section-card" key={section.key} onClick={section.key === "events" ? openPokemonWatchCalendar : scrollToSparkDetails}>
+                  <span className="spark-section-icon" aria-hidden="true">{section.icon}</span>
+                  <strong>{section.title}</strong>
+                  <p>{section.detail}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="spark-status-strip" aria-label="The Spark status">
             {sparkSections.map((section) => (
-              <article className="spark-section-card" key={section.key}>
+              <article className="spark-status-card" key={section.key}>
                 <span>{section.title}</span>
                 <strong>{section.value}</strong>
                 <p>{section.detail}</p>
               </article>
             ))}
-          </div>
+          </section>
 
           <div className="spark-parent-safe-panel">
             <div>
               <h3>Parent-safe by design</h3>
-              <p>Ember & Tide is built with families in mind. The Spark is community-based and inventory-limited. Participation is managed by a parent or guardian, requests are private, and availability may vary.</p>
+              <p>Ember & Tide is built with families in mind. The Spark is community-based and inventory-limited. Participation is managed by a parent or guardian.</p>
             </div>
             <ul className="clean-bullet-list">
-              {FOR_PARENTS_COPY.map((point) => <li key={point}>{point}</li>)}
+              {["No private child messaging.", "Admin-reviewed requests.", "Family-friendly community standards.", "Details stay private unless a parent chooses to share."].map((point) => <li key={point}>{point}</li>)}
             </ul>
           </div>
 
@@ -31492,7 +31516,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <h3>Safety Rules</h3>
                 <p>These rules apply before any request, mission, giveaway, event, reward, or trade can move forward.</p>
               </div>
-              <span className="trust-badge trust-badge--kid">Parent approved</span>
+              <span className="trust-badge trust-badge--kid">Parent-safe</span>
             </div>
             <div className="spark-rule-grid">
               {sparkSafetyRules.map((rule) => (
@@ -31504,19 +31528,60 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </section>
 
+          <section className="spark-learning-panel" aria-label="Learn and grow topics">
+            <div className="compact-card-header">
+              <div>
+                <h3>Learn & Grow</h3>
+                <p>Simple collecting habits for families and new collectors.</p>
+              </div>
+            </div>
+            <div className="spark-learning-grid">
+              {sparkLearningCards.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </section>
+
+          {kidProgramEventCards.length ? (
+            <section className="spark-events-panel" aria-label="Family-friendly events">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Events & giveaways</h3>
+                  <p>General area only. Exact private locations are not shown here.</p>
+                </div>
+                <span className="trust-badge trust-badge--kid">Family-friendly</span>
+              </div>
+              <div className="spark-event-list">
+                {kidProgramEventCards.map((project) => (
+                  <article className="spark-event-card" key={project.id}>
+                    <div>
+                      <strong>{project.name || "Kids Program event"}</strong>
+                      <p>{project.eventDate ? "Date set" : "Date coming soon"} · General area shared when confirmed</p>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={openPokemonWatchCalendar}>View details</button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <div className="empty-state spark-empty-state spark-event-empty-state">
+              <h3>The Spark is warming up.</h3>
+              <p>Check back soon for kids packs, giveaways, and family-friendly events.</p>
+              <button type="button" onClick={scrollToSparkDetails}>Learn about The Spark</button>
+            </div>
+          )}
+
           {!activeApplication ? (
-            <div className="empty-state spark-empty-state">
-              <h3>No open requests yet.</h3>
-              <p>Start with a parent-approved interest request. We will never promise inventory, but The Spark helps Ember & Tide understand what local families are hoping to find.</p>
+            <div className="empty-state spark-empty-state spark-request-empty-state">
+              <h3>No Kids Program request yet.</h3>
+              <p>Start with a parent-approved interest request. We cannot promise inventory, but The Spark helps Ember & Tide understand what local families hope to find.</p>
               <div className="quick-actions">
-                <button type="button" onClick={scrollToSparkRequest}>Request Kid Access</button>
+                <button type="button" onClick={scrollToSparkRequest}>Request access</button>
                 <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
               </div>
             </div>
           ) : (
             <div className="spark-private-request-card">
               <div>
-                <span>Parent Requests</span>
+                <span>Request status</span>
                 <h3>Your request is private</h3>
                 <p>Status: {sparkProgramStatusLabel(activeApplication.status || "interest_submitted")}. Child/family request details are not public.</p>
               </div>
@@ -31527,7 +31592,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {safeKidProgramProjects.length ? (
             <section className="spark-private-request-card spark-program-projects-card" aria-label="Private Kids Program project activity">
               <div>
-                <span>Saved Kids Program activity</span>
+                <span>Private activity</span>
                 <h3>Private family-safe plans</h3>
                 <p>Pack plans, events, and giveaway prep are shown only in your signed-in view. Child/family details and admin notes are not public.</p>
               </div>
@@ -31557,7 +31622,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <form id="spark-request-flow" className="form beta-form-card spark-request-flow" onSubmit={submitKidsProgramApplication} noValidate>
             <div className="spark-request-heading">
               <div>
-                <h3>Kids request flow</h3>
+                <h3>Request The Spark access</h3>
                 <p>Step {kidsProgramRequestStep} of 5: {requestSteps[kidsProgramRequestStep - 1]}</p>
               </div>
               <span className="status-badge">Parent managed</span>
@@ -31588,7 +31653,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <input value={kidsProgramForm.parentName} onChange={(event) => updateKidsProgramField("parentName", event.target.value)} placeholder="Parent or guardian" />
                 </Field>
                 <div className="inline-input-grid">
-                  <Field label="ZIP code">
+                  <Field label="Home ZIP private">
                     <input value={kidsProgramForm.zipCode} onChange={(event) => updateKidsProgramField("zipCode", event.target.value)} inputMode="numeric" />
                   </Field>
                   <Field label="Child age range">
