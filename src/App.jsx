@@ -20579,19 +20579,14 @@ function renderTideTradrHeader() {
   };
   return (
     <PageHeader
-      className={getHeaderCardClass("panel tidetradr-summary-card")}
-      title="Market / Exchange"
-      subtitle="Search products, compare fair prices, and keep watches simple."
+      className={getHeaderCardClass("panel tidetradr-summary-card market-page-heading")}
+      title="Market"
+      subtitle="Find fair prices, watch trends, and compare listings."
       tabs={marketTabs}
       activeTab={activeMarketTab}
       onTabChange={changeMarketTab}
-      actions={(
-        <>
-          <button type="button" onClick={() => openQuickFindFlow({ source: "market" })}>Quick Find</button>
-        </>
-      )}
     >
-      <form className="catalog-search-form" onSubmit={submitCatalogSearch}>
+      <form className="catalog-search-form market-search-form" onSubmit={submitCatalogSearch}>
         <LazySmartCatalogSearchBox
           value={catalogSearch}
           onChange={updateCatalogSearchInput}
@@ -20603,7 +20598,7 @@ function renderTideTradrHeader() {
           productGroup={currentCatalogProductGroup()}
           dataFilter={catalogDataFilter}
           inputClassName="search-input"
-          placeholder="Search by name, set, product type, card number, or scanned barcode..."
+          placeholder="Search cards, sets, products..."
           closeSignal={catalogSuggestionCloseSignal}
           maxSuggestions={5}
           localCatalogProducts={catalogProducts}
@@ -20611,37 +20606,12 @@ function renderTideTradrHeader() {
         />
         <button type="submit">Search</button>
       </form>
-      <QuickActionGrid
-        className="tidetradr-shortcut-grid"
-        ariaLabel="TideTradr quick actions"
-        actions={[
-          {
-            key: "tidetradr-watchlist",
-            title: "Watchlist",
-            subtitle: `${workspaceWatchlist.length} watched`,
-            onClick: () => setTideTradrSubTab("watch"),
-          },
-          {
-            key: "tidetradr-recent",
-            title: "Recent Checks",
-            subtitle: phase2RecentDeals[0]?.title || (tideTradrLookupProduct ? catalogTitle(tideTradrLookupProduct) : "No recent check yet"),
-            onClick: () => setTideTradrSubTab("recent"),
-          },
-          {
-            key: "tidetradr-listings",
-            title: "Listings",
-            subtitle: `${marketplaceListings.filter((listing) => normalizeListingStatus(listing) === "Active").length} active`,
-            onClick: () => setTideTradrSubTab("listings"),
-          },
-          {
-            key: "tidetradr-deal",
-            title: "Deal Finder",
-            subtitle: "Check Deal",
-            ariaLabel: "Check Deal",
-            onClick: () => openDealFinderModal(),
-          },
-        ]}
-      />
+      <div className="market-mode-strip" aria-label="Market guidance">
+        <span>{adaptiveSellerToolsVisible ? "Seller market view" : "Collector market view"}</span>
+        <span>{adaptiveSellerToolsVisible ? "Forge comps" : "Vault first"}</span>
+        <span>Honest labels</span>
+        <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
+      </div>
     </PageHeader>
   );
 }
@@ -27333,7 +27303,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const productImageSrc = catalogImage(product);
     const productSetName = catalogExpansionName(product) || "Set unavailable";
     const productTypeLabel = catalogProductTypeLabel(product);
-    const showMarketMatchBadge = productHasMarketPrice && productFairAssessment.label === "Market Match";
+    const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Source unknown";
+    const sellerMarketMode = Boolean(adaptiveSellerToolsVisible || adminToolsVisible);
     const productId = product.id || catalogTitle(product);
     const chooserOpen = String(marketAddChooserProductId) === String(productId);
     const confirmation = marketAddConfirmation && String(marketAddConfirmation.productId) === String(productId) ? marketAddConfirmation : null;
@@ -27382,11 +27353,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="market-card-price-row">
               <div className="market-price-stack">
                 <strong>{productMarketLabel}</strong>
-                <span>{productHasMarketPrice ? "Market" : "Market unavailable"}</span>
+                <span>{sellerMarketMode ? "Market comps" : "Market estimate"}</span>
               </div>
-              {showMarketMatchBadge ? renderFairPriceBadge(productFairAssessment) : null}
+              {renderFairPriceBadge(productFairAssessment)}
             </div>
-            {productReferenceParts.length ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : null}
+            <div className="market-trust-badge-row">
+              <span className={`market-status-pill market-status-pill--${productHasMarketPrice ? "catalog" : "unknown"}`}>{marketSourceLabel}</span>
+              {watched ? <span className="market-status-pill market-status-pill--watchlist">Watchlist</span> : null}
+            </div>
+            {productReferenceParts.length ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : <p className="market-card-reference-line">Not enough price history yet.</p>}
             {showRepairMeta ? (
               <>
                 <p className="catalog-result-detail-line">
@@ -27416,7 +27391,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             }}
             aria-expanded={chooserOpen}
           >
-            + Add
+            {sellerMarketMode ? "Add to Forge" : "Add to Vault"}
           </button>
           <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
             {watched ? "Watched" : "Watch"}
@@ -27429,10 +27404,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>Known details will be copied into a draft you can finish later.</span>
             </div>
             <div className="market-result-destination-actions">
-              <button type="button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "forge")}>
-                {forgeSaving ? "Adding..." : "Save to Forge"}
-              </button>
-              <button type="button" className="secondary-button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "vault")}>
+              {sellerMarketMode ? (
+                <button type="button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "forge")}>
+                  {forgeSaving ? "Adding..." : "Save to Forge"}
+                </button>
+              ) : null}
+              <button type="button" className={sellerMarketMode ? "secondary-button" : ""} disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "vault")}>
                 {vaultSaving ? "Adding..." : "Save to Vault"}
               </button>
               <button type="button" className="ghost-button" onClick={() => setMarketAddChooserProductId("")}>
@@ -34889,7 +34866,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
 
     if ((hasMarket && numericPrice > numericMarket * 1.2) || (hasMsrp && numericPrice > numericMsrp * 1.35)) {
-      return { label: "High Markup", tone: "markup", explanation: "Meaningfully above available reference pricing." };
+      return { label: "High Price", tone: "markup", explanation: "Meaningfully above available reference pricing." };
     }
 
     if (hasMarket && numericPrice <= numericMarket * 1.12) {
@@ -35029,6 +35006,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const priceLabel = listing.listingType === "For Trade" ? "Trade value" : listing.listingType === "Free / Donation" ? "Price" : "Price";
     const closedListing = isMarketplaceClosedStatus(normalizedStatus);
     const showQualityNotes = adminMode || listing.sellerUserId === (currentUserProfile.userId || user?.id) || quality.blockers.length > 0;
+    const sellerMarketMode = Boolean(adaptiveSellerToolsVisible || adminToolsVisible);
     return (
       <article className={`marketplace-listing-card market-fair-card compact-card${closedListing ? " marketplace-listing-card--closed" : ""}`} key={listing.id}>
         <div className="marketplace-listing-row">
@@ -35049,9 +35027,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="market-card-body">
             <div className="marketplace-badges">
-              <span className="status-badge">{listing.listingType}</span>
-              <span className={`status-badge ${String(normalizedStatus || "").toLowerCase().replace(/\s+/g, "-")}`}>{normalizedStatus}</span>
-              {moderationStatus !== "Approved" && moderationStatus !== "Draft" ? (
+              <span className="market-status-pill">{listing.listingType}</span>
+              <span className={`market-status-pill ${String(normalizedStatus || "").toLowerCase().replace(/\s+/g, "-")}`}>{normalizedStatus}</span>
+              {adminMode && moderationStatus !== "Approved" && moderationStatus !== "Draft" ? (
                 <span className={`status-badge ${String(moderationStatus || "").toLowerCase().replace(/\s+/g, "-")}`}>{moderationStatus}</span>
               ) : null}
               {renderFairPriceBadge(fairAssessment)}
@@ -35087,8 +35065,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <button type="button" className="secondary-button" onClick={() => toggleSavedListing(listing.id)}>{marketplaceSavedIds.includes(listing.id) ? "Saved" : "Save"}</button>
           {listingCatalogProduct && !closedListing ? (
             <>
-              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-vault", destinations: { vault: true } })}>Add to Vault</button>
-              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-forge", destinations: { forge: true } })}>Add to Forge</button>
+              {sellerMarketMode ? (
+                <button type="button" onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-forge", destinations: { forge: true } })}>Add to Forge</button>
+              ) : null}
+              <button type="button" className={sellerMarketMode ? "secondary-button" : ""} onClick={() => openProductAddFlow({ product: listingCatalogProduct, source: "marketplace-listing-vault", destinations: { vault: true } })}>Add to Vault</button>
             </>
           ) : null}
           <button type="button" className="secondary-button" onClick={() => openMarketplaceReportFlow(listing)}>Report</button>
@@ -35168,35 +35148,37 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const reviewListing = buildMarketplaceListing("Pending Review");
     const selectedListingClosed = selectedListing ? isMarketplaceClosedStatus(normalizeListingStatus(selectedListing)) : false;
     const selectedListingQuality = selectedListing ? getMarketplaceListingQualityReport(selectedListing) : null;
+    const selectedListingCatalogProduct = selectedListing ? getMarketplaceListingCatalogProduct(selectedListing) : null;
+    const sellerMarketMode = Boolean(adaptiveSellerToolsVisible || adminToolsVisible);
+    const marketplaceViews = [
+      sellerMarketMode ? ["create", "Create"] : null,
+      ["browse", "For You"],
+      sellerMarketMode ? ["my", "My Listings"] : null,
+      ["saved", "Watchlist"],
+      sellerMarketMode ? ["drafts", "Drafts"] : null,
+      canReviewSharedData ? ["pending", "Review"] : null,
+    ].filter(Boolean);
 
     return (
       <div className="marketplace-section">
-        <div className="marketplace-beta-note">
-          <strong>Marketplace is in beta.</strong>
-          <span>Payments and shipping are not handled by the app yet. Meet safely, verify items, and do not send payment outside trusted methods.</span>
+        <div className="marketplace-beta-note market-page-note">
+          <strong>Community listings beta</strong>
+          <span>Payments and shipping are not handled here. Verify items and use safe agreed payment methods.</span>
         </div>
         <details className="marketplace-safety-rules marketplace-safety-rules--page">
-          <summary>TideTradr safety rules</summary>
+          <summary>Safety rules</summary>
           <div className="tidepool-guideline-list">
             {TIDETRADR_MARKETPLACE_RULES.map((rule) => <span key={rule}>{rule}</span>)}
           </div>
         </details>
-        <div className="cards mini-cards">
-          <div className="card"><p>Active Listings</p><h2>{publicListings.length}</h2></div>
-          <div className="card"><p>Pending Review</p><h2>{marketplaceScopeListings.filter((listing) => normalizeListingStatus(listing) === "Pending Review").length}</h2></div>
-          <div className="card"><p>My Listings</p><h2>{visibleMyListings.length}</h2></div>
+        <div className="market-stats-grid market-stats-grid--compact">
+          <div className="card"><p>Active</p><h2>{publicListings.length}</h2></div>
           <div className="card"><p>Saved</p><h2>{marketplaceSavedIds.length}</h2></div>
+          {sellerMarketMode ? <div className="card"><p>My Listings</p><h2>{visibleMyListings.length}</h2></div> : null}
         </div>
 
         <div className="quick-actions marketplace-nav-actions">
-          {[
-            ["create", "Create Listing"],
-            ["browse", "Browse Listings"],
-            ["my", "My Listings"],
-            ["saved", "Saved Listings"],
-            ["drafts", "Drafts"],
-            ["pending", "Pending Review"],
-          ].map(([view, label]) => (
+          {marketplaceViews.map(([view, label]) => (
             <button
               key={view}
               type="button"
@@ -35212,8 +35194,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {label}
             </button>
           ))}
-          <button type="button" className="secondary-button" onClick={() => exportCrossListingCSV("all")}>Export Listings</button>
-          <button type="button" className="secondary-button" onClick={() => exportCrossListingCSV("whatnot")}>Whatnot CSV</button>
+          {sellerMarketMode ? <button type="button" className="secondary-button" onClick={() => exportCrossListingCSV("all")}>Export</button> : null}
         </div>
 
         {marketplaceView === "landing" ? (
@@ -35388,7 +35369,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </p>
                 {marketplaceView === "browse" ? (
                   <div className="quick-actions">
-                    <button type="button" onClick={() => setVaultToast("Market alert saved for beta. Watchlist alerts are coming next.")}>Create Alert</button>
+                    <button type="button" onClick={() => setVaultToast("Market alert saved for beta. Watchlist alerts are coming next.")}>Save Watch</button>
                     <button
                       type="button"
                       className="secondary-button"
@@ -35401,7 +35382,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     >
                       Browse Market
                     </button>
-                    <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("manual", {})}>Add Listing</button>
+                    {sellerMarketMode ? <button type="button" className="secondary-button" onClick={() => openMarketplaceCreate("manual", {})}>Add Listing</button> : null}
                   </div>
                 ) : null}
               </div>
@@ -35454,6 +35435,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="quick-actions">
               <button type="button" disabled={selectedListingClosed} onClick={() => setVaultToast("Contact request saved for beta. Messaging is coming soon.")}>Contact Seller</button>
               <button type="button" className="secondary-button" onClick={() => toggleSavedListing(selectedListing.id)}>Save Listing</button>
+              {!selectedListingClosed && selectedListingCatalogProduct ? (
+                adaptiveSellerToolsVisible ? (
+                  <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: selectedListingCatalogProduct, source: "marketplace-detail-forge", destinations: { forge: true } })}>Add to Forge</button>
+                ) : (
+                  <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: selectedListingCatalogProduct, source: "marketplace-detail-vault", destinations: { vault: true } })}>Add to Vault</button>
+                )
+              ) : null}
               <button type="button" className="secondary-button" disabled>Make Offer Later</button>
               <button type="button" className="secondary-button" onClick={() => openMarketplaceReportFlow(selectedListing)}>Report</button>
               {!selectedListingClosed && (selectedListing.sellerUserId === (currentUserProfile.userId || user?.id) || adminToolsVisible) ? (
@@ -41533,7 +41521,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   return (
-    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
+    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -46991,10 +46979,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("overview")}>Search Catalog</button>
                   </div>
                   {workspaceWatchlist.length === 0 ? (
-                    <div className="empty-state">
-                      <h3>No watched products yet</h3>
-                      <p>Add products from TideTradr search to track market values here.</p>
-                      <button type="button" onClick={() => setTideTradrSubTab("overview")}>Search Catalog</button>
+                    <div className="empty-state market-empty-state">
+                      <h3>Your watchlist is ready.</h3>
+                      <p>Save items to track fair prices and restocks.</p>
+                      <button type="button" onClick={() => setTideTradrSubTab("overview")}>Browse Market</button>
                     </div>
                   ) : (
                     <div className="inventory-list tidetradr-watch-list">
@@ -47203,21 +47191,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </section>
                 ) : null}
 
-                <section ref={catalogResultsRef} className={`panel tidetradr-results-panel ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}>
+                <section ref={catalogResultsRef} className={`panel tidetradr-results-panel market-results-panel ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}>
                   <div className="compact-card-header">
                     <div>
-                      <h2>Product Results</h2>
+                      <h2>{catalogSearchHasRun ? "Market Results" : "Search Market"}</h2>
                       <p>
                         {catalogSearchHasRun
-                          ? `${tideTradrCatalogResults.length} shown from the current paged search.`
-                          : "Search TideTradr to load catalog results."}
+                          ? `Page ${supabaseCatalogStatus.page || 1} of ${tideTradrCatalogPageCount || (supabaseCatalogStatus.hasMore ? (supabaseCatalogStatus.page || 1) + 1 : 1)}`
+                          : "Compare catalog values, retail context, and saved watches."}
                       </p>
                     </div>
                     <span className="status-badge">{supabaseCatalogStatus.loading ? "Searching..." : catalogSearchHasRun ? `${supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length} results` : "Search first"}</span>
                   </div>
 
                   {catalogSearchHasRun ? (
-                  <div className="catalog-results-toolbar">
+                  <div className="catalog-results-toolbar market-results-toolbar">
                     <Field label="Sort">
                       <select value={catalogSort} onChange={(e) => setCatalogSort(e.target.value)}>
                         {CATALOG_SORT_OPTIONS.map((option) => (
@@ -47225,6 +47213,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         ))}
                       </select>
                     </Field>
+                    <button type="button" className="secondary-button market-filter-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>
+                      Filter
+                    </button>
                     <div className="catalog-view-toggle" role="group" aria-label="Catalog result view">
                       <button
                         type="button"
@@ -47243,14 +47234,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         List
                       </button>
                     </div>
-                    <div className="quick-actions">
+                    <div className="quick-actions market-clear-actions">
                       <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear</button>
                     </div>
                   </div>
                   ) : null}
 
                   {catalogSearchHasRun ? (
-                  <div className="quick-action-rail">
+                  <div className="quick-action-rail market-advanced-filter-rail">
 	                    {[
 	                      ["All", "All"],
 	                      ["card", "Cards"],
@@ -47295,7 +47286,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         });
                       }}
                     >
-                      {adminEditModeActive ? "Add Catalog Item" : "Suggest Missing Product"}
+                      {adminEditModeActive ? "Add Catalog Item" : "Request Missing Item"}
                     </button>
                   </div>
                   ) : null}
@@ -47354,9 +47345,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
 
                   {(catalogSearchHasRun || supabaseCatalogStatus.loading) ? (
-                    <p className="compact-subtitle">Search runs against Supabase with pagination. It does not load the full 52,000+ product catalog into the browser.</p>
+                    <details className="market-search-source-note">
+                      <summary>Search source</summary>
+                      <p>Search runs against Supabase with pagination. It does not load the full 52,000+ product catalog into the browser.</p>
+                    </details>
                   ) : null}
-                  {supabaseCatalogStatus.message ? <p className="compact-subtitle">{supabaseCatalogStatus.message}</p> : null}
+                  {supabaseCatalogStatus.message ? <p className="compact-subtitle market-status-message">{supabaseCatalogStatus.message}</p> : null}
                   {supabaseCatalogStatus.error ? <p className="compact-subtitle danger-text">{supabaseCatalogStatus.error}</p> : null}
                   {supabaseCatalogStatus.exactBarcodeMiss ? <p className="compact-subtitle">No exact barcode match found. Partial catalog matches may still appear below.</p> : null}
                   {catalogSearchHasRun && !supabaseCatalogStatus.loading && supabaseCatalogStatus.coverageWarning ? (
@@ -47390,7 +47384,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             source: "tidetradr-sealed-coverage-warning",
                           })}
                         >
-                          {adminEditModeActive ? "Add Catalog Item" : "Suggest Missing Product"}
+                          {adminEditModeActive ? "Add Catalog Item" : "Request Missing Item"}
                         </button>
                       </div>
                       {adminEditModeActive ? (
@@ -47408,9 +47402,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
 
                   {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
-                    <div className="small-empty-state tidetradr-search-prompt">
-                      <strong>Search TideTradr to load catalog results.</strong>
-                      <span>Use the header search for product names, sets, UPC, SKU, IDs, card numbers, and shorthand.</span>
+                    <div className="small-empty-state tidetradr-search-prompt market-empty-state">
+                      <strong>Search cards, sets, or sealed products.</strong>
+                      <span>Market shows known values and labels weak data honestly.</span>
                     </div>
                   ) : null}
 
@@ -47428,26 +47422,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
 
                   {catalogSearchHasRun && !supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 ? (
-                    <div className="empty-state">
-                      <h3>No {catalogEmptyModeLabel} found{catalogEmptyTerm ? ` for "${catalogEmptyTerm}"` : ""}</h3>
+                    <div className="empty-state market-empty-state">
+                      <h3>No matches found{catalogEmptyTerm ? ` for "${catalogEmptyTerm}"` : ""}.</h3>
                       <p>
                         {catalogAlternateKindLabels.length
                           ? `Matches exist in ${catalogAlternateKindLabels.join(" / ")}. Switch modes or clear active filters to see them.`
-                          : "Try a different name, set, barcode, product type, card number, or clear active filters."}
+                          : "Try another search or request a missing item."}
                       </p>
-                      <div className="quick-actions">
-                        {catalogKindFilter !== "All" ? (
-                          <button type="button" onClick={() => switchCatalogKindFilter("All")}>Search All</button>
-                        ) : null}
-                        {catalogKindFilter !== "card" ? (
-                          <button type="button" className="secondary-button" onClick={() => switchCatalogKindFilter("card")}>Search Cards</button>
-                        ) : null}
-                        {catalogKindFilter !== "sealed" ? (
-                          <button type="button" className="secondary-button" onClick={() => switchCatalogKindFilter("sealed")}>Search Sealed</button>
-                        ) : null}
+                      <div className="quick-actions market-empty-actions">
                         <button
                           type="button"
-                          className="secondary-button"
                           onClick={() => {
                             if (adminEditModeActive) {
                               setActiveTab("catalog");
@@ -47463,8 +47447,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             });
                           }}
                         >
-                          {adminEditModeActive ? "Add Catalog Item" : "Suggest Missing Product"}
+                          {adminEditModeActive ? "Add Catalog Item" : "Request Missing Item"}
                         </button>
+                        <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear search</button>
+                        {catalogKindFilter !== "All" && catalogAlternateKindLabels.length ? (
+                          <button type="button" className="secondary-button" onClick={() => switchCatalogKindFilter("All")}>Search All</button>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}
@@ -47498,6 +47486,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       onPageChange={goToCatalogPage}
                       onPageSizeChange={updateCatalogPageSize}
                       disabled={supabaseCatalogStatus.loading}
+                      compact
                     />
                   ) : null}
                 </section>
