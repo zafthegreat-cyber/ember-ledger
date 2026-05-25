@@ -33115,13 +33115,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderBetaAdminReviewQueues() {
     if (!betaAdminVisible) return null;
     const showBetaUsers = adminReviewFilter === "Beta Users";
-    const showBetaAccess = adminReviewFilter === "All" || adminReviewFilter === "Beta Access";
-    const showKids = adminReviewFilter === "All" || adminReviewFilter === "Kids Program Applications";
-    const showSponsor = adminReviewFilter === "All" || adminReviewFilter === "Sponsor Interest";
-    const showFeedback = adminReviewFilter === "All" || adminReviewFilter === "Beta Feedback";
-    const showDataRequests = adminReviewFilter === "All" || adminReviewFilter === "Data Requests";
-    const showUserManagement = adminReviewFilter === "All" || adminReviewFilter === "User Management";
-    const showSystemHealth = adminReviewFilter === "All" || adminReviewFilter === "System Health / Logs" || adminReviewFilter === "App Error Logs";
+    const showBetaAccess = adminReviewFilter === "Beta Access";
+    const showKids = adminReviewFilter === "Kids Program Applications";
+    const showSponsor = adminReviewFilter === "Sponsor Interest";
+    const showFeedback = adminReviewFilter === "Beta Feedback";
+    const showDataRequests = adminReviewFilter === "Data Requests";
+    const showUserManagement = adminReviewFilter === "User Management";
+    const showSystemHealth = adminReviewFilter === "System Health / Logs" || adminReviewFilter === "App Error Logs";
     const showErrors = showSystemHealth;
     const adminProfileUsers = shorelineState.adminProfileUsers || [];
     const backendBetaRequestKeys = new Set((shorelineState.adminBetaRequests || []).map((entry) => String(entry.userId || entry.email || "").toLowerCase()).filter(Boolean));
@@ -33551,7 +33551,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAdminScoutReportQueue() {
-    if (!["All", "Trust Command Center", "Reports & Moderation", "Scout Report Moderation"].includes(adminReviewFilter)) return null;
+    if (!["Trust Command Center", "Reports & Moderation", "Scout Report Moderation"].includes(adminReviewFilter)) return null;
     const reports = adminReviewFilter === "All"
       ? scoutReportRows.slice(0, 8)
       : scoutNeedsReviewReports.length ? scoutNeedsReviewReports : scoutReportRows.slice(0, 8);
@@ -33596,7 +33596,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAdminStoreManagementSection() {
-    if (!["All", "Store Management"].includes(adminReviewFilter)) return null;
+    if (adminReviewFilter !== "Store Management") return null;
     const storeRows = buildStoreMapRows({ unfiltered: true, admin: true });
     const summary = getAdminStoreManagementSummary(storeRows.map((row) => row.store), suggestions);
     return (
@@ -33737,7 +33737,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAdminAnnouncementSection() {
-    if (!["All", "Announcements / New Stuff"].includes(adminReviewFilter)) return null;
+    if (adminReviewFilter !== "Announcements / New Stuff") return null;
     const announcements = getPersistedNotificationRows().filter(isAnnouncementNotification);
     return (
       <section className="settings-subsection admin-ops-section">
@@ -33895,7 +33895,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderAdminTidepoolModerationQueue() {
     if (!adminToolsVisible) return null;
-    if (!["All", "Trust Command Center", "Reports & Moderation"].includes(adminReviewFilter)) return null;
+    if (!["Trust Command Center", "Reports & Moderation"].includes(adminReviewFilter)) return null;
     const rows = tidepoolPosts
       .filter(tidepoolPostNeedsModeration)
       .map(buildTidepoolPost)
@@ -34035,12 +34035,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const shopWorkspaces = workspaces.filter((workspace) => ["business", "card_shop_partner", "team"].includes(workspace.type));
     const receiptsNeedingReview = phase2RecentReceipts.filter((receipt) => /draft|review|duplicate|pending|needs/i.test(`${receipt.status || ""} ${receipt.reviewStatus || ""} ${receipt.importStatus || ""}`));
     const catalogCorrectionCount = suggestions.filter((suggestion) => ["Catalog Suggestions", "SKU / UPC Suggestions", "Store Suggestions"].includes(REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)])).length;
+    const activeBetaInviteCount = (shorelineState.adminBetaInvites || []).filter((invite) => !invite.revokedAt && invite.status !== "revoked").length;
+    const kidsReviewCount = kidsApplications.filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending_review")).length;
+    const flaggedContentCount = listingReviewItems.length + commandSummary.tidepoolPostsNeedingReview;
+    const feedbackMessageCount = (betaReadinessData.betaFeedback || []).length + commandSummary.openAssistMessages;
     const adminQueueRows = [
       { key: "command", title: "Trust command center", count: commandSummary.totalOpen, priority: commandSummary.totalOpen ? "Needs review" : "Clear", submittedBy: "App queues", details: "Scout, guesses, shops, Assist messages, and user issues.", filter: "Trust Command Center" },
       { key: "roles", title: "Role management", count: roleManagementCount, priority: roleManagementVisible ? "Protected" : "Locked", submittedBy: "Profiles", details: "Assign admins, moderators, beta users, and users through secure role RPCs.", filter: "Role Management" },
       { key: "beta-users", title: "Beta users dashboard", count: approvedBetaUserCount + betaRequests.length, priority: betaRequests.length ? "Access review" : "Track", submittedBy: "Profiles/invites", details: "Track pending, approved, invited, joined, and active beta users.", filter: "Beta Users" },
       { key: "beta", title: "Beta access requests", count: betaRequests.length, priority: betaRequests.length ? "Today" : "Clear", submittedBy: "Applicants", details: "Approve, waitlist, pause, or deny app access.", filter: "Beta Access" },
-      { key: "kids", title: "Kids Program requests", count: kidsApplications.filter((entry) => ["pending", "pending_review"].includes(entry.status || "pending_review")).length, priority: kidsApplications.length ? "High privacy" : "Clear", submittedBy: "Parents/guardians", details: "Private family requests. No child details are public.", filter: "Kids Program Applications" },
+      { key: "kids", title: "Kids Program requests", count: kidsReviewCount, priority: kidsApplications.length ? "High privacy" : "Clear", submittedBy: "Parents/guardians", details: "Private family requests. No child details are public.", filter: "Kids Program Applications" },
       { key: "scout", title: "Scout reports needing verification", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "High" : "Clear", submittedBy: "Scout reporters", details: "Confirm, reject, duplicate, stale, or route to review.", filter: "Scout Report Moderation" },
       { key: "guesses", title: "Community guesses / predictions", count: commandSummary.pendingCommunityGuesses, priority: commandSummary.pendingCommunityGuesses ? "Review" : "Clear", submittedBy: "Qualified Scouts", details: "Keep guesses separate from confirmed restock history.", filter: "Community Guess Review" },
       { key: "assist", title: "Ember Assist admin messages", count: commandSummary.openAssistMessages, priority: commandSummary.openAssistMessages ? "Review" : "Clear", submittedBy: "App users", details: "Questions escalated from Ember Assist with safe context.", filter: REVIEW_SECTION_LABELS.assist },
@@ -34051,6 +34055,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "catalog", title: "Product/catalog corrections", count: catalogCorrectionCount, priority: catalogCorrectionCount ? "Review" : "Clear", submittedBy: "Users/admin", details: "Catalog, SKU, UPC, store, and data corrections.", filter: "Catalog Suggestions" },
       { key: "feedback", title: "App feedback and bug reports", count: (betaReadinessData.betaFeedback || []).length + (betaReadinessData.appErrorLogs || []).length, priority: ((betaReadinessData.betaFeedback || []).length + (betaReadinessData.appErrorLogs || []).length) ? "Review" : "Clear", submittedBy: "Beta users/app", details: "Feedback, bugs, and safe client error logs.", filter: "Beta Feedback" },
     ];
+    const adminOverviewRows = [
+      { key: "beta", label: "Beta requests", value: betaRequests.length, tone: betaRequests.length ? "warning" : "success", filter: "Beta Access" },
+      { key: "invites", label: "Invites", value: activeBetaInviteCount, tone: activeBetaInviteCount ? "info" : "muted", filter: "Beta Access" },
+      { key: "scout", label: "Scout review", value: commandSummary.pendingScoutReports, tone: commandSummary.pendingScoutReports ? "warning" : "success", filter: "Scout Report Moderation" },
+      { key: "catalog", label: "Missing catalog", value: catalogCorrectionCount, tone: catalogCorrectionCount ? "warning" : "success", filter: "Catalog Suggestions" },
+      { key: "feedback", label: "Feedback", value: feedbackMessageCount, tone: feedbackMessageCount ? "info" : "success", filter: "Beta Feedback" },
+      { key: "flagged", label: "Flagged content", value: flaggedContentCount, tone: flaggedContentCount ? "danger" : "success", filter: "Reports & Moderation" },
+      { key: "kids", label: "Kids requests", value: kidsReviewCount, tone: kidsReviewCount ? "warning" : "success", filter: "Kids Program Applications" },
+      { key: "shops", label: "Shop approvals", value: commandSummary.shopsNeedingReview, tone: commandSummary.shopsNeedingReview ? "warning" : "success", filter: "Family-Friendly Shop Review" },
+    ];
+    const primaryQueueKeys = new Set(["beta", "scout", "catalog", "feedback", "flagged", "kids", "shops", "roles"]);
+    const primaryQueueRows = adminQueueRows.filter((queue) => primaryQueueKeys.has(queue.key === "market" || queue.key === "tidepool" ? "flagged" : queue.key));
+    const secondaryQueueRows = adminQueueRows.filter((queue) => !primaryQueueRows.some((primary) => primary.key === queue.key));
     const adminOpsSections = [
       { title: "Trust Command Center", value: commandSummary.totalOpen, helper: "Scout, guesses, shops, Assist", filter: "Trust Command Center" },
       { title: "Reports & Moderation", value: commandSummary.pendingScoutReports + commandSummary.tidepoolPostsNeedingReview, helper: "Scout report and Tidepool post review", filter: "Reports & Moderation" },
@@ -34073,7 +34090,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ];
     return (
       <section className="admin-ops-dashboard">
-        <div className="admin-security-panel">
+        <div className="admin-security-panel admin-secure-access-card">
           <div>
             <strong>Admin access is restricted</strong>
             <p>Only approved admins/founders should reach this dashboard. Frontend visibility is only a convenience layer; protected writes must remain guarded by Supabase RLS, backend checks, and audit logs.</p>
@@ -34081,20 +34098,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <span className={adminEditModeActive ? "status-badge danger" : "status-badge"}>{adminEditModeActive ? "Admin Edit On" : "View Mode"}</span>
         </div>
 
+        <section className="admin-overview-strip" aria-label="Admin overview">
+          {adminOverviewRows.map((item) => (
+            <button type="button" className={`admin-overview-tile tone-${item.tone}`} key={item.key} onClick={() => setAdminReviewFilter(item.filter)}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </button>
+          ))}
+        </section>
+
         <section className="admin-queue-command-board" aria-label="Admin review queues">
           <div className="compact-card-header">
             <div>
-              <h3>Review queues</h3>
-              <p>One command desk for requests, reports, pricing flags, receipts, catalog corrections, and app issues.</p>
+              <h3>Priority queues</h3>
+              <p>Start with items that affect access, trust, family safety, or public content. Deep admin areas stay tucked away below.</p>
             </div>
             <div className="summary-pill-row">
-              {["Pending", "Needs Review", "Approved", "Denied", "Flagged"].map((filter) => (
-                <button type="button" className="secondary-button" key={filter} onClick={() => setVaultToast(`${filter} quick filter is represented in each queue section.`)}>{filter}</button>
-              ))}
+              <button type="button" className={adminReviewFilter === "All" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("All")}>All queues</button>
+              <button type="button" className={adminReviewFilter === "Trust Command Center" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("Trust Command Center")}>Trust</button>
+              <button type="button" className={adminReviewFilter === "Reports & Moderation" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("Reports & Moderation")}>Moderation</button>
             </div>
           </div>
           <div className="admin-queue-grid">
-            {adminQueueRows.map((queue) => (
+            {primaryQueueRows.map((queue) => (
               <button type="button" className="admin-queue-card" key={queue.key} onClick={() => setAdminReviewFilter(queue.filter)}>
                 <span>{queue.title}</span>
                 <strong>{queue.count}</strong>
@@ -34103,27 +34129,46 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </button>
             ))}
           </div>
+          {secondaryQueueRows.length ? (
+            <details className="admin-secondary-queues">
+              <summary>More admin queues</summary>
+              <div className="admin-queue-grid compact">
+                {secondaryQueueRows.map((queue) => (
+                  <button type="button" className="admin-queue-card compact" key={queue.key} onClick={() => setAdminReviewFilter(queue.filter)}>
+                    <span>{queue.title}</span>
+                    <strong>{queue.count}</strong>
+                    <small>{queue.priority}</small>
+                    <p>{queue.details}</p>
+                  </button>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </section>
 
-        <div className="admin-ops-grid">
-          {adminOpsSections.map((section) => (
-            <button type="button" className="admin-ops-card" key={section.title} onClick={() => setAdminReviewFilter(section.filter)}>
-              <span>{section.title}</span>
-              <strong>{section.value}</strong>
-              <small>{section.helper}</small>
-            </button>
-          ))}
-        </div>
+        <details className="admin-area-disclosure">
+          <summary>All admin areas</summary>
+          <div className="admin-ops-grid">
+            {adminOpsSections.map((section) => (
+              <button type="button" className="admin-ops-card" key={section.title} onClick={() => setAdminReviewFilter(section.filter)}>
+                <span>{section.title}</span>
+                <strong>{section.value}</strong>
+                <small>{section.helper}</small>
+              </button>
+            ))}
+          </div>
+        </details>
 
         <div className="admin-ops-lane-grid">
           {(adminReviewFilter === "All" || adminReviewFilter === "Trust Command Center") ? renderAdminTrustActivity(commandSummary) : null}
           {renderAdminScoutReportQueue()}
-          {(adminReviewFilter === "All" || adminReviewFilter === "Trust Command Center" || adminReviewFilter === "Community Guess Review") ? renderAdminCommunityGuessQueue() : null}
-          {(adminReviewFilter === "All" || adminReviewFilter === "Trust Command Center" || adminReviewFilter === "Family-Friendly Shop Review") ? renderAdminShopReviewQueue() : null}
+          {(adminReviewFilter === "Trust Command Center" || adminReviewFilter === "Community Guess Review") ? renderAdminCommunityGuessQueue() : null}
+          {(adminReviewFilter === "Trust Command Center" || adminReviewFilter === "Family-Friendly Shop Review") ? renderAdminShopReviewQueue() : null}
           {renderAdminTidepoolModerationQueue()}
-          {(adminReviewFilter === "All" || adminReviewFilter === "Role Management") ? renderRoleManagementSection() : null}
+          {adminReviewFilter === "Role Management" ? renderRoleManagementSection() : null}
           {renderAdminStoreManagementSection()}
           {renderAdminAnnouncementSection()}
+          {adminReviewFilter === "Memberships / Billing" ? (
           <section className="settings-subsection admin-ops-section">
             <div className="compact-card-header">
               <div>
@@ -34139,6 +34184,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </article>
             </div>
           </section>
+          ) : null}
+          {adminReviewFilter === "Shops / Seller Verification" ? (
           <section className="settings-subsection admin-ops-section">
             <div className="compact-card-header">
               <div>
@@ -34156,6 +34203,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ))}
             </div>
           </section>
+          ) : null}
+          {adminReviewFilter === "System Health / Logs" ? (
           <section className="settings-subsection admin-ops-section">
             <div className="compact-card-header">
               <div>
@@ -34174,6 +34223,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {!auditLogs.length ? <div className="small-empty-state"><strong>No audit log entries yet</strong><span>Important local admin actions will appear here.</span></div> : null}
             </div>
           </section>
+          ) : null}
         </div>
       </section>
     );
@@ -34266,9 +34316,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <PageHeader
         className={getHeaderCardClass("panel admin-page-header")}
         title="Admin Command Center"
-        subtitle="One safe admin desk for Scout reports, Drop Radar guesses, shop trust badges, Ember Assist messages, user issues, and system health."
+        subtitle="Review, approve, and protect the Ember & Tide community."
         actions={(
           <div className="summary-pill-row">
+            <span className="status-badge">{actualAdminRole}</span>
             <span className="status-badge">{totalOpenCount} open</span>
             <button type="button" className="secondary-button" onClick={() => void runAdminReviewAiSummary()}>Summarize review queue</button>
           </div>
@@ -34284,12 +34335,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onTabChange={setAdminReviewFilter}
       />
       <section className="panel approval-page">
-        <div className="drawer-info-card">
+        <div className="drawer-info-card admin-identity-card">
           <strong>{adminReviewIdentityLabel}</strong>
           <p className="compact-subtitle">{adminReviewIdentityDetail}</p>
           {currentUserProfile?.source ? <span className="status-badge">{currentUserProfile.source}</span> : null}
         </div>
         {renderAdminOperationsDashboard()}
+        {adminReviewFilter === "Market Source Controls" ? (
         <section className="settings-subsection marketplace-admin-review">
           <div className="compact-card-header">
             <div>
@@ -34364,6 +34416,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p className="compact-subtitle">No import status errors reported by the current client. Protected imports remain server-side.</p>
           )}
         </section>
+        ) : null}
+        {adminReviewFilter !== "All" ? (
         <div className="cards mini-cards">
           {Object.entries(REVIEW_SECTION_LABELS).map(([key, label]) => (
             <button type="button" className="card suggestion-section-card" key={key} onClick={() => setAdminReviewFilter(label)}>
@@ -34382,9 +34436,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </button>
           ) : null}
         </div>
+        ) : null}
         {renderBetaAdminReviewQueues()}
-        {renderEmberAssistAdminInbox()}
-        {adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox") && !dedicatedAdminFilters.has(adminReviewFilter) && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
+        {adminReviewFilter !== "All" ? renderEmberAssistAdminInbox() : null}
+        {adminReviewFilter !== "All" && adminReviewFilter !== "Marketplace Listings" && adminReviewFilter !== "Market Source Controls" && adminReviewFilter !== (REVIEW_SECTION_LABELS.assist || "Ember Assist Inbox") && !dedicatedAdminFilters.has(adminReviewFilter) && !BETA_REVIEW_SECTIONS.includes(adminReviewFilter) ? (
         <div className="inventory-list compact-inventory-list">
           {visibleSuggestions.length ? pagedVisibleSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, true)) : (
             <div className="empty-state">
@@ -34406,7 +34461,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           />
         </div>
         ) : null}
-        {(adminReviewFilter === "All" || adminReviewFilter === "Marketplace Listings") ? (
+        {adminReviewFilter === "Marketplace Listings" ? (
           <section className="settings-subsection marketplace-admin-review">
             <div className="compact-card-header">
               <div>
@@ -34437,7 +34492,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </section>
         ) : null}
-        {(adminReviewFilter === "All" || adminReviewFilter === "Market Source Controls") ? renderMarketSourceControls() : null}
+        {adminReviewFilter === "Market Source Controls" ? renderMarketSourceControls() : null}
       </section>
       </>
     );

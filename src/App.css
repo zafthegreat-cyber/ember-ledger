@@ -48014,3 +48014,751 @@ body {
     display: none;
   }
 }
+
+/* Admin Command Center perfection */
+.app.app-adminreview,
+.app-command-shell.app-adminreview,
+.app-shell-dark.app-adminreview {
+  --admin-surface: rgba(5, 14, 30, 0.84);
+  --admin-surface-strong: rgba(8, 19, 38, 0.94);
+  --admin-border: rgba(124, 231, 255, 0.16);
+  --admin-border-strong: rgba(124, 231, 255, 0.28);
+  --admin-muted: rgba(232, 246, 255, 0.72);
+}
+
+.app .admin-page-header,
+.app-command-shell .admin-page-header,
+.app-shell-dark .admin-page-header {
+  min-height: 0 !important;
+  padding: 18px !important;
+  border-color: rgba(124, 231, 255, 0.16) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.07), transparent 12rem),
+    linear-gradient(145deg, rgba(8, 18, 36, 0.94), rgba(3, 9, 22, 0.96)) !important;
+}
+
+.app.app-adminreview .admin-page-header .standard-page-header-main,
+.app-command-shell.app-adminreview .admin-page-header .standard-page-header-main,
+.app-shell-dark.app-adminreview .admin-page-header .standard-page-header-main {
+  align-items: center;
+  gap: 14px;
+}
+
+.app.app-adminreview .admin-page-header .standard-page-header-copy h2,
+.app-command-shell.app-adminreview .admin-page-header .standard-page-header-copy h2,
+.app-shell-dark.app-adminreview .admin-page-header .standard-page-header-copy h2 {
+  font-size: clamp(1.45rem, 6vw, 2.05rem);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.app.app-adminreview .admin-page-header .standard-page-header-copy p,
+.app-command-shell.app-adminreview .admin-page-header .standard-page-header-copy p,
+.app-shell-dark.app-adminreview .admin-page-header .standard-page-header-copy p {
+  max-width: 34rem;
+}
+
+.app.app-adminreview .admin-page-header .section-hero-art,
+.app-command-shell.app-adminreview .admin-page-header .section-hero-art,
+.app-shell-dark.app-adminreview .admin-page-header .section-hero-art {
+  opacity: 0.52;
+  filter: saturate(0.85);
+}
+
+.app.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row,
+.app-command-shell.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row,
+.app-shell-dark.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row {
+  gap: 8px;
+}
+
+.app.app-adminreview .admin-page-header .standard-page-header-actions .status-badge,
+.app-command-shell.app-adminreview .admin-page-header .standard-page-header-actions .status-badge,
+.app-shell-dark.app-adminreview .admin-page-header .standard-page-header-actions .status-badge {
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
+.app .beta-review-queue > .compact-card-header,
+.app-command-shell .beta-review-queue > .compact-card-header,
+.app-shell-dark .beta-review-queue > .compact-card-header,
+.app .admin-ops-section > .compact-card-header,
+.app-command-shell .admin-ops-section > .compact-card-header,
+.app-shell-dark .admin-ops-section > .compact-card-header {
+  align-items: flex-start;
+}
+
+.app .beta-review-queue > .compact-card-header > .status-badge,
+.app-command-shell .beta-review-queue > .compact-card-header > .status-badge,
+.app-shell-dark .beta-review-queue > .compact-card-header > .status-badge,
+.app .admin-ops-section > .compact-card-header > .status-badge,
+.app-command-shell .admin-ops-section > .compact-card-header > .status-badge,
+.app-shell-dark .admin-ops-section > .compact-card-header > .status-badge {
+  align-self: flex-start;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.app .app-adminreview .approval-page,
+.app-command-shell.app-adminreview .approval-page,
+.app-shell-dark.app-adminreview .approval-page,
+.app .admin-identity-card,
+.app-command-shell .admin-identity-card,
+.app-shell-dark .admin-identity-card {
+  border-color: rgba(124, 231, 255, 0.14) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.08), transparent 12rem),
+    rgba(4, 12, 26, 0.82) !important;
+}
+
+.app .admin-identity-card,
+.app-command-shell .admin-identity-card,
+.app-shell-dark .admin-identity-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.app .admin-identity-card strong,
+.app-command-shell .admin-identity-card strong,
+.app-shell-dark .admin-identity-card strong {
+  color: #fff7ed !important;
+}
+
+.app .admin-secure-access-card,
+.app-command-shell .admin-secure-access-card,
+.app-shell-dark .admin-secure-access-card,
+.app .admin-security-panel,
+.app-command-shell .admin-security-panel,
+.app-shell-dark .admin-security-panel {
+  border-color: rgba(255, 184, 92, 0.18) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 122, 24, 0.12), transparent 12rem),
+    rgba(4, 12, 26, 0.86) !important;
+  color: #f8fbff !important;
+  box-shadow: none !important;
+}
+
+.app .admin-security-panel strong,
+.app-command-shell .admin-security-panel strong,
+.app-shell-dark .admin-security-panel strong {
+  color: #fff7ed !important;
+}
+
+.app .admin-security-panel p,
+.app-command-shell .admin-security-panel p,
+.app-shell-dark .admin-security-panel p {
+  color: var(--admin-muted) !important;
+}
+
+.app .admin-overview-strip,
+.app-command-shell .admin-overview-strip,
+.app-shell-dark .admin-overview-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app .admin-overview-tile,
+.app-command-shell .admin-overview-tile,
+.app-shell-dark .admin-overview-tile {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  min-height: 82px;
+  padding: 12px;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: 16px;
+  background: rgba(2, 8, 22, 0.58) !important;
+  color: #fff7ed !important;
+  text-align: left;
+  box-shadow: none !important;
+}
+
+.app .admin-overview-tile span,
+.app-command-shell .admin-overview-tile span,
+.app-shell-dark .admin-overview-tile span {
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.app .admin-overview-tile strong,
+.app-command-shell .admin-overview-tile strong,
+.app-shell-dark .admin-overview-tile strong {
+  color: #fff7ed;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.app .admin-overview-tile.tone-success,
+.app-command-shell .admin-overview-tile.tone-success,
+.app-shell-dark .admin-overview-tile.tone-success {
+  border-color: rgba(53, 211, 153, 0.2) !important;
+}
+
+.app .admin-overview-tile.tone-warning,
+.app-command-shell .admin-overview-tile.tone-warning,
+.app-shell-dark .admin-overview-tile.tone-warning {
+  border-color: rgba(255, 184, 92, 0.24) !important;
+}
+
+.app .admin-overview-tile.tone-danger,
+.app-command-shell .admin-overview-tile.tone-danger,
+.app-shell-dark .admin-overview-tile.tone-danger {
+  border-color: rgba(255, 107, 107, 0.26) !important;
+}
+
+.app .admin-overview-tile.tone-info,
+.app-command-shell .admin-overview-tile.tone-info,
+.app-shell-dark .admin-overview-tile.tone-info {
+  border-color: rgba(41, 207, 255, 0.24) !important;
+}
+
+.app .admin-queue-command-board,
+.app-command-shell .admin-queue-command-board,
+.app-shell-dark .admin-queue-command-board,
+.app .admin-area-disclosure,
+.app-command-shell .admin-area-disclosure,
+.app-shell-dark .admin-area-disclosure,
+.app .admin-secondary-queues,
+.app-command-shell .admin-secondary-queues,
+.app-shell-dark .admin-secondary-queues,
+.app .admin-ops-section,
+.app-command-shell .admin-ops-section,
+.app-shell-dark .admin-ops-section,
+.app .marketplace-admin-review,
+.app-command-shell .marketplace-admin-review,
+.app-shell-dark .marketplace-admin-review,
+.app .beta-review-queue,
+.app-command-shell .beta-review-queue,
+.app-shell-dark .beta-review-queue {
+  border-color: var(--admin-border) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.07), transparent 12rem),
+    rgba(4, 12, 26, 0.82) !important;
+  color: #f8fbff !important;
+  box-shadow: none !important;
+}
+
+.app.app-adminreview .admin-mode-control-bar,
+.app-command-shell.app-adminreview .admin-mode-control-bar,
+.app-shell-dark.app-adminreview .admin-mode-control-bar,
+.app.admin-view-mode .admin-mode-control-bar,
+.app-command-shell.admin-view-mode .admin-mode-control-bar,
+.app-shell-dark.admin-view-mode .admin-mode-control-bar {
+  margin: 8px 14px 10px !important;
+  padding: 8px 10px !important;
+  border-color: rgba(124, 231, 255, 0.18) !important;
+  background:
+    linear-gradient(135deg, rgba(8, 20, 39, 0.82), rgba(4, 10, 22, 0.88)) !important;
+  box-shadow: none !important;
+}
+
+.app.app-adminreview .admin-mode-control-summary,
+.app-command-shell.app-adminreview .admin-mode-control-summary,
+.app-shell-dark.app-adminreview .admin-mode-control-summary,
+.app.admin-view-mode .admin-mode-control-summary,
+.app-command-shell.admin-view-mode .admin-mode-control-summary,
+.app-shell-dark.admin-view-mode .admin-mode-control-summary {
+  gap: 6px;
+}
+
+.app.app-adminreview .admin-mode-control-summary strong,
+.app-command-shell.app-adminreview .admin-mode-control-summary strong,
+.app-shell-dark.app-adminreview .admin-mode-control-summary strong,
+.app.admin-view-mode .admin-mode-control-summary strong,
+.app-command-shell.admin-view-mode .admin-mode-control-summary strong,
+.app-shell-dark.admin-view-mode .admin-mode-control-summary strong {
+  font-size: 0.9rem;
+}
+
+.app.app-adminreview .admin-mode-role-pill,
+.app-command-shell.app-adminreview .admin-mode-role-pill,
+.app-shell-dark.app-adminreview .admin-mode-role-pill,
+.app.admin-view-mode .admin-mode-role-pill,
+.app-command-shell.admin-view-mode .admin-mode-role-pill,
+.app-shell-dark.admin-view-mode .admin-mode-role-pill {
+  padding: 4px 8px !important;
+  font-size: 0.68rem;
+}
+
+.app.app-adminreview .admin-mode-segment,
+.app-command-shell.app-adminreview .admin-mode-segment,
+.app-shell-dark.app-adminreview .admin-mode-segment,
+.app.admin-view-mode .admin-mode-segment,
+.app-command-shell.admin-view-mode .admin-mode-segment,
+.app-shell-dark.admin-view-mode .admin-mode-segment {
+  padding: 3px !important;
+}
+
+.app.app-adminreview .admin-mode-segment button,
+.app-command-shell.app-adminreview .admin-mode-segment button,
+.app-shell-dark.app-adminreview .admin-mode-segment button,
+.app.admin-view-mode .admin-mode-segment button,
+.app-command-shell.admin-view-mode .admin-mode-segment button,
+.app-shell-dark.admin-view-mode .admin-mode-segment button {
+  min-height: 31px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+}
+
+.app .admin-queue-command-board h3,
+.app-command-shell .admin-queue-command-board h3,
+.app-shell-dark .admin-queue-command-board h3,
+.app .admin-ops-section h3,
+.app-command-shell .admin-ops-section h3,
+.app-shell-dark .admin-ops-section h3,
+.app .marketplace-admin-review h3,
+.app-command-shell .marketplace-admin-review h3,
+.app-shell-dark .marketplace-admin-review h3,
+.app .beta-review-queue h3,
+.app-command-shell .beta-review-queue h3,
+.app-shell-dark .beta-review-queue h3 {
+  color: #fff7ed !important;
+}
+
+.app .admin-queue-command-board p,
+.app-command-shell .admin-queue-command-board p,
+.app-shell-dark .admin-queue-command-board p,
+.app .admin-ops-section p,
+.app-command-shell .admin-ops-section p,
+.app-shell-dark .admin-ops-section p,
+.app .marketplace-admin-review p,
+.app-command-shell .marketplace-admin-review p,
+.app-shell-dark .marketplace-admin-review p,
+.app .beta-review-queue p,
+.app-command-shell .beta-review-queue p,
+.app-shell-dark .beta-review-queue p {
+  color: var(--admin-muted) !important;
+}
+
+.app .admin-queue-grid,
+.app-command-shell .admin-queue-grid,
+.app-shell-dark .admin-queue-grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.app .admin-queue-card,
+.app-command-shell .admin-queue-card,
+.app-shell-dark .admin-queue-card {
+  min-height: 138px;
+  padding: 12px;
+  border-color: var(--admin-border) !important;
+  background:
+    linear-gradient(145deg, rgba(8, 18, 36, 0.9), rgba(2, 8, 22, 0.76)) !important;
+  box-shadow: none !important;
+}
+
+.app .admin-queue-card.compact,
+.app-command-shell .admin-queue-card.compact,
+.app-shell-dark .admin-queue-card.compact {
+  min-height: 112px;
+}
+
+.app .admin-queue-card span,
+.app-command-shell .admin-queue-card span,
+.app-shell-dark .admin-queue-card span,
+.app .admin-ops-card span,
+.app-command-shell .admin-ops-card span,
+.app-shell-dark .admin-ops-card span {
+  color: #7ce7ff !important;
+}
+
+.app .admin-queue-card strong,
+.app-command-shell .admin-queue-card strong,
+.app-shell-dark .admin-queue-card strong,
+.app .admin-ops-card strong,
+.app-command-shell .admin-ops-card strong,
+.app-shell-dark .admin-ops-card strong {
+  color: #fff7ed !important;
+}
+
+.app .admin-queue-card small,
+.app-command-shell .admin-queue-card small,
+.app-shell-dark .admin-queue-card small,
+.app .admin-ops-card small,
+.app-command-shell .admin-ops-card small,
+.app-shell-dark .admin-ops-card small {
+  color: rgba(232, 246, 255, 0.68) !important;
+}
+
+.app .admin-area-disclosure,
+.app-command-shell .admin-area-disclosure,
+.app-shell-dark .admin-area-disclosure,
+.app .admin-secondary-queues,
+.app-command-shell .admin-secondary-queues,
+.app-shell-dark .admin-secondary-queues {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 18px;
+}
+
+.app .admin-area-disclosure summary,
+.app-command-shell .admin-area-disclosure summary,
+.app-shell-dark .admin-area-disclosure summary,
+.app .admin-secondary-queues summary,
+.app-command-shell .admin-secondary-queues summary,
+.app-shell-dark .admin-secondary-queues summary,
+.app .admin-detail-panel summary,
+.app-command-shell .admin-detail-panel summary,
+.app-shell-dark .admin-detail-panel summary {
+  cursor: pointer;
+  color: #fff7ed;
+  font-weight: 900;
+}
+
+.app .admin-area-disclosure[open] summary,
+.app-command-shell .admin-area-disclosure[open] summary,
+.app-shell-dark .admin-area-disclosure[open] summary,
+.app .admin-secondary-queues[open] summary,
+.app-command-shell .admin-secondary-queues[open] summary,
+.app-shell-dark .admin-secondary-queues[open] summary {
+  margin-bottom: 10px;
+}
+
+.app .admin-ops-grid,
+.app-command-shell .admin-ops-grid,
+.app-shell-dark .admin-ops-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.app .admin-ops-card,
+.app-command-shell .admin-ops-card,
+.app-shell-dark .admin-ops-card {
+  min-height: 104px;
+  padding: 12px;
+  border-color: rgba(124, 231, 255, 0.14) !important;
+  background: rgba(2, 8, 22, 0.56) !important;
+  color: #f8fbff !important;
+  box-shadow: none !important;
+}
+
+.app .admin-report-review-card,
+.app-command-shell .admin-report-review-card,
+.app-shell-dark .admin-report-review-card,
+.app .admin-store-card,
+.app-command-shell .admin-store-card,
+.app-shell-dark .admin-store-card,
+.app .admin-compact-row,
+.app-command-shell .admin-compact-row,
+.app-shell-dark .admin-compact-row,
+.app .admin-trust-queue-card,
+.app-command-shell .admin-trust-queue-card,
+.app-shell-dark .admin-trust-queue-card,
+.app .admin-store-draft-form,
+.app-command-shell .admin-store-draft-form,
+.app-shell-dark .admin-store-draft-form,
+.app .admin-command-card,
+.app-command-shell .admin-command-card,
+.app-shell-dark .admin-command-card {
+  border-color: rgba(124, 231, 255, 0.14) !important;
+  background: rgba(2, 8, 22, 0.56) !important;
+  color: #f8fbff !important;
+  box-shadow: none !important;
+}
+
+.app .admin-store-card strong,
+.app-command-shell .admin-store-card strong,
+.app-shell-dark .admin-store-card strong,
+.app .admin-compact-row strong,
+.app-command-shell .admin-compact-row strong,
+.app-shell-dark .admin-compact-row strong,
+.app .admin-command-card strong,
+.app-command-shell .admin-command-card strong,
+.app-shell-dark .admin-command-card strong {
+  color: #fff7ed !important;
+}
+
+.app .admin-store-card p,
+.app-command-shell .admin-store-card p,
+.app-shell-dark .admin-store-card p,
+.app .admin-compact-row p,
+.app-command-shell .admin-compact-row p,
+.app-shell-dark .admin-compact-row p,
+.app .admin-command-card p,
+.app-command-shell .admin-command-card p,
+.app-shell-dark .admin-command-card p {
+  color: var(--admin-muted) !important;
+}
+
+.app.app-adminreview .quick-actions .ghost-button,
+.app-command-shell.app-adminreview .quick-actions .ghost-button,
+.app-shell-dark.app-adminreview .quick-actions .ghost-button,
+.app.app-adminreview .delete-button,
+.app-command-shell.app-adminreview .delete-button,
+.app-shell-dark.app-adminreview .delete-button {
+  border-color: rgba(255, 107, 107, 0.34) !important;
+  color: #ffd5d5 !important;
+  background: rgba(255, 107, 107, 0.1) !important;
+}
+
+.app.app-adminreview .summary-pill-row .secondary-button.active,
+.app-command-shell.app-adminreview .summary-pill-row .secondary-button.active,
+.app-shell-dark.app-adminreview .summary-pill-row .secondary-button.active {
+  border-color: rgba(255, 122, 24, 0.52) !important;
+  color: #fff7ed !important;
+  background: rgba(255, 122, 24, 0.18) !important;
+}
+
+@media (max-width: 760px) {
+  .app.app-adminreview .admin-mode-control-bar,
+  .app-command-shell.app-adminreview .admin-mode-control-bar,
+  .app-shell-dark.app-adminreview .admin-mode-control-bar,
+  .app.admin-view-mode .admin-mode-control-bar,
+  .app-command-shell.admin-view-mode .admin-mode-control-bar,
+  .app-shell-dark.admin-view-mode .admin-mode-control-bar {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px !important;
+    margin: 6px 10px 8px !important;
+    padding: 7px 8px !important;
+    border-radius: 16px !important;
+  }
+
+  .app.app-adminreview .admin-mode-control-summary,
+  .app-command-shell.app-adminreview .admin-mode-control-summary,
+  .app-shell-dark.app-adminreview .admin-mode-control-summary,
+  .app.admin-view-mode .admin-mode-control-summary,
+  .app-command-shell.admin-view-mode .admin-mode-control-summary,
+  .app-shell-dark.admin-view-mode .admin-mode-control-summary {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .app.app-adminreview .admin-mode-control-summary strong,
+  .app-command-shell.app-adminreview .admin-mode-control-summary strong,
+  .app-shell-dark.app-adminreview .admin-mode-control-summary strong,
+  .app.admin-view-mode .admin-mode-control-summary strong,
+  .app-command-shell.admin-view-mode .admin-mode-control-summary strong,
+  .app-shell-dark.admin-view-mode .admin-mode-control-summary strong {
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+  }
+
+  .app.app-adminreview .admin-mode-control-summary small,
+  .app-command-shell.app-adminreview .admin-mode-control-summary small,
+  .app-shell-dark.app-adminreview .admin-mode-control-summary small,
+  .app.admin-view-mode .admin-mode-control-summary small,
+  .app-command-shell.admin-view-mode .admin-mode-control-summary small,
+  .app-shell-dark.admin-view-mode .admin-mode-control-summary small,
+  .app.app-adminreview .admin-mode-segment span,
+  .app-command-shell.app-adminreview .admin-mode-segment span,
+  .app-shell-dark.app-adminreview .admin-mode-segment span,
+  .app.admin-view-mode .admin-mode-segment span,
+  .app-command-shell.admin-view-mode .admin-mode-segment span,
+  .app-shell-dark.admin-view-mode .admin-mode-segment span {
+    display: none !important;
+  }
+
+  .app.app-adminreview .admin-mode-controls,
+  .app-command-shell.app-adminreview .admin-mode-controls,
+  .app-shell-dark.app-adminreview .admin-mode-controls,
+  .app.admin-view-mode .admin-mode-controls,
+  .app-command-shell.admin-view-mode .admin-mode-controls,
+  .app-shell-dark.admin-view-mode .admin-mode-controls {
+    flex: 0 0 auto;
+    gap: 4px !important;
+    overflow: visible;
+  }
+
+  .app.app-adminreview .admin-mode-segment button,
+  .app-command-shell.app-adminreview .admin-mode-segment button,
+  .app-shell-dark.app-adminreview .admin-mode-segment button,
+  .app.admin-view-mode .admin-mode-segment button,
+  .app-command-shell.admin-view-mode .admin-mode-segment button,
+  .app-shell-dark.admin-view-mode .admin-mode-segment button {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 0.72rem;
+  }
+
+  .app.app-adminreview .admin-edit-segment,
+  .app-command-shell.app-adminreview .admin-edit-segment,
+  .app-shell-dark.app-adminreview .admin-edit-segment,
+  .app.admin-view-mode .admin-edit-segment,
+  .app-command-shell.admin-view-mode .admin-edit-segment,
+  .app-shell-dark.admin-view-mode .admin-edit-segment {
+    display: none;
+  }
+
+  .app.app-adminreview .admin-page-header,
+  .app-command-shell.app-adminreview .admin-page-header,
+  .app-shell-dark.app-adminreview .admin-page-header,
+  .app .admin-page-header,
+  .app-command-shell .admin-page-header,
+  .app-shell-dark .admin-page-header {
+    padding: 14px !important;
+    border-radius: 20px !important;
+  }
+
+  .app.app-adminreview .admin-page-header .standard-page-header-summary,
+  .app-command-shell.app-adminreview .admin-page-header .standard-page-header-summary,
+  .app-shell-dark.app-adminreview .admin-page-header .standard-page-header-summary,
+  .app .admin-page-header .standard-page-header-summary,
+  .app-command-shell .admin-page-header .standard-page-header-summary,
+  .app-shell-dark .admin-page-header .standard-page-header-summary {
+    display: none !important;
+  }
+
+  .app.app-adminreview .admin-page-header .standard-page-header-main,
+  .app-command-shell.app-adminreview .admin-page-header .standard-page-header-main,
+  .app-shell-dark.app-adminreview .admin-page-header .standard-page-header-main,
+  .app .admin-page-header .standard-page-header-main,
+  .app-command-shell .admin-page-header .standard-page-header-main,
+  .app-shell-dark .admin-page-header .standard-page-header-main {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .app.app-adminreview .admin-page-header .section-hero-art,
+  .app-command-shell.app-adminreview .admin-page-header .section-hero-art,
+  .app-shell-dark.app-adminreview .admin-page-header .section-hero-art,
+  .app .admin-page-header .section-hero-art,
+  .app-command-shell .admin-page-header .section-hero-art,
+  .app-shell-dark .admin-page-header .section-hero-art {
+    display: none;
+  }
+
+  .app.app-adminreview .admin-page-header .standard-page-header-actions,
+  .app-command-shell.app-adminreview .admin-page-header .standard-page-header-actions,
+  .app-shell-dark.app-adminreview .admin-page-header .standard-page-header-actions,
+  .app .admin-page-header .standard-page-header-actions,
+  .app-command-shell .admin-page-header .standard-page-header-actions,
+  .app-shell-dark .admin-page-header .standard-page-header-actions {
+    width: 100%;
+  }
+
+  .app.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row,
+  .app-command-shell.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row,
+  .app-shell-dark.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row,
+  .app .admin-page-header .standard-page-header-actions .summary-pill-row,
+  .app-command-shell .admin-page-header .standard-page-header-actions .summary-pill-row,
+  .app-shell-dark .admin-page-header .standard-page-header-actions .summary-pill-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .app.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row > button,
+  .app-command-shell.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row > button,
+  .app-shell-dark.app-adminreview .admin-page-header .standard-page-header-actions .summary-pill-row > button,
+  .app .admin-page-header .standard-page-header-actions .summary-pill-row > button,
+  .app-command-shell .admin-page-header .standard-page-header-actions .summary-pill-row > button,
+  .app-shell-dark .admin-page-header .standard-page-header-actions .summary-pill-row > button {
+    grid-column: 1 / -1;
+    min-height: 36px;
+  }
+
+  .app.app-adminreview .admin-page-header .standard-page-header-tabs,
+  .app-command-shell.app-adminreview .admin-page-header .standard-page-header-tabs,
+  .app-shell-dark.app-adminreview .admin-page-header .standard-page-header-tabs,
+  .app .admin-page-header .standard-page-header-tabs,
+  .app-command-shell .admin-page-header .standard-page-header-tabs,
+  .app-shell-dark .admin-page-header .standard-page-header-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 8px;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .app.app-adminreview .admin-page-header .standard-page-header-tabs::-webkit-scrollbar,
+  .app-command-shell.app-adminreview .admin-page-header .standard-page-header-tabs::-webkit-scrollbar,
+  .app-shell-dark.app-adminreview .admin-page-header .standard-page-header-tabs::-webkit-scrollbar,
+  .app .admin-page-header .standard-page-header-tabs::-webkit-scrollbar,
+  .app-command-shell .admin-page-header .standard-page-header-tabs::-webkit-scrollbar,
+  .app-shell-dark .admin-page-header .standard-page-header-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app.app-adminreview .admin-page-header .standard-page-header-tabs button,
+  .app-command-shell.app-adminreview .admin-page-header .standard-page-header-tabs button,
+  .app-shell-dark.app-adminreview .admin-page-header .standard-page-header-tabs button,
+  .app .admin-page-header .standard-page-header-tabs button,
+  .app-command-shell .admin-page-header .standard-page-header-tabs button,
+  .app-shell-dark .admin-page-header .standard-page-header-tabs button {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 0.78rem;
+    white-space: nowrap !important;
+  }
+
+  .app.app-adminreview .approval-page,
+  .app-command-shell.app-adminreview .approval-page,
+  .app-shell-dark.app-adminreview .approval-page {
+    padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 72px);
+  }
+
+  .app .admin-overview-strip,
+  .app-command-shell .admin-overview-strip,
+  .app-shell-dark .admin-overview-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app .admin-overview-tile,
+  .app-command-shell .admin-overview-tile,
+  .app-shell-dark .admin-overview-tile {
+    min-height: 74px;
+    padding: 10px;
+  }
+
+  .app .admin-queue-grid,
+  .app-command-shell .admin-queue-grid,
+  .app-shell-dark .admin-queue-grid,
+  .app .admin-command-grid,
+  .app-command-shell .admin-command-grid,
+  .app-shell-dark .admin-command-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app .admin-queue-card,
+  .app-command-shell .admin-queue-card,
+  .app-shell-dark .admin-queue-card {
+    min-height: 118px;
+  }
+
+  .app .beta-review-queue > .compact-card-header,
+  .app-command-shell .beta-review-queue > .compact-card-header,
+  .app-shell-dark .beta-review-queue > .compact-card-header,
+  .app .admin-ops-section > .compact-card-header,
+  .app-command-shell .admin-ops-section > .compact-card-header,
+  .app-shell-dark .admin-ops-section > .compact-card-header {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app .beta-review-queue > .compact-card-header > .status-badge,
+  .app-command-shell .beta-review-queue > .compact-card-header > .status-badge,
+  .app-shell-dark .beta-review-queue > .compact-card-header > .status-badge,
+  .app .admin-ops-section > .compact-card-header > .status-badge,
+  .app-command-shell .admin-ops-section > .compact-card-header > .status-badge {
+    justify-self: start;
+  }
+
+  .app .admin-security-panel,
+  .app-command-shell .admin-security-panel,
+  .app-shell-dark .admin-security-panel,
+  .app .admin-compact-row,
+  .app-command-shell .admin-compact-row,
+  .app-shell-dark .admin-compact-row {
+    display: grid;
+  }
+
+  .app.app-adminreview .ember-assist-shell,
+  .app-command-shell.app-adminreview .ember-assist-shell,
+  .app-shell-dark.app-adminreview .ember-assist-shell {
+    display: none;
+  }
+}
