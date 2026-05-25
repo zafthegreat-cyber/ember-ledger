@@ -51,6 +51,16 @@ async function main() {
     }
   }
 
+  async function clickCardAction(card, actionName) {
+    const directAction = card.getByRole("button", { name: actionName });
+    if (await directAction.isVisible().catch(() => false)) {
+      await directAction.click();
+      return;
+    }
+    await card.getByRole("button", { name: /More actions|More/ }).click();
+    await card.getByRole("menuitem", { name: actionName }).click();
+  }
+
   async function nav(label) {
     await closeOpenModals();
     const visibleLabel =
@@ -665,7 +675,8 @@ async function main() {
 
     await nav("Vault");
     await assertVisibleText("Smoke Locked Vault Source");
-    await page.locator(".compact-card").filter({ hasText: "Smoke Locked Vault Source" }).first().getByRole("button", { name: "Move to Forge" }).click();
+    const lockedVaultCard = page.locator(".compact-card").filter({ hasText: "Smoke Locked Vault Source" }).first();
+    await clickCardAction(lockedVaultCard, "Move to Forge");
     const lockedTransferModal = page.locator(".vault-transfer-modal").first();
     await lockedTransferModal.waitFor({ state: "visible", timeout: 5000 });
     await fillByLabel(lockedTransferModal, "How many do you want to move to Forge?", "2");
@@ -1895,7 +1906,7 @@ async function main() {
 
     await addVaultManualItem("Smoke Vault Transfer Qty 8", 8);
     const partialCard = page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).first();
-    await partialCard.getByRole("button", { name: "Move to Forge" }).click();
+    await clickCardAction(partialCard, "Move to Forge");
     const transferModal = page.locator(".vault-transfer-modal").first();
     await transferModal.waitFor({ state: "visible", timeout: 5000 });
     await fillByLabel(transferModal, "How many do you want to move to Forge?", "0");
@@ -1937,7 +1948,7 @@ async function main() {
 
     await addVaultManualItem("Smoke Vault Transfer Qty 1", 1);
     const fullCard = page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 1" }).first();
-    await fullCard.getByRole("button", { name: "Move to Forge" }).click();
+    await clickCardAction(fullCard, "Move to Forge");
     const fullModal = page.locator(".vault-transfer-modal").first();
     await fillByLabel(fullModal, "How many do you want to move to Forge?", "1");
     await fullModal.getByRole("button", { name: "Move 1 to Forge" }).click();
@@ -2084,7 +2095,7 @@ async function main() {
     await assertVisibleText("Dillon");
     await page.getByRole("button", { name: "Close" }).click();
 
-    await groupedVaultCard.first().getByRole("button", { name: "Move to Forge" }).click();
+    await clickCardAction(groupedVaultCard.first(), "Move to Forge");
     const groupedTransferModal = page.locator(".vault-transfer-modal").first();
     await groupedTransferModal.waitFor({ state: "visible", timeout: 5000 });
     await groupedTransferModal.getByLabel("Move from purchaser entry").selectOption("inventory-group-smoke-vault-dillon");

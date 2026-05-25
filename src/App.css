@@ -49292,3 +49292,213 @@ body {
     transform: none !important;
   }
 }
+
+/* Mobile UX cleanup: keep Assist visible, summaries calm, and details off the main cards. */
+.ember-assist-shell {
+  bottom: calc(104px + env(safe-area-inset-bottom, 0px)) !important;
+  right: 14px !important;
+}
+
+.app-home .ember-assist-shell,
+.app-command-shell.app-scout .ember-assist-shell,
+.app.app-scout .ember-assist-shell,
+.app-command-shell.app-vault .ember-assist-shell,
+.app.app-vault .ember-assist-shell,
+.app-command-shell.app-forge .ember-assist-shell,
+.app.app-forge .ember-assist-shell,
+.app-command-shell.app-market .ember-assist-shell,
+.app.app-market .ember-assist-shell,
+.app-tidepool .ember-assist-shell,
+.app-command-shell.app-tidepool .ember-assist-shell,
+.app.app-adminreview .ember-assist-shell,
+.app-command-shell.app-adminreview .ember-assist-shell,
+.app-shell-dark.app-adminreview .ember-assist-shell {
+  display: grid !important;
+}
+
+.ember-assist-fab {
+  gap: 0.45rem !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  min-width: 132px !important;
+  padding: 0 0.82rem !important;
+  width: auto !important;
+}
+
+.ember-assist-fab span {
+  height: 28px !important;
+  width: 28px !important;
+}
+
+.ember-assist-fab b {
+  display: inline !important;
+  font-size: 0.84rem !important;
+  white-space: nowrap;
+}
+
+.admin-command-section-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(188px, 1fr));
+}
+
+.admin-command-section-card {
+  align-content: start;
+  background: linear-gradient(145deg, rgba(8, 18, 36, 0.92), rgba(2, 8, 22, 0.78)) !important;
+  border: 1px solid var(--admin-border, rgba(124, 231, 255, 0.16)) !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  color: #fff7ed !important;
+  display: grid;
+  gap: 6px;
+  min-height: 126px;
+  padding: 12px;
+  text-align: left;
+}
+
+.admin-command-section-card span {
+  color: #7ce7ff !important;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-command-section-card strong {
+  color: #fff7ed !important;
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.admin-command-section-card p {
+  color: rgba(232, 246, 255, 0.72) !important;
+  font-size: 0.82rem;
+  line-height: 1.32;
+  margin: 0;
+}
+
+.admin-command-section-card b {
+  align-self: end;
+  color: #ffba49;
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+.app-vault .vault-collection-panel .vault-card-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.app-vault .vault-collection-panel .vault-card-facts p {
+  min-height: 58px;
+}
+
+.app-vault .vault-collection-panel .vault-card-actions {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+.app-vault .vault-collection-panel .vault-card-actions .overflow-menu {
+  min-width: 92px;
+}
+
+.sales-analytics-disclosure {
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 16px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(5, 14, 27, 0.7);
+}
+
+.sales-analytics-disclosure summary {
+  color: #fff7ed;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.vault-form-section,
+.vault-section-toggle,
+.vault-form-actions,
+.vault-status-help,
+.forge-more-filters,
+.forge-purchaser-totals,
+.inline-form,
+.purchaser-inline-form,
+.drawer-info-card,
+.location-modal,
+.flow-modal,
+.collection-manager-modal,
+.collection-manager-card {
+  background: rgba(5, 14, 27, 0.9) !important;
+  border-color: rgba(132, 226, 255, 0.18) !important;
+  color: var(--et-readable-text, #f7fbff) !important;
+}
+
+.vault-form-actions,
+.modal-sticky-footer,
+.location-modal-actions {
+  background: linear-gradient(180deg, rgba(4, 10, 22, 0), rgba(4, 10, 22, 0.96) 28%) !important;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app :where(input, select, textarea, .drawer-field, .vault-filter-select, .vault-search-input),
+.app-command-shell :where(input, select, textarea, .drawer-field, .vault-filter-select, .vault-search-input),
+.app-shell-dark :where(input, select, textarea, .drawer-field, .vault-filter-select, .vault-search-input) {
+  background-color: rgba(3, 8, 18, 0.82) !important;
+  border-color: rgba(132, 226, 255, 0.24) !important;
+  color: var(--et-readable-text, #f7fbff) !important;
+}
+
+.app :where(input::placeholder, textarea::placeholder),
+.app-command-shell :where(input::placeholder, textarea::placeholder),
+.app-shell-dark :where(input::placeholder, textarea::placeholder) {
+  color: rgba(232, 246, 255, 0.54) !important;
+}
+
+.app :where(select option),
+.app-command-shell :where(select option),
+.app-shell-dark :where(select option) {
+  background: #061225 !important;
+  color: #f7fbff !important;
+}
+
+@media (max-width: 640px) {
+  .ember-assist-shell {
+    bottom: calc(98px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .ember-assist-panel {
+    bottom: calc(54px + 0.75rem) !important;
+    max-height: min(64dvh, calc(100dvh - 172px)) !important;
+  }
+
+  .admin-command-section-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-command-section-card {
+    min-height: 98px;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-main {
+    grid-template-columns: 74px minmax(0, 1fr) !important;
+  }
+
+  .app-vault .vault-collection-panel .vault-image-wrap {
+    height: 74px !important;
+    width: 74px !important;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-facts {
+    gap: 6px !important;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-facts p {
+    min-height: 52px;
+    padding: 7px 8px !important;
+  }
+
+  .app-vault .vault-collection-panel,
+  .app-forge .panel,
+  .app-adminreview .approval-page {
+    padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 56px) !important;
+  }
+}

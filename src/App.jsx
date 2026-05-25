@@ -2510,7 +2510,7 @@ function vaultItemSetLabel(item = {}) {
 }
 
 function vaultItemLocationLabel(item = {}) {
-  return String(item.storageLocation || item.storage_location || item.locationSummary || item.physicalLocation || item.physical_location || item.location || "").trim();
+  return friendlyInventoryLabel(item.storageLocation || item.storage_location || item.locationSummary || item.physicalLocation || item.physical_location || item.location, "");
 }
 
 function firstKnownVaultNumber(...values) {
@@ -3040,7 +3040,7 @@ function normalizeForgePhysicalLocation(value = "", fallback = "") {
 }
 
 function forgePhysicalLocationLabel(item = {}) {
-  return String(item.physicalLocation || item.physical_location || "").trim();
+  return friendlyInventoryLabel(item.physicalLocation || item.physical_location, "");
 }
 
 function normalizeWorkspaceRoleValue(role = "viewer", fallback = "viewer") {
@@ -3303,15 +3303,24 @@ function normalizePurchasers(savedPurchasers = []) {
   return [...byName.values()];
 }
 
+function friendlyInventoryLabel(value, fallback = "Not assigned") {
+  const text = String(value ?? "").trim();
+  if (!text) return fallback;
+  if (/^(?:-?\d+|null|undefined|n\/a)$/i.test(text)) return fallback;
+  if (/^unknown$/i.test(text)) return fallback === "No purchaser assigned" ? fallback : "Unknown";
+  if (/unassigned\s+purchaser(?:\s*-?\d+)?/i.test(text)) return "No purchaser assigned";
+  return text.replace(/\s+-1$/i, "");
+}
+
 function itemPurchaserName(item) {
-  return item.purchaserName || item.purchaser_name || item.buyer || "Unassigned purchaser";
+  return friendlyInventoryLabel(item.purchaserName || item.purchaser_name || item.buyer, "No purchaser assigned");
 }
 
 function itemPurchaserKey(item = {}) {
   const purchaserId = String(item.purchaserId || item.purchaser_id || "").trim();
   if (purchaserId) return `id:${purchaserId}`;
   const name = itemPurchaserName(item);
-  if (name && name !== "Unassigned purchaser") return `name:${normalizeSearchText(name)}`;
+  if (name && name !== "No purchaser assigned") return `name:${normalizeSearchText(name)}`;
   return "__unassigned_purchaser__";
 }
 
@@ -3326,10 +3335,10 @@ function summarizeBreakdownRows(rows = [], options = {}) {
     const quantity = Math.max(0, Number(row.quantity || 0));
     if (quantity <= 0) return;
     const key = type === "location"
-      ? normalizeSearchText(forgePhysicalLocationLabel(row) || "Unassigned")
+      ? normalizeSearchText(forgePhysicalLocationLabel(row) || "No location assigned")
       : itemPurchaserKey(row);
     const name = type === "location"
-      ? (forgePhysicalLocationLabel(row) || "Unassigned")
+      ? (forgePhysicalLocationLabel(row) || "No location assigned")
       : itemPurchaserName(row);
     if (!groups.has(key)) {
       groups.set(key, {
@@ -5267,7 +5276,7 @@ export default function App() {
   const [expenseFilterPayment, setExpenseFilterPayment] = useState("all");
   const [expenseDateFrom, setExpenseDateFrom] = useState("");
   const [expenseDateTo, setExpenseDateTo] = useState("");
-  const [salesViewMode, setSalesViewMode] = useState("newest");
+  const [salesViewMode, setSalesViewMode] = useState("item");
   const [salesDateFrom, setSalesDateFrom] = useState("");
   const [salesDateTo, setSalesDateTo] = useState("");
   const [expandedSalesGroupKey, setExpandedSalesGroupKey] = useState("");
@@ -22205,7 +22214,7 @@ function renderForgeAccessState() {
     [workspaceExpenses]
   );
   const expenseBuyerOptions = useMemo(
-    () => [...new Set(workspaceExpenses.map((expense) => expense.buyer || "Unassigned"))].sort((a, b) => a.localeCompare(b)),
+    () => [...new Set(workspaceExpenses.map((expense) => friendlyInventoryLabel(expense.buyer, "No purchaser assigned")))].sort((a, b) => a.localeCompare(b)),
     [workspaceExpenses]
   );
   const expensePaymentOptions = useMemo(
@@ -22218,7 +22227,7 @@ function renderForgeAccessState() {
       const vendorMeta = normalizeExpenseVendor(expense.vendor);
       const expenseDate = expenseDateValue(expense);
       if (expenseFilterCategory !== "all" && (expense.category || "Supplies") !== expenseFilterCategory) return false;
-      if (expenseFilterBuyer !== "all" && (expense.buyer || "Unassigned") !== expenseFilterBuyer) return false;
+      if (expenseFilterBuyer !== "all" && friendlyInventoryLabel(expense.buyer, "No purchaser assigned") !== expenseFilterBuyer) return false;
       if (expenseFilterPayment !== "all" && (expense.paymentMethod || "Unspecified") !== expenseFilterPayment) return false;
       if ((expenseDateFrom || expenseDateTo) && !expenseDate) return false;
       if (expenseDateFrom && expenseDate && expenseDate < expenseDateFrom) return false;
@@ -22458,7 +22467,7 @@ function renderForgeAccessState() {
       ...new Set([
       ...purchasers.map((purchaser) => purchaser.name),
       ...forgeInventoryItems.map(itemPurchaserName),
-      "Unassigned purchaser",
+      "No purchaser assigned",
     ]),
   ].filter(Boolean), [purchasers, forgeInventoryItems]);
 
@@ -22654,7 +22663,7 @@ function renderForgeAccessState() {
   );
   const vaultTypeOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(vaultItemTypeLabel)), [activeVaultItems]);
   const vaultSetOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(vaultItemSetLabel)), [activeVaultItems]);
-  const vaultLocationOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map((item) => vaultItemLocationLabel(item) || "Unassigned")), [activeVaultItems]);
+  const vaultLocationOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map((item) => vaultItemLocationLabel(item) || "No location assigned")), [activeVaultItems]);
   const vaultOwnerOptions = useMemo(() => uniqueSortedLabels(activeVaultItems.map(itemPurchaserName)), [activeVaultItems]);
   const vaultCatalogSearchTerm = String(vaultForm.tideTradrSearch || vaultForm.name || "").trim().toLowerCase();
   const vaultSuggestedCatalogItems = useMemo(() => catalogProducts
@@ -22678,7 +22687,7 @@ function renderForgeAccessState() {
       if (vaultTypeFilter !== "all" && vaultItemTypeLabel(item) !== vaultTypeFilter) return false;
       if (vaultSetFilter !== "all" && vaultItemSetLabel(item) !== vaultSetFilter) return false;
       if (vaultLocationFilter !== "all") {
-        const location = vaultItemLocationLabel(item) || "Unassigned";
+        const location = vaultItemLocationLabel(item) || "No location assigned";
         if (location !== vaultLocationFilter) return false;
       }
       if (vaultOwnerFilter !== "all" && itemPurchaserName(item) !== vaultOwnerFilter) return false;
@@ -23987,6 +23996,15 @@ function renderForgeAccessState() {
 
   function renderEmberAssist() {
     if (!emberAssistVisible) return null;
+    const emberAssistSuppressed = Boolean(
+      autoHideBlocked ||
+      selectedVaultDetailId ||
+      selectedScoutReport ||
+      scoutReportModerationTarget ||
+      tidepoolFlagTarget ||
+      adminConfirmAction
+    );
+    if (emberAssistSuppressed) return null;
     const latestAssistant = [...emberAssistMessages].reverse().find((message) => message.role === "assistant");
     return (
       <section className={`ember-assist-shell ${emberAssistOpen ? "is-open" : ""}`} aria-label="Ember Assist">
@@ -23994,7 +24012,7 @@ function renderForgeAccessState() {
           type="button"
           className="ember-assist-fab"
           aria-expanded={emberAssistOpen}
-          aria-label="Open Ember Assist"
+          aria-label="Ask Ember"
           onClick={() => {
             setEmberAssistOpen((open) => {
               if (!open) {
@@ -24006,8 +24024,8 @@ function renderForgeAccessState() {
             });
           }}
         >
-          <span aria-hidden="true">ET</span>
-          <b>Ask Ember</b>
+          <span aria-hidden="true">E</span>
+          <b>Ask Ember ✨</b>
         </button>
         {emberAssistOpen ? (
           <aside className="ember-assist-panel" role="dialog" aria-modal="false" aria-labelledby="ember-assist-title">
@@ -25699,7 +25717,7 @@ function renderForgeAccessState() {
         inventoryPurchaserFilter === "All" ||
         entries.some((entry) => {
           const purchaserName = itemPurchaserName(entry);
-          return (inventoryPurchaserFilter === "Unassigned" && purchaserName === "Unassigned purchaser") ||
+          return (inventoryPurchaserFilter === "Unassigned" && purchaserName === "No purchaser assigned") ||
             entry.purchaserId === inventoryPurchaserFilter ||
             entry.purchaser_id === inventoryPurchaserFilter ||
             purchaserName === inventoryPurchaserFilter;
@@ -34065,6 +34083,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "kids", label: "Kids requests", value: kidsReviewCount, tone: kidsReviewCount ? "warning" : "success", filter: "Kids Program Applications" },
       { key: "shops", label: "Shop approvals", value: commandSummary.shopsNeedingReview, tone: commandSummary.shopsNeedingReview ? "warning" : "success", filter: "Family-Friendly Shop Review" },
     ];
+    const adminCommandSections = [
+      { key: "beta-access", title: "Beta Access", purpose: "Review access requests and beta status.", status: betaRequests.length ? `${betaRequests.length} pending` : "Clear", cta: "Review", filter: "Beta Access" },
+      { key: "invites", title: "Invites", purpose: "Create, copy, and review invite links.", status: activeBetaInviteCount ? `${activeBetaInviteCount} active` : "No active invites", cta: "Open", filter: "Beta Access" },
+      { key: "members", title: "Members", purpose: "Manage roles and workspace access.", status: roleManagementVisible ? `${roleManagementCount || approvedBetaUserCount} profiles` : "Protected", cta: "Manage", filter: "Role Management" },
+      { key: "scout-moderation", title: "Scout Moderation", purpose: "Check reports that affect trust signals.", status: commandSummary.pendingScoutReports ? `${commandSummary.pendingScoutReports} need review` : "Clear", cta: "Review", filter: "Scout Report Moderation" },
+      { key: "catalog-products", title: "Catalog / Products", purpose: "Review missing items, SKU, UPC, and store corrections.", status: catalogCorrectionCount ? `${catalogCorrectionCount} requests` : "Clear", cta: "Open", filter: "Catalog Suggestions" },
+      { key: "market-values", title: "Market Values", purpose: "Review listing and price-source issues.", status: listingReviewItems.length ? `${listingReviewItems.length} flagged` : "Clear", cta: "Review", filter: "Marketplace Listings" },
+      { key: "expenses-tax", title: "Expenses / Tax Records", purpose: "Spot receipts and records that need follow-up.", status: receiptsNeedingReview.length ? `${receiptsNeedingReview.length} need review` : "Clear", cta: "Open", filter: "System Health / Logs" },
+      { key: "assist-inbox", title: "Ember Assist Inbox", purpose: "Review user questions escalated from Ask Ember.", status: commandSummary.openAssistMessages ? `${commandSummary.openAssistMessages} open` : "Clear", cta: "Open", filter: REVIEW_SECTION_LABELS.assist },
+      { key: "app-health", title: "App Health", purpose: "Check client errors, audit notes, and system status.", status: (betaReadinessData.appErrorLogs || []).length + auditLogs.length ? `${(betaReadinessData.appErrorLogs || []).length + auditLogs.length} notes` : "Stable", cta: "Open", filter: "System Health / Logs" },
+    ];
     const primaryQueueKeys = new Set(["beta", "scout", "catalog", "feedback", "flagged", "kids", "shops", "roles"]);
     const primaryQueueRows = adminQueueRows.filter((queue) => primaryQueueKeys.has(queue.key === "market" || queue.key === "tidepool" ? "flagged" : queue.key));
     const secondaryQueueRows = adminQueueRows.filter((queue) => !primaryQueueRows.some((primary) => primary.key === queue.key));
@@ -34110,8 +34139,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <section className="admin-queue-command-board" aria-label="Admin review queues">
           <div className="compact-card-header">
             <div>
-              <h3>Priority queues</h3>
-              <p>Start with items that affect access, trust, family safety, or public content. Deep admin areas stay tucked away below.</p>
+              <h3>Command sections</h3>
+              <p>Choose the protected area you need. Raw records, IDs, and audit details stay inside each section.</p>
             </div>
             <div className="summary-pill-row">
               <button type="button" className={adminReviewFilter === "All" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("All")}>All queues</button>
@@ -34119,21 +34148,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className={adminReviewFilter === "Reports & Moderation" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("Reports & Moderation")}>Moderation</button>
             </div>
           </div>
-          <div className="admin-queue-grid">
-            {primaryQueueRows.map((queue) => (
-              <button type="button" className="admin-queue-card" key={queue.key} onClick={() => setAdminReviewFilter(queue.filter)}>
-                <span>{queue.title}</span>
-                <strong>{queue.count}</strong>
-                <small>{queue.priority} | Submitted by {queue.submittedBy}</small>
-                <p>{queue.details}</p>
+          <div className="admin-command-section-grid">
+            {adminCommandSections.map((section) => (
+              <button type="button" className="admin-command-section-card" key={section.key} onClick={() => setAdminReviewFilter(section.filter)}>
+                <span>{section.title}</span>
+                <strong>{section.status}</strong>
+                <p>{section.purpose}</p>
+                <b>{section.cta}</b>
               </button>
             ))}
           </div>
-          {secondaryQueueRows.length ? (
+          {adminQueueRows.length ? (
             <details className="admin-secondary-queues">
-              <summary>More admin queues</summary>
+              <summary>Detailed queue cards</summary>
               <div className="admin-queue-grid compact">
-                {secondaryQueueRows.map((queue) => (
+                {[...primaryQueueRows, ...secondaryQueueRows].map((queue) => (
                   <button type="button" className="admin-queue-card compact" key={queue.key} onClick={() => setAdminReviewFilter(queue.filter)}>
                     <span>{queue.title}</span>
                     <strong>{queue.count}</strong>
@@ -45418,7 +45447,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         </Field>
                         <Field label="Purchaser / owner">
                           <select value={item.ownerUserId || ""} onChange={(event) => updateReceiptDraftItem(item.id, "ownerUserId", event.target.value)}>
-                            <option value="">Unassigned</option>
+                            <option value="">No owner assigned</option>
                             {purchaserOptions.map((owner) => <option key={owner.id || owner.name} value={owner.id || owner.name}>{owner.name || owner.label || owner.email}</option>)}
                           </select>
                         </Field>
@@ -46966,6 +46995,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       onStatusChange={updateItemStatus}
                       onMoveToForge={(vaultItem) => openVaultForgeTransfer(vaultItem, "move")}
                       onCopyToForge={(vaultItem) => openVaultForgeTransfer(vaultItem, "copy")}
+                      onCreateListing={openVaultMarketplaceDecision}
                       onDuplicate={openVaultDuplicateItem}
                       onQuickUpdateMarketValue={quickUpdateMarketValue}
                       onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
@@ -48971,7 +49001,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <Field label="Purchaser">
                   <select value={inventoryPurchaserFilter} onChange={(event) => setInventoryPurchaserFilter(event.target.value)}>
                     <option value="All">All purchasers</option>
-                    <option value="Unassigned">Unassigned</option>
+                    <option value="Unassigned">No purchaser assigned</option>
                     {purchasersForWorkspace(activeForgeWorkspace?.id, { includeArchived: true }).map((purchaser) => (
                       <option key={purchaser.id} value={purchaser.id}>
                         {purchaser.name}{purchaser.active ? "" : " (archived)"}
@@ -48985,7 +49015,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     {FORGE_PHYSICAL_LOCATION_OPTIONS.map((location) => (
                       <option key={location} value={location}>{location}</option>
                     ))}
-                    <option value="No Location">Unassigned</option>
+                    <option value="No Location">No location assigned</option>
                   </select>
                 </Field>
               </div>
@@ -48997,7 +49027,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 {inventoryStatusFilter !== "All" ? ` | ${inventoryStatusFilter}` : ""}
                 {inventorySearch ? ` | Search: ${inventorySearch}` : ""}
                 {inventoryPurchaserFilter !== "All" ? ` | Purchaser: ${purchasers.find((purchaser) => purchaser.id === inventoryPurchaserFilter)?.name || inventoryPurchaserFilter}` : ""}
-                {inventoryPhysicalLocationFilter !== "All" ? ` | Location: ${inventoryPhysicalLocationFilter === "No Location" ? "Unassigned" : inventoryPhysicalLocationFilter}` : ""}
+                {inventoryPhysicalLocationFilter !== "All" ? ` | Location: ${inventoryPhysicalLocationFilter === "No Location" ? "No location assigned" : inventoryPhysicalLocationFilter}` : ""}
               </p>
             </div>
             {groupedSortedFilteredItems.length === 0 ? (
@@ -49233,27 +49263,30 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <div><span>Estimated profit/loss</span><strong>{money(salesSummary.estimatedProfitLoss)}</strong><small>After estimated cost basis</small></div>
                 <div><span>Items sold</span><strong>{salesSummary.itemsSold}</strong><small>{salesSummary.receiptCoverage.missingReference} sale reference{salesSummary.receiptCoverage.missingReference === 1 ? "" : "s"} missing</small></div>
               </div>
-              <div className="tax-record-grid">
-                <div className="tax-record-card">
-                  <h3>By platform/channel</h3>
-                  {salesSummary.byPlatform.slice(0, 5).map((row) => (
-                    <p key={row.label}><span>{row.label}</span><strong>{money(row.grossSales)}</strong></p>
-                  ))}
-                  {!salesSummary.byPlatform.length ? <p className="compact-subtitle">No sales channels recorded yet.</p> : null}
+              <details className="mobile-ux-disclosure sales-analytics-disclosure">
+                <summary>View sales analytics</summary>
+                <div className="tax-record-grid">
+                  <div className="tax-record-card">
+                    <h3>By platform/channel</h3>
+                    {salesSummary.byPlatform.slice(0, 5).map((row) => (
+                      <p key={row.label}><span>{row.label}</span><strong>{money(row.grossSales)}</strong></p>
+                    ))}
+                    {!salesSummary.byPlatform.length ? <p className="compact-subtitle">No sales channels recorded yet.</p> : null}
+                  </div>
+                  <div className="tax-record-card">
+                    <h3>By month</h3>
+                    {salesSummary.byMonth.slice(0, 5).map((row) => (
+                      <p key={row.label}><span>{row.label === "undated" ? "Undated" : row.label}</span><strong>{money(row.grossSales)}</strong></p>
+                    ))}
+                    {!salesSummary.byMonth.length ? <p className="compact-subtitle">No monthly sales data yet.</p> : null}
+                  </div>
+                  <div className="tax-record-card">
+                    <h3>Import foundation</h3>
+                    <p><span>CSV mapping</span><strong>Preview</strong></p>
+                    <p className="compact-subtitle">Sales import mapping is coming soon. Manual sale entry is available now, and uploaded files can be staged from Import File.</p>
+                  </div>
                 </div>
-                <div className="tax-record-card">
-                  <h3>By month</h3>
-                  {salesSummary.byMonth.slice(0, 5).map((row) => (
-                    <p key={row.label}><span>{row.label === "undated" ? "Undated" : row.label}</span><strong>{money(row.grossSales)}</strong></p>
-                  ))}
-                  {!salesSummary.byMonth.length ? <p className="compact-subtitle">No monthly sales data yet.</p> : null}
-                </div>
-                <div className="tax-record-card">
-                  <h3>Import foundation</h3>
-                  <p><span>CSV mapping</span><strong>Preview</strong></p>
-                  <p className="compact-subtitle">Sales import mapping is coming soon. Manual sale entry is available now, and uploaded files can be staged from Import File.</p>
-                </div>
-              </div>
+              </details>
               <div className="sales-review-controls" aria-label="Sales sort grouping and date range">
                 <div className="sales-view-mode-grid" role="group" aria-label="Sales view mode">
                   {[
@@ -50499,7 +50532,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
   const details = [
     ["Quantity", item.quantity],
     ["Owner / Purchaser", item.purchaserSummary || itemPurchaserName(item)],
-    ["Vault Location", item.locationSummary || vaultItemLocationLabel(item) || "Unassigned"],
+    ["Vault Location", item.locationSummary || vaultItemLocationLabel(item) || "No location assigned"],
     ["MSRP", priceByRole.msrp?.displayValue],
     ["Market Value", marketDisplay],
     ["Set / Collection", setLabel],
@@ -50645,25 +50678,21 @@ function CompactInventoryCard({
     const image = vaultItemDisplayImage(item);
     const itemType = vaultItemTypeLabel(item);
     const setLabel = vaultItemSetLabel(item);
-    const locationLabel = vaultItemLocationLabel(item) || "Unassigned";
     const totalMarket = valuation.estimatedMarketValue || 0;
-    const lastUpdated = vaultItemLastUpdatedLabel(item);
-    const ownerSummary = item.purchaserSummary || itemPurchaserName(item);
+    const statusLabel = vaultStatusLabel(normalizeVaultStatus(item));
     const vaultFactRows = [
       ["Qty", quantity || 1],
-      ["Est. value", valuation.marketKnownQuantity ? money(totalMarket) : "Price data unavailable"],
-      ["Owner", ownerSummary],
-      ["Location", locationLabel],
-      ...(packCount > 0 ? [["Pack count", packCount]] : []),
-      ["Updated", lastUpdated],
-      ...(showVaultSellerTools ? [["Cost basis", valuation.costKnownQuantity ? money(valuation.totalCostBasis) : "Unknown"]] : []),
+      ["Value", valuation.marketKnownQuantity ? money(totalMarket) : "Value unavailable"],
+      ...(packCount > 0 ? [["Packs", packCount]] : []),
     ];
     const vaultOverflowActions = [
       { label: "Edit", onClick: () => onEdit?.(item) },
       { label: "Review Market Value", onClick: () => onQuickUpdateMarketValue?.(item) },
       ...(showVaultSellerTools ? [
+        { label: "Move to Forge", onClick: () => onMoveToForge?.(item), disabled: quantity < 1 },
         { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
         { label: "Copy to Forge", onClick: () => onCopyToForge?.(item) },
+        ...(onCreateListing ? [{ label: "Create Listing", onClick: () => onCreateListing?.(item) }] : []),
       ] : []),
       { label: "Duplicate Item", onClick: () => onDuplicate?.(item) },
       { label: "Mark Traded", onClick: () => onStatusChange?.(item, "traded") },
@@ -50674,9 +50703,9 @@ function CompactInventoryCard({
         <div className="compact-card-header vault-card-topline">
           <div className="compact-title-block">
             <h3>{item.name}</h3>
-            <p className="compact-subtitle">{[setLabel, itemType].filter(Boolean).join(" - ") || "Collection item"}</p>
+            <p className="compact-subtitle">{setLabel || itemType || "Collection item"}</p>
           </div>
-          <span className={statusClass(vaultStatusLabel(normalizeVaultStatus(item)))}>{vaultStatusLabel(normalizeVaultStatus(item))}</span>
+          <span className={statusClass(statusLabel)}>{statusLabel}</span>
         </div>
 
         <div className="vault-card-main">
@@ -50711,7 +50740,6 @@ function CompactInventoryCard({
 
         <div className="compact-actions vault-card-actions">
           <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
-          {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={quantity < 1} onClick={() => onMoveToForge?.(item)}>Move to Forge</button> : null}
           <OverflowMenu
             buttonLabel="More"
             actions={vaultOverflowActions}
@@ -50815,7 +50843,7 @@ function CompactInventoryCard({
       <div className="compact-details">
         <p><strong>SKU:</strong> {item.sku}</p>
         <p><strong>Store:</strong> {item.store || "Not listed"}</p>
-        <p><strong>Physical Location:</strong> {item.locationSummary || physicalLocation || "Unassigned"}</p>
+        <p><strong>Physical Location:</strong> {item.locationSummary || physicalLocation || "No location assigned"}</p>
         {item.physicalLocationNotes ? <p><strong>Location Notes:</strong> {item.physicalLocationNotes}</p> : null}
         <p><strong>Purchased By:</strong> {item.purchaserSummary || itemPurchaserName(item)}</p>
         <p><strong>Type:</strong> {item.productType || "Not listed"}</p>
@@ -51388,7 +51416,7 @@ function InventoryForm({
         <summary>Step 4: Optional Details</summary>
       <Field label="Inventory location">
         <select value={form.physicalLocation || ""} onChange={(e) => setForm("physicalLocation", e.target.value)}>
-          <option value="">Unassigned</option>
+          <option value="">No location assigned</option>
           {FORGE_PHYSICAL_LOCATION_OPTIONS.map((location) => (
             <option key={location} value={location}>{location}</option>
           ))}
