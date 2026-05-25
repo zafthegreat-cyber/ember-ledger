@@ -48762,3 +48762,533 @@ body {
     display: none;
   }
 }
+
+/* Dream UI design-system extraction and subtle motion polish. */
+:root {
+  --et-dream-bg: #030814;
+  --et-dream-bg-soft: #071526;
+  --et-dream-surface: rgba(8, 18, 34, 0.82);
+  --et-dream-surface-strong: rgba(9, 20, 38, 0.94);
+  --et-dream-surface-soft: rgba(12, 27, 48, 0.68);
+  --et-dream-border: rgba(132, 226, 255, 0.18);
+  --et-dream-border-warm: rgba(255, 154, 63, 0.24);
+  --et-dream-text: #fff7ed;
+  --et-dream-muted: rgba(225, 236, 250, 0.72);
+  --et-dream-subtle: rgba(207, 222, 241, 0.58);
+  --et-dream-ember: var(--et-ember, #f97316);
+  --et-dream-tide: var(--et-tide, #22d3ee);
+  --et-dream-purple: var(--et-purple, #a78bfa);
+  --et-dream-gold: var(--et-warning, #fbbf24);
+  --et-dream-green: var(--et-success, #22c55e);
+  --et-dream-red: var(--et-danger, #fb7185);
+  --et-dream-radius-sm: 12px;
+  --et-dream-radius: 18px;
+  --et-dream-radius-lg: 24px;
+  --et-dream-card-pad: clamp(14px, 1.8vw, 20px);
+  --et-dream-page-gap: clamp(12px, 1.8vw, 18px);
+  --et-dream-shadow: 0 18px 48px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --et-dream-shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --et-dream-glow-ember: 0 0 24px rgba(249, 115, 22, 0.14);
+  --et-dream-glow-tide: 0 0 24px rgba(34, 211, 238, 0.12);
+  --et-dream-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --et-dream-ease-emphatic: cubic-bezier(0.18, 0.9, 0.2, 1);
+  --et-dream-motion-fast: 120ms;
+  --et-dream-motion: 180ms;
+  --et-dream-motion-slow: 260ms;
+  --et-dream-safe-bottom: calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px));
+}
+
+.et-app-shell,
+.app,
+.app-command-shell,
+.app-shell-dark {
+  background:
+    radial-gradient(circle at 14% -10%, rgba(249, 115, 22, 0.12), transparent 26rem),
+    radial-gradient(circle at 92% 0%, rgba(34, 211, 238, 0.1), transparent 24rem),
+    linear-gradient(180deg, var(--et-dream-bg-soft), var(--et-dream-bg) 52%, #020611) !important;
+}
+
+.et-page-section,
+.page-section,
+.standard-page,
+.main,
+.approval-page {
+  scroll-padding-bottom: calc(var(--et-dream-safe-bottom) + 28px);
+}
+
+.et-page-header,
+.standard-page-header,
+.command-screen-hero,
+.tidetradr-summary-card,
+.vault-command-center,
+.forge-command-center,
+.kids-spark-header,
+.admin-page-header {
+  border-color: var(--et-dream-border) !important;
+  border-radius: var(--et-dream-radius-lg) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(34, 211, 238, 0.08), transparent 13rem),
+    linear-gradient(145deg, rgba(9, 20, 38, 0.92), rgba(3, 9, 21, 0.96)) !important;
+  box-shadow: var(--et-dream-shadow-soft) !important;
+}
+
+.et-page-header :where(h1, h2),
+.standard-page-header :where(h1, h2),
+.command-screen-hero :where(h1, h2),
+.tidetradr-summary-card :where(h1, h2),
+.vault-command-center :where(h1, h2),
+.forge-command-center :where(h1, h2),
+.kids-spark-header :where(h1, h2),
+.admin-page-header :where(h1, h2) {
+  color: var(--et-dream-text) !important;
+  letter-spacing: 0 !important;
+}
+
+.et-page-header :where(p, small),
+.standard-page-header :where(p, small),
+.command-screen-hero :where(p, small),
+.tidetradr-summary-card :where(p, small),
+.vault-command-center :where(p, small),
+.forge-command-center :where(p, small),
+.kids-spark-header :where(p, small),
+.admin-page-header :where(p, small) {
+  color: var(--et-dream-muted) !important;
+}
+
+.et-glass-card,
+.et-section-card,
+.et-hero-card,
+.et-smart-setup-card,
+.et-product-card,
+.et-grouped-item-card,
+.panel,
+.card,
+.compact-card,
+.section-card,
+.drawer-info-card,
+.settings-subsection,
+.empty-state,
+.small-empty-state,
+.hearth-tide-hero-card,
+.hearth-next-step-card,
+.hearth-snapshot-card,
+.scout-report-card,
+.scout-signal-card,
+.quick-add-context-card,
+.quick-add-missing-guidance,
+.vault-overview-card,
+.vault-collection-panel,
+.vault-item-card,
+.forge-summary-card,
+.forge-inventory-card,
+.forge-business-card,
+.market-mobile-product-card,
+.catalog-result-card,
+.tidepool-post-card,
+.tidepool-rules-card,
+.spark-mission-card,
+.spark-section-card,
+.spark-parent-safe-panel,
+.admin-queue-card,
+.admin-ops-card,
+.admin-command-card {
+  border-color: var(--et-dream-border) !important;
+  border-radius: var(--et-dream-radius) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+    var(--et-dream-surface) !important;
+  box-shadow: var(--et-dream-shadow-soft) !important;
+  color: var(--et-dream-text) !important;
+}
+
+.et-action-tile,
+.quick-action-card,
+.quick-action-tile,
+.hearth-quick-action-tile,
+.guided-quick-choice,
+.quick-add-action-card,
+.spark-section-card,
+.vault-overview-card,
+.forge-overview-card,
+.forge-section-tab,
+.market-card-action,
+.admin-overview-tile {
+  min-width: 0;
+  border-color: rgba(132, 226, 255, 0.16) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.08), transparent 9rem),
+    rgba(5, 15, 30, 0.74) !important;
+  color: var(--et-dream-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.et-metric-card,
+.summary-card,
+.metric-card,
+.hearth-stat-pill,
+.vault-overview-card,
+.forge-summary-card,
+.market-price-card,
+.admin-overview-tile {
+  border-radius: var(--et-dream-radius) !important;
+}
+
+.et-status-badge,
+.et-trust-badge,
+.et-price-label,
+.et-setup-mode-badge,
+.status-badge,
+.trust-badge,
+.source-badge,
+.market-status-pill,
+.price-badge,
+.settings-mode-badge,
+.scout-trust-pill,
+.scout-freshness-pill {
+  min-height: 28px;
+  border-color: rgba(132, 226, 255, 0.2) !important;
+  background: rgba(5, 15, 30, 0.72) !important;
+  color: var(--et-dream-muted) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+}
+
+.et-trust-badge.is-verified,
+.trust-badge--verified,
+.scout-trust-pill--verified,
+.scout-trust-pill--community-confirmed,
+.market-status-pill--near-retail,
+.market-status-pill--fair,
+.price-badge--fair,
+.status-badge.verified,
+.status-badge.success {
+  border-color: rgba(34, 197, 94, 0.32) !important;
+  background: rgba(34, 197, 94, 0.14) !important;
+  color: #bbf7d0 !important;
+}
+
+.et-price-label.is-data,
+.market-status-pill--catalog,
+.market-status-pill--estimate,
+.price-badge--estimate,
+.scout-trust-pill--admin-reviewed,
+.source-badge.source-verified {
+  border-color: rgba(34, 211, 238, 0.34) !important;
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #a5f3fc !important;
+}
+
+.et-status-badge.is-warning,
+.market-status-pill--manual,
+.market-status-pill--high,
+.scout-freshness-pill--aging,
+.status-badge.warning {
+  border-color: rgba(251, 191, 36, 0.34) !important;
+  background: rgba(251, 191, 36, 0.12) !important;
+  color: #fde68a !important;
+}
+
+.et-status-badge.is-danger,
+.market-status-pill--unknown,
+.scout-freshness-pill--old,
+.scout-freshness-pill--expired,
+.status-badge.danger,
+.price-badge--high {
+  border-color: rgba(251, 113, 133, 0.34) !important;
+  background: rgba(251, 113, 133, 0.12) !important;
+  color: #fecdd3 !important;
+}
+
+.et-empty-state,
+.empty-state,
+.small-empty-state,
+.guided-empty-state,
+.market-empty-state,
+.vault-empty-state,
+.spark-empty-state,
+.forge-business-empty-state {
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.1), transparent 12rem),
+    rgba(5, 15, 30, 0.78) !important;
+}
+
+.et-empty-state :where(svg, .empty-state-icon, .spark-mission-orb, .command-icon),
+.empty-state :where(svg, .empty-state-icon, .spark-mission-orb, .command-icon),
+.small-empty-state :where(svg, .empty-state-icon, .spark-mission-orb, .command-icon) {
+  filter: drop-shadow(0 0 14px rgba(34, 211, 238, 0.16));
+}
+
+.et-segmented-tabs,
+.segmented-control,
+.standard-page-header-tabs,
+.scout-sticky-subnav,
+.vault-view-strip,
+.forge-section-tabs,
+.market-tabs,
+.chip-row {
+  border: 1px solid rgba(132, 226, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(2, 8, 20, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.et-segmented-tabs button,
+.segmented-control button,
+.standard-page-header-tabs button,
+.scout-sticky-subnav button,
+.vault-view-strip button,
+.forge-section-tabs button,
+.market-tabs button,
+.chip-row button {
+  border-radius: 999px !important;
+  transition:
+    color var(--et-dream-motion-fast) var(--et-dream-ease),
+    background var(--et-dream-motion-fast) var(--et-dream-ease),
+    border-color var(--et-dream-motion-fast) var(--et-dream-ease),
+    transform var(--et-dream-motion-fast) var(--et-dream-ease);
+}
+
+.et-segmented-tabs button.active,
+.segmented-control button.active,
+.standard-page-header-tabs button.active,
+.scout-sticky-subnav button.active,
+.vault-view-strip button.active,
+.forge-section-tabs button.is-active,
+.market-tabs button.active,
+.chip-row button.active {
+  border-color: rgba(249, 115, 22, 0.38) !important;
+  background: rgba(249, 115, 22, 0.16) !important;
+  color: #fff7ed !important;
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.14), var(--et-dream-glow-ember) !important;
+}
+
+.et-search-filter-bar,
+.search-filter-bar,
+.catalog-search-form,
+.market-search-form,
+.vault-toolbar,
+.forge-filter-grid,
+.market-results-toolbar,
+.catalog-results-toolbar {
+  border-color: rgba(132, 226, 255, 0.14) !important;
+  background: rgba(5, 15, 30, 0.64) !important;
+}
+
+.et-bottom-sheet,
+.et-modal,
+.et-drawer,
+.et-toast,
+.flow-modal,
+.location-modal,
+.modal-sheet-compact,
+.command-modal,
+.drawer,
+.menu-drawer,
+.settings-drawer,
+.navigation-drawer,
+.catalog-detail-drawer,
+.app-toast,
+.vault-toast,
+.notification-toast {
+  border-color: var(--et-dream-border) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018)),
+    var(--et-dream-surface-strong) !important;
+  box-shadow: var(--et-dream-shadow) !important;
+}
+
+.app-toast-viewport .app-toast,
+.vault-toast,
+.notification-toast,
+.toast-success,
+.toast-warning {
+  transform-origin: 50% 100%;
+  animation: etDreamToastIn var(--et-dream-motion-slow) var(--et-dream-ease-emphatic) both;
+}
+
+.flow-modal-backdrop,
+.location-modal-backdrop,
+.drawer-backdrop {
+  animation: etDreamFadeIn var(--et-dream-motion) var(--et-dream-ease) both;
+}
+
+.flow-modal,
+.location-modal,
+.modal-sheet-compact,
+.command-modal {
+  animation: etDreamModalIn var(--et-dream-motion-slow) var(--et-dream-ease-emphatic) both;
+}
+
+.drawer.open,
+.menu-drawer,
+.settings-drawer,
+.navigation-drawer,
+.catalog-detail-drawer {
+  animation: etDreamDrawerIn var(--et-dream-motion-slow) var(--et-dream-ease-emphatic) both;
+}
+
+.app :where(button, .drawer-link, .quick-action-card, .quick-action-tile, .hearth-quick-action-tile, .guided-quick-choice, .quick-add-action-card, .vault-overview-card, .vault-item-card, .forge-inventory-card, .market-mobile-product-card, .tidepool-post-card, .spark-section-card, .admin-queue-card) {
+  transition:
+    transform var(--et-dream-motion-fast) var(--et-dream-ease),
+    border-color var(--et-dream-motion-fast) var(--et-dream-ease),
+    box-shadow var(--et-dream-motion-fast) var(--et-dream-ease),
+    background var(--et-dream-motion-fast) var(--et-dream-ease),
+    color var(--et-dream-motion-fast) var(--et-dream-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app :where(.quick-action-card, .quick-action-tile, .hearth-quick-action-tile, .guided-quick-choice, .quick-add-action-card, .vault-overview-card, .vault-item-card, .forge-inventory-card, .market-mobile-product-card, .tidepool-post-card, .spark-section-card):hover {
+    transform: translateY(-2px);
+    border-color: rgba(132, 226, 255, 0.3) !important;
+    box-shadow: var(--et-dream-shadow-soft), var(--et-dream-glow-tide) !important;
+  }
+
+  .app :where(button, .drawer-link):hover:not(:disabled):not([aria-disabled="true"]) {
+    transform: translateY(-1px);
+  }
+}
+
+.app :where(button, .drawer-link, .quick-action-card, .quick-action-tile, .hearth-quick-action-tile, .guided-quick-choice, .quick-add-action-card, .vault-overview-card, .vault-item-card, .forge-inventory-card, .market-mobile-product-card, .tidepool-post-card, .spark-section-card):active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(0) scale(0.985);
+}
+
+.app :where(input, select, textarea, button, .drawer-link, .mobile-dock-item, .mobile-dock-add, .web-command-nav-item):focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+}
+
+.app :where(.compact-image-wrap.placeholder, .catalog-thumb, .smart-catalog-suggestion-thumb, .vault-set-mini-thumb, .market-card-thumb-placeholder, .product-image-placeholder) {
+  border-color: rgba(132, 226, 255, 0.18) !important;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(249, 115, 22, 0.14), transparent 42%),
+    radial-gradient(circle at 80% 88%, rgba(34, 211, 238, 0.12), transparent 48%),
+    rgba(6, 16, 31, 0.86) !important;
+  color: rgba(225, 236, 250, 0.68) !important;
+}
+
+.app :where(.hearth-skeleton-card, .catalog-result-skeleton, .skeleton-card, .skeleton-line, .skeleton-block, .loading-card, .loading-placeholder) {
+  background-image:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.035) 8%, rgba(132, 226, 255, 0.105) 18%, rgba(255, 255, 255, 0.035) 32%) !important;
+  background-size: 220% 100% !important;
+  animation: etDreamShimmer 1.45s var(--et-dream-ease) infinite;
+}
+
+.app-spark :where(.spark-mission-card, .spark-section-card, .spark-parent-safe-panel) {
+  border-color: rgba(246, 194, 74, 0.22) !important;
+  box-shadow: var(--et-dream-shadow-soft), 0 0 24px rgba(167, 139, 250, 0.08) !important;
+}
+
+.app-market :where(.market-mobile-product-card, .market-results-panel, .market-price-card) {
+  box-shadow: var(--et-dream-shadow-soft) !important;
+}
+
+.app-tidepool :where(.tidepool-post-card, .tidepool-rules-card) {
+  border-color: rgba(34, 211, 238, 0.16) !important;
+}
+
+.app-adminreview :where(.admin-page-header, .admin-queue-command-board, .admin-ops-section, .admin-queue-card, .admin-ops-card, .admin-command-card, .beta-review-queue, .marketplace-admin-review),
+.admin-view-mode :where(.admin-mode-control-bar) {
+  box-shadow: none !important;
+}
+
+@keyframes etDreamFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes etDreamModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes etDreamDrawerIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes etDreamToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes etDreamShimmer {
+  0% { background-position: 180% 0; }
+  100% { background-position: -80% 0; }
+}
+
+@media (max-width: 760px) {
+  .et-page-section,
+  .page-section,
+  .standard-page,
+  .main,
+  .approval-page {
+    scroll-padding-bottom: calc(var(--et-dream-safe-bottom) + 44px);
+  }
+
+  .et-page-header,
+  .standard-page-header,
+  .command-screen-hero,
+  .tidetradr-summary-card,
+  .vault-command-center,
+  .forge-command-center,
+  .kids-spark-header,
+  .admin-page-header {
+    border-radius: 20px !important;
+  }
+
+  .et-glass-card,
+  .et-section-card,
+  .et-hero-card,
+  .panel,
+  .card,
+  .compact-card,
+  .section-card,
+  .drawer-info-card,
+  .settings-subsection,
+  .empty-state,
+  .small-empty-state {
+    border-radius: 18px !important;
+  }
+
+  .et-bottom-sheet,
+  .flow-modal,
+  .location-modal,
+  .modal-sheet-compact,
+  .command-modal {
+    max-height: min(86vh, 760px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .app :where(button, .drawer-link, .quick-action-card, .quick-action-tile, .hearth-quick-action-tile, .guided-quick-choice, .quick-add-action-card, .vault-overview-card, .vault-item-card, .forge-inventory-card, .market-mobile-product-card, .tidepool-post-card, .spark-section-card):hover,
+  .app :where(button, .drawer-link, .quick-action-card, .quick-action-tile, .hearth-quick-action-tile, .guided-quick-choice, .quick-add-action-card, .vault-overview-card, .vault-item-card, .forge-inventory-card, .market-mobile-product-card, .tidepool-post-card, .spark-section-card):active {
+    transform: none !important;
+  }
+}
