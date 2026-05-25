@@ -31149,25 +31149,44 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderSmartSetupSettingsCard() {
+    const setupIncludes = smartSetupRecommendation.includes.slice(0, 7);
+    const setupHides = smartSetupRecommendation.hides.slice(0, 5);
+    const setupLooksSeller = Boolean(
+      adaptiveUiState.showSellerTools ||
+      ["seller", "business_seller"].includes(smartSetupRecommendation.planType)
+    );
     return (
-      <div className="drawer-info-card smart-setup-settings-card utility-card utility-card-wide">
+      <div className="drawer-info-card smart-setup-settings-card settings-app-setup-card utility-card utility-card-wide">
         <div className="compact-card-header">
           <div>
             <strong>App setup</strong>
-            <p className="compact-subtitle">Shape Ember & Tide around how you collect. You can change this anytime.</p>
+            <p className="compact-subtitle">You can change this anytime. Ember &amp; Tide will adjust the tools you see.</p>
           </div>
-          <span className="status-badge">{smartSetupRecommendation.label}</span>
+          <span className="status-badge settings-mode-badge">{smartSetupRecommendation.label}</span>
         </div>
-        <dl className="drawer-status-list">
-          <div><dt>Recommended setup</dt><dd>{smartSetupRecommendation.summary}</dd></div>
-          <div><dt>Tools shown first</dt><dd>{smartSetupRecommendation.includes.slice(0, 5).join(", ")}</dd></div>
-          <div><dt>Hidden for now</dt><dd>{smartSetupRecommendation.hides.slice(0, 4).join(", ")}</dd></div>
+        <p className="settings-card-lede">{smartSetupRecommendation.summary}</p>
+        <div className="settings-toolset-grid">
+          <article>
+            <span>Shown first</span>
+            <div className="settings-chip-cloud">
+              {setupIncludes.map((item) => <small className="status-badge" key={item}>{item}</small>)}
+            </div>
+          </article>
+          <article>
+            <span>Hidden or quieter</span>
+            <div className="settings-chip-cloud">
+              {setupHides.map((item) => <small className="status-badge muted-badge" key={item}>{item}</small>)}
+            </div>
+          </article>
+        </div>
+        <p className="settings-recommendation-copy">{smartSetupRecommendation.why}</p>
+        <dl className="drawer-status-list settings-compact-status-list">
           <div><dt>Persistence</dt><dd>{settingsAppPreferencePersistenceLabel}</dd></div>
         </dl>
-        <div className="drawer-inline-actions">
+        <div className="drawer-inline-actions settings-action-row">
           <button type="button" className="drawer-link" onClick={() => openSmartSetupFlow({ reset: false })}>Change my tools</button>
-          <button type="button" className="drawer-link" onClick={() => openSmartSetupFlow({ reset: true })}>Change recommended setup</button>
-          <button type="button" className="secondary-button" onClick={() => {
+          <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: true })}>Re-run setup</button>
+          {!setupLooksSeller ? <button type="button" className="secondary-button" onClick={() => {
             const sellerSetup = normalizeSmartSetupPreferences({
               ...smartSetupPreferences,
               enabledToolsets: [...new Set([...(smartSetupPreferences.enabledToolsets || []), "forge_seller_tools", "sales_tracking", "receipts_and_expenses"])],
@@ -31191,8 +31210,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               },
             }));
             setVaultToast("Seller tools are on. Forge, sales, and receipts are available.");
-          }}>Turn on seller tools</button>
-          {adaptiveUiState.showSellerTools ? (
+          }}>Turn on seller tools</button> : null}
+          {setupLooksSeller ? (
             <button type="button" className="secondary-button" onClick={() => {
               const collectorSetup = normalizeSmartSetupPreferences({
                 ...smartSetupPreferences,
@@ -40818,6 +40837,174 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderSettingsProfileSummaryCard({ compact = false } = {}) {
+    const displayName = currentUserProfile?.displayName || currentUserProfile?.display_name || profileForm.displayName || publicProfileLabel() || "Ember & Tide Collector";
+    const publicLabel = publicProfileLabel();
+    const initials = String(displayName || publicLabel || "ET")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "ET";
+    const setupLabel = smartSetupRecommendation.label || adaptiveUiState.modeLabel || "Collector / Family";
+    const roleLabel = actualAdminUser ? actualAdminRole : adaptiveUiState.showSellerTools ? "Seller tools" : "Collector";
+    const profileStats = [
+      { label: "Setup", value: setupLabel },
+      { label: "Scout", value: `${scoutGuessPoints} points` },
+      { label: "Workspace", value: activeWorkspace?.name || "Personal" },
+      { label: "Access", value: betaAccessAllowed() ? "Beta approved" : "Limited" },
+    ];
+    return (
+      <section className={`drawer-info-card settings-profile-summary-card utility-card${compact ? "" : " utility-card-wide"}`}>
+        <div className="settings-profile-summary-main">
+          <div className="settings-profile-avatar" aria-hidden="true">{initials}</div>
+          <div>
+            <p className="section-kicker">Profile</p>
+            <h3>{displayName}</h3>
+            <p>{publicLabel} - {roleLabel}</p>
+          </div>
+          <div className="settings-profile-badge-row">
+            <span className="status-badge">Beta</span>
+            <span className="status-badge">{setupLabel}</span>
+            {actualAdminUser ? <span className="status-badge admin-badge">Admin</span> : null}
+          </div>
+        </div>
+        {!compact ? (
+          <div className="settings-profile-stat-grid">
+            {profileStats.map((stat) => (
+              <article key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+              </article>
+            ))}
+          </div>
+        ) : null}
+        <div className="drawer-inline-actions settings-action-row">
+          <button type="button" className="drawer-link" onClick={() => openUtilityPage("profile")}>Edit profile</button>
+          <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: false })}>Change setup</button>
+        </div>
+      </section>
+    );
+  }
+
+  function renderSettingsWorkspaceCard() {
+    const activeRecords = workspaceRecordCountsFor(activeWorkspace?.id) || { total: 0 };
+    return (
+      <section className="drawer-info-card settings-workspace-card utility-card">
+        <div className="compact-card-header">
+          <div>
+            <strong>Workspace</strong>
+            <p className="compact-subtitle">Choose where Vault, Forge, and shared records belong.</p>
+          </div>
+          <span className="status-badge">{workspaceTypeLabel(activeWorkspace?.type)}</span>
+        </div>
+        <div className="settings-active-workspace-card">
+          <span>Current workspace</span>
+          <strong>{activeWorkspace?.name || "My Personal Space"}</strong>
+          <small>{workspaceRoleLabel(activeWorkspaceRole)} - {activeRecords.total || 0} linked record{activeRecords.total === 1 ? "" : "s"}</small>
+        </div>
+        <dl className="drawer-status-list settings-compact-status-list">
+          <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
+          <div><dt>Forge mode</dt><dd>{forgeIdentityModeLabel(activeForgeIdentityMode)}</dd></div>
+          <div><dt>Workspace actions</dt><dd>{canEditActiveWorkspace ? "Edit supported" : "View only"}</dd></div>
+        </dl>
+        <div className="drawer-inline-actions settings-action-row">
+          <button type="button" className="drawer-link" onClick={() => openUtilityPage("collections")}>Manage workspace</button>
+          {canEditActiveWorkspace ? <button type="button" className="secondary-button" onClick={() => openWorkspaceRename(activeWorkspace)}>Edit workspace</button> : null}
+        </div>
+      </section>
+    );
+  }
+
+  function renderSettingsPreferencesCard() {
+    return (
+      <section className="drawer-info-card settings-preferences-card utility-card utility-card-wide">
+        <div className="compact-card-header">
+          <div>
+            <strong>Preferences</strong>
+            <p className="compact-subtitle">Theme, notifications, home area, stores, and display controls stay grouped here.</p>
+          </div>
+          <span className="status-badge">{settingsAppPreferencePersistenceLabel}</span>
+        </div>
+        <div className="settings-preference-grid">
+          <article className="settings-preference-panel">
+            <span>Appearance</span>
+            <strong>Dark premium shell</strong>
+            <p>Current density: {dashboardCardStyle}.</p>
+            <div className="drawer-inline-actions">
+              {DASHBOARD_CARD_STYLES.map((style) => (
+                <button key={style} type="button" className={dashboardCardStyle === style ? "drawer-link active" : "drawer-link"} onClick={() => updateDashboardCardStyle(style)}>
+                  {style.charAt(0).toUpperCase() + style.slice(1)}
+                </button>
+              ))}
+            </div>
+          </article>
+          <article className="settings-preference-panel">
+            <span>Home area</span>
+            <strong>{locationSettings.manualLocation || locationSettings.selectedSavedLocation || "Not set"}</strong>
+            <p>Used for nearby Scout stores. Exact user location is never shown publicly.</p>
+            <input className="drawer-field" value={locationSettings.manualLocation} onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, trackingEnabled: false })} placeholder="ZIP or city" />
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={saveManualLocation}>Save area</button>
+              <button type="button" className="secondary-button" onClick={disableLocationTracking}>Turn off device location</button>
+            </div>
+          </article>
+          <article className="settings-preference-panel">
+            <span>Favorite stores</span>
+            <strong>{settingsFollowedStores.length} followed</strong>
+            <p>{settingsStoreAlertPersistenceLabel}. Hide irrelevant stores from Smart Setup when possible.</p>
+            <div className="drawer-inline-actions">
+              <button type="button" className="drawer-link" onClick={() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); }}>Manage stores</button>
+              <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: false })}>Update setup</button>
+            </div>
+          </article>
+          <article className="settings-preference-panel">
+            <span>Notifications</span>
+            <strong>In-app alerts</strong>
+            <p>{IN_APP_ALERT_DISCLOSURE}</p>
+            <div className="settings-toggle-stack">
+              {NOTIFICATION_PREFERENCE_ROWS.slice(0, 4).map((row) => (
+                <label className="toggle-row" key={row.key}>
+                  <span><strong>{row.label}</strong><small>{row.description}</small></span>
+                  <input type="checkbox" checked={effectiveNotificationPreferences[row.key] !== false} onChange={(event) => updateNotificationPreference(row.key, event.target.checked)} />
+                </label>
+              ))}
+            </div>
+          </article>
+        </div>
+      </section>
+    );
+  }
+
+  function renderSettingsPrivacySafetyCard() {
+    const privacyRows = [
+      { title: "Private location", body: "Exact user location is never shown publicly. Reports are shared by store, not private address.", status: locationSettings.trackingEnabled ? "Device location on" : "Manual/local" },
+      { title: "Family-safe community", body: "Public community areas stay family-friendly. Use report/block when something feels off.", status: settingsFamilyStatusLabel },
+      { title: "Admin review", body: "Flagged reports, posts, Spark requests, and support messages may be reviewed by approved admins.", status: actualAdminUser ? "Admin visible" : "Protected" },
+      { title: "Business records", body: "Forge sales, receipts, mileage, and expenses stay private to seller/business workspaces.", status: commandDeskSellerAccess ? "Seller enabled" : "Hidden" },
+    ];
+    return (
+      <section className="drawer-info-card settings-privacy-trust-card settings-privacy-safety-card utility-card utility-card-wide">
+        <div className="compact-card-header">
+          <div>
+            <strong>Privacy &amp; Safety</strong>
+            <p className="compact-subtitle">Clear guardrails for location, family data, public areas, and admin review.</p>
+          </div>
+          <span className="status-badge">Private by default</span>
+        </div>
+        <div className="settings-section-grid compact">
+          {privacyRows.map((row) => (
+            <article className="settings-section-card" key={row.title}>
+              <strong>{row.title}</strong>
+              <span>{row.body}</span>
+              <small className="status-badge">{row.status}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   function renderAccountPage() {
     return renderUtilityPageShell({
       title: "Account",
@@ -40918,15 +41105,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderSettingsPage() {
     return renderUtilityPageShell({
       title: "Settings",
-      subtitle: "Experience mode, notifications, appearance, Scout preferences, and dashboard display.",
+      subtitle: "Profile, tools, workspace, preferences, privacy, and beta support.",
       className: "settings-utility-page",
       children: (
         <>
-          <div className="drawer-info-card settings-command-overview utility-card utility-card-wide">
-            <strong>Settings overview</strong>
-            <p className="compact-subtitle">Control your Ember & Tide experience without changing private data or workspace ownership.</p>
-            <div className="settings-section-grid">
-              {settingsSectionRows.map((row) => (
+          {renderSettingsProfileSummaryCard()}
+          {renderSmartSetupSettingsCard()}
+          {renderSettingsWorkspaceCard()}
+          <div className="drawer-info-card settings-command-overview utility-card">
+            <strong>Settings map</strong>
+            <p className="compact-subtitle">A quick overview of profile, setup, support, and privacy areas.</p>
+            <div className="settings-section-grid settings-map-grid">
+              {settingsSectionRows.slice(0, 8).map((row) => (
                 <article className="settings-section-card" key={row.title}>
                   <strong>{row.title}</strong>
                   <span>{row.body}</span>
@@ -40935,21 +41125,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ))}
             </div>
           </div>
-          <div className="drawer-info-card beta-support-card utility-card">
-            <strong>Private beta status</strong>
-            <p className="compact-subtitle">You are using an active beta build. Features, labels, and forecasts may change as testing continues.</p>
-            <dl className="drawer-status-list">
+          <div className="drawer-info-card beta-support-card settings-beta-status-card utility-card">
+            <strong>Private beta</strong>
+            <p className="compact-subtitle">Features, labels, and signals may change during beta. Help keeps known issues, release notes, and feedback together.</p>
+            <dl className="drawer-status-list settings-compact-status-list">
               <div><dt>Access</dt><dd>{betaAccessAllowed() ? "Approved beta" : "Pending or limited"}</dd></div>
               <div><dt>Version</dt><dd>{APP_VERSION}</dd></div>
               <div><dt>Support</dt><dd>Known Issues and Feedback live in Help.</dd></div>
             </dl>
-            <button type="button" className="secondary-button" onClick={() => openUtilityPage("help")}>Open Help & Support</button>
+            <button type="button" className="secondary-button" onClick={() => openUtilityPage("help")}>Open Help</button>
           </div>
-          {renderSmartSetupSettingsCard()}
-          {renderOnboardingSettingsCard()}
-          <div className="drawer-info-card experience-mode-settings-card utility-card">
-            <strong>Experience Mode</strong>
-            <p className="compact-subtitle">This changes what Hearth and Today&apos;s Tide prioritize. Persistence: {settingsAppPreferencePersistenceLabel}.</p>
+          <div className="drawer-info-card experience-mode-settings-card utility-card utility-card-wide">
+            <div className="compact-card-header">
+              <div>
+                <strong>Experience mode</strong>
+                <p className="compact-subtitle">This changes what Hearth and Today&apos;s Tide prioritize. It does not change saved records.</p>
+              </div>
+              <span className="status-badge">{dashboardPresetLabel(dashboardPreset)}</span>
+            </div>
             <div className="settings-mode-grid">
               {[
                 { key: "budget", title: "Simple", helper: "Parents, families, and new collectors.", active: normalizeUserType(userType) === "budget" || normalizeDashboardPreset(dashboardPreset) === "budget_parent" },
@@ -40963,67 +41156,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ))}
             </div>
           </div>
-          <div className="drawer-info-card utility-card">
-            <strong>Appearance</strong>
-            <p className="compact-subtitle">Current density: {dashboardCardStyle}. Keep the beta compact on mobile, or switch to a roomier card style.</p>
-            <div className="drawer-inline-actions">
-              {DASHBOARD_CARD_STYLES.map((style) => (
-                <button key={style} type="button" className={dashboardCardStyle === style ? "drawer-link active" : "drawer-link"} onClick={() => updateDashboardCardStyle(style)}>
-                  {style.charAt(0).toUpperCase() + style.slice(1)}
-                </button>
-              ))}
+          {renderSettingsPreferencesCard()}
+          {renderSettingsPrivacySafetyCard()}
+          {renderOnboardingSettingsCard()}
+          <div className="drawer-info-card settings-account-actions-card utility-card">
+            <strong>Account actions</strong>
+            <p className="compact-subtitle">Session and account controls stay separated from destructive data actions.</p>
+            <div className="drawer-inline-actions settings-action-row">
+              <button type="button" className="drawer-link" onClick={() => openUtilityPage("account")}>Open account</button>
+              <button type="button" className="secondary-button" onClick={() => openUtilityPage("profile")}>Edit profile</button>
+              {signedInWithSupabase ? <button type="button" className="secondary-button logout-link" onClick={signOut}>Sign out</button> : null}
             </div>
           </div>
-          <div className="drawer-info-card utility-card">
-            <strong>Location & Scout Preferences</strong>
-            <p className="compact-subtitle">Location is used for nearby Scout stores and alerts. Device location stays off unless you enable it.</p>
-            <input className="drawer-field" value={locationSettings.manualLocation} onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, trackingEnabled: false })} placeholder="ZIP or city" />
-            <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={saveManualLocation}>Save Location</button>
-              <button type="button" className="drawer-link" onClick={enableLocationTracking}>Use Device Location</button>
-              <button type="button" className="drawer-link" onClick={disableLocationTracking}>Turn Off Location</button>
-            </div>
-          </div>
-          <div className="drawer-info-card store-alert-settings-card utility-card">
-            <strong>Store Alerts</strong>
-            <p className="compact-subtitle">Followed stores power favorite-store alerts and regional Scout context.</p>
-            <dl className="drawer-status-list">
-              <div><dt>Followed stores</dt><dd>{settingsFollowedStores.length}</dd></div>
-              <div><dt>Persistence</dt><dd>{settingsStoreAlertPersistenceLabel}</dd></div>
-              <div><dt>Store data</dt><dd>{scoutBackendSync.loaded ? "Cloud + local fallback" : scoutBackendSync.loading ? "Loading Scout stores" : "Open Scout or Regional Stores to load"}</dd></div>
-            </dl>
-            <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); }}>Open Store Directory</button>
-              <button type="button" className="secondary-button" onClick={() => { setActiveTab("scout"); setScoutView("alerts"); }}>Open Store Alerts</button>
-            </div>
-          </div>
-          <div className="drawer-info-card utility-card utility-card-wide">
-            <strong>Notification Preferences</strong>
-            <p className="compact-subtitle">{IN_APP_ALERT_DISCLOSURE} These category toggles are local beta preferences. Scout alert routing uses {settingsScoutAlertPersistenceLabel} when available.</p>
+          <div className="drawer-info-card settings-dashboard-card utility-card">
+            <strong>Hearth display</strong>
+            <p className="compact-subtitle">Choose which Home cards and sections are visible. This changes display only.</p>
             <div className="menu-toggle-list">
-              {NOTIFICATION_PREFERENCE_ROWS.map((row) => (
-                <label className="toggle-row" key={row.key}>
-                  <span><strong>{row.label}</strong><small>{row.description}</small></span>
-                  <input type="checkbox" checked={effectiveNotificationPreferences[row.key] !== false} onChange={(event) => updateNotificationPreference(row.key, event.target.checked)} />
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="drawer-info-card settings-privacy-trust-card utility-card utility-card-wide">
-            <strong>Privacy, Trust & Family</strong>
-            <p className="compact-subtitle">Privacy controls describe current behavior. Data requests are admin-reviewed; family details and admin notes are not public.</p>
-            <div className="settings-section-grid compact">
-              <article className="settings-section-card"><strong>Business data privacy</strong><span>Your Forge inventory, receipts, sales, and mileage stay private to you and authorized workspace members.</span><small className="status-badge">{commandDeskSellerAccess ? "Seller/admin private" : "Hidden from non-sellers"}</small></article>
-              <article className="settings-section-card"><strong>Location usage for Scout</strong><span>Device location is optional and only used for nearby stores and restock signals.</span><small className="status-badge">{locationSettings.trackingEnabled ? "Device location on" : "Manual/local"}</small></article>
-              <article className="settings-section-card"><strong>Trust & reputation</strong><span>Photos, accurate reports, fair pricing, and helpful community activity improve trust.</span><small className="status-badge">{settingsTrustSourceLabel}</small></article>
-              <article className="settings-section-card"><strong>Family & child profiles</strong><span>Parent-approved access only. No private child messaging. Parent-approved trades only.</span><small className="status-badge">{settingsFamilyStatusLabel}</small></article>
-            </div>
-          </div>
-          <div className="drawer-info-card utility-card utility-card-wide">
-            <strong>Dashboard Display Settings</strong>
-            <p className="compact-subtitle">Choose which Home cards and sections are visible. This changes dashboard display only.</p>
-            <div className="menu-toggle-list">
-              {menuHomeStatRows.map((row) => (
+              {menuHomeStatRows.slice(0, 5).map((row) => (
                 <label className="toggle-row" key={row.key}>
                   <span><strong>{row.label}</strong></span>
                   <input
@@ -41297,68 +41446,94 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderHelpPage() {
+    const feedbackRows = [
+      { key: "bug", label: "Bug", detail: "Something is broken." },
+      { key: "feedback", label: "Confusing screen", detail: "A flow needs clarity." },
+      { key: "catalog_data", label: "Missing item", detail: "Catalog or product help." },
+      { key: "store_data", label: "Wrong store", detail: "Store details are off." },
+      { key: "market_data", label: "Bad report", detail: "Report or price looks wrong." },
+      { key: "feature", label: "Feature request", detail: "Suggest a future improvement." },
+    ];
+    const releaseRows = [
+      { title: "The Spark kids program UI", body: "Warmer, parent-safe Kids Program layout and request flow." },
+      { title: "Tidepool community UI", body: "Calmer community feed, safety copy, and bottom spacing." },
+      { title: "Market, Forge, and Vault polish", body: "Cleaner mobile cards, tabs, and mode-aware actions." },
+    ];
     return renderUtilityPageShell({
       title: "Help & Support",
-      subtitle: "Feedback, bug reports, refresh tools, and support messages.",
+      subtitle: "Known issues, release notes, feedback, support, and app version.",
       className: "help-utility-page",
       children: (
         <>
-          <div className="drawer-info-card app-support-card utility-card">
-            <strong>App Support</strong>
-            <p className="compact-subtitle">Having issues after an update? Refresh Ember & Tide to load the newest version.</p>
-            <dl className="drawer-status-list">
-              <div><dt>Loaded version</dt><dd>{APP_VERSION}</dd></div>
-              <div><dt>Update status</dt><dd>{appUpdate.available ? "Update available" : "Up to date"}</dd></div>
-            </dl>
-            <button type="button" className="drawer-link" disabled={appRefreshInProgress} onClick={() => void handleSafeAppRefresh()}>{appRefreshInProgress ? "Refreshing..." : "Refresh App"}</button>
-          </div>
-          <div className="drawer-info-card beta-support-card utility-card utility-card-wide">
+          <div className="drawer-info-card app-support-card help-support-hero utility-card utility-card-wide">
             <div className="compact-card-header">
               <div>
-                <strong>Beta notes, release info, and known issues</strong>
-                <p className="compact-subtitle">This is the honest beta support view: what changed, what is limited, and how to report problems.</p>
+                <strong>Beta support center</strong>
+                <p className="compact-subtitle">Refresh the app, check current limits, or send feedback for admin review.</p>
               </div>
-              <span className="status-badge">Beta</span>
+              <span className="status-badge">{appUpdate.available ? "Update available" : "Up to date"}</span>
             </div>
             <dl className="drawer-status-list">
               <div><dt>App version</dt><dd>{APP_VERSION}</dd></div>
-              <div><dt>Latest focus</dt><dd>Hearth, onboarding, support states, and dark UI cleanup.</dd></div>
-              <div><dt>Feedback</dt><dd>{BETA_FEEDBACK_TYPES.slice(0, 5).join(", ")}</dd></div>
+              <div><dt>Beta access</dt><dd>{betaAccessAllowed() ? "Approved beta" : "Pending or limited"}</dd></div>
+              <div><dt>Support path</dt><dd>{BETA_FEEDBACK_TYPES.slice(0, 4).join(", ")}</dd></div>
             </dl>
-            <div className="beta-known-issues-grid">
-              {KNOWN_LIMITATIONS.slice(0, 6).map((issue) => (
-                <article className="beta-known-issue-card" key={issue}>
-                  <strong>{issue}</strong>
-                  <span>Beta limitation</span>
+            <div className="drawer-inline-actions settings-action-row">
+              <button type="button" className="drawer-link" disabled={appRefreshInProgress} onClick={() => void handleSafeAppRefresh()}>{appRefreshInProgress ? "Refreshing..." : "Refresh app"}</button>
+              <button type="button" className="secondary-button" onClick={restartOnboarding}>Replay guide</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Privacy &amp; rules</button>
+            </div>
+          </div>
+          <div className="drawer-info-card beta-support-card help-known-issues-card utility-card">
+            <strong>Known issues</strong>
+            <p className="compact-subtitle">Current beta limits are listed plainly so testers know what to expect.</p>
+            <div className="settings-stacked-list">
+              {KNOWN_LIMITATIONS.slice(0, 5).map((issue) => (
+                <article className="settings-list-row" key={issue}>
+                  <span className="status-dot status-warning" aria-hidden="true" />
+                  <div><strong>{issue}</strong><small>Beta limitation</small></div>
                 </article>
               ))}
             </div>
           </div>
-          <div className="drawer-info-card utility-card">
-            <strong>Feedback types</strong>
-            <p className="compact-subtitle">{BETA_FEEDBACK_TYPES.slice(0, 6).join(", ")} and more.</p>
-            <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("feedback")}>Send Feedback</button>
-              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("bug")}>Report a Bug</button>
-              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("feature")}>Request a Feature</button>
+          <div className="drawer-info-card help-release-card utility-card">
+            <strong>Release notes</strong>
+            <p className="compact-subtitle">Latest UI polish checkpoint. Dynamic release notes can replace this later.</p>
+            <div className="settings-stacked-list">
+              {releaseRows.map((row) => (
+                <article className="settings-list-row" key={row.title}>
+                  <span className="status-dot status-info" aria-hidden="true" />
+                  <div><strong>{row.title}</strong><small>{row.body}</small></div>
+                </article>
+              ))}
             </div>
           </div>
-          <div className="drawer-info-card utility-card">
-            <strong>Data quality help</strong>
-            <p className="compact-subtitle">Report incorrect catalog, store, or market-price data for admin review.</p>
-            <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("catalog_data")}>Report Bad Catalog Data</button>
-              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("store_data")}>Report Bad Store Data</button>
-              <button type="button" className="drawer-link" onClick={() => openFeedbackDialog("market_data")}>Report Wrong Market Price</button>
+          <div className="drawer-info-card help-feedback-card utility-card utility-card-wide">
+            <div className="compact-card-header">
+              <div>
+                <strong>Send feedback</strong>
+                <p className="compact-subtitle">Feedback is saved for beta/admin review when supported. We do not pretend unsupported backends are live.</p>
+              </div>
+              <span className="status-badge">Beta feedback</span>
             </div>
+            <div className="settings-feedback-grid">
+              {feedbackRows.map((row) => (
+                <button type="button" className="settings-feedback-option" key={row.key} onClick={() => openFeedbackDialog(row.key)}>
+                  <strong>{row.label}</strong>
+                  <span>{row.detail}</span>
+                </button>
+              ))}
+            </div>
+            {adminToolsVisible ? (
+              <button type="button" className="secondary-button" onClick={() => void runFeedbackAiSummary()}>Summarize feedback</button>
+            ) : null}
           </div>
-          <div className="drawer-info-card utility-card">
-            <strong>Guides</strong>
-            <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={restartOnboarding}>App Guide / Replay Onboarding</button>
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Profile Progress</button>
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("trust")}>Privacy / Terms / Rules</button>
-              {adminToolsVisible ? <button type="button" className="drawer-link" onClick={() => void runFeedbackAiSummary()}>Summarize feedback</button> : null}
+          <div className="drawer-info-card settings-privacy-safety-card utility-card utility-card-wide">
+            <strong>Privacy and support reminders</strong>
+            <div className="settings-section-grid compact">
+              <article className="settings-section-card"><strong>Location safety</strong><span>Reports are shared by store, not private address.</span><small className="status-badge">Store-level</small></article>
+              <article className="settings-section-card"><strong>Kids Program</strong><span>Kids Program information is handled carefully, with no private child messaging.</span><small className="status-badge">Parent-safe</small></article>
+              <article className="settings-section-card"><strong>Admin review</strong><span>Flagged reports and support messages can be reviewed by approved admins.</span><small className="status-badge">Permission-safe</small></article>
             </div>
           </div>
         </>
@@ -41369,19 +41544,39 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderProfilePage() {
     return renderUtilityPageShell({
       title: "Profile",
-      subtitle: "Public username, display name, Marketplace/Tidepool identity, and beta status.",
+      subtitle: "Public identity, setup mode, role, beta status, and profile details.",
       className: "profile-utility-page",
       children: (
         <>
+          {renderSettingsProfileSummaryCard()}
           {renderProfileSettingsCard()}
-          <div className="drawer-info-card utility-card">
-            <strong>Profile status</strong>
+          <div className="drawer-info-card profile-status-card utility-card">
+            <div className="compact-card-header">
+              <div>
+                <strong>Profile status</strong>
+                <p className="compact-subtitle">Public profile details stay separate from private account data.</p>
+              </div>
+              <span className="status-badge">{betaAccessAllowed() ? "Approved beta" : "Limited"}</span>
+            </div>
             <dl className="drawer-status-list">
               <div><dt>Beta access</dt><dd>{betaAccessAllowed() ? "Approved" : "Pending or limited"}</dd></div>
               <div><dt>Public label</dt><dd>{publicProfileLabel()}</dd></div>
               <div><dt>Scout points</dt><dd>{scoutGuessPoints}</dd></div>
+              <div><dt>Current setup</dt><dd>{smartSetupRecommendation.label}</dd></div>
             </dl>
-            <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Open Profile Progress</button>
+            <div className="drawer-inline-actions settings-action-row">
+              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Open progress</button>
+              <button type="button" className="secondary-button" onClick={() => openUtilityPage("settings")}>App setup</button>
+            </div>
+          </div>
+          <div className="drawer-info-card settings-privacy-safety-card utility-card">
+            <strong>Profile privacy</strong>
+            <p className="compact-subtitle">Private email, exact location, child details, and admin notes are not shown on public cards.</p>
+            <div className="settings-chip-cloud">
+              <span className="status-badge">Public username only</span>
+              <span className="status-badge">Family details private</span>
+              <span className="status-badge">Admin notes hidden</span>
+            </div>
           </div>
         </>
       ),

@@ -47467,3 +47467,550 @@ body {
     display: none;
   }
 }
+
+/* Settings / Help / Profile page perfection */
+.app .settings-utility-page,
+.app .help-utility-page,
+.app .profile-utility-page,
+.app-command-shell .settings-utility-page,
+.app-command-shell .help-utility-page,
+.app-command-shell .profile-utility-page,
+.app-shell-dark .settings-utility-page,
+.app-shell-dark .help-utility-page,
+.app-shell-dark .profile-utility-page {
+  padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 44px);
+}
+
+.app .settings-profile-summary-card,
+.app-command-shell .settings-profile-summary-card,
+.app-shell-dark .settings-profile-summary-card,
+.app .settings-app-setup-card,
+.app-command-shell .settings-app-setup-card,
+.app-shell-dark .settings-app-setup-card,
+.app .settings-workspace-card,
+.app-command-shell .settings-workspace-card,
+.app-shell-dark .settings-workspace-card,
+.app .settings-preferences-card,
+.app-command-shell .settings-preferences-card,
+.app-shell-dark .settings-preferences-card,
+.app .settings-beta-status-card,
+.app-command-shell .settings-beta-status-card,
+.app-shell-dark .settings-beta-status-card,
+.app .settings-account-actions-card,
+.app-command-shell .settings-account-actions-card,
+.app-shell-dark .settings-account-actions-card,
+.app .settings-dashboard-card,
+.app-command-shell .settings-dashboard-card,
+.app-shell-dark .settings-dashboard-card,
+.app .help-support-hero,
+.app-command-shell .help-support-hero,
+.app-shell-dark .help-support-hero,
+.app .help-known-issues-card,
+.app-command-shell .help-known-issues-card,
+.app-shell-dark .help-known-issues-card,
+.app .help-release-card,
+.app-command-shell .help-release-card,
+.app-shell-dark .help-release-card,
+.app .help-feedback-card,
+.app-command-shell .help-feedback-card,
+.app-shell-dark .help-feedback-card,
+.app .profile-status-card,
+.app-command-shell .profile-status-card,
+.app-shell-dark .profile-status-card {
+  border-color: rgba(124, 231, 255, 0.15) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.08), transparent 12rem),
+    linear-gradient(145deg, rgba(8, 18, 36, 0.9), rgba(3, 9, 22, 0.92)) !important;
+}
+
+.app .settings-profile-summary-main,
+.app-command-shell .settings-profile-summary-main,
+.app-shell-dark .settings-profile-summary-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.app .settings-profile-avatar,
+.app-command-shell .settings-profile-avatar,
+.app-shell-dark .settings-profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid rgba(255, 122, 24, 0.28);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 30% 24%, rgba(255, 247, 237, 0.42), transparent 18%),
+    linear-gradient(145deg, rgba(255, 122, 24, 0.28), rgba(41, 207, 255, 0.16)),
+    rgba(2, 8, 22, 0.84);
+  color: #fff7ed;
+  font-size: 1rem;
+  font-weight: 900;
+  box-shadow: 0 0 24px rgba(255, 122, 24, 0.12);
+}
+
+.app .settings-profile-summary-main h3,
+.app-command-shell .settings-profile-summary-main h3,
+.app-shell-dark .settings-profile-summary-main h3 {
+  margin: 0;
+  color: #fff7ed !important;
+  font-size: clamp(1.18rem, 3vw, 1.55rem);
+  line-height: 1.1;
+}
+
+.app .settings-profile-summary-main p,
+.app-command-shell .settings-profile-summary-main p,
+.app-shell-dark .settings-profile-summary-main p {
+  margin: 4px 0 0;
+  color: rgba(232, 246, 255, 0.74) !important;
+}
+
+.app .settings-profile-badge-row,
+.app-command-shell .settings-profile-badge-row,
+.app-shell-dark .settings-profile-badge-row,
+.app .settings-chip-cloud,
+.app-command-shell .settings-chip-cloud,
+.app-shell-dark .settings-chip-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.app .settings-profile-badge-row,
+.app-command-shell .settings-profile-badge-row,
+.app-shell-dark .settings-profile-badge-row {
+  justify-content: flex-end;
+}
+
+.app .settings-utility-page .status-badge,
+.app-command-shell .settings-utility-page .status-badge,
+.app-shell-dark .settings-utility-page .status-badge,
+.app .help-utility-page .status-badge,
+.app-command-shell .help-utility-page .status-badge,
+.app-shell-dark .help-utility-page .status-badge,
+.app .profile-utility-page .status-badge,
+.app-command-shell .profile-utility-page .status-badge,
+.app-shell-dark .profile-utility-page .status-badge {
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 28px !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+}
+
+.app .settings-profile-stat-grid,
+.app-command-shell .settings-profile-stat-grid,
+.app-shell-dark .settings-profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.app .settings-profile-stat-grid article,
+.app-command-shell .settings-profile-stat-grid article,
+.app-shell-dark .settings-profile-stat-grid article,
+.app .settings-toolset-grid article,
+.app-command-shell .settings-toolset-grid article,
+.app-shell-dark .settings-toolset-grid article,
+.app .settings-preference-panel,
+.app-command-shell .settings-preference-panel,
+.app-shell-dark .settings-preference-panel {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(124, 231, 255, 0.13);
+  border-radius: 16px;
+  background: rgba(2, 8, 22, 0.5);
+}
+
+.app .settings-profile-stat-grid span,
+.app-command-shell .settings-profile-stat-grid span,
+.app-shell-dark .settings-profile-stat-grid span,
+.app .settings-toolset-grid span,
+.app-command-shell .settings-toolset-grid span,
+.app-shell-dark .settings-toolset-grid span,
+.app .settings-preference-panel > span,
+.app-command-shell .settings-preference-panel > span,
+.app-shell-dark .settings-preference-panel > span {
+  color: #7ce7ff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app .settings-profile-stat-grid strong,
+.app-command-shell .settings-profile-stat-grid strong,
+.app-shell-dark .settings-profile-stat-grid strong,
+.app .settings-preference-panel strong,
+.app-command-shell .settings-preference-panel strong,
+.app-shell-dark .settings-preference-panel strong {
+  display: block;
+  margin-top: 4px;
+  color: #fff7ed !important;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.app .settings-card-lede,
+.app-command-shell .settings-card-lede,
+.app-shell-dark .settings-card-lede {
+  max-width: 52rem;
+  margin: 8px 0 0;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(232, 246, 255, 0.78) !important;
+  line-height: 1.45;
+}
+
+.app .settings-recommendation-copy,
+.app-command-shell .settings-recommendation-copy,
+.app-shell-dark .settings-recommendation-copy {
+  margin: 12px 0 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(2, 8, 22, 0.38);
+  color: rgba(232, 246, 255, 0.76) !important;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.app .settings-toolset-grid,
+.app-command-shell .settings-toolset-grid,
+.app-shell-dark .settings-toolset-grid,
+.app .settings-preference-grid,
+.app-command-shell .settings-preference-grid,
+.app-shell-dark .settings-preference-grid,
+.app .settings-feedback-grid,
+.app-command-shell .settings-feedback-grid,
+.app-shell-dark .settings-feedback-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.app .settings-chip-cloud .muted-badge,
+.app-command-shell .settings-chip-cloud .muted-badge,
+.app-shell-dark .settings-chip-cloud .muted-badge {
+  border-color: rgba(148, 163, 184, 0.22);
+  color: rgba(232, 246, 255, 0.72);
+}
+
+.app .settings-compact-status-list,
+.app-command-shell .settings-compact-status-list,
+.app-shell-dark .settings-compact-status-list {
+  margin-top: 12px;
+}
+
+.app .settings-app-setup-card .settings-compact-status-list > div,
+.app-command-shell .settings-app-setup-card .settings-compact-status-list > div,
+.app-shell-dark .settings-app-setup-card .settings-compact-status-list > div {
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.app .settings-app-setup-card .settings-compact-status-list dd,
+.app-command-shell .settings-app-setup-card .settings-compact-status-list dd,
+.app-shell-dark .settings-app-setup-card .settings-compact-status-list dd {
+  text-align: left;
+}
+
+.app .settings-action-row,
+.app-command-shell .settings-action-row,
+.app-shell-dark .settings-action-row {
+  margin-top: 12px;
+}
+
+.app .settings-action-row > *,
+.app-command-shell .settings-action-row > *,
+.app-shell-dark .settings-action-row > * {
+  flex: 1 1 150px;
+}
+
+.app .settings-preference-panel,
+.app-command-shell .settings-preference-panel,
+.app-shell-dark .settings-preference-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.app .settings-preference-panel p,
+.app-command-shell .settings-preference-panel p,
+.app-shell-dark .settings-preference-panel p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.72) !important;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.app .settings-toggle-stack,
+.app-command-shell .settings-toggle-stack,
+.app-shell-dark .settings-toggle-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.app .settings-stacked-list,
+.app-command-shell .settings-stacked-list,
+.app-shell-dark .settings-stacked-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.app .settings-list-row,
+.app-command-shell .settings-list-row,
+.app-shell-dark .settings-list-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 15px;
+  background: rgba(2, 8, 22, 0.48);
+}
+
+.app .settings-list-row strong,
+.app-command-shell .settings-list-row strong,
+.app-shell-dark .settings-list-row strong {
+  color: #fff7ed !important;
+}
+
+.app .settings-list-row small,
+.app-command-shell .settings-list-row small,
+.app-shell-dark .settings-list-row small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(232, 246, 255, 0.66);
+}
+
+.app .status-dot,
+.app-command-shell .status-dot,
+.app-shell-dark .status-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: #7ce7ff;
+  box-shadow: 0 0 14px rgba(124, 231, 255, 0.28);
+}
+
+.app .status-dot.status-warning,
+.app-command-shell .status-dot.status-warning,
+.app-shell-dark .status-dot.status-warning {
+  background: #f5a500;
+  box-shadow: 0 0 14px rgba(245, 165, 0, 0.25);
+}
+
+.app .status-dot.status-info,
+.app-command-shell .status-dot.status-info,
+.app-shell-dark .status-dot.status-info {
+  background: #29cfff;
+}
+
+.app .settings-feedback-option,
+.app-command-shell .settings-feedback-option,
+.app-shell-dark .settings-feedback-option {
+  display: grid;
+  gap: 5px;
+  min-height: 82px;
+  padding: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.15) !important;
+  border-radius: 16px !important;
+  background: rgba(2, 8, 22, 0.52) !important;
+  color: rgba(232, 246, 255, 0.82) !important;
+  text-align: left;
+  box-shadow: none !important;
+}
+
+.app .settings-feedback-option strong,
+.app-command-shell .settings-feedback-option strong,
+.app-shell-dark .settings-feedback-option strong {
+  color: #fff7ed !important;
+}
+
+.app .settings-feedback-option span,
+.app-command-shell .settings-feedback-option span,
+.app-shell-dark .settings-feedback-option span {
+  color: rgba(232, 246, 255, 0.7);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.app .settings-feedback-option:hover,
+.app-command-shell .settings-feedback-option:hover,
+.app-shell-dark .settings-feedback-option:hover {
+  border-color: rgba(255, 122, 24, 0.38) !important;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 760px) {
+  .app .settings-utility-page,
+  .app .help-utility-page,
+  .app .profile-utility-page,
+  .app-command-shell .settings-utility-page,
+  .app-command-shell .help-utility-page,
+  .app-command-shell .profile-utility-page,
+  .app-shell-dark .settings-utility-page,
+  .app-shell-dark .help-utility-page,
+  .app-shell-dark .profile-utility-page {
+    padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 72px);
+  }
+
+  .app .settings-profile-summary-main,
+  .app-command-shell .settings-profile-summary-main,
+  .app-shell-dark .settings-profile-summary-main {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app .settings-profile-badge-row,
+  .app-command-shell .settings-profile-badge-row,
+  .app-shell-dark .settings-profile-badge-row {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .app .settings-profile-stat-grid,
+  .app-command-shell .settings-profile-stat-grid,
+  .app-shell-dark .settings-profile-stat-grid,
+  .app .settings-toolset-grid,
+  .app-command-shell .settings-toolset-grid,
+  .app-shell-dark .settings-toolset-grid,
+  .app .settings-preference-grid,
+  .app-command-shell .settings-preference-grid,
+  .app-shell-dark .settings-preference-grid,
+  .app .settings-feedback-grid,
+  .app-command-shell .settings-feedback-grid,
+  .app-shell-dark .settings-feedback-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app .settings-profile-stat-grid,
+  .app-command-shell .settings-profile-stat-grid,
+  .app-shell-dark .settings-profile-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app .settings-mode-grid,
+  .app-command-shell .settings-mode-grid,
+  .app-shell-dark .settings-mode-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app .settings-action-row > *,
+  .app-command-shell .settings-action-row > *,
+  .app-shell-dark .settings-action-row > * {
+    flex: 1 1 100%;
+  }
+
+  .app .settings-app-setup-card,
+  .app-command-shell .settings-app-setup-card,
+  .app-shell-dark .settings-app-setup-card {
+    scroll-margin-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 36px);
+  }
+
+  .app .settings-app-setup-card .settings-card-lede,
+  .app-command-shell .settings-app-setup-card .settings-card-lede,
+  .app-shell-dark .settings-app-setup-card .settings-card-lede {
+    margin-top: 6px;
+    font-size: 0.86rem;
+    line-height: 1.35;
+  }
+
+  .app .settings-app-setup-card .settings-toolset-grid,
+  .app-command-shell .settings-app-setup-card .settings-toolset-grid,
+  .app-shell-dark .settings-app-setup-card .settings-toolset-grid {
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .app .settings-app-setup-card .settings-toolset-grid article,
+  .app-command-shell .settings-app-setup-card .settings-toolset-grid article,
+  .app-shell-dark .settings-app-setup-card .settings-toolset-grid article {
+    padding: 9px 10px;
+    border-radius: 14px;
+  }
+
+  .app .settings-app-setup-card .settings-chip-cloud,
+  .app-command-shell .settings-app-setup-card .settings-chip-cloud,
+  .app-shell-dark .settings-app-setup-card .settings-chip-cloud {
+    gap: 5px;
+  }
+
+  .app .settings-app-setup-card .status-badge,
+  .app-command-shell .settings-app-setup-card .status-badge,
+  .app-shell-dark .settings-app-setup-card .status-badge {
+    min-height: 24px !important;
+    padding: 0.27rem 0.55rem !important;
+    font-size: 0.72rem;
+  }
+
+  .app .settings-app-setup-card .settings-recommendation-copy,
+  .app-command-shell .settings-app-setup-card .settings-recommendation-copy,
+  .app-shell-dark .settings-app-setup-card .settings-recommendation-copy {
+    margin-top: 10px;
+    padding: 8px 9px;
+    font-size: 0.8rem;
+    line-height: 1.32;
+  }
+
+  .app .settings-app-setup-card .settings-compact-status-list,
+  .app-command-shell .settings-app-setup-card .settings-compact-status-list,
+  .app-shell-dark .settings-app-setup-card .settings-compact-status-list {
+    margin-top: 10px;
+  }
+
+  .app .settings-app-setup-card .settings-compact-status-list > div,
+  .app-command-shell .settings-app-setup-card .settings-compact-status-list > div,
+  .app-shell-dark .settings-app-setup-card .settings-compact-status-list > div {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .app .settings-app-setup-card .settings-compact-status-list dd,
+  .app-command-shell .settings-app-setup-card .settings-compact-status-list dd,
+  .app-shell-dark .settings-app-setup-card .settings-compact-status-list dd {
+    text-align: right;
+  }
+
+  .app .settings-app-setup-card .settings-action-row,
+  .app-command-shell .settings-app-setup-card .settings-action-row,
+  .app-shell-dark .settings-app-setup-card .settings-action-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .app .settings-app-setup-card .settings-action-row > *,
+  .app-command-shell .settings-app-setup-card .settings-action-row > *,
+  .app-shell-dark .settings-app-setup-card .settings-action-row > * {
+    width: 100%;
+    min-height: 42px;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .app .settings-app-setup-card .settings-action-row > :last-child:nth-child(3),
+  .app-command-shell .settings-app-setup-card .settings-action-row > :last-child:nth-child(3),
+  .app-shell-dark .settings-app-setup-card .settings-action-row > :last-child:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .app-command-shell.app-settings .ember-assist-shell,
+  .app-command-shell.app-help .ember-assist-shell,
+  .app-command-shell.app-profile .ember-assist-shell,
+  .app-shell-dark.app-settings .ember-assist-shell,
+  .app-shell-dark.app-help .ember-assist-shell,
+  .app-shell-dark.app-profile .ember-assist-shell {
+    display: none;
+  }
+}
