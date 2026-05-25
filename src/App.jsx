@@ -1891,6 +1891,7 @@ const TIDEPOOL_FEED_FILTERS = [
   "Saved",
   "Needs Review",
 ];
+const TIDEPOOL_PRIMARY_TABS = ["Feed", "Local", "Events", "Following", "My Posts"];
 const BLANK_TIDEPOOL_POST_FORM = {
   postType: "Community Update",
   title: "",
@@ -24808,7 +24809,7 @@ function renderForgeAccessState() {
       reactionCount: reactionCounts.get(post.postId) || 0,
     }));
   }, [tidepoolPosts, tidepoolComments, tidepoolReactions]);
-  const visibleTidepoolFilters = TIDEPOOL_FEED_FILTERS.filter((filter) => filter !== "Needs Review" || adminEditModeActive);
+  const visibleTidepoolFilters = TIDEPOOL_FEED_FILTERS.filter((filter) => TIDEPOOL_PRIMARY_TABS.includes(filter) || (filter === "Needs Review" && adminEditModeActive));
   const filteredTidepoolPosts = useMemo(() => tidepoolPostsWithCounts
     .filter((post) => {
       if (!canViewTidepoolPost(post, { isAdmin: adminEditModeActive, currentUserId: currentUserProfile.userId || "local-beta" })) return false;
@@ -35488,7 +35489,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderTidepoolCommunity() {
-    const sourceLabel = BETA_LOCAL_MODE ? "Private Beta" : "Cloud";
     const visiblePosts = filteredTidepoolPosts.length;
     const tidepoolViewerId = currentUserProfile.userId || "local-beta";
     const visibleTidepoolPostsForViewer = tidepoolPostsWithCounts.filter((post) => canViewTidepoolPost(post, {
@@ -35515,21 +35515,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     };
     const tidepoolStats = [
       { label: "Posts", value: visibleTidepoolPostsForViewer.length },
-      { label: "Comments", value: tidepoolComments.filter((comment) => visibleTidepoolPostIds.has(comment.postId) && comment.status !== "removed").length },
-      { label: "Reactions", value: tidepoolReactions.filter((reaction) => visibleTidepoolPostIds.has(reaction.postId)).length },
       { label: "Local", value: localPosts },
+      { label: "Replies", value: tidepoolComments.filter((comment) => visibleTidepoolPostIds.has(comment.postId) && comment.status !== "removed").length },
     ];
 
     return (
       <>
         <PageHeader
           className={getHeaderCardClass("panel tidepool-community-header")}
-          title="Tidepool Community"
-          subtitle="What is the community saying? Local TCG posts, safe trade talk, events, and collector help."
+          title="Tidepool"
+          subtitle="Community currents for collectors and families."
           actions={(
             <>
               <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Close Tidepool</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>Scout Signals</button>
             </>
           )}
           summary={(
@@ -35542,7 +35541,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 ))}
               </div>
-              <p>No child private messaging. Report unsafe content. Marketplace listings stay clearly labeled in Market.</p>
+              <p>Keep it kind, helpful, and family-friendly. Posts use general areas only.</p>
               {!canCreateTidepoolPost ? <p>Tidepool posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
             </div>
           )}
@@ -35555,29 +35554,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="compact-card-header">
             <div>
               <h2>{tidepoolFilter === "Feed" ? "Community feed" : tidepoolFilter}</h2>
-              <p>Browse local posts, safe trade talk, events, and collector questions without turning Tidepool into a marketplace clone.</p>
+              <p>Helpful local posts, questions, events, and family-safe collector updates.</p>
             </div>
-            <span className="status-badge">{sourceLabel} | {visiblePosts} visible</span>
+            <span className="status-badge">{visiblePosts} visible</span>
           </div>
 
           <div className="tidepool-feed-grid">
             {filteredTidepoolPosts.length === 0 ? (
               <div className="empty-state tidepool-empty-state">
-                <h3>The Tidepool is quiet right now.</h3>
-                <p>Start a family-safe community post, ask a question, or share a local update after admin review.</p>
+                <h3>The Tidepool is quiet.</h3>
+                <p>Start a helpful community post or check back soon.</p>
                 <div className="quick-actions">
                   <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
-                  <button type="button" className="secondary-button" onClick={() => {
-                    setTidepoolFilter("Local");
-                    setVaultToast("Use Save / Follow on public Tidepool posts to build your local collector list.");
-                  }}>Follow Local Collectors</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>View Scout Signals</button>
                 </div>
               </div>
             ) : null}
             {pagedTidepoolPosts.items.map((post) => {
               const postComments = tidepoolComments.filter((comment) => comment.postId === post.postId && !comment.parentCommentId && comment.status !== "removed");
               const locationParts = [post.city, post.state].filter(Boolean);
-              const locationLabel = locationParts.length ? locationParts.join(", ") : post.zip ? `ZIP ${post.zip}` : "Community post";
+              const locationLabel = locationParts.length ? locationParts.join(", ") : post.state ? post.state : "Tidepool area";
               const postDate = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : "No date";
               const publicSummary = publicTidepoolPostSummary(post);
               const preview = publicSummary.bodyPreview || "No post body yet.";
@@ -35590,6 +35586,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               const currentUserId = currentUserProfile.userId || "local-beta";
               const canHidePost = post.userId === currentUserId || adminToolsVisible;
               const showStatusToViewer = adminToolsVisible || post.userId === currentUserId || postStatus !== "Published";
+              const safePostDetailsId = `tidepool-post-details-${post.postId}`;
+              const openPostDetails = () => {
+                const details = document.getElementById(safePostDetailsId);
+                if (details) details.open = true;
+                document.getElementById(`tidepool-comment-${post.postId}`)?.focus();
+              };
               return (
                 <article className={`tidepool-post-card compact-card${postStatus !== "Published" ? " tidepool-post-card--moderated" : ""}`} key={post.postId}>
                   <div className="tidepool-post-top">
@@ -35598,7 +35600,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <div>
                         <strong>{usernameLabel}</strong>
                         <p className="tidepool-post-meta">
-                          <span>Community member</span>
+                          <span>{locationLabel}</span>
                           <span>{postDate}</span>
                         </p>
                         {renderCommunityProfileSummary(post, { compact: true, className: "tidepool-profile-card" })}
@@ -35621,7 +35623,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="tidepool-badge-row">
                     <span className={statusClass(postCategory)}>{postCategory}</span>
                     {showStatusToViewer ? <span className={`status-badge ${tidepoolStatusTone(postStatus)}`}>{postStatus}</span> : null}
-                    {trustBadges.map((badge) => <span className="trust-badge tidepool-trust-badge" key={badge}>{badge}</span>)}
+                    {trustBadges.slice(0, 2).map((badge) => <span className="trust-badge tidepool-trust-badge" key={badge}>{badge}</span>)}
                     {post.flagged ? <span className="status-badge needs-review">Flagged for admin</span> : null}
                     {post.sourceType !== "user" ? <span className={statusClass(sourceBadge)}>{sourceBadge}</span> : null}
                   </div>
@@ -35629,7 +35631,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <h3>{post.title || postCategory}</h3>
                     <p className="tidepool-post-meta">
                       <span>{locationLabel}</span>
-                      <span>No private child messaging</span>
+                      <span>No private address shown</span>
                     </p>
                     <p>{preview}</p>
                     {post.storeReference || post.productReference ? (
@@ -35643,51 +35645,54 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="tidepool-post-counts">
                     <span>{post.commentCount} comment{post.commentCount === 1 ? "" : "s"}</span>
                     <span>{post.reactionCount} reaction{post.reactionCount === 1 ? "" : "s"}</span>
-                    <span>Source: {sourceBadge}</span>
+                    <span>{sourceBadge} post</span>
                   </div>
                   <div className="tidepool-post-actions">
                     <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "helpful")}>Helpful</button>
-                    <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "confirmed")}>Confirm</button>
-                    <button type="button" className="secondary-button" onClick={() => addTidepoolReaction(post.postId, "disputed")}>Dispute</button>
+                    <button type="button" className="secondary-button" onClick={openPostDetails}>Reply</button>
                     <button type="button" className="secondary-button" onClick={() => updateTidepoolPost(post.postId, { saved: !post.saved })}>{post.saved ? "Saved" : "Save / Follow"}</button>
-                    <button type="button" className="secondary-button" onClick={() => openTidepoolFlagFlow(post)}>{post.flagged ? "Reported" : "Report content"}</button>
-                    {canHidePost ? (
-                      <button type="button" className="secondary-button" onClick={() => hideOwnTidepoolPost(post)}>{post.status === "hidden" ? "Hidden" : "Hide post"}</button>
-                    ) : null}
-                    <button type="button" className="secondary-button" onClick={() => setVaultToast("Mute/block controls are queued for account settings. Report unsafe content now.")}>Mute</button>
-                    <button type="button" className="secondary-button" onClick={() => document.getElementById(`tidepool-comment-${post.postId}`)?.focus()}>Comment</button>
+                    <OverflowMenu
+                      buttonLabel="Safety"
+                      actions={[
+                        { label: post.flagged ? "Reported" : "Report post", danger: true, onClick: () => openTidepoolFlagFlow(post) },
+                        { label: "Block user", onClick: () => setVaultToast("Block controls are queued for account settings. Report unsafe content now.") },
+                        ...(canHidePost ? [{ label: post.status === "hidden" ? "Hidden" : "Hide post", onClick: () => hideOwnTidepoolPost(post) }] : []),
+                      ]}
+                    />
                   </div>
-                  <div className="tidepool-comments">
-                    <div className="tidepool-comments-header">
-                      <strong>Comments</strong>
-                      <span>{postComments.length}</span>
+                  <details className="tidepool-comments" id={safePostDetailsId}>
+                    <summary>
+                      <span>Replies and details</span>
+                      <strong>{postComments.length}</strong>
+                    </summary>
+                    <div className="tidepool-comments-body">
+                      {postComments.length ? (
+                        <div className="tidepool-comment-list">
+                          {postComments.slice(0, 3).map((comment) => {
+                            const replies = tidepoolComments.filter((reply) => reply.parentCommentId === comment.commentId && reply.status !== "removed");
+                            return (
+                              <div className="tidepool-comment" key={comment.commentId}>
+                                <p><strong>{publicUsernameLabelFromRecord(comment, "community")}</strong>: {comment.body}</p>
+                                {replies.slice(0, 2).map((reply) => (
+                                  <p className="compact-subtitle tidepool-reply" key={reply.commentId}><strong>{publicUsernameLabelFromRecord(reply, "community")}</strong>: {reply.body}</p>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="compact-subtitle">No replies yet.</p>
+                      )}
+                      {post.commentsLocked || postStatus !== "Published" ? (
+                        <p className="compact-subtitle">Replies are locked for this post.</p>
+                      ) : (
+                        <div className="tidepool-comment-box">
+                          <input id={`tidepool-comment-${post.postId}`} value={tidepoolCommentDrafts[post.postId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [post.postId]: event.target.value }))} placeholder="Add a safe community reply..." />
+                          <button type="button" onClick={() => addTidepoolComment(post.postId)}>Post</button>
+                        </div>
+                      )}
                     </div>
-                    {postComments.length ? (
-                      <div className="tidepool-comment-list">
-                        {postComments.slice(0, 3).map((comment) => {
-                          const replies = tidepoolComments.filter((reply) => reply.parentCommentId === comment.commentId && reply.status !== "removed");
-                          return (
-                            <div className="tidepool-comment" key={comment.commentId}>
-                              <p><strong>{publicUsernameLabelFromRecord(comment, "community")}</strong>: {comment.body}</p>
-                              {replies.slice(0, 2).map((reply) => (
-                                <p className="compact-subtitle tidepool-reply" key={reply.commentId}><strong>{publicUsernameLabelFromRecord(reply, "community")}</strong>: {reply.body}</p>
-                              ))}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="compact-subtitle">No comments yet.</p>
-                    )}
-                    {post.commentsLocked || postStatus !== "Published" ? (
-                      <p className="compact-subtitle">Comments are locked for this post.</p>
-                    ) : (
-                      <div className="tidepool-comment-box">
-                        <input id={`tidepool-comment-${post.postId}`} value={tidepoolCommentDrafts[post.postId] || ""} onChange={(event) => setTidepoolCommentDrafts((current) => ({ ...current, [post.postId]: event.target.value }))} placeholder="Add a safe community comment..." />
-                        <button type="button" onClick={() => addTidepoolComment(post.postId)}>Comment</button>
-                      </div>
-                    )}
-                  </div>
+                  </details>
                 </article>
               );
             })}
@@ -35706,9 +35711,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           />
 
           <div className="tidepool-rules-card">
-            <strong>Family-safe posting rules</strong>
+            <strong>Family-safe Tidepool</strong>
+            <p>Keep it kind, helpful, and general. Use report/block if something feels off.</p>
             <div className="tidepool-guideline-list">
-              {TIDEPOOL_FAMILY_SAFE_RULES.map((guideline) => <span key={guideline}>{guideline}</span>)}
+              {TIDEPOOL_FAMILY_SAFE_RULES.slice(0, 3).map((guideline) => <span key={guideline}>{guideline}</span>)}
             </div>
           </div>
         </section>
@@ -35797,7 +35803,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "tidepoolCreatePost") {
       return {
         title: "Create Tidepool Post",
-        description: "Share a family-safe question, local update, shop note, or event for admin review before it appears publicly.",
+        description: "Share a helpful update for review.",
         size: "medium",
       };
     }
@@ -36634,14 +36640,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       guestPreviewActive,
       activeTabLocked,
     });
+    const quickPostTypes = ["Restock Discussion", "Question", "Local Event", "Trade Night", "Kid-Friendly Win"].filter((type) => TIDEPOOL_POST_TYPES.includes(type));
     return (
       <form className="form flow-form-grid tidepool-create-form" onSubmit={submitTidepoolPost}>
         <div className="drawer-info-card">
-          <strong>Family-safe community reminder</strong>
-          <p className="compact-subtitle">New Tidepool posts are saved as Pending Review so Ember & Tide can keep the community safe before they appear publicly.</p>
+          <strong>Share a helpful update.</strong>
+          <p className="compact-subtitle">Posts are reviewed so Tidepool stays kind, local, and family-friendly.</p>
           <div className="tidepool-guideline-list">
-            {TIDEPOOL_FAMILY_SAFE_RULES.slice(0, 5).map((rule) => <span key={rule}>{rule}</span>)}
+            {TIDEPOOL_FAMILY_SAFE_RULES.slice(0, 3).map((rule) => <span key={rule}>{rule}</span>)}
           </div>
+        </div>
+        <div className="tidepool-composer-chips" aria-label="Quick post categories">
+          {quickPostTypes.map((type) => (
+            <button
+              key={type}
+              type="button"
+              className={tidepoolPostForm.postType === type ? "active" : ""}
+              onClick={() => setTidepoolPostForm((current) => ({ ...current, postType: type }))}
+            >
+              {type}
+            </button>
+          ))}
         </div>
         <Field label="Post Type">
           <select value={tidepoolPostForm.postType} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, postType: event.target.value }))}>
@@ -36652,19 +36671,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <input value={tidepoolPostForm.title} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, title: event.target.value }))} placeholder="Optional title" />
         </Field>
         <Field label="Post">
-          <textarea value={tidepoolPostForm.body} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, body: event.target.value }))} placeholder="Ask a question, share a sighting, post an event, or start a discussion." />
+          <textarea value={tidepoolPostForm.body} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, body: event.target.value }))} placeholder="Share a helpful update..." />
         </Field>
-        <Field label="Store or location reference">
-          <input value={tidepoolPostForm.storeReference} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, storeReference: event.target.value }))} placeholder="Optional store, shop, area, or event location" />
+        <Field label="Store or general area">
+          <input value={tidepoolPostForm.storeReference} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, storeReference: event.target.value }))} placeholder="Optional shop, event, or general area" />
         </Field>
         <Field label="Product reference">
           <input value={tidepoolPostForm.productReference} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, productReference: event.target.value }))} placeholder="Optional product, set, or category" />
         </Field>
-        <Field label="City">
+        <Field label="City or region">
           <input value={tidepoolPostForm.city} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, city: event.target.value }))} placeholder="Optional" />
-        </Field>
-        <Field label="ZIP">
-          <input value={tidepoolPostForm.zip} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, zip: event.target.value }))} placeholder="Optional" />
         </Field>
         <Field label="Photo URL">
           <input value={tidepoolPostForm.photoUrl} onChange={(event) => setTidepoolPostForm((current) => ({ ...current, photoUrl: event.target.value }))} placeholder="Optional beta image URL" />
