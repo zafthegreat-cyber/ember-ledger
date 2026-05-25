@@ -44275,3 +44275,961 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Forge page perfection: seller/workshop hierarchy without changing Forge data logic. */
+.app-forge {
+  --forge-ember: var(--et-ember, #f97316);
+  --forge-tide: var(--et-tide, #22d3ee);
+  --forge-card-bg: linear-gradient(150deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)), rgba(5, 14, 29, 0.88);
+  --forge-card-border: rgba(255, 184, 92, 0.18);
+}
+
+.app-forge .main {
+  padding-bottom: calc(var(--bottom-nav-offset, 92px) + env(safe-area-inset-bottom, 0px) + 72px);
+}
+
+.app-forge .standard-page-header.panel.forge-command-center,
+.app-forge .forge-home-inventory-section,
+.app-forge .forge-add-sale-panel,
+.app-forge .sales-records-summary-panel,
+.app-forge .sales-grouped-list,
+.app-forge .expense-list-panel,
+.app-forge .panel:has(.expense-summary-grid),
+.app-forge .adaptive-forge-intro {
+  border-color: var(--forge-card-border) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(249, 115, 22, 0.13), transparent 13rem),
+    linear-gradient(145deg, rgba(34, 211, 238, 0.045), rgba(255, 255, 255, 0.018)),
+    rgba(4, 12, 26, 0.9) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28) !important;
+}
+
+.app-forge .standard-page-header.panel.forge-command-center {
+  overflow: hidden;
+}
+
+.app-forge .forge-command-center .section-hero-art {
+  opacity: 0.42;
+}
+
+.app-forge .forge-command-center .standard-page-header-copy h2 {
+  color: var(--et-text, #fff7ed) !important;
+  font-size: clamp(1.65rem, 3vw, 2.35rem);
+  letter-spacing: 0;
+}
+
+.app-forge .forge-command-center .standard-page-header-copy p,
+.app-forge .forge-command-center .standard-page-header-label {
+  color: rgba(248, 251, 255, 0.72);
+}
+
+.app-forge .forge-command-quick-add,
+.app-forge .forge-action-strip > button:first-child,
+.app-forge .forge-business-empty-state button:first-child {
+  border-color: rgba(255, 184, 92, 0.68) !important;
+  background: linear-gradient(135deg, #f97316, #fb923c) !important;
+  color: #1f1005 !important;
+  box-shadow: 0 12px 26px rgba(249, 115, 22, 0.22) !important;
+}
+
+.app-forge .forge-command-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.app-forge .forge-top-summary,
+.app-forge .forge-command-overview,
+.app-forge .forge-business-grid {
+  gap: 10px !important;
+}
+
+.app-forge .forge-top-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-forge .forge-summary-card,
+.app-forge .forge-overview-card,
+.app-forge .forge-business-card,
+.app-forge .forge-action-strip > button,
+.app-forge .forge-more-actions,
+.app-forge .forge-analytics-disclosure,
+.app-forge .inventory-insight-card,
+.app-forge .price-reliability-card,
+.app-forge .tax-record-card,
+.app-forge .forge-tax-readiness-grid > div {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: var(--forge-card-bg) !important;
+  box-shadow: none !important;
+}
+
+.app-forge .forge-summary-card {
+  min-height: 92px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.app-forge .forge-summary-card span,
+.app-forge .forge-summary-card strong,
+.app-forge .forge-summary-card small {
+  display: block;
+}
+
+.app-forge .forge-summary-card span,
+.app-forge .forge-overview-title,
+.app-forge .forge-business-card span,
+.app-forge .inventory-insight-card span,
+.app-forge .price-reliability-card small,
+.app-forge .tax-record-card h3,
+.app-forge .forge-tax-readiness-grid span {
+  color: rgba(255, 218, 182, 0.88) !important;
+  letter-spacing: 0;
+}
+
+.app-forge .forge-summary-card strong,
+.app-forge .forge-overview-card strong,
+.app-forge .forge-business-card strong,
+.app-forge .inventory-insight-card strong,
+.app-forge .tax-record-card strong,
+.app-forge .forge-tax-readiness-grid strong {
+  color: var(--et-text, #fff7ed) !important;
+}
+
+.app-forge .forge-summary-card small,
+.app-forge .forge-overview-card small,
+.app-forge .forge-overview-card span:last-child,
+.app-forge .forge-business-card small,
+.app-forge .inventory-insight-card small,
+.app-forge .tax-record-card p,
+.app-forge .forge-tax-readiness-grid small,
+.app-forge .compact-subtitle {
+  color: rgba(215, 226, 237, 0.72) !important;
+}
+
+.app-forge .forge-overview-card.is-active,
+.app-forge .forge-business-card:focus-visible,
+.app-forge .forge-business-card:hover {
+  border-color: rgba(249, 115, 22, 0.62) !important;
+  background:
+    linear-gradient(145deg, rgba(249, 115, 22, 0.14), rgba(34, 211, 238, 0.04)),
+    rgba(7, 17, 32, 0.92) !important;
+}
+
+.app-forge .forge-section-tabs {
+  display: flex !important;
+  flex-wrap: wrap;
+}
+
+.app-forge .forge-section-tab {
+  min-height: 42px !important;
+  flex: 1 1 132px;
+  padding: 9px 12px !important;
+  text-align: left;
+}
+
+.app-forge .forge-section-tab strong {
+  display: none;
+}
+
+.app-forge .forge-section-tab small {
+  display: block;
+  margin-top: 2px;
+}
+
+.app-forge .forge-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.app-forge .forge-toolbar h2,
+.app-forge .forge-business-dashboard-heading h3,
+.app-forge .forge-recent-activity-panel h3 {
+  color: var(--et-text, #fff7ed) !important;
+  letter-spacing: 0;
+}
+
+.app-forge .forge-toolbar p,
+.app-forge .forge-business-dashboard-heading p,
+.app-forge .forge-recent-activity-panel p {
+  max-width: 54rem;
+  color: rgba(215, 226, 237, 0.74) !important;
+}
+
+.app-forge .forge-action-strip {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px !important;
+  align-items: stretch;
+  margin: 12px 0;
+}
+
+.app-forge .forge-action-strip > button,
+.app-forge .forge-more-actions > summary {
+  min-height: 48px !important;
+  width: 100%;
+  border-radius: 14px !important;
+  padding: 9px 11px !important;
+  font-size: 0.84rem !important;
+  font-weight: 800;
+  white-space: normal;
+}
+
+.app-forge .forge-more-actions {
+  position: relative;
+  border-radius: 14px;
+}
+
+.app-forge .forge-more-actions > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--et-text, #fff7ed);
+  list-style: none;
+}
+
+.app-forge .forge-more-actions > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-forge .forge-more-actions[open] > summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px 14px 0 0 !important;
+}
+
+.app-forge .forge-more-actions > div {
+  position: absolute;
+  right: 0;
+  z-index: 15;
+  min-width: min(240px, calc(100vw - 32px));
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(255, 184, 92, 0.2);
+  border-radius: 14px;
+  background: rgba(5, 14, 29, 0.98);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.34);
+}
+
+.app-forge .forge-more-actions button {
+  width: 100%;
+  min-height: 40px !important;
+}
+
+.app-forge .forge-business-dashboard {
+  gap: 12px !important;
+}
+
+.app-forge .forge-analytics-disclosure {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  margin: 12px 0;
+  padding: 0;
+}
+
+.app-forge .forge-report-details {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  margin: 12px 0;
+  background: rgba(5, 14, 29, 0.55);
+}
+
+.app-forge .forge-analytics-disclosure > summary,
+.app-forge .forge-report-details > summary {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: var(--et-text, #fff7ed);
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-forge .forge-analytics-disclosure > summary::-webkit-details-marker,
+.app-forge .forge-report-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-forge .forge-analytics-disclosure[open],
+.app-forge .forge-report-details[open] {
+  padding-bottom: 12px;
+}
+
+.app-forge .forge-analytics-disclosure .forge-business-dashboard {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 12px !important;
+}
+
+.app-forge .forge-business-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.app-forge .forge-business-card {
+  min-height: 96px;
+  padding: 12px !important;
+}
+
+.app-forge .inventory-insight-panel.forge-valuation-panel {
+  margin-top: 2px;
+  border-color: rgba(34, 211, 238, 0.14) !important;
+  background:
+    linear-gradient(145deg, rgba(34, 211, 238, 0.055), rgba(255, 255, 255, 0.018)),
+    rgba(3, 11, 24, 0.72) !important;
+}
+
+.app-forge .forge-recent-activity-panel,
+.app-forge .forge-purchaser-totals,
+.app-forge .forge-more-filters {
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 16px;
+  background: rgba(5, 14, 29, 0.62);
+  padding: 12px;
+  position: relative;
+  z-index: 0;
+}
+
+.app-forge .overflow-menu-list {
+  z-index: 80 !important;
+}
+
+.app-forge .forge-purchaser-totals summary,
+.app-forge .forge-more-filters summary {
+  min-height: 42px;
+  color: var(--et-text, #fff7ed);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.app-forge .filter-summary {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(5, 14, 29, 0.58);
+  padding: 10px 12px;
+}
+
+.app-forge .filter-summary p {
+  margin: 0;
+  color: rgba(215, 226, 237, 0.74);
+  font-size: 0.78rem;
+}
+
+.app-forge .forge-empty-inline-prompt {
+  margin: 10px 0 0;
+  color: var(--et-text, #fff7ed);
+  font-size: 0.92rem;
+  font-weight: 850;
+}
+
+.app-forge .forge-inventory-card {
+  border-color: rgba(255, 184, 92, 0.16) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018)),
+    rgba(5, 14, 29, 0.88) !important;
+}
+
+.app-forge .forge-inventory-card .compact-card-header {
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.app-forge .forge-inventory-card h3,
+.app-forge .forge-detail-card h3,
+.app-forge .forge-detail-card h4 {
+  color: var(--et-text, #fff7ed) !important;
+  letter-spacing: 0;
+}
+
+.app-forge .forge-card-facts,
+.app-forge .forge-group-status-row,
+.app-forge .forge-purchaser-breakdown-mini,
+.app-forge .compact-links {
+  gap: 6px;
+}
+
+.app-forge .forge-group-status-row span,
+.app-forge .forge-purchaser-breakdown-mini span,
+.app-forge .forge-card-facts span,
+.app-forge .compact-links a,
+.app-forge .compact-links span {
+  border-color: rgba(34, 211, 238, 0.18);
+  background: rgba(34, 211, 238, 0.075);
+  color: rgba(231, 247, 255, 0.88);
+}
+
+.app-forge .forge-inventory-card .compact-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app-forge .forge-inventory-card .compact-metrics > div {
+  min-height: 72px;
+  border-radius: 14px;
+  background: rgba(3, 10, 22, 0.58);
+}
+
+.app-forge .forge-inventory-card .compact-details {
+  display: none;
+}
+
+.app-forge .forge-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.app-forge .forge-detail-card .catalog-detail-grid,
+.app-forge .forge-detail-card .inventory-detail-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-forge .adaptive-forge-intro {
+  max-width: 680px;
+  margin-inline: auto;
+  text-align: left;
+}
+
+.app-forge .adaptive-forge-intro h2 {
+  color: var(--et-text, #fff7ed);
+  letter-spacing: 0;
+}
+
+.app-forge .adaptive-forge-intro p {
+  color: rgba(215, 226, 237, 0.76);
+}
+
+.app-forge .forge-intro-benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.app-forge .forge-intro-benefits span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(34, 211, 238, 0.075);
+  color: rgba(231, 247, 255, 0.9);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.app-forge .forge-tax-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.app-forge .forge-tax-readiness-grid > div {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.app-forge .forge-tax-readiness-grid span,
+.app-forge .forge-tax-readiness-grid strong,
+.app-forge .forge-tax-readiness-grid small {
+  display: block;
+}
+
+@media (max-width: 780px) {
+  .app-command-shell.app-forge > .app-shell-header {
+    display: none !important;
+  }
+
+  .app-command-shell.app-forge > .topbar {
+    min-height: 0;
+    margin: 6px 10px 8px;
+    padding: 6px !important;
+    gap: 6px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-command-shell.app-forge .topbar-brand {
+    min-height: 34px;
+    padding: 5px 7px !important;
+  }
+
+  .app-command-shell.app-forge .topbar-brand-copy small,
+  .app-command-shell.app-forge .topbar-workspace-chip small,
+  .app-command-shell.app-forge .topbar-quick-add-button,
+  .app-command-shell.app-forge .topbar-profile-button,
+  .app-command-shell.app-forge .topbar:not(.topbar-search-open) .app-search {
+    display: none !important;
+  }
+
+  .app-command-shell.app-forge .topbar-workspace-chip,
+  .app-command-shell.app-forge .topbar .menu-button,
+  .app-command-shell.app-forge .topbar .app-search-toggle {
+    min-height: 34px !important;
+    padding: 5px 8px !important;
+    border-radius: 999px !important;
+  }
+
+  .app-forge .standard-page-header.panel.forge-command-center,
+  .app-forge .forge-home-inventory-section,
+  .app-forge .forge-add-sale-panel,
+  .app-forge .sales-records-summary-panel,
+  .app-forge .sales-grouped-list,
+  .app-forge .expense-list-panel,
+  .app-forge .panel:has(.expense-summary-grid) {
+    margin-inline: 6px;
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .app-forge .forge-command-center .standard-page-header-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .app-forge .forge-command-center .section-hero-art,
+  .app-forge .forge-command-center .ai-assist-menu {
+    display: none !important;
+  }
+
+  .app-forge .forge-command-center .standard-page-header-copy h2 {
+    font-size: clamp(1.34rem, 7vw, 1.7rem) !important;
+    line-height: 1.05;
+  }
+
+  .app-forge .forge-command-center .standard-page-header-copy p {
+    font-size: 0.84rem;
+    line-height: 1.34;
+  }
+
+  .app-forge .forge-command-center .standard-page-header-actions {
+    justify-content: flex-end;
+  }
+
+  .app-forge .forge-command-quick-add {
+    min-height: 36px !important;
+    padding: 8px 12px !important;
+    font-size: 0.78rem !important;
+    border-radius: 999px !important;
+  }
+
+  .app-forge .forge-command-center .standard-page-header-summary {
+    margin-top: 4px;
+  }
+
+  .app-forge .forge-command-center .standard-page-header-label {
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .app-forge .forge-top-summary {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(128px, 42vw);
+    grid-template-columns: none;
+    gap: 8px !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .app-forge .forge-top-summary::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .forge-summary-card {
+    min-height: 64px;
+    padding: 9px;
+    border-radius: 14px;
+    scroll-snap-align: start;
+  }
+
+  .app-forge .forge-summary-card span {
+    font-size: 0.66rem;
+  }
+
+  .app-forge .forge-summary-card strong {
+    font-size: 0.96rem;
+    line-height: 1.08;
+  }
+
+  .app-forge .forge-summary-card small {
+    font-size: 0.66rem;
+    line-height: 1.18;
+  }
+
+  .app-forge .forge-command-center .forge-command-overview,
+  .app-forge .forge-section-tabs {
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: minmax(116px, 36vw) !important;
+    grid-template-columns: none !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 1px 2px 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .app-forge .forge-command-center .forge-command-overview::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app.app-forge .standard-page-header.panel.forge-command-center .forge-command-overview.forge-section-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  .app.app-forge .standard-page-header.panel.forge-command-center .forge-command-overview.forge-section-tabs > button.forge-overview-card.forge-section-tab {
+    flex: 0 0 118px !important;
+    min-width: 118px !important;
+    min-height: 54px !important;
+    border-radius: 14px !important;
+    padding: 9px !important;
+  }
+
+  .app-forge .forge-command-center .forge-overview-card,
+  .app-forge .forge-section-tab {
+    min-height: 54px !important;
+    padding: 9px !important;
+    scroll-snap-align: start;
+  }
+
+  .app-forge .forge-section-tab .forge-overview-title {
+    font-size: 0.74rem !important;
+  }
+
+  .app-forge .forge-section-tab small,
+  .app-forge .forge-overview-card span:last-child {
+    font-size: 0.67rem !important;
+    line-height: 1.18;
+  }
+
+  .app-forge .forge-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .app-forge .forge-toolbar h2 {
+    font-size: 1.08rem;
+  }
+
+  .app-forge .forge-toolbar p {
+    font-size: 0.82rem;
+    line-height: 1.36;
+  }
+
+  .app-forge .forge-toolbar .summary-pill-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .app-forge .forge-toolbar .summary-pill-row > button {
+    min-height: 38px !important;
+    width: auto !important;
+    flex: 1 1 130px;
+  }
+
+  .app-forge .forge-business-dashboard-heading {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .app-forge .forge-business-dashboard-heading p {
+    display: none;
+  }
+
+  .app-forge .forge-business-grid {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(138px, 44vw);
+    grid-template-columns: none !important;
+    overflow-x: auto;
+    gap: 8px !important;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .app-forge .forge-business-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .forge-business-card {
+    min-height: 84px !important;
+    padding: 10px !important;
+    scroll-snap-align: start;
+  }
+
+  .app-forge .forge-business-card span {
+    font-size: 0.66rem !important;
+  }
+
+  .app-forge .forge-business-card strong {
+    font-size: 1rem !important;
+    line-height: 1.08;
+  }
+
+  .app-forge .forge-business-card small {
+    font-size: 0.68rem !important;
+    line-height: 1.18;
+  }
+
+  .app-forge .forge-analytics-disclosure {
+    margin: 10px 0;
+    border-radius: 15px;
+  }
+
+  .app-forge .forge-analytics-disclosure > summary,
+  .app-forge .forge-report-details > summary {
+    min-height: 42px;
+    padding: 0 12px;
+    font-size: 0.84rem;
+  }
+
+  .app-forge .inventory-insight-panel.forge-valuation-panel,
+  .app-forge .forge-recent-activity-panel {
+    padding: 11px !important;
+    border-radius: 16px !important;
+  }
+
+  .app-forge .inventory-insight-panel.forge-valuation-panel .inventory-insight-heading p,
+  .app-forge .price-reliability-summary,
+  .app-forge .inventory-insight-split {
+    display: none;
+  }
+
+  .app-forge .inventory-insight-grid {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(132px, 42vw);
+    grid-template-columns: none !important;
+    overflow-x: auto;
+    gap: 8px;
+    scrollbar-width: none;
+  }
+
+  .app-forge .inventory-insight-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .forge-action-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+  }
+
+  .app-forge .forge-action-strip > button,
+  .app-forge .forge-more-actions > summary {
+    min-height: 46px !important;
+  }
+
+  .app-forge .forge-more-actions > div {
+    left: 0;
+    right: auto;
+  }
+
+  .app-forge .forge-recent-activity-panel {
+    margin-top: 10px;
+  }
+
+  .app-forge .forge-recent-activity-panel .compact-card-header p {
+    display: none;
+  }
+
+  .app-forge .search-input {
+    min-height: 42px !important;
+    margin-top: 10px;
+  }
+
+  .app-forge .forge-purchaser-totals,
+  .app-forge .forge-more-filters,
+  .app-forge .filter-summary {
+    margin-top: 8px;
+    padding: 9px;
+    border-radius: 14px;
+  }
+
+  .app-forge .chip-row {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    gap: 7px;
+    scrollbar-width: none;
+  }
+
+  .app-forge .chip-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .chip-row .chip {
+    flex: 0 0 auto;
+    min-height: 36px;
+    white-space: nowrap;
+  }
+
+  .app-forge .compact-inventory-list {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .app-forge .forge-inventory-card {
+    padding: 11px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-forge .forge-inventory-card .compact-card-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .app-forge .forge-inventory-card h3 {
+    font-size: 0.98rem !important;
+    line-height: 1.2;
+  }
+
+  .app-forge .forge-card-facts,
+  .app-forge .forge-group-status-row,
+  .app-forge .forge-purchaser-breakdown-mini {
+    display: flex !important;
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+  }
+
+  .app-forge .forge-card-facts::-webkit-scrollbar,
+  .app-forge .forge-group-status-row::-webkit-scrollbar,
+  .app-forge .forge-purchaser-breakdown-mini::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .forge-card-facts span,
+  .app-forge .forge-group-status-row span,
+  .app-forge .forge-purchaser-breakdown-mini span {
+    flex: 0 0 auto;
+    font-size: 0.68rem;
+  }
+
+  .app-forge .forge-inventory-card .compact-image-wrap {
+    min-height: 118px;
+    max-height: 156px;
+    border-radius: 16px;
+  }
+
+  .app-forge .forge-inventory-card .compact-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .app-forge .forge-inventory-card .compact-metrics > div {
+    min-height: 62px;
+    padding: 8px !important;
+  }
+
+  .app-forge .forge-inventory-card .compact-metrics span {
+    font-size: 0.66rem;
+  }
+
+  .app-forge .forge-inventory-card .compact-metrics strong {
+    font-size: 0.92rem;
+    line-height: 1.1;
+  }
+
+  .app-forge .inventory-prompt-row.compact {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .app-forge .inventory-prompt-row.compact::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .forge-card-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+
+  .app-forge .forge-card-actions button,
+  .app-forge .forge-card-actions .overflow-menu-button {
+    min-height: 40px !important;
+  }
+
+  .app-forge .forge-detail-card {
+    margin-inline: 6px;
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .app-forge .forge-detail-card .catalog-detail-grid,
+  .app-forge .forge-detail-card .inventory-detail-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-forge .adaptive-forge-intro {
+    margin-inline: 8px;
+    padding: 18px !important;
+    border-radius: 20px !important;
+  }
+
+  .app-forge .forge-tax-readiness-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .app-forge .forge-tax-readiness-grid > div {
+    min-height: 72px;
+    padding: 9px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-command-shell.app-forge .ember-assist-shell,
+  .app.app-forge .ember-assist-shell {
+    display: none !important;
+  }
+
+  .app-forge .main {
+    padding-bottom: calc(var(--bottom-nav-offset, 92px) + env(safe-area-inset-bottom, 0px) + 94px);
+  }
+}
+
+@media (max-width: 390px) {
+  .app-forge .forge-command-center .forge-command-overview,
+  .app-forge .forge-business-grid,
+  .app-forge .inventory-insight-grid {
+    grid-auto-columns: minmax(132px, 52vw) !important;
+  }
+
+  .app-forge .forge-section-tabs {
+    grid-auto-columns: minmax(112px, 42vw) !important;
+  }
+
+  .app.app-forge .standard-page-header.panel.forge-command-center .forge-command-overview.forge-section-tabs > button.forge-overview-card.forge-section-tab {
+    flex-basis: 112px !important;
+    min-width: 112px !important;
+  }
+
+  .app-forge .forge-card-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 340px) {
+  .app-forge .forge-action-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -5358,7 +5358,20 @@ export default function App() {
     setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
   }
 
+  const smartSetupPreferences = normalizeSmartSetupPreferences(betaReadinessData.onboarding?.smartSetup || {});
+  const smartSetupSellerIntent = [
+    "seller",
+    "business_seller",
+    "yes_i_need_sales_expenses_mileage_receipts",
+    "yes_i_need_year_end_export_tax_support_later",
+  ].some((key) => (
+    smartSetupPreferences.primaryMode === key ||
+    smartSetupPreferences.businessTools === key ||
+    smartSetupPreferences.enabledToolsets.includes(key) ||
+    smartSetupPreferences.purposes.includes(key)
+  ));
   const isSellerExperience =
+    smartSetupSellerIntent ||
     normalizeUserType(currentUserProfile?.userType || currentUserProfile?.user_type) === "seller" ||
     normalizeDashboardPreset(currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset) === "seller";
   const hasAdminProfileSignal = Boolean(
@@ -5393,19 +5406,7 @@ export default function App() {
     adminViewMode === "admin" &&
     canViewAdminDashboard(currentUserProfile)
   );
-  const smartSetupPreferences = normalizeSmartSetupPreferences(betaReadinessData.onboarding?.smartSetup || {});
   const smartSetupRecommendation = recommendSmartSetup(smartSetupPreferences, { adminAllowed: adaptiveAdminNavVisible });
-  const smartSetupSellerIntent = [
-    "seller",
-    "business_seller",
-    "yes_i_need_sales_expenses_mileage_receipts",
-    "yes_i_need_year_end_export_tax_support_later",
-  ].some((key) => (
-    smartSetupPreferences.primaryMode === key ||
-    smartSetupPreferences.businessTools === key ||
-    smartSetupPreferences.enabledToolsets.includes(key) ||
-    smartSetupPreferences.purposes.includes(key)
-  ));
   const adaptiveUiState = resolveAdaptiveUiState({
     userType: currentUserProfile?.userType || currentUserProfile?.user_type || userType,
     dashboardPreset: currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset || dashboardPreset,
@@ -20902,21 +20903,37 @@ function renderForgeHeader() {
   const forgeWorkspaceContextLabel = activeForgeWorkspace
     ? `Forge workspace: ${activeForgeWorkspace.name || "Ember & Tide"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""}`
     : forgeWorkspaceUnavailableMessage;
-  const forgeOverviewCards = [
+  const forgeSummaryCards = [
     {
-      key: "profit",
-      title: "Profit This Month",
-      value: money(monthlyProfitLoss),
-      secondary: `${money(monthlySalesProfit)} sales profit`,
-      helper: "Monthly sales profit after tracked expenses.",
-      active: false,
-      onClick: () => setActiveTab("reports"),
+      key: "inventory-summary",
+      title: "Inventory",
+      value: forgeTotalProductQuantity,
+      helper: `${forgeInventoryItems.length} grouped | ${money(totalMarketValue)} value`,
     },
     {
+      key: "profit",
+      title: "Profit",
+      value: money(monthlyProfitLoss),
+      helper: "After expenses this month.",
+    },
+    {
+      key: "sales-summary",
+      title: "Sales",
+      value: money(totalSalesRevenue),
+      helper: `${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`,
+    },
+    {
+      key: "receipts-summary",
+      title: "Receipts",
+      value: forgeReceiptsNeedingReviewCount ? `${forgeReceiptsNeedingReviewCount} review` : money(totalExpenses),
+      helper: forgeReceiptsNeedingReviewCount ? "Needs review" : "Captured expenses",
+    },
+  ];
+  const forgeSectionTabs = [
+    {
       key: "inventory",
-      title: "Inventory Health",
-      value: money(totalMarketValue),
-      helper: `${forgeInventoryReviewCount} item${forgeInventoryReviewCount === 1 ? "" : "s"} need price, photo, or sale review.`,
+      title: "Inventory",
+      helper: `${forgeInventoryItems.length} groups`,
       active: activeTab === "inventory" && forgeSubTab !== "marketplace",
       onClick: () => {
         setForgeSubTab("overview");
@@ -20927,9 +20944,7 @@ function renderForgeHeader() {
     {
       key: "sales",
       title: "Sales",
-      value: money(totalSalesRevenue),
-      secondary: `${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`,
-      helper: "Revenue, sold items, and sale records.",
+      helper: `${workspaceSales.length} records`,
       active: activeTab === "sales",
       onClick: () => {
         setForgeSubTab("overview");
@@ -20938,9 +20953,8 @@ function renderForgeHeader() {
     },
     {
       key: "expenses",
-      title: "Receipts & Expenses",
-      value: forgeReceiptsNeedingReviewCount ? `${forgeReceiptsNeedingReviewCount} review` : money(totalExpenses),
-      helper: "Receipts, fees, supplies, shipping, and events.",
+      title: "Receipts / Expenses",
+      helper: `${workspaceExpenses.length} records`,
       active: activeTab === "expenses",
       onClick: () => {
         setForgeSubTab("overview");
@@ -20950,8 +20964,7 @@ function renderForgeHeader() {
     {
       key: "mileage",
       title: "Mileage",
-      value: `${totalBusinessMiles.toFixed(1)} mi`,
-      helper: "Business trips and vehicle costs.",
+      helper: `${workspaceMileageTrips.length} trips`,
       active: activeTab === "mileage",
       onClick: () => {
         setForgeSubTab("overview");
@@ -20959,10 +20972,19 @@ function renderForgeHeader() {
       },
     },
     {
+      key: "reports",
+      title: "Taxes",
+      helper: forgeReportRecordCount ? `${forgeReportRecordCount} records` : "Year-end",
+      active: activeTab === "reports",
+      onClick: () => {
+        setForgeSubTab("overview");
+        setActiveTab("reports");
+      },
+    },
+    {
       key: "marketplace",
       title: "Marketplace",
-      value: `${activeMarketplaceCount} listing${activeMarketplaceCount === 1 ? "" : "s"}`,
-      helper: "Listings, drafts, saved items, and review.",
+      helper: `${activeMarketplaceCount} listings`,
       active: activeTab === "inventory" && forgeSubTab === "marketplace",
       onClick: () => {
         setMarketplaceView("browse");
@@ -20970,53 +20992,37 @@ function renderForgeHeader() {
         setActiveTab("inventory");
       },
     },
-    {
-      key: "reports",
-      title: "Reports",
-      value: forgeReportRecordCount ? `${forgeReportRecordCount} record${forgeReportRecordCount === 1 ? "" : "s"}` : "Create report",
-      secondary: forgeReportRecordCount ? "Export-ready summaries" : "No saved reports yet",
-      helper: "Profit/loss, monthly spending, and exports.",
-      active: activeTab === "reports",
-      onClick: () => {
-        setForgeSubTab("overview");
-        setActiveTab("reports");
-      },
-    },
   ];
   return (
     <PageHeader
       className={getHeaderCardClass("panel forge-hero-panel forge-command-center")}
-      title="Forge Workshop"
-      subtitle="How is my TCG business doing? Your business data stays private to you."
-      actions={(
-        <>
-        <button type="button" className="forge-command-quick-add" onClick={openForgeQuickAddFlow}>
-          Quick Add
-        </button>
-        {renderAiAssistActions([
-          { label: "Summarize Forge", onClick: () => void runForgeAiSummary() },
-          { label: "Summarize business", onClick: () => void runBusinessReportAiSummary() },
-          { label: "Explain profit", onClick: () => void runSaleProfitAiAssist() },
-          { label: "Suggest expense category", onClick: () => void runExpenseAiAssist() },
-        ])}
-        </>
-      )}
-      summaryLabel={`${forgeWorkspaceContextLabel} · Private seller space`}
+      title="Forge"
+      subtitle="Track inventory, sales, and business records."
+      summaryLabel={`${forgeWorkspaceContextLabel} | Private seller space`}
       summary={(
-        <div className="forge-command-overview" aria-label="Forge Business Overview">
-        {forgeOverviewCards.map((card) => (
-          <button
-            key={card.key}
-            type="button"
-            className={`forge-overview-card${card.active ? " is-active" : ""}`}
-            onClick={card.onClick}
-          >
-            <span className="forge-overview-title">{card.title}</span>
-            <strong>{card.value}</strong>
-            {card.secondary ? <small>{card.secondary}</small> : null}
-            <span>{card.helper}</span>
-          </button>
-        ))}
+        <div className="forge-command-summary" aria-label="Forge command summary">
+          <div className="forge-top-summary" aria-label="Forge top summary">
+            {forgeSummaryCards.map((card) => (
+              <div className="forge-summary-card" key={card.key}>
+                <span>{card.title}</span>
+                <strong>{card.value}</strong>
+                <small>{card.helper}</small>
+              </div>
+            ))}
+          </div>
+          <div className="forge-command-overview forge-section-tabs" aria-label="Forge sections">
+            {forgeSectionTabs.map((card) => (
+              <button
+                key={card.key}
+                type="button"
+                className={`forge-overview-card forge-section-tab${card.active ? " is-active" : ""}`}
+                onClick={card.onClick}
+              >
+                <span className="forge-overview-title">{card.title}</span>
+                <small>{card.helper}</small>
+              </button>
+            ))}
+          </div>
       </div>
       )}
     />
@@ -21028,10 +21034,13 @@ function renderForgeAccessState() {
   return (
     <section className="panel empty-state forge-workspace-unavailable adaptive-forge-intro" aria-label="Forge access required">
       <span className="trust-badge trust-badge--secure">Private Forge</span>
-      <h2>Forge Workshop is for seller records.</h2>
-      <p>{forgeAccessMessage || "Business inventory, receipts, mileage, sales, and profit views stay hidden unless seller tools are enabled."}</p>
+      <h2>Forge is for seller and business tracking.</h2>
+      <p>{forgeAccessMessage || "Turn on seller tools to use inventory, receipts, mileage, and sales."}</p>
+      <div className="forge-intro-benefits" aria-label="Forge seller tools">
+        {["Inventory", "Receipts", "Mileage", "Sales"].map((label) => <span key={label}>{label}</span>)}
+      </div>
       <div className="quick-actions">
-        <button type="button" onClick={() => openMenuDrawer("settings")}>Review account settings</button>
+        <button type="button" onClick={() => openMenuDrawer("settings")}>Turn on seller tools</button>
         <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Return to Hearth</button>
       </div>
     </section>
@@ -22604,28 +22613,28 @@ function renderForgeAccessState() {
       key: `inventory-${item.id}`,
       source: "Inventory",
       title: item.name || "Forge item",
-      detail: `Qty ${item.quantity || 0}${item.physicalLocation || item.physical_location ? ` · ${item.physicalLocation || item.physical_location}` : ""}`,
+      detail: `Qty ${item.quantity || 0}${item.physicalLocation || item.physical_location ? ` | ${item.physicalLocation || item.physical_location}` : ""}`,
       date: item.updatedAt || item.updated_at || item.createdAt || item.created_at,
     })),
     ...workspaceSales.map((sale) => ({
       key: `sale-${sale.id}`,
       source: "Sale",
       title: sale.itemName || "Sale recorded",
-      detail: `${money(sale.netProfit || 0)} profit · ${sale.platform || "Sale"}`,
+      detail: `${money(sale.netProfit || 0)} profit | ${sale.platform || "Sale"}`,
       date: sale.updatedAt || sale.updated_at || sale.createdAt || sale.created_at,
     })),
     ...workspaceExpenses.map((expense) => ({
       key: `expense-${expense.id}`,
       source: "Expense",
       title: expense.vendor || "Expense",
-      detail: `${money(expense.amount || 0)} · ${expense.category || "Expense"}`,
+      detail: `${money(expense.amount || 0)} | ${expense.category || "Expense"}`,
       date: expense.updatedAt || expense.updated_at || expense.date || expense.createdAt || expense.created_at,
     })),
     ...workspaceMileageTrips.map((trip) => ({
       key: `mileage-${trip.id}`,
       source: "Mileage",
       title: trip.vehicleName || trip.vehicle || "Mileage trip",
-      detail: `${Number(trip.businessMiles || 0).toFixed(1)} miles · ${trip.purpose || "Trip"}`,
+      detail: `${Number(trip.businessMiles || 0).toFixed(1)} miles | ${trip.purpose || "Trip"}`,
       date: trip.updatedAt || trip.updated_at || trip.date || trip.createdAt || trip.created_at,
     })),
   ]
@@ -43247,7 +43256,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="modal-title-row modal-sticky-header">
               <div>
                 <h2 id="expense-vendor-detail-title">{selectedExpenseVendorGroup.vendorName}</h2>
-                <p>{selectedExpenseVendorGroup.count} transaction{selectedExpenseVendorGroup.count === 1 ? "" : "s"} · {money(selectedExpenseVendorGroup.total)} total</p>
+                <p>{selectedExpenseVendorGroup.count} transaction{selectedExpenseVendorGroup.count === 1 ? "" : "s"} | {money(selectedExpenseVendorGroup.total)} total</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close vendor expense details" onClick={() => setSelectedExpenseVendorKey("")}>
                 X
@@ -48452,16 +48461,12 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           <section id="forge-inventory-section" className="panel forge-home-inventory-section">
             <div className="forge-toolbar">
               <div>
-                <h2>Forge Business Command</h2>
-                <p>Profit, sales, receipts, mileage, inventory health, and price work in one private seller view.</p>
+                <h2>Inventory</h2>
+                <p>Grouped seller items ready for listing, sale, or review.</p>
                 <div className="summary-pill-row forge-identity-pill-row">
                   <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
                   <span className="status-badge trust-badge--secure">{activeForgeWorkspace?.name || "Forge unavailable"}</span>
                 </div>
-              </div>
-              <div className="summary-pill-row">
-                <button type="button" disabled={!activeForgeWorkspace} onClick={() => openProductAddFlow({ source: "forge-toolbar-inventory", destinations: { forge: true } })}>Add Inventory</button>
-                <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from TideTradr</button>
               </div>
             </div>
             {!activeForgeWorkspace ? (
@@ -48471,11 +48476,29 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Open Forge settings</button>
               </div>
             ) : null}
+            <div className="quick-actions forge-action-strip" aria-label="Forge quick actions">
+              <button type="button" onClick={() => openProductAddFlow({ source: "forge-action-strip", destinations: { forge: true } })}>Add Inventory</button>
+              <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
+              <button type="button" className="secondary-button" onClick={openReceiptScanWorkflow}>Add Receipt</button>
+              <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
+              <details className="forge-more-actions">
+                <summary>More</summary>
+                <div>
+                  <button type="button" className="secondary-button" onClick={() => openAddExpenseFlow()}>Add Expense</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from TideTradr</button>
+                  <button type="button" className="secondary-button" onClick={openVaultMoveToForgeFlow}>Move from Vault</button>
+                  <button type="button" className="secondary-button" onClick={() => setInventorySearch("Needs Market Check")}>Price Update</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("reports")}>View Tax Records</button>
+                </div>
+              </details>
+            </div>
+            <details className="forge-analytics-disclosure">
+              <summary>View analytics</summary>
             <section className="forge-business-dashboard" aria-label="Forge business dashboard">
               <div className="forge-business-dashboard-heading">
                 <div>
                   <h3>Business snapshot</h3>
-                  <p>Your business data stays private to you.</p>
+                  <p>Quick status for inventory, sales, receipts, and mileage.</p>
                 </div>
                 <span className="trust-badge trust-badge--secure">Private Forge</span>
               </div>
@@ -48492,22 +48515,33 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               ) : null}
               <div className="forge-daily-grid forge-business-grid">
                 {[
-                  { label: "Profit this month", value: money(monthlyProfitLoss), helper: `${money(monthlySalesProfit)} sales profit · ${money(monthlyExpenses)} expenses`, action: () => setActiveTab("reports") },
-                  { label: "Sales", value: money(totalSalesRevenue), helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} · ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`, action: () => setActiveTab("sales") },
+                  { label: "Profit this month", value: money(monthlyProfitLoss), helper: `${money(monthlySalesProfit)} sales profit | ${money(monthlyExpenses)} expenses`, action: () => setActiveTab("reports") },
+                  { label: "Sales", value: money(totalSalesRevenue), helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} | ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`, action: () => setActiveTab("sales") },
                   { label: "Receipts needing review", value: forgeReceiptsNeedingReviewCount, helper: forgeReceiptsNeedingReviewCount ? "Review receipts before trusting profit reports." : "No receipt review blockers.", action: openReceiptScanWorkflow },
-                  { label: "Mileage", value: `${totalBusinessMiles.toFixed(1)} mi`, helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} · ${money(totalMileageValue)} tracked value`, action: () => setActiveTab("mileage") },
-                  { label: "Inventory health", value: `${forgeInventoryReviewCount} review`, helper: `${lowStockItems.length} low stock · ${needsPhotosItems.length} need photos`, action: () => setInventorySearch("Needs Market Check") },
-                  { label: "Products", value: forgeTotalProductQuantity, helper: `${forgeInventoryItems.length} grouped product${forgeInventoryItems.length === 1 ? "" : "s"} · ${money(totalMarketValue)} market value`, action: () => setInventorySearch("") },
-                  { label: "Price tools", value: missingMarketPriceItems.length + missingMsrpItems.length, helper: `${missingMarketPriceItems.length} missing market · ${missingMsrpItems.length} missing MSRP`, action: () => setInventorySearch("Needs Market Check") },
-                  { label: "Active projects", value: readyToListItems.length + listedItems.length + activeMarketplaceCount, helper: `${readyToListItems.length} ready · ${listedItems.length} listed · ${activeMarketplaceCount} marketplace`, action: () => { setMarketplaceView("browse"); setForgeSubTab("marketplace"); setActiveTab("inventory"); } },
+                  { label: "Mileage", value: `${totalBusinessMiles.toFixed(1)} mi`, helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | ${money(totalMileageValue)} tracked value`, action: () => setActiveTab("mileage") },
+                  { label: "Inventory health", value: `${forgeInventoryReviewCount} review`, helper: `${lowStockItems.length} low stock | ${needsPhotosItems.length} need photos`, action: () => setInventorySearch("Needs Market Check") },
+                  { label: "Products", value: forgeTotalProductQuantity, helper: `${forgeInventoryItems.length} grouped product${forgeInventoryItems.length === 1 ? "" : "s"} | ${money(totalMarketValue)} market value`, action: () => setInventorySearch("") },
+                  { label: "Price tools", value: missingMarketPriceItems.length + missingMsrpItems.length, helper: `${missingMarketPriceItems.length} missing market | ${missingMsrpItems.length} missing MSRP`, action: () => setInventorySearch("Needs Market Check") },
+                  { label: "Active projects", value: readyToListItems.length + listedItems.length + activeMarketplaceCount, helper: `${readyToListItems.length} ready | ${listedItems.length} listed | ${activeMarketplaceCount} marketplace`, action: () => { setMarketplaceView("browse"); setForgeSubTab("marketplace"); setActiveTab("inventory"); } },
                   { label: "Recent activity", value: forgeRecentActivity.length, helper: forgeRecentActivity.length ? "Latest seller records are below." : "Add inventory, receipts, mileage, or sales to start.", action: () => setActiveTab("inventory") },
-                ].map((card) => (
-                  <button type="button" className="forge-daily-card forge-business-card" key={card.label} onClick={card.action}>
-                    <span>{card.label}</span>
-                    <strong>{card.value}</strong>
-                    <small>{card.helper}</small>
-                  </button>
-                ))}
+                ].slice(0, 6).map((card) => {
+                  const compactCardCopy = {
+                    "Profit this month": { label: "Profit", helper: `${money(monthlySalesProfit)} sales | ${money(monthlyExpenses)} expenses` },
+                    Sales: { helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} | ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold` },
+                    "Receipts needing review": { label: "Receipts", helper: forgeReceiptsNeedingReviewCount ? "Review before trusting profit." : "No receipt review blockers." },
+                    Mileage: { helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | ${money(totalMileageValue)} tracked` },
+                    "Inventory health": { label: "Inventory", helper: `${lowStockItems.length} low stock | ${needsPhotosItems.length} need photos` },
+                    Products: { label: "Products", helper: `${forgeInventoryItems.length} grouped | ${money(totalMarketValue)} market value` },
+                  }[card.label];
+                  const displayCard = compactCardCopy ? { ...card, ...compactCardCopy } : card;
+                  return (
+                    <button type="button" className="forge-daily-card forge-business-card" key={displayCard.label} onClick={displayCard.action}>
+                      <span>{displayCard.label}</span>
+                      <strong>{displayCard.value}</strong>
+                      <small>{displayCard.helper}</small>
+                    </button>
+                  );
+                })}
               </div>
               <div className="inventory-insight-panel forge-valuation-panel" aria-label="Forge valuation and profit planning">
                 <div className="inventory-insight-heading">
@@ -48567,58 +48601,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </div>
               </div>
             </section>
-            <div className="quick-actions forge-action-strip">
-              <button type="button" onClick={() => openAddSaleFlow()}>Add Sale</button>
-              <button type="button" className="secondary-button" onClick={openReceiptScanWorkflow}>Scan Receipt</button>
-              <button type="button" className="secondary-button" onClick={() => openAddExpenseFlow()}>Add Expense</button>
-              <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
-              <button type="button" className="secondary-button" onClick={openVaultMoveToForgeFlow}>Move from Vault</button>
-              <button type="button" className="secondary-button" onClick={() => setInventorySearch("Needs Market Check")}>Price Update</button>
-            </div>
-            <section className="forge-recent-activity-panel">
-              <div className="compact-card-header">
-                <div>
-                  <h3>Recent activity</h3>
-                  <p>Latest inventory, sales, expense, and mileage records in this Forge workspace.</p>
-                </div>
-              </div>
-              {forgeRecentActivity.length ? (
-                <div className="forge-activity-list">
-                  {forgeRecentActivity.map((entry) => (
-                    <div className="forge-activity-row" key={entry.key}>
-                      <span>{entry.source}</span>
-                      <strong>{entry.title}</strong>
-                      <small>{entry.detail}</small>
-                      <time>{shortDate(entry.date)}</time>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="small-empty-state forge-business-empty-state">
-                  <strong>Ready to track your first sale?</strong>
-                  <span>Add a receipt, product, or mileage trip to build your business history.</span>
-                  <div className="quick-actions">
-                    <button type="button" onClick={openReceiptScanWorkflow}>Add Receipt</button>
-                    <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "forge-recent-activity-empty", destinations: { forge: true } })}>Add Product</button>
-                    <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
-                  </div>
-                </div>
-              )}
-            </section>
+            </details>
             {!activeFlowModal && importAssistantContext === "Forge" ? renderInventoryImportAssistant() : null}
             <input className="search-input" value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search Forge inventory..." />
-            <details className="forge-purchaser-totals">
-              <summary>Purchaser Totals</summary>
-            <div className="buyer-grid">
-              {monthlyPurchaserSpending.slice(0, 4).map((row) => (
-                <div className="buyer-card" key={row.name}>
-                  <p>{row.name}</p>
-                  <h3>{money(row.amount)}</h3>
-                  <small>This month · Total {money(row.total)}</small>
-                </div>
-              ))}
-            </div>
-            </details>
             <div className="chip-row">
               {quickInventoryFilters.map((filter) => (
                 <button
@@ -48687,16 +48672,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             </details>
 
             <div className="filter-summary">
-              <p>Current filter: {inventoryStatusFilter}</p>
-              <p>Purchaser: {inventoryPurchaserFilter === "All" ? "All" : purchasers.find((purchaser) => purchaser.id === inventoryPurchaserFilter)?.name || inventoryPurchaserFilter}</p>
-              <p>Physical location: {inventoryPhysicalLocationFilter === "All" ? "All" : inventoryPhysicalLocationFilter === "No Location" ? "Unassigned" : inventoryPhysicalLocationFilter}</p>
-
               <p>
-              Showing {pagedForgeInventory.start || 0}-{pagedForgeInventory.end || 0} of {groupedSortedFilteredItems.length} grouped products ({filteredForgeEntryCount} entries)
+                Showing {pagedForgeInventory.start || 0}-{pagedForgeInventory.end || 0} of {groupedSortedFilteredItems.length} grouped products
+                {inventoryStatusFilter !== "All" ? ` | ${inventoryStatusFilter}` : ""}
+                {inventorySearch ? ` | Search: ${inventorySearch}` : ""}
+                {inventoryPurchaserFilter !== "All" ? ` | Purchaser: ${purchasers.find((purchaser) => purchaser.id === inventoryPurchaserFilter)?.name || inventoryPurchaserFilter}` : ""}
+                {inventoryPhysicalLocationFilter !== "All" ? ` | Location: ${inventoryPhysicalLocationFilter === "No Location" ? "Unassigned" : inventoryPhysicalLocationFilter}` : ""}
               </p>
-
-              <p>{inventorySearch ? ` - Search: ${inventorySearch}` : ""}</p>
             </div>
+            {groupedSortedFilteredItems.length === 0 ? (
+              <p className="forge-empty-inline-prompt">Ready to track your first sale?</p>
+            ) : null}
             {editingItemId && (
               <section className="panel forge-edit-panel">
                 <div className="forge-toolbar">
@@ -48745,7 +48731,12 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             ) : null}
             <div className="inventory-list compact-inventory-list">
               {groupedSortedFilteredItems.length === 0 ? (
-                renderGuidedEmptyState("forge", { actionLabel: "Add first Forge item", actionTarget: "forge" })
+                renderGuidedEmptyState("forge", {
+                  title: "Ready to track your first sale?",
+                  body: "Ready to track your first sale? Your workshop is ready. Add inventory, a receipt, mileage, or a sale when you are ready.",
+                  actionLabel: "Add first Forge item",
+                  actionTarget: "forge",
+                })
               ) : pagedForgeInventory.items.map((item) => (
                 <CompactInventoryCard
                   key={item.groupId || item.id}
@@ -48782,6 +48773,43 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               }}
               compact
             />
+            <details className="forge-purchaser-totals">
+              <summary>Purchaser Totals</summary>
+            <div className="buyer-grid">
+              {monthlyPurchaserSpending.slice(0, 4).map((row) => (
+                <div className="buyer-card" key={row.name}>
+                  <p>{row.name}</p>
+                  <h3>{money(row.amount)}</h3>
+                  <small>This month | Total {money(row.total)}</small>
+                </div>
+              ))}
+            </div>
+            </details>
+            <section className="forge-recent-activity-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Recent activity</h3>
+                  <p>Latest inventory, sales, expense, and mileage records in this Forge workspace.</p>
+                </div>
+              </div>
+              {forgeRecentActivity.length ? (
+                <div className="forge-activity-list">
+                  {forgeRecentActivity.slice(0, 3).map((entry) => (
+                    <div className="forge-activity-row" key={entry.key}>
+                      <span>{entry.source}</span>
+                      <strong>{entry.title}</strong>
+                      <small>{entry.detail}</small>
+                      <time>{shortDate(entry.date)}</time>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="small-empty-state forge-business-empty-state">
+                  <strong>No Forge activity yet.</strong>
+                  <span>Add inventory, a receipt, mileage, or a sale when you are ready.</span>
+                </div>
+              )}
+            </section>
           </section>
           </>
           )
@@ -48800,7 +48828,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <Field label="Item Sold">
                 <select value={saleForm.itemId} onChange={(e) => updateSaleForm("itemId", e.target.value)}>
                   <option value="">Manual sale / not linked to inventory</option>
-                  {forgeInventoryItems.filter((i) => i.quantity > 0).map((i) => <option key={i.id} value={i.id}>{i.name} — Qty {i.quantity} — {i.sku}</option>)}
+                  {forgeInventoryItems.filter((i) => i.quantity > 0).map((i) => <option key={i.id} value={i.id}>{i.name} - Qty {i.quantity} - {i.sku}</option>)}
                 </select>
               </Field>
               {!selectedSaleItem ? (
@@ -49082,7 +49110,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <div className="expense-vendor-card-header">
                         <div>
                           <h3>{group.vendorName}</h3>
-                          <p>{group.count} expense{group.count === 1 ? "" : "s"} · Last {formatExpenseDate(group.mostRecentDate)}</p>
+                          <p>{group.count} expense{group.count === 1 ? "" : "s"} | Last {formatExpenseDate(group.mostRecentDate)}</p>
                         </div>
                         <strong>{money(group.total)}</strong>
                       </div>
@@ -49162,7 +49190,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <form onSubmit={addTrip} className="form">
                 <Field label="Trip Purpose"><input value={tripForm.purpose} onChange={(e) => updateTripForm("purpose", e.target.value)} /></Field>
                 <Field label="Driver"><select value={tripForm.driver} onChange={(e) => updateTripForm("driver", e.target.value)}><option value="">No driver selected</option>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
-                <Field label="Vehicle"><select value={tripForm.vehicleId} onChange={(e) => updateTripForm("vehicleId", e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.averageMpg} MPG</option>)}</select></Field>
+                <Field label="Vehicle"><select value={tripForm.vehicleId} onChange={(e) => updateTripForm("vehicleId", e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} - {v.averageMpg} MPG</option>)}</select></Field>
                 <Field label="Starting Odometer"><input type="number" value={tripForm.startMiles} onChange={(e) => updateTripForm("startMiles", e.target.value)} /></Field>
                 <Field label="Ending Odometer"><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
                 <Field label="Gas Price Paid"><input type="number" step="0.01" value={tripForm.gasPrice} onChange={(e) => updateTripForm("gasPrice", e.target.value)} /></Field>
@@ -49185,7 +49213,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <div className="mileage-vehicle-card-header">
                     <div>
                       <h3>{group.vehicleName}</h3>
-                      <p>{group.tripCount} trip{group.tripCount === 1 ? "" : "s"} · Last {formatExpenseDate(group.lastTripDate)}</p>
+                      <p>{group.tripCount} trip{group.tripCount === 1 ? "" : "s"} | Last {formatExpenseDate(group.lastTripDate)}</p>
                     </div>
                     <strong>{group.totalMiles.toFixed(1)} mi</strong>
                   </div>
@@ -49208,79 +49236,27 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 
         {!activeTabLocked && commandDeskSellerAccess && activeTab === "reports" && (
           <>
-            <section className="panel">
-              <h2>Forge Reports</h2>
-
-              {reportFocus && (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setReportFocus("")}
-                >
-                  Show All Report Sections
-                </button>
-              )}
-
-              <div className="cards">
-                <div className="card">
-                  <p>Inventory Units</p>
-                  <h2>{forgeInventoryItems.reduce((s, i) => s + i.quantity, 0)}</h2>
+            <section className="panel forge-tax-overview-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h2>Taxes</h2>
+                  <p>Readiness only. Source records stay underneath for review with your tax professional.</p>
                 </div>
-
-                <div className="card">
-                  <p>Catalog Products</p>
-                  <h2>{catalogProducts.length}</h2>
-                </div>
-
-                <div className="card">
-                  <p>Avg Profit / Sale</p>
-                  <h2>{money(workspaceSales.length ? totalSalesProfit / workspaceSales.length : 0)}</h2>
-                </div>
-
-                <div className="card">
-                  <p>Total Expenses</p>
-                  <h2>{money(totalExpenses)}</h2>
-                </div>
-
-                <div className="card">
-                  <p>Marketing Spend</p>
-                  <h2>{money(totalMarketingSpend)}</h2>
-                </div>
-
-                <div className="card">
-                  <p>After Marketing</p>
-                  <h2>{money(estimatedProfitAfterMarketing)}</h2>
-                </div>
-
-                <div className="card">
-                  <p>After All Expenses</p>
-                  <h2>{money(estimatedProfitAfterExpenses)}</h2>
-                </div>
-
-                <div className="card">
-                  <p>Monthly Marketing</p>
-                  <h2>{money(monthlyMarketingSpend)}</h2>
-                </div>
-
-                <div className="card">
-                  <p>Marketing ROI</p>
-                  <h2>Unavailable</h2>
-                </div>
-
-                <div className="card">
-                  <p>Mileage Value Estimate</p>
-                  <h2>{money(totalMileageValue)}</h2>
-                </div>
-
-                <div className="card">
-                  <p>Fuel Cost</p>
-                  <h2>{money(totalFuelCost)}</h2>
-                </div>
-
-                <div className="card">
-                  <p>Wear Cost</p>
-                  <h2>{money(totalWearCost)}</h2>
-                </div>
+                {reportFocus ? (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setReportFocus("")}
+                  >
+                    Show All
+                  </button>
+                ) : null}
+              </div>
+              <div className="forge-tax-readiness-grid">
+                <div><span>Receipts captured</span><strong>{yearEndTaxSummary.expenses.count}</strong><small>{yearEndTaxSummary.expenses.missingReceiptCount} missing</small></div>
+                <div><span>Mileage logged</span><strong>{yearEndTaxSummary.mileage.totalMiles.toFixed(1)} mi</strong><small>{money(yearEndTaxSummary.mileage.totalValue)} estimate</small></div>
+                <div><span>Sales recorded</span><strong>{workspaceSales.length}</strong><small>{money(yearEndTaxSummary.sales.profit)} profit</small></div>
+                <div><span>Missing cost basis</span><strong>{missingMarketPriceItems.length + missingMsrpItems.length}</strong><small>Review before export</small></div>
               </div>
             </section>
 
@@ -49305,6 +49281,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <div><span>Missing receipts</span><strong>{yearEndTaxSummary.expenses.missingReceiptCount}</strong><small>Attach or review before filing</small></div>
                 <div><span>Sales references</span><strong>{yearEndTaxSummary.sales.receiptCoverage?.withReference || 0}/{yearEndTaxSummary.sales.receiptCoverage?.total || 0}</strong><small>{yearEndTaxSummary.sales.receiptCoverage?.missingReference || 0} missing sale reference{yearEndTaxSummary.sales.receiptCoverage?.missingReference === 1 ? "" : "s"}</small></div>
               </div>
+              <details className="forge-report-details">
+                <summary>View record breakdown</summary>
               <div className="tax-record-grid">
                 <div className="tax-record-card">
                   <h3>Top expense vendors</h3>
@@ -49340,6 +49318,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <p className="compact-subtitle">Exports organize records for review with your tax professional. They are not tax advice or a filing.</p>
                 </div>
               </div>
+              </details>
               <div className="drawer-inline-actions">
                 <button type="button" onClick={() => downloadYearEndTaxSummary("csv")}>Export Year-End CSV</button>
                 <button type="button" className="secondary-button" onClick={() => downloadYearEndTaxSummary("json")}>Export Year-End JSON</button>
@@ -50448,7 +50427,7 @@ function CompactInventoryCard({
             {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
           </div>
           <p className="compact-subtitle forge-card-meta-legacy">
-            {item.category} • {item.buyer} • Qty {item.quantity}
+            {item.category} | {item.buyer} | Qty {item.quantity}
           </p>
         </div>
         <div className="forge-card-status-stack">
@@ -50459,7 +50438,7 @@ function CompactInventoryCard({
       {forgeImage ? (
         <div className="compact-image-wrap">
           <img src={forgeImage} alt={item.name} loading="lazy" />
-          <span>{getImageSourceLabel(item)}{item.itemImageNeedsReview ? " • Needs review" : ""}</span>
+          <span>{getImageSourceLabel(item)}{item.itemImageNeedsReview ? " | Needs review" : ""}</span>
         </div>
       ) : (
         <div className="compact-image-wrap placeholder">
