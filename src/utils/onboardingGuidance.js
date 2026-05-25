@@ -328,7 +328,7 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   quick_add: {
     title: "Quick Add is ready.",
-    body: "Search, scan, or add manually. Ember & Tide shows the paths that fit your current mode first.",
+    body: "Choose Vault for your collection, Scout for a report, or the missing-item path when the catalog needs help. Ember & Tide shows the paths that fit your current mode first.",
     actionLabel: "Open Quick Add",
     actionTarget: "vault",
     assistPrompt: "How do I add inventory?",
