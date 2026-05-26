@@ -39,6 +39,9 @@ assert.match(app, /Invite tracking/, "Beta Users should include invite tracking"
 assert.match(app, /Beta user detail/, "Beta Users should include user detail drawer");
 assert.match(app, /Private notes are admin-only/, "Admin notes should be labeled private");
 assert.match(app, /History never shows plaintext tokens or token hashes/, "invite history should not expose token secrets");
+assert.match(app, /Test\/fake account cleanup/, "Beta Users should include test/fake account cleanup");
+assert.match(app, /queueDisableSuspectedTestAccount/, "cleanup should route suspected test accounts through a confirmed action");
+assert.match(app, /Supabase Auth deletion is not exposed/, "cleanup should explain full Auth deletion is not exposed from the frontend");
 assert.match(app, /recordAppActivityEvent/, "App should call activity recording service");
 assert.match(app, /market_search/, "Market search activity should be tracked");
 assert.match(app, /submitted_scout_report/, "Scout report activity should be tracked");

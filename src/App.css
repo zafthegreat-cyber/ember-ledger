@@ -40324,6 +40324,64 @@ body,
   margin-top: 0;
 }
 
+.admin-cleanup-panel {
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 107, 107, 0.055);
+  padding: 0.9rem;
+}
+
+.admin-cleanup-card {
+  background: rgba(18, 7, 12, 0.45);
+}
+
+.admin-invite-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.admin-invite-toolbar input {
+  min-width: min(220px, 100%);
+}
+
+.inline-toggle {
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: rgba(247, 251, 255, 0.78);
+  display: inline-flex;
+  gap: 0.45rem;
+  min-height: 38px;
+  padding: 0.35rem 0.7rem;
+}
+
+.inline-toggle input {
+  accent-color: #ffb85a;
+}
+
+.beta-invite-detail-drawer {
+  max-height: min(86dvh, 760px);
+  overflow-y: auto;
+}
+
+.technical-details-disclosure {
+  border: 1px solid rgba(122, 229, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(122, 229, 255, 0.055);
+  margin-top: 0.75rem;
+  padding: 0.8rem;
+}
+
+.technical-details-disclosure summary {
+  color: #dff8ff;
+  cursor: pointer;
+  font-weight: 850;
+}
+
 .role-management-panel {
   border: 1px solid rgba(255, 184, 90, 0.2);
   background:
@@ -40444,6 +40502,26 @@ body,
   }
 
   .beta-user-detail-drawer {
+    border-radius: 18px 18px 0 0;
+    bottom: 0;
+    left: 0;
+    max-height: min(88dvh, calc(100dvh - 60px));
+    right: 0;
+    width: 100%;
+  }
+
+  .admin-invite-toolbar {
+    align-items: stretch;
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .admin-invite-toolbar input,
+  .admin-invite-toolbar .inline-toggle {
+    width: 100%;
+  }
+
+  .beta-invite-detail-drawer {
     border-radius: 18px 18px 0 0;
     bottom: 0;
     left: 0;

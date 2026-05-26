@@ -4717,6 +4717,8 @@ export default function App() {
   const [adminBetaInviteSearch, setAdminBetaInviteSearch] = useState("");
   const [adminBetaInviteCreated, setAdminBetaInviteCreated] = useState(null);
   const [adminBetaInviteLoading, setAdminBetaInviteLoading] = useState(false);
+  const [adminBetaInviteShowInactive, setAdminBetaInviteShowInactive] = useState(false);
+  const [selectedAdminBetaInviteId, setSelectedAdminBetaInviteId] = useState("");
   const [betaUserSearch, setBetaUserSearch] = useState("");
   const [betaUserFilter, setBetaUserFilter] = useState("All");
   const [selectedBetaUserId, setSelectedBetaUserId] = useState("");
@@ -7500,6 +7502,17 @@ export default function App() {
 
   async function updateShorelineAdminStatus(type, entry, status) {
     if (!betaAdminVisible || !entry?.id) return;
+    if (status === "denied") {
+      const confirmed = await confirmDestructive({
+        title: type === "beta" ? "Deny this beta request?" : "Deny this Kids Program request?",
+        message: type === "beta"
+          ? `This blocks normal beta access for ${entry.fullName || entry.email || "this user"} until an admin changes it again.`
+          : `This marks ${entry.guardianName || entry.email || "this family"} as denied until an admin changes it again.`,
+        confirmLabel: type === "beta" ? "Deny request" : "Deny request",
+        details: "This does not delete the account or private request data.",
+      });
+      if (!confirmed) return;
+    }
     try {
       if (type === "beta") {
         const request = await updateBetaAccessRequestStatus(entry.id, status, entry.adminNotes || "");
@@ -7854,8 +7867,17 @@ export default function App() {
     }
   }
 
-  async function updateExistingBetaUserAccess(targetUser, status) {
+  async function updateExistingBetaUserAccess(targetUser, status, options = {}) {
     if (!betaAdminVisible || !targetUser?.userId || !BETA_REQUEST_STATUSES.includes(status)) return;
+    if (status === "denied" && !options.skipConfirm) {
+      const confirmed = await confirmDestructive({
+        title: "Revoke beta access?",
+        message: `This disables app access for ${targetUser.displayName || targetUser.fullName || targetUser.email || "this user"} until an admin approves them again.`,
+        details: "This is app-level access cleanup. It does not delete the Supabase Auth user.",
+        confirmLabel: "Revoke access",
+      });
+      if (!confirmed) return;
+    }
     try {
       const updated = await updateAdminBetaAccessProfile(targetUser.userId, status, targetUser.betaAccessNotes || "");
       if (!updated?.userId) throw new Error("No profile was returned after updating beta access.");
@@ -7880,6 +7902,7 @@ export default function App() {
     } catch (error) {
       logAppError("beta_profile_access_update", error, { targetUserId: targetUser.userId, status }, "normal");
       setVaultToast(error.message || "Could not update beta access for that user.");
+      if (options.throwOnError) throw error;
     }
   }
 
@@ -7975,38 +7998,52 @@ export default function App() {
     }
   }
 
-  async function handleRevokeAdminBetaInvite(invite) {
+  function handleRevokeAdminBetaInvite(invite) {
     if (!betaAdminVisible || !invite?.id) return;
-    const confirmed = await confirmDestructive({
+    requestAdminActionConfirmation({
       title: "Revoke invite?",
       message: `This will deactivate the one-time invite for ${invite.recipientName || invite.recipientEmail || "this recipient"}. It cannot be claimed after revocation.`,
+      details: "The invite history stays available to admins, but the link stops granting beta access.",
       confirmLabel: "Revoke invite",
+      danger: true,
+      successMessage: "Invite revoked.",
+      errorMessage: "Could not revoke that invite.",
+      onConfirm: async () => {
+        setAdminBetaInviteLoading(true);
+        setShorelineState((current) => ({ ...current, adminBetaInvitesError: "", adminBetaInvitesMessage: "" }));
+        try {
+          const revoked = await revokeAdminBetaInvite(invite.id);
+          setShorelineState((current) => ({
+            ...current,
+            adminBetaInvites: (current.adminBetaInvites || []).map((entry) =>
+              String(entry.id) === String(revoked.id) ? revoked : entry
+            ),
+            adminBetaInvitesMessage: "Invite revoked.",
+          }));
+          addAuditLog("beta_invite_revoke", "beta_invite", invite.id, { recipientName: invite.recipientName });
+        } catch (error) {
+          const message = error.message || "Could not revoke that invite.";
+          setShorelineState((current) => ({ ...current, adminBetaInvitesError: message }));
+          logAppError("admin_beta_invite_revoke", error, { inviteId: invite.id }, "normal");
+          throw new Error(message);
+        } finally {
+          setAdminBetaInviteLoading(false);
+        }
+      },
     });
-    if (!confirmed) return;
-    setAdminBetaInviteLoading(true);
-    setShorelineState((current) => ({ ...current, adminBetaInvitesError: "", adminBetaInvitesMessage: "" }));
-    try {
-      const revoked = await revokeAdminBetaInvite(invite.id);
-      setShorelineState((current) => ({
-        ...current,
-        adminBetaInvites: (current.adminBetaInvites || []).map((entry) =>
-          String(entry.id) === String(revoked.id) ? revoked : entry
-        ),
-        adminBetaInvitesMessage: "Invite revoked.",
-      }));
-      setVaultToast("Invite revoked.");
-      addAuditLog("beta_invite_revoke", "beta_invite", invite.id, { recipientName: invite.recipientName });
-    } catch (error) {
-      const message = error.message || "Could not revoke that invite.";
-      setShorelineState((current) => ({ ...current, adminBetaInvitesError: message }));
-      logAppError("admin_beta_invite_revoke", error, { inviteId: invite.id }, "normal");
-    } finally {
-      setAdminBetaInviteLoading(false);
-    }
   }
 
-  function updateBetaAccessUser(targetUser, status) {
+  async function updateBetaAccessUser(targetUser, status, options = {}) {
     if (!betaAdminVisible || !BETA_ACCESS_STATUSES.includes(status)) return;
+    if (status === "denied" && !options.skipConfirm) {
+      const confirmed = await confirmDestructive({
+        title: "Deny local beta access?",
+        message: `This hides ${targetUser.displayName || targetUser.fullName || targetUser.email || "this local beta user"} from normal beta access until an admin changes it.`,
+        details: "This is local app-level cleanup for fallback rows. It does not delete a Supabase Auth user.",
+        confirmLabel: "Deny access",
+      });
+      if (!confirmed) return;
+    }
     const now = new Date().toISOString();
     updateBetaReadinessData((current) => {
       const existing = current.betaAccessUsers || [];
@@ -8028,6 +8065,45 @@ export default function App() {
       };
     });
     addAuditLog("beta_access_update", "profile", targetUser.userId || null, { email: targetUser.email, status });
+  }
+
+  function betaUserCleanupLabel(targetUser = {}) {
+    return targetUser.displayName || targetUser.fullName || targetUser.email || targetUser.username || "this beta user";
+  }
+
+  function queueDisableSuspectedTestAccount(targetUser = {}) {
+    if (!betaAdminVisible) return;
+    if (targetUser.isAdmin) {
+      setVaultToast("Official admin accounts cannot be disabled from cleanup tools.");
+      return;
+    }
+    requestAdminActionConfirmation({
+      title: "Hide this test account?",
+      message: `This disables app-level beta access for ${betaUserCleanupLabel(targetUser)} and removes it from normal approved-user visibility.`,
+      details: "Supabase Auth deletion is not exposed from the frontend. Use secure backend admin tooling if full Auth deletion is required.",
+      confirmLabel: "Disable access",
+      danger: true,
+      successMessage: "App access disabled for cleanup.",
+      errorMessage: "Could not disable this beta user.",
+      onConfirm: async () => {
+        const note = `${targetUser.betaAccessNotes || ""}\nMarked as suspected test/fake account during admin cleanup.`.trim();
+        if (targetUser.backendProfileRow && targetUser.userId) {
+          await updateExistingBetaUserAccess({ ...targetUser, betaAccessNotes: note }, "denied", { skipConfirm: true, throwOnError: true });
+        } else {
+          await updateBetaAccessUser({ ...targetUser, betaAccessNotes: note }, "denied", { skipConfirm: true });
+        }
+        if (targetUser.userId) setAdminProfileUserNote(targetUser.userId, note);
+        else setUserAdminNote(targetUser.email || targetUser.key || betaUserCleanupLabel(targetUser), note);
+      },
+    });
+  }
+
+  function markSuspectedTestAccount(targetUser = {}) {
+    if (!betaAdminVisible) return;
+    const note = `${targetUser.betaAccessNotes || ""}\nMarked as suspected test/fake account. Keep hidden from normal member review unless re-approved.`.trim();
+    if (targetUser.userId) setAdminProfileUserNote(targetUser.userId, note);
+    setUserAdminNote(targetUser.userId || targetUser.email || targetUser.key || betaUserCleanupLabel(targetUser), note);
+    setVaultToast("Test account note saved for admins.");
   }
 
   function createAdminAnnouncement() {
@@ -12598,8 +12674,55 @@ export default function App() {
     setVaultToast("Post hidden from the public feed.");
   }
 
-  function requestAdminActionConfirmation({ title, message, confirmLabel = "Confirm", danger = false, onConfirm }) {
-    setAdminConfirmAction({ title, message, confirmLabel, danger, onConfirm });
+  function requestAdminActionConfirmation({
+    title,
+    message,
+    details = "",
+    confirmLabel = "Confirm",
+    danger = false,
+    onConfirm,
+    successMessage = "",
+    errorMessage = "",
+  }) {
+    setAdminConfirmAction({
+      id: makeId("admin-confirm"),
+      title,
+      message,
+      details,
+      confirmLabel,
+      danger,
+      onConfirm,
+      successMessage,
+      errorMessage,
+      loading: false,
+      error: "",
+      success: "",
+    });
+  }
+
+  async function runAdminConfirmedAction() {
+    const action = adminConfirmAction;
+    if (!action || action.loading) return;
+    setAdminConfirmAction((current) =>
+      current?.id === action.id ? { ...current, loading: true, error: "", success: "" } : current
+    );
+    try {
+      await action.onConfirm?.();
+      const success = action.successMessage || "Admin action complete.";
+      setAdminConfirmAction((current) =>
+        current?.id === action.id ? { ...current, loading: false, success } : current
+      );
+      setVaultToast(success);
+      window.setTimeout(() => {
+        setAdminConfirmAction((current) => (current?.id === action.id ? null : current));
+      }, 650);
+    } catch (error) {
+      const message = error?.message || action.errorMessage || "Admin action failed. Try again.";
+      setAdminConfirmAction((current) =>
+        current?.id === action.id ? { ...current, loading: false, error: message } : current
+      );
+      setVaultToast(message, { type: "error" });
+    }
   }
 
   function runTidepoolAdminPostAction(post, label, updates, options = {}) {
@@ -21439,36 +21562,38 @@ function renderForgeAccessState() {
     openFlowModal("addExpense", { size: "medium", source: "edit" });
   }
 
-  async function deleteExpense(id) {
+  function deleteExpense(id) {
     const expense = expenses.find((entry) => entry.id === id);
     if (!ensureWorkspaceEditor(expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id)) return;
-    const confirmed = await confirmDestructive({
-      title: "Delete expense?",
+    requestAdminActionConfirmation({
+      title: "Delete this expense?",
       message: `This removes ${expense?.vendor || "this expense"} from Forge business expenses. This cannot be undone.`,
       confirmLabel: "Delete expense",
+      danger: true,
+      successMessage: "Expense deleted.",
+      errorMessage: "Could not delete expense.",
+      onConfirm: async () => {
+        const expenseVendorKey = normalizeExpenseVendor(expense?.vendor).key;
+        const remainingInGroup = expenses.filter((entry) =>
+          entry.id !== id &&
+          recordBelongsToWorkspace(entry, expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id) &&
+          normalizeExpenseVendor(entry.vendor).key === expenseVendorKey
+        ).length;
+        if (BETA_LOCAL_MODE || user?.id === "local-beta") {
+          setExpenses(expenses.filter((expenseRow) => expenseRow.id !== id));
+          if (editingExpenseId === id) {
+            setEditingExpenseId(null);
+            setExpenseForm(blankExpense);
+          }
+          if (selectedExpenseVendorKey === expenseVendorKey && remainingInGroup <= 0) setSelectedExpenseVendorKey("");
+          return;
+        }
+        const { error } = await supabase.from("business_expenses").delete().eq("id", id);
+        if (error) throw new Error("Could not delete expense: " + error.message);
+        setExpenses(expenses.filter((expenseRow) => expenseRow.id !== id));
+        if (selectedExpenseVendorKey === expenseVendorKey && remainingInGroup <= 0) setSelectedExpenseVendorKey("");
+      },
     });
-    if (!confirmed) return;
-    const expenseVendorKey = normalizeExpenseVendor(expense?.vendor).key;
-    const remainingInGroup = expenses.filter((entry) =>
-      entry.id !== id &&
-      recordBelongsToWorkspace(entry, expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id) &&
-      normalizeExpenseVendor(entry.vendor).key === expenseVendorKey
-    ).length;
-    if (BETA_LOCAL_MODE || user?.id === "local-beta") {
-      setExpenses(expenses.filter((expense) => expense.id !== id));
-      if (editingExpenseId === id) {
-        setEditingExpenseId(null);
-        setExpenseForm(blankExpense);
-      }
-      if (selectedExpenseVendorKey === expenseVendorKey && remainingInGroup <= 0) setSelectedExpenseVendorKey("");
-      setVaultToast("Expense deleted.");
-      return;
-    }
-    const { error } = await supabase.from("business_expenses").delete().eq("id", id);
-    if (error) return showAppMessage("Could not delete expense: " + error.message);
-    setExpenses(expenses.filter((expense) => expense.id !== id));
-    if (selectedExpenseVendorKey === expenseVendorKey && remainingInGroup <= 0) setSelectedExpenseVendorKey("");
-    setVaultToast("Expense deleted.");
   }
 
   function clearExpenseFilters() {
@@ -28360,7 +28485,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       });
       if (error) {
         setVaultToast(`${action.label} failed: ${error.message}`);
-        return;
+        throw new Error(`${action.label} failed: ${error.message}`);
       }
       updateScoutReportModerationLocally(report, actionKey);
       setVaultToast(`${action.message} Supabase RPC completed.`);
@@ -28381,7 +28506,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       setVaultToast("Turn on Admin Edit Mode to moderate reports.");
       return;
     }
-    setScoutReportModerationTarget({ report, actionKey });
+    const confidence = scoutReportConfidenceBadge(report);
+    const storeName = getScoutReportStore(report).name || report?.storeName || "Scout report";
+    requestAdminActionConfirmation({
+      title: `${action.label} Scout report?`,
+      message: `${storeName} will be updated for public Scout trust surfaces.`,
+      details: `Confidence: ${confidence.label}. Reason: ${(report.confidenceReasons || report.confidence_reasons || [confidence.helper]).join(" | ")}`,
+      confirmLabel: action.label,
+      danger: Boolean(action.risky),
+      successMessage: action.message,
+      errorMessage: `${action.label} failed.`,
+      onConfirm: () => runScoutReportAdminModeration(report, actionKey),
+    });
   }
 
   function canEditScoutReportDateTime(report = {}) {
@@ -28657,6 +28793,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const visitLabel = scoutReportDateTimeLabel(report);
     const submittedLabel = scoutReportSubmittedDateTimeLabel(report);
     const canEditVisitTime = canEditScoutReportDateTime(report);
+    const canAddReportDetails = isCurrentUserScoutReport(report) || adminEditModeActive;
     const notePreview = String(note || "").split("|").map((part) => part.trim()).find((part) => part && !/^Proof source:/i.test(part) && !/^Products seen:/i.test(part)) || "";
     const detailHint = visibleItems.length
       ? `${visibleItems.length + extraCount} product detail${visibleItems.length + extraCount === 1 ? "" : "s"} in details`
@@ -28703,7 +28840,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             actions={[
               { label: "View", onClick: () => setSelectedScoutReport(report) },
               ...(canEditVisitTime ? [{ label: "Edit date/time", onClick: () => openScoutReportDateTimeEditor(report) }] : []),
-              { label: "Edit", onClick: () => editScoutReport(report) },
+              ...(canAddReportDetails ? [{ label: adminEditModeActive ? "Edit details" : "Add details", onClick: () => editScoutReport(report) }] : []),
               ...getScoutReportAdminActions(report),
             ]}
           />
@@ -32945,6 +33082,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       market: entry.matchingActivities.filter((event) => /market|watch/.test(event.eventType || "")).length,
       assist: entry.matchingActivities.filter((event) => /ember|assist|support/.test(event.eventType || "")).length,
     });
+    const testAccountSignals = (entry = {}) => {
+      const haystack = [
+        entry.displayName,
+        entry.fullName,
+        entry.username,
+        entry.publicUsername,
+        entry.email,
+        entry.source,
+        entry.inviteSource,
+      ].filter(Boolean).join(" ").toLowerCase();
+      const signals = [];
+      if (/\b(test|fake|smoke|demo|sample|placeholder|qa)\b/.test(haystack)) signals.push("test/demo wording");
+      if (/@(example|test|fake|demo)\./.test(haystack) || /(\+test|\+qa|\+smoke)@/.test(haystack)) signals.push("test email pattern");
+      if (/local[-_ ]?beta|not[-_ ]?a[-_ ]?real|fixture/.test(haystack)) signals.push("local/test fixture");
+      return signals;
+    };
+    const suspectedTestUsers = betaUsers
+      .map((entry) => ({ ...entry, cleanupSignals: testAccountSignals(entry) }))
+      .filter((entry) => entry.cleanupSignals.length && !entry.isAdmin)
+      .slice(0, 8);
 
     return (
       <section className="settings-subsection beta-users-dashboard" aria-label="Beta Users">
@@ -32986,6 +33143,42 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ))}
           </div>
         </div>
+
+        <section className="beta-users-section admin-cleanup-panel">
+          <div className="compact-card-header">
+            <div>
+              <h4>Test/fake account cleanup</h4>
+              <p>Suspected test profiles can be hidden from normal app access. Full Supabase Auth deletion is intentionally not exposed here.</p>
+            </div>
+            <span className="status-badge">{suspectedTestUsers.length} suspected</span>
+          </div>
+          {suspectedTestUsers.length ? (
+            <div className="beta-users-list compact">
+              {suspectedTestUsers.map((entry) => (
+                <article className="beta-user-row-card admin-cleanup-card" key={`cleanup-${entry.key || entry.userId || entry.email}`}>
+                  <div className="compact-card-header">
+                    <div>
+                      <strong>{entry.displayName || entry.fullName || "Beta user"}</strong>
+                      <p>{maskEmail(entry.email)} | {entry.backendProfileRow ? "Supabase profile" : "Local fallback"}</p>
+                      <small>{entry.cleanupSignals.join(", ")}</small>
+                    </div>
+                    <span className={`status-badge ${entry.accessStatus}`}>{statusLabel(entry.accessStatus)}</span>
+                  </div>
+                  <div className="quick-actions">
+                    <button type="button" className="secondary-button" onClick={() => setSelectedBetaUserId(entry.userId || entry.email || entry.key)}>Open details</button>
+                    <button type="button" className="ghost-button" onClick={() => markSuspectedTestAccount(entry)}>Mark test account</button>
+                    <button type="button" className="delete-button" onClick={() => queueDisableSuspectedTestAccount(entry)}>Disable access</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state compact-empty-state">
+              <h3>No obvious test accounts</h3>
+              <p>Search Members if you need to review a specific profile manually.</p>
+            </div>
+          )}
+        </section>
 
         <section className="beta-users-section">
           <div className="compact-card-header">
@@ -33199,6 +33392,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const createdInviteLink = adminBetaInviteCreated ? betaInviteLinkForCreatedInvite(adminBetaInviteCreated) : "";
     const inviteRows = shorelineState.adminBetaInvites || [];
     const activeInviteCount = inviteRows.filter((invite) => invite.status === "active").length;
+    const inviteSearchText = adminBetaInviteSearch.trim().toLowerCase();
+    const inviteMatchesSearch = (invite = {}) => {
+      if (!inviteSearchText) return true;
+      return [
+        invite.recipientName,
+        invite.recipientEmail,
+        invite.claimedEmail,
+        invite.status,
+        invite.note,
+        invite.audience,
+      ].filter(Boolean).join(" ").toLowerCase().includes(inviteSearchText);
+    };
+    const inviteIsActive = (invite = {}) => invite.status === "active" && !invite.claimedAt && !invite.revokedAt;
+    const visibleInviteRows = inviteRows.filter((invite) =>
+      inviteMatchesSearch(invite) && (adminBetaInviteShowInactive || inviteIsActive(invite))
+    );
+    const selectedAdminBetaInvite = inviteRows.find((invite) => String(invite.id) === String(selectedAdminBetaInviteId));
     return (
       <section className="settings-subsection beta-review-queue beta-invite-management">
         <div className="compact-card-header">
@@ -33251,13 +33461,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <h4>Invite history</h4>
-            <p>History never shows plaintext tokens or token hashes.</p>
+            <p>Active invites show by default. History never shows plaintext tokens or token hashes; claimed, revoked, and expired invites stay available in details.</p>
           </div>
-          <input value={adminBetaInviteSearch} onChange={(event) => setAdminBetaInviteSearch(event.target.value)} placeholder="Search invites" />
+          <div className="admin-invite-toolbar">
+            <input value={adminBetaInviteSearch} onChange={(event) => setAdminBetaInviteSearch(event.target.value)} placeholder="Search invites" />
+            <label className="inline-toggle">
+              <input type="checkbox" checked={adminBetaInviteShowInactive} onChange={(event) => setAdminBetaInviteShowInactive(event.target.checked)} />
+              <span>Show old invites</span>
+            </label>
+          </div>
         </div>
         <div className="inventory-list compact-inventory-list">
-          {inviteRows.length ? inviteRows.map((invite) => {
-            const canRevoke = invite.status === "active" && !invite.claimedAt && !invite.revokedAt;
+          {visibleInviteRows.length ? visibleInviteRows.map((invite) => {
+            const canRevoke = inviteIsActive(invite);
             return (
               <article className="inventory-card compact-card" key={invite.id}>
                 <div className="compact-card-header">
@@ -33271,25 +33487,69 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="detail-grid compact-detail-grid">
                   <DetailItem label="Audience" value={invite.audience || "beta"} />
                   <DetailItem label="Expires" value={invite.expiresAt ? shortDate(invite.expiresAt) : "No expiration"} />
-                  <DetailItem label="Created by" value={invite.createdByEmail ? maskEmail(invite.createdByEmail) : invite.createdBy ? "Admin" : "Unknown"} />
-                  <DetailItem label="Claimed by" value={invite.claimedEmail ? maskEmail(invite.claimedEmail) : invite.claimedBy ? "Signed-in user" : "Not claimed"} />
-                  <DetailItem label="Claimed" value={invite.claimedAt ? shortDate(invite.claimedAt) : "No"} />
-                  <DetailItem label="Revoked" value={invite.revokedAt ? shortDate(invite.revokedAt) : "No"} />
+                  <DetailItem label="Claimed" value={invite.claimedAt ? shortDate(invite.claimedAt) : "Not claimed"} />
                 </div>
-                {canRevoke ? (
-                  <div className="quick-actions">
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => setSelectedAdminBetaInviteId(invite.id)}>View details</button>
+                  {canRevoke ? (
                     <button type="button" className="delete-button" onClick={() => void handleRevokeAdminBetaInvite(invite)} disabled={adminBetaInviteLoading}>Revoke Invite</button>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
               </article>
             );
           }) : (
             <div className="empty-state">
-              <h3>No personal invites yet</h3>
-              <p>Create a named invite for a specific beta tester. The link becomes unusable after it is claimed, expired, or revoked.</p>
+              <h3>No invites in this view</h3>
+              <p>Create a named invite, change the search, or show old invites to include claimed and revoked rows.</p>
             </div>
           )}
         </div>
+        {selectedAdminBetaInvite ? (
+          <div className="location-modal-backdrop" role="presentation" onClick={() => setSelectedAdminBetaInviteId("")}>
+            <section className="location-modal beta-invite-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="beta-invite-detail-title" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <p>Invite details</p>
+                  <h2 id="beta-invite-detail-title">{selectedAdminBetaInvite.recipientName || "Beta invite"}</h2>
+                </div>
+                <button type="button" className="modal-close-button" aria-label="Close invite detail" onClick={() => setSelectedAdminBetaInviteId("")}>X</button>
+              </div>
+              <div className="detail-grid compact-detail-grid">
+                <DetailItem label="Recipient" value={selectedAdminBetaInvite.recipientEmail ? maskEmail(selectedAdminBetaInvite.recipientEmail) : "No email lock"} />
+                <DetailItem label="Status" value={String(selectedAdminBetaInvite.status || "active").replace(/_/g, " ")} />
+                <DetailItem label="Created" value={selectedAdminBetaInvite.createdAt ? shortDate(selectedAdminBetaInvite.createdAt) : "Unavailable"} />
+                <DetailItem label="Expires" value={selectedAdminBetaInvite.expiresAt ? shortDate(selectedAdminBetaInvite.expiresAt) : "No expiration"} />
+                <DetailItem label="Claimed by" value={selectedAdminBetaInvite.claimedEmail ? maskEmail(selectedAdminBetaInvite.claimedEmail) : selectedAdminBetaInvite.claimedBy ? "Signed-in user" : "Not claimed"} />
+                <DetailItem label="Revoked" value={selectedAdminBetaInvite.revokedAt ? shortDate(selectedAdminBetaInvite.revokedAt) : "No"} />
+              </div>
+              {selectedAdminBetaInvite.note ? (
+                <div className="drawer-info-card">
+                  <strong>Private note</strong>
+                  <p>{selectedAdminBetaInvite.note}</p>
+                </div>
+              ) : null}
+              {betaInviteLinkForCreatedInvite(selectedAdminBetaInvite) ? (
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => void copyAdminBetaInviteLink(selectedAdminBetaInvite)}>Copy active link</button>
+                </div>
+              ) : null}
+              <details className="technical-details-disclosure">
+                <summary>Technical details</summary>
+                <div className="detail-grid compact-detail-grid">
+                  <DetailItem label="Invite row" value={selectedAdminBetaInvite.id || "Unavailable"} />
+                  <DetailItem label="Created by" value={selectedAdminBetaInvite.createdByEmail ? maskEmail(selectedAdminBetaInvite.createdByEmail) : selectedAdminBetaInvite.createdBy ? "Admin user" : "Unavailable"} />
+                  <DetailItem label="Claimed user" value={selectedAdminBetaInvite.claimedBy || "Not claimed"} />
+                </div>
+              </details>
+              <div className="location-modal-actions modal-sticky-footer">
+                {inviteIsActive(selectedAdminBetaInvite) ? (
+                  <button type="button" className="delete-button" disabled={adminBetaInviteLoading} onClick={() => void handleRevokeAdminBetaInvite(selectedAdminBetaInvite)}>Revoke Invite</button>
+                ) : null}
+                <button type="button" className="secondary-button" onClick={() => setSelectedAdminBetaInviteId("")}>Close</button>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -33598,7 +33858,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         <textarea className="drawer-field" defaultValue={note?.note || ""} placeholder="Internal admin note" onBlur={(event) => setUserAdminNote(entry.userId || entry.email, event.target.value)} />
                         <div className="quick-actions">
                           {BETA_ACCESS_STATUSES.map((status) => (
-                            <button type="button" className="secondary-button" key={status} onClick={() => updateBetaAccessUser(entry, status)}>{status}</button>
+                            <button type="button" className="secondary-button" key={status} onClick={() => void updateBetaAccessUser(entry, status)}>{status}</button>
                           ))}
                         </div>
                       </>
@@ -33646,7 +33906,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {backendRow ? BETA_REQUEST_STATUSES.filter((status) => status !== "not_requested").map((status) => (
                       <button type="button" className="secondary-button" key={status} onClick={() => void updateShorelineAdminStatus("beta", entry, status)}>{statusLabel(status)}</button>
                     )) : BETA_ACCESS_STATUSES.map((status) => (
-                      <button type="button" className="secondary-button" key={status} onClick={() => updateBetaAccessUser(entry, status)}>{statusLabel(status)}</button>
+                      <button type="button" className="secondary-button" key={status} onClick={() => void updateBetaAccessUser(entry, status)}>{statusLabel(status)}</button>
                     ))}
                   </div>
                 </article>
@@ -34421,7 +34681,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const adminCommandSections = [
       { key: "beta-access", title: "Beta Access", purpose: "Review access requests and beta status.", status: betaRequests.length ? `${betaRequests.length} pending` : "Clear", cta: "Review", filter: "Beta Access" },
       { key: "invites", title: "Invites", purpose: "Create, copy, and review invite links.", status: activeBetaInviteCount ? `${activeBetaInviteCount} active` : "No active invites", cta: "Open", filter: "Beta Access" },
-      { key: "members", title: "Members", purpose: "Manage roles and workspace access.", status: roleManagementVisible ? `${roleManagementCount || approvedBetaUserCount} profiles` : "Protected", cta: "Manage", filter: "Role Management" },
+      { key: "members", title: "Members", purpose: "Manage access, cleanup test profiles, and review member context.", status: roleManagementVisible ? `${roleManagementCount || approvedBetaUserCount} profiles` : `${approvedBetaUserCount} beta profiles`, cta: "Manage", filter: "Beta Users" },
       { key: "scout-moderation", title: "Scout Moderation", purpose: "Check reports that affect trust signals.", status: commandSummary.pendingScoutReports ? `${commandSummary.pendingScoutReports} need review` : "Clear", cta: "Review", filter: "Scout Report Moderation" },
       { key: "catalog-products", title: "Catalog / Products", purpose: "Review missing items, SKU, UPC, and store corrections.", status: catalogCorrectionCount ? `${catalogCorrectionCount} requests` : "Clear", cta: "Open", filter: "Catalog Suggestions" },
       { key: "market-values", title: "Market Values", purpose: "Review listing and price-source issues.", status: listingReviewItems.length ? `${listingReviewItems.length} flagged` : "Clear", cta: "Review", filter: "Marketplace Listings" },
@@ -44858,7 +45118,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {canEditScoutReportDateTime(selectedScoutReport) ? (
                 <button type="button" onClick={() => openScoutReportDateTimeEditor(selectedScoutReport)}>Edit date/time</button>
               ) : null}
-              <button type="button" onClick={() => editScoutReport(selectedScoutReport)}>Edit</button>
+              {(isCurrentUserScoutReport(selectedScoutReport) || adminEditModeActive) ? (
+                <button type="button" onClick={() => editScoutReport(selectedScoutReport)}>{adminEditModeActive ? "Edit details" : "Add details"}</button>
+              ) : null}
               {adminEditModeActive ? (
                 <OverflowMenu
                   buttonLabel="Admin"
@@ -44947,28 +45209,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ) : null}
 
       {adminConfirmAction ? (
-        <div className="location-modal-backdrop" role="presentation" onClick={() => setAdminConfirmAction(null)}>
+        <div className="location-modal-backdrop" role="presentation" onClick={() => !adminConfirmAction.loading && setAdminConfirmAction(null)}>
           <section className="location-modal admin-action-confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="admin-action-confirm-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header">
               <div>
                 <h2 id="admin-action-confirm-title">{adminConfirmAction.title || "Confirm admin action"}</h2>
                 <p>{adminConfirmAction.message || "This admin action changes moderation state."}</p>
               </div>
-              <button type="button" className="modal-close-button" aria-label="Close admin confirmation" onClick={() => setAdminConfirmAction(null)}>X</button>
+              <button type="button" className="modal-close-button" aria-label="Close admin confirmation" disabled={adminConfirmAction.loading} onClick={() => setAdminConfirmAction(null)}>X</button>
             </div>
+            {adminConfirmAction.details ? <p className="compact-subtitle">{adminConfirmAction.details}</p> : null}
+            {adminConfirmAction.loading ? <p className="auth-status-message" role="status">Working...</p> : null}
+            {adminConfirmAction.success ? <p className="auth-status-message success" role="status">{adminConfirmAction.success}</p> : null}
+            {adminConfirmAction.error ? <p className="auth-status-message error" role="alert">{adminConfirmAction.error}</p> : null}
             <div className="location-modal-actions modal-sticky-footer">
               <button
                 type="button"
                 className={adminConfirmAction.danger ? "delete-button" : ""}
-                onClick={() => {
-                  const action = adminConfirmAction;
-                  setAdminConfirmAction(null);
-                  action.onConfirm?.();
-                }}
+                disabled={adminConfirmAction.loading || Boolean(adminConfirmAction.success)}
+                onClick={() => void runAdminConfirmedAction()}
               >
-                {adminConfirmAction.confirmLabel || "Confirm"}
+                {adminConfirmAction.loading ? "Working..." : adminConfirmAction.confirmLabel || "Confirm"}
               </button>
-              <button type="button" className="ghost-button" onClick={() => setAdminConfirmAction(null)}>Cancel</button>
+              <button type="button" className="ghost-button" disabled={adminConfirmAction.loading} onClick={() => setAdminConfirmAction(null)}>Cancel</button>
             </div>
           </section>
         </div>

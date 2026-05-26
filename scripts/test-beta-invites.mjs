@@ -69,5 +69,9 @@ assert.match(app, /BETA_INVITE_SESSION_KEY/, "invite token should be stored sess
 assert.match(app, /claimBetaInvite\(token\)/, "signed-in invite route should claim through backend RPC");
 assert.match(app, /renderAdminBetaInviteManagement/, "admin invite UI should be rendered in Admin tools");
 assert.match(app, /Raw invite tokens are shown only once/, "admin UI should explain one-time token display");
+assert.match(app, /Show old invites/, "invite history should hide old rows by default with a reveal control");
+assert.match(app, /View details/, "invite records should open a detail drawer");
+assert.match(app, /Technical details/, "raw invite ids should live behind technical details");
+assert.match(app, /requestAdminActionConfirmation\(\{[\s\S]*?Revoke invite\?/, "invite revocation should use the visible admin confirmation pattern");
 
 console.log("Beta invite tests passed.");

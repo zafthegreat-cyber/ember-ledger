@@ -1286,7 +1286,7 @@ async function main() {
     const reportCard = page.locator(".scout-report-compact-card").filter({ hasText: savedScoutReport.storeName || "Smoke Shared Target" }).first();
     await reportCard.waitFor({ state: "visible", timeout: 10000 });
     await assertOverflowActionHidden(reportCard, "Delete");
-    await overflowAction(reportCard, "Edit");
+    await overflowAction(reportCard, "Add details");
     const editReportPanel = page.locator("form.scout-report-flow").first();
     await editReportPanel.getByRole("button", { name: "Back to details" }).click();
     await editReportPanel.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB Edited");
@@ -1669,10 +1669,10 @@ async function main() {
     });
     assert.equal(Number(editedExpense?.amount), 111.11);
 
-    const acceptedExpenseDelete = await withConfirmStub(true, async () => {
-      await overflowAction(vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).first(), "Delete Expense");
-    });
-    assert.match(acceptedExpenseDelete.join("\n"), /Delete expense\?/);
+    await overflowAction(vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).first(), "Delete Expense");
+    const deleteExpenseDialog = page.getByRole("dialog", { name: /Delete this expense/i });
+    await deleteExpenseDialog.waitFor({ state: "visible", timeout: 5000 });
+    await deleteExpenseDialog.getByRole("button", { name: "Delete expense" }).click();
     await page.waitForTimeout(300);
     assert.equal(await vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).count(), 0);
     await vendorModal.getByRole("button", { name: "Close", exact: true }).click();
