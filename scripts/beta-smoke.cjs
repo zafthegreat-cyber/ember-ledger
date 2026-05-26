@@ -960,7 +960,7 @@ async function main() {
     const existingForm = page.locator("form.scout-report-flow").first();
     if (await existingForm.count()) {
       const existingText = await existingForm.innerText().catch(() => "");
-      if (!/Post the restock essentials|Post store, status, and time|What did you see\?|Select item or product/i.test(existingText)) {
+      if (!/Where and when|Post the restock essentials|Post store, status, and time|What did you see\?|Select item or product/i.test(existingText)) {
         const firstStepButton = existingForm.getByRole("button", { name: /Report|What/ }).first();
         if (await firstStepButton.count()) {
           await firstStepButton.click();
@@ -1001,19 +1001,12 @@ async function main() {
       reportTime = "",
     } = options;
 
-    const essentialsStep = form.getByText(/Post the restock essentials|Post store, status, and time|What did you see\?|Select item or product/i);
+    const essentialsStep = form.getByText(/Where and when|Post the restock essentials|Post store, status, and time|What did you see\?|Select item or product/i).first();
     if (!(await essentialsStep.isVisible().catch(() => false))) {
       const bodyText = await page.locator("body").innerText().catch(() => "");
       throw new Error(`Scout wizard did not open at the essentials step.\n${bodyText.slice(0, 1600)}`);
     }
 
-    const reportTypeButton = form.getByRole("button", { name: new RegExp(reportType, "i") }).first();
-    await reportTypeButton.click();
-    await page.waitForFunction(
-      (button) => button?.classList?.contains("selected"),
-      await reportTypeButton.elementHandle(),
-      { timeout: 3000 }
-    );
     const storeSearch = form.getByPlaceholder("Search store, city, ZIP, nickname, or address").first();
     if (await storeSearch.count()) {
       await storeSearch.fill(storeSearchText);
@@ -1024,7 +1017,7 @@ async function main() {
       if ((await smokeStoreCard.evaluate((node) => node.tagName.toLowerCase())) === "button") {
         await smokeStoreCard.click();
       } else {
-        await smokeStoreCard.getByRole("button", { name: /Choose this store|Report here/i }).click();
+        await smokeStoreCard.getByRole("button", { name: /Select store|Choose this store|Report here/i }).click();
       }
       const selectedStoreCard = form.locator(".scout-report-store-card.selected").filter({ hasText: storeSearchText }).first();
       await selectedStoreCard.waitFor({ state: "visible", timeout: 5000 });
@@ -1033,6 +1026,26 @@ async function main() {
       const formText = await form.innerText().catch(() => "");
       throw new Error(`Scout wizard did not show the requested store "${storeSearchText}".\n${formText.slice(0, 1200)}`);
     }
+    if (reportDate || reportTime) {
+      const visitDateTimeInput = form.getByLabel(/Observed time|Visit date & time/i).first();
+      const currentValue = await visitDateTimeInput.inputValue();
+      const [currentDate = new Date().toISOString().slice(0, 10), currentTime = "12:00"] = currentValue.split("T");
+      const nextVisitDateTime = `${reportDate || currentDate}T${reportTime || currentTime || "12:00"}`;
+      await visitDateTimeInput.fill(nextVisitDateTime);
+      assert.equal(await visitDateTimeInput.inputValue(), nextVisitDateTime);
+    }
+    await form.getByRole("button", { name: "Next" }).click();
+    await form.getByText(/Shelf status/i).first().waitFor({ state: "visible", timeout: 5000 });
+    const requestedStatus = stockLeft && /low stock/i.test(stockLeft) ? "Low stock" : reportType;
+    const reportTypeButton = form.getByRole("button", { name: new RegExp(requestedStatus, "i") }).first();
+    await reportTypeButton.click();
+    await page.waitForFunction(
+      (button) => button?.classList?.contains("selected"),
+      await reportTypeButton.elementHandle(),
+      { timeout: 3000 }
+    );
+    await form.getByRole("button", { name: "Next" }).click();
+    await form.getByText(/Optional proof\/details|Add details and proof|Add guess context/i).first().waitFor({ state: "visible", timeout: 5000 });
     if (note) {
       await form.getByPlaceholder(/Optional quick note|Aisle, limit sign|vendor cart|display location/i).fill(note);
     }
@@ -1043,16 +1056,8 @@ async function main() {
     if (proofText) {
       await form.getByPlaceholder(/Optional receipt detail|sign text|link|Receipt detail|screenshot note|site link/i).fill(proofText);
     }
-    if (reportDate || reportTime) {
-      const visitDateTimeInput = form.getByLabel(/Visit date & time/i);
-      const currentValue = await visitDateTimeInput.inputValue();
-      const [currentDate = new Date().toISOString().slice(0, 10), currentTime = "12:00"] = currentValue.split("T");
-      const nextVisitDateTime = `${reportDate || currentDate}T${reportTime || currentTime || "12:00"}`;
-      await visitDateTimeInput.fill(nextVisitDateTime);
-      assert.equal(await visitDateTimeInput.inputValue(), nextVisitDateTime);
-    }
     await form.getByRole("button", { name: "Next" }).click();
-    await form.getByText(/Review and post|Review and save/).waitFor({ state: "visible", timeout: 5000 }).catch(async (error) => {
+    await form.getByText(/Review and post|Review and save/).first().waitFor({ state: "visible", timeout: 5000 }).catch(async (error) => {
       const formText = await form.innerText().catch(() => "");
       const bodyText = await page.locator("body").innerText().catch(() => "");
       if (bodyText.includes("Report posted. You can add products, proof, or details now or later.")) return;
@@ -1079,21 +1084,13 @@ async function main() {
     await page.reload({ waitUntil: "domcontentloaded" });
     const form = await openScoutReportWizard();
 
-    await form.getByText(/Post the restock essentials|Post store, status, and time/i).waitFor({ state: "visible", timeout: 5000 }).catch(async (error) => {
+    await form.getByText(/Where and when|Post the restock essentials|Post store, status, and time/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(async (error) => {
       const formText = await form.innerText().catch(() => "");
       const bodyText = await page.locator("body").innerText().catch(() => "");
       error.message = `${error.message}\nScout wizard state:\n${formText.slice(0, 1200)}\nBody:\n${bodyText.slice(0, 1600)}`;
       throw error;
     });
-    const statusButton = form.getByRole("button", { name: /No stock/i }).first();
-    await statusButton.click();
-    await page.waitForFunction(
-      (button) => button?.classList?.contains("selected") && button?.getAttribute("aria-pressed") === "true",
-      await statusButton.elementHandle(),
-      { timeout: 3000 }
-    );
     await assertVisibleText("Current choice");
-    await assertVisibleText("Selected");
 
     await form.getByPlaceholder("Search store, city, ZIP, nickname, or address").fill(visibleStore.nickname);
     const storeCard = form.locator(".scout-report-store-pick, .scout-report-store-card").filter({ hasText: visibleStore.nickname }).first();
@@ -1101,11 +1098,23 @@ async function main() {
     if ((await storeCard.evaluate((node) => node.tagName.toLowerCase())) === "button") {
       await storeCard.click();
     } else {
-      await storeCard.getByRole("button", { name: /Choose this store|Report here/i }).click();
+      await storeCard.getByRole("button", { name: /Select store|Choose this store|Report here/i }).click();
     }
     const selectedStoreCard = form.locator(".scout-report-store-card.selected").filter({ hasText: visibleStore.nickname }).first();
     await selectedStoreCard.waitFor({ state: "visible", timeout: 5000 });
     assert.match(await selectedStoreCard.innerText(), /Store selected|Manual location/);
+    await form.getByRole("button", { name: "Next" }).click();
+    await form.getByText(/Shelf status/i).first().waitFor({ state: "visible", timeout: 5000 });
+    const statusButton = form.getByRole("button", { name: /No stock/i }).first();
+    await statusButton.click();
+    await page.waitForFunction(
+      (button) => button?.classList?.contains("selected") && button?.getAttribute("aria-pressed") === "true",
+      await statusButton.elementHandle(),
+      { timeout: 3000 }
+    );
+    await assertVisibleText("Selected");
+    await form.getByRole("button", { name: "Next" }).click();
+    await form.getByText(/Optional proof\/details/i).first().waitFor({ state: "visible", timeout: 5000 });
     await form.getByRole("button", { name: "Next" }).click();
     await assertVisibleText("Reporting at: Visible Selection Target");
     await assertVisibleText("Product details");

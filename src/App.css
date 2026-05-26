@@ -52901,6 +52901,64 @@ body {
   min-height: 40px !important;
 }
 
+.app-scout .scout-where-step,
+.app-scout .scout-status-step,
+.app-scout .scout-proof-step {
+  gap: 10px;
+}
+
+.app-scout .scout-area-field,
+.app-scout .scout-manual-store-panel label {
+  display: grid;
+  gap: 6px;
+  color: rgba(232, 246, 255, 0.76);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.app-scout .scout-area-field small,
+.app-scout .scout-manual-store-panel small,
+.app-scout .scout-report-detail-grid small {
+  color: rgba(232, 246, 255, 0.58);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.app-scout .scout-manual-store-toggle {
+  width: fit-content;
+}
+
+.app-scout .scout-manual-store-panel {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px dashed rgba(255, 176, 96, 0.28);
+  border-radius: 14px;
+  background: rgba(255, 138, 76, 0.08);
+}
+
+.app-scout .scout-report-time-grid {
+  align-items: end;
+  margin-top: 4px;
+}
+
+.app-scout .scout-report-status-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.app-scout .scout-report-store-card small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(232, 246, 255, 0.58);
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.app-scout .scout-report-store-actions {
+  align-items: center;
+  justify-content: flex-start;
+}
+
 .app-scout .scout-optional-proof-panel > label {
   display: grid;
   gap: 6px;
@@ -53013,6 +53071,19 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
+  .app-scout .scout-report-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-scout .scout-report-store-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app-scout .scout-report-time-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .app-scout .scout-report-status-panel .scout-report-choice-card {
     min-height: 48px !important;
     padding: 8px !important;
@@ -53055,6 +53126,54 @@ body {
 
 .app-scout .scout-wizard-footer button {
   min-height: 44px !important;
+}
+
+@media (max-width: 780px) {
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active {
+    display: block !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active > * + * {
+    margin-top: 10px !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active .scout-report-store-list {
+    flex: 0 0 auto !important;
+    max-height: none !important;
+    min-height: fit-content !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+  }
+
+  .app-scout .scout-wizard-footer,
+  .app-scout .scout-report-flow > .scout-wizard-footer {
+    flex: 0 0 auto !important;
+    margin-top: 8px !important;
+    padding: 10px 0 calc(4px + env(safe-area-inset-bottom, 0px)) !important;
+    position: static !important;
+  }
 }
 
 /* Pass 4 Market final lookup: cleaner search, scannable results, and calmer product detail. */

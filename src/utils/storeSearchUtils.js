@@ -1,13 +1,64 @@
 import { numericDistance } from "./routeUtils.js";
 
 export function normalizeStoreSearch(value) {
-  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[’']/g, "")
+    .replace(/[^a-z0-9\s#-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const RETAILER_SEARCH_ALIASES = {
+  target: ["t", "tgt", "target"],
+  walmart: ["wm", "wally", "walmart", "walmart supercenter", "walmart neighborhood"],
+  "barnes and noble": ["b n", "bn", "b and n", "barnes", "barnes noble", "barnes and noble"],
+  gamestop: ["gs", "game stop", "gamestop"],
+  "best buy": ["bb", "bbuy", "best buy"],
+};
+
+function storeAliasValues(store = {}) {
+  return [
+    ...(Array.isArray(store.aliases) ? store.aliases : []),
+    ...(Array.isArray(store.searchAliases) ? store.searchAliases : []),
+    ...(Array.isArray(store.search_aliases) ? store.search_aliases : []),
+  ];
+}
+
+function retailerAliases(store = {}) {
+  const retailer = normalizeStoreSearch(store.retailer || store.chain || store.storeGroup || store.store_group || "");
+  return Object.entries(RETAILER_SEARCH_ALIASES)
+    .filter(([canonical]) => retailer.includes(canonical) || canonical.includes(retailer))
+    .flatMap(([, aliases]) => aliases);
+}
+
+function expandedStoreSearchTerms(query = "") {
+  const search = normalizeStoreSearch(query);
+  const compact = search.replace(/\s+/g, "");
+  const terms = new Set([search, compact].filter(Boolean));
+  if (["bn", "b n", "bandn", "barnes"].includes(compact) || search.includes("barnes")) {
+    ["barnes and noble", "barnes noble", "b n", "bn"].forEach((term) => terms.add(normalizeStoreSearch(term)));
+  }
+  if (compact === "rmt" || search.includes("redmill") || search.includes("red mill")) {
+    ["red mill target", "redmill target", "rm t"].forEach((term) => terms.add(normalizeStoreSearch(term)));
+  }
+  if (compact === "pemt" || search.includes("pembroke")) {
+    ["pembroke target", "pem t"].forEach((term) => terms.add(normalizeStoreSearch(term)));
+  }
+  if (compact === "fc" || search.includes("first colonial") || search.includes("hilltop")) {
+    ["first colonial", "first colonial target", "hilltop target", "fc target"].forEach((term) => terms.add(normalizeStoreSearch(term)));
+  }
+  if (compact === "gb" || search.includes("greenbrier")) {
+    ["greenbrier", "greenbrier target", "greenbrier barnes and noble", "gb b n"].forEach((term) => terms.add(normalizeStoreSearch(term)));
+  }
+  return [...terms].filter(Boolean);
 }
 
 export function storeMatchesSearch(store = {}, query = "") {
   const search = normalizeStoreSearch(query);
   if (!search) return true;
-  return [
+  const haystackParts = [
     store.name,
     store.storeName,
     store.nickname,
@@ -40,10 +91,15 @@ export function storeMatchesSearch(store = {}, query = "") {
     store.advertisingPartner ? "advertising partner" : "",
     store.pokemonStockLikelihood,
     store.notes,
-    ...(Array.isArray(store.aliases) ? store.aliases : []),
-    ...(Array.isArray(store.searchAliases) ? store.searchAliases : []),
-    ...(Array.isArray(store.search_aliases) ? store.search_aliases : []),
-  ].some((value) => normalizeStoreSearch(value).includes(search));
+    ...storeAliasValues(store),
+    ...retailerAliases(store),
+  ];
+  const haystack = normalizeStoreSearch(haystackParts.filter(Boolean).join(" "));
+  const compactHaystack = haystack.replace(/\s+/g, "");
+  return expandedStoreSearchTerms(query).some((term) => {
+    const compactTerm = term.replace(/\s+/g, "");
+    return haystack.includes(term) || (compactTerm && compactHaystack.includes(compactTerm));
+  });
 }
 
 export function sortStores(stores = [], sortBy = "nickname") {

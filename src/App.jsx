@@ -303,6 +303,7 @@ import {
   normalizeAdminStoreDraft,
   validateAdminStoreDraft,
 } from "./utils/adminStoreTools";
+import { normalizeStoreSearch, storeMatchesSearch } from "./utils/storeSearchUtils";
 import {
   SPARK_PROGRAM_STATUS_OPTIONS,
   normalizeSparkProgramStatus,
@@ -1120,7 +1121,13 @@ const SCOUT_PRODUCT_CATEGORY_OPTIONS = ["Pokemon", "One Piece", "Lorcana", "Spor
 const SCOUT_QUICK_REPORT_TYPES = [
   { value: "stock_on_shelf", label: "Stock seen", helper: "Product was seen on shelf, display, or behind counter.", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "possible" },
   { value: "no_stock", label: "No stock", helper: "Nothing found", reportType: "Store Restock Report", stockStatus: "empty", sourceType: "user_report", confidence: "possible" },
+  { value: "low_stock", label: "Low stock", helper: "Some product remained, but selection looked thin.", reportType: "Store Restock Report", stockStatus: "low_stock", sourceType: "user_report", confidence: "possible" },
   { value: "restock_happening_now", label: "Vendor stocking now", helper: "Vendor or staff stocking", reportType: "Store Restock Report", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "likely" },
+  { value: "vendor_seen", label: "Vendor seen", helper: "Vendor was nearby, but stocking was not confirmed.", reportType: "Store Intel", stockStatus: "vendor_seen", sourceType: "user_report", confidence: "possible" },
+  { value: "limit_posted", label: "Limit posted", helper: "A limit sign or shelf tag was visible.", reportType: "Store Intel", stockStatus: "limit_posted", sourceType: "user_report", confidence: "possible" },
+  { value: "behind_counter", label: "Behind counter", helper: "Product appeared controlled by staff or customer service.", reportType: "Store Restock Report", stockStatus: "behind_counter", sourceType: "user_report", confidence: "possible" },
+  { value: "customer_service", label: "Customer service", helper: "Staff directed shoppers to customer service or a desk.", reportType: "Store Intel", stockStatus: "customer_service", sourceType: "user_report", confidence: "possible" },
+  { value: "unsure", label: "Unsure", helper: "Useful store signal, but stock status was unclear.", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible" },
   { value: "employee_restock_coming", label: "Employee said restock coming", helper: "Needs review", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", sourceType: "employee_tip", confidence: "likely", needsReview: true },
   { value: "restock_guess", label: "Community guess / pattern", helper: "Requires Scout points; never counts as confirmed stock.", reportType: "Store Guess", stockStatus: "unknown", sourceType: "manual_prediction", confidence: "guess", isGuess: true },
   { value: "truck_vendor_seen", label: "Truck/vendor seen", helper: "Possible restock", reportType: "Restock Pattern Suggestion", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "possible", needsReview: true },
@@ -16672,7 +16679,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       retailer: "",
       city: "",
       address: "",
+      state: "",
+      zip: "",
+      region: "",
       manualLocation: "",
+      manualLocationOpen: false,
       storeSearch: "",
       storeConfirmed: false,
       storeFollowPreference: "verified_restocks",
@@ -16714,6 +16725,119 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function getScoutQuickRetailer(store = {}) {
     return scoutText(store.retailer || store.chain || store.storeGroup || store.store_group || store.banner) || "Retailer";
+  }
+
+  function getScoutQuickStoreZip(store = {}) {
+    return scoutText(store.zip || store.zipCode || store.zip_code || store.postalCode || store.postal_code);
+  }
+
+  function getScoutQuickStoreRegion(store = {}) {
+    return scoutText(store.region || store.area || store.county || store.storeRegion || store.store_region);
+  }
+
+  function scoutStoreAliasValues(store = {}) {
+    return [
+      ...(Array.isArray(store.aliases) ? store.aliases : []),
+      ...(Array.isArray(store.searchAliases) ? store.searchAliases : []),
+      ...(Array.isArray(store.search_aliases) ? store.search_aliases : []),
+    ].filter(Boolean);
+  }
+
+  function scoutStoreAreaText(store = {}) {
+    return [
+      getScoutQuickStoreName(store),
+      getScoutQuickRetailer(store),
+      store.city,
+      store.state,
+      getScoutQuickStoreZip(store),
+      getScoutQuickStoreRegion(store),
+      store.address,
+      store.shoppingCenter,
+      ...scoutStoreAliasValues(store),
+    ].filter(Boolean).join(" ");
+  }
+
+  function scoutActiveAreaText() {
+    return String(
+      locationSettings.manualLocation ||
+      locationSettings.selectedSavedLocation ||
+      currentUserProfile?.homeArea ||
+      currentUserProfile?.home_area ||
+      currentUserProfile?.preferredRegion ||
+      currentUserProfile?.preferred_region ||
+      ""
+    ).trim();
+  }
+
+  function scoutAreaHints(value = "") {
+    const text = normalizeStoreSearch(value);
+    const compact = text.replace(/[^a-z0-9]/g, "");
+    const hints = new Set();
+    if (!text) return hints;
+    if (/\b224\d{2}\b|\b225\d{2}\b|\bfredericksburg\b|\bstafford\b|\bspotsylvania\b/.test(text)) {
+      ["fredericksburg", "stafford", "spotsylvania", "224", "225"].forEach((item) => hints.add(item));
+    }
+    if (/\b23[4567]\d{2}\b|\bhampton\b|\bchesapeake\b|\bnorfolk\b|\bvirginia beach\b|\bsuffolk\b|\bnewport news\b|\bportsmouth\b|\b757\b|\bhampton roads\b/.test(text)) {
+      ["hampton roads", "757", "chesapeake", "norfolk", "virginia beach", "suffolk", "newport news", "portsmouth", "234", "235", "236", "237"].forEach((item) => hints.add(item));
+    }
+    if (/\b232\d{2}\b|\b230\d{2}\b|\brichmond\b|\bhenrico\b|\bshort pump\b|\bchesterfield\b/.test(text)) {
+      ["richmond", "henrico", "short pump", "chesterfield", "232", "230"].forEach((item) => hints.add(item));
+    }
+    if (/\b231\d{2}\b|\bwilliamsburg\b|\byorktown\b|\bnew kent\b/.test(text)) {
+      ["williamsburg", "yorktown", "new kent", "231"].forEach((item) => hints.add(item));
+    }
+    if (compact.length >= 3) hints.add(compact);
+    return hints;
+  }
+
+  function scoutStoreSearchScore(row = {}, query = "") {
+    const search = normalizeStoreSearch(query);
+    if (!search) return 0;
+    const store = row.store || row;
+    const haystack = normalizeStoreSearch(scoutStoreAreaText(store));
+    const compactSearch = search.replace(/[^a-z0-9]/g, "");
+    const compactHaystack = haystack.replace(/[^a-z0-9]/g, "");
+    const aliases = scoutStoreAliasValues(store).map((value) => normalizeStoreSearch(value));
+    const name = normalizeStoreSearch(row.name || getScoutQuickStoreName(store));
+    const retailer = normalizeStoreSearch(row.retailer || getScoutQuickRetailer(store));
+    let score = 0;
+    if (aliases.some((alias) => alias === search || alias.replace(/[^a-z0-9]/g, "") === compactSearch)) score += 900;
+    if (name === search || name.replace(/[^a-z0-9]/g, "") === compactSearch) score += 760;
+    if (name.includes(search)) score += 420;
+    if (retailer === search || retailer.includes(search)) score += 260;
+    if (compactSearch && compactHaystack.includes(compactSearch)) score += 220;
+    const tokens = search.split(/\s+/).filter((token) => token.length > 2);
+    score += tokens.filter((token) => haystack.includes(token) || compactHaystack.includes(token.replace(/[^a-z0-9]/g, ""))).length * 48;
+    return score;
+  }
+
+  function scoutStoreAreaScore(row = {}, areaText = "", query = "") {
+    const store = row.store || row;
+    const areaHints = scoutAreaHints(areaText);
+    const queryHints = scoutAreaHints(query);
+    const haystack = normalizeStoreSearch(scoutStoreAreaText(store));
+    const compactHaystack = haystack.replace(/[^a-z0-9]/g, "");
+    let score = 0;
+    areaHints.forEach((hint) => {
+      if (!hint) return;
+      const compactHint = String(hint).replace(/[^a-z0-9]/g, "");
+      if (haystack.includes(hint) || (compactHint && compactHaystack.includes(compactHint))) score += 120;
+    });
+    queryHints.forEach((hint) => {
+      if (!hint) return;
+      const compactHint = String(hint).replace(/[^a-z0-9]/g, "");
+      if (haystack.includes(hint) || (compactHint && compactHaystack.includes(compactHint))) score += 260;
+    });
+    if (Number.isFinite(row.distance)) score += Math.max(0, 90 - row.distance * 4);
+    if (row.watchlisted) score += 70;
+    if ((row.reports || []).length) score += Math.min(60, row.reports.length * 12);
+    return score;
+  }
+
+  function scoutStoreMatchesLookup(row = {}, query = "") {
+    const search = normalizeStoreSearch(query);
+    if (!search) return true;
+    return storeMatchesSearch(row.store || row, query) || scoutStoreSearchScore(row, query) > 0;
   }
 
   function getScoutQuickStores(options = {}) {
@@ -16765,7 +16889,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       retailer: getScoutQuickRetailer(store),
       city: store.city || store.addressCity || store.region || "",
       address: store.address || store.streetAddress || "",
+      state: store.state || store.province || "",
+      zip: getScoutQuickStoreZip(store),
+      region: getScoutQuickStoreRegion(store),
       manualLocation: "",
+      manualLocationOpen: false,
       storeSearch: "",
       storeConfirmed: Boolean(storeId),
     };
@@ -16803,6 +16931,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         retailer: getScoutQuickRetailer(store),
         city: store.city || form.city || "",
         address: store.address || form.address || "",
+        state: store.state || form.state || "",
+        zip: getScoutQuickStoreZip(store) || form.zip || "",
+        region: getScoutQuickStoreRegion(store) || form.region || "",
         needsStoreReview: false,
       };
     }
@@ -16826,6 +16957,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         retailer: formRetailer || "Manual",
         city: form.city || "",
         address: form.address || "",
+        state: form.state || "",
+        zip: form.zip || "",
+        region: form.region || "",
         needsStoreReview: true,
       };
     }
@@ -16858,7 +16992,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         next.visibility = nextType?.isGuess ? normalizeScoutGuessVisibility(current.visibility || "private") : normalizeScoutReportVisibility(current.visibility || "public");
         if (nextType?.isGuess) next.dateMode = current.dateMode === "today" ? "day_only" : current.dateMode;
       }
-      if (["storeId", "storeName", "retailer", "city", "address", "manualLocation"].includes(field)) {
+      if (["storeId", "storeName", "retailer", "city", "address", "state", "zip", "region", "manualLocation"].includes(field)) {
         next.storeConfirmed = false;
       }
       return next;
@@ -17345,8 +17479,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function quickScoutNormalizedReportType(type = quickScoutReportTypeMeta()) {
     if (type.value === "no_stock") return "no_stock";
     if (type.value === "line_queue_seen") return "line_seen";
-    if (type.value === "restock_happening_now" || type.value === "stock_on_shelf" || type.value === "confirmed_purchase") return "restock";
-    if (type.value === "truck_vendor_seen") return "vendor_seen";
+    if (type.value === "restock_happening_now" || type.value === "stock_on_shelf" || type.value === "confirmed_purchase" || type.value === "behind_counter") return "restock";
+    if (type.value === "truck_vendor_seen" || type.value === "vendor_seen") return "vendor_seen";
     if (type.value === "online_stock_changed") return "online_drop";
     if (type.stockStatus === "low_stock") return "low_stock";
     return "other";
@@ -17364,21 +17498,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function scoutWizardStepError(stepKey = quickScoutReportStep) {
     const currentType = quickScoutReportTypeMeta();
     if (currentType.isGuess && !currentUserCanSubmitScoutGuess && ["details", "review"].includes(stepKey)) return DROP_RADAR_GUESS_LOCKED_MESSAGE;
-    if (stepKey === "essentials") {
-      if (!quickScoutReportForm.reportType) return "Choose the report status before posting.";
+    if (stepKey === "where" || stepKey === "essentials") {
       const storeSelection = resolveQuickScoutStoreSelection();
       if (!storeSelection.valid) return storeSelection.message;
       if (quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before posting.";
       const visitValidation = validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
       if (!visitValidation.ok) return visitValidation.message;
     }
-    if (stepKey === "details" && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
-    if (stepKey === "where") {
-      const storeSelection = resolveQuickScoutStoreSelection();
-      if (!storeSelection.valid) return storeSelection.message;
+    if (stepKey === "status" && !quickScoutReportForm.reportType) {
+      return "Choose the shelf status before continuing.";
     }
+    if (stepKey === "details" && currentType.isGuess && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
     if (stepKey === "product" && !quickScoutReportForm.productCategory && !currentType.isGuess) return "Choose a product category before continuing.";
-    if (stepKey === "review" && !currentType.isGuess) return scoutWizardStepError("essentials");
+    if (stepKey === "review" && !currentType.isGuess) return scoutWizardStepError("where") || scoutWizardStepError("status");
     if (stepKey === "review" && !quickScoutReportReady()) return scoutWizardStepError("where") || scoutWizardStepError("details") || "Complete the missing Scout report details before submitting.";
     if (stepKey === "review" && quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before posting.";
     if (["details", "review"].includes(stepKey) && !currentType.isGuess) {
@@ -17391,7 +17523,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function getScoutWizardSteps() {
     if (!quickScoutReportTypeMeta().isGuess) {
       return [
-        { key: "essentials", label: "Report" },
+        { key: "where", label: "Where" },
+        { key: "status", label: "Status" },
+        { key: "details", label: "Details" },
         { key: "review", label: "Post" },
       ];
     }
@@ -17479,6 +17613,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       chain: retailer,
       city: storeSelection.city || selectedStore.city || quickScoutReportForm.city || "",
       address: storeSelection.address || selectedStore.address || quickScoutReportForm.address || "",
+      state: storeSelection.state || selectedStore.state || quickScoutReportForm.state || "",
+      zip: storeSelection.zip || getScoutQuickStoreZip(selectedStore) || quickScoutReportForm.zip || "",
+      region: storeSelection.region || getScoutQuickStoreRegion(selectedStore) || quickScoutReportForm.region || "",
       manualLocation: quickScoutReportForm.manualLocation.trim(),
       needsStoreReview: storeSelection.needsStoreReview,
       needsReview: Boolean(type.needsReview || storeSelection.needsStoreReview),
@@ -17656,7 +17793,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const validationError = scoutWizardStepError("review");
     if (validationError) {
       setQuickScoutReportMessage(validationError);
-      if (!quickScoutReportTypeMeta().isGuess) setQuickScoutReportStep("essentials");
+      if (!quickScoutReportTypeMeta().isGuess) {
+        setQuickScoutReportStep(scoutWizardStepError("where") ? "where" : scoutWizardStepError("status") ? "status" : "review");
+      }
       else if (scoutWizardStepError("where")) setQuickScoutReportStep("where");
       return;
     }
@@ -17667,7 +17806,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       : validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
     if (!visitValidation.ok) {
       setQuickScoutReportMessage(visitValidation.message || "Add a valid visit date and time before submitting.");
-      setQuickScoutReportStep(currentType.isGuess ? "details" : "essentials");
+      setQuickScoutReportStep(currentType.isGuess ? "details" : "where");
       showErrorToast("Couldn’t submit Scout report.", { message: visitValidation.message || "Add a valid visit date and time." });
       return;
     }
@@ -17679,7 +17818,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         cancelLabel: "Edit time",
       });
       if (!confirmedFutureVisit) {
-        setQuickScoutReportStep(currentType.isGuess ? "details" : "essentials");
+        setQuickScoutReportStep(currentType.isGuess ? "details" : "where");
         return;
       }
     }
@@ -17723,8 +17862,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     const report = buildQuickScoutReportRecord();
     if (!report) {
-      setQuickScoutReportMessage(scoutWizardStepError("essentials") || "Choose the store/location before posting this report.");
-      setQuickScoutReportStep("essentials");
+      setQuickScoutReportMessage(scoutWizardStepError("where") || "Choose the store/location before posting this report.");
+      setQuickScoutReportStep("where");
       return;
     }
     const nextLocalReports = [report, ...(scoutData.reports || [])]
@@ -17818,7 +17957,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       manualLocation: options.manualLocation || "",
     });
     setQuickScoutReportForm(draft);
-    setQuickScoutReportStep(options.action === "addGuess" ? "where" : "essentials");
+    setQuickScoutReportStep("where");
     setQuickScoutReportMessage("");
     setQuickScoutReportSaved(null);
     flowModalBaselineRef.current.scoutSubmit = draft;
@@ -29930,16 +30069,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       })
       .filter((row) => {
         if (!query) return true;
-        const haystack = [row.name, row.retailer, row.city, row.address, row.area].join(" ").toLowerCase();
-        return haystack.includes(query);
+        return storeMatchesSearch(row.store || row.profile?.store || {}, query);
       })
       .filter((row) => {
         if (!area) return true;
-        const haystack = [row.city, row.address, row.area, row.store.zip, row.store.postalCode].join(" ").toLowerCase();
-        return haystack.includes(area);
+        return storeMatchesSearch(row.store || row.profile?.store || {}, area);
       });
 
     const signalSortedRows = filteredRows.sort((a, b) => {
+        const areaText = scoutActiveAreaText();
+        const aScore = scoutStoreAreaScore(a, areaText, query || area);
+        const bScore = scoutStoreAreaScore(b, areaText, query || area);
+        if (bScore !== aScore) return bScore - aScore;
         if (hasScoutLocation && Number.isFinite(a.distance) && Number.isFinite(b.distance)) return a.distance - b.distance;
         if (b.watchlisted !== a.watchlisted) return Number(b.watchlisted) - Number(a.watchlisted);
         if (b.reports.length !== a.reports.length) return b.reports.length - a.reports.length;
@@ -37947,8 +38088,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const storeSelection = resolveQuickScoutStoreSelection();
     const selectedStore = storeSelection.mode === "known" ? storeSelection.store : null;
     const selectedStoreContext = storeSelection.valid ? storeSelection.store : null;
-    const normalizedStoreSearch = quickScoutReportForm.storeSearch.trim().toLowerCase();
-    const locationText = String(locationSettings.manualLocation || locationSettings.selectedSavedLocation || "").trim();
+    const normalizedStoreSearch = quickScoutReportForm.storeSearch.trim();
+    const scoutAreaText = scoutActiveAreaText();
+    const locationText = scoutAreaText;
     const locationAvailable = Boolean(locationSettings.trackingEnabled || locationText);
     const locationOrigin = parseManualLocationCoordinates(locationText);
     const productQuery = String(quickScoutReportForm.productName || "").trim();
@@ -37980,9 +38122,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       : [
           { value: "stock_on_shelf", title: "Stock seen", helper: "Product was seen on shelf, display, or behind counter." },
           { value: "no_stock", title: "No stock", helper: "Nothing found where TCG usually sits." },
+          { value: "low_stock", title: "Low stock", helper: "Some product remained, but selection looked thin." },
           { value: "restock_happening_now", title: "Vendor stocking now", helper: "Vendor or staff stocking now." },
-          { value: "shelf_tag_only", title: "Recently stocked / signs of restock", helper: "Shelf tag, limit sign, display reset, or other sign." },
-          { value: "line_queue_seen", title: "Line or crowd", helper: "Line, crowd, or visible checkout demand." },
+          { value: "vendor_seen", title: "Vendor seen", helper: "Vendor nearby; stocking not confirmed." },
+          { value: "limit_posted", title: "Limit posted", helper: "Limit sign, shelf tag, or printed policy." },
+          { value: "behind_counter", title: "Behind counter", helper: "Product controlled by staff or checkout." },
+          { value: "customer_service", title: "Customer service", helper: "Staff directed shoppers to a desk." },
+          { value: "unsure", title: "Unsure", helper: "Useful signal, but status was unclear." },
         ];
     const storeRows = stores.map((store, index) => {
       const reports = getStoreMapReports(store);
@@ -37997,6 +38143,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         name: getScoutQuickStoreName(store),
         retailer: getScoutQuickRetailer(store),
         city: store.city || store.addressCity || store.region || "",
+        state: store.state || "",
+        zip: getScoutQuickStoreZip(store),
+        region: getScoutQuickStoreRegion(store),
         address: store.address || store.streetAddress || "",
         distance,
         reports,
@@ -38006,18 +38155,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       };
     });
     const filteredStoreRows = storeRows
-      .filter((row) => {
-        if (!normalizedStoreSearch) return true;
-        return [
-          row.name,
-          row.retailer,
-          row.city,
-          row.address,
-          row.store.shoppingCenter,
-          row.store.nickname,
-        ].filter(Boolean).join(" ").toLowerCase().includes(normalizedStoreSearch);
-      })
+      .filter((row) => scoutStoreMatchesLookup(row, normalizedStoreSearch))
+      .map((row) => ({
+        ...row,
+        searchScore: scoutStoreSearchScore(row, normalizedStoreSearch),
+        areaScore: scoutStoreAreaScore(row, scoutAreaText, normalizedStoreSearch),
+      }))
       .sort((a, b) => {
+        if (b.searchScore !== a.searchScore) return b.searchScore - a.searchScore;
+        if (b.areaScore !== a.areaScore) return b.areaScore - a.areaScore;
         if (locationAvailable && Number.isFinite(a.distance) && Number.isFinite(b.distance)) return a.distance - b.distance;
         if (b.watchlisted !== a.watchlisted) return Number(b.watchlisted) - Number(a.watchlisted);
         if (b.reports.length !== a.reports.length) return b.reports.length - a.reports.length;
@@ -38027,8 +38173,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const recommendedStoreRows = filteredStoreRows.slice(0, locationAvailable ? 6 : 4);
     const wizardSteps = getScoutWizardSteps().map((step) => ({
       ...step,
-      title: step.key === "essentials"
-        ? "Post the essentials"
+      title: step.key === "where"
+        ? "Where and when"
+        : step.key === "status"
+          ? "Shelf status"
+          : step.key === "details" && !currentType.isGuess
+            ? "Optional proof/details"
         : step.key === "where"
           ? "Select store/location"
           : step.key === "details"
@@ -38542,12 +38692,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         ) : null}
 
         {quickScoutReportStep === "where" ? (
-          <section className="scout-report-step-card active">
+          <section className="scout-report-step-card active scout-where-step">
             <div className="scout-report-step-header">
-              <span>Step 2</span>
+              <span>{currentType.isGuess ? "Store" : "Step 1"}</span>
               <div>
-                <h3>Choose the store or location</h3>
-                <p>{locationAvailable ? "Recommended stores appear first. You can still search or enter a missing store." : "Location is off. Search by city/store or enter a manual location; proof helps the community trust the update."}</p>
+                <h3>{currentType.isGuess ? "Choose the store or location" : "Where and when"}</h3>
+                <p>{currentType.isGuess ? "Choose where this planner note belongs. Guesses stay separate from confirmed reports." : "Pick the store and observed time first. Product details and proof can come after posting."}</p>
               </div>
             </div>
             {selectedStoreContext ? (
@@ -38555,7 +38705,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="scout-report-store-main">
                   <div>
                     <strong>{getScoutQuickStoreName(selectedStoreContext)}</strong>
-                    <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
+                    <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{getScoutQuickStoreZip(selectedStoreContext) ? ` | ${getScoutQuickStoreZip(selectedStoreContext)}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
                   </div>
                   <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Store selected" : "Manual location selected"}</span>
                 </div>
@@ -38563,44 +38713,63 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {renderScoutSelectionBadge(selectedStore ? "Store selected" : "Manual selected")}
                   <span>Reporting at this exact location. Suggestions will not replace it.</span>
                 </div>
-                <div className="scout-follow-controls" aria-label="Store following controls">
-                  {storeFollowOptions.map((option) => {
-                    const isSelected = quickScoutReportForm.storeFollowPreference === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className={`scout-follow-chip ${isSelected ? "active" : ""}`}
-                        aria-pressed={isSelected}
-                        onClick={() => updateQuickScoutReportForm("storeFollowPreference", option.value)}
-                      >
-                        <strong>{option.label}</strong>
-                        <span>{option.helper}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {storeSelection.valid && storeSelection.needsStoreReview ? (
+                  <label className="scout-confirm-location-row">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(quickScoutReportForm.storeConfirmed)}
+                      onChange={(event) => updateQuickScoutReportForm("storeConfirmed", event.target.checked)}
+                    />
+                    <span>
+                      <strong>I confirm this is the store/location.</strong>
+                      <small>Manual locations are flagged for review if they look unusual.</small>
+                    </span>
+                  </label>
+                ) : null}
                 <div className="scout-report-store-actions">
-                  <button type="button" className="secondary-button" onClick={() => setQuickScoutReportForm((current) => ({ ...current, storeId: "", storeName: "", retailer: "", city: "", address: "", storeConfirmed: false }))}>Change store</button>
+                  <button type="button" className="secondary-button" onClick={() => setQuickScoutReportForm((current) => ({ ...current, storeId: "", storeName: "", retailer: "", city: "", address: "", state: "", zip: "", region: "", storeConfirmed: false }))}>Change store</button>
                 </div>
+                {!currentType.isGuess ? (
+                  <div className="scout-report-detail-grid scout-report-time-grid">
+                    <label className="scout-visit-time-field">
+                      <span>Observed time</span>
+                      <input
+                        type="datetime-local"
+                        value={quickScoutVisitDateTimeValue()}
+                        onChange={(event) => updateQuickScoutVisitDateTime(event.target.value)}
+                        required
+                      />
+                      <small>Use this if you are backfilling a store visit from earlier.</small>
+                    </label>
+                    <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
+                      <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Now</button>
+                      <button type="button" className={quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
+                      <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+                    </div>
+                  </div>
+                ) : null}
               </article>
             ) : (
               <>
+                <label className="scout-area-field">
+                  <span>Scout area / ZIP</span>
+                  <input
+                    value={locationSettings.manualLocation}
+                    onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, selectedSavedLocation: event.target.value, trackingEnabled: false })}
+                    placeholder="ZIP, city, or Scout area"
+                  />
+                  <small>Used to sort nearby stores. We do not need your exact address.</small>
+                </label>
                 <div className="scout-report-store-tools">
                   <input
                     value={quickScoutReportForm.storeSearch}
                     onChange={(event) => updateQuickScoutReportForm("storeSearch", event.target.value)}
                     placeholder="Search store, city, ZIP, nickname, or address"
                   />
-                  <input
-                    value={quickScoutReportForm.manualLocation}
-                    onChange={(event) => updateQuickScoutReportForm("manualLocation", event.target.value)}
-                    placeholder="Manual store/location if missing"
-                  />
                 </div>
                 <div className="scout-location-trust-note">
-                  <strong>{locationAvailable ? "Nearby suggestions" : "No location permission"}</strong>
-                  <span>Reports with location or proof help the community trust the update.</span>
+                  <strong>{locationAvailable ? `Sorting near ${scoutAreaText || "your Scout area"}` : "Search by store, retailer, city, ZIP, or nickname"}</strong>
+                  <span>Retailer and nickname search works for Target, Walmart, Barnes &amp; Noble, GameStop, Best Buy, RM T, Pem T, FC, and GB B&amp;N.</span>
                 </div>
                 <div className="scout-report-store-list">
                   {recommendedStoreRows.length ? recommendedStoreRows.map((row) => (
@@ -38608,57 +38777,120 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <div className="scout-report-store-main">
                         <div>
                           <strong>{row.name}</strong>
-                          <p>{row.retailer}{row.city ? ` | ${row.city}` : ""}{row.address ? ` | ${row.address}` : ""}</p>
+                          <p>{row.retailer}{row.city ? ` | ${row.city}` : ""}{row.state ? `, ${row.state}` : ""}{row.zip ? ` ${row.zip}` : ""}</p>
+                          {row.address ? <small>{row.address}</small> : null}
                         </div>
                         <span className="scout-store-temperature scout-store-temperature-watching">
-                          {Number.isFinite(row.distance) ? `${row.distance.toFixed(1)} mi` : row.watchlisted ? "Following" : "Known"}
+                          {Number.isFinite(row.distance) ? `${row.distance.toFixed(1)} mi` : row.areaScore > 0 ? "Local area" : row.watchlisted ? "Following" : "Known"}
                         </span>
                       </div>
                       <div className="scout-report-store-meta">
-                        <span>Last report: {row.latestReport ? scoutReportDateTimeLabel(row.latestReport) : "Not logged"}</span>
-                        <span>Watch window: {row.windowLabel}</span>
-                        <span>{row.reports.length} historical signal{row.reports.length === 1 ? "" : "s"}</span>
+                        <span>{row.latestReport ? `Recent signal: ${scoutStockStatusLabel(row.latestReport.stockStatus || row.latestReport.stock_status || "")}` : "No recent Scout signal"}</span>
+                        <span>{row.reports.length} report{row.reports.length === 1 ? "" : "s"}</span>
+                        <span>{row.region || row.windowLabel}</span>
                       </div>
                       <div className="scout-report-store-actions">
-                        <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(row.store)}>Choose this store</button>
+                        <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(row.store)}>Select store</button>
+                        <button type="button" className="ghost-button" onClick={() => openStoreProfile({
+                          ...row,
+                          profile: buildStoreProfileSummary(row.store, {
+                            reports: scoutReportRows,
+                            guesses: scoutGuessRows,
+                            predictions: scoutForecastPreviewRows,
+                            tidepoolPosts,
+                            admin: adminEditModeActive,
+                          }),
+                        })}>Open store details</button>
                       </div>
                     </article>
                   )) : (
                     <div className="scout-report-empty-step">
                       <strong>No matching stores</strong>
-                      <p>Enter a manual location or city and this report will be labeled Needs Store Review.</p>
+                      <p>Try a retailer, city, ZIP, nickname, or use the manual fallback.</p>
                     </div>
                   )}
                 </div>
-                <div className="scout-follow-controls" aria-label="Store following controls">
-                  {storeFollowOptions.map((option) => {
-                    const isSelected = quickScoutReportForm.storeFollowPreference === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className={`scout-follow-chip ${isSelected ? "active" : ""}`}
-                        aria-pressed={isSelected}
-                        onClick={() => updateQuickScoutReportForm("storeFollowPreference", option.value)}
-                      >
-                        <strong>{option.label}</strong>
-                        <span>{option.helper}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {recommendedStoreRows.length && !quickScoutReportForm.manualLocationOpen && !quickScoutReportForm.manualLocation ? (
+                  <button type="button" className="secondary-button scout-manual-store-toggle" onClick={() => updateQuickScoutReportForm("manualLocationOpen", true)}>Can't find store?</button>
+                ) : null}
+                {quickScoutReportForm.manualLocationOpen || quickScoutReportForm.manualLocation || !recommendedStoreRows.length ? (
+                  <div className="scout-manual-store-panel">
+                    <label>
+                      Manual store/location fallback
+                      <input
+                        value={quickScoutReportForm.manualLocation}
+                        onChange={(event) => updateQuickScoutReportForm("manualLocation", event.target.value)}
+                        placeholder="Store name, city, or general location"
+                      />
+                    </label>
+                    <small>Manual locations are posted with an unusual/needs review signal if the store is not in the directory.</small>
+                  </div>
+                ) : null}
+                {!currentType.isGuess ? (
+                  <div className="scout-report-detail-grid scout-report-time-grid">
+                    <label className="scout-visit-time-field">
+                      <span>Observed time</span>
+                      <input
+                        type="datetime-local"
+                        value={quickScoutVisitDateTimeValue()}
+                        onChange={(event) => updateQuickScoutVisitDateTime(event.target.value)}
+                        required
+                      />
+                      <small>Use this if you are backfilling a store visit from earlier.</small>
+                    </label>
+                    <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
+                      <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Now</button>
+                      <button type="button" className={quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
+                      <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+                    </div>
+                  </div>
+                ) : null}
               </>
             )}
           </section>
         ) : null}
 
-        {quickScoutReportStep === "details" ? (
-          <section className="scout-report-step-card active">
+        {quickScoutReportStep === "status" ? (
+          <section className="scout-report-step-card active scout-status-step">
             <div className="scout-report-step-header">
-              <span>Step 3</span>
+              <span>Step 2</span>
               <div>
-                <h3>Add details and proof</h3>
-                <p>Photos and notes help, but reports stay unverified until the community or an admin confirms them.</p>
+                <h3>Shelf status</h3>
+                <p>Choose the closest public signal. This is about what you observed, not a prediction.</p>
+              </div>
+            </div>
+            <div className="scout-report-type-grid scout-report-status-grid" role="group" aria-label="Shelf status">
+              {quickReportTypeOptions.map((option) => {
+                const isSelected = quickScoutReportForm.reportType === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-report-choice-card ${isSelected ? "selected" : ""}`}
+                    aria-pressed={isSelected}
+                    data-selected={isSelected ? "true" : "false"}
+                    onClick={() => updateQuickScoutReportForm("reportType", option.value)}
+                  >
+                    <strong>{option.title}{isSelected ? renderScoutSelectionBadge("Selected") : null}</strong>
+                    <span>{option.helper}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="scout-location-trust-note">
+              <strong>Products come after posting</strong>
+              <span>You can post this basic report now and add products, quantities, proof, or shelf details after it exists.</span>
+            </div>
+          </section>
+        ) : null}
+
+        {quickScoutReportStep === "details" ? (
+          <section className="scout-report-step-card active scout-proof-step">
+            <div className="scout-report-step-header">
+              <span>{currentType.isGuess ? "Step 2" : "Step 3"}</span>
+              <div>
+                <h3>{currentType.isGuess ? "Add guess context" : "Optional proof/details"}</h3>
+                <p>{currentType.isGuess ? "Keep planner notes separate from observed reports." : "Proof, photos, and notes are optional. Product lookup happens after the report is posted."}</p>
               </div>
             </div>
             <div className="scout-confidence-preview">
@@ -38685,8 +38917,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="scout-report-detail-grid">
               <label>
-                Attach photo/receipt
+                Add proof/photo (optional)
                 <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
+                <small>Shelf photo, display photo, receipt, limit sign, vendor cart, or other proof.</small>
               </label>
               <label>
                 Proof text or link
@@ -38698,13 +38931,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </label>
             </div>
             <label className="scout-report-notes-field">
-              Notes
+              Quick note
               <textarea
                 value={quickScoutReportForm.note}
                 onChange={(event) => updateQuickScoutReportForm("note", event.target.value)}
                 placeholder="Optional quick note: aisle, limit sign, vendor stocking, shelf status..."
               />
             </label>
+            {!currentType.isGuess ? (
+              <div className="scout-location-trust-note">
+                <strong>Products after posting</strong>
+                <span>Add products seen, quantity, receipt proof, shelf/display details, price notes, or signage after this basic report posts.</span>
+              </div>
+            ) : null}
             {!locationAvailable && quickScoutReportForm.proofType === "manual" ? (
               <div className="scout-report-empty-step">
                 <strong>Proof recommended</strong>
@@ -38723,7 +38962,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </section>
         ) : null}
 
-        {quickScoutReportStep === "details" ? (
+        {quickScoutReportStep === "details" && currentType.isGuess ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
               <span>Step 3</span>
@@ -38804,7 +39043,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <span>{storeSelection.valid ? `${storeSelection.retailer}${storeSelection.city ? ` | ${storeSelection.city}` : ""}${storeSelection.address ? ` | ${storeSelection.address}` : ""}` : storeSelection.message}</span>
               </div>
               {storeSelection.valid ? (
-                <button type="button" className="secondary-button" onClick={() => setQuickScoutReportStep(currentType.isGuess ? "where" : "essentials")}>Change store</button>
+                <button type="button" className="secondary-button" onClick={() => setQuickScoutReportStep("where")}>Change store</button>
               ) : null}
             </div>
             {storeSelection.valid && storeSelection.needsStoreReview ? (

@@ -150,6 +150,26 @@ const greenbrierBn = normalizeImportedStore({
   state: "Virginia",
   confidence: "local_seed",
 });
+const redMillTarget = normalizeImportedStore({
+  chain: "Target",
+  name: "Target - Red Mill",
+  nickname: "Red Mill Target",
+  city: "Virginia Beach",
+  state: "Virginia",
+  confidence: "local_seed",
+});
+const staffordWalmart = normalizeImportedStore({
+  chain: "Walmart",
+  name: "Walmart Supercenter - Stafford",
+  nickname: "Stafford Walmart",
+  city: "Stafford",
+  state: "Virginia",
+  confidence: "local_seed",
+});
+assert.equal(storeMatchesSearch(firstColonialTarget, "Target"), true);
+assert.equal(storeMatchesSearch(staffordWalmart, "Walmart"), true);
+assert.equal(storeMatchesSearch(greenbrierBn, "Barnes"), true);
+assert.equal(storeMatchesSearch(redMillTarget, "RM T"), true);
 assert.equal(storeMatchesSearch(pembrokeTarget, "Pem T"), true);
 assert.equal(matchDropRadarStore("Pem T 5/12 15:24 Pokemon restock", [pembrokeTarget]).matched, true);
 assert.equal(storeMatchesSearch(greenbrierBn, "GB B&N"), true);
