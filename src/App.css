@@ -53741,3 +53741,135 @@ body {
     width: 78px !important;
   }
 }
+
+/* Global mobile usability safety pass: final collision and action reachability guards. */
+:root {
+  --et-mobile-nav-clearance: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px));
+  --et-mobile-scroll-clearance: calc(var(--et-mobile-nav-clearance) + 68px);
+  --et-mobile-form-clearance: calc(var(--et-mobile-nav-clearance) + 92px);
+}
+
+@media (max-width: 780px) {
+  .app-command-shell,
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .app .main,
+  .dashboard-layout,
+  .hearth-northstar,
+  .scout-dashboard-overview,
+  .vault-page,
+  .forge-page,
+  .marketplace-section,
+  .tidepool-community,
+  .spark-page,
+  .settings-page,
+  .approval-page,
+  .collection-page,
+  .collections-utility-page .utility-page-layout,
+  .empty-state,
+  .small-empty-state {
+    padding-bottom: var(--et-mobile-scroll-clearance) !important;
+    scroll-padding-bottom: var(--et-mobile-scroll-clearance) !important;
+  }
+
+  .app :where(.location-modal-backdrop, .flow-modal-backdrop, .drawer-backdrop, .catalog-detail-backdrop, .app-confirmation-backdrop),
+  .app-command-shell :where(.location-modal-backdrop, .flow-modal-backdrop, .drawer-backdrop, .catalog-detail-backdrop, .app-confirmation-backdrop) {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app :where(.flow-modal, .location-modal, .catalog-detail-drawer, .collection-manager-modal, .drawer.open, .quick-add-sheet, .app-confirmation-dialog),
+  .app-command-shell :where(.flow-modal, .location-modal, .catalog-detail-drawer, .collection-manager-modal, .drawer.open, .quick-add-sheet, .app-confirmation-dialog) {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px) !important;
+    min-height: 0 !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .app :where(.flow-modal-body, .location-modal-body, .drawer-body, .menu-drawer-body, .settings-drawer-body, .catalog-detail-body, .collection-manager-body, .quick-add-sheet-body, .drawer-menu-stack, .store-map-detail-body, .scout-report-detail-breakdown),
+  .app-command-shell :where(.flow-modal-body, .location-modal-body, .drawer-body, .menu-drawer-body, .settings-drawer-body, .catalog-detail-body, .collection-manager-body, .quick-add-sheet-body, .drawer-menu-stack, .store-map-detail-body, .scout-report-detail-breakdown) {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    padding-bottom: var(--et-mobile-form-clearance) !important;
+    scroll-padding-bottom: var(--et-mobile-form-clearance) !important;
+  }
+
+  .app :where(.modal-sticky-footer, .flow-modal-footer, .flow-modal-actions, .location-modal-actions, .drawer-actions, .spark-flow-actions, .vault-form-actions),
+  .app-command-shell :where(.modal-sticky-footer, .flow-modal-footer, .flow-modal-actions, .location-modal-actions, .drawer-actions, .spark-flow-actions, .vault-form-actions) {
+    bottom: 0 !important;
+    flex-shrink: 0 !important;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-scout .scout-report-detail-sheet,
+  .app-command-shell.app-scout .scout-report-detail-sheet,
+  .app.app-scout .scout-report-detail-sheet {
+    display: grid !important;
+    grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+    overflow: hidden !important;
+    width: min(100%, calc(100vw - 18px)) !important;
+  }
+
+  .app-scout .scout-report-detail-summary,
+  .app-command-shell.app-scout .scout-report-detail-summary,
+  .app.app-scout .scout-report-detail-summary {
+    margin-bottom: 10px !important;
+  }
+
+  .app-scout .scout-report-detail-breakdown,
+  .app-command-shell.app-scout .scout-report-detail-breakdown,
+  .app.app-scout .scout-report-detail-breakdown {
+    display: grid !important;
+    gap: 12px !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+  .app-scout .scout-report-flow.scout-report-wizard,
+  .app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active {
+    min-height: 0 !important;
+    scroll-padding-bottom: var(--et-mobile-form-clearance) !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active {
+    padding-bottom: var(--et-mobile-form-clearance) !important;
+  }
+
+  .app-market .catalog-detail-drawer,
+  .app-command-shell.app-market .catalog-detail-drawer,
+  .app-shell-dark.app-market .catalog-detail-drawer {
+    bottom: 9px !important;
+    height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px) !important;
+    overflow: hidden !important;
+  }
+
+  .app-market .catalog-detail-body,
+  .app-command-shell.app-market .catalog-detail-body,
+  .app-shell-dark.app-market .catalog-detail-body {
+    padding-bottom: var(--et-mobile-form-clearance) !important;
+  }
+
+  .app-home .ember-assist-shell:not(.is-open),
+  .app-command-shell.app-scout .ember-assist-shell:not(.is-open),
+  .app.app-scout .ember-assist-shell:not(.is-open),
+  .app-command-shell.app-vault .ember-assist-shell:not(.is-open),
+  .app.app-vault .ember-assist-shell:not(.is-open),
+  .app-command-shell.app-forge .ember-assist-shell:not(.is-open),
+  .app.app-forge .ember-assist-shell:not(.is-open),
+  .app-command-shell.app-market .ember-assist-shell:not(.is-open),
+  .app.app-market .ember-assist-shell:not(.is-open),
+  .app-tidepool .ember-assist-shell:not(.is-open),
+  .app-command-shell.app-tidepool .ember-assist-shell:not(.is-open),
+  .app.app-adminreview .ember-assist-shell:not(.is-open),
+  .app-command-shell.app-adminreview .ember-assist-shell:not(.is-open),
+  .app-shell-dark.app-adminreview .ember-assist-shell:not(.is-open),
+  body.shell-overlay-open .ember-assist-shell:not(.is-open),
+  body.shell-long-form-active .ember-assist-shell:not(.is-open) {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}

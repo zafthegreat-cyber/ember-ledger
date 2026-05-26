@@ -40333,14 +40333,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const frame = requestAnimationFrame(() => {
-      const focusable = flowModalRef.current?.querySelector("button, [href], input, select, textarea, summary, [tabindex]:not([tabindex='-1'])");
+      const focusScope = flowModalRef.current?.querySelector(".scout-report-step-card.active")
+        || flowModalRef.current?.querySelector("[data-active-step='true']")
+        || flowModalRef.current?.querySelector(".flow-modal-body")
+        || flowModalRef.current;
+      focusScope?.scrollIntoView?.({ block: "nearest" });
+      const preferredFocusSelector = activeFlowModal?.type === "scoutSubmit"
+        ? "input[placeholder='Search store, city, ZIP, nickname, or address']:not([disabled]), input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not(.modal-close-button):not([disabled]), [href], summary, [tabindex]:not([tabindex='-1'])"
+        : "input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not(.modal-close-button):not([disabled]), [href], summary, [tabindex]:not([tabindex='-1'])";
+      const focusable = focusScope?.querySelector(preferredFocusSelector)
+        || flowModalRef.current?.querySelector("button:not(.modal-close-button):not([disabled]), [href], input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])");
       focusable?.focus?.();
     });
     return () => {
       cancelAnimationFrame(frame);
       document.body.style.overflow = previousOverflow;
     };
-  }, [activeFlowModal?.id]);
+  }, [activeFlowModal?.id, activeFlowModal?.type, multiDestinationStep, quickScoutReportStep]);
 
   useEffect(() => {
     if (!activeFlowModal || typeof window === "undefined") return undefined;
