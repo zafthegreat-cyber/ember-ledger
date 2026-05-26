@@ -352,6 +352,83 @@ async function main() {
     await page.keyboard.press("Escape");
   }
 
+  async function openScoutReportDetails(reportCard) {
+    const detailButton = reportCard.getByRole("button", { name: /^View details$/ }).first();
+    await detailButton.waitFor({ state: "visible", timeout: 10000 });
+    await detailButton.click();
+    const detailSheet = page.locator(".scout-report-detail-sheet").last();
+    await detailSheet.waitFor({ state: "visible", timeout: 10000 });
+    return detailSheet;
+  }
+
+  async function closeScoutReportDetails(detailSheet) {
+    const closeButton = detailSheet.getByRole("button", { name: /^Close$/ }).last();
+    await closeButton.click();
+    await detailSheet.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+  }
+
+  async function visibleScoutReportCard(matchText) {
+    const cards = page.locator(".scout-report-compact-card").filter({ hasText: matchText });
+    const count = await cards.count();
+    for (let index = 0; index < count; index += 1) {
+      const card = cards.nth(index);
+      if (
+        (await card.isVisible().catch(() => false)) &&
+        (await card.getByRole("button", { name: /^View details$/ }).first().isVisible().catch(() => false))
+      ) {
+        return card;
+      }
+    }
+    throw new Error(`No visible Scout report card found for ${matchText}`);
+  }
+
+  async function openVisibleScoutReportDetailsContaining(cardText, detailText) {
+    const cards = cardText
+      ? page.locator(".scout-report-compact-card").filter({ hasText: cardText })
+      : page.locator(".scout-report-compact-card");
+    const count = await cards.count();
+    for (let index = 0; index < count; index += 1) {
+      const card = cards.nth(index);
+      if (
+        !(await card.isVisible().catch(() => false)) ||
+        !(await card.getByRole("button", { name: /^View details$/ }).first().isVisible().catch(() => false))
+      ) {
+        continue;
+      }
+      const detailSheet = await openScoutReportDetails(card);
+      if ((await detailSheet.getByText(detailText).count()) > 0) {
+        return { card, detailSheet };
+      }
+      await closeScoutReportDetails(detailSheet);
+    }
+    throw new Error(`No visible Scout report details found for ${detailText}`);
+  }
+
+  async function assertScoutReportDetailDeleteHidden(detailSheet) {
+    assert.equal(
+      await detailSheet.getByRole("button", { name: /Delete/i }).count(),
+      0,
+      "Delete should not be visible in Scout report details for normal users"
+    );
+  }
+
+  async function assertScoutReportDeleteHidden(reportCard) {
+    const overflowButtons = reportCard.locator(".overflow-menu-button");
+    const overflowCount = await overflowButtons.count();
+    let visibleOverflowCount = 0;
+    for (let index = 0; index < overflowCount; index += 1) {
+      if (await overflowButtons.nth(index).isVisible().catch(() => false)) visibleOverflowCount += 1;
+    }
+    assert.equal(
+      visibleOverflowCount,
+      0,
+      "Scout report summary cards should not expose overflow actions"
+    );
+    const detailSheet = await openScoutReportDetails(reportCard);
+    await assertScoutReportDetailDeleteHidden(detailSheet);
+    return detailSheet;
+  }
+
   async function closeScoutSubmitSuccess() {
     const scoutSubmitModal = page.locator('.flow-modal[data-flow="scoutSubmit"]').first();
     const doneButton = scoutSubmitModal.getByRole("button", { name: /^Done$/ }).first();
@@ -1291,11 +1368,12 @@ async function main() {
     assert.equal(savedScoutReport.reportDate, "2026-05-16");
     assert.equal(savedScoutReport.reportTime, "09:30");
     await closeReportSuccess();
+    await page.getByRole("button", { name: "My Reports" }).first().click();
+    await page.waitForTimeout(250);
 
-    const reportCard = page.locator(".scout-report-compact-card").filter({ hasText: savedScoutReport.storeName || "Smoke Shared Target" }).first();
-    await reportCard.waitFor({ state: "visible", timeout: 10000 });
-    await assertOverflowActionHidden(reportCard, "Delete");
-    await overflowAction(reportCard, "Add details");
+    const reportCard = await visibleScoutReportCard(savedScoutReport.storeName || "Smoke Shared Target");
+    const reportDetailSheet = await assertScoutReportDeleteHidden(reportCard);
+    await reportDetailSheet.getByRole("button", { name: /^Add details$/ }).click();
     const editReportPanel = page.locator("form.scout-report-flow").first();
     await editReportPanel.getByRole("button", { name: "Back to details" }).click();
     await editReportPanel.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB Edited");
@@ -1305,10 +1383,12 @@ async function main() {
     await editReportPanel.getByRole("button", { name: "Save Report" }).click();
     await assertVisibleText("Smoke ETB Edited");
     await closeReportSuccess();
+    await page.getByRole("button", { name: "My Reports" }).first().click();
+    await page.waitForTimeout(250);
 
-    const editedReportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke ETB Edited" }).first();
-    await editedReportCard.waitFor({ state: "visible", timeout: 10000 });
-    await assertOverflowActionHidden(editedReportCard, "Delete");
+    const editedReportCard = await visibleScoutReportCard(savedScoutReport.storeName || "Smoke Shared Target");
+    const editedDetailSheet = await assertScoutReportDeleteHidden(editedReportCard);
+    await closeScoutReportDetails(editedDetailSheet);
 
     const quickReportForm = await openReportWizard();
     await fillScoutReportWizard(quickReportForm, {
@@ -1317,14 +1397,18 @@ async function main() {
     });
     await submitScoutWizardIfNeeded(quickReportForm);
     await closeReportSuccess();
+    await page.getByRole("button", { name: "My Reports" }).first().click();
+    await page.waitForTimeout(250);
     const viewAllReports = page.getByRole("button", { name: "View all reports" }).first();
     if (await viewAllReports.isVisible().catch(() => false)) {
       await viewAllReports.click();
     }
-    await assertVisibleText("Smoke quick report with limit 2 posted.");
-    const quickReportCard = page.locator(".scout-report-compact-card").filter({ hasText: "Smoke quick report with limit 2 posted." }).first();
-    await quickReportCard.waitFor({ state: "visible", timeout: 10000 });
-    await assertOverflowActionHidden(quickReportCard, "Delete");
+    const { detailSheet: quickReportDetailSheet } = await openVisibleScoutReportDetailsContaining(
+      "Low stock",
+      "Smoke quick report with limit 2 posted."
+    );
+    await assertScoutReportDetailDeleteHidden(quickReportDetailSheet);
+    await closeScoutReportDetails(quickReportDetailSheet);
   });
 
   await step("Scout: add/edit/delete tracked item", async () => {
@@ -1435,11 +1519,17 @@ async function main() {
     });
     await submitScoutWizardIfNeeded(reportForm);
     await closeScoutSubmitSuccess();
+    await page.getByRole("button", { name: "My Reports" }).first().click();
+    await page.waitForTimeout(250);
     const viewAllReports = page.getByRole("button", { name: "View all reports" }).first();
     if (await viewAllReports.isVisible().catch(() => false)) {
       await viewAllReports.click();
     }
-    await assertVisibleText("Manual screenshot review save.");
+    const { detailSheet: screenshotReportDetailSheet } = await openVisibleScoutReportDetailsContaining(
+      "",
+      "Manual screenshot review save."
+    );
+    await closeScoutReportDetails(screenshotReportDetailSheet);
   });
 
   await step("Forge: add/edit/delete inventory item", async () => {

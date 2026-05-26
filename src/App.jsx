@@ -25285,7 +25285,9 @@ function renderForgeAccessState() {
       ? report.itemsSeen
       : Array.isArray(report.items_seen)
         ? report.items_seen
-        : [];
+        : Array.isArray(report.items)
+          ? report.items
+          : [];
     const items = rawItems
       .map((item) => ({
         productId: item.productId || item.product_id || "",
@@ -25398,6 +25400,24 @@ function renderForgeAccessState() {
     return parsed.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
   }
 
+  function scoutReportObservedSummaryLabel(report = {}) {
+    const rawTimestamp = scoutReportObservedAt(report);
+    if (rawTimestamp) {
+      const parsed = new Date(rawTimestamp);
+      if (!Number.isNaN(parsed.getTime())) {
+        return `Reported ${parsed.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+      }
+    }
+    return `Reported ${scoutReportDateTimeLabel(report)}`;
+  }
+
+  function scoutReportFreshnessSummaryLabel(report = {}, freshnessMeta = scoutReportFreshnessMeta(report)) {
+    if (["old", "expired"].includes(freshnessMeta.key)) return "Stale report · not live stock";
+    if (freshnessMeta.key === "aging") return "Older report · confirm first";
+    if (freshnessMeta.key === "fresh") return "Fresh report";
+    return "Freshness unknown";
+  }
+
   function scoutReportConfidenceBadge(report = {}) {
     const rawStatus = String(report.verificationStatus || report.verification_status || report.status || "").toLowerCase();
     const rawConfidence = String(report.confidenceLevel || report.confidence_level || report.confidence || "").toLowerCase();
@@ -25452,6 +25472,70 @@ function renderForgeAccessState() {
       rawStatus.includes("hidden") ||
       rawStatus.includes("removed") ||
       ["conflicting-reports", "unusual-needs-review"].includes(confidenceBadge.key)
+    );
+  }
+
+  function scoutReportSignalKey(report = {}) {
+    return String(
+      report.quickReportType ||
+      report.quick_report_type ||
+      report.reportStatus ||
+      report.report_status ||
+      report.stockStatus ||
+      report.stock_status ||
+      report.reportType ||
+      report.report_type ||
+      ""
+    ).toLowerCase();
+  }
+
+  function scoutReportRelatedRows(report = {}) {
+    const reportId = getScoutReportId(report);
+    const currentStore = getScoutReportStore(report);
+    const currentStoreId = String(report.storeId || report.store_id || currentStore.id || "").toLowerCase();
+    const currentStoreName = String(currentStore.name || report.storeName || report.store_name || "").toLowerCase();
+    const currentSignal = scoutReportSignalKey(report);
+    const sameStoreRows = scoutReportRows
+      .filter((candidate) => getScoutReportId(candidate) !== reportId)
+      .filter((candidate) => {
+        const candidateStore = getScoutReportStore(candidate);
+        const candidateStoreId = String(candidate.storeId || candidate.store_id || candidateStore.id || "").toLowerCase();
+        const candidateStoreName = String(candidateStore.name || candidate.storeName || candidate.store_name || "").toLowerCase();
+        return (currentStoreId && candidateStoreId && candidateStoreId === currentStoreId) || (currentStoreName && candidateStoreName && candidateStoreName === currentStoreName);
+      })
+      .sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a));
+    const conflictingRows = sameStoreRows.filter((candidate) => {
+      const candidateSignal = scoutReportSignalKey(candidate);
+      if (!candidateSignal || !currentSignal) return false;
+      const currentEmpty = /empty|no_stock|no stock/.test(currentSignal);
+      const candidateEmpty = /empty|no_stock|no stock/.test(candidateSignal);
+      const currentPositive = /stock|in_stock|seen|purchase|vendor|behind_counter|limit/.test(currentSignal) && !currentEmpty;
+      const candidatePositive = /stock|in_stock|seen|purchase|vendor|behind_counter|limit/.test(candidateSignal) && !candidateEmpty;
+      return (currentEmpty && candidatePositive) || (currentPositive && candidateEmpty);
+    });
+    return {
+      similar: sameStoreRows.slice(0, 3),
+      conflicting: conflictingRows.slice(0, 3),
+    };
+  }
+
+  function renderScoutReportRelatedContext(report = {}) {
+    const relatedRows = scoutReportRelatedRows(report);
+    const rows = relatedRows.conflicting.length
+      ? relatedRows.conflicting.map((row) => ({ ...row, relationLabel: "Conflicting" }))
+      : relatedRows.similar.map((row) => ({ ...row, relationLabel: "Similar" }));
+    return (
+      <section>
+        <h3>Similar/conflicting reports</h3>
+        {rows.length ? rows.map((row) => (
+          <div key={getScoutReportId(row) || `${row.storeName}-${row.reportedAt || row.createdAt}`} className="scout-report-detail-row">
+            <strong>{row.relationLabel}: {scoutReportObservationStatusLabel(row)}</strong>
+            <span>{scoutReportObservedSummaryLabel(row)} · {scoutReportFreshnessSummaryLabel(row)}</span>
+          </div>
+        )) : (
+          <p>No similar or conflicting reports for this store yet.</p>
+        )}
+      </section>
     );
   }
 
@@ -29217,6 +29301,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function editScoutReport(report) {
     const reportId = getScoutReportId(report);
+    setSelectedScoutReport(null);
     setScoutSubTabTarget({
       tab: "reports",
       action: "editReport",
@@ -29319,9 +29404,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderScoutReportCard(report, { compact = false } = {}) {
     const store = getScoutReportStore(report);
-    const itemsSeen = normalizeScoutReportItems(report);
-    const visibleItems = itemsSeen.slice(0, 3);
-    const extraCount = Math.max(0, itemsSeen.length - visibleItems.length);
     const reportId = getScoutReportId(report);
     const rawStoreName = store.name || store.nickname || report.storeName || report.store_name || "";
     const storeName = rawStoreName && !/unknown store/i.test(rawStoreName) ? rawStoreName : "Store not selected";
@@ -29339,38 +29421,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const photo = photoUrls[0] || "";
     const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status || report.reportStatus || report.report_status);
     const observationLabel = scoutReportObservationStatusLabel(report);
-    const primaryItem = visibleItems[0] || {};
-    const primaryItemName = primaryItem.productName || report.productName || report.product_name || report.itemName || report.item_name || "";
-    const productImage = photo
-      || primaryItem.imageUrl
-      || primaryItem.image_url
-      || primaryItem.productImageUrl
-      || primaryItem.product_image_url
-      || report.productImageUrl
-      || report.product_image_url
-      || "";
-    const aiPending = Boolean(photo && !itemsSeen.length) || report.needsReview || report.needs_review;
-    const sourceLabel = scoutSourceTypeLabel(report.sourceType || report.source_type);
     const confidenceBadge = scoutReportConfidenceBadge(report);
     const freshnessMeta = scoutReportFreshnessMeta(report);
     const historicalImport = isHistoricalScoutImport(report);
     const proofType = report.proofType || report.proof_type || "";
     const proofLabel = photo ? "Photo proof" : proofType ? quickScoutProofLabel(proofType) : "No proof";
-    const distance = Number(store.distanceMiles ?? store.distance_miles ?? store.distance ?? report.distanceMiles ?? report.distance_miles ?? report.distance);
-    const distanceLabel = Number.isFinite(distance) ? `${distance.toFixed(1)} mi` : "";
-    const reporterReputation = report.reporterReputation || report.reporter_reputation || report.trustScore || report.trust_score || "";
-    const reporterProfile = publicCommunityProfile(report);
-    const submittedByLabel = isCurrentUserScoutReport(report)
-      ? "You"
-      : report.submittedByDisplay || report.submitted_by_display || reporterProfile.publicUsernameLabel;
-    const visitLabel = scoutReportDateTimeLabel(report);
-    const submittedLabel = scoutReportSubmittedDateTimeLabel(report);
-    const canEditVisitTime = canEditScoutReportDateTime(report);
-    const canAddReportDetails = isCurrentUserScoutReport(report) || adminEditModeActive;
-    const notePreview = String(note || "").split("|").map((part) => part.trim()).find((part) => part && !/^Proof source:/i.test(part) && !/^Products seen:/i.test(part)) || "";
-    const detailHint = visibleItems.length
-      ? `${visibleItems.length + extraCount} product detail${visibleItems.length + extraCount === 1 ? "" : "s"} in details`
-      : "Products can be added after posting";
+    const proofAttached = proofLabel !== "No proof";
+    const observedSummary = scoutReportObservedSummaryLabel(report);
+    const freshnessSummary = scoutReportFreshnessSummaryLabel(report, freshnessMeta);
     return (
       <article className={`scout-report-compact-card scout-report-card--${freshnessMeta.key} scout-report-card--trust-${confidenceBadge.key}${compact ? " is-compact" : ""}`} key={reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -29382,59 +29440,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <span className={`status-badge scout-report-status ${statusClass(statusLabel)}`}>{statusLabel}</span>
           </div>
-          <div className="scout-report-meta">
-            <span>{visitLabel}</span>
-            <span>{freshnessMeta.helper}</span>
-            {!compact && adminEditModeActive ? <span>Submitted: {submittedLabel}</span> : null}
-            {distanceLabel ? <span>{distanceLabel}</span> : null}
-            {sourceLabel && !compact ? <span>Source: {sourceLabel}</span> : null}
-            {proofLabel !== "No proof" ? <span>{proofLabel}</span> : null}
-            <span>{submittedByLabel}</span>
+          <div className="scout-report-summary-lines">
+            <span>{observedSummary}</span>
+            <span>{freshnessSummary}</span>
           </div>
           <div className="scout-signal-badge-row" aria-label="Scout signal trust">
             <span className={`scout-trust-pill scout-trust-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
-            <span className={`scout-freshness-pill scout-freshness-pill--${freshnessMeta.key}`} title={freshnessMeta.helper}>{freshnessMeta.label}</span>
-            {historicalImport ? <span className="mini-badge scout-historical-import-badge">Historical import</span> : null}
-            {proofLabel !== "No proof" ? <span className="mini-badge">{proofLabel}</span> : null}
-            {reporterReputation ? <span className="mini-badge">Reporter rep {reporterReputation}</span> : null}
+            {proofAttached ? <span className="mini-badge scout-proof-badge">{proofLabel}</span> : null}
+            {historicalImport ? <span className="mini-badge scout-historical-import-badge">Historical</span> : null}
           </div>
-          {historicalImport ? <p className="scout-report-historical-note">{historicalScoutImportNotice()}</p> : null}
-          {notePreview ? <p className="scout-report-notes scout-report-note-preview">{notePreview}</p> : null}
-          {!compact ? <p className="scout-report-detail-hint">{detailHint}</p> : null}
         </div>
-        <div className="scout-report-side">
-          {productImage ? (
-            <>
-              <img
-                src={productImage}
-                alt=""
-                onError={(event) => {
-                  event.currentTarget.style.display = "none";
-                  event.currentTarget.nextElementSibling?.removeAttribute("hidden");
-                }}
-              />
-              {renderProductImageFallback({ ...primaryItem, productName: primaryItemName || "Scout report" }, { hidden: true })}
-            </>
-          ) : (
-            renderProductImageFallback({ ...primaryItem, productName: primaryItemName || "Scout report", productType: observationLabel || "Store report" })
-          )}
-          {adminEditModeActive && scoutReportNeedsAdminReview(report) ? (
-            <button type="button" className="secondary-button scout-report-confirm-button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>
-              Mark verified
-            </button>
-          ) : null}
-          <OverflowMenu
-            actions={[
-              { label: "View", onClick: () => setSelectedScoutReport(report) },
-              ...(canEditVisitTime ? [{ label: "Edit date/time", onClick: () => openScoutReportDateTimeEditor(report) }] : []),
-              ...(canAddReportDetails ? [{ label: adminEditModeActive ? "Edit details" : "Add details", onClick: () => editScoutReport(report) }] : []),
-              ...getScoutReportAdminActions(report),
-            ]}
-          />
+        <div className="scout-report-card-action">
+          <button type="button" className="secondary-button" onClick={() => setSelectedScoutReport(report)}>
+            View details
+          </button>
         </div>
-        <button type="button" className="scout-report-open-affordance" aria-label={`View Scout report for ${storeName}`} onClick={() => setSelectedScoutReport(report)}>
-          <span aria-hidden="true">&gt;</span>
-        </button>
       </article>
     );
   }
@@ -45943,7 +45963,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <button type="button" className="modal-close-button" aria-label="Close Scout report" onClick={() => setSelectedScoutReport(null)}>X</button>
             </div>
-            {renderScoutReportCard(selectedScoutReport)}
+            <div className="scout-report-detail-summary">
+              <strong>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Store not selected"}</strong>
+              <span>{scoutReportObservationStatusLabel(selectedScoutReport)}</span>
+              <small>{scoutReportObservedSummaryLabel(selectedScoutReport)} · {scoutReportFreshnessSummaryLabel(selectedScoutReport)}</small>
+              <div className="scout-signal-badge-row" aria-label="Scout report detail trust">
+                <span className={`scout-trust-pill scout-trust-pill--${scoutReportConfidenceBadge(selectedScoutReport).key}`}>{scoutReportConfidenceBadge(selectedScoutReport).label}</span>
+                {(() => {
+                  const detailProofLabel = scoutReportPhotoUrls(selectedScoutReport).length ? "Photo proof" : quickScoutProofLabel(selectedScoutReport.proofType || selectedScoutReport.proof_type);
+                  return detailProofLabel && detailProofLabel !== "No proof" ? <span className="mini-badge scout-proof-badge">{detailProofLabel}</span> : null;
+                })()}
+              </div>
+            </div>
             <div className="scout-report-detail-breakdown">
               <section>
                 <h3>Products seen</h3>
@@ -45988,6 +46019,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span>{scoutReportObservationStatusLabel(selectedScoutReport)}</span>
                 </div>
               </section>
+              {renderScoutReportRelatedContext(selectedScoutReport)}
             </div>
             <div className="location-modal-actions modal-sticky-footer">
               {canEditScoutReportDateTime(selectedScoutReport) ? (

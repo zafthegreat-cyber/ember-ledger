@@ -53176,6 +53176,242 @@ body {
   }
 }
 
+.app-scout .scout-report-compact-card,
+.app-command-shell.app-scout .scout-report-compact-card,
+.app.app-scout .scout-report-compact-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 12px !important;
+  align-items: start !important;
+  min-height: 0 !important;
+  padding: 13px !important;
+  overflow: hidden !important;
+}
+
+.app-scout .scout-report-side,
+.app-scout .scout-report-open-affordance,
+.app-command-shell.app-scout .scout-report-side,
+.app-command-shell.app-scout .scout-report-open-affordance,
+.app.app-scout .scout-report-side,
+.app.app-scout .scout-report-open-affordance {
+  display: none !important;
+}
+
+.app-scout .scout-report-card-main,
+.app-command-shell.app-scout .scout-report-card-main,
+.app.app-scout .scout-report-card-main {
+  grid-column: auto !important;
+  min-width: 0 !important;
+}
+
+.app-scout .scout-report-compact-card .scout-report-title-row,
+.app-command-shell.app-scout .scout-report-compact-card .scout-report-title-row,
+.app.app-scout .scout-report-compact-card .scout-report-title-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-scout .scout-report-compact-card .scout-report-title-row > div,
+.app-command-shell.app-scout .scout-report-compact-card .scout-report-title-row > div,
+.app.app-scout .scout-report-compact-card .scout-report-title-row > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-scout .scout-report-compact-card .scout-report-title-row h3,
+.app-scout .scout-report-compact-card .scout-report-title-row p,
+.app-scout .scout-report-compact-card .scout-report-summary-lines span,
+.app-command-shell.app-scout .scout-report-compact-card .scout-report-title-row h3,
+.app-command-shell.app-scout .scout-report-compact-card .scout-report-title-row p,
+.app-command-shell.app-scout .scout-report-compact-card .scout-report-summary-lines span,
+.app.app-scout .scout-report-compact-card .scout-report-title-row h3,
+.app.app-scout .scout-report-compact-card .scout-report-title-row p,
+.app.app-scout .scout-report-compact-card .scout-report-summary-lines span {
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.app-scout .scout-report-compact-card .scout-report-summary-lines,
+.app-scout .scout-report-compact-card .scout-signal-badge-row,
+.app-command-shell.app-scout .scout-report-compact-card .scout-report-summary-lines,
+.app-command-shell.app-scout .scout-report-compact-card .scout-signal-badge-row,
+.app.app-scout .scout-report-compact-card .scout-report-summary-lines,
+.app.app-scout .scout-report-compact-card .scout-signal-badge-row {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-scout .scout-report-card-action,
+.app-command-shell.app-scout .scout-report-card-action,
+.app.app-scout .scout-report-card-action {
+  display: flex;
+  align-self: center;
+  justify-content: flex-end;
+  min-width: 110px;
+}
+
+.app-scout .scout-report-card-action .secondary-button,
+.app-command-shell.app-scout .scout-report-card-action .secondary-button,
+.app.app-scout .scout-report-card-action .secondary-button {
+  min-height: 40px !important;
+  padding-inline: 14px !important;
+  white-space: nowrap;
+}
+
+.app-scout .scout-report-title-row h3,
+.app-command-shell.app-scout .scout-report-title-row h3,
+.app.app-scout .scout-report-title-row h3 {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+.app-scout .scout-report-title-row .scout-report-product-line,
+.app-command-shell.app-scout .scout-report-title-row .scout-report-product-line,
+.app.app-scout .scout-report-title-row .scout-report-product-line {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-scout .scout-report-title-row .scout-report-location-line,
+.app-command-shell.app-scout .scout-report-title-row .scout-report-location-line,
+.app.app-scout .scout-report-title-row .scout-report-location-line {
+  display: none !important;
+}
+
+.app-scout .scout-report-summary-lines,
+.app-command-shell.app-scout .scout-report-summary-lines,
+.app.app-scout .scout-report-summary-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 7px;
+  min-width: 0;
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.app-scout .scout-report-summary-lines span,
+.app-command-shell.app-scout .scout-report-summary-lines span,
+.app.app-scout .scout-report-summary-lines span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.app-scout .scout-signal-badge-row,
+.app-command-shell.app-scout .scout-signal-badge-row,
+.app.app-scout .scout-signal-badge-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  overflow: visible !important;
+}
+
+.app-scout .scout-report-compact-card .mini-badge,
+.app-command-shell.app-scout .scout-report-compact-card .mini-badge,
+.app.app-scout .scout-report-compact-card .mini-badge {
+  max-width: 100%;
+  min-height: 24px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-scout .scout-report-detail-summary,
+.app-command-shell.app-scout .scout-report-detail-summary,
+.app.app-scout .scout-report-detail-summary {
+  display: grid;
+  gap: 5px;
+  height: auto !important;
+  margin: 0 0 14px;
+  min-height: 112px;
+  padding: 13px;
+  border: 1px solid rgba(124, 231, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(8, 19, 36, 0.72);
+}
+
+.app-scout .scout-report-detail-sheet,
+.app-command-shell.app-scout .scout-report-detail-sheet,
+.app.app-scout .scout-report-detail-sheet {
+  grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+}
+
+.app-scout .scout-report-detail-summary strong,
+.app-command-shell.app-scout .scout-report-detail-summary strong,
+.app.app-scout .scout-report-detail-summary strong {
+  color: #fff7ed;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.app-scout .scout-report-detail-summary span,
+.app-scout .scout-report-detail-summary small,
+.app-command-shell.app-scout .scout-report-detail-summary span,
+.app-command-shell.app-scout .scout-report-detail-summary small,
+.app.app-scout .scout-report-detail-summary span,
+.app.app-scout .scout-report-detail-summary small {
+  min-width: 0;
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .app-scout .scout-report-compact-card,
+  .app-command-shell.app-scout .scout-report-compact-card,
+  .app.app-scout .scout-report-compact-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .app-scout .scout-report-card-action,
+  .app-command-shell.app-scout .scout-report-card-action,
+  .app.app-scout .scout-report-card-action {
+    justify-content: stretch;
+    min-width: 0;
+  }
+
+  .app-scout .scout-report-card-action .secondary-button,
+  .app-command-shell.app-scout .scout-report-card-action .secondary-button,
+  .app.app-scout .scout-report-card-action .secondary-button {
+    width: 100%;
+  }
+}
+
 /* Pass 4 Market final lookup: cleaner search, scannable results, and calmer product detail. */
 .app-market .market-page-heading,
 .app-command-shell.app-market .market-page-heading,
