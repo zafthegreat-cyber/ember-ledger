@@ -31937,7 +31937,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <p className="section-kicker">Start Here</p>
-            <h2>Build your Hearth in a few calm steps</h2>
+            <h2>Build your Hearth</h2>
             <p>Add one item, one Scout signal, and one home area. You can skip this and replay it from Settings.</p>
           </div>
           {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">{hearthChecklistLabel}</span>}
@@ -41162,7 +41162,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       addReceipt: { key: "add-receipt", label: "Add Receipt", helper: "Track cost.", icon: "receipt", onClick: () => openQuickAddAction("receipt") },
       admin: { key: "admin", label: "Admin", helper: "Review queue.", icon: "settings", onClick: () => setActiveTab("adminReview") },
     };
-    const quickActions = selectAdaptiveHearthQuickActionKeys(hearthAdaptiveState)
+    const quickActions = ["quickAdd", "scoutReport", "vault", "market"]
       .map((key) => quickActionByKey[key])
       .filter(Boolean)
       .slice(0, 4);
@@ -41228,6 +41228,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       : hearthMode === "admin"
         ? `${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length} review items`
         : `${activeVaultItems.length} Vault items`;
+    const hearthVaultValueLabel = vaultValue > 0 ? `${money(vaultValue)} estimated value` : "Value unavailable";
+    const hearthModeChipLabel = hearthMode === "admin"
+      ? "Admin"
+      : hearthMode === "seller"
+        ? "Seller"
+        : hearthMode === "simple"
+          ? "Family"
+          : "Collector";
     const hearthSupportRows = [
       { label: "Beta", value: betaAccessAllowed() ? "Approved" : "Limited", helper: "Features may change during beta." },
       { label: "App", value: APP_VERSION, helper: appUpdate.available ? "Update available." : "Current build loaded." },
@@ -41253,7 +41261,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         key: "vault-forge",
         label: "Collection & Business",
         title: `${activeVaultItems.length} Vault item${activeVaultItems.length === 1 ? "" : "s"}`,
-        detail: `${forgeInventoryItems.length} Forge item${forgeInventoryItems.length === 1 ? "" : "s"} | ${vaultMarketValueDisplay} known value.`,
+        detail: sellerAccessVisible
+          ? `${forgeInventoryItems.length} Forge item${forgeInventoryItems.length === 1 ? "" : "s"} | ${forgeReviewCount} review item${forgeReviewCount === 1 ? "" : "s"}.`
+          : hearthVaultValueLabel,
         value: sellerAccessVisible ? forgeReviewCount : activeVaultItems.length,
         cta: "View details",
         onClick: () => setActiveTab(sellerAccessVisible ? "inventory" : "vault"),
@@ -41270,140 +41280,141 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const hearthAdminShortcutVisible = Boolean(adminViewingAsAdmin || adminEditModeActive);
     return (
       <div className={`dashboard-layout home-clean-layout hearth-command-layout hearth-command-view hearth-northstar hearth-mode-${hearthMode}`}>
-        <section className="panel hearth-northstar-header" aria-label="Hearth status">
-          <div className="hearth-greeting-block">
-            <span className="hearth-logo-mark" aria-hidden="true">
-              <img src={BRAND_ASSETS.mark} alt="" />
-            </span>
-            <div>
-              <h1>
-                <span className="hearth-greeting-full">{hearthGreeting}, {hearthGreetingName}!</span>
-                <span className="hearth-greeting-short">{hearthGreeting}!</span>
-              </h1>
-              <p>Welcome back to Ember &amp; Tide</p>
+        <div className="hearth-primary-column">
+          <section className="panel hearth-northstar-header" aria-label="Hearth status">
+            <div className="hearth-greeting-block">
+              <span className="hearth-logo-mark" aria-hidden="true">
+                <img src={BRAND_ASSETS.mark} alt="" />
+              </span>
+              <div>
+                <h1>
+                  <span className="hearth-greeting-full">{hearthGreeting}, {hearthGreetingName}!</span>
+                  <span className="hearth-greeting-short">{hearthGreeting}!</span>
+                </h1>
+                <p>What matters next, without the noise.</p>
+              </div>
             </div>
-          </div>
-          <div className="hearth-header-actions">
-            <span className="status-badge hearth-beta-badge">Beta</span>
-            {hearthAdminShortcutVisible ? (
-              <button type="button" className="hearth-admin-badge" onClick={() => setActiveTab("adminReview")}>Admin</button>
-            ) : null}
-            <button type="button" className="hearth-profile-chip" aria-label="Open profile" onClick={() => openUtilityPage("profile")}>
-              {hearthAvatarInitial}
-            </button>
-            <button type="button" className="hearth-menu-chip" onClick={() => setMenuOpen(true)}>Menu</button>
-          </div>
-        </section>
-
-        {isOffline ? (
-          <section className="hearth-state-card hearth-state-card--offline" role="status">
-            <div>
-              <strong>You&apos;re offline</strong>
-              <span>Some features may be limited. Local actions stay visible and can sync later where supported.</span>
+            <div className="hearth-header-actions">
+              <span className="status-badge hearth-beta-badge">Beta</span>
+              <span className="hearth-mode-chip">{hearthModeChipLabel}</span>
+              {hearthAdminShortcutVisible ? (
+                <button type="button" className="hearth-admin-badge" onClick={() => setActiveTab("adminReview")}>Admin</button>
+              ) : null}
             </div>
-            <button type="button" className="secondary-button" onClick={() => window.location.reload()}>Try again</button>
           </section>
-        ) : null}
 
-        <section className={`panel hearth-best-action-card hearth-best-action-${hearthMode}`} aria-label="Today's Tide">
-          <div className="hearth-best-action-copy">
-            <div className="hearth-card-kicker-row">
-              <p className="section-kicker">Today&apos;s Tide</p>
-              <span className="hearth-mode-badge">{hearthModeLabel}</span>
+          {isOffline ? (
+            <section className="hearth-state-card hearth-state-card--offline" role="status">
+              <div>
+                <strong>You&apos;re offline</strong>
+                <span>Some features may be limited. Local actions stay visible and can sync later where supported.</span>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => window.location.reload()}>Try again</button>
+            </section>
+          ) : null}
+
+          <section className={`panel hearth-best-action-card hearth-best-action-${hearthMode}`} aria-label="Today's Tide">
+            <div className="hearth-best-action-copy">
+              <div className="hearth-card-kicker-row">
+                <p className="section-kicker">Today&apos;s Tide</p>
+                <span className="hearth-mode-badge">{hearthModeLabel}</span>
+              </div>
+              <span className="hearth-best-action-label">Today&apos;s Best Action</span>
+              <h2>{bestAction.title}</h2>
+              <p className="hearth-best-action-reason">{bestAction.reason}</p>
+              <div className="hearth-hero-stat-row" aria-label="Hearth signal summary">
+                {hearthHeroStats.map((stat) => (
+                  <span className={`hearth-hero-stat hearth-hero-stat-${stat.tone}`} key={stat.key}>
+                    <strong>{stat.value}</strong>
+                    <small>{stat.label}</small>
+                  </span>
+                ))}
+              </div>
+              <div className="hearth-best-action-buttons">
+                <button type="button" className="hearth-primary-cta" onClick={bestAction.onPrimary}>{bestAction.primaryLabel}</button>
+              </div>
             </div>
-            <span className="hearth-best-action-label">Today&apos;s Best Action</span>
-            <h2>{bestAction.title}</h2>
-            <p className="hearth-best-action-reason">{bestAction.reason}</p>
-            <div className="hearth-hero-stat-row" aria-label="Hearth signal summary">
-              {hearthHeroStats.map((stat) => (
-                <span className={`hearth-hero-stat hearth-hero-stat-${stat.tone}`} key={stat.key}>
-                  <strong>{stat.value}</strong>
-                  <small>{stat.label}</small>
-                </span>
+            <div className="hearth-best-action-art" aria-hidden="true">
+              <span className="hearth-art-flame" />
+              <span className="hearth-art-wave" />
+              <span className="hearth-art-card hearth-art-card-one" />
+              <span className="hearth-art-card hearth-art-card-two" />
+            </div>
+          </section>
+
+          <section className="panel hearth-quick-actions-panel" aria-label="Hearth quick actions">
+            <div className="hearth-quick-action-grid">
+              {quickActions.map((action) => (
+                <button
+                  type="button"
+                  className="hearth-quick-action"
+                  key={action.key}
+                  aria-label={action.key === "quick-add" ? "Open Quick Add command center" : undefined}
+                  onClick={action.onClick}
+                >
+                  <span className="hearth-quick-action-icon" aria-hidden="true"><AppNavIcon kind={action.icon} /></span>
+                  <span>
+                    <strong>{action.label}</strong>
+                    <small>{action.helper}</small>
+                  </span>
+                </button>
               ))}
             </div>
-            <div className="hearth-best-action-buttons">
-              <button type="button" className="hearth-primary-cta" onClick={bestAction.onPrimary}>{bestAction.primaryLabel}</button>
-            </div>
-          </div>
-          <div className="hearth-best-action-art" aria-hidden="true">
-            <span className="hearth-art-flame" />
-            <span className="hearth-art-wave" />
-            <span className="hearth-art-card hearth-art-card-one" />
-            <span className="hearth-art-card hearth-art-card-two" />
-          </div>
-        </section>
+          </section>
 
-        <section className="panel hearth-quick-actions-panel" aria-label="Hearth quick actions">
-          <div className="hearth-quick-action-grid">
-            {quickActions.map((action) => (
-              <button
-                type="button"
-                className="hearth-quick-action"
-                key={action.key}
-                aria-label={action.key === "quick-add" ? "Open Quick Add command center" : undefined}
-                onClick={action.onClick}
-              >
-                <span className="hearth-quick-action-icon" aria-hidden="true"><AppNavIcon kind={action.icon} /></span>
-                <span>
-                  <strong>{action.label}</strong>
-                  <small>{action.helper}</small>
-                </span>
+          {shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null}
+        </div>
+
+        <div className="hearth-side-column">
+          <section className="hearth-snapshot-grid" aria-label="Hearth compact snapshots">
+            {hearthSnapshotCards.map((card) => (
+              <button type="button" className={`hearth-snapshot-card hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
+                <span>{card.label}</span>
+                <strong>{card.title}</strong>
+                <small>{card.detail}</small>
+                <b>{card.cta}</b>
               </button>
             ))}
-          </div>
-        </section>
+          </section>
 
-        {shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null}
-
-        <section className="hearth-snapshot-grid" aria-label="Hearth compact snapshots">
-          {hearthSnapshotCards.map((card) => (
-            <button type="button" className={`hearth-snapshot-card hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
-              <span>{card.label}</span>
-              <strong>{card.title}</strong>
-              <small>{card.detail}</small>
-              <b>{card.cta}</b>
-            </button>
-          ))}
-        </section>
-
-        <section className="panel hearth-spark-card" aria-label="The Spark">
-          <div className="hearth-spark-art" aria-hidden="true">
-            <span />
-          </div>
-          <div>
-            <p className="section-kicker">{hearthSparkCard.label}</p>
-            <h2>{hearthSparkCard.title}</h2>
-            <p>{hearthSparkCard.detail}</p>
-          </div>
-          <button type="button" onClick={hearthSparkCard.onClick}>{hearthSparkCard.cta}</button>
-        </section>
-
-        <section className="panel hearth-recent-panel" aria-label="Recent activity">
-          <div className="compact-card-header">
-            <div>
-              <h2>Recent Activity</h2>
-              <p>Latest meaningful movement across Scout, Vault, Market, and Forge.</p>
+          <section className="panel hearth-spark-card" aria-label="The Spark">
+            <div className="hearth-spark-art" aria-hidden="true">
+              <span />
             </div>
-          </div>
-          <div className="home-list compact-home-list hearth-recent-list">
-            {recentRows.length ? recentRows.map((activity) => (
-              <button type="button" className="home-list-row hearth-recent-row" key={activity.id} onClick={activity.action}>
-                <span>
-                  <strong>{activity.title}</strong>
-                  <small>{activity.label} | {activity.detail}</small>
-                </span>
-                <b>Open</b>
-              </button>
-            )) : (
-              <div className="small-empty-state hearth-empty-state">
-                <strong>No recent activity yet.</strong>
-              <p>Add a Vault item, submit a Scout report, or create a market watch to start building your Hearth.</p>
-                <button type="button" className="secondary-button" onClick={() => openAddActionSheet("hearth-empty")}>Quick Add</button>
+            <div>
+              <p className="section-kicker">{hearthSparkCard.label}</p>
+              <h2>{hearthSparkCard.title}</h2>
+              <p>{hearthSparkCard.detail}</p>
+            </div>
+            <button type="button" onClick={hearthSparkCard.onClick}>{hearthSparkCard.cta}</button>
+          </section>
+
+          <section className="panel hearth-recent-panel" aria-label="Recent activity">
+            <div className="compact-card-header">
+              <div>
+                <h2>Recent Activity</h2>
+                <p>Latest meaningful movement across Scout, Vault, Market, and Forge.</p>
               </div>
-            )}
-          </div>
-        </section>
+            </div>
+            <div className="home-list compact-home-list hearth-recent-list">
+              {recentRows.length ? recentRows.map((activity) => (
+                <button type="button" className="home-list-row hearth-recent-row" key={activity.id} onClick={activity.action}>
+                  <span>
+                    <strong>{activity.title}</strong>
+                    <small>{activity.label} | {activity.detail}</small>
+                  </span>
+                  <b>Open</b>
+                </button>
+              )) : (
+                <div className="small-empty-state hearth-empty-state">
+                  <strong>No recent activity yet.</strong>
+                  <p>Add a Vault item, submit a Scout report, or create a market watch to start building your Hearth.</p>
+                  <button type="button" className="secondary-button" onClick={() => openAddActionSheet("hearth-empty")}>Quick Add</button>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
     );
   }

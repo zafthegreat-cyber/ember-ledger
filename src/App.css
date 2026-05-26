@@ -52093,3 +52093,294 @@ body {
     display: none !important;
   }
 }
+
+/* Pass 2 Hearth final home base: calm primary action, clean summaries, and composed desktop/tablet layout. */
+.app-home .hearth-northstar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.78fr) !important;
+  align-items: start !important;
+  gap: 18px !important;
+  width: min(100%, 1180px) !important;
+  padding-inline: clamp(12px, 2vw, 18px) !important;
+}
+
+.app-home .hearth-primary-column,
+.app-home .hearth-side-column {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.app-home .hearth-side-column {
+  grid-template-columns: 1fr !important;
+}
+
+.app-home .hearth-side-column > * {
+  grid-column: 1 / -1 !important;
+}
+
+.app-home .hearth-northstar-header {
+  min-height: 76px !important;
+  padding: 14px 16px !important;
+}
+
+.app-home .hearth-greeting-block h1 {
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+.app-home .hearth-greeting-block p {
+  display: block !important;
+  max-width: 34rem;
+}
+
+.app-home .hearth-header-actions {
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.app-home .hearth-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(132, 226, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(0, 216, 255, 0.06);
+  color: var(--et-tide, #00d8ff);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.app-home .hearth-best-action-card {
+  min-height: 252px !important;
+}
+
+.app-home .hearth-best-action-copy {
+  display: grid;
+  align-content: center;
+}
+
+.app-home .hearth-best-action-card h2 {
+  max-width: 19ch !important;
+}
+
+.app-home .hearth-best-action-reason {
+  max-width: 36rem !important;
+}
+
+.app-home .hearth-hero-stat-row {
+  gap: 8px !important;
+}
+
+.app-home .hearth-hero-stat {
+  min-width: 112px;
+}
+
+.app-home .hearth-quick-action-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.app-home .hearth-quick-action {
+  min-height: 104px !important;
+}
+
+.app-home .hearth-side-column .hearth-snapshot-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.app-home .hearth-snapshot-card {
+  min-height: 118px !important;
+  padding: 14px 15px !important;
+}
+
+.app-home .hearth-snapshot-card small {
+  max-width: 34rem;
+}
+
+.app-home .hearth-spark-card {
+  grid-template-columns: 78px minmax(0, 1fr);
+  min-height: 116px;
+}
+
+.app-home .hearth-spark-art {
+  width: 72px;
+  height: 72px;
+}
+
+.app-home .hearth-spark-card button {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 40px;
+}
+
+.app-home .hearth-recent-panel .compact-card-header p {
+  max-width: 30rem;
+}
+
+.app-home .hearth-empty-state {
+  min-height: 146px !important;
+  padding: 18px !important;
+}
+
+.app-home .hearth-start-here-panel.is-collapsed .compact-card-header h2 {
+  white-space: normal !important;
+}
+
+@media (min-width: 1024px) {
+  .app-home .topbar-command-actions > .topbar-ask-ember-button {
+    display: inline-flex !important;
+  }
+
+  .app-home .ember-assist-shell:not(.is-open) {
+    display: none !important;
+  }
+}
+
+@media (min-width: 720px) and (max-width: 1023px) {
+  .app-home .hearth-northstar {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.82fr) !important;
+    gap: 14px !important;
+  }
+
+  .app-home .hearth-best-action-card {
+    min-height: 228px !important;
+  }
+
+  .app-home .hearth-quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-home .hearth-spark-card {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+
+  .app-home .hearth-spark-art {
+    width: 58px;
+    height: 58px;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-home .hearth-northstar {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 8px 10px var(--et-shell-nav-safe, calc(132px + env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .app-home .hearth-primary-column,
+  .app-home .hearth-side-column {
+    gap: 10px;
+  }
+
+  .app-home .hearth-northstar-header {
+    min-height: 58px !important;
+    padding: 10px 11px !important;
+  }
+
+  .app-home .hearth-logo-mark {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .app-home .hearth-logo-mark img {
+    width: 25px !important;
+    height: 25px !important;
+  }
+
+  .app-home .hearth-greeting-block h1 {
+    font-size: 1rem !important;
+  }
+
+  .app-home .hearth-greeting-block p {
+    display: none !important;
+  }
+
+  .app-home .hearth-header-actions {
+    flex-wrap: nowrap;
+    gap: 5px;
+  }
+
+  .app-home .hearth-beta-badge,
+  .app-home .hearth-mode-chip,
+  .app-home .hearth-admin-badge {
+    min-height: 28px !important;
+    padding-inline: 8px !important;
+    font-size: 0.62rem !important;
+  }
+
+  .app-home .hearth-best-action-card {
+    min-height: 0 !important;
+    padding: 14px !important;
+  }
+
+  .app-home .hearth-best-action-card h2 {
+    max-width: 15ch !important;
+    font-size: clamp(1.42rem, 7vw, 1.92rem) !important;
+  }
+
+  .app-home .hearth-best-action-reason {
+    display: -webkit-box !important;
+    max-width: 28ch !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 3 !important;
+  }
+
+  .app-home .hearth-hero-stat-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, max-content)) !important;
+  }
+
+  .app-home .hearth-hero-stat {
+    min-width: 0 !important;
+  }
+
+  .app-home .hearth-quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .app-home .hearth-quick-action {
+    min-height: 82px !important;
+    padding: 10px 8px !important;
+  }
+
+  .app-home .hearth-quick-action small {
+    display: none !important;
+  }
+
+  .app-home .hearth-side-column .hearth-snapshot-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-home .hearth-snapshot-card {
+    min-height: 104px !important;
+  }
+
+  .app-home .hearth-spark-card {
+    grid-template-columns: 60px minmax(0, 1fr) !important;
+    min-height: 102px !important;
+  }
+
+  .app-home .hearth-spark-art {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  .app-home .hearth-spark-card h2 {
+    font-size: 0.98rem !important;
+  }
+
+  .app-home .hearth-spark-card p {
+    font-size: 0.72rem !important;
+  }
+
+  .app-home .hearth-recent-panel .compact-card-header p {
+    display: none;
+  }
+}
