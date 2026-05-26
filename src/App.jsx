@@ -4803,6 +4803,7 @@ export default function App() {
   const [aiAssistReview, setAiAssistReview] = useState(null);
   const [emberAssistOpen, setEmberAssistOpen] = useState(false);
   const [emberAssistMorePromptsOpen, setEmberAssistMorePromptsOpen] = useState(false);
+  const [emberAssistLauncherState, setEmberAssistLauncherState] = useState({ compact: false, nearEnd: false });
   const [emberAssistMessages, setEmberAssistMessages] = useState(() => loadEmberAssistThread());
   const [emberAssistInput, setEmberAssistInput] = useState("");
   const [emberAssistEscalationDraft, setEmberAssistEscalationDraft] = useState(null);
@@ -4834,6 +4835,7 @@ export default function App() {
   const [workspaceRenameSaving, setWorkspaceRenameSaving] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState("");
   const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
+  const [collectionUtilityDrawer, setCollectionUtilityDrawer] = useState("");
   const [showArchivedCollections, setShowArchivedCollections] = useState(false);
   const [workspaceArchiveTarget, setWorkspaceArchiveTarget] = useState(null);
   const [workspaceArchiveSavingId, setWorkspaceArchiveSavingId] = useState("");
@@ -5972,8 +5974,16 @@ export default function App() {
     locationPromptOpen ||
     importAssistantOpen ||
     listingReportTarget ||
-    vaultListingDecision
-  );
+    vaultListingDecision ||
+    collectionManagerOpen ||
+    collectionUtilityDrawer ||
+    workspaceRenameTarget ||
+      workspaceArchiveTarget ||
+      workspaceDeleteTarget ||
+      (activeTab === "market" && catalogSearchHasRun && !emberAssistOpen) ||
+      (activeTab === "vault" && !items.some(isActiveVaultItem) && !emberAssistOpen) ||
+      (activeTab === "collections" && !emberAssistOpen)
+    );
   const autoHideResetKey = [
     activeTab,
     activeMainTab || "standalone",
@@ -21034,8 +21044,6 @@ function renderTideTradrHeader() {
     { key: "overview", label: "For You" },
     { key: "nearRetail", label: "Near Retail" },
     { key: "watch", label: "Watchlist" },
-    { key: "recent", label: "Recent" },
-    { key: "listings", label: "Following" },
   ];
   const activeMarketTab = marketCatalogDealFilter === "nearRetail" && tideTradrSubTab === "overview"
     ? "nearRetail"
@@ -21059,6 +21067,9 @@ function renderTideTradrHeader() {
       tabs={marketTabs}
       activeTab={activeMarketTab}
       onTabChange={changeMarketTab}
+      actions={(
+        <button type="button" className="secondary-button market-deal-shortcut" onClick={() => openDealFinderModal()}>Check Deal</button>
+      )}
     >
       <form className="catalog-search-form market-search-form" onSubmit={submitCatalogSearch}>
         <LazySmartCatalogSearchBox
@@ -21080,35 +21091,38 @@ function renderTideTradrHeader() {
         />
         <button type="submit">Search</button>
       </form>
-      <form className="market-barcode-search" onSubmit={submitCatalogBarcodeSearch} aria-label="Market UPC and SKU lookup">
-        <label htmlFor="market-upc-search">UPC / SKU</label>
-        <input
-          id="market-upc-search"
-          value={catalogBarcodeSearch}
-          onChange={(event) => {
-            setCatalogBarcodeSearch(event.target.value);
-            setSubmittedCatalogBarcodeSearch("");
-            setCatalogSearchHasRun(false);
-          }}
-          placeholder="Paste UPC, barcode, or SKU"
-          inputMode="search"
-          autoComplete="off"
-        />
-        <button type="submit" className="secondary-button">Lookup</button>
-      </form>
-      <div className="market-data-refresh-strip" aria-label="Market data freshness">
-        <span>{marketRefreshLabel}</span>
-        <details>
-          <summary>Refresh path</summary>
+      <details className="market-search-options market-upc-disclosure" defaultOpen={Boolean(catalogBarcodeSearch || submittedCatalogBarcodeSearch)}>
+        <summary>UPC / SKU lookup</summary>
+        <form className="market-barcode-search" onSubmit={submitCatalogBarcodeSearch} aria-label="Market UPC and SKU lookup">
+          <label htmlFor="market-upc-search">UPC / SKU</label>
+          <input
+            id="market-upc-search"
+            value={catalogBarcodeSearch}
+            onChange={(event) => {
+              setCatalogBarcodeSearch(event.target.value);
+              setSubmittedCatalogBarcodeSearch("");
+              setCatalogSearchHasRun(false);
+            }}
+            placeholder="Paste UPC, barcode, or SKU"
+            inputMode="search"
+            autoComplete="off"
+          />
+          <button type="submit" className="secondary-button">Lookup</button>
+        </form>
+      </details>
+      <details className="market-search-options market-extra-options">
+        <summary>Search options</summary>
+        <div className="market-data-refresh-strip" aria-label="Market data freshness">
+          <span>{marketRefreshLabel}</span>
           <p>{marketDailyRefreshCommand} refreshes public TCGCSV catalog and price cache data. No live price is shown unless data has a saved timestamp.</p>
-        </details>
-      </div>
-      <div className="market-mode-strip" aria-label="Market guidance">
-        <span>{adaptiveSellerToolsVisible ? "Seller market view" : "Collector market view"}</span>
-        <span>{adaptiveSellerToolsVisible ? "Forge comps" : "Vault first"}</span>
-        <span>Honest labels</span>
-        <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
-      </div>
+        </div>
+        <div className="market-mode-strip" aria-label="Market guidance">
+          <span>{adaptiveSellerToolsVisible ? "Seller market view" : "Collector market view"}</span>
+          <span>{adaptiveSellerToolsVisible ? "Forge comps" : "Vault first"}</span>
+          <span>Honest labels</span>
+          <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
+        </div>
+      </details>
     </PageHeader>
   );
 }
@@ -21303,6 +21317,10 @@ function renderVaultHeader() {
       onClick: () => openVaultItems("moved_to_forge"),
     });
   }
+  const vaultIsEmpty = activeVaultItems.length === 0;
+  const visibleVaultOverviewCards = activeVaultItems.length
+    ? vaultOverviewCards
+    : vaultOverviewCards.filter((card) => ["portfolio", "total-quantity"].includes(card.key));
   return (
     <PageHeader
       className={getHeaderCardClass("panel vault-command-center")}
@@ -21346,20 +21364,43 @@ function renderVaultHeader() {
       }}
       summaryLabel="Collection Overview"
       summary={(
-        <div className="vault-command-overview" aria-label="Vault Collection Overview">
-        {vaultOverviewCards.map((card) => (
-          <button
-            key={card.key}
-            type="button"
-            className={`vault-overview-card${card.active ? " is-active" : ""}`}
-            onClick={card.onClick}
-          >
-            <span className="vault-overview-title">{card.title}</span>
-            <strong>{card.value}</strong>
-            <span>{card.helper}</span>
-          </button>
-        ))}
-      </div>
+        vaultIsEmpty ? (
+          <div className="vault-empty-overview-card" aria-label="Vault empty overview">
+            <div>
+              <strong>Your Vault is ready.</strong>
+              <span>Add your first item and keep your collection protected.</span>
+            </div>
+            <dl>
+              <div>
+                <dt>Value</dt>
+                <dd>No value yet</dd>
+              </div>
+              <div>
+                <dt>Items</dt>
+                <dd>0</dd>
+              </div>
+            </dl>
+            <div className="quick-actions">
+              <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
+              <button type="button" className="secondary-button" onClick={() => openQuickAddAction("scanVault")}>Scan</button>
+            </div>
+          </div>
+        ) : (
+          <div className="vault-command-overview" aria-label="Vault Collection Overview">
+          {visibleVaultOverviewCards.map((card) => (
+            <button
+              key={card.key}
+              type="button"
+              className={`vault-overview-card${card.active ? " is-active" : ""}`}
+              onClick={card.onClick}
+            >
+              <span className="vault-overview-title">{card.title}</span>
+              <strong>{card.value}</strong>
+              <span>{card.helper}</span>
+            </button>
+          ))}
+        </div>
+        )
       )}
     />
   );
@@ -21501,7 +21542,7 @@ function renderForgeAccessState() {
   return (
     <section className="panel empty-state forge-workspace-unavailable adaptive-forge-intro" aria-label="Forge access required">
       <span className="trust-badge trust-badge--secure">Private Forge</span>
-      <h2>Forge is for seller and business tracking.</h2>
+      <h2>Seller tools are off</h2>
       <p>{forgeAccessMessage || "Turn on seller tools to use inventory, receipts, mileage, and sales."}</p>
       <div className="forge-intro-benefits" aria-label="Forge seller tools">
         {["Inventory", "Receipts", "Mileage", "Sales"].map((label) => <span key={label}>{label}</span>)}
@@ -24175,6 +24216,40 @@ function renderForgeAccessState() {
     setEmberAssistMorePromptsOpen(false);
   }, [activeTab, scoutView]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return undefined;
+    let frame = 0;
+
+    const updateLauncherState = () => {
+      frame = 0;
+      const root = document.documentElement;
+      const body = document.body;
+      const viewportHeight = window.innerHeight || root.clientHeight || 0;
+      const scrollTop = window.scrollY || root.scrollTop || 0;
+      const scrollHeight = Math.max(root.scrollHeight || 0, body?.scrollHeight || 0);
+      const scrollable = scrollHeight > viewportHeight + 240;
+      const distanceFromEnd = scrollHeight - (scrollTop + viewportHeight);
+      setEmberAssistLauncherState({
+        compact: scrollTop > 88 || (scrollable && distanceFromEnd < 380),
+        nearEnd: scrollable && distanceFromEnd < 180,
+      });
+    };
+
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateLauncherState);
+    };
+
+    updateLauncherState();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+    };
+  }, [activeTab, activeFlowModal?.type, emberAssistOpen, menuOpen, scoutView]);
+
   function pushEmberAssistMessage(message) {
     setEmberAssistMessages((current) => saveEmberAssistThread([...current, message]));
   }
@@ -24519,7 +24594,15 @@ function renderForgeAccessState() {
       ? "You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth."
       : "Ask about this page, a next step, or a confusing status.";
     return (
-      <section className={`ember-assist-shell ${emberAssistOpen ? "is-open" : ""}`} aria-label="Ember Assist">
+      <section
+        className={[
+          "ember-assist-shell",
+          emberAssistOpen ? "is-open" : "",
+          emberAssistLauncherState.compact ? "is-compact" : "",
+          emberAssistLauncherState.nearEnd ? "is-near-page-end" : "",
+        ].filter(Boolean).join(" ")}
+        aria-label="Ember Assist"
+      >
         {!emberAssistOpen ? (
         <button
           type="button"
@@ -36636,7 +36719,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "addActionSheet") {
       return {
         title: "Quick Add",
-        description: "Choose what you are adding, review the path, then continue to the right save flow.",
+        description: "Pick a quick action.",
         size: "medium",
       };
     }
@@ -42183,44 +42266,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderCollectionsPage() {
-    return renderUtilityPageShell({
-      title: "Collections",
-      subtitle: "Switch collections, manage workspaces, invite members, and keep personal data separate.",
-      className: "collections-utility-page",
-      children: (
-        <>
-          <div className="drawer-info-card utility-card">
-            <strong>Current collection</strong>
-            <p className="compact-subtitle">Vault, Wishlist, Forge, dashboard stats, Market Watch, and listings are filtered to this collection.</p>
-            <div className="settings-active-workspace-card">
-              <span>Active workspace</span>
-              <strong>{activeWorkspace?.name || "My Personal Space"}</strong>
-              <small>{workspaceTypeLabel(activeWorkspace?.type)} - {workspaceRoleLabel(activeWorkspaceRole)}</small>
-            </div>
-            <Field label="Collection">
-              <select value={activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID} onChange={(event) => changeActiveWorkspace(event.target.value)}>
-                {workspaceSelectorOptions.map((workspace) => (
-                  <option key={workspace.id} value={workspace.id}>{workspace.name} - {workspaceTypeLabel(workspace.type)}</option>
-                ))}
-              </select>
-            </Field>
-            <dl className="drawer-status-list">
-              <div><dt>Type</dt><dd>{workspaceTypeLabel(activeWorkspace?.type)}</dd></div>
-              <div><dt>Workspace role</dt><dd>{workspaceRoleLabel(activeWorkspaceRole)}</dd></div>
-              <div><dt>Vault items</dt><dd>{vaultItems.length}</dd></div>
-              <div><dt>Forge items</dt><dd>{forgeInventoryItems.length}</dd></div>
-            </dl>
-            <div className="drawer-inline-actions">
-              <button type="button" className="drawer-link" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>Edit Collection</button>
-              <button type="button" className="secondary-button" onClick={() => setCollectionManagerOpen(true)}>Manage Collections</button>
-            </div>
-          </div>
-
-          <form className="drawer-info-card forge-identity-settings-card utility-card utility-card-wide" onSubmit={saveWorkspaceIdentitySettings} noValidate>
+    const activeWorkspaceCounts = workspaceRecordCountsFor(activeWorkspace?.id);
+    const activeWorkspaceMembers = workspaceMembers.filter((member) => String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id));
+    const activeWorkspaceInvites = workspaceInvites.filter((invite) => String(invite.workspaceId || invite.workspace_id) === String(activeWorkspace?.id));
+    const collectionDrawerTitle = {
+      identity: "Manage workspace",
+      create: "Create workspace",
+      invite: "Invite member",
+      members: "Members",
+      manage: "Collection tools",
+    }[collectionUtilityDrawer] || "Workspace tools";
+    const closeCollectionUtilityDrawer = () => setCollectionUtilityDrawer("");
+    const renderCollectionUtilityDrawerBody = () => {
+      if (collectionUtilityDrawer === "identity") {
+        return (
+          <form className="forge-identity-settings-card collections-drawer-form" onSubmit={saveWorkspaceIdentitySettings} noValidate>
             <div className="compact-card-header">
               <div>
                 <strong>Workspace &amp; Forge Identity</strong>
-                <p className="compact-subtitle">Control whether Forge acts like your private seller space, a business workspace, or Ember &amp; Tide branded workspace.</p>
+                <p className="compact-subtitle">Choose how this workspace appears across Vault, Forge, and shared records.</p>
               </div>
               <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
             </div>
@@ -42275,17 +42339,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <dl className="drawer-status-list forge-mode-summary">
               <div><dt>Forge mode</dt><dd>{forgeIdentityModeLabel(workspaceIdentityForm.forgeIdentityMode)}</dd></div>
               <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
-              <div><dt>Workspace records</dt><dd>{workspaceRecordCountsFor(activeWorkspace?.id).total} linked</dd></div>
+              <div><dt>Workspace records</dt><dd>{activeWorkspaceCounts.total} linked</dd></div>
             </dl>
             {workspaceIdentityMessage ? <p className="flow-inline-message is-info" role="status">{workspaceIdentityMessage}</p> : null}
             <div className="drawer-inline-actions">
-              <button type="submit" className="drawer-link" disabled={!canEditActiveWorkspace}>Save Workspace Identity</button>
-              <button type="button" className="secondary-button" onClick={resetWorkspaceIdentityForm}>Cancel / Reset</button>
-              <button type="button" className="secondary-button" onClick={() => openWorkspaceArchive(activeWorkspace)} disabled={!canManageActiveWorkspace || activeCollectionCount <= 1 || isProtectedWorkspace(activeWorkspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })}>Archive Workspace</button>
+              <button type="submit" className="drawer-link" disabled={!canEditActiveWorkspace}>Save Workspace</button>
+              <button type="button" className="secondary-button" onClick={resetWorkspaceIdentityForm}>Reset</button>
+              <button type="button" className="secondary-button" onClick={() => openWorkspaceArchive(activeWorkspace)} disabled={!canManageActiveWorkspace || activeCollectionCount <= 1 || isProtectedWorkspace(activeWorkspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })}>Archive</button>
             </div>
           </form>
-
-          <form className="drawer-info-card utility-card" onSubmit={createWorkspace}>
+        );
+      }
+      if (collectionUtilityDrawer === "create") {
+        return (
+          <form className="collections-drawer-form" onSubmit={createWorkspace}>
             <strong>Create workspace</strong>
             <p className="compact-subtitle">New workspaces start empty. Existing personal data stays private until you intentionally add or move items.</p>
             <input className="drawer-field" value={workspaceForm.name} onChange={(event) => setWorkspaceForm((current) => ({ ...current, name: event.target.value }))} placeholder="Collection name" />
@@ -42294,12 +42361,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
-            <button type="submit" className="drawer-link">Create Collection</button>
+            <button type="submit" className="drawer-link">Create Workspace</button>
           </form>
-
-          <form className="drawer-info-card utility-card" onSubmit={sendWorkspaceInvite}>
+        );
+      }
+      if (collectionUtilityDrawer === "invite") {
+        return (
+          <form className="collections-drawer-form" onSubmit={sendWorkspaceInvite}>
             <strong>Invite member by email</strong>
-            <p className="compact-subtitle">{canManageInviteWorkspace ? "Create a workspace invite. Email delivery is not connected yet, so copy and send the invite link after it is created." : "You do not have permission to invite members in this workspace."}</p>
+            <p className="compact-subtitle">{canManageInviteWorkspace ? "Create a workspace invite, then copy and send the invite link." : "You do not have permission to invite members in this workspace."}</p>
             <select className="drawer-field" value={workspaceInviteForm.workspaceId} onChange={(event) => setWorkspaceInviteForm((current) => ({ ...current, workspaceId: event.target.value }))} disabled={workspaceInviteSending}>
               {workspaceSelectorOptions.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
             </select>
@@ -42318,19 +42388,115 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : null}
           </form>
-
-          <div className="drawer-info-card utility-card">
+        );
+      }
+      if (collectionUtilityDrawer === "members") {
+        return (
+          <div className="collections-drawer-form">
             <strong>Members</strong>
+            <p className="compact-subtitle">People with access to {activeWorkspace?.name || "this workspace"}.</p>
             <div className="workspace-member-list">
-              {workspaceMembers.filter((member) => String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id)).map((member) => (
+              {activeWorkspaceMembers.map((member) => (
                 <div className="workspace-member-row" key={`${member.workspaceId}-${member.userId || member.email || member.role}`}>
                   <span><strong>{member.email || (member.userId === "local-beta" ? "You" : member.userId || "Invited user")}</strong><small>{workspaceRoleLabel(member.role)} - {member.status === "active" ? "Active" : "Invite pending"}</small></span>
                 </div>
               ))}
-              {!workspaceMembers.filter((member) => String(member.workspaceId || member.workspace_id) === String(activeWorkspace?.id)).length ? <p className="compact-subtitle">No members yet. Invite someone by email.</p> : null}
+              {!activeWorkspaceMembers.length ? <p className="compact-subtitle">No members yet. Invite someone by email.</p> : null}
+            </div>
+            {activeWorkspaceInvites.length ? (
+              <details className="mobile-ux-disclosure">
+                <summary>Pending and recent invites ({activeWorkspaceInvites.length})</summary>
+                <div className="workspace-member-list">
+                  {activeWorkspaceInvites.map((invite) => (
+                    <div className="workspace-member-row" key={invite.id || invite.email}>
+                      <span><strong>{invite.email || "Invite"}</strong><small>{invite.status || "pending"} - {workspaceRoleLabel(invite.role)}</small></span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+          </div>
+        );
+      }
+      return (
+        <div className="collections-drawer-form">
+          <strong>Workspace tools</strong>
+          <p className="compact-subtitle">Open the full collection manager for archive, restore, reset, and technical workspace actions.</p>
+          <dl className="drawer-status-list">
+            <div><dt>Active</dt><dd>{activeWorkspace?.name || "My Personal Space"}</dd></div>
+            <div><dt>Collections</dt><dd>{activeCollectionCount}</dd></div>
+            <div><dt>Records</dt><dd>{activeWorkspaceCounts.total}</dd></div>
+          </dl>
+          <div className="drawer-inline-actions">
+            <button type="button" className="drawer-link" onClick={() => setCollectionManagerOpen(true)}>Open Collection Manager</button>
+            <button type="button" className="secondary-button" onClick={() => openWorkspaceRename(activeWorkspace)} disabled={!canEditActiveWorkspace}>Rename</button>
+          </div>
+        </div>
+      );
+    };
+    const collectionUtilityDrawerNode = collectionUtilityDrawer ? (
+      <div className="location-modal-backdrop collection-utility-backdrop" role="presentation" onClick={closeCollectionUtilityDrawer}>
+        <section className="location-modal flow-modal collection-utility-drawer" role="dialog" aria-modal="true" aria-label={collectionDrawerTitle} onClick={(event) => event.stopPropagation()}>
+          <header className="flow-modal-header">
+            <div>
+              <p className="eyebrow">Collections</p>
+              <h2>{collectionDrawerTitle}</h2>
+            </div>
+            <button type="button" className="icon-button" aria-label="Close" onClick={closeCollectionUtilityDrawer}>
+              <AppNavIcon kind="close" />
+            </button>
+          </header>
+          <div className="flow-modal-body collection-utility-body">
+            {renderCollectionUtilityDrawerBody()}
+          </div>
+        </section>
+      </div>
+    ) : null;
+    return renderUtilityPageShell({
+      title: "Collections",
+      subtitle: "Switch collections, manage workspaces, invite members, and keep personal data separate.",
+      className: "collections-utility-page",
+      children: (
+        <>
+          <div className="drawer-info-card utility-card collections-hub-card">
+            <strong>Current collection</strong>
+            <p className="compact-subtitle">Vault, Forge, Market Watch, and listings use this workspace.</p>
+            <div className="settings-active-workspace-card">
+              <span>Active workspace</span>
+              <strong>{activeWorkspace?.name || "My Personal Space"}</strong>
+              <small>{workspaceTypeLabel(activeWorkspace?.type)} - {workspaceRoleLabel(activeWorkspaceRole)}</small>
+            </div>
+            <Field label="Collection">
+              <select value={activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID} onChange={(event) => changeActiveWorkspace(event.target.value)}>
+                {workspaceSelectorOptions.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>{workspace.name} - {workspaceTypeLabel(workspace.type)}</option>
+                ))}
+              </select>
+            </Field>
+            <div className="collections-action-grid collections-primary-actions" aria-label="Primary workspace actions">
+              <button type="button" className="drawer-link" onClick={() => setCollectionUtilityDrawer("identity")}>Manage</button>
+              <button type="button" className="drawer-link" onClick={() => setCollectionUtilityDrawer("invite")}>Invite</button>
+              <button type="button" className="drawer-link" onClick={() => setCollectionUtilityDrawer("create")}>Create</button>
+            </div>
+            <dl className="drawer-status-list">
+              <div><dt>Type</dt><dd>{workspaceTypeLabel(activeWorkspace?.type)}</dd></div>
+              <div><dt>Workspace role</dt><dd>{workspaceRoleLabel(activeWorkspaceRole)}</dd></div>
+              <div><dt>Vault items</dt><dd>{vaultItems.length}</dd></div>
+              <div><dt>Forge items</dt><dd>{forgeInventoryItems.length}</dd></div>
+              <div><dt>Members</dt><dd>{activeWorkspaceMembers.length}</dd></div>
+            </dl>
+          </div>
+
+          <div className="drawer-info-card utility-card utility-card-wide collections-action-hub">
+            <strong>More workspace tools</strong>
+            <p className="compact-subtitle">Member lists, collection manager, and rare controls stay out of the main workspace card.</p>
+            <div className="collections-action-grid">
+              <button type="button" className="secondary-button" onClick={() => setCollectionUtilityDrawer("members")}>Members</button>
+              <button type="button" className="secondary-button" onClick={() => setCollectionUtilityDrawer("manage")}>More Tools</button>
             </div>
           </div>
           {workspaceMessage ? <p className="compact-subtitle">{workspaceMessage}</p> : null}
+          {collectionUtilityDrawerNode}
         </>
       ),
     });
@@ -47716,7 +47882,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div>
                   <p className="eyebrow">Vault Collection</p>
                   <h2>Your protected collection</h2>
-                  <p>Search, filter, and open grouped items.</p>
+                  <p>{vaultItems.length ? "Search, filter, and open grouped items." : "Add your first item or scan a product when ready."}</p>
                 </div>
                 <div className="vault-heading-actions">
                   <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
@@ -47724,6 +47890,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               </div>
 
+              {vaultItems.length ? (
               <div className="vault-collection-summary" aria-label="Vault owned item summary">
                 <div>
                   <span>Collection value</span>
@@ -47746,7 +47913,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <small>Cards, promos, and slabs</small>
                 </div>
               </div>
+              ) : (
+              <div className="vault-empty-summary-card" aria-label="Empty Vault summary">
+                <div>
+                  <strong>Your Vault is ready.</strong>
+                  <span>Add your first item and keep your collection protected.</span>
+                </div>
+                <dl>
+                  <div><dt>Value</dt><dd>No value yet</dd></div>
+                  <div><dt>Items</dt><dd>0</dd></div>
+                </dl>
+              </div>
+              )}
 
+              {vaultItems.length ? (
               <details className="mobile-ux-disclosure vault-detail-disclosure">
                 <summary>View collection insights</summary>
                 <div className="inventory-insight-panel vault-insight-panel" aria-label="Vault collection valuation insights">
@@ -47807,7 +47987,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 </div>
               </details>
+              ) : null}
 
+              <details className="vault-mobile-filter-drawer" defaultOpen={vaultItems.length > 0 || vaultActiveFilterCount > 0 || Boolean(vaultSearch)}>
+                <summary>Filters{vaultActiveFilterCount ? ` (${vaultActiveFilterCount})` : ""}</summary>
               <div className="vault-toolbar vault-filter-panel">
                 <label className="vault-filter-field vault-search-field">
                   <span>Search items</span>
@@ -47875,6 +48058,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </button>
                 ) : null}
               </div>
+              </details>
 
               <div className="vault-view-strip" aria-label="Vault view choices">
                 {[
@@ -47933,7 +48117,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     body: "Add your first item and keep your collection protected.",
                     actions: [
                       { label: "Add to Vault", actionTarget: "vault" },
-                      { label: "Request Missing Item", actionTarget: "missing_item", primary: false },
+                      { label: "Scan", actionTarget: "scan_card", primary: false },
                     ],
                     assistPrompt: "",
                   })
@@ -48530,29 +48714,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       </select>
                     </Field>
                     <button type="button" className="secondary-button market-filter-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>
-                      Filter
+                      {isFeatureSectionOpen("market_filters") ? "Hide Filters" : "Filters"}
                     </button>
-                    <div className="catalog-view-toggle" role="group" aria-label="Catalog result view">
-                      <button
-                        type="button"
-                        className={catalogViewMode === "grid" ? "active" : ""}
-                        aria-pressed={catalogViewMode === "grid"}
-                        onClick={() => setCatalogViewMode("grid")}
-                      >
-                        Grid
-                      </button>
-                      <button
-                        type="button"
-                        className={catalogViewMode === "list" ? "active" : ""}
-                        aria-pressed={catalogViewMode === "list"}
-                        onClick={() => setCatalogViewMode("list")}
-                      >
-                        List
-                      </button>
-                    </div>
-                    <div className="quick-actions market-clear-actions">
-                      <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear</button>
-                    </div>
                   </div>
                   ) : null}
 
@@ -48633,7 +48796,31 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
 
                   {catalogSearchHasRun && isFeatureSectionOpen("market_filters") ? (
-                    <div className="filter-grid">
+                    <div className="filter-grid market-filter-drawer">
+                      <div className="market-filter-drawer-actions">
+                        <div className="catalog-view-toggle" role="group" aria-label="Catalog result view">
+                          <button
+                            type="button"
+                            className={catalogViewMode === "grid" ? "active" : ""}
+                            aria-pressed={catalogViewMode === "grid"}
+                            onClick={() => setCatalogViewMode("grid")}
+                          >
+                            Grid
+                          </button>
+                          <button
+                            type="button"
+                            className={catalogViewMode === "list" ? "active" : ""}
+                            aria-pressed={catalogViewMode === "list"}
+                            onClick={() => setCatalogViewMode("list")}
+                          >
+                            List
+                          </button>
+                        </div>
+                        <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("recent")}>Recent</button>
+                        <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("listings")}>Following</button>
+                        <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
+                        <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear</button>
+                      </div>
                       <Field label="Set / Expansion">
                         <select value={catalogSetFilter} onChange={(e) => setCatalogSetFilter(e.target.value)}>
                           {catalogSetOptions.map((option) => <option key={option} value={option}>{option}</option>)}

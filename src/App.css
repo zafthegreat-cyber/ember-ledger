@@ -39901,6 +39901,457 @@ body,
   white-space: normal;
 }
 
+/* Second UI correction pass: mobile safe areas, calmer controls, and desktop composition. */
+:root {
+  --etds-mobile-action-safe: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 32px);
+}
+
+.market-search-options,
+.vault-mobile-filter-drawer {
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 16px;
+  background: rgba(8, 18, 34, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 10px 12px;
+}
+
+.market-search-options summary,
+.vault-mobile-filter-drawer summary {
+  color: rgba(226, 232, 240, 0.92);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 800;
+  list-style-position: outside;
+}
+
+.market-search-options[open],
+.vault-mobile-filter-drawer[open] {
+  display: grid;
+  gap: 10px;
+}
+
+.market-search-options p,
+.market-search-options .market-mode-strip,
+.market-search-options .market-data-refresh-strip {
+  margin: 0;
+}
+
+.vault-empty-overview-card,
+.vault-empty-summary-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(168, 85, 247, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0 0, rgba(168, 85, 247, 0.14), transparent 34%),
+    rgba(7, 16, 31, 0.82);
+  padding: 16px;
+}
+
+.vault-empty-overview-card strong,
+.vault-empty-summary-card strong {
+  color: #f8fafc;
+  display: block;
+  font-size: 1.02rem;
+}
+
+.vault-empty-overview-card span,
+.vault-empty-summary-card span {
+  color: rgba(203, 213, 225, 0.84);
+}
+
+.vault-empty-overview-card dl,
+.vault-empty-summary-card dl {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.vault-empty-overview-card dl div,
+.vault-empty-summary-card dl div {
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+  padding: 10px;
+}
+
+.vault-empty-overview-card dt,
+.vault-empty-summary-card dt {
+  color: rgba(148, 163, 184, 0.92);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+}
+
+.vault-empty-overview-card dd,
+.vault-empty-summary-card dd {
+  color: #f8fafc;
+  font-weight: 900;
+  margin: 2px 0 0;
+}
+
+.collections-action-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.collections-primary-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.collections-action-hub .drawer-link,
+.collections-action-hub .secondary-button {
+  min-height: 46px;
+}
+
+.collection-utility-backdrop {
+  align-items: end;
+  padding: 18px 14px calc(var(--etds-mobile-action-safe) - 40px);
+}
+
+.collection-utility-drawer {
+  max-height: min(82dvh, 760px);
+  max-width: 680px;
+  width: min(100%, 680px);
+}
+
+.collection-utility-body {
+  max-height: calc(82dvh - 82px);
+  overflow-y: auto;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+}
+
+.collections-drawer-form {
+  display: grid;
+  gap: 12px;
+}
+
+.collections-drawer-form > strong {
+  color: #f8fafc;
+  font-size: 1.02rem;
+}
+
+@media (max-width: 780px) {
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .dashboard-layout,
+  .hearth-northstar,
+  .marketplace-section,
+  .settings-page,
+  .approval-page,
+  .collections-utility-page .utility-page-layout,
+  .data-backup-utility-page .utility-page-layout {
+    padding-bottom: calc(var(--etds-mobile-action-safe) + 28px) !important;
+  }
+
+  .flow-modal,
+  .location-modal,
+  .ember-assist-panel {
+    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .flow-modal-body,
+  .location-modal .flow-modal-body {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] {
+    max-height: calc(100dvh - 18px - env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 12px !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard {
+    max-height: calc(100dvh - 138px - env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important;
+    padding: 0 0 calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+    scrollbar-width: thin;
+  }
+
+  .app-scout .scout-wizard-footer {
+    background: rgba(4, 10, 22, 0.98) !important;
+    border-top: 1px solid rgba(125, 211, 252, 0.16) !important;
+    bottom: auto !important;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) !important;
+    margin-top: 12px !important;
+    padding: 10px 0 0 !important;
+    position: static !important;
+  }
+
+  .app-scout .scout-report-essential-panel::after {
+    content: "Scroll for note, proof, and post";
+    color: rgba(125, 211, 252, 0.72);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  .app-market .market-page-heading .standard-page-header-body {
+    gap: 10px !important;
+  }
+
+  .app-market .market-deal-shortcut {
+    display: none !important;
+  }
+
+  .app-market .smart-catalog-suggestions {
+    display: none !important;
+  }
+
+  .app-market .market-search-form {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-market .market-search-options {
+    margin-top: 0 !important;
+  }
+
+  .app-market .market-mode-strip,
+  .app-market .market-data-refresh-strip {
+    align-items: start !important;
+    display: grid !important;
+    gap: 8px !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-market .market-results-panel {
+    padding-bottom: calc(var(--etds-mobile-action-safe) + 18px) !important;
+  }
+
+  .app-market .market-results-toolbar {
+    align-items: end !important;
+    display: grid !important;
+    gap: 10px !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-market .market-advanced-filter-rail,
+  .app-market .market-filter-rail,
+  .app-market .market-search-source-note {
+    display: none !important;
+  }
+
+  .app-market .market-filter-drawer {
+    border: 1px solid rgba(125, 211, 252, 0.14);
+    border-radius: 16px;
+    background: rgba(8, 18, 34, 0.72);
+    padding: 10px;
+  }
+
+  .app-market .market-filter-drawer-actions {
+    display: grid;
+    gap: 8px;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-market .market-filter-drawer-actions .catalog-view-toggle {
+    grid-column: 1 / -1;
+  }
+
+  .app-market .catalog-results-grid {
+    gap: 10px !important;
+  }
+
+  .app-market .market-mobile-product-card {
+    border-width: 1px !important;
+    padding: 10px !important;
+  }
+
+  .app-market .catalog-result-main {
+    align-items: start !important;
+    display: grid !important;
+    gap: 10px !important;
+    grid-template-columns: 76px minmax(0, 1fr) !important;
+  }
+
+  .app-market .catalog-thumb {
+    border-radius: 14px !important;
+    min-height: 92px !important;
+  }
+
+  .app-market .market-card-title {
+    font-size: 0.98rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .app-market .market-card-reference-line,
+  .app-market .market-card-context {
+    font-size: 0.78rem !important;
+    line-height: 1.25 !important;
+    margin: 2px 0 !important;
+  }
+
+  .app-market .market-trust-badge-row {
+    gap: 5px !important;
+  }
+
+  .app-market .market-trust-badge-row .market-status-pill:nth-child(n+3) {
+    display: none !important;
+  }
+
+  .app-market .market-result-add-actions {
+    display: grid !important;
+    gap: 8px !important;
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    margin-top: 10px !important;
+  }
+
+  .app-market .market-result-add-actions .secondary-button {
+    min-width: 0 !important;
+    padding-inline: 10px !important;
+  }
+
+  .app-vault .vault-command-overview {
+    display: none !important;
+  }
+
+  .app-vault .vault-mobile-filter-drawer:not([open]) {
+    display: block !important;
+  }
+
+  .app-vault .vault-mobile-filter-drawer:not([open]) .vault-toolbar {
+    display: none !important;
+  }
+
+  .app-vault .vault-empty-state,
+  .app-vault .guided-empty-state--vault {
+    margin-bottom: 0 !important;
+  }
+
+  .app-vault .vault-view-strip {
+    overflow-x: auto !important;
+    padding-bottom: 2px !important;
+  }
+
+  .collections-utility-page .utility-page-layout {
+    gap: 12px !important;
+  }
+
+  .collections-hub-card .drawer-status-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .collections-action-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .collections-primary-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .collections-primary-actions .drawer-link {
+    min-height: 42px !important;
+    padding-inline: 8px !important;
+  }
+
+  .ember-assist-shell:not(.is-open).is-near-page-end,
+  .app-market .ember-assist-shell:not(.is-open),
+  .app-collections .ember-assist-shell:not(.is-open) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(12px) scale(0.9) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-command-shell > main,
+  .app-shell-dark > main {
+    display: grid;
+    justify-items: center;
+  }
+
+  .app-home .hearth-northstar {
+    align-items: start !important;
+    display: grid !important;
+    gap: 20px !important;
+    grid-template-columns: minmax(420px, 0.92fr) minmax(460px, 1.08fr) !important;
+    max-width: 1180px !important;
+    width: min(100%, 1180px) !important;
+  }
+
+  .app-home .hearth-northstar-header,
+  .app-home .hearth-best-action-card,
+  .app-home .hearth-quick-actions-panel,
+  .app-home .hearth-start-here-panel,
+  .app-home .hearth-spark-card {
+    grid-column: 1 !important;
+  }
+
+  .app-home .hearth-snapshot-grid,
+  .app-home .hearth-recent-panel,
+  .app-home .hearth-scout-panel {
+    grid-column: 2 !important;
+  }
+
+  .app-market .marketplace-section,
+  .app-vault .vault-collection-panel,
+  .app-vault .vault-command-center,
+  .app-settings .settings-page,
+  .app-adminreview .approval-page,
+  .collections-utility-page .utility-page-layout {
+    max-width: 1220px !important;
+    width: min(100%, 1220px) !important;
+  }
+
+  .app-market .market-page-heading .standard-page-header-main {
+    align-items: start !important;
+    grid-template-columns: minmax(320px, 0.7fr) minmax(560px, 1.3fr) !important;
+  }
+
+  .app-market .market-page-heading .standard-page-header-body {
+    align-content: start !important;
+    display: grid !important;
+    gap: 12px !important;
+  }
+
+  .app-market .catalog-results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-vault .vault-command-overview {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .app-vault .vault-collection-panel {
+    display: grid !important;
+    gap: 16px !important;
+  }
+
+  .app-vault .vault-mobile-filter-drawer[open] .vault-toolbar {
+    display: grid !important;
+    grid-template-columns: minmax(280px, 1.3fr) repeat(3, minmax(150px, 1fr)) !important;
+  }
+
+  .settings-page .utility-page-layout,
+  .collections-utility-page .utility-page-layout {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .settings-page .utility-card-wide,
+  .collections-utility-page .utility-card-wide {
+    grid-column: 1 / -1 !important;
+  }
+
+  .app-adminreview .admin-command-section-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .app-forge .forge-private-card,
+  .app-addInventory .forge-private-card,
+  .app-inventory .forge-private-card,
+  .app-sales .forge-private-card {
+    margin-inline: auto !important;
+    max-width: 760px !important;
+  }
+}
+
 .app .market-mobile-product-card .image-needed-placeholder strong,
 .app-command-shell .market-mobile-product-card .image-needed-placeholder strong,
 .app-shell-dark .market-mobile-product-card .image-needed-placeholder strong {
@@ -50121,5 +50572,950 @@ body {
   .app-forge .panel,
   .app-adminreview .approval-page {
     padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 56px) !important;
+  }
+}
+
+/* Screenshot-driven design correction pass: global calm, safe mobile spacing, and lighter page composition. */
+:root {
+  --et-calm-border: rgba(132, 226, 255, 0.12);
+  --et-calm-border-strong: rgba(132, 226, 255, 0.2);
+  --et-calm-surface: rgba(6, 15, 29, 0.76);
+  --et-calm-surface-soft: rgba(9, 22, 39, 0.58);
+  --et-calm-surface-warm: rgba(24, 18, 30, 0.72);
+  --et-calm-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+  --et-mobile-content-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 104px);
+  --et-mobile-modal-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 26px);
+}
+
+.app :where(.standard-page-header, .panel, .compact-card, .card, .empty-state, .small-empty-state),
+.app-command-shell :where(.standard-page-header, .panel, .compact-card, .card, .empty-state, .small-empty-state),
+.app-shell-dark :where(.standard-page-header, .panel, .compact-card, .card, .empty-state, .small-empty-state) {
+  border-color: var(--et-calm-border) !important;
+  box-shadow: var(--et-calm-shadow) !important;
+}
+
+.app :where(.standard-page-header, .panel, .compact-card, .card) :where(.panel, .compact-card, .card, .small-empty-state) {
+  border-color: rgba(132, 226, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+.app :where(.section-kicker, .status-badge, .trust-badge, .mini-badge, .vault-overview-title, .forge-overview-title) {
+  letter-spacing: 0.02em !important;
+}
+
+.app :where(.standard-page-header-copy h2, .compact-card-header h2, .compact-card-header h3, .panel h2, .panel h3) {
+  letter-spacing: 0 !important;
+}
+
+.app :where(.standard-page-header-copy p, .compact-subtitle, .panel p, .card p) {
+  line-height: 1.42 !important;
+}
+
+.app :where(.standard-page-header-tabs, .segmented-control, .filter-chip-row, .market-mode-strip, .scout-header-trust-row) {
+  scrollbar-width: none;
+}
+
+.app :where(.standard-page-header-tabs, .segmented-control, .filter-chip-row, .market-mode-strip, .scout-header-trust-row)::-webkit-scrollbar {
+  display: none;
+}
+
+.app :where(.location-modal, .flow-modal, .drawer-panel, .bottom-sheet, .collection-manager-modal) {
+  max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app :where(.flow-modal-body, .location-modal-body, .drawer-body, .bottom-sheet-body, .collection-manager-body) {
+  padding-bottom: var(--et-mobile-modal-bottom) !important;
+}
+
+.app :where(.modal-sticky-footer, .flow-modal-actions, .location-modal-actions, .drawer-actions, .spark-flow-actions) {
+  bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 8px) !important;
+}
+
+.ember-assist-shell {
+  bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+  right: clamp(12px, 3vw, 24px) !important;
+  transition: opacity 160ms ease, transform 160ms ease !important;
+}
+
+.ember-assist-shell:not(.is-open).is-compact .ember-assist-fab {
+  border-radius: 999px !important;
+  min-width: 50px !important;
+  width: 50px !important;
+  padding: 0 !important;
+}
+
+.ember-assist-shell:not(.is-open).is-compact .ember-assist-fab b {
+  display: none !important;
+}
+
+.ember-assist-shell:not(.is-open).is-near-page-end {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(14px) scale(0.96) !important;
+}
+
+.ember-assist-panel {
+  background: linear-gradient(165deg, rgba(5, 12, 24, 0.98), rgba(8, 18, 34, 0.99)) !important;
+  border-color: rgba(255, 186, 73, 0.18) !important;
+  box-shadow: 0 26px 84px rgba(0, 0, 0, 0.52) !important;
+}
+
+.ember-assist-backdrop {
+  background: rgba(0, 5, 16, 0.54) !important;
+  backdrop-filter: blur(5px) !important;
+}
+
+.ember-assist-empty strong,
+.ember-assist-empty span {
+  display: block !important;
+}
+
+.ember-assist-empty strong {
+  margin-bottom: 4px !important;
+}
+
+@media (max-width: 780px) {
+  .app,
+  .app-command-shell,
+  .app-shell-dark,
+  .approval-page,
+  .dashboard-layout,
+  .hearth-northstar,
+  .scout-dashboard-overview,
+  .vault-page,
+  .forge-page,
+  .marketplace-section,
+  .tidepool-community,
+  .spark-page,
+  .settings-page,
+  .collection-page {
+    padding-bottom: var(--et-mobile-content-bottom) !important;
+    scroll-padding-bottom: var(--et-mobile-content-bottom) !important;
+  }
+
+  .app-command-shell > .topbar,
+  .topbar,
+  .app-shell-header {
+    border-radius: 0 0 18px 18px !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    min-height: 58px !important;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px !important;
+  }
+
+  .topbar-brand-copy small,
+  .topbar-title p,
+  .topbar-workspace-chip small,
+  .topbar .app-search:not(.expanded),
+  .topbar-scan-button,
+  .topbar-market-link {
+    display: none !important;
+  }
+
+  .topbar-brand {
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .topbar-brand-copy strong,
+  .topbar-title h2 {
+    font-size: 0.98rem !important;
+    max-width: 16ch !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .topbar-command-actions {
+    gap: 6px !important;
+  }
+
+  .topbar-command-actions .topbar-quick-add-button,
+  .topbar-command-actions .topbar-profile-button {
+    display: none !important;
+  }
+
+  .topbar .menu-button,
+  .topbar-command-actions > button,
+  .notification-button,
+  .notification-trigger {
+    min-height: 40px !important;
+    min-width: 40px !important;
+  }
+
+  .standard-page-header {
+    border-radius: 22px !important;
+    gap: 12px !important;
+    padding: 15px !important;
+  }
+
+  .standard-page-header-main,
+  .standard-page-header-actions {
+    gap: 9px !important;
+  }
+
+  .standard-page-header-copy h2 {
+    font-size: clamp(1.35rem, 7vw, 2.05rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .standard-page-header-copy p {
+    font-size: 0.9rem !important;
+    max-width: 34rem !important;
+  }
+
+  .standard-page-header-tabs {
+    gap: 6px !important;
+    margin: 0 -4px !important;
+    overflow-x: auto !important;
+    padding: 2px 4px 5px !important;
+  }
+
+  .standard-page-header-tabs button {
+    flex: 0 0 auto !important;
+    min-height: 36px !important;
+    padding: 7px 11px !important;
+    white-space: nowrap !important;
+  }
+
+  .panel,
+  .compact-card,
+  .card,
+  .empty-state {
+    border-radius: 20px !important;
+  }
+
+  .hearth-northstar {
+    gap: 12px !important;
+  }
+
+  .hearth-northstar-header {
+    gap: 8px !important;
+    padding: 12px 2px 2px !important;
+  }
+
+  .hearth-northstar-header .section-kicker,
+  .hearth-northstar-header p {
+    display: none !important;
+  }
+
+  .hearth-best-action-card {
+    min-height: 0 !important;
+    padding: 15px !important;
+  }
+
+  .hearth-best-action-copy h2 {
+    font-size: 1.42rem !important;
+  }
+
+  .hearth-best-action-copy p {
+    font-size: 0.9rem !important;
+  }
+
+  .hearth-best-action-art {
+    opacity: 0.22 !important;
+    transform: scale(0.82) translate(16px, 6px) !important;
+  }
+
+  .hearth-quick-actions-panel,
+  .hearth-start-here-panel,
+  .hearth-snapshot-card,
+  .hearth-spark-card,
+  .hearth-recent-panel {
+    padding: 13px !important;
+  }
+
+  .hearth-quick-actions-grid {
+    gap: 8px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .hearth-quick-action {
+    min-height: 76px !important;
+    padding: 10px !important;
+  }
+
+  .hearth-quick-action small {
+    display: none !important;
+  }
+
+  .hearth-start-here-panel .hearth-start-here-preview,
+  .hearth-start-here-panel .hearth-progress-copy p {
+    display: none !important;
+  }
+
+  .hearth-snapshot-grid {
+    gap: 9px !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card {
+    padding: 14px !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-submit-primary {
+    min-height: 42px !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-store-suggestion-link {
+    display: none !important;
+  }
+
+  .app-scout .scout-header-trust-row {
+    gap: 6px !important;
+    overflow-x: auto !important;
+  }
+
+  .app-scout .scout-header-trust-row span {
+    flex: 0 0 auto !important;
+    padding: 6px 9px !important;
+  }
+
+  .app-scout .scout-nearby-cta-card,
+  .app-scout .scout-nearby-list-card,
+  .app-scout .scout-subpage-panel,
+  .app-scout .scout-combined-header {
+    padding: 13px !important;
+  }
+
+  .app-scout .scout-nearby-quiet-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] {
+    max-height: calc(100dvh - var(--et-mobile-modal-bottom) - 14px) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    gap: 9px !important;
+  }
+
+  .app-scout .scout-report-progress,
+  .app-scout .scout-current-selection-strip,
+  .app-scout .scout-flow-guidance-card,
+  .app-scout .scout-report-step-card,
+  .app-scout .scout-report-store-card {
+    padding: 10px !important;
+  }
+
+  .app-scout .scout-stock-status-grid,
+  .app-scout .scout-report-choice-grid {
+    gap: 7px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-scout .scout-stock-status-button,
+  .app-scout .scout-report-choice-card {
+    min-height: 62px !important;
+    padding: 8px !important;
+  }
+
+  .app-vault .vault-command-center {
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-vault .vault-command-quick-add,
+  .app-vault .vault-settings-link {
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+  }
+
+  .app-vault .vault-command-overview {
+    gap: 8px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-vault .vault-command-overview .vault-overview-card {
+    min-height: 86px !important;
+    padding: 10px !important;
+  }
+
+  .app-vault .vault-command-overview .vault-overview-card:nth-child(n+3) {
+    grid-column: 1 / -1 !important;
+  }
+
+  .app-vault .vault-overview-card strong {
+    font-size: 1.18rem !important;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-main {
+    grid-template-columns: 68px minmax(0, 1fr) !important;
+  }
+
+  .app-vault .vault-collection-panel .vault-image-wrap {
+    height: 68px !important;
+    width: 68px !important;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-facts p:nth-child(n+3) {
+    display: none !important;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-actions button:not(:first-child):not(.overflow-menu) {
+    display: none !important;
+  }
+
+  .app-forge .adaptive-forge-intro {
+    margin: 14px auto !important;
+    max-width: 560px !important;
+    min-height: 0 !important;
+    padding: 18px !important;
+  }
+
+  .app-forge .adaptive-forge-intro h2 {
+    font-size: 1.55rem !important;
+  }
+
+  .app-forge .forge-intro-benefits {
+    gap: 7px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-market .market-page-heading {
+    padding: 14px !important;
+  }
+
+  .app-market .market-search-form,
+  .market-search-form {
+    gap: 8px !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-market .market-barcode-search,
+  .market-barcode-search {
+    align-items: end !important;
+    display: grid !important;
+    gap: 7px !important;
+    grid-template-columns: 74px minmax(0, 1fr) auto !important;
+  }
+
+  .app-market .market-barcode-search label,
+  .market-barcode-search label {
+    font-size: 0.72rem !important;
+    margin-bottom: 10px !important;
+  }
+
+  .app-market .market-data-refresh-strip details {
+    display: none !important;
+  }
+
+  .app-market .market-mode-strip {
+    gap: 6px !important;
+    overflow-x: auto !important;
+  }
+
+  .app-market .market-mode-strip span:nth-of-type(n+3) {
+    display: none !important;
+  }
+
+  .app-market .market-mode-strip button {
+    flex: 0 0 auto !important;
+    min-height: 34px !important;
+    padding: 7px 10px !important;
+  }
+
+  .app-market .catalog-results-toolbar,
+  .app-market .catalog-search-results-controls {
+    gap: 8px !important;
+  }
+
+  .app-market .catalog-card,
+  .app-market .market-card,
+  .app-market .product-card {
+    padding: 11px !important;
+  }
+
+  .app-tidepool .tidepool-community-header,
+  .tidepool-community-header {
+    padding: 14px !important;
+  }
+
+  .tidepool-stat-grid {
+    gap: 8px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .tidepool-stat-grid > *:nth-child(n+3) {
+    display: none !important;
+  }
+
+  .tidepool-empty-state,
+  .tidepool-rules-card {
+    padding: 14px !important;
+  }
+
+  .spark-page-header,
+  .spark-mission-card,
+  .spark-request-flow {
+    padding: 15px !important;
+  }
+
+  .spark-page-header .quick-actions .secondary-button,
+  .spark-page-header .spark-chip-row {
+    display: none !important;
+  }
+
+  .spark-section-grid {
+    gap: 9px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .spark-section-card {
+    min-height: 112px !important;
+    padding: 12px !important;
+  }
+
+  .spark-section-card p {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+  }
+
+  .spark-stepper {
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+  }
+
+  .spark-stepper button {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+
+  .app-adminreview .approval-page,
+  .app-adminreview .admin-page-header,
+  .app-adminreview .admin-command-overview {
+    padding: 14px !important;
+  }
+
+  .app-adminreview .admin-command-grid,
+  .app-adminreview .admin-command-section-grid {
+    gap: 9px !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-adminreview .admin-command-card,
+  .app-adminreview .admin-command-section-card {
+    min-height: 0 !important;
+    padding: 12px !important;
+  }
+
+  .app-adminreview .admin-command-card p,
+  .app-adminreview .admin-command-section-card p {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+  }
+
+  .app-adminreview .admin-identity-card,
+  .app-adminreview .admin-command-filter-row {
+    gap: 6px !important;
+    overflow-x: auto !important;
+  }
+
+  .collection-manager-card,
+  .collection-manager-toolbar,
+  .workspace-member-row,
+  .drawer-info-card {
+    padding: 12px !important;
+  }
+
+  .collection-manager-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .collection-manager-stats div:nth-child(n+5) {
+    display: none !important;
+  }
+
+  .quick-add-sheet {
+    max-height: calc(100dvh - var(--et-mobile-modal-bottom) - 12px) !important;
+  }
+
+  .quick-add-sheet-header,
+  .quick-add-context-card {
+    padding: 11px !important;
+  }
+
+  .quick-add-sheet-header p {
+    font-size: 0.86rem !important;
+  }
+
+  .quick-add-action-grid {
+    gap: 9px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .quick-add-action-card {
+    min-height: 92px !important;
+    padding: 11px !important;
+  }
+
+  .quick-add-action-card small {
+    font-size: 0.74rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .ember-assist-panel {
+    border-radius: 24px 24px 18px 18px !important;
+    bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 12px) !important;
+    left: 10px !important;
+    max-height: min(72dvh, calc(100dvh - var(--etds-bottom-nav-h, 76px) - env(safe-area-inset-bottom, 0px) - 28px)) !important;
+    right: 10px !important;
+    width: auto !important;
+  }
+
+  .ember-assist-scroll {
+    padding-bottom: 12px !important;
+  }
+
+  .ember-assist-prompts {
+    gap: 7px !important;
+  }
+
+  .ember-assist-prompts button {
+    min-height: 40px !important;
+    padding: 9px 10px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-command-shell {
+    gap: 18px !important;
+  }
+
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .dashboard-layout,
+  .hearth-northstar,
+  .approval-page,
+  .marketplace-section,
+  .settings-page {
+    max-width: 1180px !important;
+    width: 100% !important;
+  }
+
+  .hearth-northstar {
+    align-items: start !important;
+    grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr) !important;
+  }
+
+  .hearth-best-action-card {
+    min-height: 250px !important;
+  }
+
+  .app-adminreview .approval-page,
+  .app-market .marketplace-section,
+  .app-vault .vault-page,
+  .app-forge .forge-page {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .app-adminreview .admin-command-section-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .app-vault .vault-command-overview,
+  .app-forge .forge-top-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .app-market .market-page-heading .standard-page-header-main {
+    align-items: end !important;
+    grid-template-columns: minmax(0, 0.8fr) minmax(420px, 1.2fr) !important;
+  }
+
+  .quick-add-sheet,
+  .flow-modal[data-flow="addActionSheet"] {
+    max-width: 560px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember-assist-shell,
+  .ember-assist-panel,
+  .standard-page-header,
+  .panel,
+  .compact-card,
+  .card,
+  button {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Screenshot QA follow-up: fix remaining mobile crowding from captured frames. */
+@media (max-width: 780px) {
+  .web-command-promise,
+  .topbar-brand-copy,
+  .topbar-title {
+    display: none !important;
+  }
+
+  .app-command-shell > .app-shell-header {
+    display: none !important;
+  }
+
+  .topbar-brand {
+    flex: 0 0 auto !important;
+  }
+
+  .topbar-brand-mark,
+  .topbar-brand-mark img {
+    height: 38px !important;
+    width: 38px !important;
+  }
+
+  .ember-assist-shell:not(.is-open) {
+    bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 12px) !important;
+    right: 14px !important;
+  }
+
+  .ember-assist-shell:not(.is-open) .ember-assist-fab {
+    border-radius: 999px !important;
+    min-height: 52px !important;
+    min-width: 52px !important;
+    padding: 0 !important;
+    width: 52px !important;
+  }
+
+  .ember-assist-shell:not(.is-open) .ember-assist-fab b {
+    height: 1px !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    white-space: nowrap !important;
+    width: 1px !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    max-height: calc(100dvh - 150px - env(safe-area-inset-bottom, 0px)) !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard {
+    max-height: calc(100dvh - 176px - env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important;
+    padding: 0 0 0 !important;
+    scrollbar-width: thin;
+  }
+
+  .app-scout .scout-report-type-grid {
+    display: grid !important;
+    gap: 7px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-scout .scout-report-type-grid .scout-report-choice-card {
+    align-content: start !important;
+    min-height: 68px !important;
+    padding: 8px !important;
+  }
+
+  .app-scout .scout-report-type-grid .scout-report-choice-card strong {
+    align-items: center !important;
+    display: flex !important;
+    font-size: 0.82rem !important;
+    gap: 4px !important;
+    justify-content: space-between !important;
+    line-height: 1.15 !important;
+  }
+
+  .app-scout .scout-report-type-grid .scout-report-choice-card span:not(.scout-selection-badge) {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    font-size: 0.72rem !important;
+    line-height: 1.2 !important;
+    overflow: hidden !important;
+  }
+
+  .app-scout .scout-selection-badge {
+    flex: 0 0 auto !important;
+    font-size: 0.62rem !important;
+    padding: 3px 6px !important;
+  }
+
+  .app-scout .scout-report-essential-grid {
+    gap: 8px !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-scout .scout-report-essential-panel {
+    gap: 8px !important;
+    padding: 9px !important;
+  }
+
+  .app-scout .scout-report-notes-field textarea {
+    min-height: 72px !important;
+  }
+
+  .app-scout .scout-proof-field-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-scout .scout-wizard-footer {
+    background: linear-gradient(180deg, rgba(4, 10, 22, 0), rgba(4, 10, 22, 0.98) 22%) !important;
+    bottom: 0 !important;
+    display: grid !important;
+    gap: 8px !important;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) !important;
+    margin-top: 8px !important;
+    padding: 14px 0 4px !important;
+    position: sticky !important;
+    z-index: 6 !important;
+  }
+
+  .app-scout .scout-wizard-footer button {
+    min-height: 42px !important;
+  }
+
+  .app-market .market-barcode-search,
+  .market-barcode-search {
+    align-items: stretch !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-market .market-barcode-search label,
+  .market-barcode-search label {
+    grid-column: 1 / -1 !important;
+    margin: 0 !important;
+  }
+
+  .app-market .market-barcode-search input,
+  .market-barcode-search input {
+    min-width: 0 !important;
+  }
+
+  .app-market .market-barcode-search button,
+  .market-barcode-search button {
+    min-width: 104px !important;
+  }
+
+  .ember-assist-scroll {
+    padding-bottom: 144px !important;
+  }
+
+  .ember-assist-empty {
+    display: none !important;
+  }
+
+  .hearth-northstar .hearth-start-here-panel.is-collapsed .compact-card-header {
+    align-items: start !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .hearth-northstar .hearth-start-here-panel.is-collapsed .compact-card-header h2 {
+    display: block !important;
+    font-size: 0.98rem !important;
+    line-height: 1.18 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+}
+
+/* Second UI correction pass final overrides. Keep after audit follow-up block. */
+@media (max-width: 780px) {
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .dashboard-layout,
+  .hearth-northstar,
+  .marketplace-section,
+  .settings-page,
+  .approval-page,
+  .collections-utility-page .utility-page-layout {
+    padding-bottom: calc(var(--etds-mobile-action-safe) + 28px) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 12px !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard {
+    max-height: calc(100dvh - 138px - env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important;
+    padding: 0 0 calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-scout .scout-wizard-footer {
+    background: rgba(4, 10, 22, 0.98) !important;
+    border-top: 1px solid rgba(125, 211, 252, 0.16) !important;
+    bottom: auto !important;
+    margin-top: 12px !important;
+    padding: 10px 0 0 !important;
+    position: static !important;
+  }
+
+  .app-market .market-results-panel {
+    padding-bottom: calc(var(--etds-mobile-action-safe) + 18px) !important;
+  }
+
+  .app-market .market-deal-shortcut {
+    display: none !important;
+  }
+
+  .app-market .smart-catalog-suggestions {
+    display: none !important;
+  }
+
+  .app-market .market-advanced-filter-rail,
+  .app-market .market-filter-rail,
+  .app-market .market-search-source-note {
+    display: none !important;
+  }
+
+  .app-market .market-results-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-market .market-filter-drawer-actions {
+    display: grid !important;
+    gap: 8px !important;
+    grid-column: 1 / -1 !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-market .catalog-result-main {
+    display: grid !important;
+    gap: 10px !important;
+    grid-template-columns: 76px minmax(0, 1fr) !important;
+  }
+
+  .app-market .market-result-add-actions {
+    display: grid !important;
+    gap: 8px !important;
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+  }
+
+  .app-vault .vault-command-overview {
+    display: none !important;
+  }
+
+  .app-vault .vault-mobile-filter-drawer:not([open]) .vault-toolbar {
+    display: none !important;
+  }
+
+  .ember-assist-shell:not(.is-open).is-near-page-end,
+  .app-market .ember-assist-shell:not(.is-open),
+  .app-collections .ember-assist-shell:not(.is-open) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(12px) scale(0.9) !important;
   }
 }
