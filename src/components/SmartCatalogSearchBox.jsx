@@ -36,6 +36,13 @@ function CatalogSuggestionThumbnail({ suggestion }) {
   const [failed, setFailed] = useState(false);
   const product = suggestion.product || {};
   const imageUrl = !failed ? suggestion.imageUrl || getProductImageUrl(product) : "";
+  if (suggestion.iconText && !suggestion.product) {
+    return (
+      <span className="smart-catalog-suggestion-thumb smart-catalog-scope-thumb">
+        {suggestion.iconText}
+      </span>
+    );
+  }
   const fallback = getProductImageFallback(product, {
     title: suggestion.label || getProductDisplayTitle(product),
     setName: getProductSetLabel(product),
@@ -83,6 +90,10 @@ export default function SmartCatalogSearchBox({
   autoFocus = false,
   inputLabel = "",
   localCatalogProducts = [],
+  includeScopeSuggestions = false,
+  searchCategories = [],
+  scopeSets = [],
+  scopeProductTypes = [],
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -132,11 +143,124 @@ export default function SmartCatalogSearchBox({
       });
   }
 
+  function buildScopeSuggestions(queryValue = "") {
+    if (!includeScopeSuggestions) return [];
+    const labelQuery = String(queryValue || "").trim();
+    const normalized = normalizeCatalogQuery(labelQuery);
+    const mode = detectCatalogSearchMode(labelQuery);
+    const exactIdentifier = ["barcode", "id"].includes(mode);
+    if (!normalized || (normalized.length < 2 && !exactIdentifier)) return [];
+
+    const suggestions = [];
+    const addSuggestion = (suggestion) => {
+      if (!suggestion?.label) return;
+      suggestions.push({
+        section: "Narrow your search",
+        searchValue: labelQuery,
+        ...suggestion,
+      });
+    };
+
+    if (exactIdentifier) {
+      addSuggestion({
+        id: `scope-barcode-${normalized}`,
+        type: "UPC / SKU",
+        label: "UPC / SKU lookup",
+        description: "Search exact barcode, SKU, or product ID",
+        badge: "UPC/SKU",
+        mode: "barcode",
+        iconText: "UPC",
+      });
+    }
+
+    const category = searchCategories[0];
+    if (category) {
+      addSuggestion({
+        id: `scope-category-${normalizeCatalogQuery(category.value || category.label || "pokemon")}`,
+        type: "Category",
+        label: `in ${category.label || category.value}`,
+        description: category.description || `Search ${labelQuery} in ${category.label || category.value}`,
+        badge: "Category",
+        mode: "category",
+        category: category.value || category.label,
+        iconText: "TCG",
+      });
+    }
+
+    const matchingSets = (Array.isArray(scopeSets) ? scopeSets : [])
+      .map((set) => {
+        const name = set.name || set.setName || set.label || "";
+        const aliases = [name, set.code, set.setCode, set.series, ...(set.setAliases || []), ...(set.aliases || [])]
+          .filter(Boolean)
+          .map((item) => normalizeCatalogQuery(item));
+        const bestMatch = aliases.some((alias) => {
+          if (!alias) return false;
+          if (alias.length <= 2 || normalized.length <= 2) return alias === normalized || normalized.split(" ").includes(alias);
+          return alias.includes(normalized) || normalized.includes(alias);
+        });
+        return bestMatch && name ? { ...set, name } : null;
+      })
+      .filter(Boolean)
+      .slice(0, 2);
+
+    matchingSets.forEach((set, index) => {
+      addSuggestion({
+        id: `scope-set-${normalizeCatalogQuery(set.name)}-${index}`,
+        type: "Set",
+        label: `in Set: ${set.name}`,
+        description: set.series ? `${set.series} expansion` : "Filter to this set or expansion",
+        badge: "Set",
+        mode: "set",
+        setName: set.name,
+        iconText: "SET",
+      });
+    });
+
+    const sealedIntent = /\b(etb|elite trainer|booster|bundle|box|sealed|tin|blister|collection|upc|ultra premium|pack)\b/.test(normalized);
+    const cardIntent = /\b(card|sir|ir|ex|gx|vmax|vstar|trainer|energy|reverse|holo|rare|pikachu|charizard|mew|eevee)\b/.test(normalized) ||
+      /^(tg|gg|svp|h|rc)?\d{1,4}(\/(tg|gg|svp|h|rc)?\d{1,4})?$/.test(normalized);
+    const baseTypes = Array.isArray(scopeProductTypes) && scopeProductTypes.length
+      ? scopeProductTypes
+      : [
+          { label: "Card", filterKind: "card", description: "Individual cards and code cards" },
+          { label: "Sealed", filterKind: "sealed", description: "Boxes, bundles, tins, packs, and sealed products" },
+          { label: "Product", filterKind: "All", description: "All catalog products" },
+        ];
+    const orderedTypes = [...baseTypes].sort((a, b) => {
+      const aLabel = String(a.label || a.value || a).toLowerCase();
+      const bLabel = String(b.label || b.value || b).toLowerCase();
+      const score = (label) => {
+        if (sealedIntent && label.includes("sealed")) return -2;
+        if (cardIntent && label.includes("card")) return -2;
+        if (label.includes("product")) return 1;
+        return 0;
+      };
+      return score(aLabel) - score(bLabel);
+    });
+
+    orderedTypes.slice(0, 3).forEach((type) => {
+      const label = type.label || type.value || type;
+      addSuggestion({
+        id: `scope-kind-${normalizeCatalogQuery(label)}`,
+        type: "Type",
+        label: `type ${label}`,
+        description: type.description || `Limit results to ${label}`,
+        badge: label,
+        mode: "catalogKind",
+        filterKind: type.filterKind || type.kind || type.value || label,
+        productType: type.productType || "",
+        iconText: String(label).slice(0, 3).toUpperCase(),
+      });
+    });
+
+    return suggestions.slice(0, 5);
+  }
+
   function dedupeSuggestionList(list = []) {
     const seen = new Set();
     return list.filter((suggestion) => {
       const product = suggestion.product || {};
-      const key = String(product.id || suggestion.id || `${suggestion.label}-${suggestion.description}`).toLowerCase();
+      const key = String(product.id || suggestion.id || `${suggestion.mode || ""}-${suggestion.label}-${suggestion.description}`).toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -165,7 +289,10 @@ export default function SmartCatalogSearchBox({
     }
 
     if (!isSupabaseConfigured || !supabase) {
-      const localSuggestions = buildLocalSuggestions(deferredValue).slice(0, maxSuggestions);
+      const localSuggestions = dedupeSuggestionList([
+        ...buildScopeSuggestions(deferredValue),
+        ...buildLocalSuggestions(deferredValue),
+      ]).slice(0, maxSuggestions);
       setSuggestions(localSuggestions);
       setLoading(false);
       setErrorMessage("");
@@ -191,7 +318,11 @@ export default function SmartCatalogSearchBox({
       const filteredSuggestions = typeof suggestionFilter === "function"
         ? (cached.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
         : (cached.suggestions || []);
-      const nextSuggestions = dedupeSuggestionList([...buildLocalSuggestions(deferredValue), ...filteredSuggestions]).slice(0, maxSuggestions);
+      const nextSuggestions = dedupeSuggestionList([
+        ...buildScopeSuggestions(deferredValue),
+        ...buildLocalSuggestions(deferredValue),
+        ...filteredSuggestions,
+      ]).slice(0, maxSuggestions);
       setSuggestions(nextSuggestions);
       setLoading(false);
       setErrorMessage("");
@@ -222,7 +353,11 @@ export default function SmartCatalogSearchBox({
         const filteredSuggestions = typeof suggestionFilter === "function"
           ? (result.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
           : (result.suggestions || []);
-        const nextSuggestions = dedupeSuggestionList([...buildLocalSuggestions(deferredValue), ...filteredSuggestions]).slice(0, maxSuggestions);
+        const nextSuggestions = dedupeSuggestionList([
+          ...buildScopeSuggestions(deferredValue),
+          ...buildLocalSuggestions(deferredValue),
+          ...filteredSuggestions,
+        ]).slice(0, maxSuggestions);
         setSuggestions(nextSuggestions);
         setOpen(true);
         setActiveIndex(nextSuggestions.length ? 0 : -1);
@@ -244,7 +379,7 @@ export default function SmartCatalogSearchBox({
       window.clearTimeout(timer);
       controller?.abort?.();
     };
-  }, [cleanedValue, dataFilter, deferredValue, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, supabase, suggestionFilter]);
+  }, [cleanedValue, dataFilter, deferredValue, includeScopeSuggestions, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, scopeProductTypes, scopeSets, searchCategories, supabase, suggestionFilter]);
 
   const groupedSuggestions = useMemo(() => {
     return suggestions.reduce((groups, suggestion, index) => {
@@ -259,6 +394,7 @@ export default function SmartCatalogSearchBox({
     onChange?.(nextValue);
     setOpen(false);
     setActiveIndex(-1);
+    if (typeof document !== "undefined") document.activeElement?.blur?.();
     onSelectSuggestion?.({ ...suggestion, searchValue: nextValue });
   }
 
@@ -310,11 +446,12 @@ export default function SmartCatalogSearchBox({
             limit: maxSuggestions,
           });
           const cachedSuggestions = cached?.suggestions || [];
-          setSuggestions([]);
+          const scopeSuggestions = buildScopeSuggestions(nextValue);
+          setSuggestions(scopeSuggestions);
           setErrorMessage("");
-          setActiveIndex(-1);
+          setActiveIndex(scopeSuggestions.length ? 0 : -1);
           if (cached) {
-            const nextSuggestions = dedupeSuggestionList(cachedSuggestions).slice(0, maxSuggestions);
+            const nextSuggestions = dedupeSuggestionList([...scopeSuggestions, ...cachedSuggestions]).slice(0, maxSuggestions);
             setSuggestions(nextSuggestions);
             setLoading(false);
             setActiveIndex(nextSuggestions.length ? 0 : -1);

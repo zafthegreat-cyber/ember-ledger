@@ -445,7 +445,6 @@ import {
   selectAdaptiveCommandDeskKeys,
   selectAdaptiveDesktopMainKeys,
   selectAdaptiveHearthQuickActionKeys,
-  selectAdaptiveMenuKeys,
   selectSmartQuickAddActionPlan,
 } from "./utils/adaptiveUi";
 
@@ -1936,6 +1935,14 @@ const MARKET_CATALOG_DEAL_FILTERS = [
   { value: "fairPrice", label: "Fair price" },
   { value: "sealed", label: "Sealed" },
   { value: "singles", label: "Singles" },
+];
+const MARKET_SEARCH_CATEGORIES = [
+  { value: "Pokemon", label: "Pokémon", description: "Cards, sealed products, and catalog records" },
+];
+const MARKET_SEARCH_TYPE_SCOPES = [
+  { label: "Card", filterKind: "card", description: "Individual cards and code cards" },
+  { label: "Sealed", filterKind: "sealed", description: "Boxes, bundles, tins, packs, and sealed products" },
+  { label: "Product", filterKind: "All", description: "All catalog products" },
 ];
 const BLANK_MARKETPLACE_FORM = {
   listingType: "For Sale",
@@ -4924,6 +4931,7 @@ export default function App() {
   const [submittedCatalogSearch, setSubmittedCatalogSearch] = useState(initialRouteState.submittedCatalogSearch || "");
   const [catalogBarcodeSearch, setCatalogBarcodeSearch] = useState("");
   const [submittedCatalogBarcodeSearch, setSubmittedCatalogBarcodeSearch] = useState("");
+  const [catalogCategoryFilter, setCatalogCategoryFilter] = useState(initialRouteState.catalogCategoryFilter || "All");
   const [catalogDataFilter, setCatalogDataFilter] = useState(initialRouteState.catalogDataFilter || "All");
   const [catalogKindFilter, setCatalogKindFilter] = useState(initialRouteState.catalogKindFilter || "All");
   const [catalogSetFilter, setCatalogSetFilter] = useState(initialRouteState.catalogSetFilter || "All");
@@ -5606,9 +5614,39 @@ export default function App() {
     feedbackInbox: adaptiveAdminNavVisible ? { key: "feedbackInbox", label: "Feedback Inbox", helper: "Support messages and beta feedback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); } } : null,
     moderation: adaptiveModeratorNavVisible ? { key: "moderation", label: "Moderation", helper: "Community and marketplace review.", icon: "settings", target: "adminReview" } : null,
   };
-  const mobileMenuDestinations = selectAdaptiveMenuKeys(adaptiveUiState)
-    .map((key) => mobileMenuByKey[key])
-    .filter(Boolean);
+  const menuPrimaryItems = [
+    { key: "home", label: "Hearth", helper: "Home base and next step.", icon: "home", target: "dashboard" },
+    { key: "scout", label: "Scout", helper: "Report and review restock signals.", icon: "scout", target: "scout" },
+    { key: "quickAdd", label: "Quick Add", helper: "Add, scan, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-primary") },
+    { key: "vault", label: "Vault", helper: "Protected collection.", icon: "vault", target: "vault" },
+    mobileMenuByKey.market,
+  ].filter(Boolean);
+  const menuSecondaryItems = [
+    mobileMenuByKey.forge,
+    mobileMenuByKey.tidepool,
+    mobileMenuByKey.spark,
+    { key: "collections", label: "Collections", helper: "Workspace and members.", icon: "settings", action: () => openUtilityPage("collections") },
+    mobileMenuByKey.settings,
+  ].filter(Boolean);
+  const menuAdminItems = [
+    mobileMenuByKey.admin,
+    mobileMenuByKey.invites,
+    mobileMenuByKey.betaUsers,
+    mobileMenuByKey.feedbackInbox,
+    mobileMenuByKey.moderation,
+  ].filter(Boolean);
+  const menuSupportItems = [
+    { key: "ask-ember", label: "Ask Ember", helper: "Open the assistant.", icon: "spark", action: () => setEmberAssistOpen(true) },
+    { key: "feedback", label: "Feedback", helper: "Bug, request, or admin message.", icon: "bell", action: () => openFeedbackDialog("feedback") },
+    mobileMenuByKey.help,
+    Boolean(user?.id && user.id !== "local-beta") ? { key: "sign-out", label: "Sign out", helper: "Leave this device session.", icon: "settings", action: signOut } : null,
+  ].filter(Boolean);
+  const menuCommandSections = [
+    { key: "primary", title: "Primary", items: menuPrimaryItems },
+    { key: "secondary", title: "Secondary", items: menuSecondaryItems },
+    menuAdminItems.length ? { key: "admin", title: "Admin / Owner", items: menuAdminItems } : null,
+    { key: "support", title: "Support", items: menuSupportItems },
+  ].filter(Boolean);
   const topbarSectionOptions = [
     ...mainTabs,
     { key: "settings", label: "Settings", target: "settings" },
@@ -5958,10 +5996,21 @@ export default function App() {
     activeFlowModal ||
     showInventoryScanner ||
     showCatalogScanner ||
+    receiptScanOpen ||
+    aiAssistReview ||
+    lockedFeatureKey ||
+    selectedWatchCalendarEvent ||
     listingReviewOpen ||
     dealFinderOpen ||
     showVaultAddForm ||
     scoutScoreModalOpen ||
+    selectedScoutReport ||
+    selectedVaultDetailId ||
+    scoutDateTimeEdit.report ||
+    scoutReportModerationTarget ||
+    tidepoolFlagTarget ||
+    adminConfirmAction ||
+    confirmationState ||
     feedbackDialog ||
     suggestionConflict ||
     vaultPotentialDuplicate ||
@@ -5984,6 +6033,83 @@ export default function App() {
       (activeTab === "vault" && !items.some(isActiveVaultItem) && !emberAssistOpen) ||
       (activeTab === "collections" && !emberAssistOpen)
     );
+  const shellOverlayOpen = Boolean(
+    activeFlowModal ||
+    quickAddMenuOpen ||
+    menuOpen ||
+    searchExpanded ||
+    showInventoryScanner ||
+    showCatalogScanner ||
+    receiptScanOpen ||
+    aiAssistReview ||
+    lockedFeatureKey ||
+    selectedWatchCalendarEvent ||
+    listingReviewOpen ||
+    dealFinderOpen ||
+    showVaultAddForm ||
+    selectedCatalogDetailId ||
+    selectedVaultDetailId ||
+    selectedScoutReport ||
+    scoutScoreModalOpen ||
+    scoutDateTimeEdit.report ||
+    scoutReportModerationTarget ||
+    tidepoolFlagTarget ||
+    adminConfirmAction ||
+    confirmationState ||
+    feedbackDialog ||
+    suggestionConflict ||
+    vaultPotentialDuplicate ||
+    vaultDuplicateItem ||
+    vaultForgeTransfer ||
+    locationPromptOpen ||
+    importAssistantOpen ||
+    listingReportTarget ||
+    vaultListingDecision ||
+    collectionManagerOpen ||
+    collectionUtilityDrawer ||
+    workspaceRenameTarget ||
+    workspaceArchiveTarget ||
+    workspaceDeleteTarget
+  );
+  const shellLongFormActive = Boolean(
+    activeFlowModal ||
+    showVaultAddForm ||
+    feedbackDialog ||
+    collectionManagerOpen ||
+    collectionUtilityDrawer ||
+    workspaceRenameTarget ||
+    workspaceArchiveTarget ||
+    workspaceDeleteTarget ||
+    scoutDateTimeEdit.report ||
+    (activeTab === "kidsProgram" && kidsProgramRequestStep > 1)
+  );
+  const emberAssistCollisionBlocked = Boolean(
+    shellOverlayOpen ||
+    shellLongFormActive ||
+    (activeTab === "market" && catalogSearchHasRun) ||
+    (activeTab === "vault" && !items.some(isActiveVaultItem)) ||
+    activeTab === "collections" ||
+    emberAssistLauncherState.nearEnd
+  );
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const body = document.body;
+    body.classList.toggle("shell-overlay-open", shellOverlayOpen);
+    body.classList.toggle("shell-long-form-active", shellLongFormActive);
+    body.classList.toggle("ember-assist-open", emberAssistOpen);
+    return () => {
+      body.classList.remove("shell-overlay-open");
+      body.classList.remove("shell-long-form-active");
+      body.classList.remove("ember-assist-open");
+    };
+  }, [shellOverlayOpen, shellLongFormActive, emberAssistOpen]);
+
+  useEffect(() => {
+    if (!emberAssistOpen) return;
+    if (!shellOverlayOpen && !shellLongFormActive) return;
+    setEmberAssistOpen(false);
+  }, [emberAssistOpen, shellOverlayOpen, shellLongFormActive]);
   const autoHideResetKey = [
     activeTab,
     activeMainTab || "standalone",
@@ -8957,14 +9083,19 @@ export default function App() {
 
   async function loadImportedPokemonCatalog(searchTerm = catalogSearch, options = {}) {
     const pageSize = clampPageSize(options.pageSize || catalogPageSize || supabaseCatalogStatus.pageSize, SUPABASE_CATALOG_PAGE_SIZE);
+    const effectiveProductGroup = options.productGroup || currentCatalogProductGroup();
+    const effectiveProductType = options.productType ?? catalogTypeFilter;
+    const effectiveSetName = options.setName ?? catalogSetFilter;
+    const effectiveDataFilter = options.dataFilter ?? catalogDataFilter;
+    const effectiveRarity = options.rarity ?? catalogRarityFilter;
     const localHasCriteria = hasCatalogSearchCriteria({
       query: searchTerm,
       barcode: options.barcode ?? catalogBarcodeSearch,
-      productGroup: currentCatalogProductGroup(),
-      productType: catalogTypeFilter,
-      setName: catalogSetFilter,
-      dataFilter: catalogDataFilter,
-      rarity: catalogRarityFilter,
+      productGroup: effectiveProductGroup,
+      productType: effectiveProductType,
+      setName: effectiveSetName,
+      dataFilter: effectiveDataFilter,
+      rarity: effectiveRarity,
     });
     if (!isSupabaseConfigured || !supabase) {
       setCatalogSearchHasRun(localHasCriteria);
@@ -8991,19 +9122,20 @@ export default function App() {
     const mode = options.mode || "general";
     const force = Boolean(options.forceSearch);
     const barcode = options.barcode ?? catalogBarcodeSearch;
-    const productGroup =
+    const productGroup = options.productGroup || (
       catalogKindFilter === "card" ? "Cards" :
       catalogKindFilter === "sealed" ? "Sealed" :
       catalogKindFilter === "other" ? "Other" :
-      "All";
+      "All"
+    );
     const hasCriteria = hasCatalogSearchCriteria({
       query: searchTerm,
       barcode,
       productGroup,
-      productType: catalogTypeFilter,
-      setName: catalogSetFilter,
-      dataFilter: catalogDataFilter,
-      rarity: catalogRarityFilter,
+      productType: effectiveProductType,
+      setName: effectiveSetName,
+      dataFilter: effectiveDataFilter,
+      rarity: effectiveRarity,
     });
 
     if (!force && !hasCriteria) {
@@ -9057,10 +9189,10 @@ export default function App() {
         barcode,
         mode,
         productGroup,
-        productType: catalogTypeFilter,
-        setName: catalogSetFilter,
-        dataFilter: catalogDataFilter,
-        rarity: catalogRarityFilter,
+        productType: effectiveProductType,
+        setName: effectiveSetName,
+        dataFilter: effectiveDataFilter,
+        rarity: effectiveRarity,
         sort: catalogSort,
         page,
         pageSize,
@@ -21085,8 +21217,13 @@ function renderTideTradrHeader() {
           inputClassName="search-input"
           placeholder="Search cards, sets, products..."
           closeSignal={catalogSuggestionCloseSignal}
-          maxSuggestions={5}
+          maxSuggestions={8}
           localCatalogProducts={catalogProducts}
+          includeScopeSuggestions
+          searchCategories={MARKET_SEARCH_CATEGORIES}
+          scopeSets={POKEMON_SETS}
+          scopeProductTypes={MARKET_SEARCH_TYPE_SCOPES}
+          className="market-smart-search"
           money={money}
         />
         <button type="submit">Search</button>
@@ -24229,8 +24366,9 @@ function renderForgeAccessState() {
       const scrollHeight = Math.max(root.scrollHeight || 0, body?.scrollHeight || 0);
       const scrollable = scrollHeight > viewportHeight + 240;
       const distanceFromEnd = scrollHeight - (scrollTop + viewportHeight);
+      const narrowMobileViewport = (window.innerWidth || root.clientWidth || 0) < 430;
       setEmberAssistLauncherState({
-        compact: scrollTop > 88 || (scrollable && distanceFromEnd < 380),
+        compact: narrowMobileViewport || scrollTop > 88 || (scrollable && distanceFromEnd < 380),
         nearEnd: scrollable && distanceFromEnd < 180,
       });
     };
@@ -24573,14 +24711,7 @@ function renderForgeAccessState() {
 
   function renderEmberAssist() {
     if (!emberAssistVisible) return null;
-    const emberAssistSuppressed = Boolean(
-      autoHideBlocked ||
-      selectedVaultDetailId ||
-      selectedScoutReport ||
-      scoutReportModerationTarget ||
-      tidepoolFlagTarget ||
-      adminConfirmAction
-    );
+    const emberAssistSuppressed = Boolean(!emberAssistOpen && (autoHideBlocked || emberAssistCollisionBlocked));
     if (emberAssistSuppressed) return null;
     const latestAssistant = [...emberAssistMessages].reverse().find((message) => message.role === "assistant");
     const visibleStarterPrompts = emberAssistMorePromptsOpen ? emberAssistStarterPrompts : emberAssistStarterPrompts.slice(0, 3);
@@ -26729,7 +26860,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   const tideTradrCatalogPageCount = supabaseCatalogStatus.totalCount
     ? Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))
     : null;
+  const catalogCategoryLabel = catalogCategoryFilter !== "All"
+    ? MARKET_SEARCH_CATEGORIES.find((category) => category.value === catalogCategoryFilter)?.label || catalogCategoryFilter
+    : "";
   const activeCatalogFilterChips = [
+    submittedCatalogSearch ? `Search: ${submittedCatalogSearch}` : "",
+    submittedCatalogBarcodeSearch ? `UPC/SKU: ${submittedCatalogBarcodeSearch}` : "",
+    catalogCategoryLabel ? `in ${catalogCategoryLabel}` : "",
     catalogKindFilter !== "All" ? catalogKindFilter === "card" ? "Cards" : catalogKindFilter === "sealed" ? "Sealed" : "Other" : "",
     catalogDataFilter !== "All" ? catalogDataFilter : "",
     marketCatalogDealFilter !== "all" ? MARKET_CATALOG_DEAL_FILTERS.find((filter) => filter.value === marketCatalogDealFilter)?.label : "",
@@ -28158,6 +28295,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     setSubmittedCatalogSearch("");
     setCatalogBarcodeSearch("");
     setSubmittedCatalogBarcodeSearch("");
+    setCatalogCategoryFilter("All");
     setCatalogKindFilter("All");
     setCatalogDataFilter("All");
     setCatalogSetFilter("All");
@@ -28188,6 +28326,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const event = typeof eventOrValue === "object" ? eventOrValue : null;
     const overrideQuery = typeof eventOrValue === "string" ? eventOrValue : "";
     event?.preventDefault?.();
+    if (typeof document !== "undefined") document.activeElement?.blur?.();
     closeCatalogSuggestions();
     const nextQuery = String(overrideQuery || catalogSearch || "").trim();
     const detectedMode = detectCatalogSearchMode(nextQuery || catalogBarcodeSearch);
@@ -28229,11 +28368,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         hasBarcode: Boolean(nextBarcode),
       },
     });
-    loadImportedPokemonCatalog(nextQuery, { page: 1, mode: detectedMode === "id" ? "barcode" : detectedMode, barcode: nextBarcode, forceSearch: true });
+    void loadImportedPokemonCatalog(nextQuery, { page: 1, mode: detectedMode === "id" ? "barcode" : detectedMode, barcode: nextBarcode, forceSearch: true })
+      .then(() => scrollToResultsTop(catalogResultsRef));
   }
 
   function submitCatalogBarcodeSearch(event) {
     event?.preventDefault?.();
+    if (typeof document !== "undefined") document.activeElement?.blur?.();
     closeCatalogSuggestions();
     const value = catalogBarcodeSearch || catalogSearch;
     if (!String(value || "").trim()) {
@@ -28248,7 +28389,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     setSubmittedCatalogSearch(value);
     setSubmittedCatalogBarcodeSearch(value);
-    loadImportedPokemonCatalog(value, { page: 1, mode: "barcode", barcode: value });
+    void loadImportedPokemonCatalog(value, { page: 1, mode: "barcode", barcode: value, forceSearch: true })
+      .then(() => scrollToResultsTop(catalogResultsRef));
   }
 
   function activeCatalogSearchPayload() {
@@ -28285,13 +28427,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function selectCatalogRecommendation(recommendation) {
     const value = recommendation.searchValue || recommendation.label || catalogSearch;
+    const recommendationMode = recommendation.mode || "general";
+    const isMarketSearchContext = activeTab === "market";
+    const normalizeKindFilter = (filterKind = "") => {
+      const normalized = String(filterKind || "").toLowerCase();
+      if (normalized.includes("card")) return "card";
+      if (normalized.includes("sealed")) return "sealed";
+      if (normalized.includes("other")) return "other";
+      return "All";
+    };
+    const productGroupForKind = (kind = "All") => {
+      if (kind === "card") return "Cards";
+      if (kind === "sealed") return "Sealed";
+      if (kind === "other") return "Other";
+      return "All";
+    };
     setCatalogSearch(value);
     setSubmittedCatalogSearch("");
     setSubmittedCatalogBarcodeSearch("");
     setCatalogSearchHasRun(false);
     setCatalogPagedResultIds([]);
-    if (recommendation.product?.id) {
-      if (recommendation.mode === "barcode" || recommendation.mode === "id" || recommendation.mode === "cardNumber") {
+    if (recommendation.product?.id && !isMarketSearchContext) {
+      if (recommendationMode === "barcode" || recommendationMode === "id" || recommendationMode === "cardNumber") {
         setCatalogBarcodeSearch(value);
       }
       openCatalogDetails(recommendation.product);
@@ -28311,17 +28468,62 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       }));
       return;
     }
-    if (recommendation.mode === "barcode" || recommendation.mode === "id" || recommendation.mode === "cardNumber") {
+    if (recommendation.product?.id) {
+      setCatalogProducts((current) => mergeCatalogProductLists([recommendation.product], current, localCatalogSeedProducts));
+    }
+
+    if (recommendationMode === "category") {
+      setCatalogCategoryFilter(recommendation.category || "Pokemon");
+    }
+
+    const nextKindFilter = recommendationMode === "catalogKind"
+      ? normalizeKindFilter(recommendation.filterKind)
+      : catalogKindFilter;
+    const nextProductGroup = productGroupForKind(nextKindFilter);
+    if (recommendationMode === "catalogKind") {
+      setCatalogKindFilter(nextKindFilter);
+      if (recommendation.productType) setCatalogTypeFilter(recommendation.productType);
+      else setCatalogTypeFilter("All");
+    }
+
+    const nextSetFilter = recommendationMode === "set"
+      ? (recommendation.setName || recommendation.label || value).replace(/^in Set:\s*/i, "")
+      : catalogSetFilter;
+    if (recommendationMode === "set") {
+      setCatalogSetFilter(nextSetFilter);
+    }
+
+    const nextTypeFilter = recommendationMode === "productType"
+      ? (recommendation.productType || recommendation.label || value).replace(/^type\s+/i, "")
+      : recommendationMode === "catalogKind" && recommendation.productType
+        ? recommendation.productType
+        : recommendationMode === "catalogKind"
+          ? "All"
+          : catalogTypeFilter;
+    if (recommendationMode === "productType") {
+      setCatalogTypeFilter(nextTypeFilter);
+    }
+
+    if (recommendationMode === "barcode" || recommendationMode === "id" || recommendationMode === "cardNumber") {
       setCatalogBarcodeSearch(value);
       setSubmittedCatalogSearch(value);
       setSubmittedCatalogBarcodeSearch(value);
-      loadImportedPokemonCatalog(value, { page: 1, mode: "barcode", barcode: value });
+      void loadImportedPokemonCatalog(value, { page: 1, mode: "barcode", barcode: value, productGroup: nextProductGroup, productType: nextTypeFilter, setName: nextSetFilter, forceSearch: true })
+        .then(() => scrollToResultsTop(catalogResultsRef));
       return;
     }
     setCatalogBarcodeSearch("");
     setSubmittedCatalogSearch(value);
     setSubmittedCatalogBarcodeSearch("");
-    loadImportedPokemonCatalog(value, { page: 1, mode: recommendation.mode || "general", barcode: "" });
+    void loadImportedPokemonCatalog(value, {
+      page: 1,
+      mode: recommendationMode === "category" || recommendationMode === "catalogKind" || recommendationMode === "set" || recommendationMode === "productType" ? "general" : recommendationMode,
+      barcode: "",
+      productGroup: nextProductGroup,
+      productType: nextTypeFilter,
+      setName: nextSetFilter,
+      forceSearch: true,
+    }).then(() => scrollToResultsTop(catalogResultsRef));
   }
 
   function selectVaultCatalogRecommendation(recommendation) {
@@ -42992,9 +43194,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     <span className="topbar-brand-mark" aria-hidden="true">
       <img src={BRAND_ASSETS.mark} alt="" />
     </span>
+    <span className="sr-only">E&amp;T TCG</span>
     <span className="topbar-brand-copy">
-      <strong>Ember &amp; Tide</strong>
-      <small>{activeTabLabel} | E&amp;T TCG</small>
+      <strong>{activeTabLabel} | E&amp;T TCG</strong>
+      <small>{activeWorkspace?.name || "My Personal Space"} | E&amp;T TCG</small>
     </span>
   </button>
 
@@ -43076,6 +43279,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ) : null}
   </div>
   <div className="topbar-command-actions" aria-label="Command desk actions">
+    <button
+      type="button"
+      className="topbar-ask-ember-button"
+      aria-label="Ask Ember"
+      aria-expanded={emberAssistOpen}
+      onClick={() => {
+        setQuickAddMenuOpen(false);
+        setSearchExpanded(false);
+        setMenuOpen(false);
+        setEmberAssistOpen((open) => !open);
+        void trackBetaActivity("opened_ask_ember", {
+          eventContext: "topbar_ember_assist",
+        });
+      }}
+    >
+      <span className="action-icon" aria-hidden="true">E</span>
+      <span>Ask</span>
+    </button>
     <button
       type="button"
       className="topbar-workspace-chip"
@@ -43229,29 +43450,36 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     Quick Add
                   </button>
                 </div>
-                <div className="menu-command-grid">
-                  {mobileMenuDestinations.map((item) => (
-                    <button
-                      type="button"
-                      key={item.key}
-                      className={isDesktopSidebarItemActive(item) ? "menu-command-link active" : "menu-command-link"}
-                      aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
-                      onClick={() => {
-                        if (item.keepOpen) {
-                          item.action?.();
-                          return;
-                        }
-                        runMenuAction(() => item.action ? item.action() : navigateMainTab(item));
-                      }}
-                    >
-                      <span className="menu-command-icon" aria-hidden="true">
-                        <AppNavIcon kind={item.icon || "home"} />
-                      </span>
-                      <span>
-                        <strong>{item.label}</strong>
-                        <small>{item.helper}</small>
-                      </span>
-                    </button>
+                <div className="menu-command-groups">
+                  {menuCommandSections.map((section) => (
+                    <section className={`menu-command-section menu-command-section--${section.key}`} key={section.key}>
+                      <h4>{section.title}</h4>
+                      <div className="menu-command-grid">
+                        {section.items.map((item) => (
+                          <button
+                            type="button"
+                            key={`${section.key}-${item.key}`}
+                            className={isDesktopSidebarItemActive(item) ? "menu-command-link active" : "menu-command-link"}
+                            aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
+                            onClick={() => {
+                              if (item.keepOpen) {
+                                item.action?.();
+                                return;
+                              }
+                              runMenuAction(() => item.action ? item.action() : navigateMainTab(item));
+                            }}
+                          >
+                            <span className="menu-command-icon" aria-hidden="true">
+                              <AppNavIcon kind={item.icon || "home"} />
+                            </span>
+                            <span>
+                              <strong>{item.label}</strong>
+                              <small>{item.helper}</small>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
                   ))}
                 </div>
               </section>
@@ -48932,7 +49160,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           ? "No match yet. You can add this product to the catalog or try a name search."
                           : catalogAlternateKindLabels.length
                           ? `Matches exist in ${catalogAlternateKindLabels.join(" / ")}. Switch modes or clear active filters to see them.`
-                          : "Try another search or request a missing item."}
+                          : "No matches yet. Try a set name, product name, UPC, or card name."}
                       </p>
                       <div className="quick-actions market-empty-actions">
                         <button

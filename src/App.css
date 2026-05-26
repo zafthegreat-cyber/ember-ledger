@@ -40259,6 +40259,398 @@ body,
   }
 }
 
+/* Pass 1 shell/nav overhaul: global safe areas, menu grouping, and Assist collision rules. */
+:root {
+  --et-shell-nav-safe: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 36px);
+  --et-shell-form-safe: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 56px);
+  --et-shell-sticky-offset: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 10px);
+}
+
+.app-command-shell > .app-shell-header {
+  display: none !important;
+}
+
+.app-command-shell > main,
+.app-shell-dark > main,
+.app .main,
+.dashboard-layout,
+.hearth-northstar,
+.scout-dashboard-overview,
+.vault-page,
+.forge-page,
+.marketplace-section,
+.tidepool-community,
+.spark-page,
+.settings-page,
+.approval-page,
+.collection-page,
+.collections-utility-page .utility-page-layout {
+  scroll-padding-bottom: var(--et-shell-nav-safe) !important;
+}
+
+.app :where(.flow-modal, .location-modal, .catalog-detail-drawer, .collection-manager-modal, .drawer.open, .quick-add-sheet, .store-map-detail-sheet),
+.app-command-shell :where(.flow-modal, .location-modal, .catalog-detail-drawer, .collection-manager-modal, .drawer.open, .quick-add-sheet, .store-map-detail-sheet) {
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--et-shell-sticky-offset) - 14px) !important;
+}
+
+.app :where(.flow-modal-body, .location-modal-body, .drawer-body, .menu-drawer-body, .settings-drawer-body, .catalog-detail-body, .collection-manager-body, .quick-add-sheet-body, .drawer-menu-stack),
+.app-command-shell :where(.flow-modal-body, .location-modal-body, .drawer-body, .menu-drawer-body, .settings-drawer-body, .catalog-detail-body, .collection-manager-body, .quick-add-sheet-body, .drawer-menu-stack) {
+  padding-bottom: var(--et-shell-form-safe) !important;
+  scroll-padding-bottom: var(--et-shell-form-safe) !important;
+}
+
+.app :where(.modal-sticky-footer, .flow-modal-footer, .flow-modal-actions, .location-modal-actions, .drawer-actions, .spark-flow-actions, .vault-form-actions),
+.app-command-shell :where(.modal-sticky-footer, .flow-modal-footer, .flow-modal-actions, .location-modal-actions, .drawer-actions, .spark-flow-actions, .vault-form-actions) {
+  bottom: var(--et-shell-sticky-offset) !important;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.menu-command-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.menu-command-section {
+  display: grid;
+  gap: 8px;
+}
+
+.menu-command-section h4 {
+  margin: 0;
+  color: rgba(255, 244, 223, 0.88);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.menu-command-section--admin .menu-command-link {
+  border-color: rgba(255, 186, 73, 0.2) !important;
+  background: rgba(24, 18, 30, 0.48) !important;
+}
+
+.menu-command-section--support .menu-command-link {
+  min-height: 52px !important;
+}
+
+.topbar-command-actions > .topbar-ask-ember-button {
+  display: none !important;
+}
+
+.ember-assist-shell:not(.is-open):not(.is-compact):not(.is-near-page-end) .ember-assist-fab {
+  min-width: 132px !important;
+  width: auto !important;
+  padding: 0 0.82rem !important;
+}
+
+.ember-assist-shell:not(.is-open):not(.is-compact):not(.is-near-page-end) .ember-assist-fab b {
+  display: inline !important;
+  height: auto !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  position: static !important;
+  white-space: nowrap !important;
+  width: auto !important;
+}
+
+.ember-assist-shell:not(.is-open).is-compact .ember-assist-fab,
+.ember-assist-shell:not(.is-open).is-near-page-end .ember-assist-fab {
+  min-width: 52px !important;
+  width: 52px !important;
+  padding: 0 !important;
+}
+
+.ember-assist-shell:not(.is-open).is-compact .ember-assist-fab b,
+.ember-assist-shell:not(.is-open).is-near-page-end .ember-assist-fab b {
+  height: 1px !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  white-space: nowrap !important;
+  width: 1px !important;
+}
+
+body.shell-overlay-open .ember-assist-shell:not(.is-open),
+body.shell-long-form-active .ember-assist-shell:not(.is-open),
+.app-command-shell:has(.flow-modal-backdrop) .ember-assist-shell:not(.is-open),
+.app-command-shell:has(.drawer-backdrop) .ember-assist-shell:not(.is-open),
+.app-command-shell:has(.quick-add-backdrop) .ember-assist-shell:not(.is-open) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(14px) scale(0.94) !important;
+}
+
+.ember-assist-shell.is-open .ember-assist-panel {
+  bottom: var(--et-shell-sticky-offset) !important;
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--et-shell-sticky-offset) - 16px) !important;
+}
+
+.ember-assist-scroll {
+  scroll-padding-bottom: 112px !important;
+}
+
+.mobile-bottom-nav button:focus-visible,
+.topbar .menu-button:focus-visible,
+.topbar-workspace-chip:focus-visible,
+.topbar-brand:focus-visible,
+.menu-command-link:focus-visible,
+.ember-assist-fab:focus-visible,
+.drawer-link:focus-visible,
+.modal-close-button:focus-visible {
+  outline: 2px solid rgba(37, 217, 255, 0.86) !important;
+  outline-offset: 3px !important;
+}
+
+.mobile-bottom-nav button:active,
+.topbar-command-actions > button:active,
+.menu-command-link:active,
+.ember-assist-fab:active,
+.drawer-link:active {
+  transform: translateY(1px) scale(0.99) !important;
+}
+
+.app :where(button:disabled, [aria-disabled="true"], .disabled),
+.app-command-shell :where(button:disabled, [aria-disabled="true"], .disabled) {
+  cursor: not-allowed !important;
+  opacity: 0.48 !important;
+  transform: none !important;
+}
+
+@media (max-width: 780px) {
+  .app-command-shell,
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .app .main,
+  .dashboard-layout,
+  .hearth-northstar,
+  .scout-dashboard-overview,
+  .vault-page,
+  .forge-page,
+  .marketplace-section,
+  .tidepool-community,
+  .spark-page,
+  .settings-page,
+  .approval-page,
+  .collection-page,
+  .collections-utility-page .utility-page-layout,
+  .empty-state,
+  .small-empty-state {
+    padding-bottom: var(--et-shell-nav-safe) !important;
+  }
+
+  .app-command-shell > .topbar {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    min-height: 54px !important;
+    padding: calc(7px + env(safe-area-inset-top, 0px)) 9px 7px !important;
+  }
+
+  .topbar-brand {
+    background: transparent !important;
+    border-color: transparent !important;
+    padding-inline: 2px !important;
+  }
+
+  .topbar-brand-copy {
+    display: grid !important;
+  }
+
+  .topbar-brand-copy strong {
+    max-width: 18ch !important;
+  }
+
+  .topbar-brand-copy small,
+  .topbar-workspace-chip small,
+  .topbar-command-actions .topbar-quick-add-button,
+  .topbar-command-actions .topbar-profile-button,
+  .topbar .app-search:not(.expanded) {
+    display: none !important;
+  }
+
+  .topbar-workspace-chip {
+    min-width: 0 !important;
+    max-width: 104px !important;
+    padding-inline: 9px !important;
+  }
+
+  .topbar-workspace-chip span {
+    max-width: 9ch !important;
+  }
+
+  .topbar .menu-button span:not(.action-icon) {
+    display: inline !important;
+  }
+
+  .drawer.open {
+    bottom: var(--et-shell-sticky-offset) !important;
+    height: auto !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--et-shell-sticky-offset) - 12px) !important;
+  }
+
+  .menu-command-links {
+    padding: 10px !important;
+  }
+
+  .menu-command-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .mobile-bottom-nav {
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .ember-assist-shell:not(.is-open):not(.is-compact):not(.is-near-page-end) {
+    bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+    right: 12px !important;
+  }
+
+  .ember-assist-shell:not(.is-open).is-compact,
+  .ember-assist-shell:not(.is-open).is-near-page-end {
+    bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 14px) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-command-shell {
+    grid-template-columns: minmax(196px, 220px) minmax(0, 1fr) !important;
+  }
+
+  .web-command-sidebar {
+    padding-inline: 12px !important;
+  }
+
+  .web-command-brand span,
+  .web-command-promise {
+    display: none !important;
+  }
+
+  .app-command-shell > .topbar {
+    grid-template-columns: minmax(220px, 0.72fr) minmax(260px, 1fr) auto !important;
+    padding: 8px 10px !important;
+  }
+
+  .topbar-brand-copy strong {
+    font-size: 0.9rem !important;
+  }
+
+  .topbar-brand-copy small {
+    font-size: 0.66rem !important;
+  }
+
+  .web-command-nav-item,
+  .web-command-tool,
+  .web-command-more-item {
+    min-height: 42px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ember-assist-shell,
+  .ember-assist-fab,
+  .mobile-bottom-nav button,
+  .menu-command-link,
+  .topbar-command-actions > button {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-market .market-smart-search .smart-catalog-suggestions,
+  .app-command-shell.app-market .market-smart-search .smart-catalog-suggestions,
+  .app-shell-dark.app-market .market-smart-search .smart-catalog-suggestions {
+    display: grid !important;
+    position: absolute !important;
+    inset: auto 0 auto 0 !important;
+    top: calc(100% + 8px) !important;
+    bottom: auto !important;
+    width: min(360px, calc(100vw - 56px)) !important;
+    max-width: calc(100vw - 56px) !important;
+    max-height: min(46dvh, 390px) !important;
+  }
+}
+
+/* Focused Market search pass: scoped suggestions, dark mobile dropdown, and clear active state. */
+.smart-catalog-suggestion-thumb.smart-catalog-scope-thumb {
+  border-color: rgba(125, 211, 252, 0.22) !important;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 183, 74, 0.18), transparent 48%),
+    linear-gradient(145deg, rgba(14, 32, 58, 0.96), rgba(5, 13, 28, 0.98)) !important;
+  color: rgba(226, 246, 255, 0.92) !important;
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+}
+
+.app-market .market-smart-search .smart-catalog-suggestions,
+.app-command-shell.app-market .market-smart-search .smart-catalog-suggestions,
+.app-shell-dark.app-market .market-smart-search .smart-catalog-suggestions {
+  display: grid !important;
+  border-color: rgba(125, 211, 252, 0.22) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 183, 74, 0.12), transparent 15rem),
+    radial-gradient(circle at 88% 8%, rgba(34, 211, 238, 0.14), transparent 14rem),
+    linear-gradient(145deg, rgba(7, 16, 32, 0.98), rgba(3, 8, 19, 0.99)) !important;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.46), 0 0 28px rgba(34, 211, 238, 0.11) !important;
+}
+
+.app-market .market-smart-search .smart-catalog-suggestion-heading,
+.app-command-shell.app-market .market-smart-search .smart-catalog-suggestion-heading,
+.app-shell-dark.app-market .market-smart-search .smart-catalog-suggestion-heading {
+  color: rgba(148, 225, 255, 0.8) !important;
+}
+
+.app-market .market-smart-search .smart-catalog-suggestion,
+.app-command-shell.app-market .market-smart-search .smart-catalog-suggestion,
+.app-shell-dark.app-market .market-smart-search .smart-catalog-suggestion {
+  border-color: rgba(125, 211, 252, 0.13) !important;
+  background: rgba(8, 19, 38, 0.74) !important;
+}
+
+.app-market .market-smart-search .smart-catalog-suggestion:hover,
+.app-market .market-smart-search .smart-catalog-suggestion.active,
+.app-command-shell.app-market .market-smart-search .smart-catalog-suggestion:hover,
+.app-command-shell.app-market .market-smart-search .smart-catalog-suggestion.active,
+.app-shell-dark.app-market .market-smart-search .smart-catalog-suggestion:hover,
+.app-shell-dark.app-market .market-smart-search .smart-catalog-suggestion.active {
+  border-color: rgba(255, 183, 74, 0.34) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 183, 74, 0.13), rgba(34, 211, 238, 0.1)),
+    rgba(10, 24, 47, 0.88) !important;
+}
+
+.app-market .active-filter-chips .status-badge,
+.app-command-shell.app-market .active-filter-chips .status-badge,
+.app-shell-dark.app-market .active-filter-chips .status-badge {
+  border-color: rgba(34, 211, 238, 0.22) !important;
+  background: rgba(34, 211, 238, 0.08) !important;
+  color: rgba(224, 251, 255, 0.92) !important;
+}
+
+@media (max-width: 780px) {
+  .app-market .market-smart-search .smart-catalog-suggestions,
+  .app-command-shell.app-market .market-smart-search .smart-catalog-suggestions,
+  .app-shell-dark.app-market .market-smart-search .smart-catalog-suggestions {
+    position: absolute !important;
+    inset: auto 0 auto 0 !important;
+    top: calc(100% + 8px) !important;
+    max-height: min(46dvh, 390px) !important;
+    padding: 9px !important;
+  }
+
+  .app-market .market-smart-search .smart-catalog-suggestion,
+  .app-command-shell.app-market .market-smart-search .smart-catalog-suggestion,
+  .app-shell-dark.app-market .market-smart-search .smart-catalog-suggestion {
+    min-height: 50px !important;
+    padding: 8px !important;
+  }
+
+  .app-market .active-filter-chips,
+  .app-command-shell.app-market .active-filter-chips,
+  .app-shell-dark.app-market .active-filter-chips {
+    gap: 6px !important;
+    overflow-x: auto !important;
+    padding-bottom: 2px !important;
+  }
+}
+
 @media (min-width: 1024px) {
   .app-command-shell > main,
   .app-shell-dark > main {
@@ -51517,5 +51909,187 @@ body {
     opacity: 0 !important;
     pointer-events: none !important;
     transform: translateY(12px) scale(0.9) !important;
+  }
+}
+/* Pass 1 shell/nav final guards: keep these after page-specific audit overrides. */
+@media (max-width: 780px) {
+  .app-command-shell,
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .app .main,
+  .dashboard-layout,
+  .hearth-northstar,
+  .scout-dashboard-overview,
+  .vault-page,
+  .forge-page,
+  .marketplace-section,
+  .tidepool-community,
+  .spark-page,
+  .settings-page,
+  .approval-page,
+  .collection-page,
+  .collections-utility-page .utility-page-layout,
+  .empty-state,
+  .small-empty-state {
+    padding-bottom: var(--et-shell-nav-safe) !important;
+    scroll-padding-bottom: var(--et-shell-nav-safe) !important;
+  }
+
+  .app-command-shell > .topbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    min-height: 54px !important;
+    padding: calc(7px + env(safe-area-inset-top, 0px)) 9px 7px !important;
+  }
+
+  .topbar-brand-copy {
+    display: none !important;
+  }
+
+  .topbar-brand-copy strong {
+    display: block !important;
+    max-width: 18ch !important;
+  }
+
+  .topbar-brand-copy small,
+  .topbar-command-actions > .topbar-workspace-chip,
+  .topbar-command-actions .notification-center,
+  .topbar-command-actions .notification-center-shell,
+  .topbar-command-actions .notification-button,
+  .topbar-command-actions .notification-trigger,
+  .topbar-command-actions .notification-bell-button,
+  .topbar-command-actions .topbar-quick-add-button,
+  .topbar-command-actions .topbar-profile-button,
+  .topbar .app-search:not(.expanded) {
+    display: none !important;
+  }
+
+  .topbar-command-actions > .topbar-ask-ember-button {
+    display: inline-flex !important;
+  }
+
+  .topbar-brand {
+    grid-template-columns: 34px !important;
+    justify-content: center !important;
+    min-width: 42px !important;
+    width: 42px !important;
+  }
+
+  .topbar-command-actions {
+    display: flex !important;
+    gap: 7px !important;
+  }
+
+  .topbar-ask-ember-button .action-icon {
+    align-items: center;
+    background: var(--etds-gradient-primary, linear-gradient(135deg, #ff7a1a, #22d3ee));
+    border-radius: 999px;
+    display: inline-flex;
+    height: 24px;
+    justify-content: center;
+    width: 24px;
+  }
+
+  .drawer.open,
+  .flow-modal,
+  .location-modal,
+  .catalog-detail-drawer,
+  .collection-manager-modal,
+  .quick-add-sheet {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--et-shell-sticky-offset) - 12px) !important;
+  }
+
+  .drawer-menu-stack,
+  .flow-modal-body,
+  .location-modal-body,
+  .drawer-body,
+  .catalog-detail-body,
+  .collection-manager-body,
+  .quick-add-sheet-body {
+    padding-bottom: var(--et-shell-form-safe) !important;
+    scroll-padding-bottom: var(--et-shell-form-safe) !important;
+  }
+
+  .ember-assist-shell:not(.is-open):not(.is-compact):not(.is-near-page-end) .ember-assist-fab {
+    min-width: 132px !important;
+    width: auto !important;
+    padding: 0 0.82rem !important;
+  }
+
+  .ember-assist-shell:not(.is-open):not(.is-compact):not(.is-near-page-end) .ember-assist-fab b {
+    display: inline !important;
+    height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    position: static !important;
+    white-space: nowrap !important;
+    width: auto !important;
+  }
+
+  body.shell-overlay-open .ember-assist-shell:not(.is-open),
+  body.shell-long-form-active .ember-assist-shell:not(.is-open),
+  .ember-assist-shell:not(.is-open).is-near-page-end,
+  .app-market .ember-assist-shell:not(.is-open),
+  .app-collections .ember-assist-shell:not(.is-open) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(14px) scale(0.94) !important;
+  }
+
+  .ember-assist-shell.is-open .ember-assist-panel {
+    bottom: var(--et-shell-sticky-offset) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - var(--et-shell-sticky-offset) - 16px) !important;
+  }
+
+  .app-market .market-smart-search .smart-catalog-suggestions,
+  .app-command-shell.app-market .market-smart-search .smart-catalog-suggestions,
+  .app-shell-dark.app-market .market-smart-search .smart-catalog-suggestions {
+    display: grid !important;
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    bottom: auto !important;
+    max-height: min(46dvh, 390px) !important;
+  }
+
+  .ember-assist-shell:not(.is-open) {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-command-shell > .app-shell-header {
+    display: none !important;
+  }
+
+  .app-command-shell {
+    grid-template-columns: minmax(196px, 220px) minmax(0, 1fr) !important;
+  }
+
+  .app-command-shell > .topbar {
+    grid-template-columns: auto minmax(320px, 560px) auto !important;
+    gap: 10px !important;
+  }
+
+  .app-command-shell > .topbar .topbar-brand {
+    grid-template-columns: 40px !important;
+    justify-content: center !important;
+    min-width: 50px !important;
+    width: 50px !important;
+  }
+
+  .app-command-shell > .topbar .topbar-brand-copy,
+  .topbar-command-actions > .topbar-ask-ember-button {
+    display: none !important;
+  }
+
+  .app-command-shell > .topbar .app-search {
+    justify-self: start !important;
+    min-width: min(560px, 42vw) !important;
+    width: min(560px, 42vw) !important;
+  }
+
+  .web-command-brand span,
+  .web-command-promise {
+    display: none !important;
   }
 }
