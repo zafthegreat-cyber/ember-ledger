@@ -1,17 +1,56 @@
+function usableImageUrl(value) {
+  const next = String(value || "").trim();
+  if (!next) return "";
+  if (/^(null|undefined|none|n\/a|na|unknown|image needed|image unavailable|placeholder)$/i.test(next)) return "";
+  return next;
+}
+
+function imageCandidatesFromImages(images) {
+  if (!images) return [];
+  if (Array.isArray(images)) return images.flatMap((entry) => imageCandidatesFromImages(entry));
+  if (typeof images === "object") {
+    return [
+      images.large,
+      images.small,
+      images.medium,
+      images.thumbnail,
+      images.thumb,
+      images.url,
+      images.src,
+      images.imageUrl,
+      images.image_url,
+    ];
+  }
+  return [images];
+}
+
 export function getProductImageUrl(product = {}) {
-  return product.imageUrl ||
-    product.image_url ||
-    product.photoUrl ||
-    product.photo_url ||
-    product.productImage ||
-    product.product_image ||
-    product.imageLarge ||
-    product.image_large ||
-    product.imageSmall ||
-    product.image_small ||
-    product.images?.large ||
-    product.images?.small ||
-    "";
+  const candidates = [
+    product.imageUrl,
+    product.imageURL,
+    product.image_url,
+    product.photoUrl,
+    product.photo_url,
+    product.productImage,
+    product.product_image,
+    product.pictureUrl,
+    product.picture_url,
+    product.thumbnailUrl,
+    product.thumbnail_url,
+    product.smallImageUrl,
+    product.small_image_url,
+    product.largeImageUrl,
+    product.large_image_url,
+    product.imageLarge,
+    product.image_large,
+    product.imageSmall,
+    product.image_small,
+    product.cardImageUrl,
+    product.card_image_url,
+    ...imageCandidatesFromImages(product.images),
+    ...imageCandidatesFromImages(product.image),
+  ];
+  return candidates.map(usableImageUrl).find(Boolean) || "";
 }
 
 export function getProductDisplayTitle(product = {}) {
@@ -61,10 +100,17 @@ export function getProductImageFallback(product = {}, overrides = {}) {
   const type = overrides.productType || getProductTypeLabel(product);
   const setName = overrides.setName || getProductSetLabel(product);
   const meta = [setName, type].filter(Boolean).join(" | ") || "Catalog product";
+  const initials = String(title || "ET")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "ET";
   return {
     title,
     meta,
     badge: type && type !== "Product" ? type : "Image needed",
+    initials,
     imageStatus: product.imageStatus || product.image_status || (productHasUsableImage(product) ? "available" : "fallback"),
   };
 }
@@ -86,7 +132,7 @@ export function buildCatalogSelectionSnapshot(product = {}, overrides = {}) {
     marketPrice: product.marketPrice || product.market_price || product.marketValue || product.market_value || "",
     marketValueSource: product.marketValueSource || product.market_value_source || product.marketSource || product.market_source || product.sourceType || product.source_type || "",
     marketPriceConfidence: product.marketPriceConfidence || product.market_price_confidence || product.priceConfidence || product.price_confidence || "",
-    marketValueUpdatedAt: product.marketValueUpdatedAt || product.market_value_updated_at || product.lastPriceChecked || product.last_price_checked || "",
+    marketValueUpdatedAt: product.marketValueUpdatedAt || product.market_value_updated_at || product.marketLastUpdated || product.market_last_updated || product.lastMarketUpdate || product.last_market_update || product.lastPriceChecked || product.last_price_checked || "",
     msrpPrice: product.msrpPrice || product.msrp_price || product.msrp || "",
     msrpSource: product.msrpSource || product.msrp_source || "",
     sourceProductId: product.sourceProductId || product.source_product_id || product.tcgplayerProductId || product.tcgplayer_product_id || "",

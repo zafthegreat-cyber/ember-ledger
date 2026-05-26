@@ -23,6 +23,30 @@ export function catalogTokens(value) {
   return normalizeCatalogName(value).split(/\s+/).filter(Boolean);
 }
 
+function searchValuesFrom(value) {
+  if (value === null || value === undefined || value === "") return [];
+  if (Array.isArray(value)) return value.flatMap(searchValuesFrom);
+  if (typeof value === "object") return Object.values(value).flatMap(searchValuesFrom);
+  return [value];
+}
+
+function compactIdentifier(value) {
+  return normalizeCatalogName(value).replace(/[^a-z0-9]/g, "");
+}
+
+function identifierVariants(...values) {
+  const variants = new Set();
+  values.flatMap(searchValuesFrom).forEach((value) => {
+    const normalized = normalizeCatalogName(value);
+    const compact = compactIdentifier(value);
+    const noLeadingZeroes = compact.replace(/^0+/, "");
+    [normalized, compact, noLeadingZeroes].forEach((variant) => {
+      if (variant && variant.length >= 3) variants.add(variant);
+    });
+  });
+  return [...variants];
+}
+
 export function getAliasExpansions(value) {
   const query = normalizeCatalogName(value);
   if (queryExpansionCache.has(query)) return queryExpansionCache.get(query);
@@ -68,22 +92,54 @@ function buildCatalogSearchIndex(catalog = []) {
     const fields = [
       item.name,
       item.productName,
+      item.product_name,
       item.cleanName,
       item.searchName,
       item.search_name,
       item.cardName,
+      item.card_name,
       item.pokemonName,
+      item.pokemon_name,
       item.setName,
+      item.set_name,
+      item.expansion,
+      item.expansionDisplayName,
+      item.expansion_display_name,
+      item.officialExpansionName,
+      item.official_expansion_name,
+      item.productLine,
+      item.product_line,
       item.setCode,
+      item.set_code,
       item.cardNumber,
+      item.card_number,
       item.productType,
+      item.product_type,
+      item.sealedProductType,
+      item.sealed_product_type,
+      item.catalogItemType,
+      item.catalog_item_type,
+      item.catalogType,
+      item.catalog_type,
+      item.productKind,
+      item.product_kind,
       item.productCategory,
       item.upc,
       item.barcode,
       item.sku,
+      item.externalProductId,
+      item.external_product_id,
+      item.tcgplayerProductId,
+      item.tcgplayer_product_id,
+      item.identifierSearch,
+      item.identifier_search,
+      item.retailerSkus,
+      item.retailer_skus,
+      item.retailerSkusSearch,
+      item.retailer_skus_search,
       ...(item.aliases || []),
       ...(item.searchTokens || []),
-    ].filter(Boolean);
+    ].flatMap(searchValuesFrom).filter(Boolean);
     const sourceText = normalizeCatalogName([
       item.source,
       item.sourceType,
@@ -93,12 +149,14 @@ function buildCatalogSearchIndex(catalog = []) {
       item.setName,
       item.set_name,
     ].filter(Boolean).join(" "));
+    const haystack = normalizeCatalogName(fields.join(" "));
     return {
       item,
-      haystack: normalizeCatalogName(fields.join(" ")),
-      exactIds: [item.upc, item.barcode, item.sku].filter(Boolean).map(normalizeCatalogName),
-      cardNumber: normalizeCatalogName(item.cardNumber),
-      setCode: normalizeCatalogName(item.setCode),
+      haystack,
+      haystackTokens: catalogTokens(haystack),
+      exactIds: identifierVariants(item.upc, item.barcode, item.sku, item.externalProductId, item.external_product_id, item.tcgplayerProductId, item.tcgplayer_product_id, item.identifierSearch, item.identifier_search, item.retailerSkus, item.retailer_skus),
+      cardNumber: normalizeCatalogName(item.cardNumber || item.card_number),
+      setCode: normalizeCatalogName(item.setCode || item.set_code),
       sourceText,
       hasImage: Boolean(getProductImageUrl(item)),
       setSpecific: Boolean(item.setName || item.set_name || item.expansion || item.productLine || item.product_line),
@@ -131,18 +189,55 @@ function buildCatalogQueryMeta(query) {
 function indexedItemMayMatch(queryMeta, indexed) {
   const { normalized, tokens, expansions } = queryMeta;
   if (!normalized) return false;
-  if (indexed.exactIds.some((id) => id === normalized)) return true;
+  const compact = compactIdentifier(normalized);
+  if (indexed.exactIds.some((id) => id === normalized || id === compact)) return true;
   if (indexed.cardNumber && indexed.cardNumber === normalized) return true;
   if (indexed.setCode && tokens.includes(indexed.setCode)) return true;
   if (normalized.length > 3 && indexed.haystack.includes(normalized)) return true;
+  if (tokens.length && tokens.every((token) => catalogTokenMatches(indexed, token))) return true;
   return expansions.some((term) => term && indexed.haystack.includes(term));
+}
+
+function levenshteinWithin(a = "", b = "", maxDistance = 1) {
+  if (!a || !b) return false;
+  if (Math.abs(a.length - b.length) > maxDistance) return false;
+  if (a === b) return true;
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    let previousDiagonal = previous[0];
+    previous[0] = i;
+    let rowMin = previous[0];
+    for (let j = 1; j <= b.length; j += 1) {
+      const temp = previous[j];
+      previous[j] = Math.min(
+        previous[j] + 1,
+        previous[j - 1] + 1,
+        previousDiagonal + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+      previousDiagonal = temp;
+      rowMin = Math.min(rowMin, previous[j]);
+    }
+    if (rowMin > maxDistance) return false;
+  }
+  return previous[b.length] <= maxDistance;
+}
+
+function catalogTokenMatches(indexed, token) {
+  if (!token) return false;
+  if (indexed.haystack.includes(token)) return true;
+  if (token.length < 5) return false;
+  const maxDistance = token.length > 8 ? 2 : 1;
+  return (indexed.haystackTokens || catalogTokens(indexed.haystack)).some((candidate) =>
+    candidate.length >= 4 && levenshteinWithin(token, candidate, maxDistance)
+  );
 }
 
 function scoreIndexedCatalogItem(queryMeta, indexed) {
   const { normalized, tokens, expansions, queryWantsCodeCard } = queryMeta;
   const { item, haystack } = indexed;
 
-  if (indexed.exactIds.some((id) => id === normalized)) {
+  const compact = compactIdentifier(normalized);
+  if (indexed.exactIds.some((id) => id === normalized || id === compact)) {
     return { item, score: 1000, reason: "Exact UPC/SKU/barcode match" };
   }
   if (indexed.cardNumber && indexed.cardNumber === normalized) {
@@ -163,6 +258,7 @@ function scoreIndexedCatalogItem(queryMeta, indexed) {
   });
   tokens.forEach((token) => {
     if (haystack.includes(token)) score += token.length > 2 ? 35 : 10;
+    else if (catalogTokenMatches(indexed, token)) score += token.length > 5 ? 18 : 8;
   });
   if (score > 0) {
     const genericPlaceholder =

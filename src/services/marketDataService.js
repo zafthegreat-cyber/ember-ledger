@@ -40,7 +40,7 @@ export function getBestAvailableMarketPrice(item = {}, cache = { prices: [] }) {
     catalogType: item.catalogType || "sealed",
     externalSource: "Market value unavailable",
     marketPrice: 0,
-    timestamp: item.createdAt || item.updatedAt || "",
+    timestamp: "",
     marketStatus: MARKET_STATUS.UNKNOWN,
     confidenceScore: 0,
   });

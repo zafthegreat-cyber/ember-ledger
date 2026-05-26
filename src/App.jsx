@@ -538,6 +538,22 @@ async function loadCatalogImportStatusOnDemand() {
   };
 }
 
+function renderGenericProductImageFallback(product = {}, options = {}) {
+  const fallback = getProductImageFallback(product, {
+    title: options.title || product.name || product.productName || product.product_name || product.cardName || product.card_name,
+    setName: options.setName || product.setName || product.set_name || product.expansion,
+    productType: options.productType || product.productType || product.product_type || product.sealedProductType || product.sealed_product_type,
+  });
+  const className = ["image-needed-placeholder", "branded-product-fallback", options.className].filter(Boolean).join(" ");
+  return (
+    <div className={className} hidden={Boolean(options.hidden)}>
+      <strong>{fallback.title}</strong>
+      <span>{fallback.meta}</span>
+      <b>{options.badge || "Photo coming soon"}</b>
+    </div>
+  );
+}
+
 async function loadCalendarDataOnDemand() {
   if (!calendarDataBundlePromise) {
     calendarDataBundlePromise = Promise.all([
@@ -11731,7 +11747,21 @@ export default function App() {
                 {importCatalogSearchResults.map((product) => (
                   <button key={product.id || catalogTitle(product)} type="button" className="catalog-picker-card" onClick={() => addCatalogProductToImportBatch(product)}>
                     <div className="catalog-thumb">
-                      {catalogImage(product) ? <img src={catalogImage(product)} alt="" /> : <div className="image-needed-placeholder"><span>No image</span></div>}
+                      {catalogImage(product) ? (
+                        <>
+                          <img
+                            src={catalogImage(product)}
+                            alt=""
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                              event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                            }}
+                          />
+                          {renderProductImageFallback(product, { hidden: true })}
+                        </>
+                      ) : (
+                        renderProductImageFallback(product)
+                      )}
                     </div>
                     <span className="catalog-picker-copy">
                       <strong>{catalogTitle(product)}</strong>
@@ -18406,6 +18436,7 @@ function mapCatalog(row) {
     upc: row.upc || row.barcode || "",
     sku: row.sku || "",
     retailerSkus: row.retailerSkus || row.retailer_skus || {},
+    retailerSkusSearch: row.retailerSkusSearch || row.retailer_skus_search || "",
     identifiers: normalizedIdentifiers.map((identifier) => ({
       id: identifier.id,
       catalogProductId: identifier.catalogProductId || identifier.catalog_product_id,
@@ -18682,11 +18713,11 @@ function mapCatalog(row) {
   async function loadCatalog() {
     let result = await supabase
       .from("catalog_search_lightweight")
-      .select("id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,product_name,set_name,series,product_type,barcode,upc,sku,retailer_skus,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,release_date,expansion,product_line,contents,related_cards,card_number,rarity,is_sealed,variant_count,variant_names,default_variant_id,source,source_url,admin_review_status,is_verified,duplicate_of,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at")
+      .select("id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,product_name,set_name,series,product_type,barcode,upc,sku,retailer_skus,retailer_skus_search,identifier_search,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,release_date,expansion,product_line,contents,related_cards,card_number,rarity,catalog_group,catalog_group_sort,is_sealed,variant_count,variant_names,default_variant_id,source,source_url,admin_review_status,is_verified,duplicate_of,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at")
       .order("last_verified_at", { ascending: false, nullsFirst: false })
       .order("name", { ascending: true })
       .limit(50);
-    if (result.error && /catalog_search_lightweight|schema cache/i.test(result.error.message || "")) {
+    if (result.error && /catalog_search_lightweight|column .* does not exist|schema cache/i.test(result.error.message || "")) {
       result = await supabase
         .from("pokemon_catalog_browse")
         .select("id,name,category,set_name,product_type,barcode,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,expansion,product_line,card_number,rarity,is_sealed,created_at,updated_at")
@@ -18765,12 +18796,12 @@ function mapCatalog(row) {
     ];
     if (!catalogIds.length || !canUseMarketplaceBackend()) return;
 
-    const selectFields = "id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,product_name,set_name,series,product_type,barcode,upc,sku,retailer_skus,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,release_date,expansion,product_line,contents,related_cards,card_number,rarity,is_sealed,variant_count,variant_names,default_variant_id,source,source_url,admin_review_status,is_verified,duplicate_of,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at";
+    const selectFields = "id,master_catalog_item_id,category,catalog_item_type,catalog_type,name,product_name,set_name,series,product_type,barcode,upc,sku,retailer_skus,retailer_skus_search,identifier_search,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,release_date,expansion,product_line,contents,related_cards,card_number,rarity,catalog_group,catalog_group_sort,is_sealed,variant_count,variant_names,default_variant_id,source,source_url,admin_review_status,is_verified,duplicate_of,price_confidence,market_source_count,data_confidence_score,last_verified_at,created_at,updated_at";
     let result = await supabase
       .from("catalog_search_lightweight")
       .select(selectFields)
       .in("id", catalogIds);
-    if (result.error && /catalog_search_lightweight|schema cache/i.test(result.error.message || "")) {
+    if (result.error && /catalog_search_lightweight|column .* does not exist|schema cache/i.test(result.error.message || "")) {
       result = await supabase
         .from("pokemon_catalog_browse")
         .select("id,name,category,set_name,product_type,barcode,external_product_id,tcgplayer_product_id,market_url,image_url,market_price,low_price,mid_price,high_price,last_price_checked,msrp_price,set_code,expansion,product_line,card_number,rarity,is_sealed,created_at,updated_at")
@@ -20330,6 +20361,41 @@ function buildCatalogAutofillDetails(product = {}) {
   };
 }
 
+function firstCatalogTimestamp(...values) {
+  return values.find((value) => value && !Number.isNaN(new Date(value).getTime())) || "";
+}
+
+function marketDataAgeMeta(timestamp = "", hasMarketValue = false) {
+  if (!hasMarketValue) {
+    return {
+      label: "Market data unavailable",
+      tone: "unknown",
+      stale: false,
+    };
+  }
+  if (!timestamp) {
+    return {
+      label: "Last updated unavailable",
+      tone: "unknown",
+      stale: false,
+    };
+  }
+  const updatedAt = new Date(timestamp);
+  if (Number.isNaN(updatedAt.getTime())) {
+    return {
+      label: "Last updated unavailable",
+      tone: "unknown",
+      stale: false,
+    };
+  }
+  const stale = Date.now() - updatedAt.getTime() > 36 * 60 * 60 * 1000;
+  return {
+    label: `${stale ? "Stale" : "Updated"} ${formatExpenseDate(updatedAt.toISOString())}`,
+    tone: stale ? "stale" : "fresh",
+    stale,
+  };
+}
+
 function getTideTradrMarketInfo(product = {}) {
   const bestPrice = getBestAvailableMarketPrice(product, marketPriceCache);
   const marketSummary = product.marketSummary || {};
@@ -20374,6 +20440,20 @@ function getTideTradrMarketInfo(product = {}) {
   const marketOverMsrp = msrp > 0 ? currentMarketValue - msrp : 0;
   const marketVsMsrpPercent = msrp > 0 ? (currentMarketValue / msrp) * 100 : 0;
   const savingsVsMsrp = msrp > 0 ? Math.max(msrp - currentMarketValue, 0) : 0;
+  const marketDataUpdatedAt = firstCatalogTimestamp(
+    currentMarketValue ? bestPrice.timestamp : "",
+    marketSummary.last_updated_at,
+    marketSummary.lastUpdatedAt,
+    primaryMarketSource.lastUpdatedAt,
+    primaryMarketSource.last_updated_at,
+    product.marketLastUpdated,
+    product.market_last_updated,
+    product.lastPriceChecked,
+    product.last_price_checked,
+    product.sourceUpdatedAt,
+    product.source_updated_at
+  );
+  const marketDataAge = marketDataAgeMeta(marketDataUpdatedAt, currentMarketValue > 0);
 
   return {
     currentMarketValue,
@@ -20382,7 +20462,11 @@ function getTideTradrMarketInfo(product = {}) {
     marketOverMsrp,
     marketVsMsrpPercent,
     savingsVsMsrp,
-    lastUpdated: bestPrice.timestamp || marketSummary.last_updated_at || marketSummary.lastUpdatedAt || primaryMarketSource.lastUpdatedAt || product.marketLastUpdated || product.lastUpdated || product.updatedAt || product.createdAt || "Not checked yet",
+    lastUpdated: marketDataUpdatedAt || "Not checked yet",
+    marketDataUpdatedAt,
+    marketDataLabel: marketDataAge.label,
+    marketDataTone: marketDataAge.tone,
+    marketDataStale: marketDataAge.stale,
     sourceName: sourceType === "live" ? `Live - ${sourceName}` : sourceType === "cached" ? `Cached - ${sourceName}` : sourceType === "manual" ? `Manual - ${sourceName}` : sourceType === "estimated" ? `Estimated - ${sourceName}` : sourceType === "user_submitted" ? `User-submitted - ${sourceName}` : sourceType === "admin_verified" ? `Admin verified - ${sourceName}` : sourceType === "unknown" ? `Unknown - ${sourceName}` : `Estimated - ${sourceName}`,
     marketStatus: sourceType,
     sourceUrl: bestPrice.sourceUrl || primaryMarketSource.sourceUrl || product.sourceUrl || product.externalSourceUrl || product.marketUrl || product.tcgplayerUrl || "",
@@ -20996,6 +21080,29 @@ function renderTideTradrHeader() {
         />
         <button type="submit">Search</button>
       </form>
+      <form className="market-barcode-search" onSubmit={submitCatalogBarcodeSearch} aria-label="Market UPC and SKU lookup">
+        <label htmlFor="market-upc-search">UPC / SKU</label>
+        <input
+          id="market-upc-search"
+          value={catalogBarcodeSearch}
+          onChange={(event) => {
+            setCatalogBarcodeSearch(event.target.value);
+            setSubmittedCatalogBarcodeSearch("");
+            setCatalogSearchHasRun(false);
+          }}
+          placeholder="Paste UPC, barcode, or SKU"
+          inputMode="search"
+          autoComplete="off"
+        />
+        <button type="submit" className="secondary-button">Lookup</button>
+      </form>
+      <div className="market-data-refresh-strip" aria-label="Market data freshness">
+        <span>{marketRefreshLabel}</span>
+        <details>
+          <summary>Refresh path</summary>
+          <p>{marketDailyRefreshCommand} refreshes public TCGCSV catalog and price cache data. No live price is shown unless data has a saved timestamp.</p>
+        </details>
+      </div>
       <div className="market-mode-strip" aria-label="Market guidance">
         <span>{adaptiveSellerToolsVisible ? "Seller market view" : "Collector market view"}</span>
         <span>{adaptiveSellerToolsVisible ? "Forge comps" : "Vault first"}</span>
@@ -26457,6 +26564,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   const cachedMarketPriceCount = marketPriceCache.prices?.length || 0;
   const failedMarketMatches = marketPriceCache.failedMatches || [];
   const lastMarketSync = marketPriceCache.lastSync || "Not synced yet";
+  const marketRefreshTimestamp = firstCatalogTimestamp(marketPriceCache.lastSync, catalogImportStatus.lastImportedAt, catalogImportStatus.generatedAt);
+  const marketRefreshLabel = marketRefreshTimestamp
+    ? marketDataAgeMeta(marketRefreshTimestamp, true).label
+    : "Market data unavailable";
+  const marketDailyRefreshCommand = catalogImportStatus.dailyRefreshCommand || "npm.cmd run sync:market-prices";
   const selectedCatalogDetailBaseProduct = catalogProducts.find((product) => String(product.id) === String(selectedCatalogDetailId));
   const selectedCatalogDetailExtra = selectedCatalogDetailId ? catalogDetailExtras[selectedCatalogDetailId] : null;
   const selectedCatalogDetailProduct = selectedCatalogDetailBaseProduct
@@ -27770,11 +27882,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       currentMarketValue: 0,
     });
     const productHasMarketPrice = hasCatalogMarketPrice(product);
-    const productMarketLabel = productHasMarketPrice ? money(marketInfo.currentMarketValue) : "Price data unavailable";
+    const productMarketLabel = productHasMarketPrice ? money(marketInfo.currentMarketValue) : "Market data unavailable";
     const productImageSrc = catalogImage(product);
     const productSetName = catalogExpansionName(product) || "Set unavailable";
     const productTypeLabel = catalogProductTypeLabel(product);
-    const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Source unknown";
+    const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Market data unavailable";
     const sellerMarketMode = Boolean(adaptiveSellerToolsVisible || adminToolsVisible);
     const productId = product.id || catalogTitle(product);
     const chooserOpen = String(marketAddChooserProductId) === String(productId);
@@ -27797,14 +27909,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                   }}
                 />
-                <div className="image-needed-placeholder" hidden>
-                  <span>No image</span>
-                </div>
+                {renderProductImageFallback(product, { hidden: true })}
               </>
             ) : (
-              <div className="image-needed-placeholder">
-                <span>No image</span>
-              </div>
+              renderProductImageFallback(product)
             )}
           </div>
           <div className="market-card-body">
@@ -27830,6 +27938,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="market-trust-badge-row">
               <span className={`market-status-pill market-status-pill--${productHasMarketPrice ? "catalog" : "unknown"}`}>{marketSourceLabel}</span>
+              <span className={`market-status-pill market-status-pill--${marketInfo.marketDataTone || "unknown"}`}>{marketInfo.marketDataLabel}</span>
               {watched ? <span className="market-status-pill market-status-pill--watchlist">Watchlist</span> : null}
             </div>
             {productReferenceParts.length ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : <p className="market-card-reference-line">Not enough price history yet.</p>}
@@ -27866,6 +27975,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </button>
           <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
             {watched ? "Watched" : "Watch"}
+          </button>
+          <button type="button" className="secondary-button market-result-view-button" onClick={() => openCatalogDetails(product)}>
+            View details
           </button>
         </div>
         {chooserOpen ? (
@@ -28830,7 +28942,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {!compact ? <p className="scout-report-detail-hint">{detailHint}</p> : null}
         </div>
         <div className="scout-report-side">
-          {productImage ? <img src={productImage} alt="" /> : <span>No image</span>}
+          {productImage ? (
+            <>
+              <img
+                src={productImage}
+                alt=""
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                  event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                }}
+              />
+              {renderProductImageFallback({ ...primaryItem, productName: primaryItemName || "Scout report" }, { hidden: true })}
+            </>
+          ) : (
+            renderProductImageFallback({ ...primaryItem, productName: primaryItemName || "Scout report", productType: observationLabel || "Store report" })
+          )}
           {adminEditModeActive && scoutReportNeedsAdminReview(report) ? (
             <button type="button" className="secondary-button scout-report-confirm-button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>
               Mark verified
@@ -37973,7 +38099,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {productMatches.map((product) => (
                     <button key={product.id || catalogTitle(product)} type="button" className="catalog-picker-card scout-catalog-mini-card" onClick={() => selectScoutCatalogProduct(product)}>
                       <span className="catalog-thumb">
-                        {catalogImage(product) ? <img src={catalogImage(product)} alt="" /> : <span className="image-needed-placeholder">No image</span>}
+                        {catalogImage(product) ? (
+                          <>
+                            <img
+                              src={catalogImage(product)}
+                              alt=""
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                                event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                              }}
+                            />
+                            {renderProductImageFallback(product, { hidden: true })}
+                          </>
+                        ) : (
+                          renderProductImageFallback(product)
+                        )}
                       </span>
                       <span className="catalog-picker-copy">
                         <strong>{catalogTitle(product)}</strong>
@@ -45368,16 +45508,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                                       event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                                     }}
                                   />
-                                  <div className="image-needed-placeholder" hidden>
-                                    <strong>{catalogTitle(product)}</strong>
-                                    <span>Image needed</span>
-                                  </div>
+                                  {renderProductImageFallback(product, { hidden: true })}
                                 </>
                               ) : (
-                                <div className="image-needed-placeholder">
-                                  <strong>{catalogTitle(product)}</strong>
-                                  <span>Image needed</span>
-                                </div>
+                                renderProductImageFallback(product)
                               )}
                             </div>
                             <div>
@@ -45413,16 +45547,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                                     event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                                   }}
                                 />
-                                <div className="image-needed-placeholder" hidden>
-                                  <strong>{catalogTitle(product)}</strong>
-                                  <span>Image needed</span>
-                                </div>
+                                {renderProductImageFallback(product, { hidden: true })}
                               </>
                             ) : (
-                              <div className="image-needed-placeholder">
-                                <strong>{catalogTitle(product)}</strong>
-                                <span>Image needed</span>
-                              </div>
+                              renderProductImageFallback(product)
                             )}
                           </div>
                           <div>
@@ -46008,7 +46136,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {scanMatches.slice(0, 5).map((match) => (
                   <button type="button" className="catalog-picker-card scanner-match-row" key={match.item.id} onClick={() => confirmScanMatch(match.item.id)}>
                     <div className="catalog-thumb">
-                      {catalogImage(match.item) ? <img src={catalogImage(match.item)} alt="" /> : <div className="image-needed-placeholder"><span>No image</span></div>}
+                      {catalogImage(match.item) ? (
+                        <>
+                          <img
+                            src={catalogImage(match.item)}
+                            alt=""
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                              event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                            }}
+                          />
+                          {renderProductImageFallback(match.item, { hidden: true })}
+                        </>
+                      ) : (
+                        renderProductImageFallback(match.item)
+                      )}
                     </div>
                     <span className="catalog-picker-copy">
                       <strong>{match.item.name || match.item.productName || match.item.cardName}</strong>
@@ -48526,7 +48668,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
                   {supabaseCatalogStatus.message ? <p className="compact-subtitle market-status-message">{supabaseCatalogStatus.message}</p> : null}
                   {supabaseCatalogStatus.error ? <p className="compact-subtitle danger-text">{supabaseCatalogStatus.error}</p> : null}
-                  {supabaseCatalogStatus.exactBarcodeMiss ? <p className="compact-subtitle">No exact barcode match found. Partial catalog matches may still appear below.</p> : null}
+                  {supabaseCatalogStatus.exactBarcodeMiss ? <p className="compact-subtitle">No match yet. You can add this product to the catalog or try a name search.</p> : null}
                   {catalogSearchHasRun && !supabaseCatalogStatus.loading && supabaseCatalogStatus.coverageWarning ? (
                     <div className="catalog-coverage-warning">
                       <div>
@@ -48599,7 +48741,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <div className="empty-state market-empty-state">
                       <h3>No matches found{catalogEmptyTerm ? ` for "${catalogEmptyTerm}"` : ""}.</h3>
                       <p>
-                        {catalogAlternateKindLabels.length
+                        {supabaseCatalogStatus.exactBarcodeMiss
+                          ? "No match yet. You can add this product to the catalog or try a name search."
+                          : catalogAlternateKindLabels.length
                           ? `Matches exist in ${catalogAlternateKindLabels.join(" / ")}. Switch modes or clear active filters to see them.`
                           : "Try another search or request a missing item."}
                       </p>
@@ -49434,16 +49578,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                                 event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                               }}
                             />
-                            <span className="image-needed-placeholder" hidden>
-                              <strong>{getCatalogKindLabel(p)}</strong>
-                              <small>Image needed</small>
-                            </span>
+                            {renderProductImageFallback(p, { hidden: true, badge: getCatalogKindLabel(p) })}
                           </>
                         ) : (
-                          <span className="image-needed-placeholder">
-                            <strong>{getCatalogKindLabel(p)}</strong>
-                            <small>Image needed</small>
-                          </span>
+                          renderProductImageFallback(p, { badge: getCatalogKindLabel(p) })
                         )}
                       </div>
                       <div>
@@ -51598,7 +51736,16 @@ function CompactInventoryCard({
 
       {forgeImage ? (
         <div className="compact-image-wrap">
-          <img src={forgeImage} alt={item.name} loading="lazy" />
+          <img
+            src={forgeImage}
+            alt={item.name}
+            loading="lazy"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+              event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+            }}
+          />
+          {renderGenericProductImageFallback({ ...item, productName: item.name, setName: item.expansion, productType: item.productType }, { hidden: true })}
           <span>{getImageSourceLabel(item)}{item.itemImageNeedsReview ? " | Needs review" : ""}</span>
         </div>
       ) : (
@@ -52065,7 +52212,21 @@ function InventoryForm({
       {selectedCatalogProduct ? (
         <div className="forge-selected-product-card">
           <div className="catalog-thumb">
-            {selectedCatalogImage ? <img src={selectedCatalogImage} alt="" /> : <span className="image-needed-placeholder">Image needed</span>}
+            {selectedCatalogImage ? (
+              <>
+                <img
+                  src={selectedCatalogImage}
+                  alt=""
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                    event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                  }}
+                />
+                {renderGenericProductImageFallback(selectedCatalogProduct, { hidden: true })}
+              </>
+            ) : (
+              renderGenericProductImageFallback(selectedCatalogProduct)
+            )}
           </div>
           <div>
             <strong>{selectedCatalogName}</strong>

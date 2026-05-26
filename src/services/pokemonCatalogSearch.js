@@ -12,8 +12,13 @@ const TEXT_SEARCH_FIELDS = [
   "name",
   "product_name",
   "set_name",
+  "series",
+  "expansion",
+  "product_line",
   "product_type",
+  "catalog_item_type",
   "set_code",
+  "card_number",
 ];
 
 const LEGACY_TEXT_SEARCH_FIELDS = [
@@ -92,10 +97,14 @@ const CATALOG_SELECT_FIELDS = [
   "expansion",
   "product_line",
   "retailer_skus",
+  "retailer_skus_search",
+  "identifier_search",
   "contents",
   "related_cards",
   "card_number",
   "rarity",
+  "catalog_group",
+  "catalog_group_sort",
   "msrp_price",
   "is_sealed",
   "variant_count",
