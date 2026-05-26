@@ -10,7 +10,12 @@ const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
 const POKEMON_CATEGORY_ID = Number(process.env.TCGCSV_CATEGORY_ID || 3);
 const DEFAULT_GROUP_LIMIT = Number(process.env.TCGCSV_GROUP_LIMIT || 0);
 const REQUEST_DELAY_MS = Number(process.env.SYNC_REQUEST_DELAY_MS || 120);
-const SYNC_TIMESTAMP = "2026-05-20T00:00:00.000Z";
+const CLI_ARGS = new Set(process.argv.slice(2));
+const DRY_RUN = CLI_ARGS.has("--dry-run");
+const PRICE_ONLY = CLI_ARGS.has("--prices-only") || String(process.env.SYNC_STORES || "").toLowerCase() === "false";
+const RUN_STARTED_AT = new Date().toISOString();
+const SYNC_TIMESTAMP = process.env.SYNC_TIMESTAMP || RUN_STARTED_AT;
+const SCHEDULER_SOURCE = process.env.MARKET_REFRESH_SCHEDULER || (process.env.GITHUB_ACTIONS ? "github-actions-daily" : "manual-script");
 
 const SEALED_KEYWORDS = [
   "elite trainer box",
@@ -372,7 +377,7 @@ function normalizeTcgCsvSealed(product = {}, group = {}, price = {}) {
     marketLastUpdated: product.modifiedOn || group.modifiedOn || "",
     releaseDate: product.presaleInfo?.releasedOn || group.publishedOn || "",
     releaseYear: String(product.presaleInfo?.releasedOn || group.publishedOn || "").slice(0, 4),
-    lastUpdated: SYNC_TIMESTAMP,
+    lastUpdated: product.modifiedOn || group.modifiedOn || "",
     notes: "Imported from public TCGCSV product and price data. Restock and availability are not implied.",
   };
 }
@@ -425,7 +430,7 @@ function normalizeTcgCsvCard(product = {}, group = {}, price = {}) {
     marketConfidenceLevel: pricingConfidence(price),
     sourceUpdatedAt: product.modifiedOn || group.modifiedOn || "",
     marketLastUpdated: product.modifiedOn || group.modifiedOn || "",
-    lastUpdated: SYNC_TIMESTAMP,
+    lastUpdated: product.modifiedOn || group.modifiedOn || "",
   };
 }
 
@@ -462,8 +467,8 @@ function normalizeMarketPrice(product = {}, group = {}, price = {}, catalogType 
     pricingConfidence: pricingConfidence(price),
     confidenceScore: pricingConfidence(price) === "high" ? 88 : pricingConfidence(price) === "medium" ? 68 : 0,
     sourceUpdatedAt: product.modifiedOn || group.modifiedOn || "",
-    createdAt: SYNC_TIMESTAMP,
-    updatedAt: SYNC_TIMESTAMP,
+    createdAt: product.modifiedOn || group.modifiedOn || "",
+    updatedAt: product.modifiedOn || group.modifiedOn || "",
   };
 }
 
@@ -506,7 +511,7 @@ function normalizeManualSealed(row = {}) {
     source: row.source || row.sourceType || row.source_type || "manual_csv",
     sourceId: row.sourceId || row.source_id || "",
     sourceProductId: row.sourceId || row.source_id || "",
-    lastUpdated: SYNC_TIMESTAMP,
+    lastUpdated: row.marketLastUpdated || row.market_last_updated || row.updatedAt || row.updated_at || "",
     sourceUpdatedAt: row.marketLastUpdated || row.market_last_updated || "",
     marketLastUpdated: row.marketLastUpdated || row.market_last_updated || "",
     notes: row.notes || "",
@@ -832,8 +837,11 @@ function buildCatalogSyncStatus({ catalog = {}, stores = {}, aliasesImported = 0
     photoSourcePolicy: "Use source image URLs when provided by public catalog data; otherwise render the branded app placeholder.",
     pricingPolicy: "Use productId joins for reference prices. Fallback matching is low-confidence and must not power automatic fair-price claims.",
     dailyRefreshCommand: "npm.cmd run sync:market-prices",
-    schedulingStatus: "manual-script-only",
-    schedulingNotes: "No automatic scheduler is configured in this repository. Schedule the command in Vercel Cron, GitHub Actions, or another trusted runner when operations are ready.",
+    schedulingStatus: SCHEDULER_SOURCE === "github-actions-daily" ? "github-actions-daily" : "manual-script-only",
+    schedulerSource: SCHEDULER_SOURCE,
+    schedulingNotes: SCHEDULER_SOURCE === "github-actions-daily"
+      ? "Daily GitHub Actions workflow runs the trusted public TCGCSV refresh, commits generated catalog/price JSON changes to main, and lets Vercel deploy through Git integration."
+      : "Run manually with npm.cmd run sync:market-prices, or let the daily GitHub Actions workflow refresh and commit generated data after it is enabled on GitHub.",
     virginiaStoresImported: (stores.stores || []).length,
     virginiaStoresFromOverpass: stores.importedFromOverpass || 0,
     virginiaStoreCountsByChain: chainCounts(stores.stores || []),
@@ -848,14 +856,103 @@ async function writeGenerated(fileName, data) {
   await fs.writeFile(path.join(generatedDir, fileName), `${JSON.stringify(data, null, 2)}\n`);
 }
 
+function rowKey(row = {}) {
+  return String(row.id || row.catalogItemId || row.productId || row.sourceProductId || row.externalProductId || row.name || "");
+}
+
+function productFingerprint(row = {}) {
+  return JSON.stringify([
+    row.marketPrice || "",
+    row.marketValue || "",
+    row.marketValueRaw || "",
+    row.marketValueNearMint || "",
+    row.lowPrice || "",
+    row.midPrice || "",
+    row.highPrice || "",
+    row.marketStatus || "",
+    row.pricingConfidence || "",
+    row.marketLastUpdated || "",
+    row.sourceUpdatedAt || "",
+    row.imageUrl || "",
+    row.photoUrl || "",
+  ]);
+}
+
+function priceFingerprint(row = {}) {
+  return JSON.stringify([
+    row.price || "",
+    row.marketPrice || "",
+    row.lowPrice || "",
+    row.midPrice || "",
+    row.highPrice || "",
+    row.marketStatus || "",
+    row.pricingConfidence || "",
+    row.timestamp || "",
+    row.sourceUpdatedAt || "",
+  ]);
+}
+
+function changedRows(beforeRows = [], afterRows = [], fingerprint = productFingerprint) {
+  const beforeByKey = new Map(beforeRows.map((row) => [rowKey(row), fingerprint(row)]).filter(([key]) => key));
+  return afterRows.filter((row) => beforeByKey.get(rowKey(row)) !== fingerprint(row)).length;
+}
+
+function buildRefreshLogSummary({ before = {}, catalog = {}, stores = {}, status = {}, startedAt = RUN_STARTED_AT, finishedAt = new Date().toISOString(), dryRun = false, priceOnly = PRICE_ONLY } = {}) {
+  const beforeProducts = [...(before.sealed || []), ...(before.cards || [])];
+  const afterProducts = [...(catalog.sealedProducts || []), ...(catalog.cards || [])];
+  const productsUpdated = changedRows(beforeProducts, afterProducts, productFingerprint);
+  const marketPriceRowsUpdated = changedRows(before.marketPrices || [], catalog.marketPrices || [], priceFingerprint);
+  const failures = [
+    ...((catalog.failedGroups || []).map((group) => ({ type: "tcgcsv-group", ...group }))),
+    ...(stores.overpassError ? [{ type: "store-directory", error: stores.overpassError }] : []),
+  ];
+  return {
+    ok: failures.length === 0,
+    dryRun,
+    schedulerSource: SCHEDULER_SOURCE,
+    startedAt,
+    finishedAt,
+    productsChecked: afterProducts.length,
+    productsUpdated,
+    productsSkipped: Math.max(afterProducts.length - productsUpdated, 0),
+    marketPriceRowsChecked: (catalog.marketPrices || []).length,
+    marketPriceRowsUpdated,
+    marketPriceRowsSkipped: Math.max((catalog.marketPrices || []).length - marketPriceRowsUpdated, 0),
+    storeRefreshMode: priceOnly ? "preserved-existing-generated-stores" : "synced-store-directory",
+    storesChecked: (stores.stores || []).length,
+    failures,
+    generatedStatus: {
+      lastImportedAt: status.lastImportedAt,
+      schedulingStatus: status.schedulingStatus,
+      productsWithReferencePrices: status.productsWithReferencePrices,
+      productsMissingReferencePrices: status.productsMissingReferencePrices,
+      productsWithPhotos: status.productsWithPhotos,
+      productsMissingPhotos: status.productsMissingPhotos,
+    },
+  };
+}
+
 async function main() {
+  console.log(JSON.stringify({
+    event: "market-refresh-started",
+    startedAt: RUN_STARTED_AT,
+    dryRun: DRY_RUN,
+    schedulerSource: SCHEDULER_SOURCE,
+    tcgcsvCategoryId: POKEMON_CATEGORY_ID,
+    tcgcsvGroupLimit: DEFAULT_GROUP_LIMIT,
+    requestDelayMs: REQUEST_DELAY_MS,
+    storeRefreshMode: PRICE_ONLY ? "preserve-existing-generated-stores" : "sync-store-directory",
+  }, null, 2));
+
   const beforeSealed = await readJson(path.join(generatedDir, "sealedProducts.json"), []);
   const beforeCards = await readJson(path.join(generatedDir, "pokemonTcgCards.json"), []);
   const beforePrices = await readJson(path.join(generatedDir, "marketPrices.json"), []);
   const beforeStores = await readJson(path.join(generatedDir, "virginiaStores.json"), []);
 
   const catalog = await syncTcgCsvCatalog();
-  const stores = await syncVirginiaStores();
+  const stores = PRICE_ONLY
+    ? { stores: beforeStores, importedFromOverpass: 0, overpassError: "" }
+    : await syncVirginiaStores();
 
   const status = buildCatalogSyncStatus({
     catalog,
@@ -863,14 +960,38 @@ async function main() {
     aliasesImported: (await readJson(path.join(generatedDir, "searchAliases.json"), [])).length,
   });
 
-  await writeGenerated("sealedProducts.json", catalog.sealedProducts);
-  await writeGenerated("pokemonTcgCards.json", catalog.cards);
-  await writeGenerated("marketPrices.json", catalog.marketPrices);
-  await writeGenerated("virginiaStores.json", stores.stores);
-  await writeGenerated("catalogImportStatus.json", status);
+  if (!DRY_RUN) {
+    await writeGenerated("sealedProducts.json", catalog.sealedProducts);
+    await writeGenerated("pokemonTcgCards.json", catalog.cards);
+    await writeGenerated("marketPrices.json", catalog.marketPrices);
+    await writeGenerated("virginiaStores.json", stores.stores);
+    await writeGenerated("catalogImportStatus.json", status);
+  }
+
+  const finishedAt = new Date().toISOString();
+  const refreshSummary = buildRefreshLogSummary({
+    before: {
+      sealed: beforeSealed,
+      cards: beforeCards,
+      marketPrices: beforePrices,
+      stores: beforeStores,
+    },
+    catalog,
+    stores,
+    status,
+    startedAt: RUN_STARTED_AT,
+    finishedAt,
+    dryRun: DRY_RUN,
+  });
+
+  console.log(JSON.stringify({
+    event: "market-refresh-summary",
+    ...refreshSummary,
+  }, null, 2));
 
   console.log(JSON.stringify({
     ok: true,
+    dryRun: DRY_RUN,
     before: {
       catalogProducts: beforeSealed.length + beforeCards.length,
       sealedProducts: beforeSealed.length,
@@ -887,8 +1008,16 @@ async function main() {
       virginiaStores: stores.stores.length,
       virginiaStoresFromOverpass: stores.importedFromOverpass,
     },
+    updated: {
+      products: refreshSummary.productsUpdated,
+      marketPriceRows: refreshSummary.marketPriceRowsUpdated,
+      skippedProducts: refreshSummary.productsSkipped,
+      skippedMarketPriceRows: refreshSummary.marketPriceRowsSkipped,
+    },
     failedTcgcsvGroups: catalog.failedGroups.length,
     overpassError: stores.overpassError || "",
+    finishedAt,
+    writes: DRY_RUN ? "skipped-dry-run" : "generated-files-written",
   }, null, 2));
 }
 

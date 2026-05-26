@@ -1,0 +1,69 @@
+name: Daily Market Price Refresh
+
+on:
+  schedule:
+    # 09:17 UTC daily. The source script uses public TCGCSV JSON and commits
+    # generated data changes back to main so Vercel can deploy the refreshed cache.
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-market-price-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh-market-prices:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Refresh generated Market price cache
+        env:
+          MARKET_REFRESH_SCHEDULER: github-actions-daily
+          SYNC_STORES: "false"
+          TCGCSV_GROUP_LIMIT: "0"
+        run: npm.cmd run sync:market-prices -- --prices-only
+
+      - name: Commit refreshed generated data
+        shell: pwsh
+        run: |
+          git status --short src/data/generated
+          git diff --stat -- src/data/generated
+          git diff --quiet -- src/data/generated
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "No generated Market data changes to commit."
+            exit 0
+          }
+          if ($LASTEXITCODE -ne 1) {
+            exit $LASTEXITCODE
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/generated/sealedProducts.json src/data/generated/pokemonTcgCards.json src/data/generated/marketPrices.json src/data/generated/virginiaStores.json src/data/generated/catalogImportStatus.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "No generated Market data changes to commit after staging."
+            exit 0
+          }
+          if ($LASTEXITCODE -ne 1) {
+            exit $LASTEXITCODE
+          }
+          git commit -m "Refresh Market price data"
+          git push

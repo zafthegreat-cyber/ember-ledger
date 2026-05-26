@@ -121,7 +121,7 @@ assert.equal(joinedPriceRows.length, marketPrices.length, "market prices should 
 assert.equal(importStatus.priceFallbackLabel, "Price data unavailable");
 assert.equal(importStatus.imageFallbackLabel, "Ember & Tide product placeholder");
 assert.equal(importStatus.dailyRefreshCommand, "npm.cmd run sync:market-prices");
-assert.equal(importStatus.schedulingStatus, "manual-script-only");
+assert.match(importStatus.schedulingStatus, /^(manual-script-only|github-actions-daily)$/);
 assert.equal(importStatus.marketPricesJoinedByProductId, joinedPriceRows.length);
 assert.ok(importStatus.productsMissingReferencePrices >= 0, "missing price count should be explicit");
 assert.ok(importStatus.productsMissingPhotos >= 0, "missing photo count should be explicit");
@@ -151,5 +151,6 @@ assert.equal(status.marketPricesJoinedByProductId, 1);
 assert.equal(status.productsWithReferencePrices, 1);
 assert.equal(status.productsMissingReferencePrices, 1);
 assert.equal(status.priceFallbackLabel, "Price data unavailable");
+assert.equal(status.schedulingStatus, "manual-script-only");
 
 console.log("Data sync normalization tests passed");

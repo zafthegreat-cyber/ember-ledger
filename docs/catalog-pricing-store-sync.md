@@ -35,13 +35,43 @@ Generated files:
 
 ## Daily Refresh
 
-No scheduler is configured in this repository. To refresh daily, schedule:
+Daily Market price refresh is configured with GitHub Actions:
+
+- Workflow: `.github/workflows/market-price-refresh.yml`
+- Schedule: `17 9 * * *` UTC, plus manual `workflow_dispatch`
+- Command: `npm.cmd run sync:market-prices -- --prices-only`
+- Store refresh mode: `SYNC_STORES=false`, so the daily job preserves the generated store directory and avoids depending on Overpass every day.
+- Write behavior: generated catalog/price/status JSON changes are committed back to `main`; Vercel's Git integration deploys the refreshed static cache.
+
+The scheduled job uses public TCGCSV JSON only and does not require API secrets. GitHub Actions must have permission to write repository contents, and the Vercel project must continue deploying from `main`.
+
+To refresh manually:
 
 ```powershell
 npm.cmd run sync:market-prices
 ```
 
-The script writes deterministic generated data from public source records and logs counts only. It does not wipe manual app data and does not update Supabase. A future scheduler can run this command from Vercel Cron, GitHub Actions, or another trusted runner; until then, pricing refresh is manual/on-demand.
+To test without writing generated files:
+
+```powershell
+npm.cmd run sync:market-prices -- --dry-run
+```
+
+To run the same price-only path used by the daily scheduler:
+
+```powershell
+npm.cmd run sync:market-prices -- --prices-only
+```
+
+The script writes deterministic generated data from public source records and logs counts only. It does not wipe manual app data and does not update Supabase.
+
+Verify the last successful refresh by checking:
+
+- the latest `Daily Market Price Refresh` GitHub Actions run
+- the latest `Refresh Market price data` bot commit, if generated data changed
+- `src/data/generated/catalogImportStatus.json` for `lastImportedAt`, `schedulingStatus`, and product/price counts
+- production `/app-version.json` after Vercel deploys the refresh commit
+- Market freshness labels in the app (`Updated`, `Stale`, or `Market data unavailable`)
 
 ## Fallback Behavior
 
@@ -57,3 +87,5 @@ The script writes deterministic generated data from public source records and lo
 - `TCGCSV_GROUP_LIMIT=0` syncs all Pokemon TCG groups. Set a positive number for a smaller recent-group refresh.
 - `TCGCSV_GROUP_IDS=23821,24234` syncs specific TCGCSV groups.
 - `SKIP_OVERPASS=true` skips the Virginia store directory call and keeps existing local store seeds.
+- `SYNC_STORES=false` or `--prices-only` preserves the existing generated store directory and refreshes catalog/price data only.
+- `--dry-run` fetches and logs refresh counts without writing generated files.
