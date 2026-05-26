@@ -12,6 +12,7 @@ import {
 import { tidepoolPostNeedsModeration } from "./tidepoolCommunity.js";
 
 export const SCOUT_REPORT_MODERATION_STATUSES = [
+  "Live",
   "Confirmed",
   "Rejected",
   "Needs Review",
@@ -83,14 +84,16 @@ export function normalizeScoutReportModerationStatus(reportOrStatus = {}) {
   if (text.includes("stale") || text.includes("disputed") || text.includes("expired")) return "Stale";
   if (text.includes("reject") || text.includes("hidden") || text.includes("removed") || text.includes("delete")) return "Rejected";
   if (text.includes("confirm") || text.includes("verified") || text === "approved") return "Confirmed";
-  if (text.includes("review") || text.includes("pending") || text.includes("unverified")) return "Needs Review";
+  if (text.includes("review") || text.includes("flag") || text.includes("unusual")) return "Needs Review";
+  if (text.includes("pending") && (text.includes("moderation") || text.includes("review"))) return "Needs Review";
+  if (text.includes("active") || text.includes("live") || text.includes("new report") || text.includes("new_report") || text.includes("user report") || text.includes("unverified") || text === "pending") return "Live";
   if (reportOrStatus?.verified === true) return "Confirmed";
-  return "Needs Review";
+  return "Live";
 }
 
 export function scoutReportFeedsPredictions(report = {}) {
   const status = normalizeScoutReportModerationStatus(report);
-  if (["Rejected", "Duplicate", "Stale", "Needs Review"].includes(status)) return false;
+  if (["Rejected", "Duplicate", "Stale", "Needs Review", "Live"].includes(status)) return false;
   if (isDropRadarCommunityGuess(report) || isDropRadarPlaceholderForecast(report) || isDropRadarRejectedOrDeleted(report)) return false;
   return isDropRadarConfirmedTrainingEntry({
     ...report,
@@ -184,6 +187,26 @@ export function applyScoutReportModerationStatus(report = {}, status = "Needs Re
       verified: false,
       hidden: false,
       stale: true,
+      needsReview: false,
+      needs_review: false,
+      shouldTrainPredictions: false,
+      affectsDropRadarPredictions: false,
+      affects_drop_radar_predictions: false,
+    };
+  }
+
+  if (normalized === "Live") {
+    return {
+      ...base,
+      verificationStatus: "new_report",
+      verification_status: "new_report",
+      status: "active",
+      verified: false,
+      hidden: false,
+      adminRemoved: false,
+      admin_removed: false,
+      duplicate: false,
+      stale: false,
       needsReview: false,
       needs_review: false,
       shouldTrainPredictions: false,

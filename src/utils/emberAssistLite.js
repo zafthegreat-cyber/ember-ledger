@@ -15,9 +15,9 @@ export const EMBER_ASSIST_ESCALATION_CATEGORIES = [
 ];
 
 const PAGE_PROMPTS = {
-  scout: ["How do Scout reports work?", "How do I browse by area?", "Help me submit a report", "What stores should I check?"],
+  scout: ["Help me submit a report", "Why is this report low confidence?", "What should I check first?", "How do Scout reports work?"],
   dropRadar: ["Explain this drop prediction", "What releases are coming up?", "What does confirmed vs predicted mean?", "Help me follow a store"],
-  vault: ["What is my collection worth?", "Help me find an item", "What should I move to Forge?", "Explain my purchaser tallies"],
+  vault: ["Help me add an item", "Explain this value", "What details are missing?", "What should I move to Forge?"],
   forge: ["What should I list for sale?", "Help me set a planned sale price", "Show items missing cost or photos", "What is ready to sell?"],
   market: ["Help me create a safe listing", "Why is my listing pending?", "How do I report a listing?", "What does seller trust mean?"],
   expenses: ["What receipts are missing?", "Summarize this year's expenses", "Help me categorize this expense", "What do I need for tax records?"],
@@ -25,7 +25,8 @@ const PAGE_PROMPTS = {
   spark: ["How does The Spark work?", "Help me submit a kid request", "What does waitlisted mean?", "Are there upcoming kid-friendly events?"],
   tidepool: ["What is Tidepool?", "How do I post safely?", "Why is my post pending?", "How do I report a post?"],
   settings: ["Help me switch workspaces", "Explain personal Forge vs Ember & Tide Forge", "Help me update my profile", "Explain seller mode"],
-  admin: ["What needs review?", "Show admin message queue", "Explain this user status", "What should I check first?"],
+  admin: ["What needs review?", "Explain this user status", "How do I message admin?", "Show admin message queue"],
+  permissionDenied: ["Why am I blocked?", "Explain this user status", "How do I message admin?", "Return to Hearth"],
   general: ["What should I do first?", "How do I add inventory?", "How do I scan a barcode?", "What is Forge for?", "How do alerts work?", "How do I message admin?"],
 };
 
@@ -84,7 +85,8 @@ export function clearEmberAssistThread() {
   return [];
 }
 
-export function getEmberAssistStarterPrompts({ activeTab = "", scoutView = "", isAdmin = false } = {}) {
+export function getEmberAssistStarterPrompts({ activeTab = "", scoutView = "", isAdmin = false, permissionDenied = false } = {}) {
+  if (permissionDenied) return PAGE_PROMPTS.permissionDenied;
   const page = emberAssistPageKind(activeTab, { scoutView, isAdminPage: activeTab === "adminReview" });
   const pagePrompts = PAGE_PROMPTS[page] || PAGE_PROMPTS.general;
   const prompts = [...new Set([...pagePrompts, "How do I message admin?", ...CORE_PROMPTS])];
@@ -101,6 +103,7 @@ export function buildEmberAssistContext(input = {}) {
     routeLabel: input.routeLabel || PAGE_PROMPTS[page]?.[0] || "Ember & Tide",
     isAdmin: Boolean(input.isAdmin),
     isSeller: Boolean(input.isSeller),
+    permissionDenied: Boolean(input.permissionDenied),
     betaStatus: input.betaStatus || "",
     publicUsername: input.publicUsername || "",
     counts: {

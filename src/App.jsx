@@ -1103,14 +1103,14 @@ const SCOUT_QUICK_PROOF_TYPES = [
 ];
 const SCOUT_PRODUCT_CATEGORY_OPTIONS = ["Pokemon", "One Piece", "Lorcana", "Sports cards", "Other TCG"];
 const SCOUT_QUICK_REPORT_TYPES = [
-  { value: "stock_on_shelf", label: "Stock on shelf", helper: "In stock", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "possible" },
+  { value: "stock_on_shelf", label: "Stock seen", helper: "Product was seen on shelf, display, or behind counter.", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "possible" },
   { value: "no_stock", label: "No stock", helper: "Nothing found", reportType: "Store Restock Report", stockStatus: "empty", sourceType: "user_report", confidence: "possible" },
-  { value: "restock_happening_now", label: "Restock happening now", helper: "Vendor or staff stocking", reportType: "Store Restock Report", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "likely" },
+  { value: "restock_happening_now", label: "Vendor stocking now", helper: "Vendor or staff stocking", reportType: "Store Restock Report", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "likely" },
   { value: "employee_restock_coming", label: "Employee said restock coming", helper: "Needs review", reportType: "Restock Pattern Suggestion", stockStatus: "unknown", sourceType: "employee_tip", confidence: "likely", needsReview: true },
   { value: "restock_guess", label: "Community guess / pattern", helper: "Requires Scout points; never counts as confirmed stock.", reportType: "Store Guess", stockStatus: "unknown", sourceType: "manual_prediction", confidence: "guess", isGuess: true },
   { value: "truck_vendor_seen", label: "Truck/vendor seen", helper: "Possible restock", reportType: "Restock Pattern Suggestion", stockStatus: "vendor_stocking", sourceType: "user_report", confidence: "possible", needsReview: true },
-  { value: "shelf_tag_only", label: "Shelf tag only", helper: "No product seen", reportType: "Store Intel", stockStatus: "limit_posted", sourceType: "user_report", confidence: "possible" },
-  { value: "line_queue_seen", label: "Line/queue seen", helper: "Demand signal", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible", needsReview: true },
+  { value: "shelf_tag_only", label: "Recently stocked / signs of restock", helper: "Shelf tag, limit sign, display reset, or other sign.", reportType: "Store Intel", stockStatus: "limit_posted", sourceType: "user_report", confidence: "possible" },
+  { value: "line_queue_seen", label: "Line or crowd", helper: "Line, crowd, or demand signal.", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible" },
   { value: "online_stock_changed", label: "Online stock changed", helper: "Website/app update", reportType: "Online Stock Intel", stockStatus: "unknown", sourceType: "text_screenshot", confidence: "possible", needsReview: true },
   { value: "confirmed_purchase", label: "Confirmed purchase", helper: "Bought or saw checkout", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "likely" },
   { value: "other_intel", label: "Other intel", helper: "Manual note", reportType: "Store Intel", stockStatus: "unknown", sourceType: "user_report", confidence: "possible", needsReview: true },
@@ -4784,6 +4784,7 @@ export default function App() {
   const [userManagementSearch, setUserManagementSearch] = useState("");
   const [aiAssistReview, setAiAssistReview] = useState(null);
   const [emberAssistOpen, setEmberAssistOpen] = useState(false);
+  const [emberAssistMorePromptsOpen, setEmberAssistMorePromptsOpen] = useState(false);
   const [emberAssistMessages, setEmberAssistMessages] = useState(() => loadEmberAssistThread());
   const [emberAssistInput, setEmberAssistInput] = useState("");
   const [emberAssistEscalationDraft, setEmberAssistEscalationDraft] = useState(null);
@@ -12130,10 +12131,10 @@ export default function App() {
       address: matchedStore.address || "",
       productId: row.product_id || "",
       product_id: row.product_id || "",
-      productName: row.product_name || row.product_type || "Pokemon restock",
-      product_name: row.product_name || row.product_type || "Pokemon restock",
-      productType: row.product_type || row.report_type || "Pokemon",
-      product_type: row.product_type || row.report_type || "Pokemon",
+      productName: row.product_name || "",
+      product_name: row.product_name || "",
+      productType: row.product_type || row.report_type || "",
+      product_type: row.product_type || row.report_type || "",
       productSetName: row.set_name || "",
       setName: row.set_name || "",
       quantity: row.quantity_estimate || row.quantity_seen || "",
@@ -12394,6 +12395,8 @@ export default function App() {
     const observedAt = scoutReportTimeForBackend(report);
     const confidenceScore = Number(report.confidenceScore || report.confidence_score || scoutConfidenceScore(report.confidence || ""));
     const confirmed = Boolean(report.verified || /confirmed|verified/i.test(`${report.status || ""} ${report.verificationStatus || report.verification_status || ""}`));
+    const verificationStatus = report.verification_status || report.verificationStatus || (confirmed ? "verified" : report.needsReview || report.needs_review ? "needs_review" : "new_report");
+    const publicStatus = report.status || (confirmed ? "confirmed" : report.hidden ? "hidden" : "active");
     const payload = {
       store_id: storeId,
       user_id: user.id,
@@ -12405,7 +12408,7 @@ export default function App() {
       notes: report.notes || report.note || report.proofText || "",
       observed_at: observedAt,
       reported_at: observedAt,
-      verification_status: confirmed ? "verified" : "unverified",
+      verification_status: verificationStatus,
       workspace_id: uuidOrNull(report.workspaceId || report.workspace_id || activeWorkspaceId),
       store_name: report.storeName || report.store_name || "",
       product_name: report.productName || report.product_name || report.itemName || "",
@@ -12414,12 +12417,12 @@ export default function App() {
       quantity_estimate: String(report.quantity || report.quantityEstimate || report.quantity_estimate || ""),
       report_time: observedAt,
       visibility: normalizeScoutReportVisibility(report.visibility || "public"),
-      status: confirmed ? "confirmed" : "unverified",
+      status: publicStatus,
       confidence_score: confidenceScore,
       source_type: report.sourceType || report.source_type || (confirmed ? "verified_user_report" : "user_report"),
-      source_label: report.sourceLabel || report.source_label || "",
+      source_label: report.sourceLabel || report.source_label || report.confidenceLabel || report.confidence_label || "",
       submitted_by_display: report.submittedByDisplay || report.submitted_by_display || "",
-      confidence: report.confidence || (confirmed ? "confirmed" : "unconfirmed"),
+      confidence: report.confidence || (confirmed ? "confirmed" : "new-report"),
       imported_batch: report.importedBatch || report.imported_batch || null,
       imported_by_admin: Boolean(report.importedByAdmin || report.imported_by_admin),
       scout_points_awarded: report.scoutPointsAwarded ?? report.scout_points_awarded ?? true,
@@ -16151,7 +16154,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "scoutSubmit") {
       const draft = createQuickScoutReportDraft();
       setQuickScoutReportForm(draft);
-      setQuickScoutReportStep("product");
+      setQuickScoutReportStep("essentials");
       setQuickScoutReportMessage("");
       setQuickScoutReportSaved(null);
       flowModalBaselineRef.current.scoutSubmit = draft;
@@ -16533,7 +16536,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     return {
       valid: false,
-      message: "Choose the store or enter a manual store/location before submitting.",
+      message: "Choose the store or enter a manual store/location before posting.",
       storeId: "",
     };
   }
@@ -16753,6 +16756,62 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function scoutConfidenceBadgeMeta(value = "unconfirmed") {
     const key = String(value || "").toLowerCase();
+    if (["strong", "strong_confidence", "strong-confidence"].includes(key)) {
+      return {
+        key: "strong-confidence",
+        label: "Strong confidence",
+        helper: "Proof, reporter history, or matching community reports make this signal strong.",
+        score: 84,
+      };
+    }
+    if (["fair", "fair_confidence", "fair-confidence", "likely", "medium"].includes(key)) {
+      return {
+        key: "fair-confidence",
+        label: "Fair confidence",
+        helper: "Useful signal with some support, but another report or proof would make it stronger.",
+        score: 62,
+      };
+    }
+    if (["new", "new_report", "new-report", "unconfirmed", "unverified"].includes(key)) {
+      return {
+        key: "new-report",
+        label: "New report",
+        helper: "Fresh user-observed report. It can improve as proof or confirmations are added.",
+        score: 40,
+      };
+    }
+    if (["low", "low_confidence", "low-confidence", "rumor"].includes(key)) {
+      return {
+        key: "low-confidence",
+        label: "Low confidence",
+        helper: "Plausible, but there is little proof or history behind it yet.",
+        score: 28,
+      };
+    }
+    if (["conflicting", "conflicting_reports", "conflicting-reports", "disputed"].includes(key)) {
+      return {
+        key: "conflicting-reports",
+        label: "Conflicting reports",
+        helper: "Recent reports for the same store disagree. Check details before relying on it.",
+        score: 24,
+      };
+    }
+    if (["unusual", "needs_review", "unusual_needs_review", "unusual-needs-review", "pending"].includes(key)) {
+      return {
+        key: "unusual-needs-review",
+        label: "Unusual / needs review",
+        helper: "Saved, but routed to moderation because it is unusual or needs more context.",
+        score: 32,
+      };
+    }
+    if (["stale", "expired", "stale_expired", "stale-expired"].includes(key)) {
+      return {
+        key: "stale-expired",
+        label: "Stale / expired",
+        helper: "Too old to treat as current stock. Kept for history only.",
+        score: 12,
+      };
+    }
     if (key === "admin_reviewed" || key === "admin-reviewed") {
       return {
         key: "admin-reviewed",
@@ -16772,25 +16831,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (key === "community_confirmed" || key === "community-confirmed") {
       return {
         key: "community-confirmed",
-        label: "Community confirmed",
+        label: "Verified by community",
         helper: "Multiple Scout signals support this report.",
         score: 82,
       };
     }
     if (key === "photo" || key === "photo_attached") {
       return {
-        key: "photo",
-        label: "Photo attached",
-        helper: "Photo proof is attached, but this still needs confirmation before it is verified.",
+        key: "fair-confidence",
+        label: "Fair confidence",
+        helper: "Proof is attached, but the community can still confirm it.",
         score: 62,
-      };
-    }
-    if (key === "likely" || key === "medium") {
-      return {
-        key: "likely",
-        label: "Needs confirmation",
-        helper: "Helpful signal, but it still needs another Scout or admin review.",
-        score: 72,
       };
     }
     if (key === "historical" || key === "unverified_historical") {
@@ -16802,10 +16853,163 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       };
     }
     return {
-      key: "unconfirmed",
-      label: "Unverified",
-      helper: "Single report with no proof or confirmation yet.",
+      key: "new-report",
+      label: "New report",
+      helper: "Fresh user-observed report. It can improve as proof or confirmations are added.",
       score: 34,
+    };
+  }
+
+  function scoutQuickReportTypeLabel(value = "") {
+    const normalized = String(value || "").toLowerCase();
+    const match = SCOUT_QUICK_REPORT_TYPES.find((option) => option.value === normalized || option.stockStatus === normalized || option.reportType?.toLowerCase() === normalized);
+    if (match) return match.label;
+    return scoutStockStatusLabel(value) || String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function scoutReportObservationStatusLabel(report = {}) {
+    const quickType = report.quickReportType || report.quick_report_type || report.reportStatus || report.report_status || "";
+    const quickLabel = report.quickReportLabel || report.quick_report_label || scoutQuickReportTypeLabel(quickType);
+    if (quickLabel) return quickLabel;
+    return scoutStockStatusLabel(report.stockStatus || report.stock_status || report.reportType || report.report_type) || "Store report";
+  }
+
+  function scoutReportLooksSpammy(report = {}) {
+    const text = [
+      report.notes,
+      report.note,
+      report.reportText,
+      report.report_text,
+      report.proofText,
+      report.storeName,
+      report.store_name,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return /buy followers|free crypto|airdrop|casino|adult\s+link|spam\.|https?:\/\/.*(casino|crypto|airdrop|adult)/i.test(text);
+  }
+
+  function scoutReportStatusIsPositive(value = "") {
+    return /stock|vendor|purchase|in_stock|behind_counter|limit|line|crowd|restock/.test(String(value || "").toLowerCase());
+  }
+
+  function scoutReportStatusIsEmpty(value = "") {
+    return /no_stock|empty|sold out|sold_out/.test(String(value || "").toLowerCase());
+  }
+
+  function evaluateScoutReportReliability(report = {}, options = {}) {
+    if (isHistoricalScoutImport(report)) return scoutConfidenceBadgeMeta("historical");
+    const proofType = String(report.proofType || report.proof_type || "").toLowerCase();
+    const photoCount = scoutReportPhotoUrls(report).length;
+    const receiptProof = proofType === "receipt" || /receipt/i.test(`${report.notes || ""} ${report.proofText || report.proof_text || ""}`);
+    const hasStrongProof = receiptProof || photoCount > 0 || ["stock_photo", "screenshot"].includes(proofType);
+    const reportId = getScoutReportId(report);
+    const store = getScoutReportStore(report);
+    const storeId = report.storeId || report.store_id || store.id || "";
+    const sameStoreReports = (options.sameStoreReports || (storeId ? scoutReportsByStore[String(storeId)] || [] : []))
+      .filter((candidate) => String(getScoutReportId(candidate)) !== String(reportId));
+    const observedMs = new Date(scoutReportObservedAt(report) || report.createdAt || report.created_at || Date.now()).getTime();
+    const recentWindowMs = 8 * 60 * 60 * 1000;
+    const currentStatus = report.quickReportType || report.quick_report_type || report.reportStatus || report.report_status || report.stockStatus || report.stock_status || "";
+    const similarRecent = sameStoreReports.filter((candidate) => {
+      const candidateObservedMs = new Date(scoutReportObservedAt(candidate) || candidate.createdAt || candidate.created_at || 0).getTime();
+      if (!Number.isFinite(candidateObservedMs) || Math.abs(observedMs - candidateObservedMs) > recentWindowMs) return false;
+      const candidateStatus = candidate.quickReportType || candidate.quick_report_type || candidate.reportStatus || candidate.report_status || candidate.stockStatus || candidate.stock_status || "";
+      return scoutReportStatusIsPositive(currentStatus) === scoutReportStatusIsPositive(candidateStatus)
+        && scoutReportStatusIsEmpty(currentStatus) === scoutReportStatusIsEmpty(candidateStatus);
+    });
+    const conflictingRecent = sameStoreReports.filter((candidate) => {
+      const candidateObservedMs = new Date(scoutReportObservedAt(candidate) || candidate.createdAt || candidate.created_at || 0).getTime();
+      if (!Number.isFinite(candidateObservedMs) || Math.abs(observedMs - candidateObservedMs) > recentWindowMs) return false;
+      const candidateStatus = candidate.quickReportType || candidate.quick_report_type || candidate.reportStatus || candidate.report_status || candidate.stockStatus || candidate.stock_status || "";
+      return (scoutReportStatusIsPositive(currentStatus) && scoutReportStatusIsEmpty(candidateStatus))
+        || (scoutReportStatusIsEmpty(currentStatus) && scoutReportStatusIsPositive(candidateStatus));
+    });
+    const reporterScore = Number(report.reporterReputation || report.reporter_reputation || report.trustScore || report.trust_score || 0);
+    const reporterPoints = Number(report.scoutPointsAtSubmit || report.scout_points_at_submit || scoutGuessPoints || 0);
+    const freshness = scoutReportFreshnessMeta(report);
+    const unusual = Boolean(report.needsReview || report.needs_review || options.needsReview || String(report.sourceType || report.source_type || "").includes("employee_tip"));
+    const spammy = scoutReportLooksSpammy(report);
+    const reasons = [];
+    let score = 34;
+    if (hasStrongProof) {
+      score += receiptProof ? 28 : 22;
+      reasons.push(receiptProof ? "Receipt proof attached" : "Photo/proof attached");
+    }
+    if (reporterScore >= 85 || reporterPoints >= MIN_SCOUT_POINTS_FOR_GUESS) {
+      score += 18;
+      reasons.push("Reporter has Scout history");
+    } else if (reporterPoints > 0) {
+      score += 8;
+      reasons.push("Reporter has some Scout points");
+    }
+    if (similarRecent.length) {
+      score += Math.min(24, similarRecent.length * 12);
+      reasons.push("Similar recent community report");
+    }
+    if (sameStoreReports.length >= 3) {
+      score += 8;
+      reasons.push("Store has report history");
+    }
+    if (conflictingRecent.length) {
+      score -= 34;
+      reasons.push("Conflicts with a recent report");
+    }
+    if (freshness.key === "old" || freshness.key === "expired") {
+      score -= 36;
+      reasons.push("Report is outside the fresh window");
+    }
+    if (unusual) {
+      score -= 8;
+      reasons.push("Needs moderator context");
+    }
+    if (spammy) {
+      score = 0;
+      reasons.push("Possible spam or unsafe content");
+    }
+    score = Math.max(0, Math.min(96, score));
+    if (spammy) return { ...scoutConfidenceBadgeMeta("unusual-needs-review"), score, hidden: true, needsReview: true, reasons };
+    if (freshness.key === "old" || freshness.key === "expired") return { ...scoutConfidenceBadgeMeta("stale-expired"), score, needsReview: false, reasons };
+    if (conflictingRecent.length) return { ...scoutConfidenceBadgeMeta("conflicting-reports"), score, needsReview: true, reasons };
+    if (Number(report.confirmationCount || report.confirmation_count || report.communityConfirmations || report.community_confirmations || 0) >= 2 || similarRecent.length >= 2) {
+      return { ...scoutConfidenceBadgeMeta("community_confirmed"), score: Math.max(score, 82), needsReview: false, reasons };
+    }
+    if (unusual) return { ...scoutConfidenceBadgeMeta("unusual-needs-review"), score, needsReview: true, reasons };
+    if (score >= 78) return { ...scoutConfidenceBadgeMeta("strong-confidence"), score, needsReview: false, reasons };
+    if (score >= 52) return { ...scoutConfidenceBadgeMeta("fair-confidence"), score, needsReview: false, reasons };
+    if (score >= 32) return { ...scoutConfidenceBadgeMeta("new-report"), score, needsReview: false, reasons };
+    return { ...scoutConfidenceBadgeMeta("low-confidence"), score, needsReview: false, reasons };
+  }
+
+  function scoutPointsForReport(report = {}) {
+    const reliability = evaluateScoutReportReliability(report);
+    if (reliability.hidden) return 0;
+    let points = 6;
+    const proofType = String(report.proofType || report.proof_type || "").toLowerCase();
+    const photoCount = scoutReportPhotoUrls(report).length;
+    if (photoCount || ["stock_photo", "screenshot"].includes(proofType)) points += 4;
+    if (proofType === "receipt") points += 6;
+    if (normalizeScoutReportItems(report).length) points += 3;
+    if (report.quantitySeen || report.quantity_estimate || report.price || report.price_seen) points += 2;
+    if (["strong-confidence", "community-confirmed"].includes(reliability.key)) points += 3;
+    if (["conflicting-reports", "unusual-needs-review", "low-confidence"].includes(reliability.key)) points = Math.max(2, points - 3);
+    return Math.max(0, Math.min(20, points));
+  }
+
+  function awardScoutReportPoints(profile = {}, report = {}) {
+    const points = scoutPointsForReport(report);
+    const now = new Date().toISOString();
+    const proofAttached = Boolean(scoutReportPhotoUrls(report).length || ["stock_photo", "receipt", "screenshot"].includes(String(report.proofType || report.proof_type || "").toLowerCase()));
+    return {
+      ...(profile || {}),
+      scoutPoints: Number(profile?.scoutPoints || profile?.scout_points || 0) + points,
+      scout_points: Number(profile?.scout_points || profile?.scoutPoints || 0) + points,
+      rewardPoints: Number(profile?.rewardPoints || profile?.reward_points || 0) + points,
+      reward_points: Number(profile?.reward_points || profile?.rewardPoints || 0) + points,
+      reportStreak: Math.max(1, Number(profile?.reportStreak || profile?.report_streak || 0) + 1),
+      report_streak: Math.max(1, Number(profile?.report_streak || profile?.reportStreak || 0) + 1),
+      proofReportCount: Number(profile?.proofReportCount || profile?.proof_report_count || 0) + (proofAttached ? 1 : 0),
+      proof_report_count: Number(profile?.proof_report_count || profile?.proofReportCount || 0) + (proofAttached ? 1 : 0),
+      lastReportDate: now,
+      last_report_date: now,
     };
   }
 
@@ -16825,14 +17029,22 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function quickScoutConfidenceBadge(form = quickScoutReportForm, type = quickScoutReportTypeMeta(form.reportType), storeSelection = resolveQuickScoutStoreSelection(form)) {
-    const proofType = String(form.proofType || "").toLowerCase();
-    if (form.photoUrl || ["stock_photo", "receipt", "screenshot"].includes(proofType)) {
-      return scoutConfidenceBadgeMeta("photo");
-    }
-    if (type?.confidence === "likely" || quickScoutStoreHasHistory(storeSelection) || Number(form.confidenceSelfRating || 0) >= 70) {
-      return scoutConfidenceBadgeMeta("likely");
-    }
-    return scoutConfidenceBadgeMeta("unconfirmed");
+    const draft = {
+      quickReportType: type?.value,
+      reportStatus: type?.value,
+      stockStatus: type?.stockStatus,
+      sourceType: type?.sourceType,
+      proofType: form.proofType,
+      photoUrls: form.photoUrl ? [form.photoUrl] : [],
+      notes: [form.note, form.proofText].filter(Boolean).join(" | "),
+      storeId: storeSelection.storeId,
+      storeName: storeSelection.storeName,
+      retailer: storeSelection.retailer,
+      needsReview: Boolean(type?.needsReview || storeSelection.needsStoreReview),
+      observedAt: quickScoutVisitDateTimeValue(form),
+      scoutPointsAtSubmit: scoutGuessPoints,
+    };
+    return evaluateScoutReportReliability(draft, { needsReview: Boolean(type?.needsReview || storeSelection.needsStoreReview) });
   }
 
   function quickScoutNormalizedReportType(type = quickScoutReportTypeMeta()) {
@@ -16857,14 +17069,23 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function scoutWizardStepError(stepKey = quickScoutReportStep) {
     const currentType = quickScoutReportTypeMeta();
     if (currentType.isGuess && !currentUserCanSubmitScoutGuess && ["details", "review"].includes(stepKey)) return DROP_RADAR_GUESS_LOCKED_MESSAGE;
+    if (stepKey === "essentials") {
+      if (!quickScoutReportForm.reportType) return "Choose the report status before posting.";
+      const storeSelection = resolveQuickScoutStoreSelection();
+      if (!storeSelection.valid) return storeSelection.message;
+      if (quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before posting.";
+      const visitValidation = validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
+      if (!visitValidation.ok) return visitValidation.message;
+    }
     if (stepKey === "details" && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
     if (stepKey === "where") {
       const storeSelection = resolveQuickScoutStoreSelection();
       if (!storeSelection.valid) return storeSelection.message;
     }
     if (stepKey === "product" && !quickScoutReportForm.productCategory && !currentType.isGuess) return "Choose a product category before continuing.";
+    if (stepKey === "review" && !currentType.isGuess) return scoutWizardStepError("essentials");
     if (stepKey === "review" && !quickScoutReportReady()) return scoutWizardStepError("where") || scoutWizardStepError("details") || "Complete the missing Scout report details before submitting.";
-    if (stepKey === "review" && quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before submitting.";
+    if (stepKey === "review" && quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before posting.";
     if (["details", "review"].includes(stepKey) && !currentType.isGuess) {
       const visitValidation = validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
       if (!visitValidation.ok) return visitValidation.message;
@@ -16873,10 +17094,15 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function getScoutWizardSteps() {
+    if (!quickScoutReportTypeMeta().isGuess) {
+      return [
+        { key: "essentials", label: "Report" },
+        { key: "review", label: "Post" },
+      ];
+    }
     return [
-      { key: "product", label: "What" },
       { key: "where", label: "Where" },
-      { key: "details", label: "Proof" },
+      { key: "details", label: "Guess" },
       { key: "review", label: "Review" },
     ];
   }
@@ -16908,7 +17134,6 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const storeSelection = resolveQuickScoutStoreSelection();
     if (!storeSelection.valid) return null;
     const selectedStore = storeSelection.store || {};
-    const confidenceBadge = quickScoutConfidenceBadge(quickScoutReportForm, type, storeSelection);
     const timestampSourceDate = quickScoutReportForm.dateMode === "yesterday"
       ? getYesterdayDateInputKey()
       : quickScoutReportForm.dateMode === "pick_date" || quickScoutReportForm.dateMode === "today"
@@ -16917,11 +17142,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const visitValidation = validateScoutVisitDateTime({ reportDate: timestampSourceDate, reportTime: quickScoutReportForm.reportTime }, { allowFutureConfirmation: true });
     const observedAt = visitValidation.ok ? visitValidation.iso : new Date(`${timestampSourceDate}T${quickScoutReportForm.reportTime || getLocalTimeKey()}`).toISOString();
     const submittedAt = new Date().toISOString();
-    const productName = quickScoutReportForm.productName.trim()
+    const explicitProductName = quickScoutReportForm.productName.trim()
       || quickScoutReportForm.catalogProductName
       || quickScoutReportForm.productType
-      || quickScoutReportForm.productCategory
-      || type.label;
+      || "";
+    const productName = explicitProductName;
     const storeName = storeSelection.storeName;
     const retailer = storeSelection.retailer;
     const notes = [
@@ -16931,28 +17156,24 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       storeSelection.needsStoreReview ? `Manual location confirmed: ${quickScoutReportForm.storeConfirmed ? "yes" : "no"}` : "",
       quickScoutReportForm.storeFollowPreference ? `Store follow preference: ${quickScoutReportForm.storeFollowPreference.replace(/_/g, " ")}` : "",
       `Proof source: ${quickScoutProofLabel()}`,
-      `Confidence: ${confidenceBadge.label}`,
+      productName ? `Products seen: ${productName}` : "Products seen: not added yet",
       `Stock left: ${quickScoutStockLeftLabel()}`,
       quickScoutReportForm.dateMode === "day_only" ? `Day reported: ${quickScoutReportForm.dayOfWeek}` : "",
       quickScoutReportForm.dateMode === "not_sure" ? "Date/time not sure" : "",
     ].filter(Boolean).join(" | ");
     const id = makeId("quick-scout-report");
     const workspaceId = activeWorkspaceId || currentUserProfile?.workspaceId || currentUserProfile?.workspace_id || "";
-    return {
+    const baseReport = {
       id,
       reportId: id,
       reportType: type.reportType,
       quickReportType: type.value,
       quickReportLabel: type.label,
+      reportStatus: type.value,
+      report_status: type.value,
       stockStatus: type.stockStatus,
       sourceType: type.sourceType,
       source_type: type.sourceType,
-      confidence: confidenceBadge.key,
-      confidenceLevel: confidenceBadge.key,
-      confidence_level: confidenceBadge.key,
-      confidenceLabel: confidenceBadge.label,
-      confidence_label: confidenceBadge.label,
-      confidence_score: confidenceBadge.score,
       storeId: storeSelection.storeId,
       store_id: storeSelection.storeId,
       selectedStoreId: storeSelection.storeId,
@@ -16966,9 +17187,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       manualLocation: quickScoutReportForm.manualLocation.trim(),
       needsStoreReview: storeSelection.needsStoreReview,
       needsReview: Boolean(type.needsReview || storeSelection.needsStoreReview),
-      verificationStatus: type.needsReview || storeSelection.needsStoreReview ? "Needs Review" : "User Report",
-      verification_status: type.needsReview || storeSelection.needsStoreReview ? "pending" : "unverified",
-      status: type.needsReview || storeSelection.needsStoreReview ? "pending" : "unverified",
+      verificationStatus: type.needsReview || storeSelection.needsStoreReview ? "needs_review" : "new_report",
+      verification_status: type.needsReview || storeSelection.needsStoreReview ? "needs_review" : "new_report",
+      status: "active",
       verified: false,
       visibility: normalizeScoutReportVisibility(quickScoutReportForm.visibility),
       visibilitySelection: quickScoutReportForm.visibility,
@@ -16980,10 +17201,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       catalogProductName: quickScoutReportForm.catalogProductName || "",
       productImageUrl: quickScoutReportForm.productImageUrl || "",
       product_image_url: quickScoutReportForm.productImageUrl || "",
-      productCategory: quickScoutReportForm.productCategory || "Pokemon",
-      product_category: quickScoutReportForm.productCategory || "Pokemon",
-      productType: quickScoutReportForm.productType || quickScoutReportForm.productCategory || "",
-      product_type: quickScoutReportForm.productType || quickScoutReportForm.productCategory || "",
+      productCategory: productName ? quickScoutReportForm.productCategory || "Pokemon" : "",
+      product_category: productName ? quickScoutReportForm.productCategory || "Pokemon" : "",
+      productType: productName ? quickScoutReportForm.productType || quickScoutReportForm.productCategory || "" : "",
+      product_type: productName ? quickScoutReportForm.productType || quickScoutReportForm.productCategory || "" : "",
       setName: quickScoutReportForm.productSetName || "",
       set_name: quickScoutReportForm.productSetName || "",
       quantitySeen: quickScoutReportForm.quantity,
@@ -17030,6 +17251,41 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       workspace_id: workspaceId,
       sourceStatus: BETA_LOCAL_MODE ? "local_beta" : "local",
       report_type: quickScoutNormalizedReportType(type),
+    };
+    const reliability = evaluateScoutReportReliability(baseReport, { needsReview: Boolean(type.needsReview || storeSelection.needsStoreReview) });
+    const scoutPointsValue = scoutPointsForReport({ ...baseReport, confidence: reliability.key });
+    return {
+      ...baseReport,
+      confidence: reliability.key,
+      confidenceLevel: reliability.key,
+      confidence_level: reliability.key,
+      confidenceLabel: reliability.label,
+      confidence_label: reliability.label,
+      confidenceScore: reliability.score,
+      confidence_score: reliability.score,
+      confidenceReasons: reliability.reasons || [],
+      confidence_reasons: reliability.reasons || [],
+      reliabilityLabel: reliability.label,
+      reliability_label: reliability.label,
+      reliabilityReason: reliability.helper,
+      reliability_reason: reliability.helper,
+      sourceLabel: reliability.label,
+      source_label: reliability.label,
+      needsReview: Boolean(baseReport.needsReview || reliability.needsReview),
+      needs_review: Boolean(baseReport.needsReview || reliability.needsReview),
+      hidden: Boolean(reliability.hidden),
+      status: reliability.hidden ? "hidden" : "active",
+      verificationStatus: reliability.needsReview ? "needs_review" : "new_report",
+      verification_status: reliability.needsReview ? "needs_review" : "new_report",
+      scoutPointsValue,
+      scout_points_value: scoutPointsValue,
+      scoutPointsAwarded: scoutPointsValue > 0,
+      scout_points_awarded: scoutPointsValue > 0,
+      scoutPointsAtSubmit: scoutGuessPoints,
+      scout_points_at_submit: scoutGuessPoints,
+      shouldTrainPredictions: false,
+      affectsDropRadarPredictions: false,
+      affects_drop_radar_predictions: false,
     };
   }
 
@@ -17105,7 +17361,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const validationError = scoutWizardStepError("review");
     if (validationError) {
       setQuickScoutReportMessage(validationError);
-      if (scoutWizardStepError("where")) setQuickScoutReportStep("where");
+      if (!quickScoutReportTypeMeta().isGuess) setQuickScoutReportStep("essentials");
+      else if (scoutWizardStepError("where")) setQuickScoutReportStep("where");
       return;
     }
     const currentType = quickScoutReportTypeMeta();
@@ -17115,7 +17372,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       : validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
     if (!visitValidation.ok) {
       setQuickScoutReportMessage(visitValidation.message || "Add a valid visit date and time before submitting.");
-      setQuickScoutReportStep("details");
+      setQuickScoutReportStep(currentType.isGuess ? "details" : "essentials");
       showErrorToast("Couldn’t submit Scout report.", { message: visitValidation.message || "Add a valid visit date and time." });
       return;
     }
@@ -17127,7 +17384,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         cancelLabel: "Edit time",
       });
       if (!confirmedFutureVisit) {
-        setQuickScoutReportStep("details");
+        setQuickScoutReportStep(currentType.isGuess ? "details" : "essentials");
         return;
       }
     }
@@ -17171,17 +17428,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     const report = buildQuickScoutReportRecord();
     if (!report) {
-      setQuickScoutReportMessage(scoutWizardStepError("where") || "Choose the store/location before submitting this report.");
-      setQuickScoutReportStep("where");
+      setQuickScoutReportMessage(scoutWizardStepError("essentials") || "Choose the store/location before posting this report.");
+      setQuickScoutReportStep("essentials");
       return;
     }
     const nextLocalReports = [report, ...(scoutData.reports || [])]
       .filter((entry, index, list) => list.findIndex((candidate) => getScoutReportId(candidate) === getScoutReportId(entry)) === index);
     try {
-      saveSharedScoutData({ ...scoutData, reports: nextLocalReports });
+      const nextScoutProfile = awardScoutReportPoints(scoutData.scoutProfile || scoutSnapshot.scoutProfile || {}, report);
+      saveSharedScoutData({ ...scoutData, reports: nextLocalReports, scoutProfile: nextScoutProfile });
       setScoutSnapshot((current) => ({
         ...current,
         reports: mergeScoutRows(current.reports || [], [report], scoutBackendReportMergeKey),
+        scoutProfile: nextScoutProfile,
       }));
     } catch (error) {
       logAppError("scout_report_local_save", error, { storeName: report.storeName || report.store_name || "" }, "normal");
@@ -17213,17 +17472,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const savedToCloud = Boolean(backendSaveResult?.ok);
     const savedLocallyOnly = !savedToCloud;
     const scoutSaveMessage = savedToCloud
-      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Scout report submitted.")
+      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Scout report posted.")
       : "Scout report saved locally. Cloud sync is unavailable right now.";
     setQuickScoutReportSaved(savedReport);
     setQuickScoutReportStep("submitted");
     setQuickScoutReportMessage(savedToCloud
-      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Report sent. You can add details now or later.")
+      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Report posted. You can add products, proof, or details now or later.")
       : "Report saved on this device and is visible in Scout. Cloud sync is unavailable right now.");
     setScoutReportFilter("Latest");
     setScoutReportsPage(1);
     setScoutView("reports");
-    completeDailyAction("store", { badge: "restock_reporter", points: 10 });
+    completeDailyAction("store", { badge: "restock_reporter", points: Math.max(6, Number(savedReport.scoutPointsValue || savedReport.scout_points_value || report.scoutPointsValue || 6)) });
     if (savedLocallyOnly) {
       showWarningToast("Scout report saved locally.", {
         message: backendSaveResult?.reason === "backend_unavailable"
@@ -17264,7 +17523,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       manualLocation: options.manualLocation || "",
     });
     setQuickScoutReportForm(draft);
-    setQuickScoutReportStep("product");
+    setQuickScoutReportStep(options.action === "addGuess" ? "where" : "essentials");
     setQuickScoutReportMessage("");
     setQuickScoutReportSaved(null);
     flowModalBaselineRef.current.scoutSubmit = draft;
@@ -23623,6 +23882,7 @@ function renderForgeAccessState() {
     if (activeTabLocked) return false;
     return !onboardingState.completedAt && !onboardingState.dismissedAt;
   }
+  const emberAssistPermissionDenied = activeTab === "adminReview" && !adminToolsVisible;
   const emberAssistContext = useMemo(() => buildEmberAssistContext({
     activeTab,
     scoutView,
@@ -23630,6 +23890,7 @@ function renderForgeAccessState() {
     routeLabel: activeTabLabel,
     isAdmin: adminToolsVisible,
     isSeller: commandDeskSellerAccess,
+    permissionDenied: emberAssistPermissionDenied,
     betaStatus: userBetaAccessStatus(),
     publicUsername: publicUsernameFromProfile(currentUserProfile),
     counts: {
@@ -23647,6 +23908,7 @@ function renderForgeAccessState() {
     activeTabLabel,
     adminToolsVisible,
     commandDeskSellerAccess,
+    emberAssistPermissionDenied,
     currentUserProfile,
     vaultItems.length,
     forgeInventoryItems.length,
@@ -23657,8 +23919,8 @@ function renderForgeAccessState() {
     suggestions,
   ]);
   const emberAssistStarterPrompts = useMemo(
-    () => getEmberAssistStarterPrompts({ activeTab, scoutView, isAdmin: adminToolsVisible }),
-    [activeTab, scoutView, adminToolsVisible]
+    () => getEmberAssistStarterPrompts({ activeTab, scoutView, isAdmin: adminToolsVisible, permissionDenied: emberAssistPermissionDenied }),
+    [activeTab, scoutView, adminToolsVisible, emberAssistPermissionDenied]
   );
   const emberAssistOwnMessages = useMemo(
     () => filterEmberAssistMessagesForUser(suggestions, currentUserProfile, adminToolsVisible),
@@ -23677,13 +23939,17 @@ function renderForgeAccessState() {
     saveEmberAssistThread(emberAssistMessages);
   }, [emberAssistMessages]);
 
+  useEffect(() => {
+    setEmberAssistMorePromptsOpen(false);
+  }, [activeTab, scoutView]);
+
   function pushEmberAssistMessage(message) {
     setEmberAssistMessages((current) => saveEmberAssistThread([...current, message]));
   }
 
   function runEmberAssistAction(label = "") {
     const normalized = String(label || "").toLowerCase();
-    if (normalized.includes("send")) {
+    if (normalized.includes("send") || normalized.includes("message admin") || normalized.includes("contact admin")) {
       const lastUser = [...emberAssistMessages].reverse().find((message) => message.role === "user");
       const lastAssistant = [...emberAssistMessages].reverse().find((message) => message.role === "assistant");
       setEmberAssistEscalationDraft({
@@ -23696,6 +23962,10 @@ function renderForgeAccessState() {
       return;
     }
     setEmberAssistOpen(false);
+    if (normalized.includes("hearth") || normalized.includes("home")) {
+      setActiveTab("dashboard");
+      return;
+    }
     if (normalized.includes("quick add")) {
       openAddActionSheet("ember-assist");
       return;
@@ -24006,8 +24276,19 @@ function renderForgeAccessState() {
     );
     if (emberAssistSuppressed) return null;
     const latestAssistant = [...emberAssistMessages].reverse().find((message) => message.role === "assistant");
+    const visibleStarterPrompts = emberAssistMorePromptsOpen ? emberAssistStarterPrompts : emberAssistStarterPrompts.slice(0, 3);
+    const hiddenStarterPromptCount = Math.max(0, emberAssistStarterPrompts.length - 3);
+    const sparkHelpfulLinkVisible = emberAssistPermissionDenied || ["kidsProgram", "settings", "profileProgress", "membership"].includes(activeTab);
+    const helpfulLinks = [
+      emberAssistPermissionDenied ? { label: "Return to Hearth", action: () => { setEmberAssistOpen(false); setActiveTab("dashboard"); } } : null,
+      sparkHelpfulLinkVisible ? { label: "Open The Spark", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } } : null,
+    ].filter(Boolean);
+    const assistIntroCopy = emberAssistPermissionDenied
+      ? "You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth."
+      : "Ask about this page, a next step, or a confusing status.";
     return (
       <section className={`ember-assist-shell ${emberAssistOpen ? "is-open" : ""}`} aria-label="Ember Assist">
+        {!emberAssistOpen ? (
         <button
           type="button"
           className="ember-assist-fab"
@@ -24027,26 +24308,56 @@ function renderForgeAccessState() {
           <span aria-hidden="true">E</span>
           <b>Ask Ember ✨</b>
         </button>
+        ) : null}
         {emberAssistOpen ? (
-          <aside className="ember-assist-panel" role="dialog" aria-modal="false" aria-labelledby="ember-assist-title">
+          <>
+          <div className="ember-assist-backdrop" role="presentation" onClick={() => setEmberAssistOpen(false)} />
+          <aside className="ember-assist-panel" role="dialog" aria-modal="true" aria-labelledby="ember-assist-title">
             <div className="ember-assist-header">
               <div>
                 <p className="section-kicker">Ember Assist</p>
                 <h2 id="ember-assist-title">Hi, I&apos;m Ember Assist.</h2>
-                <p>I can help with Vault, Forge, Scout, TideTradr, The Spark, Settings, and app questions.</p>
+                <p>{assistIntroCopy}</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close Ember Assist" onClick={() => setEmberAssistOpen(false)}>X</button>
             </div>
+            <div className="ember-assist-scroll">
+            {emberAssistPermissionDenied ? (
+              <div className="ember-assist-context-card">
+                <strong>Access help</strong>
+                <span>Admin tools are protected. You can return to Hearth, ask what role is needed, or send a short message to admin if this looks wrong.</span>
+              </div>
+            ) : null}
             <div className="ember-assist-prompts" aria-label="Starter prompts">
-              {emberAssistStarterPrompts.map((prompt) => (
+              {visibleStarterPrompts.map((prompt) => (
                 <button type="button" key={prompt} onClick={() => sendEmberAssistMessage(prompt)}>{prompt}</button>
               ))}
+              {hiddenStarterPromptCount ? (
+                <button
+                  type="button"
+                  className="ember-assist-more-prompts"
+                  aria-expanded={emberAssistMorePromptsOpen ? "true" : "false"}
+                  onClick={() => setEmberAssistMorePromptsOpen((open) => !open)}
+                >
+                  {emberAssistMorePromptsOpen ? "Hide more questions" : "More questions"}
+                </button>
+              ) : null}
             </div>
+            {helpfulLinks.length ? (
+              <div className="ember-assist-helpful-links" aria-label="Helpful links">
+                <strong>Helpful links</strong>
+                <div>
+                  {helpfulLinks.map((link) => (
+                    <button type="button" key={link.label} className="ghost-button" onClick={link.action}>{link.label}</button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="ember-assist-messages" aria-live="polite">
               {!emberAssistMessages.length ? (
                 <div className="ember-assist-empty">
-                  <strong>What should we make easier?</strong>
-                  <span>Ask about this page, Quick Add, Scout trust, Forge records, The Spark, or year-end record cleanup.</span>
+                  <strong>{emberAssistPermissionDenied ? "Need access?" : "What should we make easier?"}</strong>
+                  <span>{emberAssistPermissionDenied ? "I can explain the blocked area and help you message admin without exposing private admin notes." : "Pick a question above or type what you are trying to do."}</span>
                 </div>
               ) : null}
               {emberAssistMessages.map((message) => (
@@ -24055,7 +24366,7 @@ function renderForgeAccessState() {
                   <p>{message.text}</p>
                   {message.actions?.filter((action) => !(message.shouldEscalate && /send to admin/i.test(action)))?.length ? (
                     <div className="ember-assist-actions">
-                      {message.actions.filter((action) => !(message.shouldEscalate && /send to admin/i.test(action))).slice(0, 4).map((action) => (
+                      {message.actions.filter((action) => !(message.shouldEscalate && /send to admin/i.test(action))).slice(0, 3).map((action) => (
                         <button type="button" key={action} className="secondary-button" onClick={() => runEmberAssistAction(action)}>{action}</button>
                       ))}
                     </div>
@@ -24088,6 +24399,7 @@ function renderForgeAccessState() {
                 ))}
               </details>
             ) : null}
+            </div>
             <form className="ember-assist-form" onSubmit={(event) => {
               event.preventDefault();
               sendEmberAssistMessage();
@@ -24145,6 +24457,7 @@ function renderForgeAccessState() {
               </div>
             ) : null}
           </aside>
+          </>
         ) : null}
       </section>
     );
@@ -24413,14 +24726,14 @@ function renderForgeAccessState() {
 
   function scoutReportStatusLabel(report = {}) {
     if (isHistoricalScoutImport(report)) return "Historical";
+    const observationStatus = scoutReportObservationStatusLabel(report);
+    if (observationStatus && observationStatus !== "Store report") return observationStatus;
     const rawStatus = String(report.verificationStatus || report.verification_status || report.status || "").toLowerCase();
-    if (report.verified || rawStatus === "verified" || rawStatus === "confirmed") return "Confirmed";
-    if (rawStatus === "pending") return "Pending";
-    if (rawStatus === "stale") return "Stale";
-    if (rawStatus === "rejected") return "Rejected";
+    if (rawStatus === "stale" || rawStatus === "expired") return "Stale";
+    if (rawStatus === "rejected" || rawStatus === "hidden" || rawStatus === "removed") return "Hidden";
     if (rawStatus.includes("review")) return "Needs Review";
-    if (rawStatus === "user_report" || rawStatus === "unverified") return "User Report";
-    return report.userId || report.reportedBy || report.reported_by ? "User Report" : "Pending";
+    if (rawStatus === "user_report" || rawStatus === "unverified" || rawStatus === "new_report" || rawStatus === "active" || rawStatus === "pending") return "Store report";
+    return report.userId || report.reportedBy || report.reported_by ? "Store report" : "New report";
   }
 
   function scoutStockStatusLabel(value = "") {
@@ -24428,6 +24741,7 @@ function renderForgeAccessState() {
       in_stock: "In stock",
       low_stock: "Low stock",
       empty: "Empty",
+      no_stock: "No stock",
       vendor_stocking: "Vendor stocking",
       behind_counter: "Behind counter",
       customer_service: "Customer service",
@@ -24501,13 +24815,18 @@ function renderForgeAccessState() {
   }
 
   function scoutReportConfidenceBadge(report = {}) {
-    const photoUrls = scoutReportPhotoUrls(report);
-    const proofType = String(report.proofType || report.proof_type || "").toLowerCase();
     const rawStatus = String(report.verificationStatus || report.verification_status || report.status || "").toLowerCase();
     const rawConfidence = String(report.confidenceLevel || report.confidence_level || report.confidence || "").toLowerCase();
     const reporterScore = Number(report.reporterReputation || report.reporter_reputation || report.trustScore || report.trust_score || 0);
     if (isHistoricalScoutImport(report) || rawConfidence === "unverified_historical") {
       return scoutConfidenceBadgeMeta("historical");
+    }
+    if (["strong-confidence", "strong_confidence", "fair-confidence", "fair_confidence", "new-report", "new_report", "low-confidence", "low_confidence", "conflicting-reports", "conflicting_reports", "unusual-needs-review", "unusual_needs_review", "stale-expired", "stale_expired"].includes(rawConfidence)) {
+      return {
+        ...scoutConfidenceBadgeMeta(rawConfidence),
+        score: Number(report.confidenceScore || report.confidence_score || scoutConfidenceBadgeMeta(rawConfidence).score),
+        reasons: report.confidenceReasons || report.confidence_reasons || [],
+      };
     }
     if (rawStatus.includes("admin") && rawStatus.includes("review")) {
       return scoutConfidenceBadgeMeta("admin_reviewed");
@@ -24529,23 +24848,27 @@ function renderForgeAccessState() {
     ) {
       return scoutConfidenceBadgeMeta("community_confirmed");
     }
-    if (photoUrls.length || ["stock_photo", "receipt", "screenshot"].includes(proofType)) {
-      return scoutConfidenceBadgeMeta("photo");
-    }
-    const store = getScoutReportStore(report);
-    const storeId = report.storeId || report.store_id || store.id || "";
-    const historyRows = storeId ? scoutReportsByStore[String(storeId)] || [] : [];
-    if (
-      rawConfidence === "likely" ||
-      rawStatus.includes("user") ||
-      historyRows.length > 1 ||
-      reporterScore >= 50 ||
+    if (report.needsReview || report.needs_review || rawStatus.includes("review")) return evaluateScoutReportReliability(report, { needsReview: true });
+    if (reporterScore >= 85) return scoutConfidenceBadgeMeta("strong-confidence");
+    return evaluateScoutReportReliability(report);
+  }
+
+  function scoutReportNeedsAdminReview(report = {}) {
+    const rawStatus = String(report.verificationStatus || report.verification_status || report.status || report.moderationStatus || report.moderation_status || "").toLowerCase();
+    const confidenceBadge = scoutReportConfidenceBadge(report);
+    return Boolean(
       report.needsReview ||
-      report.needs_review
-    ) {
-      return scoutConfidenceBadgeMeta("likely");
-    }
-    return scoutConfidenceBadgeMeta("unconfirmed");
+      report.needs_review ||
+      report.flagged ||
+      report.hidden ||
+      report.adminRemoved ||
+      report.admin_removed ||
+      rawStatus.includes("review") ||
+      rawStatus.includes("flag") ||
+      rawStatus.includes("hidden") ||
+      rawStatus.includes("removed") ||
+      ["conflicting-reports", "unusual-needs-review"].includes(confidenceBadge.key)
+    );
   }
 
   function scoutForecastConfidenceKey(value = "") {
@@ -25379,10 +25702,19 @@ function renderForgeAccessState() {
     }, storeMapFilters);
   }
 
-  const filteredScoutReports = scoutReportRows.filter(scoutRecordMatchesAreaFilters).filter((report) => {
+  function scoutForecastHasEnoughData(row = {}) {
+    const supportCount = Number(row.supportingReportCount ?? row.supporting_report_count ?? row.trainingCount ?? row.training_count ?? 0);
+    const confidenceKey = String(row.confidenceKey || row.confidence || "").toLowerCase();
+    return row.recordKind !== "community_guess" && confidenceKey !== "needs-data" && supportCount >= 2;
+  }
+
+  const filteredScoutReports = scoutReportRows.filter((report) => {
+    if (adminEditModeActive) return true;
+    return !(report.hidden || report.adminRemoved || report.admin_removed || /hidden|removed|rejected/i.test(`${report.status || ""} ${report.verificationStatus || report.verification_status || ""}`));
+  }).filter(scoutRecordMatchesAreaFilters).filter((report) => {
     if (scoutReportFilter === "Verified") return Boolean(report.verified || /verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`));
     if (scoutReportFilter === "My Reports") return isCurrentUserScoutReport(report);
-    if (scoutReportFilter === "Needs Review") return !report.verified && !/verified|confirmed/i.test(`${report.verificationStatus || report.verification_status || report.status || ""}`);
+    if (scoutReportFilter === "Needs Review") return scoutReportNeedsAdminReview(report);
     return true;
   }).sort((a, b) => {
     if (scoutReportSort === "Verified first") {
@@ -25397,12 +25729,9 @@ function renderForgeAccessState() {
     }
     return scoutReportSortTime(b) - scoutReportSortTime(a);
   });
-  const regionalScoutForecastPreviewRows = scoutForecastPreviewRows.filter(scoutForecastMatchesAreaFilters);
+  const regionalScoutForecastPreviewRows = scoutForecastPreviewRows.filter(scoutForecastMatchesAreaFilters).filter(scoutForecastHasEnoughData);
   const regionalScoutGuessRows = scoutGuessRows.filter(scoutForecastMatchesAreaFilters);
-  const scoutNeedsReviewReports = scoutReportRows.filter((report) => {
-    const status = scoutReportStatusLabel(report);
-    return status === "Needs Review" || status === "Pending";
-  });
+  const scoutNeedsReviewReports = scoutReportRows.filter(scoutReportNeedsAdminReview);
   const scoutMyReports = scoutReportRows.filter(isCurrentUserScoutReport);
   const scoutReviewVisible = canReviewSharedData;
   const normalizedScoutView = scoutView === "main" || !scoutView ? "overview" : scoutView;
@@ -27931,22 +28260,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   const SCOUT_ADMIN_MODERATION_ACTIONS = {
     confirm: {
-      label: "Confirm",
+      label: "Mark verified",
       rpc: "admin_verify_store_report",
       status: "Confirmed",
-      message: "Scout report confirmed.",
+      message: "Scout report marked verified.",
     },
     needsReview: {
-      label: "Needs Review",
+      label: "Flag for review",
       rpc: "admin_mark_report_disputed",
       status: "Needs Review",
       message: "Scout report marked for review.",
     },
     reject: {
-      label: "Reject",
+      label: "Mark inaccurate",
       rpc: "admin_hide_store_report",
       status: "Rejected",
-      message: "Scout report rejected.",
+      message: "Scout report marked inaccurate.",
       risky: true,
     },
     duplicate: {
@@ -27957,7 +28286,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       risky: true,
     },
     stale: {
-      label: "Mark Stale",
+      label: "Mark stale",
       rpc: "admin_mark_report_disputed",
       status: "Stale",
       message: "Scout report marked stale.",
@@ -27966,11 +28295,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     restore: {
       label: "Restore",
       rpc: "admin_restore_store_report",
-      status: "Needs Review",
-      message: "Scout report restored for review.",
+      status: "Live",
+      message: "Scout report restored to the public feed.",
     },
     softDelete: {
-      label: "Archive / Hide",
+      label: "Hide",
       rpc: "admin_soft_delete_store_report",
       status: "Rejected",
       message: "Scout report archived from public trust surfaces.",
@@ -28200,13 +28529,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function getScoutReportAdminActions(report) {
     if (!adminEditModeActive) return [];
     return [
-      { label: "Confirm", onClick: () => queueScoutReportAdminModeration(report, "confirm") },
-      { label: "Needs Review", onClick: () => queueScoutReportAdminModeration(report, "needsReview") },
-      { label: "Reject", danger: true, onClick: () => queueScoutReportAdminModeration(report, "reject") },
+      { label: "Mark verified", onClick: () => queueScoutReportAdminModeration(report, "confirm") },
+      { label: "Flag for review", onClick: () => queueScoutReportAdminModeration(report, "needsReview") },
+      { label: "Mark inaccurate", danger: true, onClick: () => queueScoutReportAdminModeration(report, "reject") },
       { label: "Duplicate", danger: true, onClick: () => queueScoutReportAdminModeration(report, "duplicate") },
-      { label: "Mark Stale", onClick: () => queueScoutReportAdminModeration(report, "stale") },
+      { label: "Mark stale", onClick: () => queueScoutReportAdminModeration(report, "stale") },
       { label: "Restore", onClick: () => queueScoutReportAdminModeration(report, "restore") },
-      { label: "Archive / Hide", danger: true, onClick: () => queueScoutReportAdminModeration(report, "softDelete") },
+      { label: "Hide", danger: true, onClick: () => queueScoutReportAdminModeration(report, "softDelete") },
       { label: "View Audit", onClick: () => setVaultToast("Audit details are not available in this beta UI yet.") },
     ];
   }
@@ -28300,14 +28629,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const photoUrls = scoutReportPhotoUrls(report);
     const photo = photoUrls[0] || "";
     const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status || report.reportStatus || report.report_status);
+    const observationLabel = scoutReportObservationStatusLabel(report);
     const primaryItem = visibleItems[0] || {};
-    const primaryItemName = primaryItem.productName
-      || report.productName
-      || report.product_name
-      || report.itemName
-      || report.item_name
-      || stockStatus
-      || "Pokemon signal";
+    const primaryItemName = primaryItem.productName || report.productName || report.product_name || report.itemName || report.item_name || "";
     const productImage = photo
       || primaryItem.imageUrl
       || primaryItem.image_url
@@ -28333,13 +28657,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const visitLabel = scoutReportDateTimeLabel(report);
     const submittedLabel = scoutReportSubmittedDateTimeLabel(report);
     const canEditVisitTime = canEditScoutReportDateTime(report);
+    const notePreview = String(note || "").split("|").map((part) => part.trim()).find((part) => part && !/^Proof source:/i.test(part) && !/^Products seen:/i.test(part)) || "";
+    const detailHint = visibleItems.length
+      ? `${visibleItems.length + extraCount} product detail${visibleItems.length + extraCount === 1 ? "" : "s"} in details`
+      : "Products can be added after posting";
     return (
       <article className={`scout-report-compact-card scout-report-card--${freshnessMeta.key} scout-report-card--trust-${confidenceBadge.key}${compact ? " is-compact" : ""}`} key={reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
           <div className="scout-report-title-row">
             <div>
               <h3>{storeName}</h3>
-              <p className="scout-report-product-line">{primaryItemName}</p>
+              <p className="scout-report-product-line">{observationLabel || stockStatus || "Store report"}</p>
               <p className="scout-report-location-line">{retailer}{area ? ` | ${area}` : ""}</p>
             </div>
             <span className={`status-badge scout-report-status ${statusClass(statusLabel)}`}>{statusLabel}</span>
@@ -28349,7 +28677,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>{freshnessMeta.helper}</span>
             {!compact && adminEditModeActive ? <span>Submitted: {submittedLabel}</span> : null}
             {distanceLabel ? <span>{distanceLabel}</span> : null}
-            {stockStatus ? <span>{stockStatus}</span> : null}
             {sourceLabel && !compact ? <span>Source: {sourceLabel}</span> : null}
             {proofLabel !== "No proof" ? <span>{proofLabel}</span> : null}
             <span>{submittedByLabel}</span>
@@ -28362,36 +28689,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {reporterReputation ? <span className="mini-badge">Reporter rep {reporterReputation}</span> : null}
           </div>
           {historicalImport ? <p className="scout-report-historical-note">{historicalScoutImportNotice()}</p> : null}
-          {renderCommunityProfileSummary(report, { compact: true, className: "scout-report-profile-card" })}
-          <div className="scout-report-items">
-            <strong>Items seen</strong>
-            {visibleItems.length ? (
-              visibleItems.map((item, index) => (
-                <p key={`${item.productName}-${index}`}>
-                  {item.productName}
-                  {item.quantity ? ` - Qty ${item.quantity}` : " - Qty unknown"}
-                  {Number(item.price || 0) > 0 ? ` - ${money(item.price)}` : ""}
-                  {item.note ? ` - ${item.note}` : ""}
-                </p>
-              ))
-            ) : (
-              <div className="scout-report-general-details">
-                {stockStatus ? <p>{stockStatus}</p> : null}
-                {photo ? <p>Photo uploaded - Items not identified yet</p> : null}
-                {aiPending && !photo ? <p>Items not identified yet</p> : null}
-                {note && !stockStatus && !photo ? <p>General store note</p> : null}
-                {!stockStatus && !photo && !note ? <p>No item details added</p> : null}
-              </div>
-            )}
-            {extraCount ? <p className="compact-subtitle">+ {extraCount} more item{extraCount === 1 ? "" : "s"}</p> : null}
-          </div>
-          {!compact && (note || (!stockStatus && !photo)) ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
+          {notePreview ? <p className="scout-report-notes scout-report-note-preview">{notePreview}</p> : null}
+          {!compact ? <p className="scout-report-detail-hint">{detailHint}</p> : null}
         </div>
         <div className="scout-report-side">
           {productImage ? <img src={productImage} alt="" /> : <span>No image</span>}
-          {adminEditModeActive && !/confirmed|historical/i.test(statusLabel) ? (
+          {adminEditModeActive && scoutReportNeedsAdminReview(report) ? (
             <button type="button" className="secondary-button scout-report-confirm-button" onClick={() => queueScoutReportAdminModeration(report, "confirm")}>
-              Confirm
+              Mark verified
             </button>
           ) : null}
           <OverflowMenu
@@ -29712,7 +30017,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </article>
       </section>
     );
-    const forecastRows = scoutForecastPreviewRows.slice(0, 5);
+    const forecastRows = scoutForecastPreviewRows.filter(scoutForecastHasEnoughData).slice(0, 5);
     const scoutRadarRows = (forecastRows.length ? forecastRows : (scoutSnapshot.stores || []).slice(0, 5).map((store, index) => ({
       id: store.id || `store-${index}`,
       storeId: store.id || "",
@@ -29893,8 +30198,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             )) : (
               <div className="small-empty-state">
-                <strong>No forecast yet</strong>
-                <span>Scout will build this as reports come in.</span>
+                <strong>Not enough data yet.</strong>
+                <span>Forecast windows appear after repeated store patterns or enough confirmed community reports.</span>
               </div>
             )}
           </div>
@@ -29963,8 +30268,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             );
           }) : (
             <div className="small-empty-state">
-              <strong>No forecast windows yet.</strong>
-              <span>{regionalFilterActive(storeMapFilters) ? REGIONAL_BROWSING_EMPTY_COPY.noPredictions : "Confirmed reports build predictions. Community guesses stay in the planner until enough proof exists."}</span>
+              <strong>Not enough data yet.</strong>
+              <span>{regionalFilterActive(storeMapFilters) ? REGIONAL_BROWSING_EMPTY_COPY.noPredictions : "Forecast windows need repeated store patterns, confirmed timing, or enough community reports."}</span>
             </div>
           )}
         </div>
@@ -29997,22 +30302,52 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderScoutReviewPanel() {
     if (!scoutReviewVisible) return renderScoutOverviewPanel();
+    const moderationGroups = [
+      { key: "review", title: "Reports needing review", rows: scoutNeedsReviewReports, empty: "No reports need moderation right now." },
+      { key: "unusual", title: "Unusual reports", rows: scoutReportRows.filter((report) => scoutReportConfidenceBadge(report).key === "unusual-needs-review"), empty: "No unusual reports." },
+      { key: "conflicts", title: "Conflicting reports", rows: scoutReportRows.filter((report) => scoutReportConfidenceBadge(report).key === "conflicting-reports"), empty: "No conflicting reports." },
+      { key: "flagged", title: "Flagged reports", rows: scoutReportRows.filter((report) => report.flagged || String(report.verificationStatus || report.verification_status || report.status || "").toLowerCase().includes("flag")), empty: "No flagged reports." },
+      { key: "hidden", title: "Hidden reports", rows: scoutReportRows.filter((report) => report.hidden || report.adminRemoved || report.admin_removed || /hidden|removed|rejected/i.test(`${report.status || ""} ${report.verificationStatus || report.verification_status || ""}`)), empty: "No hidden reports." },
+      { key: "strong", title: "High-confidence reports", rows: scoutReportRows.filter((report) => ["strong-confidence", "community-confirmed", "verified"].includes(scoutReportConfidenceBadge(report).key)), empty: "No high-confidence reports yet." },
+    ];
     return (
       <section className="panel scout-subpage-panel">
         <div className="compact-card-header">
           <div>
-            <h2>Review</h2>
-            <p>Reports and Scout data that need admin review.</p>
+            <h2>Scout moderation</h2>
+            <p>Review unusual, conflicting, flagged, or hidden reports. Normal reports post immediately with confidence labels.</p>
           </div>
-          <span className="status-badge">{scoutNeedsReviewReports.length} pending</span>
+          <span className="status-badge">{scoutNeedsReviewReports.length} need review</span>
         </div>
-        <div className="scout-report-card-grid">
-          {scoutNeedsReviewReports.length ? scoutNeedsReviewReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
-            <div className="small-empty-state">
-              <strong>No items need review.</strong>
-              <span>Pending Scout reports will appear here for reviewers.</span>
+        <div className="scout-moderation-group-list">
+          {moderationGroups.map((group) => (
+            <section className="scout-moderation-group" key={group.key}>
+              <div className="compact-card-header">
+                <div>
+                  <h3>{group.title}</h3>
+                  <p>{group.rows.length ? `${group.rows.length} report${group.rows.length === 1 ? "" : "s"}` : group.empty}</p>
+                </div>
+                <span className="status-badge">{group.rows.length}</span>
+              </div>
+              <div className="scout-report-card-grid">
+                {group.rows.length ? group.rows.slice(0, 4).map((report) => renderScoutReportCard(report, { compact: true })) : (
+                  <div className="small-empty-state">
+                    <strong>{group.empty}</strong>
+                    <span>Normal reports stay out of the moderation workload.</span>
+                  </div>
+                )}
+              </div>
+            </section>
+          ))}
+          <section className="scout-moderation-group">
+            <div className="compact-card-header">
+              <div>
+                <h3>Scout users / points</h3>
+                <p>Scout points influence confidence and unlock community guesses without blocking basic reports.</p>
+              </div>
+              <span className="status-badge">{scoutGuessPoints} pts</span>
             </div>
-          )}
+          </section>
         </div>
       </section>
     );
@@ -34063,7 +34398,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "beta-users", title: "Beta users dashboard", count: approvedBetaUserCount + betaRequests.length, priority: betaRequests.length ? "Access review" : "Track", submittedBy: "Profiles/invites", details: "Track pending, approved, invited, joined, and active beta users.", filter: "Beta Users" },
       { key: "beta", title: "Beta access requests", count: betaRequests.length, priority: betaRequests.length ? "Today" : "Clear", submittedBy: "Applicants", details: "Approve, waitlist, pause, or deny app access.", filter: "Beta Access" },
       { key: "kids", title: "Kids Program requests", count: kidsReviewCount, priority: kidsApplications.length ? "High privacy" : "Clear", submittedBy: "Parents/guardians", details: "Private family requests. No child details are public.", filter: "Kids Program Applications" },
-      { key: "scout", title: "Scout reports needing verification", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "High" : "Clear", submittedBy: "Scout reporters", details: "Confirm, reject, duplicate, stale, or route to review.", filter: "Scout Report Moderation" },
+      { key: "scout", title: "Scout moderation", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "Review" : "Clear", submittedBy: "Scout reporters", details: "Moderate unusual, conflicting, flagged, or hidden reports.", filter: "Scout Report Moderation" },
       { key: "guesses", title: "Community guesses / predictions", count: commandSummary.pendingCommunityGuesses, priority: commandSummary.pendingCommunityGuesses ? "Review" : "Clear", submittedBy: "Qualified Scouts", details: "Keep guesses separate from confirmed restock history.", filter: "Community Guess Review" },
       { key: "assist", title: "Ember Assist admin messages", count: commandSummary.openAssistMessages, priority: commandSummary.openAssistMessages ? "Review" : "Clear", submittedBy: "App users", details: "Questions escalated from Ember Assist with safe context.", filter: REVIEW_SECTION_LABELS.assist },
       { key: "shops", title: "Family-friendly shop review", count: commandSummary.shopsNeedingReview, priority: commandSummary.shopsNeedingReview ? "Review" : "Clear", submittedBy: "Admin/store metadata", details: "Approve mission-aligned shop badges without pricing guarantees.", filter: "Family-Friendly Shop Review" },
@@ -36014,7 +36349,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       const isGuess = quickScoutReportTypeMeta(quickScoutReportForm.reportType)?.isGuess;
       return {
         title: isGuess ? "Add Scout Guess" : "Submit Scout Report",
-        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "What you saw, where you saw it, proof details, then review.",
+        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Post store, status, and time first. Add product details after.",
         size: "medium",
       };
     }
@@ -36897,11 +37232,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           { value: "other_intel", title: "Other", helper: "Manual note or pattern." },
         ]
       : [
-          { value: "stock_on_shelf", title: "Stock found", helper: "Products were on shelf or available." },
-          { value: "no_stock", title: "Empty shelves", helper: "Nothing found where TCG usually sits." },
-          { value: "restock_happening_now", title: "Restock in progress", helper: "Vendor or staff stocking now." },
-          { value: "shelf_tag_only", title: "Limit/sign posted", helper: "Shelf tag, limit, or sign spotted." },
-          { value: "other_intel", title: "Other", helper: "Useful store intel or context." },
+          { value: "stock_on_shelf", title: "Stock seen", helper: "Product was seen on shelf, display, or behind counter." },
+          { value: "no_stock", title: "No stock", helper: "Nothing found where TCG usually sits." },
+          { value: "restock_happening_now", title: "Vendor stocking now", helper: "Vendor or staff stocking now." },
+          { value: "shelf_tag_only", title: "Recently stocked / signs of restock", helper: "Shelf tag, limit sign, display reset, or other sign." },
+          { value: "line_queue_seen", title: "Line or crowd", helper: "Line, crowd, or visible checkout demand." },
         ];
     const storeRows = stores.map((store, index) => {
       const reports = getStoreMapReports(store);
@@ -36944,17 +37279,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       })
       .slice(0, 8);
     const recommendedStoreRows = filteredStoreRows.slice(0, locationAvailable ? 6 : 4);
-    const wizardSteps = [
-      { key: "product", label: "What", title: "Select item" },
-      { key: "where", label: "Where", title: "Select store/location" },
-      { key: "details", label: "Proof", title: "Add details/photo" },
-      { key: "review", label: "Review", title: "Final review" },
-    ];
+    const wizardSteps = getScoutWizardSteps().map((step) => ({
+      ...step,
+      title: step.key === "essentials"
+        ? "Post the essentials"
+        : step.key === "where"
+          ? "Select store/location"
+          : step.key === "details"
+            ? "Add guess context"
+            : currentType.isGuess ? "Review note" : "Post report",
+    }));
     const activeStepIndex = Math.max(0, wizardSteps.findIndex((step) => step.key === quickScoutReportStep));
     const activeWizardStep = wizardSteps[activeStepIndex] || wizardSteps[0];
     const confidenceBadge = quickScoutConfidenceBadge(quickScoutReportForm, currentType, storeSelection);
     const scoutPointsRemaining = Math.max(0, MIN_SCOUT_POINTS_FOR_GUESS - scoutGuessPoints);
     const scoutPointsProgress = Math.min(100, Math.round((scoutGuessPoints / Math.max(1, MIN_SCOUT_POINTS_FOR_GUESS)) * 100));
+    const productDetailSummary = quickScoutReportForm.productName
+      ? [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ")
+      : (currentType.isGuess ? quickScoutReportForm.productCategory || "Not selected" : "Optional after posting");
     const summaryRows = [
       [currentType.isGuess ? "Planner type" : "Report type", currentType.label],
       ["Reporting at", storeSelection.valid ? storeSelection.storeName : "Store not selected"],
@@ -36962,7 +37304,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ["Proof/source", quickScoutProofLabel()],
       ["Photo", quickScoutReportForm.photoUrl ? "Attached" : "No photo attached"],
       ["Trust state", confidenceBadge?.label || "Unverified"],
-      ["Product/category", [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ") || "Pokemon"],
+      ["Product details", productDetailSummary],
       ...(currentType.isGuess
         ? [
             ["Expected day", quickScoutDateLabel()],
@@ -36971,17 +37313,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ["Scout point gate", currentUserCanSubmitScoutGuess ? `${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS} points` : DROP_RADAR_GUESS_LOCKED_MESSAGE],
           ]
         : [
-            ["Quantity", quickScoutReportForm.quantity || "Not specified"],
-            ["Stock left", quickScoutStockLeftLabel()],
+            ["Quantity", quickScoutReportForm.quantity || "Optional after posting"],
+            ["Stock left", quickScoutStockLeftLabel() || "Optional after posting"],
             ["Visit date & time", quickScoutDateLabel()],
           ]),
       ["Visibility", scoutVisibilityOptionLabel(quickScoutReportForm.visibility || (currentType.isGuess ? "private" : "public"), currentType.isGuess)],
       ["Store follow", (quickScoutReportForm.storeFollowPreference || "verified_restocks").replace(/_/g, " ")],
     ];
     const selectedTypeOption = quickReportTypeOptions.find((option) => option.value === quickScoutReportForm.reportType);
-    const selectedProductSummary = [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ") || "Product not selected";
+    const selectedProductSummary = productDetailSummary || (currentType.isGuess ? "Product not selected" : "Optional after posting");
     const selectedStoreSummary = storeSelection.valid ? `${storeSelection.storeName} (${storeSelection.retailer})` : "Store not selected";
-    const selectedStockSummary = currentType.isGuess ? quickScoutDateLabel() : quickScoutStockLeftLabel();
+    const selectedStockSummary = currentType.isGuess ? quickScoutDateLabel() : (selectedTypeOption?.title || currentType.label);
     const selectedCatalogProduct = quickScoutReportForm.catalogProductId
       ? catalogProducts.find((product) => String(product.id) === String(quickScoutReportForm.catalogProductId))
       : null;
@@ -37049,20 +37391,30 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     };
 
     if (quickScoutReportStep === "submitted") {
-      const savedProductName = quickScoutReportSaved?.productName || quickScoutReportSaved?.itemName || quickScoutReportForm.productName || "Product not added";
+      const savedProductName = quickScoutReportSaved?.productName || quickScoutReportSaved?.itemName || quickScoutReportForm.productName || "Optional after posting";
       const savedStockStatus = scoutStockStatusLabel(quickScoutReportSaved?.stockStatus || quickScoutReportSaved?.stock_status || quickScoutReportForm.stockLeft)
         || quickScoutReportSaved?.quickReportLabel
         || quickScoutReportTypeMeta(quickScoutReportSaved?.quickReportType || quickScoutReportForm.reportType).label;
       const savedSubmittedTime = quickScoutReportSaved ? scoutReportDateTimeLabel(quickScoutReportSaved) : quickScoutDateLabel();
       const savedSignalType = currentType.isGuess
         ? "Community Guess (not confirmed stock)"
-        : (quickScoutReportSaved?.confidence === "verified" ? "Verified Scout report" : "Submitted Scout report");
+        : (quickScoutReportSaved?.confidenceLabel || quickScoutReportSaved?.confidence_label || scoutReportConfidenceBadge(quickScoutReportSaved || {}).label || "New Scout report");
       const savedToCloud = quickScoutReportSaved?.sourceStatus === "supabase";
+      const optionalDetailActions = [
+        "Add products seen",
+        "Add quantity estimate",
+        "Add another photo",
+        "Add receipt proof",
+        "Add shelf/display location",
+        "Add price/MSRP notes",
+        "Add limit/signage info",
+        "Add vendor note",
+      ];
       return (
         <section className="scout-quick-report-v2 scout-quick-report-sent">
           <div className="scout-quick-report-success">
-            <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Submitted" : "Saved locally"}</span>
-            <h3>{currentType.isGuess ? "Scout note saved." : "Scout report submitted!"}</h3>
+            <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Posted" : "Saved locally"}</span>
+            <h3>{currentType.isGuess ? "Scout note saved." : "Scout report posted."}</h3>
             <p>{currentType.isGuess ? "Your planning note stays separate from live stock reports." : "Thanks. Your report helps families find product and keeps the community informed."}</p>
             {quickScoutReportMessage ? <small>{quickScoutReportMessage}</small> : null}
           </div>
@@ -37072,7 +37424,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>{quickScoutReportSaved?.storeName || quickScoutReportForm.storeName || quickScoutReportForm.manualLocation || "Store not selected"}</strong>
             </div>
             <div>
-              <span>Product</span>
+              <span>Products seen</span>
               <strong>{savedProductName}</strong>
             </div>
             <div>
@@ -37088,6 +37440,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>{savedSignalType}</strong>
             </div>
           </div>
+          {!currentType.isGuess ? (
+            <div className="scout-post-submit-actions" aria-label="Optional Scout report follow-up details">
+              <strong>Add details if you have them</strong>
+              <div>
+                {optionalDetailActions.map((label) => (
+                  <button key={label} type="button" className="secondary-button" onClick={openQuickScoutReportDetails}>{label}</button>
+                ))}
+              </div>
+              <small>These are optional. The report is already posted.</small>
+            </div>
+          ) : null}
           <div className="quick-actions">
             <button type="button" onClick={openQuickScoutReportDetails}>View my report</button>
             <button type="button" className="secondary-button" onClick={() => closeFlowModal({ force: true, reset: true })}>Done</button>
@@ -37151,6 +37514,148 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               : `${scoutPointsRemaining} more point${scoutPointsRemaining === 1 ? "" : "s"} unlock community guess notes. Accurate reports and photos help.`}
           </p>
         </div>
+
+        {quickScoutReportStep === "essentials" ? (
+          <section className="scout-report-step-card active scout-essentials-step">
+            <div className="scout-report-step-header">
+              <span>Step 1</span>
+              <div>
+                <h3>Post the restock essentials</h3>
+                <p>Product details and extra proof can come after this report is posted.</p>
+              </div>
+            </div>
+            <div className="scout-report-type-grid" role="group" aria-label="Report status">
+              {quickReportTypeOptions.map((option) => {
+                const isSelected = quickScoutReportForm.reportType === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`scout-report-choice-card ${isSelected ? "selected" : ""}`}
+                    aria-pressed={isSelected}
+                    data-selected={isSelected ? "true" : "false"}
+                    onClick={() => updateQuickScoutReportForm("reportType", option.value)}
+                  >
+                    <strong>{option.title}{isSelected ? renderScoutSelectionBadge("Selected") : null}</strong>
+                    <span>{option.helper}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="scout-report-essential-grid">
+              <div className="scout-report-essential-panel">
+                <label className="scout-report-store-search-field">
+                  <span>Store</span>
+                  <input
+                    value={quickScoutReportForm.storeSearch}
+                    onChange={(event) => updateQuickScoutReportForm("storeSearch", event.target.value)}
+                    placeholder="Search store, city, ZIP, nickname, or address"
+                  />
+                </label>
+                <input
+                  value={quickScoutReportForm.manualLocation}
+                  onChange={(event) => updateQuickScoutReportForm("manualLocation", event.target.value)}
+                  placeholder="Manual store/location if missing"
+                />
+                {selectedStoreContext ? (
+                  <article className="scout-report-store-card selected scout-report-store-card--compact">
+                    <div className="scout-report-store-main">
+                      <div>
+                        <strong>{getScoutQuickStoreName(selectedStoreContext)}</strong>
+                        <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
+                      </div>
+                      <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Store selected" : "Manual location"}</span>
+                    </div>
+                    <div className="scout-report-store-actions">
+                      <button type="button" className="secondary-button" onClick={() => setQuickScoutReportForm((current) => ({ ...current, storeId: "", storeName: "", retailer: "", city: "", address: "", storeConfirmed: false }))}>Change</button>
+                    </div>
+                  </article>
+                ) : (
+                  <div className="scout-report-store-list scout-report-store-list--compact">
+                    {recommendedStoreRows.slice(0, 4).map((row) => (
+                      <button key={row.id || `${row.name}-${row.city}`} type="button" className="scout-report-store-pick" onClick={() => selectQuickScoutReportStore(row.store)}>
+                        <strong>{row.name}</strong>
+                        <span>{row.retailer}{row.city ? ` | ${row.city}` : ""}{Number.isFinite(row.distance) ? ` | ${row.distance.toFixed(1)} mi` : ""}</span>
+                      </button>
+                    ))}
+                    {!recommendedStoreRows.length ? (
+                      <div className="scout-report-empty-step">
+                        <strong>No matching stores</strong>
+                        <p>Enter a manual location and confirm it before posting.</p>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+                {storeSelection.valid && storeSelection.needsStoreReview ? (
+                  <label className="scout-confirm-location-row">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(quickScoutReportForm.storeConfirmed)}
+                      onChange={(event) => updateQuickScoutReportForm("storeConfirmed", event.target.checked)}
+                    />
+                    <span>
+                      <strong>I confirm this is the exact store/location.</strong>
+                      <small>Manual or uncertain stores route to moderation if they look unusual.</small>
+                    </span>
+                  </label>
+                ) : null}
+              </div>
+              <div className="scout-report-essential-panel">
+                <label className="scout-visit-time-field">
+                  <span>Visit date &amp; time</span>
+                  <input
+                    type="datetime-local"
+                    value={quickScoutVisitDateTimeValue()}
+                    onChange={(event) => updateQuickScoutVisitDateTime(event.target.value)}
+                    required
+                  />
+                  <small>Use this if you are backfilling a store visit from earlier.</small>
+                </label>
+                <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
+                  <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Now</button>
+                  <button type="button" className={quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
+                  <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+                </div>
+                <label className="scout-report-notes-field">
+                  Optional quick note
+                  <textarea
+                    value={quickScoutReportForm.note}
+                    onChange={(event) => updateQuickScoutReportForm("note", event.target.value)}
+                    placeholder="Aisle, limit sign, vendor cart, display location..."
+                  />
+                </label>
+                <div className="scout-report-detail-grid scout-proof-field-grid">
+                  <label>
+                    Add proof/photo (optional)
+                    <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
+                    <small>Shelf photo, display photo, receipt, limit sign, vendor cart, or other proof.</small>
+                  </label>
+                  <label>
+                    Proof note or link
+                    <input
+                      value={quickScoutReportForm.proofText}
+                      onChange={(event) => updateQuickScoutReportForm("proofText", event.target.value)}
+                      placeholder="Optional receipt detail, sign text, or link"
+                    />
+                  </label>
+                </div>
+                {quickScoutReportForm.photoUrl ? (
+                  <div className="scout-photo-preview">
+                    <img src={quickScoutReportForm.photoUrl} alt="" />
+                    <div>
+                      <strong>Image attached</strong>
+                      <span>Proof is optional, but it improves confidence.</span>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="scout-confidence-preview">
+                  <span className={`scout-confidence-pill scout-confidence-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
+                  <p>{confidenceBadge.helper}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {quickScoutReportStep === "product" ? (
           <section className="scout-report-step-card active">
@@ -37515,10 +38020,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {quickScoutReportStep === "review" ? (
           <section className="scout-report-step-card active">
             <div className="scout-report-step-header">
-              <span>Step 4</span>
+              <span>Step {activeStepIndex + 1}</span>
               <div>
-                <h3>Review and submit</h3>
-                <p>Nothing is shared until you submit this report.</p>
+                <h3>{currentType.isGuess ? "Review and save" : "Review and post"}</h3>
+                <p>{currentType.isGuess ? "Nothing is saved until you submit this note." : "This posts the essential report first. Products and proof can be added after."}</p>
               </div>
             </div>
             <div className="scout-report-review-grid">
@@ -37535,7 +38040,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <span>{storeSelection.valid ? `${storeSelection.retailer}${storeSelection.city ? ` | ${storeSelection.city}` : ""}${storeSelection.address ? ` | ${storeSelection.address}` : ""}` : storeSelection.message}</span>
               </div>
               {storeSelection.valid ? (
-                <button type="button" className="secondary-button" onClick={() => setQuickScoutReportStep("where")}>Change store</button>
+                <button type="button" className="secondary-button" onClick={() => setQuickScoutReportStep(currentType.isGuess ? "where" : "essentials")}>Change store</button>
               ) : null}
             </div>
             {storeSelection.valid && storeSelection.needsStoreReview ? (
@@ -37568,11 +38073,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         ) : null}
 
         <div className="flow-form-footer scout-wizard-footer">
-          <button type="button" className="secondary-button" onClick={quickScoutReportStep === "product" ? () => closeFlowModal() : goBackScoutWizardStep}>
-            {quickScoutReportStep === "product" ? "Cancel" : "Back"}
+          <button type="button" className="secondary-button" onClick={activeStepIndex <= 0 ? () => closeFlowModal() : goBackScoutWizardStep}>
+            {activeStepIndex <= 0 ? "Cancel" : "Back"}
           </button>
           {quickScoutReportStep === "review" ? (
-            <button type="button" disabled={currentType.isGuess && !currentUserCanSubmitScoutGuess} onClick={submitQuickScoutReport}>{currentType.isGuess ? "Save Guess" : "Submit Report"}</button>
+            <button type="button" disabled={currentType.isGuess && !currentUserCanSubmitScoutGuess} onClick={submitQuickScoutReport}>{currentType.isGuess ? "Save Guess" : "Post Report"}</button>
           ) : (
             <button type="button" onClick={goNextScoutWizardStep}>Next</button>
           )}
@@ -39856,7 +40361,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         };
         if (scoutNeedsReviewReports.length) return {
           badge: "Scout",
-          title: `${scoutNeedsReviewReports.length} Scout report${scoutNeedsReviewReports.length === 1 ? "" : "s"} need verification`,
+          title: `${scoutNeedsReviewReports.length} Scout report${scoutNeedsReviewReports.length === 1 ? "" : "s"} need moderation`,
           reason: "Verified reports protect store history and restock predictions.",
           primaryLabel: "Review Scout",
           onPrimary: () => {
@@ -39980,7 +40485,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       admin: [
         { key: "beta", eyebrow: "Beta Access", title: "Access requests", value: pendingBetaRequests, detail: "Pending or paused beta access rows.", cta: "Review", onClick: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); }, accent: "admin" },
         { key: "kids", eyebrow: "Kids Program", title: "Family requests", value: pendingKidsRequests, detail: "Little Sparks and family access review.", cta: "Review", onClick: () => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); }, accent: "spark" },
-        { key: "scout-review", eyebrow: "Scout", title: "Reports needing verification", value: scoutNeedsReviewReports.length, detail: "Review community reports before they shape predictions.", cta: "Open Queue", onClick: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); }, accent: "scout" },
+        { key: "scout-review", eyebrow: "Scout", title: "Reports needing moderation", value: scoutNeedsReviewReports.length, detail: "Review unusual, conflicting, flagged, or hidden reports.", cta: "Open Queue", onClick: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); }, accent: "scout" },
         { key: "market-flags", eyebrow: "Market", title: "Marketplace review", value: marketReviewCount, detail: "Flagged or pending listing review.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
         { key: "feedback", eyebrow: "Support", title: "Feedback and bugs", value: pendingFeedbackCount + pendingSuggestionCount, detail: "Feedback, app errors, and shared data suggestions.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "tide" },
         catalogFreshnessLabel ? { key: "catalog-freshness", eyebrow: "Catalog", title: "Pricing freshness", value: catalogFreshnessLabel, detail: "Latest loaded catalog or market-price status available to admin tools.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "gold" } : null,
@@ -40338,7 +40843,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         priority: "urgent",
         area: "Scout",
         title: "Verify Scout reports",
-        reason: `${scoutNeedsReviewReports.length} report${scoutNeedsReviewReports.length === 1 ? "" : "s"} need verification before they shape trust signals.`,
+        reason: `${scoutNeedsReviewReports.length} report${scoutNeedsReviewReports.length === 1 ? "" : "s"} need moderation before they shape trust signals.`,
         actionLabel: "Open Scout Review",
         onAction: () => {
           setAdminReviewFilter("Scout Report Review");
@@ -43860,12 +44365,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className={`location-modal-actions modal-sticky-footer flow-modal-footer ${activeFlowModal?.type === "scoutSubmit" ? "flow-modal-footer--scout-inline" : ""}`}>
               {activeFlowModal?.type === "scoutSubmit" ? (
                 <>
-                  <button type="button" className="secondary-button" onClick={quickScoutReportStep === "product" ? () => closeFlowModal() : goBackScoutWizardStep}>
-                    {quickScoutReportStep === "product" ? "Cancel" : "Back"}
+                  <button type="button" className="secondary-button" onClick={getScoutWizardSteps().findIndex((step) => step.key === quickScoutReportStep) <= 0 ? () => closeFlowModal() : goBackScoutWizardStep}>
+                    {getScoutWizardSteps().findIndex((step) => step.key === quickScoutReportStep) <= 0 ? "Cancel" : "Back"}
                   </button>
                   {quickScoutReportStep === "review" ? (
                     <button type="button" onClick={submitQuickScoutReport}>
-                      {quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Submit Report"}
+                      {quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Post Report"}
                     </button>
                   ) : (
                     <button type="button" onClick={goNextScoutWizardStep}>Next</button>
@@ -44304,6 +44809,51 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="modal-close-button" aria-label="Close Scout report" onClick={() => setSelectedScoutReport(null)}>X</button>
             </div>
             {renderScoutReportCard(selectedScoutReport)}
+            <div className="scout-report-detail-breakdown">
+              <section>
+                <h3>Products seen</h3>
+                {normalizeScoutReportItems(selectedScoutReport).length ? (
+                  normalizeScoutReportItems(selectedScoutReport).map((item, index) => (
+                    <div key={`${item.productName}-${index}`} className="scout-report-detail-row">
+                      <strong>{item.productName}</strong>
+                      <span>{[item.quantity ? `Qty ${item.quantity}` : "Qty not added", Number(item.price || 0) > 0 ? money(item.price) : "", item.note].filter(Boolean).join(" | ")}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p>Product details have not been added yet.</p>
+                )}
+              </section>
+              <section>
+                <h3>Proof and notes</h3>
+                <div className="scout-report-detail-row">
+                  <strong>{scoutReportPhotoUrls(selectedScoutReport).length ? `${scoutReportPhotoUrls(selectedScoutReport).length} proof image${scoutReportPhotoUrls(selectedScoutReport).length === 1 ? "" : "s"}` : "No proof attached"}</strong>
+                  <span>{selectedScoutReport.proofText || selectedScoutReport.proof_text || selectedScoutReport.notes || selectedScoutReport.note || "Proof/photo is optional."}</span>
+                </div>
+                {scoutReportPhotoUrls(selectedScoutReport).length ? (
+                  <div className="scout-report-proof-strip">
+                    {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <img key={url} src={url} alt="" />)}
+                  </div>
+                ) : null}
+              </section>
+              <section>
+                <h3>Confidence explanation</h3>
+                <div className="scout-report-detail-row">
+                  <strong>{scoutReportConfidenceBadge(selectedScoutReport).label}</strong>
+                  <span>{(selectedScoutReport.confidenceReasons || selectedScoutReport.confidence_reasons || []).length ? (selectedScoutReport.confidenceReasons || selectedScoutReport.confidence_reasons || []).join(" | ") : scoutReportConfidenceBadge(selectedScoutReport).helper}</span>
+                </div>
+              </section>
+              <section>
+                <h3>Context</h3>
+                <div className="scout-report-detail-row">
+                  <strong>Observed</strong>
+                  <span>{scoutReportDateTimeLabel(selectedScoutReport)}</span>
+                </div>
+                <div className="scout-report-detail-row">
+                  <strong>Status</strong>
+                  <span>{scoutReportObservationStatusLabel(selectedScoutReport)}</span>
+                </div>
+              </section>
+            </div>
             <div className="location-modal-actions modal-sticky-footer">
               {canEditScoutReportDateTime(selectedScoutReport) ? (
                 <button type="button" onClick={() => openScoutReportDateTimeEditor(selectedScoutReport)}>Edit date/time</button>
