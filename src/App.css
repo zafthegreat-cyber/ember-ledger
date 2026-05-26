@@ -39901,6 +39901,423 @@ body,
   white-space: normal;
 }
 
+/* Pass 3 Scout final reporting: essentials first, calm signals, and safe report sheets. */
+.app-scout .standard-page-header.scout-summary-card {
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  width: min(100%, 1120px) !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-main {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 12px !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+  justify-content: flex-end !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions > button {
+  min-width: 132px;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs {
+  max-width: 100%;
+  padding-top: 0 !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs button {
+  flex: 0 0 auto;
+}
+
+.app-scout .scout-dashboard-overview.scout-nearby-dashboard {
+  width: min(100%, 1120px);
+  margin-inline: auto;
+}
+
+.app-scout .scout-nearby-cta-card {
+  min-height: 0 !important;
+}
+
+.app-scout .scout-nearby-cta-card .secondary-button {
+  min-width: 132px;
+}
+
+.app-scout .scout-filter-shell {
+  display: grid;
+  gap: 8px;
+}
+
+.app-scout .scout-filter-disclosure {
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(4, 14, 28, 0.58);
+}
+
+.app-scout .scout-filter-disclosure summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 0 12px;
+  color: #f8fbff;
+  cursor: pointer;
+  font-weight: 900;
+  list-style: none;
+}
+
+.app-scout .scout-filter-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-scout .scout-filter-disclosure summary b {
+  color: rgba(132, 226, 255, 0.82);
+  font-size: 0.72rem;
+}
+
+.app-scout .scout-filter-disclosure[open] {
+  background: rgba(7, 20, 38, 0.78);
+}
+
+.app-scout .scout-filter-disclosure .scout-compact-filterbar {
+  padding: 10px;
+}
+
+.app-scout .scout-filter-reset {
+  margin: 0 10px 10px;
+  min-height: 38px !important;
+}
+
+.app-scout .scout-active-filter-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app-scout .scout-active-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.app-scout .scout-active-filter-row span {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid rgba(132, 226, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(6, 20, 38, 0.68);
+  color: rgba(232, 246, 255, 0.78);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.app-scout .scout-report-compact-card {
+  grid-template-columns: 52px minmax(0, 1fr) 30px !important;
+  min-height: 82px !important;
+  padding: 9px !important;
+}
+
+.app-scout .scout-report-side > img,
+.app-scout .scout-report-side > span:first-child {
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.app-scout .scout-report-title-row h3 {
+  font-size: 0.9rem !important;
+}
+
+.app-scout .scout-report-product-line {
+  color: rgba(248, 251, 255, 0.92) !important;
+}
+
+.app-scout .scout-report-detail-hint {
+  margin: 6px 0 0;
+  color: rgba(232, 246, 255, 0.58);
+  font-size: 0.7rem;
+}
+
+.app-scout .scout-report-note-preview {
+  display: -webkit-box;
+  margin: 6px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: rgba(232, 246, 255, 0.76) !important;
+  font-size: 0.72rem;
+}
+
+.app-scout .scout-my-reports-help {
+  padding: 9px 11px;
+  border: 1px solid rgba(132, 226, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(4, 14, 28, 0.58);
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.78rem;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] {
+  display: flex !important;
+  flex-direction: column !important;
+  width: min(680px, calc(100vw - 18px)) !important;
+  max-height: calc(100dvh - 18px) !important;
+  overflow: hidden !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .modal-sticky-header {
+  flex: 0 0 auto;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer--scout-inline {
+  flex: 0 0 auto;
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+  gap: 10px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  background: linear-gradient(180deg, rgba(4, 12, 26, 0.88), rgba(3, 9, 22, 0.98)) !important;
+}
+
+.app-scout .scout-report-flow > .scout-wizard-footer {
+  display: none !important;
+}
+
+.app-scout .scout-report-flow {
+  display: grid;
+  gap: 10px;
+}
+
+.app-scout .scout-report-progress {
+  padding: 10px 12px !important;
+}
+
+.app-scout .scout-report-stepper {
+  gap: 6px !important;
+}
+
+.app-scout .scout-report-step-pill {
+  min-height: 36px !important;
+  padding: 5px 8px !important;
+}
+
+.app-scout .scout-report-step-card {
+  padding: 12px !important;
+  border-radius: 18px !important;
+}
+
+.app-scout .scout-report-step-header {
+  gap: 8px !important;
+}
+
+.app-scout .scout-report-step-header h3 {
+  font-size: 1rem !important;
+}
+
+.app-scout .scout-report-step-header p {
+  max-width: 42rem;
+}
+
+.app-scout .scout-essentials-step .scout-report-type-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.app-scout .scout-report-choice-card,
+.app-scout .scout-stock-status-button,
+.app-scout .scout-report-store-pick {
+  min-height: 58px !important;
+  padding: 9px !important;
+  border-radius: 14px !important;
+}
+
+.app-scout .scout-report-choice-card span {
+  font-size: 0.72rem !important;
+  line-height: 1.25 !important;
+}
+
+.app-scout .scout-report-essential-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  gap: 10px;
+}
+
+.app-scout .scout-report-essential-panel {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.app-scout .scout-report-store-list--compact {
+  display: grid;
+  gap: 7px;
+}
+
+.app-scout .scout-report-date-presets {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px !important;
+}
+
+.app-scout .scout-report-date-presets button {
+  min-height: 38px !important;
+  padding-inline: 6px !important;
+}
+
+.app-scout .scout-optional-proof-panel {
+  border: 1px solid rgba(132, 226, 255, 0.14);
+  border-radius: 15px;
+  background: rgba(4, 14, 28, 0.48);
+}
+
+.app-scout .scout-optional-proof-panel summary {
+  min-height: 40px;
+  padding: 0 10px;
+  color: rgba(232, 246, 255, 0.84);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.app-scout .scout-optional-proof-panel .scout-report-notes-field,
+.app-scout .scout-optional-proof-panel .scout-proof-field-grid {
+  margin: 0 10px 10px;
+}
+
+.app-scout .scout-confidence-preview {
+  margin-top: 0 !important;
+}
+
+@media (min-width: 1024px) {
+  .app-scout .scout-dashboard-overview.scout-nearby-dashboard {
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr) !important;
+    align-items: start;
+  }
+
+  .app-scout .scout-nearby-list-card {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .app-scout .scout-nearby-cta-card {
+    grid-column: 2;
+  }
+
+  .app-scout .scout-subpage-panel {
+    width: min(100%, 1120px);
+    margin-inline: auto;
+  }
+
+  .app-scout .scout-report-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .app-scout .standard-page-header.scout-summary-card {
+    margin-top: 6px !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-main {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-copy p {
+    display: none;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+    grid-template-columns: 1fr 0.64fr !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions > button {
+    min-width: 0;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs button:nth-child(n+5) {
+    display: none;
+  }
+
+  .app-scout .scout-nearby-cta-card {
+    margin-inline: 10px;
+  }
+
+  .app-scout .scout-nearby-cta-copy p {
+    max-width: 30ch;
+  }
+
+  .app-scout .scout-nearby-quiet-stats span {
+    font-size: 0.66rem;
+  }
+
+  .app-scout .scout-report-compact-card {
+    grid-template-columns: minmax(0, 1fr) 28px !important;
+  }
+
+  .app-scout .scout-report-side {
+    display: none !important;
+  }
+
+  .app-scout .scout-report-card-main {
+    grid-column: 1;
+  }
+
+  .app-scout .scout-report-open-affordance {
+    grid-column: 2;
+  }
+
+  .app-scout .scout-signal-badge-row {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .app-scout .scout-signal-badge-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-scout .scout-report-detail-hint,
+  .app-scout .scout-report-card-main .mini-badge:nth-child(n+4) {
+    display: none !important;
+  }
+
+  .app-scout .scout-report-meta span:nth-child(n+3) {
+    display: none;
+  }
+
+  .app-scout .scout-report-type-grid,
+  .app-scout .scout-report-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-scout .scout-essentials-step .scout-report-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-scout .scout-report-essential-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-scout .scout-report-choice-card {
+    min-height: 64px !important;
+  }
+
+  .app-scout .scout-report-choice-card span {
+    display: none;
+  }
+
+  .app-scout .scout-report-date-presets {
+    grid-template-columns: 1fr 1fr 1fr !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 /* Second UI correction pass: mobile safe areas, calmer controls, and desktop composition. */
 :root {
   --etds-mobile-action-safe: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 32px);
@@ -52383,4 +52800,259 @@ body {
   .app-home .hearth-recent-panel .compact-card-header p {
     display: none;
   }
+}
+
+/* Pass 3 Scout modal final overrides: store/time first, footer outside the scroll body. */
+.app-scout .scout-report-status-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  min-width: 0;
+}
+
+.app-scout .scout-report-status-panel > span {
+  color: rgba(232, 246, 255, 0.74);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.app-scout .scout-report-essential-panel::after {
+  content: none !important;
+}
+
+.app-scout .scout-store-list-compact {
+  width: min(100%, 1120px);
+  margin-inline: auto;
+}
+
+.app-scout .scout-store-list-compact .store-map-card {
+  background: rgba(8, 19, 35, 0.86) !important;
+}
+
+.app-scout .scout-store-retailer-note {
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  border: 1px solid rgba(132, 226, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(4, 14, 28, 0.52);
+  color: rgba(232, 246, 255, 0.74);
+}
+
+.app-scout .scout-store-retailer-note strong {
+  color: #f8fbff;
+  font-size: 0.78rem;
+}
+
+.app-scout .scout-store-retailer-note span {
+  font-size: 0.74rem;
+}
+
+.app-scout .scout-store-retailer-chips {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app-scout .scout-store-retailer-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.app-scout .scout-store-retailer-chips button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(8, 19, 35, 0.72);
+  color: rgba(232, 246, 255, 0.82);
+  font-weight: 850;
+}
+
+.app-scout .scout-store-retailer-chips button.active {
+  border-color: rgba(255, 176, 96, 0.42);
+  background: rgba(255, 138, 76, 0.16);
+  color: #fff4df;
+}
+
+.app-scout .scout-store-list-search {
+  display: grid;
+  gap: 6px;
+  color: rgba(232, 246, 255, 0.7);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.app-scout .scout-store-list-search input {
+  min-height: 42px;
+}
+
+.app-scout .scout-report-notes-field--secondary textarea {
+  min-height: 58px !important;
+}
+
+.app-scout .scout-report-proof-text-field {
+  display: grid;
+  gap: 6px;
+}
+
+.app-scout .scout-report-proof-text-field input {
+  min-height: 40px !important;
+}
+
+.app-scout .scout-optional-proof-panel > label {
+  display: grid;
+  gap: 6px;
+  margin: 0 10px 10px;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: min(760px, calc(100dvh - 18px)) !important;
+  overflow: hidden !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .modal-sticky-header,
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer--scout-inline {
+  flex: 0 0 auto !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  padding-bottom: 14px !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer--scout-inline {
+  background: linear-gradient(180deg, rgba(4, 10, 22, 0.86), rgba(4, 10, 22, 0.99)) !important;
+  border-top: 1px solid rgba(125, 211, 252, 0.16) !important;
+  display: grid !important;
+  gap: 10px !important;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) !important;
+  margin-top: 0 !important;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  position: static !important;
+  z-index: 8 !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer--scout-inline:has(> button:only-child) {
+  grid-template-columns: 1fr !important;
+}
+
+.app-scout .scout-report-flow.scout-report-wizard {
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 780px) {
+  .app-scout .flow-modal[data-flow="scoutSubmit"] {
+    width: min(372px, calc(100vw - 18px)) !important;
+    max-height: calc(100dvh - 20px - env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    padding: 0 12px 14px !important;
+  }
+
+  .app-scout .scout-report-progress {
+    padding: 6px 8px !important;
+  }
+
+  .app-scout .scout-report-progress span,
+  .app-scout .scout-report-progress strong {
+    font-size: 0.72rem !important;
+  }
+
+  .app-scout .scout-report-step-card {
+    padding: 8px !important;
+  }
+
+  .app-scout .scout-essentials-step .scout-report-step-header {
+    margin-bottom: 6px !important;
+  }
+
+  .app-scout .scout-essentials-step .scout-report-step-header > span {
+    display: none !important;
+  }
+
+  .app-scout .scout-essentials-step .scout-report-step-header p {
+    display: none !important;
+  }
+
+  .app-scout .scout-report-essential-panel {
+    padding: 0 !important;
+  }
+
+  .app-scout .scout-report-store-pick {
+    min-height: 48px !important;
+  }
+
+  .app-scout .scout-report-store-pick span {
+    font-size: 0.66rem !important;
+  }
+
+  .app-scout .scout-report-store-list--compact .scout-report-store-pick:nth-child(n+2) {
+    display: none !important;
+  }
+
+  .app-scout .scout-visit-time-field small,
+  .app-scout .scout-confidence-preview p {
+    display: none !important;
+  }
+
+  .app-scout .scout-report-status-panel {
+    margin-top: 8px;
+  }
+
+  .app-scout .scout-report-status-panel .scout-report-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-scout .scout-report-status-panel .scout-report-choice-card {
+    min-height: 48px !important;
+    padding: 8px !important;
+  }
+
+  .app-scout .scout-report-status-panel .scout-report-choice-card span:not(.scout-selection-badge) {
+    display: none !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer--scout-inline button {
+    min-height: 44px !important;
+  }
+
+  .app-scout .scout-report-notes-field--secondary textarea {
+    min-height: 42px !important;
+  }
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] > .flow-modal-footer {
+  display: none !important;
+}
+
+.app-scout .scout-wizard-footer,
+.app-scout .scout-report-flow > .scout-wizard-footer {
+  background: linear-gradient(180deg, rgba(4, 10, 22, 0.78), rgba(4, 10, 22, 0.99) 36%) !important;
+  border-top: 1px solid rgba(125, 211, 252, 0.16) !important;
+  bottom: 0 !important;
+  display: grid !important;
+  gap: 10px !important;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) !important;
+  margin-top: 12px !important;
+  padding: 12px 0 0 !important;
+  position: sticky !important;
+  z-index: 8 !important;
+}
+
+.app-scout .scout-wizard-footer:has(> button:only-child) {
+  grid-template-columns: 1fr !important;
+}
+
+.app-scout .scout-wizard-footer button {
+  min-height: 44px !important;
 }

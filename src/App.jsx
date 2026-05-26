@@ -17110,7 +17110,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (key === "admin_reviewed" || key === "admin-reviewed") {
       return {
         key: "admin-reviewed",
-        label: "Admin reviewed",
+        label: "Strong confidence",
         helper: "Reviewed by an Ember & Tide admin or moderator.",
         score: 96,
       };
@@ -17118,7 +17118,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (key === "verified" || key === "confirmed" || key === "high") {
       return {
         key: "verified",
-        label: "Verified",
+        label: "Strong confidence",
         helper: "Confirmed by admin review, trusted confirmation, or verified source.",
         score: 95,
       };
@@ -21273,7 +21273,6 @@ function renderScoutHeader() {
     { key: "reports", label: "Following" },
     { key: "storeMap", label: "Map" },
     { key: "myReports", label: "My Reports" },
-    { key: "alerts", label: "Drop Watch" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
   ].filter(Boolean);
 
@@ -21321,7 +21320,6 @@ function renderScoutHeader() {
             setScoutStoresMode("list");
             setScoutView("stores");
           }}>Stores</button>
-          <button type="button" className="secondary-button scout-store-suggestion-link" onClick={() => openQuickAddAction("storeSuggestion")}>Add Store Suggestion</button>
         </>
       )}
     >
@@ -29097,46 +29095,80 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .filter((row) => storeMapFilters.region === "All" || row.profile?.region === storeMapFilters.region)
       .map((row) => row.profile?.city)
       .filter(Boolean))];
+    const areaFiltersActive = regionalFilterActive(storeMapFilters);
+    const reportFiltersActive = scoutReportFilter !== "Latest" || scoutReportSort !== "Newest first";
+    const activeFilterLabels = [
+      scoutReportFilter !== "Latest" ? scoutReportFilter : "",
+      scoutReportSort !== "Newest first" ? scoutReportSort : "",
+      storeMapFilters.state !== "All" ? storeMapFilters.state : "",
+      storeMapFilters.region !== "All" ? storeMapFilters.region : "",
+      storeMapFilters.city !== "All" ? storeMapFilters.city : "",
+    ].filter(Boolean);
+    const resetScoutFilters = () => {
+      setScoutReportFilter("Latest");
+      setScoutReportSort("Newest first");
+      updateStoreMapFilter("state", "All");
+      updateStoreMapFilter("region", "All");
+      updateStoreMapFilter("city", "All");
+      setScoutReportsPage(1);
+    };
     return (
-      <div className="scout-compact-filterbar">
-        <label>
-          <span>Filter</span>
-          <select value={scoutReportFilter} onChange={(event) => {
-            const filter = event.target.value;
-            if (filter === "Nearby" && !requestScoutLocation()) return;
-            setScoutReportFilter(filter);
-          }}>
-            {["Nearby", "Latest", "Verified", "My Reports", "Needs Review"].map((filter) => (
-              <option key={filter} value={filter}>{filter}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Sort</span>
-          <select value={scoutReportSort} onChange={(event) => setScoutReportSort(event.target.value)}>
-            {["Newest first", "Closest first", "Verified first"].map((sort) => (
-              <option key={sort} value={sort}>{sort}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>State</span>
-          <select value={storeMapFilters.state} onChange={(event) => updateStoreMapFilter("state", event.target.value)}>
-            {stateOptions.map((state) => <option key={state}>{state}</option>)}
-          </select>
-        </label>
-        <label>
-          <span>Region</span>
-          <select value={storeMapFilters.region} onChange={(event) => updateStoreMapFilter("region", event.target.value)}>
-            {regionOptions.map((region) => <option key={region}>{region}</option>)}
-          </select>
-        </label>
-        <label>
-          <span>City</span>
-          <select value={storeMapFilters.city} onChange={(event) => updateStoreMapFilter("city", event.target.value)}>
-            {cityOptions.map((city) => <option key={city}>{city}</option>)}
-          </select>
-        </label>
+      <div className="scout-filter-shell">
+        <div className="scout-filter-summary-row">
+          <details className="scout-filter-disclosure">
+            <summary>
+              <span>Filters</span>
+              {(areaFiltersActive || reportFiltersActive) ? <b>{activeFilterLabels.length} active</b> : <b>Optional</b>}
+            </summary>
+            <div className="scout-compact-filterbar">
+              <label>
+                <span>Filter</span>
+                <select value={scoutReportFilter} onChange={(event) => {
+                  const filter = event.target.value;
+                  if (filter === "Nearby" && !requestScoutLocation()) return;
+                  setScoutReportFilter(filter);
+                  setScoutReportsPage(1);
+                }}>
+                  {["Nearby", "Latest", "Verified", "My Reports", "Needs Review"].map((filter) => (
+                    <option key={filter} value={filter}>{filter}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Sort</span>
+                <select value={scoutReportSort} onChange={(event) => setScoutReportSort(event.target.value)}>
+                  {["Newest first", "Closest first", "Verified first"].map((sort) => (
+                    <option key={sort}>{sort}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>State</span>
+                <select value={storeMapFilters.state} onChange={(event) => updateStoreMapFilter("state", event.target.value)}>
+                  {stateOptions.map((state) => <option key={state}>{state}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Region</span>
+                <select value={storeMapFilters.region} onChange={(event) => updateStoreMapFilter("region", event.target.value)}>
+                  {regionOptions.map((region) => <option key={region}>{region}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>City</span>
+                <select value={storeMapFilters.city} onChange={(event) => updateStoreMapFilter("city", event.target.value)}>
+                  {cityOptions.map((city) => <option key={city}>{city}</option>)}
+                </select>
+              </label>
+            </div>
+            <button type="button" className="secondary-button scout-filter-reset" onClick={resetScoutFilters}>Reset filters</button>
+          </details>
+        </div>
+        {activeFilterLabels.length ? (
+          <div className="scout-active-filter-row" aria-label="Active Scout filters">
+            {activeFilterLabels.slice(0, 4).map((label) => <span key={label}>{label}</span>)}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -30527,13 +30559,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <article className="panel scout-nearby-cta-card">
           <div className="scout-nearby-cta-copy">
             <span className="section-kicker">Nearby Scout</span>
-            <h2>Help another family.</h2>
-            <p>Your report can make the difference. Share what you saw, where you saw it, and whether it is still fresh.</p>
+            <h2>Check the current.</h2>
+            <p>Scout separates real store reports from guesses, old signals, and weak data.</p>
           </div>
           <div className="scout-nearby-cta-actions">
-            <button type="button" className="scout-submit-primary" onClick={() => openScoutSubmitFlow({ source: "scout-nearby-hero" })}>
-              Submit Scout Report
-            </button>
+            <button type="button" className="secondary-button" onClick={() => {
+              setScoutStoresMode("list");
+              setScoutView("stores");
+            }}>Stores</button>
             <div className="scout-nearby-quiet-stats" aria-label="Scout signal summary">
               <span><strong>{freshReportCount}</strong> fresh</span>
               <span><strong>{needsConfirmationCount}</strong> need confirmation</span>
@@ -30827,13 +30860,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderScoutMyReportsPanel() {
     return (
-      <section className="panel scout-subpage-panel">
+      <section className="panel scout-subpage-panel scout-my-reports-panel">
         <div className="compact-card-header">
           <div>
             <h2>My Scout Signals</h2>
-            <p>Your submitted store checks and restock sightings.</p>
+            <p>Your reports post first. Add products, proof, or notes from the detail view when useful.</p>
           </div>
           <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-my-reports" })}>Submit Report</button>
+        </div>
+        <div className="scout-my-reports-help">
+          <span>Normal users can add details or proof, but admin-only hide/delete controls stay hidden.</span>
         </div>
         <div className="scout-report-card-grid">
           {scoutMyReports.length ? scoutMyReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
@@ -37450,6 +37486,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderScoutStoresPanel() {
+    const storeListRows = buildStoreMapRows().slice(0, 8);
     return (
       <section className="scout-combined-section scout-stores-combined">
         <div className="panel scout-subpage-panel scout-combined-header">
@@ -37464,22 +37501,55 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <button type="button" className={scoutStoresMode === "list" ? "active" : ""} onClick={() => setScoutStoresMode("list")}>List</button>
             <button type="button" className={scoutStoresMode === "map" ? "active" : ""} onClick={() => setScoutStoresMode("map")}>Map</button>
           </div>
+          <div className="scout-store-retailer-note">
+            <strong>Retailers</strong>
+            <span>Use List for quick store checks or Map for deeper area filters.</span>
+          </div>
+          <div className="scout-store-retailer-chips" aria-label="Retailer filters">
+            {["All", "Target", "Walmart", "GameStop"].map((retailer) => (
+              <button
+                type="button"
+                key={retailer}
+                className={storeMapFilters.retailer === retailer ? "active" : ""}
+                onClick={() => updateStoreMapFilter("retailer", retailer)}
+              >
+                {retailer}
+              </button>
+            ))}
+          </div>
+          <label className="scout-store-list-search">
+            <span>Search stores</span>
+            <input value={storeMapFilters.query} onChange={(event) => updateStoreMapFilter("query", event.target.value)} placeholder="Search store, city, ZIP, nickname, or address" />
+          </label>
         </div>
         {scoutStoresMode === "map" ? renderStoreMapPanel() : (
-          <section className="embedded-page">
-            <LazyToolBoundary label="Loading Scout store tools...">
-              <Scout
-                targetSubTab={{ ...scoutSubTabTarget, tab: "stores" }}
-                compact
-                onLocationRequired={requestScoutLocation}
-                adminMode={adminEditModeActive}
-                supabase={supabase}
-                isSupabaseConfigured={isSupabaseConfigured}
-                mapCatalogRow={mapCatalog}
-                money={money}
-                onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-store-card" })}
-              />
-            </LazyToolBoundary>
+          <section className="store-map-card-list scout-store-list-compact" aria-label="Scout store list">
+            {storeListRows.length ? storeListRows.map((row) => (
+              <article className="store-map-card scout-store-card" key={row.id}>
+                <button type="button" className="store-map-card-main" onClick={() => openStoreProfile(row)}>
+                  <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
+                  <span>
+                    <strong>{row.name}</strong>
+                    <small>{row.retailer} | {row.city || "Area not set"}</small>
+                  </span>
+                </button>
+                <div className="store-map-card-meta">
+                  {renderStoreMapStatusBadge(row)}
+                  <span>{row.reports.length} report{row.reports.length === 1 ? "" : "s"}</span>
+                  {row.watchlisted ? <span>Following</span> : null}
+                </div>
+                <div className="store-map-card-actions">
+                  <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>Open Store</button>
+                  <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "scout-store-card", store: row.profile })}>Report</button>
+                  <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(row)}>Follow</button>
+                </div>
+              </article>
+            )) : (
+              <div className="small-empty-state">
+                <strong>No stores match those filters.</strong>
+                <span>Reset filters or suggest a missing store.</span>
+              </div>
+            )}
           </section>
         )}
       </section>
@@ -38195,24 +38265,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <p>Product details and extra proof can come after this report is posted.</p>
               </div>
             </div>
-            <div className="scout-report-type-grid" role="group" aria-label="Report status">
-              {quickReportTypeOptions.map((option) => {
-                const isSelected = quickScoutReportForm.reportType === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`scout-report-choice-card ${isSelected ? "selected" : ""}`}
-                    aria-pressed={isSelected}
-                    data-selected={isSelected ? "true" : "false"}
-                    onClick={() => updateQuickScoutReportForm("reportType", option.value)}
-                  >
-                    <strong>{option.title}{isSelected ? renderScoutSelectionBadge("Selected") : null}</strong>
-                    <span>{option.helper}</span>
-                  </button>
-                );
-              })}
-            </div>
             <div className="scout-report-essential-grid">
               <div className="scout-report-essential-panel">
                 <label className="scout-report-store-search-field">
@@ -38243,7 +38295,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </article>
                 ) : (
                   <div className="scout-report-store-list scout-report-store-list--compact">
-                    {recommendedStoreRows.slice(0, 4).map((row) => (
+                    {recommendedStoreRows.slice(0, 2).map((row) => (
                       <button key={row.id || `${row.name}-${row.city}`} type="button" className="scout-report-store-pick" onClick={() => selectQuickScoutReportStore(row.store)}>
                         <strong>{row.name}</strong>
                         <span>{row.retailer}{row.city ? ` | ${row.city}` : ""}{Number.isFinite(row.distance) ? ` | ${row.distance.toFixed(1)} mi` : ""}</span>
@@ -38287,7 +38339,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <button type="button" className={quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
                   <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
                 </div>
-                <label className="scout-report-notes-field">
+                <label className="scout-report-notes-field scout-report-notes-field--secondary">
                   Optional quick note
                   <textarea
                     value={quickScoutReportForm.note}
@@ -38295,21 +38347,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     placeholder="Aisle, limit sign, vendor cart, display location..."
                   />
                 </label>
-                <div className="scout-report-detail-grid scout-proof-field-grid">
+                <label className="scout-report-proof-text-field">
+                  Proof note or link
+                  <input
+                    value={quickScoutReportForm.proofText}
+                    onChange={(event) => updateQuickScoutReportForm("proofText", event.target.value)}
+                    placeholder="Optional receipt detail, sign text, or link"
+                  />
+                </label>
+                <details className="scout-optional-proof-panel">
+                  <summary>Add proof/photo (optional)</summary>
                   <label>
                     Add proof/photo (optional)
                     <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
                     <small>Shelf photo, display photo, receipt, limit sign, vendor cart, or other proof.</small>
                   </label>
-                  <label>
-                    Proof note or link
-                    <input
-                      value={quickScoutReportForm.proofText}
-                      onChange={(event) => updateQuickScoutReportForm("proofText", event.target.value)}
-                      placeholder="Optional receipt detail, sign text, or link"
-                    />
-                  </label>
-                </div>
+                </details>
                 {quickScoutReportForm.photoUrl ? (
                   <div className="scout-photo-preview">
                     <img src={quickScoutReportForm.photoUrl} alt="" />
@@ -38323,6 +38376,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span className={`scout-confidence-pill scout-confidence-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
                   <p>{confidenceBadge.helper}</p>
                 </div>
+              </div>
+            </div>
+            <div className="scout-report-status-panel">
+              <span>Report status</span>
+              <div className="scout-report-type-grid" role="group" aria-label="Report status">
+                {quickReportTypeOptions.map((option) => {
+                  const isSelected = quickScoutReportForm.reportType === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`scout-report-choice-card ${isSelected ? "selected" : ""}`}
+                      aria-pressed={isSelected}
+                      data-selected={isSelected ? "true" : "false"}
+                      onClick={() => updateQuickScoutReportForm("reportType", option.value)}
+                    >
+                      <strong>{option.title}{isSelected ? renderScoutSelectionBadge("Selected") : null}</strong>
+                      <span>{option.helper}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -38758,13 +38832,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         ) : null}
 
         <div className="flow-form-footer scout-wizard-footer">
-          <button type="button" className="secondary-button" onClick={activeStepIndex <= 0 ? () => closeFlowModal() : goBackScoutWizardStep}>
-            {activeStepIndex <= 0 ? "Cancel" : "Back"}
-          </button>
-          {quickScoutReportStep === "review" ? (
-            <button type="button" disabled={currentType.isGuess && !currentUserCanSubmitScoutGuess} onClick={submitQuickScoutReport}>{currentType.isGuess ? "Save Guess" : "Post Report"}</button>
+          {quickScoutReportStep === "submitted" ? (
+            <button type="button" onClick={() => closeFlowModal()}>Close</button>
           ) : (
-            <button type="button" onClick={goNextScoutWizardStep}>Next</button>
+            <>
+              <button type="button" className="secondary-button" onClick={activeStepIndex <= 0 ? () => closeFlowModal() : goBackScoutWizardStep}>
+                {activeStepIndex <= 0 ? "Cancel" : "Back"}
+              </button>
+              {quickScoutReportStep === "review" ? (
+                <button type="button" disabled={currentType.isGuess && !currentUserCanSubmitScoutGuess} onClick={submitQuickScoutReport}>
+                  {currentType.isGuess ? "Save Guess" : "Post Report"}
+                </button>
+              ) : (
+                <button type="button" onClick={goNextScoutWizardStep}>Next</button>
+              )}
+            </>
           )}
         </div>
       </form>
@@ -45169,18 +45251,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className={`location-modal-actions modal-sticky-footer flow-modal-footer ${activeFlowModal?.type === "scoutSubmit" ? "flow-modal-footer--scout-inline" : ""}`}>
               {activeFlowModal?.type === "scoutSubmit" ? (
-                <>
-                  <button type="button" className="secondary-button" onClick={getScoutWizardSteps().findIndex((step) => step.key === quickScoutReportStep) <= 0 ? () => closeFlowModal() : goBackScoutWizardStep}>
-                    {getScoutWizardSteps().findIndex((step) => step.key === quickScoutReportStep) <= 0 ? "Cancel" : "Back"}
-                  </button>
-                  {quickScoutReportStep === "review" ? (
-                    <button type="button" onClick={submitQuickScoutReport}>
-                      {quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Post Report"}
+                quickScoutReportStep === "submitted" ? (
+                  <button type="button" onClick={() => closeFlowModal()}>Close</button>
+                ) : (
+                  <>
+                    <button type="button" className="secondary-button" onClick={getScoutWizardSteps().findIndex((step) => step.key === quickScoutReportStep) <= 0 ? () => closeFlowModal() : goBackScoutWizardStep}>
+                      {getScoutWizardSteps().findIndex((step) => step.key === quickScoutReportStep) <= 0 ? "Cancel" : "Back"}
                     </button>
-                  ) : (
-                    <button type="button" onClick={goNextScoutWizardStep}>Next</button>
-                  )}
-                </>
+                    {quickScoutReportStep === "review" ? (
+                      <button type="button" disabled={quickScoutReportTypeMeta().isGuess && !currentUserCanSubmitScoutGuess} onClick={submitQuickScoutReport}>
+                        {quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Post Report"}
+                      </button>
+                    ) : (
+                      <button type="button" onClick={goNextScoutWizardStep}>Next</button>
+                    )}
+                  </>
+                )
               ) : (
                 <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
                   {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
