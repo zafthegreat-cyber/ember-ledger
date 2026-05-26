@@ -94,6 +94,7 @@ export default function SmartCatalogSearchBox({
   searchCategories = [],
   scopeSets = [],
   scopeProductTypes = [],
+  suppressSuggestions = false,
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -277,6 +278,19 @@ export default function SmartCatalogSearchBox({
   }, [closeSignal]);
 
   useEffect(() => {
+    if (!suppressSuggestions) return;
+    setOpen(false);
+    setActiveIndex(-1);
+    setLoading(false);
+  }, [suppressSuggestions]);
+
+  useEffect(() => {
+    if (suppressSuggestions) {
+      setOpen(false);
+      setActiveIndex(-1);
+      setLoading(false);
+      return;
+    }
     const mode = detectCatalogSearchMode(deferredValue);
     const exactIdentifier = ["barcode", "id"].includes(mode);
     if (!cleanedValue || (cleanedValue.length < 2 && !exactIdentifier)) {
@@ -379,7 +393,7 @@ export default function SmartCatalogSearchBox({
       window.clearTimeout(timer);
       controller?.abort?.();
     };
-  }, [cleanedValue, dataFilter, deferredValue, includeScopeSuggestions, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, scopeProductTypes, scopeSets, searchCategories, supabase, suggestionFilter]);
+  }, [cleanedValue, dataFilter, deferredValue, includeScopeSuggestions, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, scopeProductTypes, scopeSets, searchCategories, supabase, suggestionFilter, suppressSuggestions]);
 
   const groupedSuggestions = useMemo(() => {
     return suggestions.reduce((groups, suggestion, index) => {
@@ -459,19 +473,19 @@ export default function SmartCatalogSearchBox({
             setLoading(Boolean(nextCleanedValue && (nextCleanedValue.length >= 2 || nextExactIdentifier)));
           }
           onChange?.(nextValue);
-          setOpen(true);
+          if (!suppressSuggestions) setOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        onFocus={() => suggestions.length && setOpen(true)}
+        onFocus={() => suggestions.length && !suppressSuggestions && setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         placeholder={placeholder}
         autoFocus={autoFocus}
         aria-label={inputLabel || placeholder}
         role="combobox"
-        aria-expanded={open && suggestions.length > 0}
+        aria-expanded={!suppressSuggestions && open && suggestions.length > 0}
         aria-autocomplete="list"
       />
-      {open && (suggestions.length > 0 || loading || errorMessage || cleanedValue.length >= 2) ? (
+      {!suppressSuggestions && open && (suggestions.length > 0 || loading || errorMessage || cleanedValue.length >= 2) ? (
         <div
           className={`smart-catalog-suggestions ${inlineResults ? "smart-catalog-suggestions--inline" : ""}`}
           role="listbox"

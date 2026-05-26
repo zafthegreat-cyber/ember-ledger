@@ -21215,9 +21215,9 @@ function renderTideTradrHeader() {
           productGroup={currentCatalogProductGroup()}
           dataFilter={catalogDataFilter}
           inputClassName="search-input"
-          placeholder="Search cards, sets, products..."
+          placeholder="Search cards, sets, or sealed products..."
           closeSignal={catalogSuggestionCloseSignal}
-          maxSuggestions={8}
+          maxSuggestions={6}
           localCatalogProducts={catalogProducts}
           includeScopeSuggestions
           searchCategories={MARKET_SEARCH_CATEGORIES}
@@ -21225,6 +21225,7 @@ function renderTideTradrHeader() {
           scopeProductTypes={MARKET_SEARCH_TYPE_SCOPES}
           className="market-smart-search"
           money={money}
+          suppressSuggestions={catalogSearchHasRun || supabaseCatalogStatus.loading}
         />
         <button type="submit">Search</button>
       </form>
@@ -26874,6 +26875,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     catalogMinValue !== "" ? `Min: ${money(catalogMinValue)}` : "",
     catalogMaxValue !== "" ? `Max: ${money(catalogMaxValue)}` : "",
   ].filter(Boolean);
+  const visibleCatalogFilterChips = activeCatalogFilterChips.slice(0, 3);
+  const hiddenCatalogFilterChipCount = Math.max(activeCatalogFilterChips.length - visibleCatalogFilterChips.length, 0);
   const catalogEmptyTerm = String(submittedCatalogSearch || catalogSearch || submittedCatalogBarcodeSearch || catalogBarcodeSearch || "").trim();
   const catalogEmptyModeLabel = catalogKindFilter === "card" ? "cards/code cards" : catalogKindFilter === "sealed" ? "sealed products" : "products";
   const catalogAlternateKindLabels = (supabaseCatalogStatus.alternateKinds || []).map((kind) =>
@@ -28146,7 +28149,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : null}
             <h3 className="market-card-title">{catalogTitle(product)}</h3>
             <p className="market-card-context">{productSetName}</p>
-            <p className="market-card-reference-line">{productTypeLabel}</p>
+            <p className="market-card-reference-line">
+              {[productTypeLabel, isCard && product.cardNumber ? `#${product.cardNumber}` : "", isCard && product.rarity ? product.rarity : ""].filter(Boolean).join(" | ")}
+            </p>
             <div className="market-card-price-row">
               <div className="market-price-stack">
                 <strong>{productMarketLabel}</strong>
@@ -28159,7 +28164,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span className={`market-status-pill market-status-pill--${marketInfo.marketDataTone || "unknown"}`}>{marketInfo.marketDataLabel}</span>
               {watched ? <span className="market-status-pill market-status-pill--watchlist">Watchlist</span> : null}
             </div>
-            {productReferenceParts.length ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : <p className="market-card-reference-line">Not enough price history yet.</p>}
+            {productReferenceParts.length && showRepairMeta ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : null}
             {showRepairMeta ? (
               <>
                 <p className="catalog-result-detail-line">
@@ -28191,11 +28196,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           >
             {sellerMarketMode ? "Add to Forge" : "Add to Vault"}
           </button>
-          <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
-            {watched ? "Watched" : "Watch"}
-          </button>
           <button type="button" className="secondary-button market-result-view-button" onClick={() => openCatalogDetails(product)}>
             View details
+          </button>
+          <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
+            {watched ? "Watched" : "Watch"}
           </button>
         </div>
         {chooserOpen ? (
@@ -49044,79 +49049,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                   ) : null}
 
-                  {catalogSearchHasRun ? (
-                  <div className="quick-action-rail market-advanced-filter-rail">
-	                    {[
-	                      ["All", "All"],
-	                      ["card", "Cards"],
-	                      ["sealed", "Sealed"],
-	                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        className={catalogKindFilter === value ? "primary" : ""}
-                        onClick={() => switchCatalogKindFilter(value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-	                    {["Has market price", "Has image", ...(adminEditModeActive ? ["Missing price"] : [])].map((filter) => (
-                      <button
-                        key={filter}
-                        type="button"
-                        className={catalogDataFilter === filter ? "primary" : ""}
-                        onClick={() => setCatalogDataFilter(catalogDataFilter === filter ? "All" : filter)}
-                      >
-                        {filter}
-                      </button>
-                    ))}
-                    <button type="button" className="secondary-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>More Filters</button>
-                    <button type="button" className="secondary-button" onClick={openWhatDidISee}>Add Scout Sighting</button>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => {
-                        if (adminEditModeActive) {
-                          setActiveTab("catalog");
-                          setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
-                          return;
-                        }
-                        submitUniversalSuggestion({
-                          suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
-                          targetTable: "catalog_items",
-                          submittedData: { searchTerm: catalogSearch, productType: catalogTypeFilter, setName: catalogSetFilter },
-                          notes: "User suggested a missing catalog product from TideTradr search.",
-                          source: "tidetradr-search",
-                        });
-                      }}
-                    >
-                      {adminEditModeActive ? "Add Catalog Item" : "Request Missing Item"}
-                    </button>
-                  </div>
-                  ) : null}
-
-                  {catalogSearchHasRun ? (
-                    <div className="market-filter-rail" aria-label="Market fair price filters">
-                      {MARKET_CATALOG_DEAL_FILTERS.map((filter) => (
-                        <button
-                          key={filter.value}
-                          type="button"
-                          className={marketCatalogDealFilter === filter.value ? "primary" : "secondary-button"}
-                          aria-pressed={marketCatalogDealFilter === filter.value}
-                          onClick={() => setMarketCatalogDealFilter(filter.value)}
-                        >
-                          {filter.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-
                   {catalogSearchHasRun && activeCatalogFilterChips.length ? (
                     <div className="active-filter-chips" aria-label="Active catalog filters">
                       <span>Active filters:</span>
-                      {activeCatalogFilterChips.map((filter) => (
+                      {visibleCatalogFilterChips.map((filter) => (
                         <span className="status-badge" key={filter}>{filter}</span>
                       ))}
+                      {hiddenCatalogFilterChipCount ? <span className="status-badge">+{hiddenCatalogFilterChipCount} more</span> : null}
+                      <button type="button" className="ghost-button compact-action" onClick={clearCatalogSearch}>Clear</button>
                     </div>
                   ) : null}
 
@@ -49144,8 +49084,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("recent")}>Recent</button>
                         <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("listings")}>Following</button>
                         <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
+                        <button type="button" className="secondary-button" onClick={openWhatDidISee}>Add Scout Sighting</button>
                         <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear</button>
                       </div>
+                      <Field label="Product Group">
+                        <select value={catalogKindFilter} onChange={(event) => switchCatalogKindFilter(event.target.value)}>
+                          <option value="All">All</option>
+                          <option value="card">Cards</option>
+                          <option value="sealed">Sealed</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </Field>
+                      <Field label="Price View">
+                        <select value={marketCatalogDealFilter} onChange={(event) => setMarketCatalogDealFilter(event.target.value)}>
+                          {MARKET_CATALOG_DEAL_FILTERS.map((filter) => (
+                            <option key={filter.value} value={filter.value}>{filter.label}</option>
+                          ))}
+                        </select>
+                      </Field>
                       <Field label="Set / Expansion">
                         <select value={catalogSetFilter} onChange={(e) => setCatalogSetFilter(e.target.value)}>
                           {catalogSetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
@@ -49169,6 +49125,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 	                          {adminEditModeActive ? <option>Missing price</option> : null}
                         </select>
                       </Field>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                          if (adminEditModeActive) {
+                            setActiveTab("catalog");
+                            setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
+                            return;
+                          }
+                          submitUniversalSuggestion({
+                            suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
+                            targetTable: "catalog_items",
+                            submittedData: { searchTerm: catalogSearch, productType: catalogTypeFilter, setName: catalogSetFilter },
+                            notes: "User suggested a missing catalog product from TideTradr search.",
+                            source: "tidetradr-search",
+                          });
+                        }}
+                      >
+                        {adminEditModeActive ? "Add Catalog Item" : "Request Missing Item"}
+                      </button>
                     </div>
                   ) : null}
 
@@ -51335,12 +51311,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 	                    <div className="catalog-detail-grid catalog-detail-core-grid">
 	                      <DetailItem label="Product Type" value={catalogProductTypeLabel(selectedCatalogDetailProduct)} />
 	                      <DetailItem label="Set / Expansion" value={catalogExpansionName(selectedCatalogDetailProduct)} />
-	                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market price missing"} />
+	                      <DetailItem label="Market Price" value={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? money(selectedCatalogDetailMarketInfo?.currentMarketValue) : "Market data unavailable"} />
 	                      {selectedCatalogDetailIsSealed ? <DetailItem label="MSRP" value={selectedCatalogDetailMarketInfo?.msrp ? money(selectedCatalogDetailMarketInfo.msrp) : "Unknown"} /> : null}
 	                      <DetailItem label="Low / Mid / High" value={`${money(selectedCatalogDetailPricingProduct?.lowPrice)} / ${money(selectedCatalogDetailPricingProduct?.midPrice)} / ${money(selectedCatalogDetailPricingProduct?.highPrice)}`} />
 	                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Source Label" value={getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} /> : null}
 	                      {shouldShowCatalogRepairLabels() ? <DetailItem label="Price Confidence" value={selectedCatalogDetailMarketInfo?.confidenceLevel} /> : null}
                       <DetailItem label="Last Updated" value={selectedCatalogDetailMarketInfo?.lastUpdated || selectedCatalogDetailPricingProduct?.lastPriceChecked || selectedCatalogDetailPricingProduct?.updatedAt} />
+                    </div>
+                    <div className="catalog-detail-trust-row">
+                      <span className={`market-status-pill market-status-pill--${hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? "catalog" : "unknown"}`}>{hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct) : "Market data unavailable"}</span>
+                      <span className={`market-status-pill market-status-pill--${selectedCatalogDetailMarketInfo?.marketDataTone || "unknown"}`}>{selectedCatalogDetailMarketInfo?.marketDataLabel || "Not checked yet"}</span>
+                      <span className="market-status-pill market-status-pill--catalog">{selectedCatalogDetailMarketInfo?.confidenceLevel || "Data quality unknown"}</span>
                     </div>
                     {shouldShowCatalogRepairLabels() ? (
                       <div className="admin-inline-panel">
@@ -51389,25 +51370,30 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   </div>
                 </section>
 	                <div className="catalog-detail-action-group catalog-detail-primary-actions">
-	                  <button type="button" onClick={() => openProductAddFlow({ product: selectedCatalogDetailProduct, source: "catalog-detail", destinations: { vault: true } })}>Add Item</button>
-	                  <button type="button" className="secondary-button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Watchlist</button>
-	                  <button type="button" onClick={() => markCatalogDetailOwned(selectedCatalogDetailProduct)}>Mark Owned</button>
-	                  <button type="button" onClick={() => markCatalogDetailMissing(selectedCatalogDetailProduct)}>Mark Missing</button>
-	                  <button type="button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
-	                  <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Scout Sighting</button>
+	                  <button type="button" onClick={() => openProductAddFlow({ product: selectedCatalogDetailProduct, source: "catalog-detail", destinations: { vault: true } })}>Add to Vault</button>
+	                  {adaptiveSellerToolsVisible || adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => addCatalogDetailToForge(selectedCatalogDetailProduct)}>Add to Forge</button> : null}
+	                  <button type="button" className="secondary-button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Watch</button>
+	                  <button type="button" className="secondary-button" onClick={() => setSelectedCatalogDetailId("")}>Back to results</button>
 	                </div>
-	                <div className="catalog-detail-action-group catalog-detail-secondary-actions">
-	                  <button type="button" className="secondary-button" onClick={() => addCatalogDetailDuplicate(selectedCatalogDetailProduct)}>Add Duplicate</button>
-	                  <button type="button" className="secondary-button" onClick={focusCatalogDetailConditionEditor}>Edit Condition</button>
-	                  <button type="button" className="secondary-button" onClick={focusCatalogDetailVariantPicker}>Choose Variant</button>
-	                  <button type="button" className="secondary-button" onClick={scrollCatalogDetailToMarketHistory}>View Market History</button>
-	                  <button type="button" className="secondary-button" onClick={() => suggestCatalogMissingPrice(selectedCatalogDetailProduct)}>Suggest Missing Price</button>
-                  <button type="button" className="secondary-button" onClick={() => suggestCatalogCorrection(selectedCatalogDetailProduct)}>Suggest Catalog Correction</button>
-                  <button type="button" className="secondary-button" onClick={() => suggestCatalogWrongExpansion(selectedCatalogDetailProduct)}>Wrong Expansion?</button>
-                  <button type="button" className="secondary-button" onClick={() => suggestCatalogWrongVersionPricing(selectedCatalogDetailProduct)}>Wrong Version/Pricing?</button>
-                  <button type="button" className="secondary-button" onClick={() => copyCatalogProductIdentifiers(selectedCatalogDetailProduct)}>Copy UPC/SKU</button>
-                  <button type="button" className="secondary-button" onClick={() => suggestCatalogUpcSku(selectedCatalogDetailProduct)}>Wrong UPC/SKU/MSRP?</button>
-                </div>
+	                <details className="catalog-source-details catalog-detail-more-actions">
+	                  <summary>More actions</summary>
+	                  <div className="catalog-detail-action-group catalog-detail-secondary-actions">
+	                    <button type="button" onClick={() => markCatalogDetailOwned(selectedCatalogDetailProduct)}>Mark Owned</button>
+	                    <button type="button" onClick={() => markCatalogDetailMissing(selectedCatalogDetailProduct)}>Mark Missing</button>
+	                    <button type="button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
+	                    <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Scout Sighting</button>
+	                    <button type="button" className="secondary-button" onClick={() => addCatalogDetailDuplicate(selectedCatalogDetailProduct)}>Add Duplicate</button>
+	                    <button type="button" className="secondary-button" onClick={focusCatalogDetailConditionEditor}>Edit Condition</button>
+	                    <button type="button" className="secondary-button" onClick={focusCatalogDetailVariantPicker}>Choose Variant</button>
+	                    <button type="button" className="secondary-button" onClick={scrollCatalogDetailToMarketHistory}>View Market History</button>
+	                    <button type="button" className="secondary-button" onClick={() => suggestCatalogMissingPrice(selectedCatalogDetailProduct)}>Suggest Missing Price</button>
+                    <button type="button" className="secondary-button" onClick={() => suggestCatalogCorrection(selectedCatalogDetailProduct)}>Suggest Catalog Correction</button>
+                    <button type="button" className="secondary-button" onClick={() => suggestCatalogWrongExpansion(selectedCatalogDetailProduct)}>Wrong Expansion?</button>
+                    <button type="button" className="secondary-button" onClick={() => suggestCatalogWrongVersionPricing(selectedCatalogDetailProduct)}>Wrong Version/Pricing?</button>
+                    <button type="button" className="secondary-button" onClick={() => copyCatalogProductIdentifiers(selectedCatalogDetailProduct)}>Copy UPC/SKU</button>
+                    <button type="button" className="secondary-button" onClick={() => suggestCatalogUpcSku(selectedCatalogDetailProduct)}>Wrong UPC/SKU/MSRP?</button>
+                  </div>
+                </details>
                 {shouldShowCatalogRepairLabels() && (catalogHasClassificationConflict(selectedCatalogDetailProduct) || !hasCatalogMarketPrice(selectedCatalogDetailProduct) || !hasCatalogUpcSku(selectedCatalogDetailProduct)) ? (
                   <div className="catalog-detail-warning-list">
                     {catalogHasClassificationConflict(selectedCatalogDetailProduct) ? (
@@ -51478,7 +51464,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   ) : null}
                 </details> : null}
                 <details className="catalog-source-details">
-                  <summary>Full Product Data</summary>
+                  <summary>Data details</summary>
                   <div className="catalog-detail-grid">
                   {selectedCatalogDetailIsCard && !selectedCatalogDetailIsCodeCard ? (
                     <>
