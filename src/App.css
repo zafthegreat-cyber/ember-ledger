@@ -48275,6 +48275,187 @@ body {
   }
 }
 
+/* Market add-from-detail flow: one clear add path into the shared Review/Add modal. */
+.app-market .market-result-clickable-card,
+.app-command-shell.app-market .market-result-clickable-card,
+.app-shell-dark.app-market .market-result-clickable-card {
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.app-market .market-result-clickable-card:hover,
+.app-command-shell.app-market .market-result-clickable-card:hover,
+.app-shell-dark.app-market .market-result-clickable-card:hover,
+.app-market .market-result-clickable-card:focus-within,
+.app-command-shell.app-market .market-result-clickable-card:focus-within,
+.app-shell-dark.app-market .market-result-clickable-card:focus-within {
+  border-color: rgba(255, 122, 26, 0.38) !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 122, 26, 0.12) inset !important;
+}
+
+.app-market .market-result-clickable-card .catalog-result-main:focus-visible,
+.app-command-shell.app-market .market-result-clickable-card .catalog-result-main:focus-visible,
+.app-shell-dark.app-market .market-result-clickable-card .catalog-result-main:focus-visible {
+  outline: 2px solid rgba(255, 183, 77, 0.78) !important;
+  outline-offset: 3px !important;
+}
+
+.app-market .market-mobile-product-card .market-result-add-actions,
+.app-command-shell.app-market .market-mobile-product-card .market-result-add-actions,
+.app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions {
+  grid-template-columns: minmax(92px, auto) minmax(72px, auto) minmax(0, 1fr) !important;
+}
+
+.app-market .market-mobile-product-card .market-result-card-hint,
+.app-command-shell.app-market .market-mobile-product-card .market-result-card-hint,
+.app-shell-dark.app-market .market-mobile-product-card .market-result-card-hint {
+  justify-self: end;
+  align-self: center;
+  color: rgba(232, 246, 255, 0.48);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-prefilled-card,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-prefilled-card {
+  border-color: rgba(255, 122, 26, 0.22) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 122, 26, 0.11), transparent 12rem),
+    rgba(7, 22, 41, 0.9) !important;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets button,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets button {
+  min-height: 42px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(232, 246, 255, 0.86);
+  font-size: 0.78rem;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets button.active,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets button.active {
+  border-color: rgba(255, 122, 26, 0.56);
+  background:
+    linear-gradient(135deg, rgba(255, 122, 26, 0.22), rgba(124, 231, 255, 0.08)),
+    rgba(10, 28, 50, 0.95);
+  color: #fff8e8;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets button:disabled,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-flow,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-flow {
+  gap: 14px;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-card,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(54, 211, 153, 0.26);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(54, 211, 153, 0.1), transparent 10rem),
+    linear-gradient(145deg, rgba(8, 28, 36, 0.96), rgba(4, 13, 27, 0.98));
+  overflow: hidden;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer--success,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer--success {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px !important;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer--success button,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer--success button {
+  min-width: 0 !important;
+  width: 100% !important;
+  white-space: normal !important;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-card h3,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-card h3 {
+  margin: 0;
+  color: #fff8e8;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-card p,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-card p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.74);
+  line-height: 1.45;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-destinations,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-destinations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-destinations span,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-destinations span {
+  display: grid;
+  gap: 2px;
+  min-width: 104px;
+  padding: 9px 11px;
+  border: 1px solid rgba(54, 211, 153, 0.22);
+  border-radius: 14px;
+  background: rgba(54, 211, 153, 0.08);
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-destinations strong,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-destinations strong {
+  color: #e9fff5;
+}
+
+.app .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-destinations small,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-success-destinations small {
+  color: rgba(232, 246, 255, 0.64);
+}
+
+@media (max-width: 640px) {
+  .app-market .market-mobile-product-card .market-result-add-actions,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-add-actions,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(76px, auto) !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-card-hint,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-card-hint,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-card-hint {
+    display: none;
+  }
+
+  .app .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .market-add-destination-presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer--success,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer--success {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Tidepool page perfection */
 .app-tidepool,
 .app-command-shell.app-tidepool,

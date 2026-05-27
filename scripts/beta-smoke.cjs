@@ -1086,7 +1086,24 @@ async function main() {
 
     const storeSearch = form.getByPlaceholder("Search store, city, ZIP, nickname, or address").first();
     if (await storeSearch.count()) {
+      await storeSearch.scrollIntoViewIfNeeded().catch(() => {});
       await storeSearch.fill(storeSearchText);
+      const filled = await page.waitForFunction(
+        ({ selector, expected }) => {
+          const inputs = [...document.querySelectorAll(selector)];
+          return inputs.some((input) => input.value === expected);
+        },
+        { selector: 'form.scout-report-flow input[placeholder="Search store, city, ZIP, nickname, or address"]', expected: storeSearchText },
+        { timeout: 1200 }
+      ).then(() => true).catch(() => false);
+      if (!filled) {
+        await storeSearch.click({ force: true }).catch(() => {});
+        await storeSearch.fill("").catch(() => {});
+        await storeSearch.pressSequentially(storeSearchText, { delay: 8 }).catch(async () => {
+          await storeSearch.fill(storeSearchText);
+        });
+      }
+      await page.waitForTimeout(200);
     }
     const smokeStoreCard = form.locator(".scout-report-store-pick, .scout-report-store-card").filter({ hasText: storeSearchText }).first();
     await smokeStoreCard.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
@@ -1100,8 +1117,9 @@ async function main() {
       await selectedStoreCard.waitFor({ state: "visible", timeout: 5000 });
       assert.match(await selectedStoreCard.innerText(), /Store selected|Manual location selected/i);
     } else {
+      const inputValue = await storeSearch.count() ? await storeSearch.inputValue().catch(() => "") : "";
       const formText = await form.innerText().catch(() => "");
-      throw new Error(`Scout wizard did not show the requested store "${storeSearchText}".\n${formText.slice(0, 1200)}`);
+      throw new Error(`Scout wizard did not show the requested store "${storeSearchText}" after store search value "${inputValue}".\n${formText.slice(0, 1200)}`);
     }
     if (reportDate || reportTime) {
       const visitDateTimeInput = form.getByLabel(/Observed time|Visit date & time/i).first();
@@ -2250,12 +2268,16 @@ async function main() {
     await searchForm.getByRole("button", { name: /Search Catalog|Search TideTradr|Search/i }).first().click();
     const resultCard = page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first();
     await resultCard.waitFor({ state: "visible", timeout: 10000 });
-    await resultCard.getByRole("button", { name: /\+ Add|Add/i }).first().click();
-    await resultCard.getByRole("button", { name: "Save to Forge" }).click();
-    await assertVisibleText("Added to Forge as a draft");
-    await resultCard.getByRole("button", { name: /\+ Add|Add/i }).first().click();
-    await resultCard.getByRole("button", { name: "Save to Vault" }).click();
-    await assertVisibleText("Added to Vault as a draft");
+    await resultCard.getByRole("button", { name: /^Add$/i }).first().click();
+    const marketAddModal = addWizardModal();
+    await marketAddModal.waitFor({ state: "visible", timeout: 5000 });
+    await marketAddModal.getByRole("button", { name: /^Both$/ }).click();
+    await clickAddWizardNext();
+    await clickAddWizardNext();
+    await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();
+    await assertVisibleText("saved to Vault");
+    await page.locator(".flow-modal").getByRole("button", { name: /^Finish$/ }).click();
+    await marketAddModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
 
     const marketDrafts = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");

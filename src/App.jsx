@@ -5415,6 +5415,7 @@ export default function App() {
   const [multiDestinationStep, setMultiDestinationStep] = useState("item");
   const [multiDestinationSaving, setMultiDestinationSaving] = useState(false);
   const [multiDestinationMessage, setMultiDestinationMessage] = useState("");
+  const [multiDestinationSuccess, setMultiDestinationSuccess] = useState(null);
   const [multiDestinationValidationAttempted, setMultiDestinationValidationAttempted] = useState(false);
   const [marketAddChooserProductId, setMarketAddChooserProductId] = useState("");
   const [marketAddSavingKey, setMarketAddSavingKey] = useState("");
@@ -5432,6 +5433,7 @@ export default function App() {
   const flowModalOpenerRef = useRef(null);
   const flowModalBaselineRef = useRef({});
   const quickScoutWizardTouchRef = useRef(0);
+  const marketAddReturnRef = useRef({ scrollY: 0 });
   const marketAddLastActionRef = useRef({ key: "", time: 0 });
   const phase2AppPreferencesAppliedRef = useRef("");
 
@@ -9978,6 +9980,7 @@ export default function App() {
     };
     flowModalBaselineRef.current.multiDestinationAdd = nextForm;
     setMultiDestinationMessage("");
+    setMultiDestinationSuccess(null);
     setMultiDestinationValidationAttempted(false);
     setMultiDestinationSaving(false);
     setMultiDestinationStep(MULTI_DESTINATION_STEPS.includes(initialStep) ? initialStep : "item");
@@ -16741,6 +16744,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     return destinationDefaults({ vault: true });
   }
 
+  function isMarketAddFlowSource(source = activeFlowModal?.source || "") {
+    return /^market-(card|detail|result)$/i.test(String(source || ""));
+  }
+
   function openQuickAddReviewForProduct(product, source = "quick-add-search") {
     if (!product) return;
     setActiveFlowModal(null);
@@ -16940,6 +16947,86 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     };
     if (product) return openMultiDestinationAddForProduct(product, { source, seed: nextSeed });
     return openMultiDestinationAddFlow({ source, seed: nextSeed });
+  }
+
+  function rememberMarketAddReturnContext(product = {}) {
+    marketAddReturnRef.current = {
+      productId: product?.id || "",
+      search: catalogSearch,
+      barcode: catalogBarcodeSearch,
+      submittedSearch: submittedCatalogSearch,
+      submittedBarcode: submittedCatalogBarcodeSearch,
+      scrollY: typeof window !== "undefined" ? window.scrollY : 0,
+    };
+  }
+
+  function restoreMarketResultsPosition(options = {}) {
+    setSelectedCatalogDetailId("");
+    setMarketAddChooserProductId("");
+    setMarketAddConfirmation(null);
+    window.setTimeout(() => {
+      const scrollY = Number(marketAddReturnRef.current?.scrollY || 0);
+      if (Number.isFinite(scrollY) && scrollY > 0) {
+        window.scrollTo({ top: scrollY, behavior: options.behavior || "smooth" });
+        return;
+      }
+      catalogResultsRef.current?.scrollIntoView?.({ block: "start", behavior: options.behavior || "smooth" });
+    }, 80);
+  }
+
+  function openMarketProductAddFlow(product, source = "market-detail") {
+    if (!product) return;
+    rememberCatalogProduct(product);
+    rememberMarketAddReturnContext(product);
+    setSelectedCatalogDetailId("");
+    setMarketAddChooserProductId("");
+    setMarketAddConfirmation(null);
+    window.setTimeout(() => {
+      openProductAddFlow({
+        product,
+        source,
+        seed: {
+          initialStep: "destination",
+          destinations: destinationDefaults({}),
+        },
+      });
+    }, 0);
+  }
+
+  function primaryMultiDestinationSavedItem() {
+    const savedItems = Array.isArray(multiDestinationSuccess?.savedItems) ? multiDestinationSuccess.savedItems : [];
+    return savedItems.find((entry) => entry.destination === "vault")
+      || savedItems.find((entry) => entry.destination === "forge")
+      || savedItems.find((entry) => entry.destination === "wishlist")
+      || savedItems[0]
+      || null;
+  }
+
+  function closeMarketAddSuccess(options = {}) {
+    closeFlowModal({ force: true, reset: false });
+    resetMultiDestinationForm();
+    restoreMarketResultsPosition(options);
+  }
+
+  function openMultiDestinationSavedItem(mode = "view") {
+    const savedEntry = primaryMultiDestinationSavedItem();
+    const item = savedEntry?.item;
+    if (!item?.id) {
+      closeMarketAddSuccess();
+      return;
+    }
+    closeFlowModal({ force: true, reset: false });
+    resetMultiDestinationForm();
+    setSelectedCatalogDetailId("");
+    if (savedEntry.destination === "vault" || savedEntry.destination === "wishlist" || isVaultItemRecord(item)) {
+      setActiveTab("vault");
+      if (mode === "edit") startEditingVaultItem(item);
+      else setSelectedVaultDetailId(item.id);
+      return;
+    }
+    setActiveTab("inventory");
+    if (mode === "edit") startEditingItem(item);
+    else setSelectedForgeDetailId(item.id);
   }
 
   function openCalendarReleaseAddToVault(event = {}) {
@@ -18785,9 +18872,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       failures.push(`TideTradr failed: ${error.message || "Could not save"}`);
     }
 
+    let savedInventoryItems = [];
     if (pendingInventoryCreates.length) {
       const saveResult = await saveInventoryRecords(pendingInventoryCreates.map((entry) => entry.record));
-      const savedInventoryItems = saveResult.saved || [];
+      savedInventoryItems = saveResult.saved || [];
       if (savedInventoryItems.length) {
         setItems((current) => [...savedInventoryItems, ...current]);
         if (savedInventoryItems.length === pendingInventoryCreates.length) {
@@ -18807,8 +18895,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemName,
       entries: saveConfirmationEntries,
     });
+    const marketAddSource = isMarketAddFlowSource(activeFlowModal?.source);
     if (uniqueFailures.length) console.error("Multi-destination save failures", uniqueFailures);
-    if (uniqueSuccesses.length) setVaultToast(uniqueFailures.length ? `${quickAddSaveSummary} Could not save every destination.` : quickAddSaveSummary);
+    if (uniqueSuccesses.length && !marketAddSource) setVaultToast(uniqueFailures.length ? `${quickAddSaveSummary} Could not save every destination.` : quickAddSaveSummary);
     if (!successes.length && uniqueFailures.length) setVaultToast("Could not save item.");
     if (failures.length) {
       setMultiDestinationMessage(multiDestinationFailureMessage(uniqueFailures));
@@ -18816,6 +18905,29 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     setMultiDestinationSaving(false);
+    if (marketAddSource) {
+      setMultiDestinationSuccess({
+        itemName,
+        summary: quickAddSaveSummary,
+        entries: saveConfirmationEntries,
+        savedItems: savedInventoryItems.map((item) => ({
+          id: item.id,
+          item,
+          name: item.name || item.itemName || item.catalogProductName || itemName,
+          destination: isVaultItemRecord(item)
+            ? (normalizeVaultStatus(item) === "wishlist" || item.isWishlist ? "wishlist" : "vault")
+            : isForgeInventoryItem(item)
+              ? "forge"
+              : "item",
+          quantity: Number(item.quantity || 1),
+        })),
+        source: activeFlowModal?.source || "",
+      });
+      setMultiDestinationStep("success");
+      setMultiDestinationMessage("");
+      setMultiDestinationValidationAttempted(false);
+      return;
+    }
     if (saveMode === "add-more") {
       resetMultiDestinationForm({ destinations });
       setMultiDestinationMessage("Saved. Ready for the next item.");
@@ -28711,15 +28823,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const productTypeLabel = catalogProductTypeLabel(product);
     const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Market data unavailable";
     const sellerMarketMode = Boolean(adaptiveSellerToolsVisible || adminToolsVisible);
-    const productId = product.id || catalogTitle(product);
-    const chooserOpen = String(marketAddChooserProductId) === String(productId);
-    const confirmation = marketAddConfirmation && String(marketAddConfirmation.productId) === String(productId) ? marketAddConfirmation : null;
-    const forgeSaving = marketAddSavingKey === `forge:${productId}`;
-    const vaultSaving = marketAddSavingKey === `vault:${productId}`;
     const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
     return (
-      <div className={`catalog-result-card market-fair-card market-mobile-product-card ${chooserOpen || confirmation ? "market-result-card-expanded" : ""}`} key={product.id}>
-        <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(product)}>
+      <div className="catalog-result-card market-fair-card market-mobile-product-card market-result-clickable-card" key={product.id}>
+        <button
+          type="button"
+          className="catalog-result-main"
+          aria-label={`View details for ${catalogTitle(product)}`}
+          onClick={() => openCatalogDetails(product)}
+        >
           <div className="catalog-thumb">
             {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
             {productImageSrc ? (
@@ -28790,55 +28902,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <button
             type="button"
             className="gradient-button market-result-add-button"
-            onClick={() => {
-              setMarketAddConfirmation(null);
-              setMarketAddChooserProductId((current) => String(current) === String(productId) ? "" : productId);
-            }}
-            aria-expanded={chooserOpen}
+            onClick={() => openMarketProductAddFlow(product, "market-card")}
           >
-            {sellerMarketMode ? "Add to Forge" : "Add to Vault"}
-          </button>
-          <button type="button" className="secondary-button market-result-view-button" onClick={() => openCatalogDetails(product)}>
-            View details
+            Add
           </button>
           <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
             {watched ? "Watched" : "Watch"}
           </button>
+          <span className="market-result-card-hint">Tap card for details</span>
         </div>
-        {chooserOpen ? (
-          <div className="market-result-destination-panel">
-            <div className="market-result-destination-copy">
-              <strong>Add this Market result</strong>
-              <span>Known details will be copied into a draft you can finish later.</span>
-            </div>
-            <div className="market-result-destination-actions">
-              {sellerMarketMode ? (
-                <button type="button" disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "forge")}>
-                  {forgeSaving ? "Adding..." : "Save to Forge"}
-                </button>
-              ) : null}
-              <button type="button" className={sellerMarketMode ? "secondary-button" : ""} disabled={forgeSaving || vaultSaving} onClick={() => void addMarketSearchResultToDestination(product, "vault")}>
-                {vaultSaving ? "Adding..." : "Save to Vault"}
-              </button>
-              <button type="button" className="ghost-button" onClick={() => setMarketAddChooserProductId("")}>
-                Keep searching
-              </button>
-            </div>
-          </div>
-        ) : null}
-        {confirmation ? (
-          <div className={`market-result-confirmation ${confirmation.itemId ? "is-success" : "is-warning"}`} role="status">
-            <span>{confirmation.message}</span>
-            {confirmation.itemId ? (
-              <button type="button" onClick={() => openMarketAddedItem(confirmation.destination, confirmation.itemId)}>
-                {confirmation.destination === "vault" ? "Open in Vault" : "Open in Forge"}
-              </button>
-            ) : null}
-            <button type="button" className="ghost-button" onClick={() => setMarketAddConfirmation(null)}>
-              Keep searching
-            </button>
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -29190,8 +29262,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function saveSharedScoutData(nextScout) {
-    localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(nextScout));
-    setScoutSnapshot((current) => ({ ...current, ...nextScout }));
+    let savedScout = {};
+    try {
+      savedScout = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
+    } catch {
+      savedScout = {};
+    }
+    const preservedScout = {
+      ...nextScout,
+      stores: Array.isArray(nextScout.stores)
+        ? nextScout.stores
+        : (Array.isArray(scoutSnapshot.stores) && scoutSnapshot.stores.length ? scoutSnapshot.stores : savedScout.stores || []),
+    };
+    localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(preservedScout));
+    setScoutSnapshot((current) => ({
+      ...current,
+      ...preservedScout,
+      stores: Array.isArray(preservedScout.stores) ? preservedScout.stores : current.stores || [],
+    }));
   }
 
   function updateDropRadarTrainingForm(field, value) {
@@ -37557,6 +37645,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       };
     }
     if (activeFlowModal?.type === "multiDestinationAdd") {
+      if (isMarketAddFlowSource(activeFlowModal.source)) {
+        return {
+          title: "Add from Market",
+          description: "Choose where this product belongs, save the basics, then keep browsing the same results.",
+          size: "medium",
+        };
+      }
       return {
         title: "Review and Add",
         description: "Verify the match, choose destination settings, then save.",
@@ -40201,6 +40296,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderMultiDestinationAddFlowContent() {
     const selectedCatalog = catalogProducts.find((product) => String(product.id) === String(multiDestinationForm.catalogProductId));
+    const marketAddFlowActive = isMarketAddFlowSource(activeFlowModal?.source);
     const itemTypeText = [
       multiDestinationForm.productType,
       selectedCatalog?.productType,
@@ -40258,6 +40354,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const selectedItemSummary = selectedCatalog
       ? `${catalogTitle(selectedCatalog)}${catalogExpansionName(selectedCatalog) ? ` | ${catalogExpansionName(selectedCatalog)}` : ""}`
       : String(multiDestinationForm.itemName || "No item selected").trim();
+    const selectedCatalogIdentifierText = selectedCatalog
+      ? getCatalogIdentifiers(selectedCatalog).filter((identifier) => ["UPC", "EAN", "GTIN", "SKU", "RETAILER_SKU"].includes(identifier.label)).map((identifier) => `${identifier.label}: ${identifier.value}`).slice(0, 2).join(" | ")
+      : "";
+    const selectedCatalogMarketText = selectedCatalog && hasCatalogMarketPrice(selectedCatalog)
+      ? `Market ${money(getTideTradrMarketInfo(selectedCatalog).currentMarketValue)}`
+      : "Market data unavailable";
     const itemSearchQuery = String(multiDestinationCatalogQuery || "").trim();
     const itemSearchResults = itemSearchQuery ? getCatalogPickerResults(itemSearchQuery, 10) : [];
     const recentAddItems = [...items]
@@ -40289,6 +40391,63 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </Field>
       );
     };
+    const applyDestinationPreset = (preset) => {
+      setMultiDestinationMessage("");
+      setMultiDestinationForm((current) => {
+        const nextDestinations = { ...current.destinations };
+        if (preset === "vault") {
+          nextDestinations.vault = true;
+          nextDestinations.forge = false;
+          nextDestinations.wishlist = false;
+          nextDestinations.tidetradr = false;
+        } else if (preset === "forge") {
+          nextDestinations.vault = false;
+          nextDestinations.forge = Boolean(activeForgeWorkspace);
+          nextDestinations.wishlist = false;
+          nextDestinations.tidetradr = false;
+        } else if (preset === "both") {
+          nextDestinations.vault = true;
+          nextDestinations.forge = Boolean(activeForgeWorkspace);
+          nextDestinations.wishlist = false;
+          nextDestinations.tidetradr = false;
+        } else if (preset === "watch") {
+          nextDestinations.vault = false;
+          nextDestinations.forge = false;
+          nextDestinations.wishlist = true;
+          nextDestinations.tidetradr = true;
+        }
+        return {
+          ...current,
+          destinations: nextDestinations,
+          wishlist: {
+            ...current.wishlist,
+            addToMarketWatch: preset === "watch" || current.wishlist?.addToMarketWatch,
+          },
+        };
+      });
+    };
+    if (multiDestinationStep === "success" && multiDestinationSuccess) {
+      const savedItems = Array.isArray(multiDestinationSuccess.savedItems) ? multiDestinationSuccess.savedItems : [];
+      return (
+        <div className="multi-destination-flow market-add-success-flow" role="status" aria-live="polite">
+          <div className="market-add-success-card">
+            <span className="neon-chip">Saved</span>
+            <h3>{multiDestinationSuccess.summary || "Item saved."}</h3>
+            <p>{multiDestinationSuccess.itemName || selectedItemSummary} is ready. You can finish, add more detail, view it, or add another product from the same Market results.</p>
+            {savedItems.length ? (
+              <div className="market-add-success-destinations">
+                {savedItems.map((entry) => (
+                  <span key={`${entry.destination}-${entry.id}`}>
+                    <strong>{multiDestinationDestinationLabel(entry.destination)}</strong>
+                    <small>Qty {entry.quantity || 1}</small>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      );
+    }
     return (
       <form id="multi-destination-add-form" className="form multi-destination-flow" onSubmit={submitMultiDestinationAdd} noValidate>
         <div className="universal-review-banner">
@@ -40305,6 +40464,42 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <strong>{selectedDestinationOptions.length ? selectedDestinationOptions.map((option) => option.title).join(", ") : "Choose Vault or Forge next"}</strong>
           </div>
         </div>
+        {marketAddFlowActive && selectedCatalog && multiDestinationStep !== "item" ? (
+          <div className="selected-product-card selected-match-card market-add-prefilled-card">
+            <div className="catalog-thumb selected-match-thumb">
+              {catalogImage(selectedCatalog) ? (
+                <>
+                  <img
+                    src={catalogImage(selectedCatalog)}
+                    alt=""
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                      event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                    }}
+                  />
+                  {renderProductImageFallback(selectedCatalog, { hidden: true })}
+                </>
+              ) : renderProductImageFallback(selectedCatalog)}
+            </div>
+            <div className="selected-match-copy">
+              <span className="neon-chip add-item-selected-chip">From Market</span>
+              <strong>{catalogTitle(selectedCatalog)}</strong>
+              <span>{[catalogExpansionName(selectedCatalog), catalogProductTypeLabel(selectedCatalog)].filter(Boolean).join(" | ") || "Catalog product"}</span>
+              <small>{[selectedCatalogIdentifierText, selectedCatalogMarketText].filter(Boolean).join(" | ")}</small>
+            </div>
+            <div className="selected-match-actions">
+              <button type="button" className="secondary-button" onClick={() => {
+                setMultiDestinationStep("item");
+                setMultiDestinationMatchSearchOpen(true);
+              }}>
+                Change match
+              </button>
+              <button type="button" className="ghost-button" onClick={clearMultiDestinationCatalogProduct}>
+                Clear match
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="multi-destination-wizard-stepper" aria-label="Add item progress">
           {MULTI_DESTINATION_STEPS.map((step, index) => (
             <span
@@ -40656,6 +40851,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p className="field-error destination-field-error" role="alert" data-validation-field="forge-workspace">
               {fieldError("forge-workspace")}
             </p>
+          ) : null}
+          {marketAddFlowActive ? (
+            <div className="market-add-destination-presets" aria-label="Common Market add destinations">
+              <button type="button" className={multiDestinationForm.destinations.vault && !multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.wishlist ? "active" : ""} onClick={() => applyDestinationPreset("vault")}>Vault</button>
+              <button type="button" className={multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.vault ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("forge")}>Forge</button>
+              <button type="button" className={multiDestinationForm.destinations.vault && multiDestinationForm.destinations.forge ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("both")}>Both</button>
+              <button type="button" className={multiDestinationForm.destinations.wishlist || multiDestinationForm.destinations.tidetradr ? "active" : ""} onClick={() => applyDestinationPreset("watch")}>Wishlist / Watch</button>
+            </div>
           ) : null}
           <div className={`destination-checkbox-grid ${fieldError("destination") ? "has-error" : ""}`}>
             {destinationOptions.map((option) => {
@@ -46277,7 +46480,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="flow-modal-body">
               {renderFlowModalContent()}
             </div>
-            <div className={`location-modal-actions modal-sticky-footer flow-modal-footer ${activeFlowModal?.type === "scoutSubmit" ? "flow-modal-footer--scout-inline" : ""}`}>
+            <div className={`location-modal-actions modal-sticky-footer flow-modal-footer ${activeFlowModal?.type === "scoutSubmit" ? "flow-modal-footer--scout-inline" : ""} ${activeFlowModal?.type === "multiDestinationAdd" && multiDestinationStep === "success" ? "flow-modal-footer--success" : ""}`}>
               {activeFlowModal?.type === "scoutSubmit" ? (
                 quickScoutReportStep === "submitted" ? (
                   <button type="button" onClick={() => closeFlowModal()}>Close</button>
@@ -46295,13 +46498,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     )}
                   </>
                 )
-              ) : (
+              ) : activeFlowModal?.type === "multiDestinationAdd" && multiDestinationStep === "success" ? null : (
                 <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
                   {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
                 </button>
               )}
               {activeFlowModal?.type === "multiDestinationAdd" ? (
-                multiDestinationStep === "review" ? (
+                multiDestinationStep === "success" ? (
+                  <>
+                    <button type="button" className="secondary-button" onClick={() => closeMarketAddSuccess({ behavior: "smooth" })}>
+                      Finish
+                    </button>
+                    <button type="button" className="secondary-button" disabled={!primaryMultiDestinationSavedItem()} onClick={() => openMultiDestinationSavedItem("edit")}>
+                      Add Details
+                    </button>
+                    <button type="button" className="secondary-button" disabled={!primaryMultiDestinationSavedItem()} onClick={() => openMultiDestinationSavedItem("view")}>
+                      View
+                    </button>
+                    <button type="button" onClick={() => closeMarketAddSuccess({ behavior: "smooth" })}>
+                      Add Another
+                    </button>
+                  </>
+                ) : multiDestinationStep === "review" ? (
                   <>
                     {multiDestinationValidationAttempted && getMultiDestinationValidationErrors("review", multiDestinationForm).length ? (
                       <span className="modal-footer-hint" role="status">Fix missing fields to continue.</span>
@@ -52414,9 +52632,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   </div>
                 </section>
 	                <div className="catalog-detail-action-group catalog-detail-primary-actions">
-	                  <button type="button" onClick={() => openProductAddFlow({ product: selectedCatalogDetailProduct, source: "catalog-detail", destinations: { vault: true } })}>Add to Vault</button>
-	                  {adaptiveSellerToolsVisible || adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => addCatalogDetailToForge(selectedCatalogDetailProduct)}>Add to Forge</button> : null}
+	                  <button type="button" onClick={() => openMarketProductAddFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, "market-detail")}>Add</button>
 	                  <button type="button" className="secondary-button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Watch</button>
+	                  <button type="button" className="secondary-button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
 	                  <button type="button" className="secondary-button" onClick={() => setSelectedCatalogDetailId("")}>Back to results</button>
 	                </div>
 	                <details className="catalog-source-details catalog-detail-more-actions">
@@ -52424,7 +52642,6 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 	                  <div className="catalog-detail-action-group catalog-detail-secondary-actions">
 	                    <button type="button" onClick={() => markCatalogDetailOwned(selectedCatalogDetailProduct)}>Mark Owned</button>
 	                    <button type="button" onClick={() => markCatalogDetailMissing(selectedCatalogDetailProduct)}>Mark Missing</button>
-	                    <button type="button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
 	                    <button type="button" onClick={() => addCatalogDetailToScoutSighting(selectedCatalogDetailProduct)}>Add to Scout Sighting</button>
 	                    <button type="button" className="secondary-button" onClick={() => addCatalogDetailDuplicate(selectedCatalogDetailProduct)}>Add Duplicate</button>
 	                    <button type="button" className="secondary-button" onClick={focusCatalogDetailConditionEditor}>Edit Condition</button>
