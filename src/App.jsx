@@ -489,6 +489,71 @@ const EMPTY_SCOUT_RESTOCK_INTEL_BUNDLE = {
   scoutHistoricalIntelSeed: [],
   buildScoutRestockPatterns: () => [],
 };
+const SCOUT_KNOWN_LOCAL_STORE_SEED = [
+  {
+    id: "scout-local-redmill-target",
+    name: "Redmill Target",
+    nickname: "Redmill Target",
+    retailer: "Target",
+    chain: "Target",
+    city: "Virginia Beach",
+    state: "VA",
+    region: "Hampton Roads / 757",
+    aliases: ["RM T", "Redmill T", "Red Mill Target", "Red Mill Commons Target"],
+  },
+  {
+    id: "seed-target-4554-virginia-beach-blvd-virginia-beach-23462",
+    name: "Pembroke Target",
+    nickname: "Pembroke Target",
+    retailer: "Target",
+    chain: "Target",
+    address: "4554 Virginia Beach Blvd",
+    city: "Virginia Beach",
+    state: "VA",
+    zip: "23462",
+    region: "Hampton Roads / 757",
+    aliases: ["Pem T", "Pembroke T", "Target Pembroke"],
+  },
+  {
+    id: "seed-target-525-first-colonial-rd-virginia-beach-23451",
+    name: "First Colonial Target",
+    nickname: "First Colonial Target",
+    retailer: "Target",
+    chain: "Target",
+    address: "525 First Colonial Rd",
+    city: "Virginia Beach",
+    state: "VA",
+    zip: "23451",
+    region: "Hampton Roads / 757",
+    aliases: ["FC", "FC Target", "Hilltop Target"],
+  },
+  {
+    id: "seed-target-1316-greenbrier-pkwy-chesapeake-23320",
+    name: "Greenbrier Target",
+    nickname: "Greenbrier Target",
+    retailer: "Target",
+    chain: "Target",
+    address: "1316 Greenbrier Pkwy",
+    city: "Chesapeake",
+    state: "VA",
+    zip: "23320",
+    region: "Hampton Roads / 757",
+    aliases: ["GB", "GB Target", "Greenbrier T"],
+  },
+  {
+    id: "seed-barnes-and-noble-1212-greenbrier-pkwy-chesapeake-23320",
+    name: "Greenbrier Barnes & Noble",
+    nickname: "Greenbrier Barnes & Noble",
+    retailer: "Barnes & Noble",
+    chain: "Barnes & Noble",
+    address: "1212 Greenbrier Pkwy",
+    city: "Chesapeake",
+    state: "VA",
+    zip: "23320",
+    region: "Hampton Roads / 757",
+    aliases: ["GB B&N", "GB Barnes", "Greenbrier Barnes"],
+  },
+];
 let pokemonCatalogSearchModulePromise = null;
 let catalogAliasModulePromise = null;
 let emberAssistBrainModulePromise = null;
@@ -16946,7 +17011,54 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function getScoutQuickStoreName(store = {}) {
-    return scoutText(store.nickname || store.storeName || store.store_name || store.name || store.locationName || store.location_name) || "Store location";
+    return scoutText(
+      store.officialName ||
+      store.official_name ||
+      store.storeName ||
+      store.store_name ||
+      store.name ||
+      store.locationName ||
+      store.location_name ||
+      store.nickname ||
+      store.storeAlias ||
+      store.store_alias
+    ) || "Store location";
+  }
+
+  function getScoutStoreDisplayName(store = {}) {
+    const primaryName = getScoutQuickStoreName(store);
+    const retailer = scoutText(store.retailer || store.chain || store.storeGroup || store.store_group || store.banner);
+    const nickname = scoutText(store.nickname);
+    const address = scoutText(store.address || store.streetAddress || store.street_address);
+    const normalizedPrimary = normalizeStoreSearch(primaryName);
+    const normalizedRetailer = normalizeStoreSearch(retailer);
+    const normalizedNickname = normalizeStoreSearch(nickname);
+    const primaryLooksGeneric = normalizedRetailer && (
+      normalizedPrimary === normalizedRetailer ||
+      normalizedPrimary === "walmart supercenter" ||
+      normalizedPrimary === "cvs pharmacy" ||
+      normalizedPrimary === "best buy"
+    );
+
+    if (primaryLooksGeneric && nickname && normalizedNickname !== normalizedPrimary) {
+      return nickname;
+    }
+
+    if (primaryLooksGeneric && address) {
+      const roadName = address.replace(/^\d+\s+/, "").trim();
+      return `${primaryName} - ${roadName || address}`;
+    }
+
+    if (
+      retailer &&
+      primaryName &&
+      !normalizedPrimary.includes(normalizedRetailer) &&
+      /\b(road|rd|drive|dr|boulevard|blvd|pkwy|parkway|avenue|ave|street|st|lane|ln|commons|center|mall|hilltop|greenbrier|pembroke|redmill|colonial)\b/.test(normalizedPrimary)
+    ) {
+      return `${retailer} - ${primaryName}`;
+    }
+
+    return primaryName;
   }
 
   function getScoutQuickRetailer(store = {}) {
@@ -16962,11 +17074,50 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function scoutStoreAliasValues(store = {}) {
-    return [
+    const values = [
+      store.nickname,
+      store.shortName,
+      store.short_name,
+      store.storeAlias,
+      store.store_alias,
+      store.localName,
+      store.local_name,
       ...(Array.isArray(store.aliases) ? store.aliases : []),
       ...(Array.isArray(store.searchAliases) ? store.searchAliases : []),
       ...(Array.isArray(store.search_aliases) ? store.search_aliases : []),
-    ].filter(Boolean);
+    ].map(scoutText).filter(Boolean);
+    return [...new Map(values.map((value) => [normalizeStoreSearch(value), value])).values()];
+  }
+
+  function scoutStoreAliasDisplayValues(store = {}) {
+    const officialName = normalizeStoreSearch(getScoutStoreDisplayName(store));
+    return scoutStoreAliasValues(store)
+      .filter((value) => {
+        const normalized = normalizeStoreSearch(value);
+        return normalized && normalized !== officialName;
+      })
+      .slice(0, 3);
+  }
+
+  function scoutStoreLocationSummary(store = {}) {
+    const cityStateZip = [
+      scoutText(store.city || store.addressCity || store.region),
+      scoutText(store.state),
+      getScoutQuickStoreZip(store),
+    ].filter(Boolean).join(", ").replace(/, ([A-Z]{2}), /, "$1 ");
+    return cityStateZip || scoutText(store.address || store.streetAddress || store.street_address) || "Area unknown";
+  }
+
+  function scoutStoreRecentSignalLabel(row = {}) {
+    const reportCount = Array.isArray(row.reports) ? row.reports.length : 0;
+    return reportCount ? `${reportCount} recent signal${reportCount === 1 ? "" : "s"}` : "No recent signals";
+  }
+
+  function scoutStoreDistanceAreaLabel(row = {}) {
+    if (Number.isFinite(row.distance)) return `${row.distance.toFixed(1)} mi`;
+    if (row.areaScore > 0) return "Local area";
+    if (row.watchlisted) return "Following";
+    return "Area unknown";
   }
 
   function scoutStoreAreaText(store = {}) {
@@ -16979,6 +17130,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       getScoutQuickStoreRegion(store),
       store.address,
       store.shoppingCenter,
+      store.streetAddress,
+      store.street_address,
       ...scoutStoreAliasValues(store),
     ].filter(Boolean).join(" ");
   }
@@ -17081,7 +17234,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         source: "scout-report",
       }))
       .filter((store) => store.name || store.id);
-    const deduped = [...(scoutSnapshot.stores || []), ...reportStores, ...virginiaStoreSeed]
+    const deduped = [...(scoutSnapshot.stores || []), ...reportStores, ...SCOUT_KNOWN_LOCAL_STORE_SEED, ...virginiaStoreSeed]
       .filter(Boolean)
       .filter((store, index) => {
         const key = String(getScoutQuickStoreId(store) || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
@@ -17111,7 +17264,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const storeId = getScoutQuickStoreId(store);
     return {
       storeId,
-      storeName: getScoutQuickStoreName(store),
+      storeName: getScoutStoreDisplayName(store),
       retailer: getScoutQuickRetailer(store),
       city: store.city || store.addressCity || store.region || "",
       address: store.address || store.streetAddress || "",
@@ -17153,7 +17306,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         mode: "known",
         store,
         storeId,
-        storeName: getScoutQuickStoreName(store),
+        storeName: getScoutStoreDisplayName(store),
         retailer: getScoutQuickRetailer(store),
         city: store.city || form.city || "",
         address: store.address || form.address || "",
@@ -29631,14 +29784,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderScoutReportCard(report, { compact = false } = {}) {
     const store = getScoutReportStore(report);
     const reportId = getScoutReportId(report);
-    const rawStoreName = store.name || store.nickname || report.storeName || report.store_name || "";
-    const storeName = rawStoreName && !/unknown store/i.test(rawStoreName) ? rawStoreName : "Store not selected";
-    const retailer = store.chain || store.retailer || report.retailer || "Retailer not added";
-    const normalizedArea = normalizeStoreAreaFields({
+    const storeContext = {
       ...store,
+      officialName: store.officialName || store.official_name || store.storeName || store.store_name || store.name || report.storeName || report.store_name,
+      retailer: store.chain || store.retailer || report.retailer,
       city: store.city || report.city,
       state: store.state || report.state,
       region: store.region || report.region,
+      zip: store.zip || store.zipCode || store.zip_code || report.zip || report.zipCode || report.zip_code,
+      address: store.address || report.address,
+    };
+    const rawStoreName = getScoutStoreDisplayName(storeContext);
+    const storeName = rawStoreName && !/unknown store/i.test(rawStoreName) ? rawStoreName : "Store not selected";
+    const retailer = getScoutQuickRetailer(storeContext);
+    const normalizedArea = normalizeStoreAreaFields({
+      ...storeContext,
     });
     const area = normalizedArea.areaLabel;
     const statusLabel = scoutReportStatusLabel(report);
@@ -29655,24 +29815,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const proofAttached = proofLabel !== "No proof";
     const observedSummary = scoutReportObservedSummaryLabel(report);
     const freshnessSummary = scoutReportFreshnessSummaryLabel(report, freshnessMeta);
+    const isOwnReport = isCurrentUserScoutReport(report);
+    const shortFreshnessCopy = freshnessMeta.key === "stale"
+      ? "Stale report - not live stock"
+      : freshnessSummary || "Freshness unknown";
+    const confidenceCopy = confidenceBadge.label || statusLabel || "New report";
+    const proofCopy = proofAttached ? proofLabel : "No proof yet";
+    const statusCopy = observationLabel || stockStatus || statusLabel || "Store report";
+    const reportLocationCopy = [retailer, area].filter(Boolean).join(" - ");
     return (
       <article className={`scout-report-compact-card scout-report-card--${freshnessMeta.key} scout-report-card--trust-${confidenceBadge.key}${compact ? " is-compact" : ""}`} key={reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
-          <div className="scout-report-title-row">
+          <div className="scout-report-card-top">
             <div>
               <h3>{storeName}</h3>
-              <p className="scout-report-product-line">{observationLabel || stockStatus || "Store report"}</p>
-              <p className="scout-report-location-line">{retailer}{area ? ` | ${area}` : ""}</p>
+              <p>{shortFreshnessCopy}</p>
             </div>
-            <span className={`status-badge scout-report-status ${statusClass(statusLabel)}`}>{statusLabel}</span>
+            <span className={`scout-trust-pill scout-trust-pill--${confidenceBadge.key}`}>{confidenceCopy}</span>
           </div>
-          <div className="scout-report-summary-lines">
+          <div className="scout-report-human-summary">
+            <strong>{statusCopy}</strong>
             <span>{observedSummary}</span>
-            <span>{freshnessSummary}</span>
+            {reportLocationCopy ? <span>{reportLocationCopy}</span> : null}
           </div>
           <div className="scout-signal-badge-row" aria-label="Scout signal trust">
-            <span className={`scout-trust-pill scout-trust-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
-            {proofAttached ? <span className="mini-badge scout-proof-badge">{proofLabel}</span> : null}
+            {isOwnReport ? <span className="mini-badge scout-own-report-badge">Your report</span> : null}
+            <span className={`mini-badge ${proofAttached ? "scout-proof-badge" : "scout-proof-missing-badge"}`}>{proofCopy}</span>
             {historicalImport ? <span className="mini-badge scout-historical-import-badge">Historical</span> : null}
           </div>
         </div>
@@ -38740,7 +38908,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         id: getScoutQuickStoreId(store) || getStoreMapStoreId(store, index),
         store,
-        name: getScoutQuickStoreName(store),
+        name: getScoutStoreDisplayName(store),
         retailer: getScoutQuickRetailer(store),
         city: store.city || store.addressCity || store.region || "",
         state: store.state || "",
@@ -39039,8 +39207,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <article className="scout-report-store-card selected scout-report-store-card--compact">
                     <div className="scout-report-store-main">
                       <div>
-                        <strong>{getScoutQuickStoreName(selectedStoreContext)}</strong>
+                        <strong>{getScoutStoreDisplayName(selectedStoreContext)}</strong>
                         <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
+                        {scoutStoreAliasDisplayValues(selectedStoreContext).length ? (
+                          <small className="scout-store-alias-line">Also searchable as: {scoutStoreAliasDisplayValues(selectedStoreContext).join(", ")}</small>
+                        ) : null}
                       </div>
                       <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Store selected" : "Manual location"}</span>
                     </div>
@@ -39304,8 +39475,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <article className="scout-report-store-card selected">
                 <div className="scout-report-store-main">
                   <div>
-                    <strong>{getScoutQuickStoreName(selectedStoreContext)}</strong>
+                    <strong>{getScoutStoreDisplayName(selectedStoreContext)}</strong>
                     <p>{getScoutQuickRetailer(selectedStoreContext)}{selectedStoreContext.city ? ` | ${selectedStoreContext.city}` : ""}{getScoutQuickStoreZip(selectedStoreContext) ? ` | ${getScoutQuickStoreZip(selectedStoreContext)}` : ""}{selectedStoreContext.address ? ` | ${selectedStoreContext.address}` : ""}</p>
+                    {scoutStoreAliasDisplayValues(selectedStoreContext).length ? (
+                      <small className="scout-store-alias-line">Also searchable as: {scoutStoreAliasDisplayValues(selectedStoreContext).join(", ")}</small>
+                    ) : null}
                   </div>
                   <span className="scout-store-temperature scout-store-temperature-watching">{selectedStore ? "Store selected" : "Manual location selected"}</span>
                 </div>
@@ -39368,42 +39542,43 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   />
                 </div>
                 <div className="scout-location-trust-note">
-                  <strong>{locationAvailable ? `Sorting near ${scoutAreaText || "your Scout area"}` : "Search by store, retailer, city, ZIP, or nickname"}</strong>
-                  <span>Retailer and nickname search works for Target, Walmart, Barnes &amp; Noble, GameStop, Best Buy, RM T, Pem T, FC, and GB B&amp;N.</span>
+                  <strong>{locationAvailable ? "Sorted near your Scout area" : normalizedStoreSearch ? "Showing closest matches first" : "Search by store, retailer, city, ZIP, or nickname"}</strong>
+                  <span>Search another city or ZIP to widen results. Nicknames like RM T, Pem T, FC, and GB B&amp;N only help search.</span>
                 </div>
                 <div className="scout-report-store-list">
-                  {recommendedStoreRows.length ? recommendedStoreRows.map((row) => (
-                    <article key={row.id || `${row.name}-${row.city}`} className="scout-report-store-card">
-                      <div className="scout-report-store-main">
-                        <div>
-                          <strong>{row.name}</strong>
-                          <p>{row.retailer}{row.city ? ` | ${row.city}` : ""}{row.state ? `, ${row.state}` : ""}{row.zip ? ` ${row.zip}` : ""}</p>
-                          {row.address ? <small>{row.address}</small> : null}
+                  {recommendedStoreRows.length ? recommendedStoreRows.map((row) => {
+                    const aliasValues = scoutStoreAliasDisplayValues(row.store);
+                    return (
+                      <article key={row.id || `${row.name}-${row.city}`} className="scout-report-store-card scout-report-store-card--result">
+                        <div className="scout-report-store-top">
+                          <div>
+                            <strong>{row.name}</strong>
+                            <p className="scout-store-location-copy">{row.address || scoutStoreLocationSummary(row.store)}</p>
+                            {aliasValues.length ? <small className="scout-store-alias-line">Also searchable as: {aliasValues.join(", ")}</small> : null}
+                          </div>
+                          <span className="scout-store-type-badge">{row.retailer || "Store"}</span>
                         </div>
-                        <span className="scout-store-temperature scout-store-temperature-watching">
-                          {Number.isFinite(row.distance) ? `${row.distance.toFixed(1)} mi` : row.areaScore > 0 ? "Local area" : row.watchlisted ? "Following" : "Known"}
-                        </span>
-                      </div>
-                      <div className="scout-report-store-meta">
-                        <span>{row.latestReport ? `Recent signal: ${scoutStockStatusLabel(row.latestReport.stockStatus || row.latestReport.stock_status || "")}` : "No recent Scout signal"}</span>
-                        <span>{row.reports.length} report{row.reports.length === 1 ? "" : "s"}</span>
-                        <span>{row.region || row.windowLabel}</span>
-                      </div>
-                      <div className="scout-report-store-actions">
-                        <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(row.store)}>Select store</button>
-                        <button type="button" className="ghost-button" onClick={() => openStoreProfile({
-                          ...row,
-                          profile: buildStoreProfileSummary(row.store, {
-                            reports: scoutReportRows,
-                            guesses: scoutGuessRows,
-                            predictions: scoutForecastPreviewRows,
-                            tidepoolPosts,
-                            admin: adminEditModeActive,
-                          }),
-                        })}>Open store details</button>
-                      </div>
-                    </article>
-                  )) : (
+                        <div className="scout-report-store-meta scout-report-store-meta--friendly">
+                          <span>{scoutStoreDistanceAreaLabel(row)}</span>
+                          <span>{scoutStoreRecentSignalLabel(row)}</span>
+                          <span>{row.latestReport ? scoutStockStatusLabel(row.latestReport.stockStatus || row.latestReport.stock_status || "") : "No recent signals"}</span>
+                        </div>
+                        <div className="scout-report-store-actions">
+                          <button type="button" className="secondary-button" onClick={() => selectQuickScoutReportStore(row.store)}>Select store</button>
+                          <button type="button" className="ghost-button" onClick={() => openStoreProfile({
+                            ...row,
+                            profile: buildStoreProfileSummary(row.store, {
+                              reports: scoutReportRows,
+                              guesses: scoutGuessRows,
+                              predictions: scoutForecastPreviewRows,
+                              tidepoolPosts,
+                              admin: adminEditModeActive,
+                            }),
+                          })}>Open store details</button>
+                        </div>
+                      </article>
+                    );
+                  }) : (
                     <div className="scout-report-empty-step">
                       <strong>No matching stores</strong>
                       <p>Try a retailer, city, ZIP, nickname, or use the manual fallback.</p>
