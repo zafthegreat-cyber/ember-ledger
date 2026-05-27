@@ -56574,3 +56574,258 @@ html body .app-command-shell.app-vault .ember-assist-shell {
     flex: 1 1 130px;
   }
 }
+
+/* Mobile usability repair: Scout cards, Scout detail scroll, and nav clearance. */
+.app-scout .scout-report-compact-card,
+.app-command-shell.app-scout .scout-report-compact-card,
+.app.app-scout .scout-report-compact-card {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.app-scout .scout-report-card-main,
+.app-command-shell.app-scout .scout-report-card-main,
+.app.app-scout .scout-report-card-main {
+  position: static !important;
+  display: grid !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.app-scout .scout-report-card-top,
+.app-command-shell.app-scout .scout-report-card-top,
+.app.app-scout .scout-report-card-top {
+  position: static !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.app-scout .scout-report-card-top h3,
+.app-command-shell.app-scout .scout-report-card-top h3,
+.app.app-scout .scout-report-card-top h3,
+.app-scout .scout-report-human-summary strong,
+.app-command-shell.app-scout .scout-report-human-summary strong,
+.app.app-scout .scout-report-human-summary strong {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.app-scout .scout-report-card-top p,
+.app-command-shell.app-scout .scout-report-card-top p,
+.app.app-scout .scout-report-card-top p,
+.app-scout .scout-report-human-summary span,
+.app-command-shell.app-scout .scout-report-human-summary span,
+.app.app-scout .scout-report-human-summary span {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.app-scout .scout-report-compact-card :where(.scout-report-items, .scout-report-profile-card, .scout-report-general-details, .scout-report-detail-breakdown, .scout-report-context, .scout-report-proof-source, .scout-report-confidence-copy),
+.app-command-shell.app-scout .scout-report-compact-card :where(.scout-report-items, .scout-report-profile-card, .scout-report-general-details, .scout-report-detail-breakdown, .scout-report-context, .scout-report-proof-source, .scout-report-confidence-copy),
+.app.app-scout .scout-report-compact-card :where(.scout-report-items, .scout-report-profile-card, .scout-report-general-details, .scout-report-detail-breakdown, .scout-report-context, .scout-report-proof-source, .scout-report-confidence-copy) {
+  display: none !important;
+}
+
+.app-scout .scout-report-card-action,
+.app-command-shell.app-scout .scout-report-card-action,
+.app.app-scout .scout-report-card-action {
+  position: static !important;
+  display: grid !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  align-self: stretch !important;
+  justify-content: stretch !important;
+}
+
+.app-scout .scout-report-card-action .secondary-button,
+.app-command-shell.app-scout .scout-report-card-action .secondary-button,
+.app.app-scout .scout-report-card-action .secondary-button {
+  position: static !important;
+  width: 100% !important;
+  min-height: 42px !important;
+}
+
+.app-scout .scout-report-detail-sheet,
+.app-command-shell.app-scout .scout-report-detail-sheet,
+.app.app-scout .scout-report-detail-sheet {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px) !important;
+  overflow: hidden !important;
+}
+
+.app-scout .scout-report-detail-body,
+.app-command-shell.app-scout .scout-report-detail-body,
+.app.app-scout .scout-report-detail-body {
+  display: grid !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  padding: 0 2px calc(var(--et-mobile-form-clearance, 168px) + 12px) !important;
+  scroll-padding-bottom: var(--et-mobile-form-clearance, 168px) !important;
+}
+
+.app-scout .scout-report-detail-summary,
+.app-command-shell.app-scout .scout-report-detail-summary,
+.app.app-scout .scout-report-detail-summary {
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+.app-scout .scout-report-detail-breakdown,
+.app-command-shell.app-scout .scout-report-detail-breakdown,
+.app.app-scout .scout-report-detail-breakdown {
+  display: grid !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  padding-bottom: 0 !important;
+}
+
+.app-scout .scout-report-detail-section,
+.app-command-shell.app-scout .scout-report-detail-section,
+.app.app-scout .scout-report-detail-section {
+  display: block !important;
+  padding: 0 !important;
+  border: 1px solid rgba(124, 231, 255, 0.14) !important;
+  border-radius: 16px !important;
+  background: rgba(5, 15, 30, 0.72) !important;
+  overflow: hidden !important;
+}
+
+.app-scout .scout-report-detail-section > summary,
+.app-command-shell.app-scout .scout-report-detail-section > summary,
+.app.app-scout .scout-report-detail-section > summary {
+  display: grid !important;
+  gap: 3px !important;
+  min-height: 48px !important;
+  padding: 11px 13px !important;
+  cursor: pointer !important;
+  color: #fff7ed !important;
+  list-style: none !important;
+}
+
+.app-scout .scout-report-detail-section > summary::-webkit-details-marker,
+.app-command-shell.app-scout .scout-report-detail-section > summary::-webkit-details-marker,
+.app.app-scout .scout-report-detail-section > summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.app-scout .scout-report-detail-section > summary span,
+.app-command-shell.app-scout .scout-report-detail-section > summary span,
+.app.app-scout .scout-report-detail-section > summary span {
+  font-weight: 900 !important;
+}
+
+.app-scout .scout-report-detail-section > summary small,
+.app-command-shell.app-scout .scout-report-detail-section > summary small,
+.app.app-scout .scout-report-detail-section > summary small {
+  color: rgba(232, 246, 255, 0.66) !important;
+  font-size: 0.78rem !important;
+  line-height: 1.3 !important;
+}
+
+.app-scout .scout-report-detail-section[open] > summary,
+.app-command-shell.app-scout .scout-report-detail-section[open] > summary,
+.app.app-scout .scout-report-detail-section[open] > summary {
+  border-bottom: 1px solid rgba(124, 231, 255, 0.12) !important;
+  background: rgba(124, 231, 255, 0.06) !important;
+}
+
+.app-scout .scout-report-detail-section > :not(summary),
+.app-command-shell.app-scout .scout-report-detail-section > :not(summary),
+.app.app-scout .scout-report-detail-section > :not(summary) {
+  padding: 12px 13px !important;
+}
+
+.app-scout .scout-report-detail-admin-actions,
+.app-command-shell.app-scout .scout-report-detail-admin-actions,
+.app.app-scout .scout-report-detail-admin-actions {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+.app-scout .scout-report-detail-sheet .modal-sticky-footer,
+.app-command-shell.app-scout .scout-report-detail-sheet .modal-sticky-footer,
+.app.app-scout .scout-report-detail-sheet .modal-sticky-footer {
+  position: static !important;
+  bottom: auto !important;
+  margin-top: 0 !important;
+  background: rgba(3, 10, 22, 0.98) !important;
+}
+
+@media (max-width: 780px) {
+  .app-scout .flow-modal[data-flow="scoutSubmit"],
+  .app-command-shell.app-scout .flow-modal[data-flow="scoutSubmit"],
+  .app.app-scout .flow-modal[data-flow="scoutSubmit"] {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 16px) !important;
+    overflow: hidden !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+  .app-command-shell.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+  .app.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: calc(var(--et-mobile-form-clearance, 168px) + 32px) !important;
+    scroll-padding-bottom: calc(var(--et-mobile-form-clearance, 168px) + 16px) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer,
+  .app-command-shell.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer,
+  .app.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 6 !important;
+  }
+
+  .app-scout .scout-report-card-top,
+  .app-command-shell.app-scout .scout-report-card-top,
+  .app.app-scout .scout-report-card-top {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-scout .scout-report-card-top .scout-trust-pill,
+  .app-command-shell.app-scout .scout-report-card-top .scout-trust-pill,
+  .app.app-scout .scout-report-card-top .scout-trust-pill {
+    justify-self: start !important;
+    max-width: 100% !important;
+  }
+
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .app .main,
+  .dashboard-layout,
+  .scout-report-card-grid,
+  .catalog-results-grid,
+  .vault-list,
+  .forge-dashboard,
+  .collection-workspace-page,
+  .collections-utility-page .utility-page-layout,
+  .quick-add-success-actions {
+    padding-bottom: max(var(--et-mobile-scroll-clearance, 150px), calc(var(--bottom-nav-height, 62px) + env(safe-area-inset-bottom, 0px) + 72px)) !important;
+    scroll-padding-bottom: max(var(--et-mobile-scroll-clearance, 150px), calc(var(--bottom-nav-height, 62px) + env(safe-area-inset-bottom, 0px) + 72px)) !important;
+  }
+}

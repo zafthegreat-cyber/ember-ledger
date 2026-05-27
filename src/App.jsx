@@ -26514,8 +26514,7 @@ function renderForgeAccessState() {
       ? relatedRows.conflicting.map((row) => ({ ...row, relationLabel: "Conflicting" }))
       : relatedRows.similar.map((row) => ({ ...row, relationLabel: "Similar" }));
     return (
-      <section>
-        <h3>Similar/conflicting reports</h3>
+      <div className="scout-report-detail-section-body scout-report-related-context">
         {rows.length ? rows.map((row) => (
           <div key={getScoutReportId(row) || `${row.storeName}-${row.reportedAt || row.createdAt}`} className="scout-report-detail-row">
             <strong>{row.relationLabel}: {scoutReportObservationStatusLabel(row)}</strong>
@@ -26524,7 +26523,7 @@ function renderForgeAccessState() {
         )) : (
           <p>No similar or conflicting reports for this store yet.</p>
         )}
-      </section>
+      </div>
     );
   }
 
@@ -30275,6 +30274,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       id: Date.now(),
     });
     setScoutView("submit");
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        const target = document.querySelector(".embedded-page .scout-report-review-card.active, .embedded-page .scout-report-step-card.active, .embedded-page .scout-report-flow");
+        target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+        const focusTarget = target?.querySelector?.("input:not([type='hidden']):not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])");
+        focusTarget?.focus?.({ preventScroll: true });
+      }, 180);
+    }
   }
 
   function renderScoutFilterControls() {
@@ -30408,6 +30415,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const confidenceCopy = confidenceBadge.label || statusLabel || "New report";
     const proofCopy = proofAttached ? proofLabel : "No proof yet";
     const statusCopy = observationLabel || stockStatus || statusLabel || "Store report";
+    const itemSummary = normalizeScoutReportItems(report)[0]?.productName
+      || report.productName
+      || report.product_name
+      || report.itemName
+      || report.item_name
+      || note
+      || "";
     const reportLocationCopy = [retailer, area].filter(Boolean).join(" - ");
     return (
       <article className={`scout-report-compact-card scout-report-card--${freshnessMeta.key} scout-report-card--trust-${confidenceBadge.key}${compact ? " is-compact" : ""}`} key={reportId || `${storeName}-${note}`}>
@@ -30420,7 +30434,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span className={`scout-trust-pill scout-trust-pill--${confidenceBadge.key}`}>{confidenceCopy}</span>
           </div>
           <div className="scout-report-human-summary">
-            <strong>{statusCopy}</strong>
+            <strong>{itemSummary || statusCopy}</strong>
+            {itemSummary ? <span>{statusCopy}</span> : null}
             <span>{observedSummary}</span>
             {reportLocationCopy ? <span>{reportLocationCopy}</span> : null}
           </div>
@@ -47946,9 +47961,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <button type="button" className="modal-close-button" aria-label="Close Scout report" onClick={() => setSelectedScoutReport(null)}>X</button>
             </div>
-            <div className="scout-report-detail-summary">
+            <div className="scout-report-detail-body">
+              <div className="scout-report-detail-summary">
               <strong>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Store not selected"}</strong>
               <span>{scoutReportObservationStatusLabel(selectedScoutReport)}</span>
+              <small className="scout-report-detail-primary-copy">{normalizeScoutReportItems(selectedScoutReport)[0]?.productName || selectedScoutReport.note || selectedScoutReport.notes || "Product details can be added after posting."}</small>
               <small>{scoutReportObservedSummaryLabel(selectedScoutReport)} · {scoutReportFreshnessSummaryLabel(selectedScoutReport)}</small>
               <div className="scout-signal-badge-row" aria-label="Scout report detail trust">
                 <span className={`scout-trust-pill scout-trust-pill--${scoutReportConfidenceBadge(selectedScoutReport).key}`}>{scoutReportConfidenceBadge(selectedScoutReport).label}</span>
@@ -47957,10 +47974,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   return detailProofLabel && detailProofLabel !== "No proof" ? <span className="mini-badge scout-proof-badge">{detailProofLabel}</span> : null;
                 })()}
               </div>
-            </div>
-            <div className="scout-report-detail-breakdown">
-              <section>
-                <h3>Products seen</h3>
+              </div>
+              <div className="scout-report-detail-breakdown">
+              <details className="scout-report-detail-section">
+                <summary>
+                  <span>Details</span>
+                  <small>Products, quantity, price, and report notes.</small>
+                </summary>
                 {normalizeScoutReportItems(selectedScoutReport).length ? (
                   normalizeScoutReportItems(selectedScoutReport).map((item, index) => (
                     <div key={`${item.productName}-${index}`} className="scout-report-detail-row">
@@ -47971,9 +47991,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : (
                   <p>Product details have not been added yet.</p>
                 )}
-              </section>
-              <section>
-                <h3>Proof and notes</h3>
+              </details>
+              <details className="scout-report-detail-section">
+                <summary>
+                  <span>Proof / Photos</span>
+                  <small>{scoutReportPhotoUrls(selectedScoutReport).length ? "Proof attached" : "No proof attached yet"}</small>
+                </summary>
                 <div className="scout-report-detail-row">
                   <strong>{scoutReportPhotoUrls(selectedScoutReport).length ? `${scoutReportPhotoUrls(selectedScoutReport).length} proof image${scoutReportPhotoUrls(selectedScoutReport).length === 1 ? "" : "s"}` : "No proof attached"}</strong>
                   <span>{selectedScoutReport.proofText || selectedScoutReport.proof_text || selectedScoutReport.notes || selectedScoutReport.note || "Proof/photo is optional."}</span>
@@ -47983,16 +48006,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <img key={url} src={url} alt="" />)}
                   </div>
                 ) : null}
-              </section>
-              <section>
-                <h3>Confidence explanation</h3>
+              </details>
+              <details className="scout-report-detail-section">
+                <summary>
+                  <span>Confidence explanation</span>
+                  <small>{scoutReportConfidenceBadge(selectedScoutReport).label}</small>
+                </summary>
                 <div className="scout-report-detail-row">
                   <strong>{scoutReportConfidenceBadge(selectedScoutReport).label}</strong>
                   <span>{(selectedScoutReport.confidenceReasons || selectedScoutReport.confidence_reasons || []).length ? (selectedScoutReport.confidenceReasons || selectedScoutReport.confidence_reasons || []).join(" | ") : scoutReportConfidenceBadge(selectedScoutReport).helper}</span>
                 </div>
-              </section>
-              <section>
-                <h3>Context</h3>
+              </details>
+              <details className="scout-report-detail-section">
+                <summary>
+                  <span>Context</span>
+                  <small>Observed and submitted timing.</small>
+                </summary>
                 <div className="scout-report-detail-row">
                   <strong>Observed</strong>
                   <span>{scoutReportDateTimeLabel(selectedScoutReport)}</span>
@@ -48010,8 +48039,30 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <strong>Status</strong>
                   <span>{scoutReportObservationStatusLabel(selectedScoutReport)}</span>
                 </div>
-              </section>
-              {renderScoutReportRelatedContext(selectedScoutReport)}
+              </details>
+              <details className="scout-report-detail-section">
+                <summary>
+                  <span>History / Source</span>
+                  <small>Similar and conflicting reports.</small>
+                </summary>
+                {renderScoutReportRelatedContext(selectedScoutReport)}
+              </details>
+              {adminEditModeActive ? (
+                <details className="scout-report-detail-section">
+                  <summary>
+                    <span>Admin actions</span>
+                    <small>Moderation controls.</small>
+                  </summary>
+                  <div className="scout-report-detail-admin-actions">
+                    {getScoutReportAdminActions(selectedScoutReport).map((action) => (
+                      <button key={action.label} type="button" className={action.danger ? "delete-button" : "secondary-button"} onClick={action.onClick}>
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+              </div>
             </div>
             <div className="location-modal-actions modal-sticky-footer">
               {canEditScoutReportDateTime(selectedScoutReport) ? (

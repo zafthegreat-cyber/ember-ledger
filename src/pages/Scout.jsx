@@ -4096,6 +4096,9 @@ async function handleUpdateStore(e) {
         : photo
           ? "Photo attached"
           : "Needs confirmation";
+    const primarySummary = visibleItems[0]
+      ? summarizeReportItem(visibleItems[0], money)
+      : note || stockStatus || status || "Store report";
     return (
       <article className="scout-report-compact-card scout-page-report-card" key={report.id || report.reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -4104,7 +4107,12 @@ async function handleUpdateStore(e) {
               <h3>{storeName}</h3>
               <p>{retailer}{area ? ` | ${area}` : ""}</p>
             </div>
-            <span className={`status-badge scout-report-status scout-report-status-${status.toLowerCase().replace(/\s+/g, "-")}`}>{status}</span>
+              <span className={`status-badge scout-report-status scout-report-status-${status.toLowerCase().replace(/\s+/g, "-")}`}>{status}</span>
+          </div>
+          <div className="scout-report-human-summary scout-page-report-summary">
+            <strong>{primarySummary}</strong>
+            <span>{stockStatus || status}</span>
+            <span>Observed {friendlyScoutTimestamp(report)}</span>
           </div>
           <div className="scout-report-meta">
             <span>Visit: {friendlyScoutTimestamp(report)}</span>
@@ -4151,6 +4159,11 @@ async function handleUpdateStore(e) {
             onDelete={adminMode && isUserOwnedScoutReport(report) ? () => setDeleteReportTarget(report) : null}
           />
         </div>
+        {!options.inDetail ? (
+          <div className="scout-report-card-action">
+            <button type="button" className="secondary-button" onClick={() => setSelectedReportTarget(report)}>View details</button>
+          </div>
+        ) : null}
       </article>
     );
   }
@@ -6928,29 +6941,40 @@ async function handleUpdateStore(e) {
                 </div>
                 <button type="button" className="modal-close-button" aria-label="Close report details" onClick={() => setSelectedReportTarget(null)}>X</button>
               </div>
-              {renderCompactReportCard(selectedReportTarget)}
-              <div className="scout-report-detail-items">
-                <h3>Full items seen</h3>
-                {normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).length ? (
-                  normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).map((item, index) => (
-                    <div key={`${item.productName}-${index}`} className="scout-report-detail-item">
-                      <strong>{item.productName}</strong>
-                      <span>{item.quantity ? `Qty ${item.quantity}` : "Qty unknown"}</span>
-                      <span>{Number(item.price || 0) > 0 ? money(item.price) : "Price not added"}</span>
-                      {item.note ? <p>{item.note}</p> : null}
+              <div className="scout-report-detail-body">
+                {renderCompactReportCard(selectedReportTarget, { compact: true, inDetail: true })}
+                <div className="scout-report-detail-breakdown">
+                  <details className="scout-report-detail-section">
+                    <summary>
+                      <span>Details</span>
+                      <small>Products and report notes.</small>
+                    </summary>
+                    <div className="scout-report-detail-items">
+                      {normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).length ? (
+                        normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).map((item, index) => (
+                          <div key={`${item.productName}-${index}`} className="scout-report-detail-item">
+                            <strong>{item.productName}</strong>
+                            <span>{item.quantity ? `Qty ${item.quantity}` : "Qty unknown"}</span>
+                            <span>{Number(item.price || 0) > 0 ? money(item.price) : "Price not added"}</span>
+                            {item.note ? <p>{item.note}</p> : null}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="scout-report-detail-item">
+                          <strong>General report</strong>
+                          <span>{scoutStockStatusLabel(selectedReportTarget.stockStatus || selectedReportTarget.stock_status) || "Stock status not selected"}</span>
+                          {getScoutReportPhotoUrls(selectedReportTarget).length ? <span>Photo uploaded - Items not identified yet</span> : null}
+                          {selectedReportTarget.note ? <p>{selectedReportTarget.note}</p> : null}
+                        </div>
+                      )}
                     </div>
-                  ))
-                ) : (
-                  <div className="scout-report-detail-item">
-                    <strong>General report</strong>
-                    <span>{scoutStockStatusLabel(selectedReportTarget.stockStatus || selectedReportTarget.stock_status) || "Stock status not selected"}</span>
-                    {getScoutReportPhotoUrls(selectedReportTarget).length ? <span>Photo uploaded - Items not identified yet</span> : null}
-                    {selectedReportTarget.note ? <p>{selectedReportTarget.note}</p> : null}
-                  </div>
-                )}
+                  </details>
+                </div>
               </div>
               <div className="location-modal-actions modal-sticky-footer">
-                <button type="button" onClick={() => startEditingReport(selectedReportTarget)}>Edit</button>
+                {(isUserOwnedScoutReport(selectedReportTarget) || adminMode) ? (
+                  <button type="button" onClick={() => startEditingReport(selectedReportTarget)}>{adminMode ? "Edit details" : "Add details"}</button>
+                ) : null}
                 {adminMode && isUserOwnedScoutReport(selectedReportTarget) ? <button type="button" className="delete-button" onClick={() => setDeleteReportTarget(selectedReportTarget)}>Delete</button> : null}
                 <button type="button" className="secondary-button" onClick={() => setSelectedReportTarget(null)}>Close</button>
               </div>
