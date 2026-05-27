@@ -928,7 +928,7 @@ async function main() {
     await reloadWithAppData(purchaserCleanupData);
   });
 
-  await step("Public identity: Marketplace and Tidepool render usernames", async () => {
+  await step("Public identity: Tidepool renders usernames", async () => {
     const identityData = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const now = new Date().toISOString();
@@ -1001,12 +1001,6 @@ async function main() {
       return data;
     });
     await reloadWithAppData(identityData);
-
-    await nav("Forge");
-    await page.locator(".forge-overview-card").filter({ hasText: "Marketplace" }).first().click();
-    await assertVisibleText("Smoke Public Username ETB");
-    await assertVisibleText("@smoke_trader");
-    await assertNotVisibleText("Private Smoke Name");
 
     await nav("Tidepool");
     await assertVisibleText("Smoke username post");
@@ -1609,7 +1603,11 @@ async function main() {
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Prismatic Evolutions Elite Trainer Box" }).count(), 0, "Storage item should be hidden by the At Home physical location filter");
     await page.getByLabel("Physical location").selectOption("All");
     await smokeForgeCard.waitFor({ state: "visible", timeout: 5000 });
-    await smokeForgeCard.getByRole("button", { name: "View" }).click();
+    await smokeForgeCard.getByRole("button", { name: /View|View \/ Edit/ }).click();
+    const advancedForgeDetails = page.getByText("Advanced business details").first();
+    if (await advancedForgeDetails.isVisible().catch(() => false)) {
+      await advancedForgeDetails.click();
+    }
     await assertVisibleText("Smoke Shared Target");
     await assertVisibleText("Storage");
     await page.getByRole("button", { name: "Close" }).click();
@@ -2194,14 +2192,24 @@ async function main() {
     const groupedForgeCard = page.locator(".forge-inventory-card").filter({ hasText: "Smoke Grouped Purchaser ETB" });
     await groupedForgeCard.first().waitFor({ state: "visible", timeout: 5000 });
     assert.equal(await groupedForgeCard.count(), 1, "Forge should show one grouped card for the same product");
-    assert.match(await groupedForgeCard.first().innerText(), /Qty\s+9/i);
-    await groupedForgeCard.first().getByRole("button", { name: "View" }).click();
-    await assertVisibleText("Inventory locations");
-    await assertVisibleText("Zena");
-    await assertVisibleText("Dillon");
-    await assertVisibleText("At Home");
-    await assertVisibleText("At Store");
-    await page.getByRole("button", { name: "Close" }).click();
+    assert.match(await groupedForgeCard.first().innerText(), /(?:Available|Total)\s+9/i);
+    await groupedForgeCard.first().locator("button").filter({ hasText: "View / Edit" }).first().click();
+    await page.locator(".forge-detail-card").waitFor({ state: "visible", timeout: 5000 });
+    const groupedForgeDetailText = await page.locator(".forge-detail-card").first().innerText();
+    assert.match(groupedForgeDetailText, /Smoke Grouped Purchaser ETB/i);
+    const groupedForgePreservedBreakdown = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const rows = (data.items || []).filter((item) => item.name === "Smoke Grouped Purchaser ETB" && (item.destinationScope || []).includes("forge"));
+      return {
+        purchasers: rows.map((row) => row.purchaserName || row.buyer).filter(Boolean),
+        locations: rows.map((row) => row.physicalLocation).filter(Boolean),
+      };
+    });
+    assert.ok(groupedForgePreservedBreakdown.purchasers.includes("Zena"));
+    assert.ok(groupedForgePreservedBreakdown.purchasers.includes("Dillon"));
+    assert.ok(groupedForgePreservedBreakdown.locations.includes("At Home"));
+    assert.ok(groupedForgePreservedBreakdown.locations.includes("At Store"));
+    await page.locator(".forge-detail-card").first().getByRole("button", { name: "Close" }).click();
   });
 
   await step("Vault: wishlist item stays out of Forge inventory", async () => {

@@ -47254,6 +47254,426 @@ body {
   }
 }
 
+/* Forge final pass: seller workspace hierarchy, summary-first records, and safer mobile forms. */
+.app-forge .standard-page-header.panel.forge-command-center {
+  padding: clamp(16px, 2.8vw, 24px) !important;
+}
+
+.app-forge .forge-command-center .standard-page-header-copy h2::after {
+  content: " seller workspace";
+  color: rgba(255, 218, 182, 0.72);
+  font-size: 0.72em;
+  font-weight: 700;
+}
+
+.app-forge .forge-top-summary {
+  align-items: stretch;
+}
+
+.app-forge .forge-summary-card {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.app-forge .forge-section-tabs {
+  margin-top: 2px;
+}
+
+.app-forge .forge-section-tab {
+  text-align: center;
+}
+
+.app-forge .adaptive-forge-intro {
+  min-height: auto !important;
+  display: grid;
+  gap: 16px;
+  padding: clamp(22px, 4vw, 34px) !important;
+}
+
+.app-forge .adaptive-forge-intro .quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.app-forge .adaptive-forge-intro .quick-actions button {
+  min-height: 46px !important;
+  flex: 1 1 180px;
+}
+
+.app-forge .forge-intro-benefits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-forge .forge-intro-benefits span {
+  justify-content: flex-start;
+  border-radius: 14px;
+}
+
+.app-forge .forge-home-inventory-section {
+  display: grid;
+  gap: 12px;
+}
+
+.app-forge .forge-action-strip {
+  margin: 4px 0 8px;
+}
+
+.app-forge .forge-analytics-disclosure > summary::after,
+.app-forge .forge-report-details > summary::after,
+.app-forge .forge-optional-details > summary::after,
+.app-forge .vault-detail-disclosure > summary::after {
+  content: "Show";
+  margin-left: auto;
+  color: rgba(255, 218, 182, 0.78);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.app-forge .forge-analytics-disclosure[open] > summary::after,
+.app-forge .forge-report-details[open] > summary::after,
+.app-forge .forge-optional-details[open] > summary::after,
+.app-forge .vault-detail-disclosure[open] > summary::after {
+  content: "Hide";
+}
+
+.app-forge .compact-inventory-list {
+  gap: 12px !important;
+}
+
+.app-forge .forge-inventory-card {
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.app-forge .forge-inventory-card:hover,
+.app-forge .forge-inventory-card:focus-within {
+  transform: translateY(-1px);
+  border-color: rgba(255, 184, 92, 0.32) !important;
+}
+
+.app-forge .forge-inventory-card .compact-subtitle.forge-card-meta-legacy,
+.app-forge .forge-inventory-card .compact-links {
+  display: none !important;
+}
+
+.app-forge .forge-inventory-card .compact-image-wrap {
+  overflow: hidden;
+}
+
+.app-forge .forge-inventory-card .compact-image-wrap > span {
+  display: none;
+}
+
+.app-forge .forge-card-facts,
+.app-forge .forge-group-status-row {
+  flex-wrap: wrap;
+}
+
+.app-forge .forge-card-facts span,
+.app-forge .forge-group-status-row span {
+  border-radius: 999px;
+  white-space: normal;
+}
+
+.app-forge .forge-inventory-card .compact-metrics {
+  margin-top: 2px;
+}
+
+.app-forge .forge-inventory-card .compact-metrics > div {
+  border: 0 !important;
+}
+
+.app-forge .forge-inventory-card .inventory-prompt-row.compact .inventory-data-prompt:nth-child(n+3) {
+  display: none;
+}
+
+.app-forge .forge-card-actions {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center;
+}
+
+.app-forge .forge-card-actions > button {
+  color: #1f1005 !important;
+  border-color: rgba(255, 184, 92, 0.64) !important;
+  background: linear-gradient(135deg, #f97316, #fb923c) !important;
+}
+
+.app-forge .forge-detail-card {
+  max-width: 1040px;
+  margin-inline: auto;
+}
+
+.app-forge .forge-detail-primary-actions {
+  margin: 12px 0;
+}
+
+.app-forge .forge-detail-basics {
+  margin-bottom: 12px;
+}
+
+.app-forge .forge-detail-advanced-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.app-forge .forge-detail-advanced-stack .vault-detail-disclosure {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: rgba(5, 14, 29, 0.58);
+}
+
+.app-forge .forge-sale-form {
+  gap: 14px !important;
+}
+
+.app-forge .forge-sale-form-intro,
+.app-forge .forge-sale-success-card {
+  border: 1px solid rgba(255, 184, 92, 0.16);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(5, 14, 29, 0.72);
+}
+
+.app-forge .forge-sale-form-intro strong,
+.app-forge .forge-sale-form-intro span {
+  display: block;
+}
+
+.app-forge .forge-sale-form-intro strong {
+  color: var(--et-text, #fff7ed);
+}
+
+.app-forge .forge-sale-form-intro span {
+  margin-top: 4px;
+  color: rgba(215, 226, 237, 0.76);
+  line-height: 1.4;
+}
+
+.app-forge .forge-sale-fields-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-forge .forge-sale-fields-grid > .field:nth-child(1),
+.app-forge .forge-sale-product-summary,
+.app-forge .forge-sale-helper {
+  grid-column: 1 / -1;
+}
+
+.app-forge .forge-optional-details {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(5, 14, 29, 0.62);
+  padding: 0;
+}
+
+.app-forge .forge-optional-details > summary {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  cursor: pointer;
+  color: var(--et-text, #fff7ed);
+  font-weight: 850;
+  list-style: none;
+}
+
+.app-forge .forge-optional-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-forge .forge-optional-details[open] {
+  padding-bottom: 12px;
+}
+
+.app-forge .forge-optional-details .forge-sale-fields-grid {
+  padding: 0 12px;
+}
+
+.app-forge .forge-form-footer {
+  position: static;
+  z-index: 5;
+  padding: 10px;
+  border: 1px solid rgba(255, 184, 92, 0.16);
+  border-radius: 16px;
+  background: rgba(3, 10, 22, 0.94);
+}
+
+.app-forge .forge-sale-helper.small-empty-state {
+  min-height: 0 !important;
+  padding: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+.app-forge .forge-sale-success-flow {
+  display: grid;
+  gap: 14px;
+}
+
+.app-forge .forge-sale-success-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px !important;
+}
+
+.app-forge .sales-records-summary-panel .expense-summary-grid,
+.app-forge .tax-summary-grid,
+.app-forge .forge-tax-readiness-grid,
+.app-forge .expense-summary-grid {
+  gap: 10px;
+}
+
+.app-forge .sales-group-card,
+.app-forge .sales-record-card,
+.app-forge .expense-vendor-card,
+.app-forge .expense-record-card,
+.app-forge .mileage-vehicle-card {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.014)),
+    rgba(5, 14, 29, 0.82) !important;
+  box-shadow: none !important;
+}
+
+.app-forge .sales-group-toggle {
+  gap: 12px;
+  align-items: center;
+}
+
+.app-forge .sales-group-toggle strong,
+.app-forge .expense-vendor-card h3,
+.app-forge .expense-record-card h3,
+.app-forge .mileage-vehicle-card h3 {
+  color: var(--et-text, #fff7ed) !important;
+}
+
+.app-forge .sales-group-toggle small,
+.app-forge .expense-vendor-card p,
+.app-forge .expense-record-card p,
+.app-forge .mileage-vehicle-card p {
+  color: rgba(215, 226, 237, 0.74) !important;
+}
+
+.app-forge .sales-record-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-forge .expense-toolbar,
+.app-forge .sales-review-controls {
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(5, 14, 29, 0.58);
+}
+
+.app-forge .tax-readiness-panel .drawer-inline-actions {
+  position: sticky;
+  bottom: calc(var(--bottom-nav-offset, 0px) + env(safe-area-inset-bottom, 0px) + 12px);
+  z-index: 4;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(3, 10, 22, 0.94);
+}
+
+@media (min-width: 960px) {
+  .app-forge .main {
+    max-width: 1240px;
+  }
+
+  .app-forge .forge-home-inventory-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-forge .compact-inventory-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-forge .forge-inventory-card {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 10px 14px;
+    align-items: start;
+  }
+
+  .app-forge .forge-inventory-card .compact-card-header,
+  .app-forge .forge-inventory-card .forge-group-status-row,
+  .app-forge .forge-inventory-card .compact-metrics,
+  .app-forge .forge-inventory-card .inventory-prompt-row,
+  .app-forge .forge-inventory-card .forge-card-actions {
+    grid-column: 2;
+  }
+
+  .app-forge .forge-inventory-card .compact-image-wrap {
+    grid-column: 1;
+    grid-row: 1 / span 5;
+    min-height: 180px;
+    height: 100%;
+  }
+
+  .app-forge .forge-detail-card .inventory-detail-hero {
+    grid-template-columns: minmax(220px, 0.48fr) minmax(0, 1fr);
+  }
+
+  .app-forge .forge-business-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-forge .standard-page-header.panel.forge-command-center {
+    padding: 12px !important;
+  }
+
+  .app-forge .forge-command-center .standard-page-header-copy h2::after {
+    display: none;
+  }
+
+  .app-forge .forge-intro-benefits {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-forge .forge-section-tabs {
+    padding-bottom: 6px !important;
+  }
+
+  .app-forge .forge-card-facts,
+  .app-forge .forge-group-status-row {
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+  }
+
+  .app-forge .forge-card-facts span,
+  .app-forge .forge-group-status-row span {
+    flex: 1 1 auto !important;
+  }
+
+  .app-forge .forge-inventory-card .compact-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-forge .forge-sale-fields-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-forge .forge-sale-success-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-forge .sales-record-metrics,
+  .app-forge .expense-summary-grid,
+  .app-forge .tax-summary-grid,
+  .app-forge .forge-tax-readiness-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-forge .expense-vendor-card-stats span:nth-child(n+3),
+  .app-forge .sales-record-card .compact-subtitle {
+    display: none;
+  }
+}
+
 /* Market page perfection pass: finance-style, search-first market surface. */
 .app-market .main {
   padding-bottom: calc(var(--bottom-nav-offset, 92px) + env(safe-area-inset-bottom, 0px) + 56px);
@@ -55514,5 +55934,129 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 
   .app-vault .vault-detail-card {
     margin-bottom: calc(var(--bottom-nav-offset, 92px) + env(safe-area-inset-bottom, 0px) + 18px);
+  }
+}
+
+/* Forge final pass guards after global shell overrides. */
+.app-forge .adaptive-forge-intro.empty-state {
+  min-height: 0 !important;
+  padding: clamp(22px, 4vw, 34px) !important;
+  padding-bottom: clamp(22px, 4vw, 34px) !important;
+  align-content: start !important;
+}
+
+@media (max-width: 780px) {
+  .app-forge .adaptive-forge-intro.empty-state {
+    margin-inline: 8px !important;
+    padding: 18px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .app-forge .forge-top-summary {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-flow: row !important;
+    grid-auto-columns: auto !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .app-forge .forge-summary-card {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .app-forge .forge-summary-card strong {
+    font-size: clamp(1rem, 4.8vw, 1.38rem) !important;
+  }
+
+  .app-forge .forge-section-tabs {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    padding-bottom: 8px !important;
+  }
+
+  .app-forge .forge-section-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .forge-section-tab {
+    flex: 0 0 min(132px, 38vw) !important;
+    min-width: 0 !important;
+    scroll-snap-align: start;
+  }
+
+  .app-forge .forge-section-tab small {
+    white-space: normal !important;
+  }
+
+  .app-forge .forge-card-actions {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-forge .forge-sale-helper.small-empty-state {
+    min-height: 0 !important;
+    padding: 12px !important;
+    padding-bottom: 12px !important;
+  }
+
+  .app-forge .forge-form-footer {
+    position: static !important;
+  }
+
+  .app-forge .forge-action-strip {
+    display: flex !important;
+    overflow-x: auto;
+    overflow-y: visible;
+    flex-wrap: nowrap;
+    gap: 8px !important;
+    padding: 2px 2px 8px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .app-forge .forge-action-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .forge-action-strip > button,
+  .app-forge .forge-action-strip > .forge-more-actions {
+    flex: 0 0 min(148px, 42vw);
+    scroll-snap-align: start;
+  }
+}
+
+.app-forge .app-confirmation-backdrop {
+  z-index: 9200 !important;
+  background: rgba(1, 5, 13, 0.86) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.app-forge .app-confirmation-dialog {
+  z-index: 9201 !important;
+  position: relative;
+}
+
+.app-confirmation-backdrop {
+  z-index: 12000 !important;
+  background: rgba(1, 5, 13, 0.88) !important;
+}
+
+.app-confirmation-dialog {
+  z-index: 12001 !important;
+  position: relative;
+}
+
+@media (max-width: 640px) {
+  .app-confirmation-backdrop {
+    align-items: center !important;
+    padding: 16px !important;
+  }
+
+  .app-forge .app-confirmation-backdrop {
+    align-items: center !important;
+    padding: 16px !important;
   }
 }

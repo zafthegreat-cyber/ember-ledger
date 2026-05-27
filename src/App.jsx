@@ -5410,6 +5410,7 @@ export default function App() {
   const [vehicleForm, setVehicleForm] = useState({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
   const [tripForm, setTripForm] = useState(blankTrip);
   const [saleForm, setSaleForm] = useState(blankSale);
+  const [forgeSaleSaveSuccess, setForgeSaleSaveSuccess] = useState(null);
   const [activeFlowModal, setActiveFlowModal] = useState(null);
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
@@ -5504,8 +5505,10 @@ export default function App() {
     smartSetupPreferences.enabledToolsets.includes(key) ||
     smartSetupPreferences.purposes.includes(key)
   ));
+  const localSellerModeActive = sellerModeEnabled(userType, dashboardPreset);
   const isSellerExperience =
     smartSetupSellerIntent ||
+    localSellerModeActive ||
     normalizeUserType(currentUserProfile?.userType || currentUserProfile?.user_type) === "seller" ||
     normalizeDashboardPreset(currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset) === "seller";
   const hasAdminProfileSignal = Boolean(
@@ -5545,7 +5548,7 @@ export default function App() {
     userType: currentUserProfile?.userType || currentUserProfile?.user_type || userType,
     dashboardPreset: currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset || dashboardPreset,
     isSellerExperience,
-    sellerToolsEnabled: sellerModeEnabled(userType, dashboardPreset) || smartSetupSellerIntent,
+    sellerToolsEnabled: localSellerModeActive || smartSetupSellerIntent,
     adminToolsVisible: adaptiveAdminNavVisible,
     moderatorToolsVisible: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible,
     currentRoute: activeTab,
@@ -16493,7 +16496,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function isFlowModalDirty(type = activeFlowModal?.type) {
     if (!type) return false;
     if (type === "addInventory") return Boolean(editingItemId) || formsDiffer(itemForm, blankItem);
-    if (type === "addSale") return Boolean(editingSaleId) || formsDiffer(saleForm, blankSale);
+    if (type === "addSale") return !forgeSaleSaveSuccess && (Boolean(editingSaleId) || formsDiffer(saleForm, blankSale));
     if (type === "addExpense") return Boolean(editingExpenseId) || formsDiffer(expenseForm, blankExpense);
     if (type === "addMileage") return Boolean(editingTripId) || formsDiffer(tripForm, blankTrip);
     if (type === "createListing") return formsDiffer(marketplaceForm, BLANK_MARKETPLACE_FORM);
@@ -16513,6 +16516,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "addSale") {
       setEditingSaleId(null);
       setSaleForm(blankSale);
+      setForgeSaleSaveSuccess(null);
     }
     if (type === "addExpense") {
       setEditingExpenseId(null);
@@ -16610,6 +16614,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setEditingSaleId(null);
       setSaleForm(blankSale);
     }
+    setForgeSaleSaveSuccess(null);
     openFlowModal("addSale", { size: "medium", source: options.source });
   }
 
@@ -22181,26 +22186,28 @@ function renderForgeHeader() {
   const forgeSummaryCards = [
     {
       key: "inventory-summary",
-      title: "Inventory",
-      value: forgeTotalProductQuantity,
-      helper: `${forgeInventoryItems.length} grouped | ${money(totalMarketValue)} value`,
+      title: "Active inventory",
+      value: forgeTotalProductQuantity || 0,
+      helper: forgeInventoryItems.length
+        ? `${forgeInventoryItems.length} grouped | ${totalMarketValue ? money(totalMarketValue) : "Value unavailable"}`
+        : "No inventory yet",
     },
     {
       key: "profit",
-      title: "Profit",
-      value: money(monthlyProfitLoss),
-      helper: "After expenses this month.",
+      title: "Profit / loss",
+      value: workspaceSales.length || workspaceExpenses.length ? money(monthlyProfitLoss) : "No sales yet",
+      helper: workspaceExpenses.length ? `${money(monthlyExpenses)} expenses this month` : "No expenses yet",
     },
     {
       key: "sales-summary",
       title: "Sales",
-      value: money(totalSalesRevenue),
-      helper: `${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`,
+      value: workspaceSales.length ? money(totalSalesRevenue) : "No sales yet",
+      helper: `${totalItemsSold || 0} item${totalItemsSold === 1 ? "" : "s"} sold`,
     },
     {
       key: "receipts-summary",
       title: "Receipts",
-      value: forgeReceiptsNeedingReviewCount ? `${forgeReceiptsNeedingReviewCount} review` : money(totalExpenses),
+      value: forgeReceiptsNeedingReviewCount ? `${forgeReceiptsNeedingReviewCount} review` : workspaceExpenses.length ? money(totalExpenses) : "No expenses yet",
       helper: forgeReceiptsNeedingReviewCount ? "Needs review" : "Captured expenses",
     },
   ];
@@ -22256,17 +22263,6 @@ function renderForgeHeader() {
         setActiveTab("reports");
       },
     },
-    {
-      key: "marketplace",
-      title: "Marketplace",
-      helper: `${activeMarketplaceCount} listings`,
-      active: activeTab === "inventory" && forgeSubTab === "marketplace",
-      onClick: () => {
-        setMarketplaceView("browse");
-        setForgeSubTab("marketplace");
-        setActiveTab("inventory");
-      },
-    },
   ];
   return (
     <PageHeader
@@ -22312,7 +22308,12 @@ function renderForgeAccessState() {
       <h2>Seller tools are off</h2>
       <p>{forgeAccessMessage || "Turn on seller tools to use inventory, receipts, mileage, and sales."}</p>
       <div className="forge-intro-benefits" aria-label="Forge seller tools">
-        {["Inventory", "Receipts", "Mileage", "Sales"].map((label) => <span key={label}>{label}</span>)}
+        {[
+          "Track inventory",
+          "Record sales",
+          "Save expenses and receipts",
+          "Prepare tax summaries",
+        ].map((label) => <span key={label}>{label}</span>)}
       </div>
       <div className="quick-actions">
         <button type="button" onClick={() => openMenuDrawer("settings")}>Turn on seller tools</button>
@@ -22801,7 +22802,13 @@ function renderForgeAccessState() {
       setEditingSaleId(null);
       setSaleForm(blankSale);
       if (activeFlowModal?.type === "addSale") {
-        closeFlowModal({ force: true, reset: false });
+        setForgeSaleSaveSuccess({
+          sale: mapped,
+          itemName: mapped.itemName || saleRecord.itemName,
+          quantity: mapped.quantitySold || qty || 1,
+          destination: "Forge sales",
+          saleWasEditing,
+        });
       } else {
         setActiveTab("sales");
       }
@@ -22837,7 +22844,13 @@ function renderForgeAccessState() {
     setEditingSaleId(null);
     setSaleForm(blankSale);
     if (activeFlowModal?.type === "addSale") {
-      closeFlowModal({ force: true, reset: false });
+      setForgeSaleSaveSuccess({
+        sale: mapped,
+        itemName: mapped.itemName || saleRecord.itemName,
+        quantity: mapped.quantitySold || qty || 1,
+        destination: "Forge sales",
+        saleWasEditing,
+      });
     } else {
       setActiveTab("sales");
     }
@@ -37683,7 +37696,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "addSale") {
       return {
         title: editingSaleId ? "Edit Sale" : "Add Sale",
-        description: "Choose inventory, record sale details, and preview profit before saving.",
+        description: "Save the sale basics first. Fees, references, proof, and tax notes are optional.",
         size: "medium",
       };
     }
@@ -38619,8 +38632,56 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAddSaleFlowContent() {
+    if (forgeSaleSaveSuccess) {
+      const savedSale = forgeSaleSaveSuccess.sale || {};
+      const savedItemName = forgeSaleSaveSuccess.itemName || savedSale.itemName || "Sale";
+      const savedQuantity = forgeSaleSaveSuccess.quantity || savedSale.quantitySold || 1;
+      const savedTotal = savedSale.grossSale || Number(savedSale.finalSalePrice || 0) * Number(savedQuantity || 1);
+      const openSavedSaleList = () => {
+        setActiveTab("sales");
+        setSalesViewMode("item");
+        closeFlowModal({ force: true, reset: false });
+      };
+      return (
+        <div className="forge-sale-success-flow" role="status" aria-live="polite">
+          <div className="market-add-success-card forge-sale-success-card">
+            <span className="neon-chip">Saved to Forge</span>
+            <h3>{forgeSaleSaveSuccess.saleWasEditing ? "Sale updated." : "Sale recorded."}</h3>
+            <p>{savedItemName} is saved in Forge sales. You can finish, add details, view the sale list, or record another sale.</p>
+            <div className="market-add-success-destinations">
+              <span>
+                <strong>{savedQuantity} sold</strong>
+                <small>{savedTotal ? money(savedTotal) : "Sale total unavailable"}</small>
+              </span>
+              <span>
+                <strong>{savedSale.platform || "Sales record"}</strong>
+                <small>{savedSale.saleDate || shortDate(savedSale.createdAt) || "Date saved"}</small>
+              </span>
+            </div>
+          </div>
+          <div className="quick-actions forge-sale-success-actions">
+            <button type="button" onClick={() => closeFlowModal({ force: true, reset: true })}>Finish</button>
+            <button type="button" className="secondary-button" onClick={() => {
+              setForgeSaleSaveSuccess(null);
+              startEditingSale(savedSale);
+            }}>Add details</button>
+            <button type="button" className="secondary-button" onClick={openSavedSaleList}>View sale</button>
+            <button type="button" className="secondary-button" onClick={() => {
+              setForgeSaleSaveSuccess(null);
+              setEditingSaleId(null);
+              setSaleForm(blankSale);
+            }}>Add another sale</button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <form onSubmit={addSale} className="form forge-sale-form">
+      <form id="forge-sale-form" onSubmit={addSale} className="form forge-sale-form">
+        <div className="forge-sale-form-intro">
+          <strong>{editingSaleId ? "Update the sale basics" : "Record the sale basics"}</strong>
+          <span>Item, quantity, sale price, date, and channel are enough to save. Fees, references, and notes can be added now or later.</span>
+        </div>
         <div className="forge-sale-fields-grid">
           <Field label="Item Sold">
             <select value={saleForm.itemId} onChange={(e) => updateSaleForm("itemId", e.target.value)}>
@@ -38650,20 +38711,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           )}
           <Field label="Sale Date"><input type="date" value={saleForm.saleDate} onChange={(e) => updateSaleForm("saleDate", e.target.value)} /></Field>
           <Field label="Platform"><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
-          <Field label="Buyer / Customer Optional"><input value={saleForm.buyerName} onChange={(e) => updateSaleForm("buyerName", e.target.value)} placeholder="Optional customer label" /></Field>
           <Field label="Quantity Sold"><input type="number" min="1" value={saleForm.quantitySold} onChange={(e) => updateSaleForm("quantitySold", e.target.value)} /></Field>
           <Field label="Sale Price Each"><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
-          <Field label="Shipping Charged"><input type="number" step="0.01" value={saleForm.shippingCharged} onChange={(e) => updateSaleForm("shippingCharged", e.target.value)} /></Field>
-          <Field label="Platform Fee"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
-          <Field label="Payment Processing Fee"><input type="number" step="0.01" value={saleForm.paymentProcessingFees} onChange={(e) => updateSaleForm("paymentProcessingFees", e.target.value)} /></Field>
-          <Field label="Shipping Cost"><input type="number" step="0.01" value={saleForm.shippingCost} onChange={(e) => updateSaleForm("shippingCost", e.target.value)} /></Field>
-          <Field label="Supplies Cost"><input type="number" step="0.01" value={saleForm.suppliesCost} onChange={(e) => updateSaleForm("suppliesCost", e.target.value)} /></Field>
-          <Field label="Discounts / Refunds"><input type="number" step="0.01" value={saleForm.discountsRefunds} onChange={(e) => updateSaleForm("discountsRefunds", e.target.value)} /></Field>
           {!selectedSaleItem ? <Field label="Cost Basis"><input type="number" step="0.01" value={saleForm.costBasis} onChange={(e) => updateSaleForm("costBasis", e.target.value)} /></Field> : null}
-          <Field label="Order / Reference"><input value={saleForm.referenceId} onChange={(e) => updateSaleForm("referenceId", e.target.value)} placeholder="Order ID, payout, or receipt reference" /></Field>
-          <Field label="Receipt / Reference Image"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateSaleForm("receiptImage", url), "sales")} /></Field>
-          <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
         </div>
+        <details className="forge-optional-details forge-sale-optional-details">
+          <summary>Optional sale details</summary>
+          <div className="forge-sale-fields-grid">
+            <Field label="Buyer / Customer Optional"><input value={saleForm.buyerName} onChange={(e) => updateSaleForm("buyerName", e.target.value)} placeholder="Optional customer label" /></Field>
+            <Field label="Shipping Charged"><input type="number" step="0.01" value={saleForm.shippingCharged} onChange={(e) => updateSaleForm("shippingCharged", e.target.value)} /></Field>
+            <Field label="Platform Fee"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
+            <Field label="Payment Processing Fee"><input type="number" step="0.01" value={saleForm.paymentProcessingFees} onChange={(e) => updateSaleForm("paymentProcessingFees", e.target.value)} /></Field>
+            <Field label="Shipping Cost"><input type="number" step="0.01" value={saleForm.shippingCost} onChange={(e) => updateSaleForm("shippingCost", e.target.value)} /></Field>
+            <Field label="Supplies Cost"><input type="number" step="0.01" value={saleForm.suppliesCost} onChange={(e) => updateSaleForm("suppliesCost", e.target.value)} /></Field>
+            <Field label="Discounts / Refunds"><input type="number" step="0.01" value={saleForm.discountsRefunds} onChange={(e) => updateSaleForm("discountsRefunds", e.target.value)} /></Field>
+            <Field label="Order / Reference"><input value={saleForm.referenceId} onChange={(e) => updateSaleForm("referenceId", e.target.value)} placeholder="Order ID, payout, or receipt reference" /></Field>
+            <Field label="Receipt / Reference Image"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateSaleForm("receiptImage", url), "sales")} /></Field>
+            <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
+          </div>
+        </details>
         {saleForm.receiptImage ? <div className="receipt-preview"><p>Sale reference</p><img src={saleForm.receiptImage} alt="Sale reference" /></div> : null}
         <div className="profit-preview forge-profit-preview">
           <h3>Estimated Profit</h3>
@@ -46499,6 +46565,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     )}
                   </>
                 )
+              ) : activeFlowModal?.type === "addSale" ? (
+                forgeSaleSaveSuccess ? null : (
+                  <>
+                    <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
+                      Cancel
+                    </button>
+                    <button type="submit" form="forge-sale-form">
+                      {editingSaleId ? "Save Sale" : "Add Sale"}
+                    </button>
+                  </>
+                )
               ) : activeFlowModal?.type === "multiDestinationAdd" && multiDestinationStep === "success" ? null : (
                 <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
                   {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
@@ -51894,75 +51971,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="compact-card-header">
               <div>
                 <h2>{editingSaleId ? "Edit Sale" : "Add Sale"}</h2>
-                <p>Choose inventory, record sale details, and preview profit before saving.</p>
+                <p>Save the sale basics first. Fees, proof, and notes can stay optional.</p>
               </div>
             </div>
-            <form onSubmit={addSale} className="form forge-sale-form">
-              <div className="forge-sale-fields-grid">
-              <Field label="Item Sold">
-                <select value={saleForm.itemId} onChange={(e) => updateSaleForm("itemId", e.target.value)}>
-                  <option value="">Manual sale / not linked to inventory</option>
-                  {forgeInventoryItems.filter((i) => i.quantity > 0).map((i) => <option key={i.id} value={i.id}>{i.name} - Qty {i.quantity} - {i.sku}</option>)}
-                </select>
-              </Field>
-              {!selectedSaleItem ? (
-                <Field label="Manual Item Name">
-                  <input value={saleForm.manualItemName} placeholder="Product or item sold" onChange={(e) => updateSaleForm("manualItemName", e.target.value)} />
-                </Field>
-              ) : null}
-              {selectedSaleItem ? (
-                <div className="forge-sale-product-summary">
-                  {selectedSaleItem.itemImage ? <img src={selectedSaleItem.itemImage} alt="" /> : <span>Item</span>}
-                  <div>
-                    <strong>{selectedSaleItem.name}</strong>
-                    <small>Qty owned: {selectedSaleItem.quantity} | Cost basis: {money(saleCostBasis)}</small>
-                    <small>Market: {money(selectedSaleItem.marketPrice)} | Planned: {money(selectedSaleItem.salePrice)}</small>
-                  </div>
-                </div>
-              ) : (
-                <div className="small-empty-state forge-sale-helper">
-                  <strong>Manual sale entry is available.</strong>
-                  <span>Inventory will not be adjusted automatically unless you link a Forge item.</span>
-                </div>
-              )}
-              <Field label="Sale Date"><input type="date" value={saleForm.saleDate} onChange={(e) => updateSaleForm("saleDate", e.target.value)} /></Field>
-              <Field label="Platform"><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
-              <Field label="Buyer / Customer Optional"><input value={saleForm.buyerName} onChange={(e) => updateSaleForm("buyerName", e.target.value)} placeholder="Optional customer label" /></Field>
-              <Field label="Quantity Sold"><input type="number" min="1" value={saleForm.quantitySold} onChange={(e) => updateSaleForm("quantitySold", e.target.value)} /></Field>
-              <Field label="Sale Price Each"><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
-              <Field label="Shipping Charged"><input type="number" step="0.01" value={saleForm.shippingCharged} onChange={(e) => updateSaleForm("shippingCharged", e.target.value)} /></Field>
-              <Field label="Platform Fee"><input type="number" step="0.01" value={saleForm.platformFees} onChange={(e) => updateSaleForm("platformFees", e.target.value)} /></Field>
-              <Field label="Payment Processing Fee"><input type="number" step="0.01" value={saleForm.paymentProcessingFees} onChange={(e) => updateSaleForm("paymentProcessingFees", e.target.value)} /></Field>
-              <Field label="Shipping Cost"><input type="number" step="0.01" value={saleForm.shippingCost} onChange={(e) => updateSaleForm("shippingCost", e.target.value)} /></Field>
-              <Field label="Supplies Cost"><input type="number" step="0.01" value={saleForm.suppliesCost} onChange={(e) => updateSaleForm("suppliesCost", e.target.value)} /></Field>
-              <Field label="Discounts / Refunds"><input type="number" step="0.01" value={saleForm.discountsRefunds} onChange={(e) => updateSaleForm("discountsRefunds", e.target.value)} /></Field>
-              {!selectedSaleItem ? <Field label="Cost Basis"><input type="number" step="0.01" value={saleForm.costBasis} onChange={(e) => updateSaleForm("costBasis", e.target.value)} /></Field> : null}
-              <Field label="Order / Reference"><input value={saleForm.referenceId} onChange={(e) => updateSaleForm("referenceId", e.target.value)} placeholder="Order ID, payout, or receipt reference" /></Field>
-              <Field label="Receipt / Reference Image"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateSaleForm("receiptImage", url), "sales")} /></Field>
-              <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
-              </div>
-              {saleForm.receiptImage ? <div className="receipt-preview"><p>Sale reference</p><img src={saleForm.receiptImage} alt="Sale reference" /></div> : null}
-              <div className="profit-preview forge-profit-preview">
-                <h3>Estimated Profit</h3>
-                <div className="preview-grid">
-                  <div><span>Gross Sale</span><strong>{money(saleGrossPreview)}</strong></div>
-                  <div><span>Net Proceeds</span><strong>{money(saleNetProceedsPreview)}</strong></div>
-                  <div><span>Cost Basis</span><strong>{money(saleCostBasis)}</strong></div>
-                  <div><span>Shipping + Fees</span><strong>{money(saleShippingCost + saleSuppliesCost + saleFees)}</strong></div>
-                  <div><span>Estimated Profit/Loss</span><strong>{money(saleProfitPreview)}</strong></div>
-                </div>
-                {!saleValidation.valid ? <p className="flow-inline-message is-warning">{Object.values(saleValidation.errors)[0]}</p> : null}
-              </div>
-              <div className="ai-helper-note">
-                <span>Mileage, sales, and tax-related estimates are for tracking only and are not tax advice.</span>
-                <button type="button" className="secondary-button" onClick={() => void runSaleProfitAiAssist(saleForm)}>Explain this profit</button>
-                <button type="button" className="secondary-button" onClick={() => void runSaleProfitAiAssist(saleForm)}>Find missing sale details</button>
-              </div>
-              <div className="forge-form-footer">
-                <button type="submit">{editingSaleId ? "Save Sale" : "Add Sale"}</button>
-                {editingSaleId && <button type="button" className="secondary-button" onClick={() => { setEditingSaleId(null); setSaleForm(blankSale); }}>Cancel Edit</button>}
-              </div>
-            </form>
+            {renderAddSaleFlowContent()}
           </section>
         )}
 
@@ -52317,7 +52329,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <div className="compact-card-header">
                 <div>
                   <h2>Taxes</h2>
-                  <p>Readiness only. Source records stay underneath for review with your tax professional.</p>
+                  <p>Tax-ready summary for records. Confirm with a tax professional.</p>
                 </div>
                 {reportFocus ? (
                   <button
@@ -52342,7 +52354,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <div>
                   <p className="eyebrow">Tax Records</p>
                   <h2>Year-end summary for review</h2>
-                  <p>Summaries preserve the source records underneath. Ember & Tide does not provide tax advice; use this with your tax professional.</p>
+                  <p>Tax-ready summary for records. Source records stay underneath for review with your tax professional.</p>
                 </div>
                 <Field label="Year">
                   <select value={taxSummaryYear} onChange={(event) => setTaxSummaryYear(event.target.value)}>
@@ -53164,6 +53176,14 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
     ["Moved From Vault", item.movedFromVaultAt || item.dateMovedToForge],
     ["Catalog Link", item.catalogProductName],
   ].filter(([, value]) => hasValue(value));
+  const primaryDetails = [
+    ["Status", item.status || "In Stock"],
+    ["Available", statusSummary.currentQuantity || item.quantity || 0],
+    ["Value", valuation.marketKnownQuantity ? money(totalMarket) : "Value unavailable"],
+    ["Condition", item.condition || item.grade || "Not set"],
+    ["Location", forgePhysicalLocationLabel(item) || "No location assigned"],
+    ["Receipt / Proof", item.receiptImage || item.receiptUrl || item.proofUrl ? "Attached" : "Not attached"],
+  ].filter(([, value]) => hasValue(value));
 
   return (
     <div className="vault-detail-card forge-detail-card">
@@ -53203,46 +53223,67 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
           ) : null}
         </div>
       </div>
-      <div className="catalog-detail-grid">
-        {details.map(([label, value]) => (
+      <div className="vault-detail-primary-actions forge-detail-primary-actions">
+        <button type="button" disabled={Number(nextSellEntry?.quantity || 0) < 1} onClick={() => onSell(nextSellEntry)}>Mark sold / add sale</button>
+        <button type="button" className="secondary-button" onClick={() => onEdit(primaryEntry)}>Edit / add details</button>
+        <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
+      </div>
+      <div className="catalog-detail-grid vault-detail-basics forge-detail-basics">
+        {primaryDetails.map(([label, value]) => (
           <DetailItem key={label} label={label} value={value} />
         ))}
       </div>
-      <PriceReviewPanel
-        item={item}
-        variant="forge"
-        onReviewMarket={onQuickUpdateMarketValue}
-        onReviewPlanned={onQuickUpdateSalePrice}
-      />
-      <InventoryBreakdownPanel
-        item={item}
-        variant="forge"
-        onEditEntry={onEdit}
-        onDeleteEntry={onDelete}
-        onEditSale={onEditSale}
-      />
-      <LazyToolBoundary label="Loading price history...">
-        <MarketPriceHistoryPanel
-          compact
-          catalogProductId={item.catalogProductId || item.catalogItemId}
-          tcgplayerProductId={item.tcgplayerProductId || item.sku}
-          externalProductId={item.externalProductId || item.sku}
-          productName={item.name}
-          currentMarketPrice={item.marketPrice}
-          currentLowPrice={item.lowPrice}
-          currentMidPrice={item.midPrice}
-          currentHighPrice={item.highPrice}
-          lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
-          money={money}
-        />
-      </LazyToolBoundary>
-      <div className="quick-actions">
-        <button type="button" onClick={() => onSell(nextSellEntry)}>Sell individual entry</button>
-        <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
-        <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review Market Value</button>
-        <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
-        <button type="button" className="secondary-button" onClick={() => onEdit(primaryEntry)}>Edit primary entry</button>
-        <button type="button" className="secondary-button" onClick={() => onDelete(primaryEntry)}>Delete primary entry</button>
+      <div className="vault-detail-advanced-stack forge-detail-advanced-stack">
+        <details className="vault-detail-disclosure">
+          <summary>Advanced business details</summary>
+          <div className="catalog-detail-grid">
+            {details.map(([label, value]) => (
+              <DetailItem key={label} label={label} value={value} />
+            ))}
+          </div>
+        </details>
+        <details className="vault-detail-disclosure">
+          <summary>Market data and pricing</summary>
+          <PriceReviewPanel
+            item={item}
+            variant="forge"
+            onReviewMarket={onQuickUpdateMarketValue}
+            onReviewPlanned={onQuickUpdateSalePrice}
+          />
+          <LazyToolBoundary label="Loading price history...">
+            <MarketPriceHistoryPanel
+              compact
+              catalogProductId={item.catalogProductId || item.catalogItemId}
+              tcgplayerProductId={item.tcgplayerProductId || item.sku}
+              externalProductId={item.externalProductId || item.sku}
+              productName={item.name}
+              currentMarketPrice={item.marketPrice}
+              currentLowPrice={item.lowPrice}
+              currentMidPrice={item.midPrice}
+              currentHighPrice={item.highPrice}
+              lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
+              money={money}
+            />
+          </LazyToolBoundary>
+        </details>
+        <details className="vault-detail-disclosure">
+          <summary>Inventory and sale history</summary>
+          <InventoryBreakdownPanel
+            item={item}
+            variant="forge"
+            onEditEntry={onEdit}
+            onDeleteEntry={onDelete}
+            onEditSale={onEditSale}
+          />
+        </details>
+        <details className="vault-detail-disclosure">
+          <summary>More actions</summary>
+          <div className="quick-actions">
+            <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+            <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
+            <button type="button" className="secondary-button" onClick={() => onDelete(primaryEntry)}>Delete primary entry</button>
+          </div>
+        </details>
       </div>
     </div>
   );
@@ -53537,7 +53578,6 @@ function CompactInventoryCard({
     );
   }
   const statusSummary = item.statusSummary || summarizeForgeGroupedInventoryStatus(inventoryGroupEntries(item), item.saleHistory || []);
-  const purchaserRows = Array.isArray(item.purchaserBreakdown) ? item.purchaserBreakdown.slice(0, 3) : [];
   const forgeImage = item.itemImage || vaultItemDisplayImage(item);
   const lastActivity = item.updatedAt || item.createdAt || item.created_at || "";
   const primaryEntry = inventoryGroupEntries(item)[0] || item;
@@ -53555,10 +53595,9 @@ function CompactInventoryCard({
         <div className="compact-title-block">
           <h3>{item.name}</h3>
           <div className="forge-card-facts">
-            <span className="forge-card-quantity">Qty {item.quantity || 0}</span>
-            <span className="forge-card-quantity">{statusSummary.totalQuantity || item.quantity || 0} total</span>
+            <span className="forge-card-quantity">Available {statusSummary.currentQuantity || item.quantity || 0}</span>
+            <span className="forge-card-quantity">Total {statusSummary.totalQuantity || item.quantity || 0}</span>
             {item.locationSummary || physicalLocation ? <span className="neon-chip forge-location-pill">{item.locationSummary || physicalLocation}</span> : null}
-            {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
           </div>
           <p className="compact-subtitle forge-card-meta-legacy">
             {item.category} | {item.buyer} | Qty {item.quantity}
@@ -53597,14 +53636,6 @@ function CompactInventoryCard({
         <span>{statusSummary.soldQuantity || 0} sold</span>
         {lastActivity ? <span>Updated {shortDate(lastActivity)}</span> : null}
       </div>
-
-      {purchaserRows.length ? (
-        <div className="forge-purchaser-breakdown-mini" aria-label="Purchaser quantity breakdown">
-          {purchaserRows.map((row) => (
-            <span key={row.key || row.name}>{row.name}: {row.quantity}</span>
-          ))}
-        </div>
-      ) : null}
 
   <div className="compact-metrics">
     <div>
@@ -53664,11 +53695,11 @@ function CompactInventoryCard({
       </div>
 
       <div className="compact-actions forge-card-actions">
-        <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
-        <button type="button" className="secondary-button" onClick={() => onSell?.(nextSellEntry)}>Sell</button>
+        <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View / Edit</button>
         <OverflowMenu
           buttonLabel="More"
           actions={[
+            { label: "Mark sold / add sale", onClick: () => onSell?.(nextSellEntry), disabled: Number(nextSellEntry?.quantity || 0) < 1 },
             { label: "Edit primary entry", onClick: () => onEdit?.(primaryEntry) },
             { label: "Review Market Value", onClick: () => onQuickUpdateMarketValue?.(item) },
             { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
