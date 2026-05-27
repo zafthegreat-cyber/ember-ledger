@@ -37349,7 +37349,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "addActionSheet") {
       return {
         title: "Quick Add",
-        description: "Pick a quick action.",
+        description: "Add something, then decide where it belongs.",
         size: "medium",
       };
     }
@@ -37540,7 +37540,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <small>{[catalogExpansionName(product), catalogProductTypeLabel(product)].filter(Boolean).join(" | ") || "Catalog product"}</small>
             <small>{hasCatalogMarketPrice(product) ? `Market ${money(priceInfo.currentMarketValue)}` : "Market data unavailable"}</small>
           </span>
-          <span className="status-badge">Review/Add</span>
+          <span className="quick-add-result-action">Review/Add</span>
         </button>
       );
     };
@@ -40061,8 +40061,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "tidetradr",
-        title: "Market",
-        helper: "Catalog, watchlist, or product suggestion.",
+        title: "Watch / Market tracking",
+        helper: "Track price or suggest catalog data.",
       },
     ];
     const selectedDestinations = selectedMultiDestinationKeys(multiDestinationForm);
@@ -40470,7 +40470,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <h3>Destinations</h3>
           <div className="quick-add-destination-helper">
             <strong>Where should this item go?</strong>
-            <span>Vault is for your collection. Forge is for business inventory. Wishlist and Market are optional tracking destinations.</span>
+            <span>Vault is for your collection. Forge is for business inventory. Wishlist and Market Watch are optional tracking destinations.</span>
           </div>
           {fieldError("destination") ? (
             <p className="field-error destination-field-error" role="alert" data-validation-field="destination">
@@ -40694,7 +40694,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!selectedDestinationOptions.length ? (
           <section className="flow-form-section destination-settings">
             <h3>No destination selected</h3>
-            <p className="compact-subtitle">Go back to Choose Where and select Forge, Vault, Market, or Wishlist before adding details.</p>
+            <p className="compact-subtitle">Go back to Choose Where and select Forge, Vault, Wishlist, or Market Watch before adding details.</p>
           </section>
         ) : null}
         </>
@@ -40739,7 +40739,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ) : null}
               {multiDestinationForm.destinations.tidetradr ? (
                 <div className="wizard-summary-card">
-                  <span>Market</span>
+                  <span>Market Watch</span>
                   <strong>{selectedCatalog ? "Add to watchlist" : adminToolsVisible ? "Create catalog item" : "Submit suggestion"}</strong>
                   <small>{multiDestinationForm.tidetradr.sourceUrl || "Market details can be completed later."}</small>
                 </div>
