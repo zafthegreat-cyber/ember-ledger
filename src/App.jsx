@@ -71,6 +71,7 @@ import {
   createEmptyPhase2Data,
   loadLocalPhase2Data,
   loadPhase2Data,
+  saveLocalPhase2Data,
   normalizeReceiptDestination,
   parseReceiptText,
   classifyPhase2SyncError,
@@ -1682,6 +1683,10 @@ const BLANK_MULTI_DESTINATION_FORM = {
   msrpPrice: "",
   marketPrice: "",
   notes: "",
+  receiptId: "",
+  receiptImage: "",
+  receiptMerchant: "",
+  receiptDate: "",
   destinations: {
     vault: false,
     wishlist: false,
@@ -1770,6 +1775,10 @@ function createQuickAddWizardState(overrides = {}) {
     receiptPhotoUrl: "",
     receiptFileName: "",
     receiptNote: "",
+    receiptEditingId: "",
+    receiptLinkTargetType: "",
+    receiptLinkTargetId: "",
+    receiptLinkTargetName: "",
     receiptSaving: false,
     receiptSaved: null,
     ...overrides,
@@ -4999,6 +5008,9 @@ export default function App() {
   const [receiptScanStatus, setReceiptScanStatus] = useState("draft_extracted");
   const [receiptScanMessage, setReceiptScanMessage] = useState("");
   const [receiptScanDraft, setReceiptScanDraft] = useState(null);
+  const [selectedReceiptId, setSelectedReceiptId] = useState("");
+  const [receiptLinkQuery, setReceiptLinkQuery] = useState("");
+  const [receiptActionMessage, setReceiptActionMessage] = useState("");
   const [receiptScanForm, setReceiptScanForm] = useState({
     storeName: "",
     storeLocation: "",
@@ -5276,6 +5288,7 @@ export default function App() {
   unitCost: "",
   salePrice: "",
   receiptImage: "",
+  receiptId: "",
   itemImage: "",
   itemImageSource: "placeholder",
   itemImageStatus: "placeholder",
@@ -6097,6 +6110,7 @@ export default function App() {
     showInventoryScanner ||
     showCatalogScanner ||
     receiptScanOpen ||
+    selectedReceiptId ||
     aiAssistReview ||
     lockedFeatureKey ||
     selectedWatchCalendarEvent ||
@@ -6141,6 +6155,7 @@ export default function App() {
     showInventoryScanner ||
     showCatalogScanner ||
     receiptScanOpen ||
+    selectedReceiptId ||
     aiAssistReview ||
     lockedFeatureKey ||
     selectedWatchCalendarEvent ||
@@ -8878,7 +8893,7 @@ export default function App() {
       return;
     }
     if (normalized === "receipt" || normalized === "add_receipt") {
-      openReceiptScanWorkflow();
+      openBasicReceiptFlow("command-receipt");
       return;
     }
     if (normalized === "mileage") {
@@ -9742,6 +9757,22 @@ export default function App() {
   const forgeReceiptLineItems = commandDeskSellerAccess && activeForgeWorkspace
     ? (forgePhase2Data.receiptLineItems || []).filter((line) => !forgeReceiptIds.size || forgeReceiptIds.has(String(line.receiptId || line.receipt_id || "")))
     : [];
+  const visibleReceiptRecords = useMemo(() => {
+    const seen = new Set();
+    return [
+      quickAddWizard.receiptSaved,
+      ...forgeReceiptRecords,
+      ...phase2RecentReceipts,
+    ]
+      .filter(Boolean)
+      .filter((receipt) => {
+        const id = String(receipt.id || receipt.receiptId || "");
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      })
+      .sort((a, b) => String(b.purchasedAt || b.purchaseDate || b.createdAt || "").localeCompare(String(a.purchasedAt || a.purchaseDate || a.createdAt || "")));
+  }, [forgeReceiptRecords, phase2RecentReceipts, quickAddWizard.receiptSaved]);
   const phase2WorkflowSyncLabel = phase2SyncStatus.source === "supabase"
     ? "Cloud synced"
     : phase2SyncStatus.label || "Local only mode";
@@ -9762,6 +9793,69 @@ export default function App() {
     const summary = Object.entries(counts).map(([label, count]) => `${label} ${count}`).join(", ");
     return summary || "No destinations";
   };
+  const receiptRecordId = (receipt = {}) => String(receipt.id || receipt.receiptId || receipt.receipt_id || "");
+  const receiptMerchantLabel = (receipt = {}) => receipt.merchant || receipt.storeName || receipt.store_name || receipt.vendor || "Saved receipt";
+  const receiptDateLabel = (receipt = {}) => {
+    const value = receipt.purchaseDate || receipt.purchase_date || receipt.purchasedAt || receipt.purchased_at || receipt.createdAt || receipt.created_at || "";
+    return value ? shortDate(value) : "Date not set";
+  };
+  const receiptDateInputValue = (receipt = {}) => {
+    const value = receipt.purchaseDate || receipt.purchase_date || receipt.purchasedAt || receipt.purchased_at || "";
+    return value ? String(value).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  };
+  const receiptImageUrl = (receipt = {}) => receipt.receiptImageUrl || receipt.receipt_image_url || receipt.receiptImage || receipt.receipt_image || receipt.imageUrl || receipt.image_url || "";
+  const findReceiptRecord = (receiptOrId) => {
+    const id = typeof receiptOrId === "object" ? receiptRecordId(receiptOrId) : String(receiptOrId || "");
+    return visibleReceiptRecords.find((receipt) => receiptRecordId(receipt) === id) || (typeof receiptOrId === "object" ? receiptOrId : null);
+  };
+  const allReceiptLineItems = () => {
+    const seen = new Set();
+    return [...(phase2Data.receiptLineItems || []), ...(forgePhase2Data.receiptLineItems || [])].filter((line) => {
+      const key = String(line.id || `${line.receiptId || line.receipt_id}-${line.createdInventoryItemId || line.created_inventory_item_id}-${line.itemName || line.item_name || line.productName || line.product_name}`);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  const receiptLinesFor = (receipt = {}) => {
+    const id = receiptRecordId(receipt);
+    if (!id) return [];
+    return allReceiptLineItems().filter((line) => String(line.receiptId || line.receipt_id || "") === id);
+  };
+  const receiptLinkedItems = (receipt = {}) => {
+    const id = receiptRecordId(receipt);
+    const image = receiptImageUrl(receipt);
+    if (!id && !image) return [];
+    return items.filter((item) => (
+      String(item.receiptId || item.receipt_id || item.linkedReceiptId || item.linked_receipt_id || "") === id ||
+      (image && String(item.receiptImage || item.receipt_image || item.receiptImageUrl || item.receipt_image_url || "") === String(image)) ||
+      (id && String(item.actionNotes || item.notes || "").includes(id))
+    ));
+  };
+  const receiptLinkedExpenses = (receipt = {}) => {
+    const id = receiptRecordId(receipt);
+    const image = receiptImageUrl(receipt);
+    if (!id && !image) return [];
+    return expenses.filter((expense) => (
+      String(expense.receiptId || expense.receipt_id || "") === id ||
+      (image && String(expense.receiptImage || expense.receipt_image || expense.receiptPhoto || expense.receipt_photo || "") === String(image)) ||
+      (id && String(expense.notes || "").includes(id))
+    ));
+  };
+  const receiptLinkedSales = (receipt = {}) => {
+    const id = receiptRecordId(receipt);
+    const image = receiptImageUrl(receipt);
+    if (!id && !image) return [];
+    return workspaceSales.filter((sale) => (
+      String(sale.receiptId || sale.receipt_id || "") === id ||
+      String(sale.referenceId || "").includes(id) ||
+      (image && String(sale.receiptImage || sale.receiptImageUrl || "") === String(image))
+    ));
+  };
+  const receiptTotalLabel = (receipt = {}) => Number(receipt.total ?? receipt.receiptTotal ?? receipt.receipt_total ?? 0)
+    ? money(receipt.total ?? receipt.receiptTotal ?? receipt.receipt_total ?? 0)
+    : "Total optional";
+  const selectedReceiptRecord = selectedReceiptId ? findReceiptRecord(selectedReceiptId) : null;
   const phase2RecentKidProjects = phase2Data.kidCommunityProjects || [];
   const phase2KidProjectItemCounts = (phase2Data.kidCommunityProjectItems || []).reduce((acc, item) => {
     if (item.projectId) acc[item.projectId] = (acc[item.projectId] || 0) + 1;
@@ -15872,6 +15966,297 @@ export default function App() {
     }
   }
 
+  function appendUniqueText(current = "", addition = "") {
+    const next = String(addition || "").trim();
+    if (!next) return current || "";
+    const existing = String(current || "").trim();
+    if (existing.includes(next)) return existing;
+    return [existing, next].filter(Boolean).join(" | ");
+  }
+
+  function receiptLinkNote(receipt = {}) {
+    return `Receipt ${receiptRecordId(receipt)}: ${receiptMerchantLabel(receipt)} ${receiptDateLabel(receipt)}`;
+  }
+
+  function buildReceiptLineForInventoryItem(receipt = {}, item = {}) {
+    const destination =
+      isForgeInventoryItem(item) ? "forge" :
+      isWishlistItemRecord(item) ? "wishlist" :
+      "vault";
+    return {
+      id: makeReceiptEntityId("receipt-line-link"),
+      receiptId: receiptRecordId(receipt),
+      rawText: `Linked existing item: ${item.name || item.itemName || "Inventory item"}`,
+      itemName: item.name || item.itemName || "Inventory item",
+      productName: item.catalogProductName || item.name || item.itemName || "Inventory item",
+      quantity: Number(item.quantity || 1),
+      unitCost: Number(item.unitCost || item.purchasePrice || 0),
+      totalCost: Number(item.unitCost || item.purchasePrice || 0) * Number(item.quantity || 1),
+      destination,
+      matchedConfidence: "linked_existing",
+      verified: true,
+      createdInventoryItemId: item.id,
+      notes: "Linked after receipt save.",
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  function syncReceiptItemLinkLine(receipt = {}, item = {}, action = "link") {
+    const receiptId = receiptRecordId(receipt);
+    if (!receiptId || !item?.id) return;
+    const existingLines = receiptLinesFor(receipt).filter((line) =>
+      String(line.createdInventoryItemId || line.created_inventory_item_id || "") !== String(item.id)
+    );
+    const nextLines = action === "unlink" ? existingLines : [...existingLines, buildReceiptLineForInventoryItem(receipt, item)];
+    syncForgeReceiptWorkflowState(receipt, nextLines);
+  }
+
+  async function updateInventoryReceiptProof(item = {}, patch = {}) {
+    if (!item?.id) return;
+    if (BETA_LOCAL_MODE || user?.id === "local-beta" || !supabase) return;
+    const row = {};
+    if (Object.prototype.hasOwnProperty.call(patch, "receiptImage")) row.receipt_image = patch.receiptImage || "";
+    if (Object.prototype.hasOwnProperty.call(patch, "actionNotes")) row.action_notes = patch.actionNotes || "";
+    if (!Object.keys(row).length) return;
+    row.updated_at = new Date().toISOString();
+    const { error } = await supabase.from("inventory_items").update(row).eq("id", item.id);
+    if (error) throw new Error(`Could not update item receipt link: ${error.message}`);
+  }
+
+  async function linkReceiptToItem(receiptInput = {}, itemInput = {}, options = {}) {
+    const receipt = findReceiptRecord(receiptInput);
+    const item = items.find((entry) => String(entry.id) === String(itemInput?.id || itemInput)) || itemInput;
+    if (!receipt || !item?.id) return;
+    if (!ensureWorkspaceEditor(item.workspaceId || item.workspace_id || activeWorkspace?.id)) return;
+    const image = receiptImageUrl(receipt);
+    const note = receiptLinkNote(receipt);
+    const updatedItem = {
+      ...item,
+      receiptId: receiptRecordId(receipt),
+      linkedReceiptId: receiptRecordId(receipt),
+      receiptImage: item.receiptImage || image || "",
+      actionNotes: appendUniqueText(item.actionNotes || item.notes || "", note),
+      updatedAt: new Date().toISOString(),
+    };
+    setItems((current) => current.map((entry) => String(entry.id) === String(item.id) ? { ...entry, ...updatedItem } : entry));
+    syncReceiptItemLinkLine(receipt, updatedItem, "link");
+    try {
+      await updateInventoryReceiptProof(item, {
+        receiptImage: updatedItem.receiptImage,
+        actionNotes: updatedItem.actionNotes,
+      });
+      if (!options.silent) setReceiptActionMessage(`${item.name || item.itemName || "Item"} is linked to this receipt.`);
+    } catch (error) {
+      if (!options.silent) setReceiptActionMessage(error?.message || "Receipt linked locally, but cloud sync failed.");
+    }
+  }
+
+  async function unlinkReceiptFromItem(receiptInput = {}, itemInput = {}) {
+    const receipt = findReceiptRecord(receiptInput);
+    const item = items.find((entry) => String(entry.id) === String(itemInput?.id || itemInput)) || itemInput;
+    if (!receipt || !item?.id) return;
+    if (!ensureWorkspaceEditor(item.workspaceId || item.workspace_id || activeWorkspace?.id)) return;
+    const image = receiptImageUrl(receipt);
+    const note = receiptLinkNote(receipt);
+    const cleanedActionNotes = String(item.actionNotes || item.notes || "")
+      .split(" | ")
+      .map((part) => part.trim())
+      .filter((part) => part && part !== note && !part.includes(receiptRecordId(receipt)))
+      .join(" | ");
+    const updatedItem = {
+      ...item,
+      receiptId: String(item.receiptId || item.linkedReceiptId || "") === receiptRecordId(receipt) ? "" : item.receiptId,
+      linkedReceiptId: String(item.linkedReceiptId || item.receiptId || "") === receiptRecordId(receipt) ? "" : item.linkedReceiptId,
+      receiptImage: image && String(item.receiptImage || "") === String(image) ? "" : item.receiptImage,
+      actionNotes: cleanedActionNotes,
+      updatedAt: new Date().toISOString(),
+    };
+    setItems((current) => current.map((entry) => String(entry.id) === String(item.id) ? { ...entry, ...updatedItem } : entry));
+    syncReceiptItemLinkLine(receipt, item, "unlink");
+    try {
+      await updateInventoryReceiptProof(item, {
+        receiptImage: updatedItem.receiptImage,
+        actionNotes: updatedItem.actionNotes || item.actionNotes || "",
+      });
+      setReceiptActionMessage(`${item.name || item.itemName || "Item"} was unlinked from this receipt.`);
+    } catch (error) {
+      setReceiptActionMessage(error?.message || "Receipt unlinked locally, but cloud sync failed.");
+    }
+  }
+
+  async function linkReceiptToSale(receiptInput = {}, saleInput = {}, options = {}) {
+    const receipt = findReceiptRecord(receiptInput);
+    const sale = sales.find((entry) => String(entry.id) === String(saleInput?.id || saleInput)) || saleInput;
+    if (!receipt || !sale?.id) return;
+    if (!ensureWorkspaceEditor(sale.workspaceId || sale.workspace_id || activeForgeWorkspace?.id || activeWorkspace?.id)) return;
+    const image = receiptImageUrl(receipt);
+    const note = receiptLinkNote(receipt);
+    const nextSale = {
+      ...sale,
+      receiptId: receiptRecordId(receipt),
+      receiptImage: sale.receiptImage || image || "",
+      receiptImageUrl: sale.receiptImageUrl || image || "",
+      referenceId: sale.referenceId || receiptRecordId(receipt),
+      notes: appendUniqueText(sale.notes || "", note),
+      updatedAt: new Date().toISOString(),
+    };
+    setSales((current) => current.map((entry) => String(entry.id) === String(sale.id) ? nextSale : entry));
+    if (!BETA_LOCAL_MODE && supabase && uuidOrNull(sale.id)) {
+      const { error } = await supabase.from("sales_records").update({
+        notes: nextSale.notes,
+        updated_at: new Date().toISOString(),
+      }).eq("id", sale.id);
+      if (error && !options.silent) setReceiptActionMessage(`Sale linked locally, but cloud sync failed: ${error.message}`);
+    }
+    if (!options.silent) setReceiptActionMessage(`${sale.itemName || "Sale"} is linked to this receipt.`);
+  }
+
+  function openReceiptDetail(receiptInput = {}, options = {}) {
+    const receipt = findReceiptRecord(receiptInput) || receiptInput;
+    const id = receiptRecordId(receipt);
+    if (!id) return;
+    if (options.closeReceiptScan) setReceiptScanOpen(false);
+    if (options.closeFlowModal) closeFlowModal({ force: true, reset: false });
+    setReceiptActionMessage("");
+    setReceiptLinkQuery("");
+    setSelectedReceiptId(id);
+  }
+
+  function openBasicReceiptFlow(source = "receipt", seed = {}) {
+    setQuickAddWizard(createQuickAddWizardState({
+      screen: "receipt",
+      path: "receipt",
+      ...seed,
+    }));
+    openFlowModal("addActionSheet", { size: "medium", source });
+  }
+
+  function openReceiptForItem(item = {}, context = "item") {
+    if (!item?.id) return;
+    setSelectedReceiptId("");
+    openBasicReceiptFlow(`${context}-attach-receipt`, {
+      receiptMerchant: item.store || item.sourceLocation || "",
+      receiptTotal: item.unitCost ? String(item.unitCost) : "",
+      receiptNote: `Proof for ${item.name || item.itemName || "item"}.`,
+      receiptLinkTargetType: "item",
+      receiptLinkTargetId: item.id,
+      receiptLinkTargetName: item.name || item.itemName || "Inventory item",
+    });
+  }
+
+  function openReceiptForSale(sale = {}) {
+    if (!sale?.id) return;
+    setSelectedReceiptId("");
+    openBasicReceiptFlow("sale-attach-receipt", {
+      receiptMerchant: sale.platform || "",
+      receiptDate: sale.saleDate || String(sale.createdAt || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+      receiptTotal: sale.grossSale ? String(sale.grossSale) : "",
+      receiptNote: `Sale proof for ${sale.itemName || "sale"}.`,
+      receiptLinkTargetType: "sale",
+      receiptLinkTargetId: sale.id,
+      receiptLinkTargetName: sale.itemName || "Sale",
+    });
+  }
+
+  function openReceiptAddItemFlow(receiptInput = {}, seed = {}) {
+    const receipt = findReceiptRecord(receiptInput) || receiptInput;
+    if (!receiptRecordId(receipt)) return;
+    setSelectedReceiptId("");
+    const receiptDate = receiptDateInputValue(receipt);
+    openProductAddFlow({
+      source: "receipt-add-item",
+      seed: {
+        initialStep: "item",
+        destinations: destinationDefaults({ vault: true }),
+        receiptId: receiptRecordId(receipt),
+        receiptImage: receiptImageUrl(receipt),
+        receiptMerchant: receiptMerchantLabel(receipt),
+        receiptDate,
+        notes: `Added from receipt ${receiptMerchantLabel(receipt)} ${receiptDateLabel(receipt)}.`,
+        vault: { purchaseDate: receiptDate, unitCost: "" },
+        forge: { source: receiptMerchantLabel(receipt), unitCost: "" },
+        ...seed,
+      },
+    });
+  }
+
+  function openReceiptCreateExpense(receiptInput = {}) {
+    const receipt = findReceiptRecord(receiptInput) || receiptInput;
+    if (!receiptRecordId(receipt)) return;
+    setSelectedReceiptId("");
+    setEditingExpenseId(null);
+    setExpenseForm({
+      ...blankExpense,
+      date: receiptDateInputValue(receipt),
+      vendor: receiptMerchantLabel(receipt),
+      amount: Number(receipt.total ?? receipt.receiptTotal ?? receipt.receipt_total ?? 0) ? String(receipt.total ?? receipt.receiptTotal ?? receipt.receipt_total) : "",
+      receiptImage: receiptImageUrl(receipt),
+      receiptId: receiptRecordId(receipt),
+      notes: appendUniqueText(receipt.notes || "", `Expense linked from receipt ${receiptRecordId(receipt)}.`),
+      receiptSplitMode: "expense_only",
+    });
+    openAddExpenseFlow({ preserveForm: true, source: "receipt-link-expense" });
+  }
+
+  function openReceiptEditFlow(receiptInput = {}) {
+    const receipt = findReceiptRecord(receiptInput) || receiptInput;
+    const receiptId = receiptRecordId(receipt);
+    if (!receiptId) return;
+    setSelectedReceiptId("");
+    openBasicReceiptFlow("receipt-edit", {
+      receiptEditingId: receiptId,
+      receiptMerchant: receiptMerchantLabel(receipt),
+      receiptDate: receiptDateInputValue(receipt),
+      receiptTotal: Number(receipt.total ?? receipt.receiptTotal ?? receipt.receipt_total ?? 0)
+        ? String(receipt.total ?? receipt.receiptTotal ?? receipt.receipt_total)
+        : "",
+      receiptPhotoUrl: receiptImageUrl(receipt),
+      receiptFileName: receiptImageUrl(receipt) ? "Saved receipt proof" : "",
+      receiptNote: receipt.notes || "",
+      receiptSaved: receipt,
+    });
+  }
+
+  function deleteReceiptRecord(receiptInput = {}) {
+    const receipt = findReceiptRecord(receiptInput) || receiptInput;
+    const receiptId = receiptRecordId(receipt);
+    if (!receiptId) return;
+    const workspaceId = receipt.workspaceId || receipt.workspace_id || activeForgeWorkspace?.id || activeWorkspace?.id;
+    if (!ensureWorkspaceEditor(workspaceId)) return;
+    requestAdminActionConfirmation({
+      title: "Delete this receipt?",
+      message: `This removes ${receiptMerchantLabel(receipt)} from saved receipts. Linked item, sale, or expense records stay, but the receipt record and receipt line review will be removed.`,
+      confirmLabel: "Delete receipt",
+      danger: true,
+      successMessage: "Receipt deleted.",
+      errorMessage: "Could not delete receipt.",
+      onConfirm: async () => {
+        setForgePhase2Data((current) => ({
+          ...current,
+          receiptRecords: (current.receiptRecords || []).filter((entry) => receiptRecordId(entry) !== receiptId),
+          receiptLineItems: (current.receiptLineItems || []).filter((line) => String(line.receiptId || line.receipt_id || "") !== receiptId),
+        }));
+        setPhase2Data((current) => ({
+          ...current,
+          receiptRecords: (current.receiptRecords || []).filter((entry) => receiptRecordId(entry) !== receiptId),
+          receiptLineItems: (current.receiptLineItems || []).filter((line) => String(line.receiptId || line.receipt_id || "") !== receiptId),
+        }));
+        saveLocalPhase2Data((current) => ({
+          ...current,
+          receiptRecords: (current.receiptRecords || []).filter((entry) => receiptRecordId(entry) !== receiptId),
+          receiptLineItems: (current.receiptLineItems || []).filter((line) => String(line.receiptId || line.receipt_id || "") !== receiptId),
+        }));
+        setSelectedReceiptId("");
+        if (!BETA_LOCAL_MODE && supabase && uuidOrNull(receiptId)) {
+          const { error: lineError } = await supabase.from("receipt_line_items").delete().eq("receipt_id", receiptId);
+          if (lineError) throw new Error(lineError.message);
+          const { error } = await supabase.from("receipt_records").delete().eq("id", receiptId);
+          if (error) throw new Error(error.message);
+        }
+      },
+    });
+  }
+
   async function submitReceiptReview() {
     if (!receiptScanDraft) return;
     const warnings = receiptReviewWarnings();
@@ -16883,8 +17268,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const now = new Date().toISOString();
     const purchaseDate = quickAddWizard.receiptDate || now.slice(0, 10);
     const targetWorkspace = activeForgeWorkspace || activeWorkspace;
+    const editingReceiptId = String(quickAddWizard.receiptEditingId || "");
+    const editingReceipt = editingReceiptId ? findReceiptRecord(editingReceiptId) : null;
     const receipt = {
-      id: makeId("receipt"),
+      id: editingReceiptId || makeId("receipt"),
       merchant,
       storeName: merchant,
       purchasedAt: `${purchaseDate}T12:00:00.000Z`,
@@ -16909,28 +17296,74 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       workspaceName: targetWorkspace?.name || "Workspace",
       notes: quickAddWizard.receiptNote || "Quick Add receipt. Link items later when supported.",
       rawOcrText: "",
-      lines: [],
-      createdAt: now,
+      lines: editingReceipt ? receiptLinesFor(editingReceipt) : [],
+      createdAt: editingReceipt?.createdAt || now,
       updatedAt: now,
     };
     try {
-      const result = await saveReceiptRecord(forgePhase2Context(), receipt);
-      updatePhase2Status(result, "Receipt saved locally.");
-      const savedReceipt = {
-        ...receipt,
-        ...(result.data || {}),
-        id: result.data?.id || receipt.id,
-      };
-      syncForgeReceiptWorkflowState(savedReceipt, result.lines || []);
+      let result;
+      let savedReceipt = receipt;
+      let savedReceiptLines = receipt.lines || [];
+      if (editingReceiptId) {
+        saveLocalPhase2Data((current) => ({
+          ...current,
+          receiptRecords: [receipt, ...(current.receiptRecords || []).filter((entry) => receiptRecordId(entry) !== editingReceiptId)],
+          receiptLineItems: current.receiptLineItems || [],
+        }));
+        result = { source: "local", data: receipt, lines: savedReceiptLines };
+        if (!BETA_LOCAL_MODE && supabase && uuidOrNull(editingReceiptId)) {
+          const { error } = await supabase.from("receipt_records").update({
+            merchant: receipt.merchant,
+            store_name: receipt.storeName,
+            purchased_at: receipt.purchasedAt,
+            purchase_date: receipt.purchaseDate,
+            total: receipt.total,
+            receipt_total: receipt.receiptTotal,
+            subtotal: receipt.subtotal,
+            receipt_image_url: receipt.receiptImageUrl,
+            image_url: receipt.imageUrl,
+            notes: receipt.notes,
+            updated_at: now,
+          }).eq("id", editingReceiptId);
+          if (error) {
+            result = { source: "local", data: receipt, lines: savedReceiptLines, error };
+          } else {
+            result = { source: "supabase", data: receipt, lines: savedReceiptLines };
+          }
+        }
+        updatePhase2Status(result, result.error ? "Receipt updated locally; cloud update failed." : "Receipt updated.");
+      } else {
+        result = await saveReceiptRecord(forgePhase2Context(), receipt);
+        updatePhase2Status(result, "Receipt saved locally.");
+        savedReceipt = {
+          ...receipt,
+          ...(result.data || {}),
+          id: result.data?.id || receipt.id,
+        };
+        savedReceiptLines = result.lines || [];
+      }
+      syncForgeReceiptWorkflowState(savedReceipt, savedReceiptLines);
+      if (quickAddWizard.receiptLinkTargetType === "item" && quickAddWizard.receiptLinkTargetId) {
+        const targetItem = items.find((item) => String(item.id) === String(quickAddWizard.receiptLinkTargetId));
+        if (targetItem) await linkReceiptToItem(savedReceipt, targetItem, { silent: true });
+      }
+      if (quickAddWizard.receiptLinkTargetType === "sale" && quickAddWizard.receiptLinkTargetId) {
+        const targetSale = sales.find((sale) => String(sale.id) === String(quickAddWizard.receiptLinkTargetId));
+        if (targetSale) await linkReceiptToSale(savedReceipt, targetSale, { silent: true });
+      }
+      const linkedTargetCopy = quickAddWizard.receiptLinkTargetName
+        ? ` Linked to ${quickAddWizard.receiptLinkTargetName}.`
+        : "";
+      const savedCopy = editingReceiptId ? "Receipt updated." : "Receipt saved.";
       setQuickAddWizard((current) => ({
         ...current,
         screen: "receiptSuccess",
         path: "receipt",
         receiptSaving: false,
         receiptSaved: savedReceipt,
-        message: "Receipt saved. You can link items later or add items now.",
+        message: `${savedCopy}${linkedTargetCopy} You can link items later or add items now.`,
       }));
-      setVaultToast("Receipt saved.");
+      setVaultToast(savedCopy);
     } catch (error) {
       logAppError("quick_add_receipt_save", error, { merchant }, "normal");
       setQuickAddWizard((current) => ({
@@ -17009,8 +17442,16 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function closeMarketAddSuccess(options = {}) {
+    const receiptId = multiDestinationSuccess?.receiptId || multiDestinationForm.receiptId || "";
     closeFlowModal({ force: true, reset: false });
     resetMultiDestinationForm();
+    if (receiptId) {
+      const receipt = findReceiptRecord(receiptId);
+      if (receipt && options.returnToReceipt !== false) {
+        window.setTimeout(() => openReceiptDetail(receipt), 80);
+      }
+      return;
+    }
     restoreMarketResultsPosition(options);
   }
 
@@ -18678,7 +19119,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       productLine: selectedCatalogKnown.productLine || "",
       packCount: selectedCatalogKnown.packCount || "",
       variant: multiDestinationForm.variant || "",
-      notes: multiDestinationForm.notes || "",
+      receiptId: multiDestinationForm.receiptId || "",
+      receiptImage: multiDestinationForm.receiptImage || "",
+      notes: appendUniqueText(
+        multiDestinationForm.notes || "",
+        multiDestinationForm.receiptId ? `Linked to receipt ${multiDestinationForm.receiptId} from ${multiDestinationForm.receiptMerchant || "saved receipt"}.` : ""
+      ),
       sourceType: selectedCatalog ? "TideTradr" : "Multi-destination add",
     };
 
@@ -18703,7 +19149,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           vaultCategory: multiDestinationForm.vault.vaultCategory,
           purchaseDate: multiDestinationForm.vault.purchaseDate,
           storageLocation: multiDestinationForm.vault.storageLocation || vaultStatusLabel(multiDestinationForm.vault.vaultStatus),
-          actionNotes: [multiDestinationForm.vault.notes, multiDestinationForm.notes].filter(Boolean).join(" "),
+          receiptId: shared.receiptId,
+          receiptImage: shared.receiptImage,
+          actionNotes: [multiDestinationForm.vault.notes, shared.notes].filter(Boolean).join(" "),
           conditionName: "Near Mint",
           language: "English",
           createdAt: now,
@@ -18736,6 +19184,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           vaultStatus: "wishlist",
           vaultCategory: "Wishlist",
           storageLocation: "Wishlist",
+          receiptId: shared.receiptId,
+          receiptImage: shared.receiptImage,
           wishlistPriority: multiDestinationForm.wishlist.priority,
           desiredCondition: multiDestinationForm.wishlist.desiredCondition,
           wishlistNotes: multiDestinationForm.wishlist.notes,
@@ -18744,7 +19194,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           actionNotes: [
             "Wishlist item - wanted, not owned.",
             multiDestinationForm.wishlist.notes,
-            multiDestinationForm.notes,
+            shared.notes,
           ].filter(Boolean).join(" "),
           conditionName: multiDestinationForm.wishlist.desiredCondition || "Any",
           language: "English",
@@ -18788,9 +19238,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           buyer: forgePurchaser.purchaserName,
           purchaserId: forgePurchaser.purchaserId,
           purchaserName: forgePurchaser.purchaserName,
+          receiptId: shared.receiptId,
+          receiptImage: shared.receiptImage,
           conditionName: multiDestinationForm.forge.conditionName || "Near Mint",
           language: "English",
-          notes: [multiDestinationForm.forge.notes, multiDestinationForm.notes].filter(Boolean).join(" "),
+          notes: [multiDestinationForm.forge.notes, shared.notes].filter(Boolean).join(" "),
           createdAt: now,
         }, forgeWorkspace);
         pendingInventoryCreates.push({ record: forgeItem, successMessage: `Added to Forge inventory (${forgeWorkspace?.name || "Workspace"})` });
@@ -18894,6 +19346,25 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         failures.push(...saveResult.failures.map((failure) => `${failure.itemName || "Inventory item"} failed: ${failure.error || "Could not save"}`));
       }
     }
+    if (savedInventoryItems.length && multiDestinationForm.receiptId) {
+      const receipt = findReceiptRecord(multiDestinationForm.receiptId) || {
+        id: multiDestinationForm.receiptId,
+        merchant: multiDestinationForm.receiptMerchant,
+        purchaseDate: multiDestinationForm.receiptDate,
+        receiptImageUrl: multiDestinationForm.receiptImage,
+        workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+        workspace_id: activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      };
+      const savedItemIds = new Set(savedInventoryItems.map((item) => String(item.id)));
+      const existingLines = receiptLinesFor(receipt).filter((line) =>
+        !savedItemIds.has(String(line.createdInventoryItemId || line.created_inventory_item_id || ""))
+      );
+      syncForgeReceiptWorkflowState(receipt, [
+        ...existingLines,
+        ...savedInventoryItems.map((item) => buildReceiptLineForInventoryItem(receipt, item)),
+      ]);
+      successes.push(`Linked ${savedInventoryItems.length} item${savedInventoryItems.length === 1 ? "" : "s"} to receipt`);
+    }
 
     const uniqueSuccesses = [...new Set(successes)];
     const uniqueFailures = [...new Set(failures)];
@@ -18902,6 +19373,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       entries: saveConfirmationEntries,
     });
     const marketAddSource = isMarketAddFlowSource(activeFlowModal?.source);
+    const receiptAddSource = String(activeFlowModal?.source || "").startsWith("receipt-");
     if (uniqueFailures.length) console.error("Multi-destination save failures", uniqueFailures);
     if (uniqueSuccesses.length && !marketAddSource) setVaultToast(uniqueFailures.length ? `${quickAddSaveSummary} Could not save every destination.` : quickAddSaveSummary);
     if (!successes.length && uniqueFailures.length) setVaultToast("Could not save item.");
@@ -18911,7 +19383,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return;
     }
     setMultiDestinationSaving(false);
-    if (marketAddSource) {
+    if (marketAddSource || receiptAddSource) {
       setMultiDestinationSuccess({
         itemName,
         summary: quickAddSaveSummary,
@@ -18928,6 +19400,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           quantity: Number(item.quantity || 1),
         })),
         source: activeFlowModal?.source || "",
+        receiptId: multiDestinationForm.receiptId || "",
       });
       setMultiDestinationStep("success");
       setMultiDestinationMessage("");
@@ -22337,7 +22810,7 @@ function renderForgeAccessState() {
         }]
       : [];
     return {
-      id: makeId("receipt"),
+      id: expense.receiptId || expense.receipt_id || makeId("receipt"),
       merchant: expense.vendor || "",
       purchasedAt: expense.date ? new Date(`${expense.date}T12:00:00`).toISOString() : new Date().toISOString(),
       total: Number(expense.amount || 0),
@@ -22360,6 +22833,12 @@ function renderForgeAccessState() {
 
   async function persistReceiptWorkflowFromExpense(expense = {}) {
     if (!expense.receiptImage && !expense.rawReceiptText && !expense.receiptPhoto) return null;
+    if (expense.receiptId && findReceiptRecord(expense.receiptId)) {
+      const existingReceipt = findReceiptRecord(expense.receiptId);
+      const existingLines = receiptLinesFor(existingReceipt);
+      syncForgeReceiptWorkflowState(existingReceipt, existingLines);
+      return { source: "local", data: existingReceipt, lines: existingLines };
+    }
     const receipt = buildReceiptWorkflowFromExpense(expense);
     const receiptLines = receipt.lines.map((line) => ({ ...line, receiptId: receipt.id }));
     syncForgeReceiptWorkflowState(receipt, receiptLines);
@@ -22462,7 +22941,7 @@ function renderForgeAccessState() {
 
     if (error) return showAppMessage("Could not save expense: " + error.message);
 
-    const mapped = mapExpense(data);
+    const mapped = { ...mapExpense(data), receiptId: expenseForm.receiptId || "", rawReceiptText: expenseForm.rawReceiptText || "" };
     void persistReceiptWorkflowFromExpense({ ...mapped, ...expenseForm, receiptPhoto: expenseForm.receiptImage });
     setExpenses(editingExpenseId ? expenses.map((e) => (e.id === editingExpenseId ? mapped : e)) : [mapped, ...expenses]);
     setEditingExpenseId(null);
@@ -22535,6 +23014,10 @@ function renderForgeAccessState() {
   function renderExpenseRecordCard(expense, options = {}) {
     const linkedItemLabel = expenseLinkedItemLabel(expense);
     const receiptUrl = expense.receiptImage || expense.receiptImageUrl || expense.receiptPhoto || expense.imageUrl || "";
+    const linkedReceipt = findReceiptRecord(expense.receiptId) || visibleReceiptRecords.find((receipt) => {
+      const image = receiptImageUrl(receipt);
+      return image && receiptUrl && String(image) === String(receiptUrl);
+    });
     return (
       <div className={`expense-record-card${options.compact ? " is-compact" : ""}`} key={expense.id}>
         <div className="expense-record-main">
@@ -22553,6 +23036,7 @@ function renderForgeAccessState() {
         </div>
         {expense.notes ? <p className="compact-subtitle">{expense.notes}</p> : null}
         <div className="expense-record-actions">
+          {linkedReceipt ? <button type="button" className="secondary-button" onClick={() => openReceiptDetail(linkedReceipt)}>Receipt detail</button> : null}
           {receiptUrl ? <a href={receiptUrl} target="_blank" rel="noreferrer">View Receipt</a> : null}
           <OverflowMenu
             onEdit={() => startEditingExpense(expense)}
@@ -37594,6 +38078,236 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderReceiptRecordCard(receiptInput = {}, options = {}) {
+    const receipt = findReceiptRecord(receiptInput) || receiptInput;
+    const receiptId = receiptRecordId(receipt);
+    if (!receiptId) return null;
+    const linkedItemCount = receiptLinkedItems(receipt).length;
+    const linkedExpenseCount = receiptLinkedExpenses(receipt).length;
+    const lineCount = receiptLinesFor(receipt).length;
+    const imageUrl = receiptImageUrl(receipt);
+    return (
+      <article className={`receipt-ledger-card${options.compact ? " is-compact" : ""}`} key={receiptId}>
+        <div className="receipt-ledger-card-main">
+          <span className={`receipt-proof-pill ${imageUrl ? "is-attached" : "is-missing"}`}>
+            {imageUrl ? "Proof attached" : "No photo yet"}
+          </span>
+          <div>
+            <h3>{receiptMerchantLabel(receipt)}</h3>
+            <p>{receiptDateLabel(receipt)} · {receiptTotalLabel(receipt)}</p>
+          </div>
+        </div>
+        <div className="receipt-ledger-card-stats" aria-label="Receipt links">
+          <span>{linkedItemCount} linked item{linkedItemCount === 1 ? "" : "s"}</span>
+          <span>{linkedExpenseCount} expense{linkedExpenseCount === 1 ? "" : "s"}</span>
+          <span>{lineCount} reviewed line{lineCount === 1 ? "" : "s"}</span>
+        </div>
+        {receipt.notes ? <p className="compact-subtitle">{receipt.notes}</p> : null}
+        <div className="receipt-ledger-card-actions">
+          <button type="button" onClick={() => openReceiptDetail(receipt)}>View receipt</button>
+          <button type="button" className="secondary-button" onClick={() => openReceiptAddItemFlow(receipt)}>Add item</button>
+          <button type="button" className="secondary-button" onClick={() => openReceiptCreateExpense(receipt)}>Link expense</button>
+        </div>
+      </article>
+    );
+  }
+
+  function renderReceiptDetailModal() {
+    const receipt = selectedReceiptRecord;
+    if (!receipt) return null;
+    const receiptId = receiptRecordId(receipt);
+    const imageUrl = receiptImageUrl(receipt);
+    const linkedItems = receiptLinkedItems(receipt);
+    const linkedExpenses = receiptLinkedExpenses(receipt);
+    const linkedSales = receiptLinkedSales(receipt);
+    const receiptLines = receiptLinesFor(receipt);
+    const normalizedQuery = normalizeSearchText(receiptLinkQuery);
+    const linkedItemIds = new Set(linkedItems.map((item) => String(item.id)));
+    const linkCandidates = items
+      .filter((item) => item?.id && !linkedItemIds.has(String(item.id)))
+      .filter((item) => {
+        const itemWorkspaceId = item.workspaceId || item.workspace_id || activeWorkspace?.id;
+        const receiptWorkspaceId = receipt.workspaceId || receipt.workspace_id || activeWorkspace?.id;
+        if (receiptWorkspaceId && itemWorkspaceId && String(itemWorkspaceId) !== String(receiptWorkspaceId)) return false;
+        if (!normalizedQuery) return isActiveVaultItem(item) || isForgeInventoryItem(item) || isWishlistItemRecord(item);
+        const haystack = normalizeSearchText([
+          item.name,
+          item.itemName,
+          item.catalogProductName,
+          item.setName,
+          item.expansion,
+          item.productType,
+          item.category,
+          item.barcode,
+          item.sku,
+        ].filter(Boolean).join(" "));
+        return haystack.includes(normalizedQuery);
+      })
+      .slice(0, 8);
+    const closeReceiptDetail = () => {
+      setSelectedReceiptId("");
+      setReceiptActionMessage("");
+      setReceiptLinkQuery("");
+    };
+
+    return (
+      <div className="location-modal-backdrop receipt-detail-backdrop" role="presentation" onClick={closeReceiptDetail}>
+        <section
+          className="location-modal flow-modal receipt-detail-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="receipt-detail-title"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="modal-title-row modal-sticky-header">
+            <div>
+              <p className="section-kicker">Receipt proof</p>
+              <h2 id="receipt-detail-title">{receiptMerchantLabel(receipt)}</h2>
+              <p>{receiptDateLabel(receipt)} · {receiptTotalLabel(receipt)}</p>
+            </div>
+            <button type="button" className="modal-close-button" aria-label="Close receipt detail" onClick={closeReceiptDetail}>
+              X
+            </button>
+          </div>
+
+          <div className="flow-modal-body receipt-detail-body">
+            <section className="receipt-detail-summary-card">
+              <div className={imageUrl ? "receipt-proof-frame" : "receipt-proof-frame is-empty"}>
+                {imageUrl ? <img src={imageUrl} alt={`${receiptMerchantLabel(receipt)} receipt proof`} /> : <span>No receipt photo attached</span>}
+              </div>
+              <div className="receipt-detail-summary-copy">
+                <span className={`receipt-proof-pill ${imageUrl ? "is-attached" : "is-missing"}`}>
+                  {imageUrl ? "Proof attached" : "Proof optional"}
+                </span>
+                <h3>{receiptMerchantLabel(receipt)}</h3>
+                <p>{receipt.notes || "Saved receipt. Link items, expenses, and sales when useful."}</p>
+                <div className="receipt-summary-grid">
+                  <DetailItem label="Date" value={receiptDateLabel(receipt)} />
+                  <DetailItem label="Total" value={receiptTotalLabel(receipt)} />
+                  <DetailItem label="Linked items" value={linkedItems.length} />
+                  <DetailItem label="Expense links" value={linkedExpenses.length} />
+                </div>
+              </div>
+            </section>
+
+            {receiptActionMessage ? <p className="flow-inline-message is-info">{receiptActionMessage}</p> : null}
+
+            <section className="receipt-linked-section">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Linked items</h3>
+                  <p>Search existing Vault or Forge items, then link this receipt as proof.</p>
+                </div>
+                <button type="button" className="secondary-button" onClick={() => openReceiptAddItemFlow(receipt)}>
+                  Add item from receipt
+                </button>
+              </div>
+              <Field label="Find existing item">
+                <input
+                  value={receiptLinkQuery}
+                  onChange={(event) => setReceiptLinkQuery(event.target.value)}
+                  placeholder="Search Vault or Forge items"
+                />
+              </Field>
+              <div className="receipt-link-candidates">
+                {linkCandidates.length ? linkCandidates.map((item) => (
+                  <div className="receipt-linked-row" key={item.id}>
+                    <div>
+                      <strong>{item.name || item.itemName}</strong>
+                      <span>{[vaultItemSetLabel(item), vaultItemTypeLabel(item), isForgeInventoryItem(item) ? "Forge" : isWishlistItemRecord(item) ? "Wishlist" : "Vault"].filter(Boolean).join(" · ")}</span>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => void linkReceiptToItem(receipt, item)}>
+                      Link receipt
+                    </button>
+                  </div>
+                )) : (
+                  <p className="compact-subtitle">No matching unlinked items yet. Add an item from this receipt or try another search.</p>
+                )}
+              </div>
+              <div className="receipt-linked-list">
+                {linkedItems.length ? linkedItems.map((item) => (
+                  <div className="receipt-linked-row is-linked" key={item.id}>
+                    <div>
+                      <strong>{item.name || item.itemName}</strong>
+                      <span>{[vaultItemSetLabel(item), vaultItemTypeLabel(item), isForgeInventoryItem(item) ? "Forge" : isWishlistItemRecord(item) ? "Wishlist" : "Vault"].filter(Boolean).join(" · ")}</span>
+                    </div>
+                    <button type="button" className="ghost-button" onClick={() => void unlinkReceiptFromItem(receipt, item)}>
+                      Unlink
+                    </button>
+                  </div>
+                )) : (
+                  <div className="small-empty-state">
+                    <strong>No items linked yet.</strong>
+                    <span>Link an existing item or add new items from this receipt without re-entering receipt details.</span>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="receipt-linked-section">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Expenses and sales</h3>
+                  <p>Use receipts for business records without forcing tax categories up front.</p>
+                </div>
+                <button type="button" className="secondary-button" onClick={() => openReceiptCreateExpense(receipt)}>
+                  Link/create expense
+                </button>
+              </div>
+              <div className="receipt-linked-list">
+                {linkedExpenses.length ? linkedExpenses.map((expense) => (
+                  <div className="receipt-linked-row is-linked" key={expense.id}>
+                    <div>
+                      <strong>{expense.vendor || receiptMerchantLabel(receipt)}</strong>
+                      <span>{formatExpenseDate(expense.date)} · {money(expense.amount || 0)} · {expense.category || "Expense"}</span>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => startEditingExpense(expense)}>Edit expense</button>
+                  </div>
+                )) : (
+                  <p className="compact-subtitle">No expense linked yet. Create one only when this receipt supports a business record.</p>
+                )}
+                {linkedSales.length ? linkedSales.map((sale) => (
+                  <div className="receipt-linked-row is-linked" key={sale.id}>
+                    <div>
+                      <strong>{sale.itemName || "Linked sale"}</strong>
+                      <span>{sale.saleDate ? shortDate(sale.saleDate) : "Sale date not set"} · {money(sale.finalSalePrice || sale.grossSale || 0)}</span>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => startEditingSale(sale)}>Edit sale</button>
+                  </div>
+                )) : null}
+              </div>
+            </section>
+
+            <details className="receipt-linked-section receipt-data-details">
+              <summary>Receipt line review and data details</summary>
+              <div className="receipt-line-list">
+                {receiptLines.length ? receiptLines.map((line) => (
+                  <div className="receipt-linked-row" key={line.id || `${line.receiptId}-${line.itemName}`}>
+                    <div>
+                      <strong>{line.itemName || line.productName || line.rawText || "Receipt line"}</strong>
+                      <span>{RECEIPT_DESTINATION_LABELS[normalizeReceiptDestination(line.destination)] || "Expense only"} · Qty {line.quantity || 1} · {money(line.totalCost || line.lineTotal || 0)}</span>
+                    </div>
+                    <span className="status-badge">{line.verified ? "Verified" : line.matchedConfidence || "Needs review"}</span>
+                  </div>
+                )) : (
+                  <p className="compact-subtitle">No line-item review saved yet. Basic receipts can stay simple until you need item-level tracking.</p>
+                )}
+              </div>
+            </details>
+          </div>
+
+          <div className="location-modal-actions modal-sticky-footer receipt-detail-actions">
+            <button type="button" onClick={() => openReceiptAddItemFlow(receipt)}>Add item from receipt</button>
+            <button type="button" className="secondary-button" onClick={() => openReceiptEditFlow(receipt)}>Edit receipt</button>
+            <button type="button" className="secondary-button" onClick={() => openReceiptCreateExpense(receipt)}>Link expense</button>
+            <button type="button" className="danger-button" onClick={() => deleteReceiptRecord(receipt)}>Delete receipt</button>
+            <button type="button" className="ghost-button" onClick={closeReceiptDetail}>Close</button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   function flowModalMeta() {
     if (activeFlowModal?.type === "forgeQuickAdd") {
       return {
@@ -37659,6 +38373,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       };
     }
     if (activeFlowModal?.type === "multiDestinationAdd") {
+      if (String(activeFlowModal.source || "").startsWith("receipt-")) {
+        return {
+          title: "Add from Receipt",
+          description: "Use the saved receipt as proof, then add one or more items without re-entering receipt details.",
+          size: "medium",
+        };
+      }
       if (isMarketAddFlowSource(activeFlowModal.source)) {
         return {
           title: "Add from Market",
@@ -37962,9 +38683,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
 
     if (quickAddScreen === "receipt") {
+      const editingReceipt = Boolean(quickAddWizard.receiptEditingId);
       return (
         <form className="add-anything-flow add-anything-receipt" onSubmit={saveQuickAddBasicReceipt}>
-          {renderFlowHeader("Receipt", "Save a basic receipt now. Item linking and OCR stay optional follow-up steps.")}
+          {renderFlowHeader(editingReceipt ? "Edit receipt" : "Receipt", "Save the basics first. Item linking and OCR stay optional follow-up steps.")}
           <div className="flow-form-grid quick-add-receipt-grid">
             <Field label="Merchant / store">
               <input value={quickAddWizard.receiptMerchant} autoFocus onChange={(event) => updateQuickAddWizard({ receiptMerchant: event.target.value, message: "" })} placeholder="Target, Walmart, local shop..." />
@@ -37993,7 +38715,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <p className="compact-subtitle">No OCR or automatic item extraction is promised here. Add items from the receipt after saving.</p>
           <div className="quick-add-inline-actions">
-            <button type="submit" disabled={quickAddWizard.receiptSaving}>{quickAddWizard.receiptSaving ? "Saving..." : "Save receipt"}</button>
+            <button type="submit" disabled={quickAddWizard.receiptSaving}>{quickAddWizard.receiptSaving ? "Saving..." : editingReceipt ? "Save receipt changes" : "Save receipt"}</button>
             <button type="button" className="secondary-button" onClick={() => runAddSheetAction("receipt")}>Open receipt review</button>
           </div>
           {quickAddWizard.message ? <p className="flow-inline-message is-info">{quickAddWizard.message}</p> : null}
@@ -38010,10 +38732,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p>{quickAddWizard.message || "You can link existing items or add new items from this receipt later."}</p>
           </div>
           <div className="quick-add-inline-actions">
-            <button type="button" onClick={() => setQuickAddPath("search")}>Add items from receipt</button>
-            <button type="button" className="secondary-button" disabled title="Linking existing items is coming later.">Link existing items</button>
-            <button type="button" className="secondary-button" onClick={() => { closeFlowModal({ force: true, reset: false }); setActiveTab("forge"); }}>View receipt</button>
+            <button type="button" onClick={() => openReceiptAddItemFlow(quickAddWizard.receiptSaved)}>Add items from receipt</button>
+            <button type="button" className="secondary-button" onClick={() => {
+              closeFlowModal({ force: true, reset: false });
+              window.setTimeout(() => openReceiptDetail(quickAddWizard.receiptSaved), 80);
+            }}>Link existing items</button>
+            <button type="button" className="secondary-button" onClick={() => openReceiptCreateExpense(quickAddWizard.receiptSaved)}>Link expense</button>
+            <button type="button" className="secondary-button" onClick={() => {
+              closeFlowModal({ force: true, reset: false });
+              window.setTimeout(() => openReceiptDetail(quickAddWizard.receiptSaved), 80);
+            }}>View receipt</button>
             <button type="button" className="ghost-button" onClick={() => setQuickAddWizard(createQuickAddWizardState({ screen: "receipt", path: "receipt" }))}>Add another receipt</button>
+            <button type="button" className="ghost-button" onClick={() => closeFlowModal({ force: true, reset: true })}>Finish</button>
           </div>
         </div>
       );
@@ -40500,7 +41230,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="market-add-success-card">
             <span className="neon-chip">Saved</span>
             <h3>{multiDestinationSuccess.summary || "Item saved."}</h3>
-            <p>{multiDestinationSuccess.itemName || selectedItemSummary} is ready. You can finish, add more detail, view it, or add another product from the same Market results.</p>
+            <p>{multiDestinationSuccess.itemName || selectedItemSummary} is ready. You can finish, add more detail, view it, or add another item{multiDestinationSuccess.receiptId ? " from this receipt." : " from the same Market results."}</p>
             {savedItems.length ? (
               <div className="market-add-success-destinations">
                 {savedItems.map((entry) => (
@@ -41476,6 +42206,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         closeReceiptScanWorkflow();
         return;
       }
+      if (selectedReceiptId) {
+        event.preventDefault();
+        setSelectedReceiptId("");
+        setReceiptActionMessage("");
+        setReceiptLinkQuery("");
+        return;
+      }
       if (aiAssistReview) {
         event.preventDefault();
         setAiAssistReview(null);
@@ -41548,7 +42285,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, aiAssistReview, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutDateTimeEdit.report, scoutDateTimeEdit.saving, scoutReportModerationTarget, tidepoolFlagTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, selectedReceiptId, aiAssistReview, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutDateTimeEdit.report, scoutDateTimeEdit.saving, scoutReportModerationTarget, tidepoolFlagTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (activeTab === "resetPassword") {
     return (
@@ -44388,6 +45125,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {sale.referenceId || sale.receiptImage ? " | Reference attached" : " | Missing sale reference"}
         </p>
         {sale.notes ? <p>Notes: {sale.notes}</p> : null}
+        <div className="quick-actions sales-receipt-actions">
+          <button type="button" className="secondary-button" onClick={() => openReceiptForSale(actionSale)}>
+            {sale.referenceId || sale.receiptImage ? "Update receipt proof" : "Attach receipt"}
+          </button>
+        </div>
         {saleId ? (
           <OverflowMenu
             onEdit={() => startEditingSale(actionSale)}
@@ -46593,7 +47335,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <button type="button" className="secondary-button" disabled={!primaryMultiDestinationSavedItem()} onClick={() => openMultiDestinationSavedItem("view")}>
                       View
                     </button>
-                    <button type="button" onClick={() => closeMarketAddSuccess({ behavior: "smooth" })}>
+                    <button type="button" onClick={() => {
+                      const receipt = multiDestinationSuccess?.receiptId ? findReceiptRecord(multiDestinationSuccess.receiptId) : null;
+                      if (receipt) {
+                        closeFlowModal({ force: true, reset: false });
+                        resetMultiDestinationForm();
+                        window.setTimeout(() => openReceiptAddItemFlow(receipt), 80);
+                        return;
+                      }
+                      closeMarketAddSuccess({ behavior: "smooth" });
+                    }}>
                       Add Another
                     </button>
                   </>
@@ -47185,7 +47936,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ) : null}
 
       {adminConfirmAction ? (
-        <div className="location-modal-backdrop" role="presentation" onClick={() => !adminConfirmAction.loading && setAdminConfirmAction(null)}>
+        <div className="location-modal-backdrop admin-action-confirm-backdrop" role="presentation" onClick={() => !adminConfirmAction.loading && setAdminConfirmAction(null)}>
           <section className="location-modal admin-action-confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="admin-action-confirm-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header">
               <div>
@@ -48300,6 +49051,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </section>
         </div>
       ) : null}
+
+      {renderReceiptDetailModal()}
 
       {aiAssistReview ? (
         <div className="location-modal-backdrop ai-assist-review-backdrop" role="presentation" onClick={() => setAiAssistReview(null)}>
@@ -49795,6 +50548,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onCopyToForge={(item) => openVaultForgeTransfer(item, "copy")}
                   onCreateListing={openVaultMarketplaceDecision}
                   onDuplicate={openVaultDuplicateItem}
+                  onAttachReceipt={(item) => openReceiptForItem(item, "vault-item")}
                   onRefreshMarket={refreshVaultMarket}
                   onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
@@ -51630,7 +52384,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="quick-actions forge-action-strip" aria-label="Forge quick actions">
               <button type="button" onClick={() => openProductAddFlow({ source: "forge-action-strip", destinations: { forge: true } })}>Add Inventory</button>
               <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
-              <button type="button" className="secondary-button" onClick={openReceiptScanWorkflow}>Add Receipt</button>
+              <button type="button" className="secondary-button" onClick={() => openBasicReceiptFlow("forge-action-strip")}>Add Receipt</button>
               <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
               <details className="forge-more-actions">
                 <summary>More</summary>
@@ -51658,7 +52412,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   <strong>Ready to track your first sale?</strong>
                   <span>Add a receipt, product, or mileage trip to start building real business history.</span>
                   <div className="quick-actions">
-                    <button type="button" onClick={openReceiptScanWorkflow}>Add Receipt</button>
+                    <button type="button" onClick={() => openBasicReceiptFlow("forge-empty-state")}>Add Receipt</button>
                     <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "forge-empty-state", destinations: { forge: true } })}>Add Product</button>
                     <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
                   </div>
@@ -51668,7 +52422,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 {[
                   { label: "Profit this month", value: money(monthlyProfitLoss), helper: `${money(monthlySalesProfit)} sales profit | ${money(monthlyExpenses)} expenses`, action: () => setActiveTab("reports") },
                   { label: "Sales", value: money(totalSalesRevenue), helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} | ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`, action: () => setActiveTab("sales") },
-                  { label: "Receipts needing review", value: forgeReceiptsNeedingReviewCount, helper: forgeReceiptsNeedingReviewCount ? "Review receipts before trusting profit reports." : "No receipt review blockers.", action: openReceiptScanWorkflow },
+                  { label: "Receipts needing review", value: forgeReceiptsNeedingReviewCount, helper: forgeReceiptsNeedingReviewCount ? "Review receipts before trusting profit reports." : "No receipt review blockers.", action: () => openBasicReceiptFlow("forge-business-card") },
                   { label: "Mileage", value: `${totalBusinessMiles.toFixed(1)} mi`, helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | ${money(totalMileageValue)} tracked value`, action: () => setActiveTab("mileage") },
                   { label: "Inventory health", value: `${forgeInventoryReviewCount} review`, helper: `${lowStockItems.length} low stock | ${needsPhotosItems.length} need photos`, action: () => setInventorySearch("Needs Market Check") },
                   { label: "Products", value: forgeTotalProductQuantity, helper: `${forgeInventoryItems.length} grouped product${forgeInventoryItems.length === 1 ? "" : "s"} | ${money(totalMarketValue)} market value`, action: () => setInventorySearch("") },
@@ -51867,6 +52621,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 onEditSale={startEditingSale}
                 onDelete={(item) => { deleteItem(item.id); setSelectedForgeDetailId(""); }}
                 onCreateListing={(item) => openMarketplaceCreate("forge", item)}
+                onAttachReceipt={(item) => openReceiptForItem(item, "forge-item")}
                 onQuickUpdateMarketValue={quickUpdateMarketValue}
                 onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
                 onSell={(item) => {
@@ -52140,6 +52895,32 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 </Field>
                 {expenseFiltersActive ? <button type="button" className="secondary-button" onClick={clearExpenseFilters}>Clear filters</button> : null}
               </div>
+            </section>
+            <section className="panel receipt-ledger-panel">
+              <div className="compact-card-header">
+                <div>
+                  <h2>Receipts</h2>
+                  <p>Save proof quickly, then link items, sales, or expenses only when needed.</p>
+                </div>
+                <div className="drawer-inline-actions">
+                  <button type="button" onClick={() => openBasicReceiptFlow("forge-receipts")}>Add Receipt</button>
+                  <button type="button" className="secondary-button" onClick={openReceiptScanWorkflow}>Open receipt review</button>
+                </div>
+              </div>
+              {forgeReceiptRecords.length ? (
+                <div className="receipt-ledger-grid">
+                  {forgeReceiptRecords.slice(0, 6).map((receipt) => renderReceiptRecordCard(receipt))}
+                </div>
+              ) : (
+                <div className="small-empty-state receipt-ledger-empty">
+                  <strong>No receipts saved yet.</strong>
+                  <span>Start with merchant, date, optional total, and optional proof photo. OCR and item matching stay optional.</span>
+                  <div className="quick-actions">
+                    <button type="button" onClick={() => openBasicReceiptFlow("forge-receipts-empty")}>Add Receipt</button>
+                    <button type="button" className="secondary-button" onClick={openReceiptScanWorkflow}>Open receipt review</button>
+                  </div>
+                </div>
+              )}
             </section>
             {false && (
             <section className="panel">
@@ -53129,7 +53910,7 @@ function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPla
   );
 }
 
-function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onQuickUpdateMarketValue, onQuickUpdateSalePrice }) {
+function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onAttachReceipt, onQuickUpdateMarketValue, onQuickUpdateSalePrice }) {
   if (!item) return null;
   const detailImage = item.itemImage || vaultItemDisplayImage(item);
   const setLabel = item.setName || item.expansion || "";
@@ -53226,6 +54007,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
       <div className="vault-detail-primary-actions forge-detail-primary-actions">
         <button type="button" disabled={Number(nextSellEntry?.quantity || 0) < 1} onClick={() => onSell(nextSellEntry)}>Mark sold / add sale</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(primaryEntry)}>Edit / add details</button>
+        <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(primaryEntry)}>Attach receipt</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
       </div>
       <div className="catalog-detail-grid vault-detail-basics forge-detail-basics">
@@ -53280,6 +54062,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
           <summary>More actions</summary>
           <div className="quick-actions">
             <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+            <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(primaryEntry)}>Attach receipt</button>
             <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
             <button type="button" className="secondary-button" onClick={() => onDelete(primaryEntry)}>Delete primary entry</button>
           </div>
@@ -53289,7 +54072,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
   );
 }
 
-function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, showSellerTools = false }) {
+function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, showSellerTools = false }) {
   if (!item) return null;
   const showVaultSellerTools = Boolean(showSellerTools);
   const detailImage = vaultItemDisplayImage(item);
@@ -53386,6 +54169,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
       </div>
       <div className="vault-detail-primary-actions">
         <button type="button" onClick={() => onEdit(item)}>Edit / Add details</button>
+        <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
         {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button> : null}
       </div>
@@ -53457,6 +54241,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
             {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button> : null}
             {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button> : null}
             {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button> : null}
+            <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
             <button type="button" className="secondary-button" onClick={() => onDuplicate?.(item)}>Duplicate Item</button>
             <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Vault Item</button>
           </div>
