@@ -19,7 +19,7 @@ export const EMBER_ASSIST_ESCALATION_CATEGORIES = [
   "Missing product/catalog issue",
   "Wrong Scout report/store",
   "Drop Radar question",
-  "Market/listing question",
+  "Market Watch question",
   "Vault/Forge inventory question",
   "The Spark/Kids Program question",
   "Expenses/receipts/mileage question",
@@ -36,7 +36,7 @@ const PAGE_PROMPTS = {
   expenses: ["What receipts are missing?", "Summarize this year's expenses", "Help me categorize this expense", "What do I need for tax records?"],
   mileage: ["Summarize miles by vehicle", "Help me log a trip", "What mileage records are missing notes?", "Explain this vehicle summary"],
   spark: ["How does The Spark work?", "Help me submit a kid request", "What does waitlisted mean?", "Are there upcoming kid-friendly events?"],
-  tidepool: ["What is Tidepool?", "How do I post safely?", "Why is my post pending?", "How do I report a post?"],
+  tidepool: ["What is Tidepool Community?", "How do I post safely?", "Why is my post pending?", "How do I report a post?"],
   settings: ["Help me switch workspaces", "Explain personal Forge vs Ember & Tide Forge", "Help me update my profile", "Explain seller mode"],
   admin: ["What needs review?", "Explain this user status", "How do I message admin?", "Show admin message queue"],
   permissionDenied: ["Why am I blocked?", "Explain this user status", "How do I message admin?", "Return to Hearth"],
@@ -213,7 +213,7 @@ function buildValuationResponse(text = "") {
     });
   }
   if (/\b(market value|collection worth|inventory worth)\b/i.test(text)) {
-    return response("Market value only shows when the item has a known value. If it is missing, the dashboard leaves it unknown instead of making up a number or showing $0.", {
+    return response("Market Watch value only shows when the item has a known value. If it is missing, the dashboard leaves it unknown instead of making up a number or showing $0.", {
       actions: ["Go to Vault", "Go to Forge"],
       category: "Vault/Forge inventory question",
     });
@@ -334,7 +334,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (ALERT_WORDS.test(text)) {
-    return response("Alerts are in-app only right now. Confirmed restocks, possible Drop Radar windows, community guesses, Kids Program updates, and admin statuses stay labeled so nothing sounds more certain than it is.", {
+    return response("Ember Watch alerts are in-app only right now. Confirmed restocks, possible windows, community guesses, Kids Program updates, and admin statuses stay labeled so nothing sounds more certain than it is.", {
       actions: ["Open Settings", "Open Drop Radar"],
       category: "Account/beta access question",
     });
@@ -412,24 +412,24 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
 
   if (TIDEPOOL_WORDS.test(text) || (page === "tidepool" && GENERAL_PAGE_HELP_WORDS.test(text))) {
     if (/\b(pending|review|why is my post)\b/i.test(text)) {
-      return response("Tidepool posts may wait for admin review because this is a family-centered space. Pending does not mean you did anything wrong; it means we are keeping public posts clean and safe.", {
+      return response("Tidepool Community posts may wait for admin review because this is a family-centered space. Pending does not mean you did anything wrong; it means we are keeping public posts clean and safe.", {
         actions: ["Open Tidepool", "Send to Admin"],
         category: "Other",
       });
     }
     if (/\b(report|flag|unsafe)\b/i.test(text)) {
-      return response("Use Report content on a Tidepool post when something feels unsafe, private, fake, or not family-friendly. It creates a moderation signal for admins without publicly showing who reported it.", {
+      return response("Use Report content on a Tidepool Community post when something feels unsafe, private, fake, or not family-friendly. It creates a moderation signal for admins without publicly showing who reported it.", {
         actions: ["Open Tidepool", "Send to Admin"],
         category: "Other",
       });
     }
     if (/\b(kids?|children|child)\b/i.test(text)) {
-      return response("Tidepool is family-friendly, but kids should not share private details or use private messaging. Parents and guardians should manage Kids Program and family posts.", {
+      return response("Tidepool Community is family-friendly, but kids should not share private details or use private messaging. Parents and guardians should manage Kids Program and family posts.", {
         actions: ["Open Tidepool", "Open The Spark"],
         category: "The Spark/Kids Program question",
       });
     }
-    return response("Tidepool is the Ember & Tide community board for helpful local updates, questions, family-friendly wins, events, shop notes, and safe collecting talk. Posts stay kind, public-safe, and may go through review first.", {
+    return response("Tidepool Community is the Ember & Tide board for helpful local updates, questions, family-friendly wins, events, shop notes, and safe collecting talk. Posts stay kind, public-safe, and may go through review first.", {
       actions: ["Open Tidepool", "Send to Admin"],
       category: "Other",
     });
@@ -480,36 +480,36 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     if (/\b(payment|pay|checkout|buy through|purchase through|stripe|paypal)\b/i.test(text)) {
       return response("Ember & Tide does not provide checkout/payment inside the app yet. Use safe, agreed payment methods and follow community rules.", {
         actions: ["Open Market", "Send to Admin"],
-        category: "Market/listing question",
+        category: "Market Watch question",
       });
     }
     if (/\b(safe listing|make.*listing|create.*listing|quality|rules)\b/i.test(text)) {
-      return response("A safe TideTradr listing needs a clear item name, real condition, quantity, price, photo or clean fallback, and public-safe notes. Do not use official/admin wording, home addresses, fake product claims, or unsafe meetup language.", {
+      return response("A safe Market Watch listing needs a clear item name, real condition, quantity, price, photo or clean fallback, and public-safe notes. Do not use official/admin wording, home addresses, fake product claims, or unsafe meetup language.", {
         actions: ["Create Listing", "Open Market"],
-        category: "Market/listing question",
+        category: "Market Watch question",
       });
     }
     if (/\b(pending|review|why.*listing)\b/i.test(text)) {
       return response("Listings can stay pending while Ember & Tide checks safety, price clarity, seller identity, and public notes. Pending means it is not public yet; it is not a payment or checkout hold.", {
         actions: ["Open Market", "Send to Admin"],
-        category: "Market/listing question",
+        category: "Market Watch question",
       });
     }
     if (/\b(report.*listing|flag.*listing|unsafe listing|scam|counterfeit)\b/i.test(text)) {
-      return response("Use Report on a TideTradr listing if it looks fake, unsafe, sold already, misleading, or not family-friendly. That creates an admin review signal without publicly showing who reported it.", {
+      return response("Use Report on a Market Watch listing if it looks fake, unsafe, sold already, misleading, or not family-friendly. That creates an admin review signal without publicly showing who reported it.", {
         actions: ["Open Market", "Send to Admin"],
-        category: "Market/listing question",
+        category: "Market Watch question",
       });
     }
     if (/\b(seller trust|trusted seller|badges|seller identity)\b/i.test(text)) {
       return response("Seller trust is based on public username, safe badges, Scout level, and community contribution signals. Private email and admin moderation notes should not appear publicly.", {
         actions: ["Open Market", "Open Settings"],
-        category: "Market/listing question",
+        category: "Market Watch question",
       });
     }
-    return response("For Market, the important pieces are the item photo, name, condition, price, seller identity, and status. Fair pricing should be clear, and sold or removed listings should not look active.", {
+    return response("For Market Watch, the important pieces are the item photo, name, condition, price, seller identity, and status. Fair Price Badges should be clear, and sold or removed listings should not look active.", {
       actions: ["Open Market", "Create Listing", "Send to Admin"],
-      category: "Market/listing question",
+      category: "Market Watch question",
     });
   }
 
@@ -521,7 +521,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   }
 
   if (HEARTH_WORDS.test(text) || (page === "general" && GENERAL_PAGE_HELP_WORDS.test(text))) {
-    return response("Hearth is your starting point: check the best action, then use Quick Add, Scout, Vault, Forge, or Market depending on what needs attention next.", {
+    return response("Hearth is your home base: check Your Next Move, then use Quick Add, Scout, Vault, Forge, or Market Watch depending on what needs attention next.", {
       actions: ["Open Quick Add", "Open Scout Report", "Go to Vault"],
       category: "Other",
     });

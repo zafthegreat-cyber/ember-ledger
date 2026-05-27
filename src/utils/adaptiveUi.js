@@ -124,7 +124,7 @@ export function recommendSmartSetup(input = {}, { adminAllowed = false } = {}) {
   let planType = SMART_SETUP_PLAN_TYPES.COLLECTOR_FAMILY;
   let label = "Collector / Family";
   let summary = "Best for parents, kids, and casual collectors.";
-  let why = "It keeps Vault, Scout, Market, The Spark, and community tools visible while keeping seller records out of the way.";
+  let why = "It keeps Hearth, Vault, Scout, Market Watch, The Spark, and community tools visible while keeping seller records out of the way.";
 
   if (adminAllowed && flags.wantsAdminTools) {
     planType = SMART_SETUP_PLAN_TYPES.ADMIN;
@@ -157,24 +157,24 @@ export function recommendSmartSetup(input = {}, { adminAllowed = false } = {}) {
     includes.push("Admin Command Center", "Beta approvals", "Invites", "Report review", "Missing catalog requests", "Feedback inbox", "Moderation");
     hides.push("Admin tools stay out of normal pages unless needed");
   } else if (planType === SMART_SETUP_PLAN_TYPES.BUSINESS_SELLER) {
-    includes.push("Forge", "Sales", "Receipts", "Mileage", "Expenses", "Profit", "Year-end/tax support", "Market comparisons");
+    includes.push("Forge", "Sales", "Receipts", "Mileage", "Expenses", "Profit", "Year-end/tax support", "Market Watch comparisons");
     hides.push("Admin tools", "Partner shop tools until supported");
   } else if (planType === SMART_SETUP_PLAN_TYPES.SELLER) {
-    includes.push("Vault", "Forge", "Market", "Sales", "Planned sale price", "Basic receipts");
+    includes.push("Vault", "Forge", "Market Watch", "Sales", "Planned sale price", "Basic receipts");
     hides.push("Mileage and tax tools unless business tools are enabled", "Admin tools");
   } else if (planType === SMART_SETUP_PLAN_TYPES.SCOUT_HELPER) {
-    includes.push("Scout", "Home area", "Favorite stores", "Scout Points", "Report confirmations", "Market/Vault basics");
+    includes.push("Scout", "Home area", "Favorite stores", "Tide Score", "Report confirmations", "Market Watch/Vault basics");
     hides.push("Forge", "Sales", "Mileage", "Receipts", "Tax tools", "Admin tools");
   } else if (planType === SMART_SETUP_PLAN_TYPES.PARTNER_SHOP) {
-    includes.push("Scout", "Market", "Tidepool", "Help & Support", "Partner Shop Mode later");
+    includes.push("Scout", "Market Watch", "Tidepool Community", "Help & Support", "Partner Shop Mode later");
     hides.push("Payment/shop tools until built", "Admin tools unless approved");
   } else {
-    includes.push("Hearth", "Vault", "Scout", "Market", "The Spark", "Tidepool");
+    includes.push("Hearth", "Vault", "Scout", "Market Watch", "The Spark", "Tidepool Community");
     hides.push("Forge", "Sales", "Mileage", "Receipts", "Tax tools", "Admin tools");
   }
 
-  if (toolsets.has("market_price_checks") && !includes.includes("Market")) includes.push("Market");
-  if (toolsets.has("tidepool_community") && !includes.includes("Tidepool")) includes.push("Tidepool");
+  if (toolsets.has("market_price_checks") && !includes.includes("Market Watch")) includes.push("Market Watch");
+  if (toolsets.has("tidepool_community") && !includes.includes("Tidepool Community")) includes.push("Tidepool Community");
 
   return { planType, label, summary, why, includes, hides };
 }
@@ -185,7 +185,7 @@ export function resolveSmartRouteContext(activeRoute = "") {
   if (route.includes("scout") || route === "stores" || route === "daily_tide") return { key: "scout", label: "Scout" };
   if (route.includes("vault") || route.includes("collection")) return { key: "vault", label: "Vault" };
   if (["inventory", "forge", "sales", "expenses", "mileage", "reports"].includes(route)) return { key: "forge", label: "Forge" };
-  if (["market", "tidetradr", "tide_tradr"].includes(route)) return { key: "market", label: "Market" };
+  if (["market", "tidetradr", "tide_tradr"].includes(route)) return { key: "market", label: "Market Watch" };
   if (["kids_program", "spark"].includes(route)) return { key: "spark", label: "The Spark" };
   if (route.includes("admin") || route.includes("moderator")) return { key: "admin", label: "Admin" };
   return { key: route || "hearth", label: "Current page" };
@@ -623,6 +623,6 @@ export function buildAdminPendingTaskPrompts(counts = {}) {
     { key: "catalog", label: "Missing catalog", count: countValue(counts.missingCatalog) },
     { key: "feedback", label: "Feedback inbox", count: countValue(counts.feedback) },
     { key: "moderation", label: "Flagged content", count: countValue(counts.flaggedContent) },
-    { key: "spark", label: "Kids Program", count: countValue(counts.kidsProgram) },
+    { key: "spark", label: "The Spark", count: countValue(counts.kidsProgram) },
   ].filter((prompt) => prompt.count > 0);
 }

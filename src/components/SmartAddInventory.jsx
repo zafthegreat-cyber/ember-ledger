@@ -41,7 +41,7 @@ export default function SmartAddInventory({ onAddInventory, localCatalogProducts
   return (
     <div className="panel compact-panel">
       <h2>Catalog Picker</h2>
-      <p>Search the live TideTradr catalog and prefill inventory details from a real product.</p>
+      <p>Search the Market Watch catalog and prefill inventory details from a real product record.</p>
       <form className="form" onSubmit={handleSubmit}>
         <SmartCatalogSearchBox
           value={query}

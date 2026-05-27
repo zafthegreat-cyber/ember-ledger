@@ -32,7 +32,7 @@ export default function SmartAddCatalog({ onUseProduct, localCatalogProducts = [
   return (
     <div className="panel">
       <h2>Catalog Match</h2>
-      <p>Search the live TideTradr catalog and use a real Supabase product to prefill this form.</p>
+      <p>Search the Market Watch catalog and use a real product record to prefill this form.</p>
       <div className="form">
         <SmartCatalogSearchBox
           value={query}

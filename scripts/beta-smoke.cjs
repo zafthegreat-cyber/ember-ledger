@@ -456,11 +456,11 @@ async function main() {
   await step("app opens and beta data resets", async () => {
     await resetBetaData();
     await assertVisibleText("E&T TCG");
-    await assertVisibleText("Home");
+    await assertVisibleText("Hearth");
     await assertVisibleText("Forge");
     await assertVisibleText("Scout");
     await assertVisibleText("Vault");
-    await assertVisibleText("TideTradr");
+    await assertVisibleText("Market");
   });
 
   await step("Admin modes: regular preview and edit toggle stay gated", async () => {
@@ -2256,8 +2256,8 @@ async function main() {
     });
   });
 
-  await step("Market: run TideTradr deal check", async () => {
-    await nav("TideTradr");
+  await step("Market Watch: run deal check", async () => {
+    await nav("Market");
     await page.getByRole("button", { name: "Check Deal", exact: true }).first().click();
     await fillByLabel(page, "Deal Title", "Smoke Deal");
     await fillByLabel(page, "Asking Price", "60");
@@ -2270,10 +2270,10 @@ async function main() {
   });
 
   await step("Market: search result saves to Forge and Vault destinations", async () => {
-    await nav("TideTradr");
+    await nav("Market");
     const searchForm = page.locator(".catalog-search-form").first();
     await searchForm.locator("input").first().fill("Prismatic Evolutions Booster Bundle");
-    await searchForm.getByRole("button", { name: /Search Catalog|Search TideTradr|Search/i }).first().click();
+    await searchForm.getByRole("button", { name: /Search Catalog|Search Market Watch|Search/i }).first().click();
     const resultCard = page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first();
     await resultCard.waitFor({ state: "visible", timeout: 10000 });
     await resultCard.getByRole("button", { name: /^Add$/i }).first().click();
@@ -2315,9 +2315,9 @@ async function main() {
   });
 
   await step("Home: totals update", async () => {
-    await nav("Home");
-    await assertVisibleText("Hearth Home");
-    await assertVisibleText("Today's Best Action");
+    await nav("Hearth");
+    await assertVisibleText("Hearth");
+    await assertVisibleText("Your Next Move");
     await assertNotVisibleText("Today / Overview");
   });
 
@@ -2334,7 +2334,7 @@ async function main() {
       await closeOpenModals();
       await page.setViewportSize({ width, height });
       if (width >= 640) {
-        await nav("Home");
+        await nav("Hearth");
       } else {
         await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
       }

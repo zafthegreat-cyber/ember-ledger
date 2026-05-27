@@ -138,6 +138,10 @@ import {
   KIDS_PROGRAM_ACCESS_OPTIONS,
   KIDS_PROGRAM_COPY,
   KNOWN_LIMITATIONS,
+  PRODUCT_GLOSSARY,
+  PRODUCT_PROMISE_COPY,
+  PRODUCT_ROADMAP_NOTES,
+  PRODUCT_TAGLINES,
   PRODUCTION_APP_URL,
   PRODUCTION_CONFIG_AUDIT,
   POKEMON_AFFILIATION_NOTICE,
@@ -1125,7 +1129,7 @@ const DAILY_TIDE_TASKS = [
     key: "scout",
     label: "Scout",
     title: "Check Scout",
-    helper: "Review nearby reports or submit a quick update.",
+    helper: "Review Store Signals or submit a quick update.",
     actionLabel: "Open Scout",
     tab: "scout",
     badge: "restock_reporter",
@@ -1143,10 +1147,10 @@ const DAILY_TIDE_TASKS = [
   },
   {
     key: "market",
-    label: "Market",
-    title: "Check Market",
-    helper: "Compare fair listings and review market values.",
-    actionLabel: "Open Market",
+    label: "Market Watch",
+    title: "Check Market Watch",
+    helper: "Review fair value, watchlist, and price freshness labels.",
+    actionLabel: "Open Market Watch",
     tab: "market",
     badge: "market_watcher",
     points: 10,
@@ -1155,7 +1159,7 @@ const DAILY_TIDE_TASKS = [
     key: "forge",
     label: "Forge",
     title: "Check Forge",
-    helper: "Plan, build, or review your collector tools.",
+    helper: "Review Seller Tools, receipts, or inventory records.",
     actionLabel: "Open Forge",
     tab: "inventory",
     badge: "forge_starter",
@@ -1886,7 +1890,7 @@ const SCAN_DESTINATIONS = [
   { value: "wishlist", label: "Wishlist" },
   { value: "expense_only", label: "Expense only" },
   { value: "ignore", label: "Ignore / do not save" },
-  { value: "tidetradr", label: "TideTradr lookup" },
+  { value: "tidetradr", label: "Market Watch lookup" },
   { value: "deal_finder", label: "Deal Finder" },
   { value: "watchlist", label: "Watchlist" },
   { value: "pinned", label: "Pinned Market Watch" },
@@ -2041,8 +2045,8 @@ const MARKETPLACE_DEAL_FILTERS = [
 ];
 const MARKET_CATALOG_DEAL_FILTERS = [
   { value: "all", label: "All results" },
-  { value: "nearRetail", label: "Near retail" },
-  { value: "fairPrice", label: "Fair price" },
+  { value: "nearRetail", label: "Near Retail" },
+  { value: "fairPrice", label: "Fair Price" },
   { value: "sealed", label: "Sealed" },
   { value: "singles", label: "Singles" },
 ];
@@ -2236,13 +2240,13 @@ const SMART_SETUP_PURPOSE_OPTIONS = [
 const SMART_SETUP_TOOL_OPTIONS = [
   { key: "vault_collection_tracking", label: "Vault collection tracking" },
   { key: "scout_restock_reports", label: "Scout restock reports" },
-  { key: "market_price_checks", label: "Market price checks" },
+  { key: "market_price_checks", label: "Market Watch price checks" },
   { key: "forge_seller_tools", label: "Forge seller tools" },
   { key: "receipts_and_expenses", label: "Receipts and expenses" },
   { key: "mileage_tracking", label: "Mileage tracking" },
   { key: "sales_tracking", label: "Sales tracking" },
   { key: "the_spark_kids_program", label: "The Spark / Kids Program" },
-  { key: "tidepool_community", label: "Tidepool community" },
+  { key: "tidepool_community", label: "Tidepool Community" },
   { key: "admin_tools", label: "Admin tools" },
   { key: "family_friendly_shop_tools_later", label: "Family-friendly shop tools later" },
 ];
@@ -5575,13 +5579,13 @@ export default function App() {
   const adaptiveSellerToolsVisible = adaptiveUiState.showSellerTools;
 
   const mainTabByKey = {
-    home: { key: "home", label: "Hearth Home", icon: "home", target: "dashboard" },
+    home: { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     today: { key: "today", label: "Today's Tide", icon: "calendar", target: "dailyTide" },
-    scout: { key: "scout", label: "Scout Signals", icon: "scout", target: "scout" },
+    scout: { key: "scout", label: "Scout", icon: "scout", target: "scout" },
     vault: { key: "vault", label: "Vault", icon: "vault", target: "vault" },
     tideTradr: { key: "tideTradr", label: "Market", icon: "market", target: "market" },
-    forge: { key: "forge", label: "Forge Workshop", icon: "forge", target: "inventory" },
-    tidepool: { key: "tidepool", label: "Tidepool", icon: "pool", target: "tidepool" },
+    forge: { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
+    tidepool: { key: "tidepool", label: "Tidepool Community", icon: "pool", target: "tidepool" },
   };
   const mainTabs = selectAdaptiveDesktopMainKeys(adaptiveUiState)
     .map((key) => mainTabByKey[key])
@@ -5595,14 +5599,14 @@ export default function App() {
       ],
     },
     { title: "Main Tabs", items: [
-      { key: "home", label: "Hearth Home", target: "dashboard" },
+      { key: "home", label: "Hearth", target: "dashboard" },
       { key: "today", label: "Today's Tide", target: "dailyTide" },
-      { key: "scout-main", label: "Scout Signals", target: "scout" },
+      { key: "scout-main", label: "Scout", target: "scout" },
       { key: "vault", label: "Vault" },
       { key: "tideTradr-main", label: "Market", target: "market" },
-      { key: "forge", label: "Forge Workshop", target: "inventory" },
-      { key: "tidepool-main", label: "Tidepool", target: "tidepool" },
-      { key: "kids-program", label: "Kids Program: The Spark", target: "kidsProgram" },
+      { key: "forge", label: "Forge", target: "inventory" },
+      { key: "tidepool-main", label: "Tidepool Community", target: "tidepool" },
+      { key: "kids-program", label: "The Spark", target: "kidsProgram" },
       { key: "announcements", label: "Announcements", target: "whatsNew" },
       { key: "settings", label: "Settings", target: "settings" },
     ] },
@@ -5617,19 +5621,19 @@ export default function App() {
     profile: "Profile",
     help: "Help & Support",
     moderator: "Moderator",
-    kidsProgram: "Kids Program: The Spark",
+    kidsProgram: "The Spark",
     sponsor: "Sponsor Interest",
     trust: "Trust Pages",
     links: "Links",
     whatsNew: "Announcements",
     knownLimitations: "Known Limitations",
     membership: "Membership",
-    profileProgress: "Profile Progress",
+    profileProgress: "Ember ID Progress",
     betaReadiness: "Beta Readiness",
   };
   const activeTabLabel =
     activeTab === "tidepool"
-      ? "Tidepool"
+      ? "Tidepool Community"
       : activeTab === "adminReview"
         ? "Admin Review"
       : activeTab === "mySuggestions"
@@ -5659,33 +5663,33 @@ export default function App() {
     { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" },
   ];
   const desktopSidebarByKey = {
-    home: { key: "home", label: "Hearth Home", helper: "What should I do next?", icon: "home", target: "dashboard" },
+    home: { key: "home", label: "Hearth", helper: "Your home base.", icon: "home", target: "dashboard" },
     today: { key: "today", label: "Today's Tide", helper: "Today's attention list", icon: "calendar", target: "dailyTide" },
-    scout: { key: "scout", label: "Scout Signals", helper: "Nearby verified restocks", icon: "scout", target: "scout" },
-    vault: { key: "vault", label: "Vault", helper: "Your collection", icon: "vault", target: "vault" },
-    tideTradr: { key: "tideTradr", label: "Market", helper: "TideTradr fair prices and deals", icon: "market", target: "market" },
-    forge: { key: "forge", label: "Forge Workshop", helper: "Business command desk", icon: "forge", target: "inventory" },
-    tidepool: { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
+    scout: { key: "scout", label: "Scout", helper: "Store Signals.", icon: "scout", target: "scout" },
+    vault: { key: "vault", label: "Vault", helper: "Collection.", icon: "vault", target: "vault" },
+    tideTradr: { key: "tideTradr", label: "Market", helper: "Market Watch price labels.", icon: "market", target: "market" },
+    forge: { key: "forge", label: "Forge", helper: "Seller Tools.", icon: "forge", target: "inventory" },
+    tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe community.", icon: "pool", target: "tidepool" },
   };
   const desktopSidebarItems = selectAdaptiveDesktopMainKeys(adaptiveUiState)
     .map((key) => desktopSidebarByKey[key])
     .filter(Boolean);
   const desktopMoreByKey = {
-    tidepool: { key: "tidepool", label: "Tidepool", helper: "Community current", icon: "pool", target: "tidepool" },
-    spark: { key: "spark", label: "Kids Program: The Spark", helper: "Family-safe collecting", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe community.", icon: "pool", target: "tidepool" },
+    spark: { key: "spark", label: "The Spark", helper: "Kids Program.", icon: "spark", action: () => setActiveTab("kidsProgram") },
     announcements: { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin", helper: "Command center", icon: "settings", target: "adminReview" } : null,
     moderator: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible ? { key: "moderator", label: "Moderator", helper: "Limited review tools", icon: "settings", target: "moderator" } : null,
     "ember-watch": { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
-    profile: { key: "profile", label: "Profile", helper: "Public username and progress", icon: "settings", action: () => openUtilityPage("profile") },
+    profile: { key: "profile", label: "Ember ID", helper: "Public username and trust identity", icon: "settings", action: () => openUtilityPage("profile") },
     settings: { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     help: { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
   };
   const desktopMoreItems = [
-    { key: "spark", label: "Kids Program: The Spark", helper: "Family-safe collecting", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    { key: "spark", label: "The Spark", helper: "Kids Program.", icon: "spark", action: () => setActiveTab("kidsProgram") },
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
-    { key: "profile", label: "Profile", helper: "Public username and progress", icon: "settings", action: () => openUtilityPage("profile") },
+    { key: "profile", label: "Ember ID", helper: "Public username and trust identity", icon: "settings", action: () => openUtilityPage("profile") },
     { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
   ].map((item) => desktopMoreByKey[item.key] || item).filter(Boolean);
@@ -5705,33 +5709,33 @@ export default function App() {
     .map((key) => desktopCommandDeskByKey[key])
     .filter(Boolean);
   const mobileMenuByKey = {
-    forge: { key: "forge", label: "Forge Workshop", helper: "Seller inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" },
+    forge: { key: "forge", label: "Forge", helper: "Seller Tools for inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" },
     sales: { key: "sales", label: "Sales", helper: "Sales records and profit review.", icon: "forge", action: () => setActiveTab("sales") },
     receipts: { key: "receipts", label: "Receipts", helper: "Receipt review and business expenses.", icon: "clipboard", action: () => setActiveTab("expenses") },
     mileage: { key: "mileage", label: "Mileage", helper: "Trips and vehicle costs.", icon: "calendar", action: () => setActiveTab("mileage") },
     taxCenter: { key: "taxCenter", label: "Tax Center", helper: "Reports and export support.", icon: "clipboard", action: () => setActiveTab("reports") },
-    market: { key: "market", label: "Market", helper: "Fair prices and TideTradr search.", icon: "market", target: "market" },
-    tidepool: { key: "tidepool", label: "Tidepool", helper: "Community posts and trusted trade talk.", icon: "pool", target: "tidepool" },
-    spark: { key: "spark", label: "Kids Program: The Spark", helper: "Parent-safe requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    market: { key: "market", label: "Market Watch", helper: "Fair prices, watchlist, and value labels.", icon: "market", target: "market" },
+    tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe posts and trusted trade talk.", icon: "pool", target: "tidepool" },
+    spark: { key: "spark", label: "The Spark", helper: "Kids Program requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
     announcements: { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
     "emberWatch": { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
-    profile: { key: "profile", label: "Profile", helper: "Public username and account progress.", icon: "settings", action: () => openUtilityPage("profile") },
+    profile: { key: "profile", label: "Ember ID", helper: "Public username and trust identity.", icon: "settings", action: () => openUtilityPage("profile") },
     account: { key: "account", label: "Account", helper: "Sign-in, beta status, and app version.", icon: "settings", action: () => openUtilityPage("account") },
     help: { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and support.", icon: "search", action: () => openUtilityPage("help") },
     settings: { key: "settings", label: "Settings", helper: "Profile, workspace, alerts, and privacy.", icon: "settings", action: () => openUtilityPage("settings") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Protected approvals, reviews, and roles.", icon: "settings", target: "adminReview" } : null,
     betaUsers: adaptiveAdminNavVisible ? { key: "betaUsers", label: "Beta Users", helper: "Track requests, invites, and joined users.", icon: "settings", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
     invites: adaptiveAdminNavVisible ? { key: "invites", label: "Invites", helper: "Invite tracking and copy-link fallback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
-    reportReview: adaptiveModeratorNavVisible ? { key: "reportReview", label: "Report Review", helper: "Scout reports and moderation queues.", icon: "scout", action: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); } } : null,
+    reportReview: adaptiveModeratorNavVisible ? { key: "reportReview", label: "Report Review", helper: "Scout reports, Tide Score, and moderation queues.", icon: "scout", action: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); } } : null,
     missingCatalog: adaptiveAdminNavVisible ? { key: "missingCatalog", label: "Missing Catalog", helper: "Catalog corrections and SKU review.", icon: "search", action: () => { setAdminReviewFilter("Catalog Suggestions"); setActiveTab("adminReview"); } } : null,
     feedbackInbox: adaptiveAdminNavVisible ? { key: "feedbackInbox", label: "Feedback Inbox", helper: "Support messages and beta feedback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); } } : null,
     moderation: adaptiveModeratorNavVisible ? { key: "moderation", label: "Moderation", helper: "Community and marketplace review.", icon: "settings", target: "adminReview" } : null,
   };
   const menuPrimaryItems = [
-    { key: "home", label: "Hearth", helper: "Home base and next step.", icon: "home", target: "dashboard" },
-    { key: "scout", label: "Scout", helper: "Report and review restock signals.", icon: "scout", target: "scout" },
+    { key: "home", label: "Hearth", helper: "Your home base.", icon: "home", target: "dashboard" },
+    { key: "scout", label: "Scout", helper: "Store Signals and fair reports.", icon: "scout", target: "scout" },
     { key: "quickAdd", label: "Quick Add", helper: "Add, scan, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-primary") },
-    { key: "vault", label: "Vault", helper: "Protected collection.", icon: "vault", target: "vault" },
+    { key: "vault", label: "Vault", helper: "Collection.", icon: "vault", target: "vault" },
     mobileMenuByKey.market,
   ].filter(Boolean);
   const menuSecondaryItems = [
@@ -12077,7 +12081,7 @@ export default function App() {
           <summary>Bulk Add: search and manual rows</summary>
           <div className="form">
             <Field label="Search catalog and add to batch">
-              <input value={importCatalogSearch} onChange={(event) => setImportCatalogSearch(event.target.value)} placeholder="Search TideTradr catalog..." />
+              <input value={importCatalogSearch} onChange={(event) => setImportCatalogSearch(event.target.value)} placeholder="Search Market Watch catalog..." />
             </Field>
             {importCatalogSearchResults.length ? (
               <div className="catalog-picker-grid">
@@ -16736,14 +16740,14 @@ export default function App() {
       return;
     }
     if ((destination === "vault" || destination === "forge" || destination === "wishlist") && !productId) {
-      setScanMessage("No catalog match yet. Submit the item for review or choose a TideTradr lookup first.");
+      setScanMessage("No catalog match yet. Submit the item for review or choose a Market Watch lookup first.");
       return;
     }
     if (destination === "vault" || destination === "forge" || destination === "wishlist") {
       const product = catalogProducts.find((item) => String(item.id) === String(productId))
         || (scanReview?.possibleMatches || []).map((match) => match.item).find((item) => String(item?.id) === String(productId));
       if (!product) {
-        setScanMessage("No verified catalog match yet. Search TideTradr, enter UPC/SKU manually, add manually, or suggest a missing product.");
+        setScanMessage("No verified catalog match yet. Search Market Watch, enter UPC/SKU manually, add manually, or suggest a missing product.");
         return;
       }
       if (!guestPreviewActive) {
@@ -18911,7 +18915,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         },
       });
     }
-    if (action === "suggestCatalogCorrection") return openFeedbackDialog("catalog_data", { page: "TideTradr", topic: "Catalog correction" });
+    if (action === "suggestCatalogCorrection") return openFeedbackDialog("catalog_data", { page: "Market Watch", topic: "Catalog correction" });
     if (action === "reviewMissingCatalog") {
       setAdminReviewFilter("Catalog Suggestions");
       setActiveTab("adminReview");
@@ -19297,7 +19301,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
             }, activeWorkspace),
             ...current,
           ]);
-          successes.push("Created TideTradr catalog item");
+          successes.push("Created Market Watch catalog item");
           saveConfirmationEntries.push({ destination: "Market", quantity: 1 });
         } else {
           submitUniversalSuggestion({
@@ -19322,12 +19326,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
             notes: [multiDestinationForm.tidetradr.correctionNotes, multiDestinationForm.notes].filter(Boolean).join(" "),
             source: "user",
           });
-          successes.push("Submitted TideTradr suggestion");
+          successes.push("Submitted Market Watch suggestion");
           saveConfirmationEntries.push({ destination: "Market suggestion", quantity: 1 });
         }
       }
     } catch (error) {
-      failures.push(`TideTradr failed: ${error.message || "Could not save"}`);
+      failures.push(`Market Watch failed: ${error.message || "Could not save"}`);
     }
 
     let savedInventoryItems = [];
@@ -21347,7 +21351,7 @@ function mapCatalog(row) {
           targetRecordId: editingCatalogId || null,
           submittedData: product,
           currentDataSnapshot: editingCatalogId ? catalogProducts.find((item) => item.id === editingCatalogId) || null : null,
-          notes: catalogForm.notes || "Submitted from TideTradr catalog form.",
+          notes: catalogForm.notes || "Submitted from Market Watch catalog form.",
           source: "tidetradr-catalog",
         });
         setEditingCatalogId(null);
@@ -22303,8 +22307,8 @@ function renderTideTradrHeader() {
   return (
     <PageHeader
       className={getHeaderCardClass("panel tidetradr-summary-card market-page-heading")}
-      title="Market"
-      subtitle="Find fair prices, watch trends, and compare listings."
+      title="Market Watch"
+      subtitle="Prices, watchlist, fair value, and honest data freshness."
       tabs={marketTabs}
       activeTab={activeMarketTab}
       onTabChange={changeMarketTab}
@@ -22364,7 +22368,7 @@ function renderTideTradrHeader() {
           <p>{marketDailyRefreshCommand} refreshes public TCGCSV catalog and price cache data. No live price is shown unless data has a saved timestamp.</p>
         </div>
         <div className="market-mode-strip" aria-label="Market guidance">
-          <span>{adaptiveSellerToolsVisible ? "Seller market view" : "Collector market view"}</span>
+          <span>{adaptiveSellerToolsVisible ? "Seller Market Watch" : "Collector Market Watch"}</span>
           <span>{adaptiveSellerToolsVisible ? "Forge comps" : "Vault first"}</span>
           <span>Honest labels</span>
           <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
@@ -22414,7 +22418,7 @@ function renderScoutHeader() {
     <PageHeader
       className={getHeaderCardClass("panel scout-summary-card")}
       title="Scout"
-      subtitle="Fresh nearby signals, honest trust labels, and family-safe store reports."
+      subtitle="Store Signals with honest Tide Score labels and family-safe reports."
       tabs={scoutTabs}
       activeTab={activeScoutPage === "reports" && scoutReportFilter === "My Reports" ? "myReports" : activeScoutPage === "stores" && scoutStoresMode === "map" ? "storeMap" : activeScoutPage === "predictions" || activeScoutPage === "guesses" ? "forecast" : activeScoutPage}
       onTabChange={changeScoutPage}
@@ -22436,7 +22440,7 @@ function renderScoutHeader() {
       <div className="scout-header-trust-row" aria-label="Scout trust summary">
         <span>{scoutStoreCount} stores tracked</span>
         <span>{scoutRecentReportCount} recent signals</span>
-        <span>Trust score {scoutTrustScore}</span>
+        <span>Tide Score {scoutTrustScore}</span>
       </div>
     </PageHeader>
   );
@@ -22570,7 +22574,7 @@ function renderVaultHeader() {
     <PageHeader
       className={getHeaderCardClass("panel vault-command-center")}
       title="Vault"
-      subtitle="Your collection, protected and organized."
+      subtitle="Collection."
       actions={(
         <>
         <button type="button" className="vault-command-quick-add" aria-label="Quick Add" onClick={openVaultQuickAddFlow}>
@@ -22741,7 +22745,7 @@ function renderForgeHeader() {
     <PageHeader
       className={getHeaderCardClass("panel forge-hero-panel forge-command-center")}
       title="Forge"
-      subtitle="Track inventory, sales, and business records."
+      subtitle="Seller Tools."
       summaryLabel={`${forgeWorkspaceContextLabel} | Private seller space`}
       summary={(
         <div className="forge-command-summary" aria-label="Forge command summary">
@@ -23715,7 +23719,7 @@ function renderForgeAccessState() {
       { label: "Scout reports", value: countBackupItems(data.scout.reports) },
       { label: "Shared data suggestions", value: countBackupItems(data.suggestions) },
       { label: "Tidepool posts", value: countBackupItems(data.tidepoolCommunity.posts) },
-      { label: "TideTradr watchlist", value: countBackupItems(data.tideTradrWatchlist) },
+      { label: "Market Watch watchlist", value: countBackupItems(data.tideTradrWatchlist) },
       { label: "Marketplace listings", value: countBackupItems(data.marketplaceListings) },
       { label: "Search aliases", value: countBackupItems(data.settings.userSearchAliases) },
     ];
@@ -24152,7 +24156,7 @@ function renderForgeAccessState() {
     { label: "Scout stores", value: scoutSnapshot.stores?.length || 0 },
     { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
     { label: "Shared suggestions", value: suggestions.length },
-    { label: "TideTradr watchlist", value: workspaceWatchlist.length },
+    { label: "Market Watch watchlist", value: workspaceWatchlist.length },
     { label: "Marketplace listings", value: workspaceMarketplaceListings.length },
     { label: "App storage", value: `${Math.ceil(storageSizeForKey(LOCAL_STORAGE_KEY) / 1024)} KB` },
     { label: "Scout storage", value: `${Math.ceil(storageSizeForKey(SCOUT_STORAGE_KEY) / 1024)} KB` },
@@ -26209,7 +26213,7 @@ function renderForgeAccessState() {
     recentMarketUpdates[0]
       ? {
           id: `home-market-${recentMarketUpdates[0].id}`,
-          label: "TideTradr",
+          label: "Market Watch",
           title: recentMarketUpdates[0].name || recentMarketUpdates[0].productName || recentMarketUpdates[0].cardName,
           detail: `${recentMarketUpdates[0].productType || recentMarketUpdates[0].rarity || "Market item"} | ${money(recentMarketUpdates[0].marketPrice || recentMarketUpdates[0].marketValue || 0)}`,
           action: () => setActiveTab("market"),
@@ -27591,7 +27595,7 @@ function renderForgeAccessState() {
       : dealBand.recommendation;
   const dealRecommendationReason =
     !dealAskingPrice || !dealMarketTotal
-      ? "Choose a TideTradr product or enter market totals to calculate a recommendation."
+      ? "Choose a Market Watch product or enter market totals to calculate a recommendation."
       : `${dealBand.description} Fees, shipping, taxes, and condition still matter before buying.`;
 
   const quickInventoryFilters = [
@@ -28801,7 +28805,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         currentMarketPrice: getTideTradrMarketInfo(product).currentMarketValue || "",
       },
       currentDataSnapshot: product,
-      notes: "User requested a market price review from TideTradr Product Detail.",
+      notes: "User requested a market price review from Market Watch Product Detail.",
       source: "tidetradr-detail",
     });
   }
@@ -32609,7 +32613,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {visibleSuggestions.length ? pagedSuggestions.items.map((suggestion) => renderSuggestionCard(suggestion, false)) : (
             <div className="empty-state">
               <h3>No suggestions here yet</h3>
-              <p>Use Suggest Missing Store, Suggest Correction, or Suggest UPC/SKU from Scout and TideTradr.</p>
+              <p>Use Suggest Missing Store, Suggest Correction, or Suggest UPC/SKU from Scout and Market Watch.</p>
             </div>
           )}
         </div>
@@ -34152,15 +34156,59 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card")}
           title="Known Limitations"
-          subtitle="Ember & Tide is in beta. Some features are still being built, tested, or verified. This page lists known limitations so testers know what to expect."
+          subtitle={`${PRODUCT_PROMISE_COPY} Some features are still being built, tested, or verified.`}
           actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
+          summary={<p>{PRODUCT_TAGLINES.primary} {PRODUCT_TAGLINES.secondary}</p>}
         />
         <section className="panel">
+          <div className="compact-card-header">
+            <div>
+              <h2>Beta limitations</h2>
+              <p>Known gaps stay labeled so the app does not overpromise.</p>
+            </div>
+          </div>
           <div className="beta-foundation-grid">
             {KNOWN_LIMITATIONS.map((item) => (
               <article className="beta-readiness-card" key={item}>
                 <span>Beta limitation</span>
                 <strong>{item}</strong>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
+          <div className="compact-card-header">
+            <div>
+              <h2>Product glossary</h2>
+              <p>Final names for the live app and permission-safe beta surfaces.</p>
+            </div>
+            <span className="status-badge">Ember & Tide</span>
+          </div>
+          <div className="beta-foundation-grid">
+            {PRODUCT_GLOSSARY.map((item) => (
+              <article className="beta-readiness-card" key={item.key}>
+                <span>{item.status}</span>
+                <strong>{item.term}</strong>
+                <p>{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
+          <div className="compact-card-header">
+            <div>
+              <h2>Roadmap language</h2>
+              <p>Planned names are documented here without turning them into live features.</p>
+            </div>
+            <span className="status-badge">Future</span>
+          </div>
+          <div className="beta-foundation-grid">
+            {PRODUCT_ROADMAP_NOTES.map((item) => (
+              <article className="beta-readiness-card" key={item.key}>
+                <span>{item.status}</span>
+                <strong>{item.term}</strong>
+                <p>{item.body}</p>
+                {item.caution ? <p className="compact-subtitle">{item.caution}</p> : null}
               </article>
             ))}
           </div>
@@ -34237,8 +34285,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <section className="profile-progress-page">
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card profile-progress-header")}
-          title="Profile Progress"
-          subtitle="Achievements, points, badges, membership status, and account progress in one private place."
+          title="Ember ID Progress"
+          subtitle="Public trust identity, achievements, badges, membership status, and account progress in one private place."
           actions={(
             <>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Settings</button>
@@ -34251,7 +34299,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="profile-public-preview" aria-label="Public profile preview">
             <div className="profile-avatar" aria-hidden="true">{avatarInitials}</div>
             <div>
-              <p className="section-kicker">Public profile preview</p>
+              <p className="section-kicker">Ember ID preview</p>
               <h2>{publicCommunity.publicUsernameLabel}</h2>
               <p>{publicCommunity.contributionLine}</p>
               <p>@{handleSource} · {isKidProfile ? "Kid collector" : "Collector"}</p>
@@ -37581,7 +37629,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="compact-card-header">
             <div>
               <h3>Create Listing</h3>
-              <p>Draft a listing from Vault, TideTradr Catalog, Forge, or manual entry. Public listings go to review first.</p>
+              <p>Draft a listing from Vault, Market Watch Catalog, Forge, or manual entry. Public listings go to review first.</p>
             </div>
           </div>
           <div className="quick-action-rail">
@@ -37894,8 +37942,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <>
         <PageHeader
           className={getHeaderCardClass("panel tidepool-community-header")}
-          title="Tidepool"
-          subtitle="Community currents for collectors and families."
+          title="Tidepool Community"
+          subtitle="Family-safe community currents for collectors and families."
           actions={(
             <>
               <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
@@ -38355,13 +38403,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "vaultQuickAdd") {
       return {
         title: "Vault Quick Add",
-        description: "Search TideTradr, scan, manually add, import, or save a wishlist item.",
+        description: "Search Market Watch, scan, manually add, import, or save a wishlist item.",
         size: "small",
       };
     }
     if (activeFlowModal?.type === "vaultCatalogSearch") {
       return {
-        title: "Search TideTradr Catalog",
+        title: "Search Market Watch Catalog",
         description: "Search by product, card, set, UPC, SKU, or shorthand, then prefill your Vault item.",
         size: "large",
       };
@@ -38383,7 +38431,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "quickFind") {
       return {
         title: "Quick Find",
-        description: "Search TideTradr, scan a product, enter a UPC/SKU, or start a manual lookup.",
+        description: "Search Market Watch, scan a product, enter a UPC/SKU, or start a manual lookup.",
         size: "small",
       };
     }
@@ -38453,7 +38501,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "createListing") {
       return {
         title: "Create Marketplace Listing",
-        description: "Draft a listing from Vault, TideTradr, Forge, or manual entry. Public listings go to review first.",
+        description: "Draft a listing from Vault, Market Watch, Forge, or manual entry. Public listings go to review first.",
         size: "large",
       };
     }
@@ -39333,7 +39381,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </button>
         </div>
         <details className="forge-form-step forge-optional-details">
-          <summary>Quick TideTradr catalog picker</summary>
+          <summary>Quick Market Watch catalog picker</summary>
           <LazyToolBoundary label="Loading catalog picker...">
             <SmartAddInventory
               localCatalogProducts={catalogProducts}
@@ -40812,7 +40860,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const options = [
       {
         key: "catalog",
-        title: "Search TideTradr Catalog",
+        title: "Search Market Watch Catalog",
         helper: "Search catalog and prefill item data.",
         onClick: () => runVaultQuickAction(() => openVaultCatalogSearchFlow({ source: "vault" })),
       },
@@ -40918,7 +40966,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <div className="flow-modal-stack vault-catalog-search-flow">
         <form className="catalog-search-form" onSubmit={runVaultCatalogSearch}>
-          <Field label="Search TideTradr Catalog">
+          <Field label="Search Market Watch Catalog">
             <LazySmartCatalogSearchBox
               value={vaultCatalogSearchQuery}
               onChange={setVaultCatalogSearchQuery}
@@ -40936,12 +40984,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             />
           </Field>
           <p className="compact-subtitle">Try: 151 upc, pr evo etb, sv8 booster, zard, pika</p>
-          <button type="submit">Search TideTradr</button>
+          <button type="submit">Search Market Watch</button>
         </form>
 
         {!query ? (
           <div className="empty-state small-empty-state">
-            <h3>Search TideTradr to prefill your Vault item.</h3>
+            <h3>Search Market Watch to prefill your Vault item.</h3>
             <p>Use a product name, card name, set, UPC, SKU, or shorthand.</p>
           </div>
         ) : null}
@@ -40961,7 +41009,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {query && supabaseCatalogStatus.loading ? (
           <div className="small-empty-state">
-            <strong>Searching TideTradr...</strong>
+            <strong>Searching Market Watch...</strong>
             <span>Looking for catalog matches and shorthand aliases.</span>
           </div>
         ) : null}
@@ -40975,7 +41023,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {query && !supabaseCatalogStatus.loading && !results.length ? (
           <div className="empty-state small-empty-state">
             <h3>No match found.</h3>
-            <p>Continue manual entry or submit a TideTradr suggestion for admin review.</p>
+            <p>Continue manual entry or submit a Market Watch suggestion for admin review.</p>
             <div className="flow-modal-top-actions catalog-selector-actions">
               <button type="button" className="secondary-button" onClick={() => openMultiDestinationAddFlow({
                 source: "vault-catalog-manual",
@@ -40996,7 +41044,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, action: "suggest" },
                 },
               })}>
-                Suggest to TideTradr
+                Suggest to Market Watch
               </button>
             </div>
           </div>
@@ -41010,11 +41058,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <div className="flow-modal-stack vault-placeholder-flow">
         <div className="small-empty-state">
           <strong>Scanning is being prepared for private beta.</strong>
-          <span>For now, you can search TideTradr or enter UPC/SKU manually.</span>
+          <span>For now, you can search Market Watch or enter UPC/SKU manually.</span>
         </div>
         <div className="forge-quick-add-grid quick-find-options">
           <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-scan" })}>
-            <strong>Search TideTradr</strong>
+            <strong>Search Market Watch</strong>
             <span>Find a catalog item and prefill the add flow.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-upc" })}>
@@ -41045,11 +41093,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <div className="flow-modal-stack vault-placeholder-flow">
         <div className="small-empty-state">
           <strong>Collection import is being prepared for private beta.</strong>
-          <span>You can manually add items or search TideTradr for now.</span>
+          <span>You can manually add items or search Market Watch for now.</span>
         </div>
         <div className="forge-quick-add-grid quick-find-options">
           <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-import" })}>
-            <strong>Search TideTradr</strong>
+            <strong>Search Market Watch</strong>
             <span>Prefill one item from the catalog.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => openMultiDestinationAddFlow({
@@ -41083,7 +41131,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="forge-quick-add-grid quick-find-options">
           <button type="submit" className="forge-quick-add-option">
             <strong>Search Catalog</strong>
-            <span>Run the TideTradr catalog search.</span>
+            <span>Run the Market Watch catalog search.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => runOption(() => beginScanProduct("none"))}>
             <strong>Scan Product/Card</strong>
@@ -41343,7 +41391,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <section className="flow-form-section">
           <div className="add-item-step-heading">
             <h3>Select the item first</h3>
-            <p>Search TideTradr, pick a recent item, or use manual add when the product is not in the catalog yet. You will choose Vault, Forge, Wishlist, or Market on the next step.</p>
+            <p>Search Market Watch, pick a recent item, or use manual add when the product is not in the catalog yet. You will choose Vault, Forge, Wishlist, or Market Watch on the next step.</p>
           </div>
           <div className="flow-form-grid">
             <div className="catalog-selector-panel add-item-search-panel">
@@ -41427,7 +41475,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         autoFocus
                         inputLabel="Search Pokemon product, set, UPC, or card name"
                         inlineResults
-                        emptyMessage="No TideTradr match found. Try fewer words, a UPC/SKU, or add it manually."
+                        emptyMessage="No Market Watch match found. Try fewer words, a UPC/SKU, or add it manually."
                         renderEmptyActions={() => (
                           <div className="catalog-selector-actions">
                             <button type="button" className="secondary-button" onClick={() => startMultiDestinationManualEntry()}>
@@ -41483,7 +41531,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
                   {itemSearchQuery && supabaseCatalogStatus.loading ? (
                     <div className="small-empty-state add-item-search-status">
-                      <strong>Searching TideTradr...</strong>
+                      <strong>Searching Market Watch...</strong>
                       <span>Looking for product names, sets, UPCs, SKUs, and sealed-product terms.</span>
                     </div>
                   ) : null}
@@ -41764,7 +41812,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </label>
                 <label>
                   <input type="checkbox" checked={Boolean(multiDestinationForm.wishlist.addToMarketWatch)} onChange={(event) => updateMultiDestinationSection("wishlist", "addToMarketWatch", event.target.checked)} />
-                  <span>Add to Market Watch if this item is linked to TideTradr</span>
+                  <span>Add to Market Watch if this item is linked to a catalog product</span>
                 </label>
               </div>
             </div>
@@ -41832,14 +41880,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {multiDestinationForm.destinations.tidetradr ? (
           <section className="flow-form-section destination-settings">
-            <h3>TideTradr Settings</h3>
+            <h3>Market Watch Settings</h3>
             <p className="compact-subtitle">
-              TideTradr is catalog and market data. Normal users submit new universal catalog items for review; admins can create directly.
+              Market Watch is catalog and market data. Normal users submit new universal catalog items for review; admins can create directly.
             </p>
             <div className="flow-form-grid">
               <div className="selected-product-card tide-tradr-link-card">
                 <div>
-                  <strong>{selectedCatalog ? "Link to existing TideTradr product" : "Suggest missing product"}</strong>
+                  <strong>{selectedCatalog ? "Link to existing Market Watch product" : "Suggest missing product"}</strong>
                   <span>{selectedCatalog ? catalogTitle(selectedCatalog) : "No existing product selected. Search Product / Card Match above to link one."}</span>
                 </div>
                 {selectedCatalog ? (
@@ -41876,7 +41924,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <input value={multiDestinationForm.tidetradr.sourceUrl} onChange={(event) => updateMultiDestinationSection("tidetradr", "sourceUrl", event.target.value)} placeholder="Official, retailer, or price source URL" />
               </Field>
               <Field label="Correction Notes">
-                <textarea value={multiDestinationForm.tidetradr.correctionNotes} onChange={(event) => updateMultiDestinationSection("tidetradr", "correctionNotes", event.target.value)} placeholder="What should TideTradr/admin review?" />
+                <textarea value={multiDestinationForm.tidetradr.correctionNotes} onChange={(event) => updateMultiDestinationSection("tidetradr", "correctionNotes", event.target.value)} placeholder="What should Market Watch/admin review?" />
               </Field>
             </div>
           </section>
@@ -43120,9 +43168,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "market-alert",
-        eyebrow: "Market",
-        title: "Create your first market alert",
-        detail: "Watch fair prices and keep chase items from slipping by.",
+        eyebrow: "Market Watch",
+        title: "Create your first watch",
+        detail: "Track fair value and keep chase items from slipping by.",
         cta: "Open Market",
         onClick: () => {
           setActiveTab("market");
@@ -43237,9 +43285,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         const collectorGuidance = renderSmartGuidanceAction();
         if (["start_collection", "first_scout_report", "fresh_scout_signals", "default_collection"].includes(collectorGuidance?.key)) return collectorGuidance;
         if (bestMarketMover) return {
-          badge: "Market",
+          badge: "Market Watch",
           title: `${bestMarketMover.name || bestMarketMover.productName || bestMarketMover.cardName || "A watched item"} needs a price check`,
-          reason: "Open Market to compare fair value before buying, selling, or trading.",
+          reason: "Open Market Watch to compare fair value before buying, selling, or trading.",
           primaryLabel: "Open Market",
           onPrimary: () => setActiveTab("market"),
           secondaryLabel: "Add to Vault",
@@ -43303,7 +43351,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         { key: "beta", eyebrow: "Beta Access", title: "Access requests", value: pendingBetaRequests, detail: "Pending or paused beta access rows.", cta: "Review", onClick: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); }, accent: "admin" },
         { key: "kids", eyebrow: "Kids Program", title: "Family requests", value: pendingKidsRequests, detail: "Little Sparks and family access review.", cta: "Review", onClick: () => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); }, accent: "spark" },
         { key: "scout-review", eyebrow: "Scout", title: "Reports needing moderation", value: scoutNeedsReviewReports.length, detail: "Review unusual, conflicting, flagged, or hidden reports.", cta: "Open Queue", onClick: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); }, accent: "scout" },
-        { key: "market-flags", eyebrow: "Market", title: "Marketplace review", value: marketReviewCount, detail: "Flagged or pending listing review.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
+        { key: "market-flags", eyebrow: "Market Watch", title: "Market review", value: marketReviewCount, detail: "Flagged, stale, or pending market data review.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
         { key: "feedback", eyebrow: "Support", title: "Feedback and bugs", value: pendingFeedbackCount + pendingSuggestionCount, detail: "Feedback, app errors, and shared data suggestions.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "tide" },
         catalogFreshnessLabel ? { key: "catalog-freshness", eyebrow: "Catalog", title: "Pricing freshness", value: catalogFreshnessLabel, detail: "Latest loaded catalog or market-price status available to admin tools.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "gold" } : null,
       ],
@@ -43423,7 +43471,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span className="hearth-greeting-full">{hearthGreeting}, {hearthGreetingName}!</span>
                   <span className="hearth-greeting-short">{hearthGreeting}!</span>
                 </h1>
-                <p>What matters next, without the noise.</p>
+                <p>Your home base. {PRODUCT_TAGLINES.primary}</p>
               </div>
             </div>
             <div className="hearth-header-actions">
@@ -43445,13 +43493,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </section>
           ) : null}
 
-          <section className={`panel hearth-best-action-card hearth-best-action-${hearthMode}`} aria-label="Today's Tide">
+          <section className={`panel hearth-best-action-card hearth-best-action-${hearthMode}`} aria-label="Your Next Move">
             <div className="hearth-best-action-copy">
               <div className="hearth-card-kicker-row">
                 <p className="section-kicker">Today&apos;s Tide</p>
                 <span className="hearth-mode-badge">{hearthModeLabel}</span>
               </div>
-              <span className="hearth-best-action-label">Today&apos;s Best Action</span>
+              <span className="hearth-best-action-label">Your Next Move</span>
               <h2>{bestAction.title}</h2>
               <p className="hearth-best-action-reason">{bestAction.reason}</p>
               <div className="hearth-hero-stat-row" aria-label="Hearth signal summary">
@@ -44510,7 +44558,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <strong>Account shortcuts</strong>
             <div className="drawer-inline-actions">
               <button type="button" className="drawer-link" onClick={() => openUtilityPage("profile")}>Edit Profile</button>
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Profile Progress</button>
+              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Ember ID Progress</button>
               <button type="button" className="drawer-link" onClick={() => setActiveTab("mySuggestions")}>My Suggestions</button>
             </div>
           </div>
@@ -45531,7 +45579,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     <button
       type="button"
       className="app-search-toggle"
-      aria-label={activeTab === "market" ? "Quick Find TideTradr" : "Search Ember & Tide"}
+      aria-label={activeTab === "market" ? "Quick Find Market Watch" : "Search Ember & Tide"}
       onClick={() => {
         setQuickAddMenuOpen(false);
         if (activeTab === "market") {
@@ -46043,7 +46091,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
                   {!guestPreviewActive ? (
                     <>
-                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile Progress</button>
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Ember ID Progress</button>
                       <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
                       <div className="drawer-danger-zone">
                         <strong>Danger zone</strong>
@@ -46774,6 +46822,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <button type="button" className="secondary-button" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button>
                     </div>
                   </div>
+                  <div className="drawer-info-card">
+                    <strong>Product glossary</strong>
+                    <p className="compact-subtitle">Hearth, Market Watch, Tidepool Community, Tide Score, Fair Price Badges, and future roadmap names live with Known Limitations.</p>
+                    <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Open Glossary</button>
+                  </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Send Feedback</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>
@@ -46782,7 +46835,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("market_data"))}>Report Wrong Market Price</button>
                   {adminToolsVisible ? <button type="button" className="drawer-link" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button> : null}
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>App Guide / Replay Onboarding</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile Progress</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Ember ID Progress</button>
                 </div>
               ), "help")}
               {renderMenuPullDown("beta_foundations", "Beta Foundations", "Kids Program, trust pages, notifications, membership, and launch links", (
@@ -46791,24 +46844,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <strong>{BETA_MODE_COPY}</strong>
                     <p className="compact-subtitle">SMS, billing, provider integrations, and marketplace auto-posting are intentionally disabled.</p>
                   </div>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("kidsProgram"))}>Kids Program</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("kidsProgram"))}>The Spark / Kids Program</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("sponsor"))}>Sponsor / Partner Interest</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("links"))}>Link-in-Bio Page</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("whatsNew"))}>What's New / Changelog</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Known Limitations</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Privacy / Terms / Rules</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile Progress</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Ember ID Progress</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>Restart Onboarding</button>
                 </div>
               ), "help")}
-              {renderMenuPullDown("community", "Community / Tidepool", "Tidepool, guidelines, and community rules", (
+              {renderMenuPullDown("community", "Tidepool Community", "Family-safe posts, guidelines, and community rules", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
-                    <strong>Tidepool</strong>
-                    <p className="compact-subtitle">Community hub for reports, guidelines, questions, and future Discord/community tools.</p>
+                    <strong>Tidepool Community</strong>
+                    <p className="compact-subtitle">Family-safe community hub for reports, guidelines, questions, events, and future community tools.</p>
                   </div>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Open Tidepool</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openTidepoolCommunity("Latest"))}>Open Tidepool Community</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setVaultToast("Report Guidelines are coming soon for beta."))}>Report Guidelines</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Community Rules</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Discord Coming Soon</button>
@@ -48245,13 +48298,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="compact-card-header">
               <div>
                 <h2 id="vault-add-title">Add Item</h2>
-                <p>Search TideTradr, scan, import, or enter a card/product manually.</p>
+                <p>Search Market Watch, scan, import, or enter a card/product manually.</p>
               </div>
               <button type="button" className="modal-icon-close" aria-label="Close Add Item" onClick={() => closeVaultAddModal()}>X</button>
             </div>
             <div className="quick-action-rail vault-add-tabs">
               {[
-                ["catalog", "Search TideTradr"],
+                ["catalog", "Search Market Watch"],
                 ["scan", "Scan to Vault"],
                 ["manual", "Manual Add"],
                 ["import", "Import Collection"],
@@ -48273,7 +48326,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="vault-add-modal-body">
             {vaultAddMode === "catalog" ? (
               <div className="vault-add-tab-panel">
-                <Field label="Search TideTradr catalog">
+                <Field label="Search Market Watch catalog">
                   <LazySmartCatalogSearchBox
                     value={vaultForm.tideTradrSearch || ""}
                     onChange={(value) => updateVaultForm("tideTradrSearch", value)}
@@ -48289,13 +48342,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   />
                 </Field>
                 <div className="small-empty-state">
-                  <strong>TideTradr catalog connection is in beta.</strong>
+                  <strong>Market Watch catalog connection is in beta.</strong>
                   <span>Use Manual Add or Scan for now if the item is not easy to find here.</span>
                 </div>
                 {supabaseCatalogStatus.loading ? (
                   <div className="small-empty-state vault-catalog-state">
                     <strong>Searching catalog...</strong>
-                    <span>Checking TideTradr for matching products.</span>
+                    <span>Checking Market Watch for matching products.</span>
                   </div>
                 ) : null}
                 {tideTradrLookupProduct ? (
@@ -48379,7 +48432,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 {!supabaseCatalogStatus.loading && vaultSuggestedCatalogItems.length === 0 && !tideTradrLookupProduct ? (
                   <div className="small-empty-state vault-catalog-state">
-                    <strong>No TideTradr products selected yet.</strong>
+                    <strong>No Market Watch products selected yet.</strong>
                     <span>Search above to find products, or switch to Manual Add.</span>
                   </div>
                 ) : null}
@@ -48598,7 +48651,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="location-modal vault-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="vault-duplicate-warning-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-sticky-header">
               <h2 id="vault-duplicate-warning-title">This item may already be in your Vault.</h2>
-              <p>{vaultPotentialDuplicate.duplicate?.name || "Matching Vault item"} already matches this name, UPC, SKU, or TideTradr product ID.</p>
+              <p>{vaultPotentialDuplicate.duplicate?.name || "Matching Vault item"} already matches this name, UPC, SKU, or Market Watch product ID.</p>
             </div>
             <div className="vault-transfer-summary">
               <strong>{vaultPotentialDuplicate.candidate.name}</strong>
@@ -48754,7 +48807,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="picture-lookup-panel">
                 <div className="small-empty-state">
                   <strong>AI Photo Lookup</strong>
-                  <span>Use visible text from a product/card photo to search TideTradr. {AI_REVIEW_DISCLAIMER}</span>
+                  <span>Use visible text from a product/card photo to search Market Watch. {AI_REVIEW_DISCLAIMER}</span>
                 </div>
                 <div className="picture-lookup-actions">
                   <button type="button" className="secondary-button" onClick={() => setScanMode("manual")}>Search manually instead</button>
@@ -48779,7 +48832,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="quick-actions">
                   <button type="button" onClick={runPictureLookupSearch}>Find matches</button>
                   <button type="button" className="secondary-button" onClick={runPictureLookupSearch}>Help identify item</button>
-                  <button type="button" className="secondary-button" onClick={() => { setScanMode("manual"); setPictureLookup((current) => ({ ...current, message: "Enter a product name, set, UPC, SKU, or shorthand to search TideTradr." })); }}>Search TideTradr</button>
+                  <button type="button" className="secondary-button" onClick={() => { setScanMode("manual"); setPictureLookup((current) => ({ ...current, message: "Enter a product name, set, UPC, SKU, or shorthand to search Market Watch." })); }}>Search Market Watch</button>
                 </div>
                 {pictureLookup.message ? <p className="compact-subtitle">{pictureLookup.message}</p> : null}
               </div>
@@ -48934,7 +48987,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       }),
                     });
                   }}>Add manually</button>
-                  <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); closeInventoryScanner(); }}>Search TideTradr</button>
+                  <button type="button" className="secondary-button" onClick={() => { setActiveTab("market"); closeInventoryScanner(); }}>Search Market Watch</button>
                   <button type="button" className="ghost-button" onClick={closeInventoryScanner}>Cancel</button>
                 </div>
               </div>
@@ -49554,7 +49607,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="compact-card-header">
                 <div>
                   <h2>Beta Tester Path</h2>
-                  <p>Core flow: Scout a store, submit a report, save collection items to Vault, search TideTradr for market values, then use Forge when an item becomes business inventory.</p>
+                  <p>Core flow: Scout a store, submit a report, save collection items to Vault, search Market Watch for known values, then use Forge when an item becomes business inventory.</p>
                 </div>
               </div>
               <QuickActionGrid
@@ -49563,7 +49616,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 actions={[
                   { key: "submit-scout-report", title: "Submit Scout Report", subtitle: "Log a store check", onClick: () => openQuickAddAction("storeReport") },
                   { key: "add-to-vault", title: "Add Item", subtitle: "Default destination: Vault", onClick: () => openQuickAddAction("vaultItem") },
-                  { key: "search-tidetradr", title: "Search TideTradr", subtitle: "Find values and products", onClick: () => { setActiveTab("market"); setTideTradrSubTab("overview"); } },
+                  { key: "search-tidetradr", title: "Search Market Watch", subtitle: "Find values and products", onClick: () => { setActiveTab("market"); setTideTradrSubTab("overview"); } },
                   { key: "check-deal", title: "Check Deal", subtitle: "Compare asking price", onClick: () => { setActiveTab("market"); openDealFinderModal(); } },
                   { key: "add-to-forge", title: "Add Item", subtitle: "Default destination: Forge", onClick: () => openQuickAddAction("inventory") },
                   { key: "export-backup", title: "Export Backup", subtitle: "Save private beta data", onClick: () => openUtilityPage("data") },
@@ -49694,7 +49747,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="compact-card-header">
                   <div>
                     <h2>Market Updates</h2>
-                    <p>Latest TideTradr catalog values.</p>
+                    <p>Latest Market Watch catalog values.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>View</button>
                 </div>
@@ -49725,12 +49778,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <section className="feature-dropdown-stack home-optional-sections">
               <CollapsibleFeatureSection
                 title="Pinned Market Watch"
-                summary="Pinned products from TideTradr"
+                summary="Pinned products from Market Watch"
                 open={isFeatureSectionOpen("home_tidetradr")}
                 onToggle={() => toggleFeatureSection("home_tidetradr")}
               >
                 {pinnedMarketWatchItems.length === 0 ? (
-                  <p className="compact-subtitle">Pin products from TideTradr to watch market updates here.</p>
+                  <p className="compact-subtitle">Pin products from Market Watch to follow value updates here.</p>
                 ) : (
                   <div className="home-list compact-home-list">
                     {pinnedMarketWatchItems.map((item) => (
@@ -49826,7 +49879,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="card"><p>Market Value</p><h2>{money(totalMarketValue)}</h2></div>
                 </div>
                 <div className="quick-actions">
-                  <button type="button" onClick={() => setActiveTab("market")}>Open TideTradr</button>
+                  <button type="button" onClick={() => setActiveTab("market")}>Open Market Watch</button>
                   <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("watch")}>View Watchlist</button>
                 </div>
               </CollapsibleFeatureSection>
@@ -49834,7 +49887,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="compact-card-header">
                   <div>
                     <h2>Latest Items</h2>
-                    <p>Latest Scout, Vault, TideTradr, and Forge updates.</p>
+                    <p>Latest Scout, Vault, Market Watch, and Forge updates.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>View All</button>
                 </div>
@@ -49946,7 +49999,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="panel" style={dashboardSectionStyle("deal_checker")}>
                   <h2>Deal Checker</h2>
                   <div className="home-callout">
-                    <p>Run TideTradr before buying so collectors and parents can avoid overpaying.</p>
+                    <p>Check Market Watch before buying so collectors and parents can avoid overpaying.</p>
                     <button type="button" onClick={() => setActiveTab("market")}>Check Deal</button>
                   </div>
                 </div>
@@ -51109,7 +51162,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <section className="panel">
                 <div className="empty-state">
                   <h3>Deal Finder opens in a focused sheet.</h3>
-                  <p>Use the TideTradr header action to check product, quantity, asking price, and recommendation without changing the page.</p>
+                  <p>Use the Market Watch header action to check product, quantity, asking price, and recommendation without changing the page.</p>
                   <button type="button" onClick={() => openDealFinderModal()}>Open Deal Finder</button>
                 </div>
               </section>
@@ -51118,11 +51171,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {false ? (
                 <section className={getHeaderCardClass("tab-summary panel")}>
                   <div>
-                    <h2>TideTradr &gt; Market Watch</h2>
+                    <h2>Market Watch</h2>
                     <p>Watched products, pinned items, recent value checks, and deal shortcuts.</p>
                   </div>
                   <div className="summary-pill-row">
-                    <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("overview")}>Back to TideTradr</button>
+                    <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("overview")}>Back to Market Watch</button>
                   </div>
                 </section>
                 ) : null}
@@ -51194,7 +51247,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="compact-card-header">
                   <div>
                     <h2>Recent Checks</h2>
-                    <p>Recently viewed products and value checks from TideTradr.</p>
+                    <p>Recently viewed products and Market Watch value checks.</p>
                   </div>
                   <span className="status-badge">{phase2RecentDeals.length ? `${phase2RecentDeals.length} deal checks` : (tideTradrLookupProduct ? "1 recent" : "No recent checks")}</span>
                 </div>
@@ -51244,7 +51297,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : (
                   <div className="empty-state">
                     <h3>No recent checks yet</h3>
-                    <p>Search TideTradr and open a product to start building recent checks.</p>
+                    <p>Search Market Watch and open a product to start building recent checks.</p>
                   </div>
                 )}
               </section>
@@ -51257,7 +51310,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {false ? (
                 <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>
                   <div>
-                    <h2>TideTradr</h2>
+                    <h2>Market Watch</h2>
                     <p>Search products, check market values, watch items, and compare deals.</p>
                   </div>
                   <form className="catalog-search-form" onSubmit={submitCatalogSearch}>
@@ -51282,7 +51335,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </form>
                   <QuickActionGrid
                     className="tidetradr-shortcut-grid"
-                    ariaLabel="TideTradr quick actions"
+                    ariaLabel="Market Watch quick actions"
                     actions={[
                       {
                         key: "tidetradr-search",
@@ -51363,10 +51416,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <section ref={catalogResultsRef} className={`panel tidetradr-results-panel market-results-panel ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}>
                   <div className="compact-card-header">
                     <div>
-                      <h2>{catalogSearchHasRun ? "Market Results" : "Search Market"}</h2>
-                      <p>
-                        {catalogSearchHasRun
-                          ? `Page ${supabaseCatalogStatus.page || 1} of ${tideTradrCatalogPageCount || (supabaseCatalogStatus.hasMore ? (supabaseCatalogStatus.page || 1) + 1 : 1)}`
+                  <h2>{catalogSearchHasRun ? "Market Watch Results" : "Search Market Watch"}</h2>
+                  <p>
+                    {catalogSearchHasRun
+                      ? `Page ${supabaseCatalogStatus.page || 1} of ${tideTradrCatalogPageCount || (supabaseCatalogStatus.hasMore ? (supabaseCatalogStatus.page || 1) + 1 : 1)}`
                           : "Compare catalog values, retail context, and saved watches."}
                       </p>
                     </div>
@@ -51434,7 +51487,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <option value="other">Other</option>
                         </select>
                       </Field>
-                      <Field label="Price View">
+                    <Field label="Fair Price Badge">
                         <select value={marketCatalogDealFilter} onChange={(event) => setMarketCatalogDealFilter(event.target.value)}>
                           {MARKET_CATALOG_DEAL_FILTERS.map((filter) => (
                             <option key={filter.value} value={filter.value}>{filter.label}</option>
@@ -51477,7 +51530,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
                             targetTable: "catalog_items",
                             submittedData: { searchTerm: catalogSearch, productType: catalogTypeFilter, setName: catalogSetFilter },
-                            notes: "User suggested a missing catalog product from TideTradr search.",
+                            notes: "User suggested a missing catalog product from Market Watch search.",
                             source: "tidetradr-search",
                           });
                         }}
@@ -51587,7 +51640,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                               suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
                               targetTable: "catalog_items",
                               submittedData: { searchTerm: catalogEmptyTerm || catalogSearch, productType: catalogTypeFilter, setName: catalogSetFilter },
-                              notes: "User suggested a missing catalog product from TideTradr empty search.",
+                              notes: "User suggested a missing catalog product from Market Watch empty search.",
                               source: "tidetradr-empty-search",
                             });
                           }}
@@ -51643,7 +51696,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Market Values</button>
                       <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
                     </div>
-                    {workspaceWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
+                    {workspaceWatchlist.length === 0 ? <p>No watched Market Watch products yet.</p> : null}
                     <div className="inventory-list">
                       {workspaceWatchlist.map((item) => (
                         <div className="inventory-card compact-card" key={item.id}>
@@ -51753,7 +51806,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {false && activeTab === "market" && (
           <>
             {renderPageChrome({
-              title: "TideTradr",
+              title: "Market Watch",
               subtitle: "Search catalog, check deals, watch markets, imports, and market sources.",
               primary: { label: "Check Deal", onClick: () => { setTideTradrSubTab("deal"); setFeatureSectionsOpen((current) => ({ ...current, market_deal_finder: true })); } },
               secondary: { label: "Search Catalog", onClick: () => setActiveTab("catalog") },
@@ -51792,7 +51845,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {tideTradrSubTab === "overview" || tideTradrSubTab === "watch" ? (
               <CollapsibleFeatureSection title="Market Watch" summary="Watchlist, pinned market items, recently updated values, and market updates" open={isFeatureSectionOpen("market_lookup")} onToggle={() => toggleFeatureSection("market_lookup")}>
                 <div className="form">
-                  <Field label="TideTradr Product">
+                  <Field label="Market Watch Product">
                     <select value={tideTradrLookupId} onChange={(event) => selectTideTradrProduct(event.target.value)}>
                       <option value="">Choose a product</option>
                       {catalogProducts.map((product) => (
@@ -51887,7 +51940,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Pinned Market Watch</button>
                   <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
                 </div>
-                {workspaceWatchlist.length === 0 ? <p>No watched TideTradr products yet.</p> : null}
+                {workspaceWatchlist.length === 0 ? <p>No watched Market Watch products yet.</p> : null}
                 <div className="inventory-list">
                   {workspaceWatchlist.map((item) => (
                     <div className="inventory-card compact-card" key={item.id}>
@@ -52029,7 +52082,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <section className="panel">
               <h2>Shared Pokemon Product Catalog</h2>
               <p>
-                TideTradr Catalog is the shared product and value system for Forge, Scout, Vault, and Deal Finder.
+                Market Watch Catalog is the shared product and value system for Forge, Scout, Vault, and Deal Finder.
               </p>
               <p>
                 Market values are labeled Live, Cached, Manual, or Estimated. Estimated values stay labeled until live or cached sources are connected.
@@ -52126,7 +52179,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <p>Set: {item.setName || "Not listed"}</p>
             <p>Type: {item.productType || "Not listed"}</p>
             <p>Barcode: {item.barcode || "Not listed"}</p>
-            <p>TideTradr Value: ${Number(item.marketPrice || 0).toFixed(2)}</p>
+            <p>Market Watch Value: ${Number(item.marketPrice || 0).toFixed(2)}</p>
           </div>
         ))}
       </div>
@@ -52214,7 +52267,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     }}>Remove Image</button>
                   </div>
                 ) : null}
-                <Field label="TideTradr Product ID"><input value={catalogForm.externalProductId} onChange={(e) => updateCatalogForm("externalProductId", e.target.value)} /></Field>
+                <Field label="Market Watch Product ID"><input value={catalogForm.externalProductId} onChange={(e) => updateCatalogForm("externalProductId", e.target.value)} /></Field>
                 <Field label="Market Source URL"><input value={catalogForm.marketUrl} onChange={(e) => updateCatalogForm("marketUrl", e.target.value)} /></Field>
                 <Field label="Market Data Label"><select value={catalogForm.sourceType} onChange={(e) => updateCatalogForm("sourceType", e.target.value)}><option value="manual">Manual</option><option value="estimated">Estimated</option>{adminToolsVisible ? <option value="mock">Mock</option> : null}<option value="cached">Cached</option><option value="live">Live</option></select></Field>
                 <Field label="Market Source Name"><input value={catalogForm.marketSource} onChange={(e) => updateCatalogForm("marketSource", e.target.value)} placeholder="Manual, Estimated, TCGPlayer, PriceCharting..." /></Field>
@@ -52281,7 +52334,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     <Field label="Graded Market Value"><input type="number" step="0.01" value={catalogForm.marketValueGraded} onChange={(e) => updateCatalogForm("marketValueGraded", e.target.value)} /></Field>
                   </>
                 )}
-                <Field label="TideTradr Market Price"><input type="number" step="0.01" value={catalogForm.marketPrice} onChange={(e) => updateCatalogForm("marketPrice", e.target.value)} /></Field>
+                <Field label="Market Watch Price"><input type="number" step="0.01" value={catalogForm.marketPrice} onChange={(e) => updateCatalogForm("marketPrice", e.target.value)} /></Field>
                 <Field label="Low Price"><input type="number" step="0.01" value={catalogForm.lowPrice} onChange={(e) => updateCatalogForm("lowPrice", e.target.value)} /></Field>
                 <Field label="Mid Price"><input type="number" step="0.01" value={catalogForm.midPrice} onChange={(e) => updateCatalogForm("midPrice", e.target.value)} /></Field>
                 <Field label="High Price"><input type="number" step="0.01" value={catalogForm.highPrice} onChange={(e) => updateCatalogForm("highPrice", e.target.value)} /></Field>
@@ -52378,7 +52431,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <p>
                 {catalogSearchHasRun
                   ? `Showing ${filteredCatalogProducts.length} paged search results.`
-                  : "Search from TideTradr first before browsing imported catalog rows."}
+                  : "Search from Market Watch first before browsing imported catalog rows."}
               </p>
               <Field label="Sort Catalog">
                 <select
@@ -52430,7 +52483,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 {!catalogSearchHasRun ? (
                   <div className="empty-state">
                     <h3>Search first</h3>
-                    <p>Imported catalog rows are not listed by default. Use TideTradr Search & Catalog to search by name, set, card number, product ID, or barcode.</p>
+                    <p>Imported catalog rows are not listed by default. Use Market Watch Search & Catalog to search by name, set, card number, product ID, or barcode.</p>
                   </div>
                 ) : null}
               </div>
@@ -52454,7 +52507,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
     </div>
 
     <details className="forge-form-step forge-optional-details">
-      <summary>Quick TideTradr catalog picker</summary>
+      <summary>Quick Market Watch catalog picker</summary>
       <LazyToolBoundary label="Loading catalog picker...">
         <SmartAddInventory
           localCatalogProducts={catalogProducts}
@@ -52500,7 +52553,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
     {false && showInventoryScanner && (
       <section className="panel">
         <h3>Scan to Add</h3>
-        <p className="compact-subtitle">Choose what you are scanning. Beta uses UPC/card number/manual matching against the local TideTradr catalog.</p>
+        <p className="compact-subtitle">Choose what you are scanning. Beta uses UPC/card number/manual matching against the local Market Watch catalog.</p>
         <div className="quick-action-rail">
           {[
             ["upc", "Scan UPC / barcode"],
@@ -52574,7 +52627,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <PageHeader
                 className={getHeaderCardClass("panel marketplace-page-heading")}
                 title="Forge > Marketplace"
-                subtitle="Create listings from Forge inventory, Vault items, TideTradr catalog products, or manual entry."
+                subtitle="Create listings from Forge inventory, Vault items, Market Watch catalog products, or manual entry."
                 actions={(
                   <button type="button" className="secondary-button" onClick={() => {
                     setMarketplaceView("browse");
@@ -52613,7 +52666,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <summary>More</summary>
                 <div>
                   <button type="button" className="secondary-button" onClick={() => openAddExpenseFlow()}>Add Expense</button>
-                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from TideTradr</button>
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("catalog")}>Import from Market Watch</button>
                   <button type="button" className="secondary-button" onClick={openVaultMoveToForgeFlow}>Move from Vault</button>
                   <button type="button" className="secondary-button" onClick={() => setInventorySearch("Needs Market Check")}>Price Update</button>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("reports")}>View Tax Records</button>
@@ -54697,7 +54750,7 @@ function CompactInventoryCard({
 
       <div className="compact-links">
         {physicalLocation ? <span className="neon-chip forge-location-pill">{physicalLocation}</span> : null}
-        {item.tideTradrUrl && <a href={item.tideTradrUrl} target="_blank" rel="noreferrer">TideTradr</a>}
+        {item.tideTradrUrl && <a href={item.tideTradrUrl} target="_blank" rel="noreferrer">Market Watch</a>}
         {item.listingUrl && <a href={item.listingUrl} target="_blank" rel="noreferrer">Listing</a>}
         {item.receiptImage && <a href={item.receiptImage} target="_blank" rel="noreferrer">Receipt</a>}
       </div>
@@ -54979,7 +55032,7 @@ function VaultEditForm({
 
         {renderSection("advanced", "Advanced", (
           <div className="form vault-form-grid">
-            <Field label="TideTradr Product ID">
+            <Field label="Market Watch Product ID">
               <input value={form.externalProductId || form.tideTradrProductId || ""} onChange={(event) => { setForm("externalProductId", event.target.value); setForm("tideTradrProductId", event.target.value); }} />
             </Field>
             <Field label="Market Source URL">
@@ -55074,7 +55127,7 @@ function InventoryForm({
           <span>Step 1</span>
           <div>
             <h3>Product</h3>
-            <p>Start from TideTradr when possible, or enter the item manually.</p>
+            <p>Start from Market Watch when possible, or enter the item manually.</p>
           </div>
         </div>
       <Field label="Choose Saved Catalog Product">
@@ -55205,7 +55258,7 @@ function InventoryForm({
       <Field label="Planned Sale Price"><input type="number" step="0.01" value={form.salePrice} onChange={(e) => setForm("salePrice", e.target.value)} /></Field>
       <Field label="Status"><select value={form.status} onChange={(e) => setForm("status", e.target.value)}>{statusOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
       <Field label="Listing Platform"><input value={form.listingPlatform} onChange={(e) => setForm("listingPlatform", e.target.value)} placeholder="eBay, Whatnot, Marketplace..." /></Field>
-      <Field label="TideTradr Market Price"><input type="number" step="0.01" value={form.marketPrice} onChange={(e) => setForm("marketPrice", e.target.value)} /></Field>
+      <Field label="Market Watch Price"><input type="number" step="0.01" value={form.marketPrice} onChange={(e) => setForm("marketPrice", e.target.value)} /></Field>
       <Field label="MSRP Price">
   <input
     type="number"
@@ -55279,7 +55332,7 @@ function InventoryForm({
       <Field label="Notes"><input value={form.notes || ""} onChange={(e) => setForm("notes", e.target.value)} /></Field>
       <Field label="Condition"><input value={form.condition || ""} onChange={(e) => setForm("condition", e.target.value)} placeholder="Sealed, damaged box, NM, LP..." /></Field>
       <Field label="Tags"><input value={form.tags || ""} onChange={(e) => setForm("tags", e.target.value)} placeholder="restock, promo, hold, bundle..." /></Field>
-      <Field label="TideTradr Product ID"><input value={form.externalProductId} onChange={(e) => setForm("externalProductId", e.target.value)} /></Field>
+      <Field label="Market Watch Product ID"><input value={form.externalProductId} onChange={(e) => setForm("externalProductId", e.target.value)} /></Field>
       <Field label="Market Source URL"><input value={form.tideTradrUrl} onChange={(e) => setForm("tideTradrUrl", e.target.value)} /></Field>
       <Field label="MSRP Reference">
   <input
@@ -55379,7 +55432,7 @@ function ActionReport({ title, items, button, action, secondaryButton = "", seco
               </div>
               <div className="compact-metrics">
                 <div><span>Cost</span><strong>{money(item.unitCost)}</strong></div>
-                <div><span>TideTradr</span><strong>{money(item.marketPrice)}</strong></div>
+                <div><span>Market Watch</span><strong>{money(item.marketPrice)}</strong></div>
                 <div><span>Planned Sale</span><strong>{money(item.salePrice || item.plannedSalePrice || 0)}</strong></div>
                 <div><span>Profit</span><strong>{money(item.quantity * item.marketPrice - item.quantity * item.unitCost)}</strong></div>
               </div>

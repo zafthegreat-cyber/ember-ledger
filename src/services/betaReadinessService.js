@@ -8,6 +8,67 @@ export const KIDS_PROGRAM_ANTI_RESALE_COPY =
 
 export const BETA_MODE_COPY = "Beta mode - some features are still being improved.";
 
+export const PRODUCT_PROMISE_COPY =
+  "A smarter, safer collecting app for families, collectors, and sellers.";
+
+export const PRODUCT_TAGLINES = {
+  primary: "Protect the Spark. Follow the Tide.",
+  secondary: "Collect smarter. Scout fairly. Grow together.",
+};
+
+export const PRODUCT_GLOSSARY = [
+  { key: "hearth", term: "Hearth", status: "Live", body: "Your home base for the next best action, setup progress, and calm daily guidance." },
+  { key: "your_next_move", term: "Your Next Move", status: "Live", body: "The main Hearth recommendation. It should show one useful action, not every possible tool." },
+  { key: "scout", term: "Scout", status: "Live", body: "Store Signals for fair restock reports, nearby store context, and honest confidence labels." },
+  { key: "vault", term: "Vault", status: "Live", body: "Your protected collection for owned, wanted, and set-progress records." },
+  { key: "forge", term: "Forge", status: "Live", body: "Seller Tools for inventory, sales, receipts, mileage, expenses, and year-end record support." },
+  { key: "market_watch", term: "Market Watch", status: "Live", body: "Price lookup, watchlist, fair value checks, and freshness labels. It does not imply live checkout." },
+  { key: "tidepool_community", term: "Tidepool Community", status: "Live", body: "A family-safe community space for helpful posts, questions, events, and shop notes." },
+  { key: "spark", term: "The Spark", status: "Live", body: "Kids Program requests, safety rules, parent-managed family interest, and kid-friendly missions." },
+  { key: "quick_add", term: "Quick Add", status: "Live", body: "Adaptive add hub for items, UPCs, receipts, Scout reports, and manual entries." },
+  { key: "admin_command_center", term: "Admin Command Center", status: "Protected", body: "Permission-safe admin tools for beta access, review queues, invites, and cleanup controls." },
+  { key: "smart_setup", term: "Smart Setup", status: "Live", body: "First-login personalization that keeps irrelevant seller or admin tools out of the way." },
+  { key: "ember_watch", term: "Ember Watch", status: "Planned", body: "Alerts and watchlist center for watched products, restocks, favorite stores, reminders, and announcements." },
+  { key: "ember_id", term: "Ember ID", status: "Planned", body: "Public trust identity for username, contribution count, Scout level, and permission-safe badges." },
+  { key: "tide_score", term: "Tide Score", status: "Live label", body: "Report and store confidence language: Needs more reports, Based on recent reports, Community confirmed, Admin reviewed, Fresh, Aging, or Expired." },
+  { key: "fair_price_badges", term: "Fair Price Badges", status: "Live label", body: "Market Watch price labels: Near Retail, Fair Price, High Price, Market Estimate, Source Unknown, or Needs Price Data." },
+  { key: "partner_shops", term: "Partner Shops", status: "Future", body: "Family-friendly shop system with events, stock notes, and paid-placement labels only if sponsorship exists later." },
+];
+
+export const PRODUCT_ROADMAP_NOTES = [
+  {
+    key: "grade_assist",
+    term: "Grade Assist",
+    status: "Future",
+    body: "AI-assisted pre-grading for card scans, slab scans, centering estimates, condition checklists, confidence, suggested grade range, value comparisons, and prep-before-you-send guidance.",
+    caution: "Grade Assist is an estimate, not a guaranteed grade.",
+  },
+  {
+    key: "set_mastery",
+    term: "Set Mastery",
+    status: "Future",
+    body: "Vault set completion with owned and missing cards, variants, holo and reverse holo tracking, sealed products, card number sorting, and wishlist gaps.",
+  },
+  {
+    key: "scan_anything",
+    term: "Scan Anything",
+    status: "Future",
+    body: "A scan-first add system for cards, sealed products, UPCs, slabs, binders, and later receipts. No OCR or AI extraction is promised until it is supported.",
+  },
+  {
+    key: "ember_watch",
+    term: "Ember Watch",
+    status: "Future",
+    body: "A unified alert center for watched products, price drops, restock alerts, favorite stores, Set Mastery reminders, giveaways, and admin announcements.",
+  },
+  {
+    key: "ember_id",
+    term: "Ember ID",
+    status: "Future",
+    body: "A public profile and trust identity with username, Scout level, contribution count, trust badges, family-safe status, seller status, and protected admin/founder badges.",
+  },
+];
+
 export const SIGNUP_NAME_HELPER =
   "Please use your real name. This helps us keep Ember & Tide fair, especially for Kids Program access, giveaways, and community reports.";
 
@@ -137,6 +198,7 @@ export const FOR_PARENTS_COPY = [
 export const KNOWN_LIMITATIONS = [
   "OCR is not fully wired yet.",
   "Photo lookup may be beta/placeholder.",
+  "Grade Assist is an estimate, not a guaranteed grade.",
   "Market values may be incomplete or unavailable.",
   "Forecasts are estimates, not guarantees.",
   "Catalog may have missing products.",
@@ -200,8 +262,8 @@ export const BETA_EMPTY_STATES = {
     body: "Submit confirmed store reports to help build restock forecasts. Community guesses stay separate.",
   },
   market: {
-    title: "No TideTradr checks yet",
-    body: "Search a product, compare value, save products, or prepare a listing from Vault or Forge.",
+    title: "No Market Watch checks yet",
+    body: "Search a product, compare known value, save watched products, or add details from Vault or Forge. No live checkout is connected.",
   },
   kids: {
     title: "Kids Program opportunities will appear here",
@@ -218,10 +280,14 @@ export const BETA_TOOLTIPS = {
   Forge: "Your business inventory and selling tools.",
   "Vault vs Forge": "Vault is for collection. Forge is for sellable/business inventory, receipts, mileage, sales, and year-end records.",
   "Quick Add": "Choose Vault, Forge, Scout, Expense, or Mileage before saving so records go to the right place.",
-  Scout: "Confirmed store reports, community guesses, and restock forecasts.",
+  Scout: "Store Signals with confirmed reports, community guesses, and confidence labels kept separate.",
   Guess: "A personal prediction or pattern note, not confirmed stock.",
   Report: "A real stock sighting or store update.",
   "Drop Radar": "Predictions are estimates from confirmed history, not guarantees.",
+  "Tide Score": "Report and store confidence language. It should never make weak data sound certain.",
+  "Market Watch": "Price lookup, watchlist, and fair value labels. It is not checkout or a live marketplace.",
+  "Fair Price Badges": "Near Retail, Fair Price, High Price, Market Estimate, Source Unknown, and Needs Price Data labels.",
+  "Grade Assist": "Future pre-grading support. Grade Assist is an estimate, not a guaranteed grade.",
   Alerts: "In-app alerts are grouped and labeled so confirmed reports do not look like guesses.",
   "Expense only": "Tracks the receipt expense without adding the item to inventory.",
 };

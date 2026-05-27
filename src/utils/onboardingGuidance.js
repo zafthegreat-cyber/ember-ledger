@@ -9,15 +9,15 @@ export const ONBOARDING_GOALS = [
     key: "parent_family",
     label: "Parent/family looking for Pokemon",
     shortLabel: "Family access",
-    description: "Find kid-friendly access, fair prices, The Spark, and alerts without guessing.",
-    nextActions: ["Open The Spark", "Set up alerts", "Follow favorite stores"],
+    description: "Find kid-friendly access, fair prices, The Spark, and Ember Watch alerts without guessing.",
+    nextActions: ["Open The Spark", "Set up Ember Watch", "Follow favorite stores"],
   },
   {
     key: "collector_vault",
     label: "Collector tracking a Vault",
     shortLabel: "Collector",
     description: "Build a clean collection record with photos, sets, values, and purchaser tallies.",
-    nextActions: ["Add first Vault item", "Search TideTradr", "Ask Ember Assist"],
+    nextActions: ["Add first Vault item", "Search Market Watch", "Ask Ember Assist"],
   },
   {
     key: "seller_forge",
@@ -30,8 +30,8 @@ export const ONBOARDING_GOALS = [
     key: "scout_reports",
     label: "Scout helping with restock reports",
     shortLabel: "Scout",
-    description: "Submit confirmed store reports and keep predictions separate from guesses.",
-    nextActions: ["Submit Scout report", "Open Drop Radar", "Follow stores"],
+    description: "Submit Store Signals and keep estimates separate from confirmed reports.",
+    nextActions: ["Submit Scout report", "Open Ember Watch", "Follow stores"],
   },
   {
     key: "local_shop_partner",
@@ -69,7 +69,7 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   {
     key: "profile",
     title: "Complete profile/public username",
-    description: "Marketplace, Tidepool, and Scout use your public identity without exposing raw email.",
+    description: "Ember ID, Tidepool Community, and Scout use your public identity without exposing raw email.",
     actionLabel: "Open Profile",
     actionTarget: "profile",
   },
@@ -97,7 +97,7 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   {
     key: "scout_report",
     title: "Submit your first Scout report",
-    description: "Confirmed store reports help the community and train Drop Radar safely.",
+    description: "Confirmed Store Signals help the community and improve confidence labels safely.",
     actionLabel: "Submit Report",
     actionTarget: "scout_report",
   },
@@ -117,9 +117,9 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   },
   {
     key: "scout_points",
-    title: "Learn Scout Points",
-    description: "Scout Points are trust signals from useful confirmed reports, not a promise of restocks.",
-    actionLabel: "Learn Points",
+    title: "Learn Tide Score",
+    description: "Tide Score uses useful confirmed reports and context; it is not a promise of restocks.",
+    actionLabel: "Learn Tide Score",
     actionTarget: "scout_points",
   },
   {
@@ -168,14 +168,14 @@ export const CONTEXTUAL_HELP_CARDS = {
     prompt: "How do I add inventory?",
   },
   scout_trust: {
-    title: "Confirmed vs predicted",
-    body: "Confirmed reports are real sightings. Predicted windows are estimates from confirmed history. Community guesses stay labeled as guesses.",
+    title: "Confirmed vs estimated",
+    body: "Confirmed reports are real sightings. Estimated windows use confirmed history. Community guesses stay labeled as guesses.",
     prompt: "What does confirmed vs predicted mean?",
   },
   scout_points: {
-    title: "Scout points",
-    body: "Scout points are trust signals from useful confirmed reports and clean community help.",
-    prompt: "How do Scout points work?",
+    title: "Tide Score",
+    body: "Tide Score is confidence language from useful confirmed reports, admin review, freshness, and clean community help.",
+    prompt: "How does Tide Score work?",
   },
   shop_badges: {
     title: "Family-Friendly Card Shop badges",
@@ -183,8 +183,8 @@ export const CONTEXTUAL_HELP_CARDS = {
     prompt: "How do family-friendly shop badges work?",
   },
   alerts: {
-    title: "In-app alerts",
-    body: "Alerts are in-app only for now. Confirmed restocks, possible windows, guesses, and admin statuses stay clearly labeled.",
+    title: "Ember Watch",
+    body: "Alerts are in-app only for now. Confirmed restocks, possible windows, guesses, watchlist items, and admin statuses stay clearly labeled.",
     prompt: "How do alerts work?",
   },
   workspace_identity: {
@@ -198,9 +198,9 @@ export const CONTEXTUAL_HELP_CARDS = {
     prompt: "How do I use Forge for business records?",
   },
   tidepool: {
-    title: "Tidepool community",
-    body: "Tidepool is for family-safe community posts, helpful local updates, questions, events, and shop notes. New posts may wait for admin review.",
-    prompt: "What is Tidepool?",
+    title: "Tidepool Community",
+    body: "Tidepool Community is for family-safe posts, helpful local updates, questions, events, and shop notes. New posts may wait for admin review.",
+    prompt: "What is Tidepool Community?",
   },
 };
 
@@ -265,34 +265,34 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Help me submit a report",
   },
   drop_radar: {
-    title: "Drop Radar needs confirmed history.",
-    body: "Predictions get better after confirmed restock history and real store reports. Until then, the app should say it needs more data.",
+    title: "Ember Watch needs confirmed history.",
+    body: "Estimated restock windows get better after confirmed history and real store reports. Until then, the app should say it needs more data.",
     actionLabel: "Submit Report",
     actionTarget: "scout_report",
     assistPrompt: "Why is this a prediction?",
   },
   market: {
-    title: "Search products, compare prices, and find fair deals.",
-    body: "Browse approved listings, create a beta alert, or add a listing for admin review when you are ready.",
-    actionLabel: "Browse Market",
+    title: "Search Market Watch.",
+    body: "Search products, compare known values, and save watched items. Market Watch does not imply live checkout.",
+    actionLabel: "Browse Market Watch",
     actionTarget: "browse_market",
     actions: [
-      { label: "Create Alert", actionTarget: "create_market_alert" },
-      { label: "Browse Market", actionTarget: "browse_market", primary: false },
-      { label: "Add Listing", actionTarget: "add_market_listing", primary: false },
+      { label: "Watch Item", actionTarget: "create_market_alert" },
+      { label: "Browse Market Watch", actionTarget: "browse_market", primary: false },
+      { label: "Request Missing Item", actionTarget: "add_market_listing", primary: false },
     ],
     assistPrompt: "Help me create a listing",
   },
   notifications: {
     title: "No alerts yet.",
-    body: "Confirmed restocks, possible Drop Radar windows, Kids Program updates, admin message statuses, and Forge reminders will appear here when useful.",
+    body: "Confirmed restocks, possible Ember Watch windows, Kids Program updates, admin message statuses, and Forge reminders will appear here when useful.",
     actionLabel: "Alert Settings",
     actionTarget: "alerts",
     assistPrompt: "How do alerts work?",
   },
   tidepool: {
     title: "The Tidepool is quiet right now.",
-    body: "Start the first community post and help keep collecting positive. New posts are reviewed before they appear publicly.",
+    body: "Start the first Tidepool Community post and help keep collecting positive. New posts are reviewed before they appear publicly.",
     actionLabel: "Start a Post",
     actionTarget: "tidepool",
     actions: [
