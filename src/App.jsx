@@ -3433,6 +3433,7 @@ function friendlyInventoryLabel(value, fallback = "Not assigned") {
   if (/^(?:-?\d+|null|undefined|n\/a)$/i.test(text)) return fallback;
   if (/^unknown$/i.test(text)) return fallback === "No purchaser assigned" ? fallback : "Unknown";
   if (/unassigned\s+purchaser(?:\s*-?\d+)?/i.test(text)) return "No purchaser assigned";
+  if (/no\s+purchaser\s+assigned(?:\s*-\s*\d+)?/i.test(text)) return "No purchaser assigned";
   return text.replace(/\s+-1$/i, "");
 }
 
@@ -49581,13 +49582,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </details>
               ) : null}
 
-              <details className="vault-mobile-filter-drawer" defaultOpen={vaultItems.length > 0 || vaultActiveFilterCount > 0 || Boolean(vaultSearch)}>
+              {vaultItems.length ? (
+                <div className="vault-primary-controls" aria-label="Vault search and active filters">
+                  <label className="vault-filter-field vault-search-field">
+                    <span>Search collection</span>
+                    <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search name, set, UPC, SKU, purchaser, notes..." />
+                  </label>
+                  {vaultActiveFilterCount ? (
+                    <div className="vault-active-filter-chips" aria-label="Active Vault filters">
+                      {vaultSearch ? <span>Search: {vaultSearch}</span> : null}
+                      {vaultFilter !== "all" ? <span>Status: {VAULT_FILTER_OPTIONS.find((option) => option.value === vaultFilter)?.label || vaultFilter}</span> : null}
+                      {vaultTypeFilter !== "all" ? <span>Type: {vaultTypeFilter}</span> : null}
+                      {vaultSetFilter !== "all" ? <span>Set: {vaultSetFilter}</span> : null}
+                      {vaultLocationFilter !== "all" ? <span>Location: {vaultLocationFilter}</span> : null}
+                      {vaultOwnerFilter !== "all" ? <span>Owner: {vaultOwnerFilter}</span> : null}
+                      {vaultValueFilter !== "all" ? <span>Value: {VAULT_VALUE_FILTER_OPTIONS.find((option) => option.value === vaultValueFilter)?.label || vaultValueFilter}</span> : null}
+                      {vaultSort !== "newest" ? <span>Sort: {vaultSort}</span> : null}
+                      <button type="button" className="inline-text-button" onClick={clearVaultFilters}>Clear filters</button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {vaultItems.length ? (
+              <details className="vault-mobile-filter-drawer" defaultOpen={vaultActiveFilterCount > 0 && !vaultSearch}>
                 <summary>Filters{vaultActiveFilterCount ? ` (${vaultActiveFilterCount})` : ""}</summary>
               <div className="vault-toolbar vault-filter-panel">
-                <label className="vault-filter-field vault-search-field">
-                  <span>Search items</span>
-                  <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search name, set, UPC, SKU, purchaser, notes..." />
-                </label>
                 <label className="vault-filter-field">
                   <span>Status</span>
                   <select className="vault-filter-select" value={vaultFilter} onChange={(event) => setVaultFilter(event.target.value)}>
@@ -49651,6 +49671,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : null}
               </div>
               </details>
+              ) : null}
 
               <div className="vault-view-strip" aria-label="Vault view choices">
                 {[
@@ -49705,14 +49726,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ) : null}
               <div className="inventory-list compact-inventory-list">
                 {vaultItems.length === 0 ? (
-                  renderGuidedEmptyState("vault", {
-                    body: "Add your first item and keep your collection protected.",
-                    actions: [
-                      { label: "Add to Vault", actionTarget: "vault" },
-                      { label: "Scan", actionTarget: "scan_card", primary: false },
-                    ],
-                    assistPrompt: "",
-                  })
+                  <div className="empty-state vault-empty-action-card">
+                    <span className="trust-badge trust-badge--secure">Protected collection</span>
+                    <h3>Start with one item.</h3>
+                    <p>Add a card or sealed product. Vault values appear only when market data exists.</p>
+                    <div className="quick-actions">
+                      <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
+                      <button type="button" className="secondary-button" onClick={() => openQuickAddAction("scanVault")}>Search / Scan Item</button>
+                      <button type="button" className="secondary-button" onClick={() => openQuickAddAction("suggestCatalogItem")}>Request Missing Item</button>
+                    </div>
+                  </div>
                 ) : (
                   pagedVaultItems.items.map((item) => (
                     <CompactInventoryCard
@@ -53231,6 +53254,14 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
   const detailImage = vaultItemDisplayImage(item);
   const setLabel = vaultItemSetLabel(item);
   const itemType = vaultItemTypeLabel(item);
+  const locationLabel = item.locationSummary || vaultItemLocationLabel(item) || "No location assigned";
+  const conditionLabel = item.conditionName || item.condition || item.grade || "";
+  const proofStatus = item.receiptImage || item.receiptUrl || item.proofUrl || item.photoProofUrl ? "Proof attached" : "No proof attached";
+  const purchaserSummaryLabel = friendlyInventoryLabel(item.purchaserSummary, "No purchaser assigned");
+  const showPurchaserSummary = Boolean(purchaserSummaryLabel && purchaserSummaryLabel !== "No purchaser assigned");
+  const groupedEntries = inventoryGroupEntries(item);
+  const purchaserDetailRows = summarizeBreakdownRows(groupedEntries, { type: "purchaser" })
+    .filter((entry) => friendlyInventoryLabel(entry.name, "No purchaser assigned") !== "No purchaser assigned");
   const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "vault" });
   const valuationPrompts = buildInventoryMissingDataPrompts(valuation, { context: "vault" });
   const priceFields = buildPriceReviewFields(item, { context: "vault", moneyFormatter: money });
@@ -53239,10 +53270,17 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
   const totalMarket = valuation.estimatedMarketValue || 0;
   const plannedTotal = valuation.plannedSaleTotal || 0;
   const marketDisplay = priceByRole.market?.isMissing ? "Price data unavailable" : priceByRole.market?.displayValue;
-  const details = [
+  const primaryDetails = [
+    ["Status", vaultStatusLabel(normalizeVaultStatus(item))],
+    ["Condition", conditionLabel || "Not set"],
+    ["Location", locationLabel],
+    ["Receipt / Proof", proofStatus],
+    ["Last Updated", vaultItemLastUpdatedLabel(item)],
+  ].filter(([, value]) => hasValue(value));
+  const advancedDetails = [
     ["Quantity", item.quantity],
-    ["Owner / Purchaser", item.purchaserSummary || itemPurchaserName(item)],
-    ["Vault Location", item.locationSummary || vaultItemLocationLabel(item) || "No location assigned"],
+    ["Owner / Purchaser", showPurchaserSummary ? purchaserSummaryLabel : itemPurchaserName(item)],
+    ["Vault Location", locationLabel],
     ["MSRP", priceByRole.msrp?.displayValue],
     ["Market Value", marketDisplay],
     ["Set / Collection", setLabel],
@@ -53262,6 +53300,8 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
   const detailMetricRows = [
     ["Qty", item.quantity || 0],
     ["Market", valuation.marketKnownQuantity ? money(totalMarket) : "Price data unavailable"],
+    ["Condition", conditionLabel || "Not set"],
+    ["Location", locationLabel],
     ...(showVaultSellerTools ? [
       ["Planned", valuation.plannedKnownQuantity ? money(plannedTotal) : "Unknown"],
       ["Cost Basis", money(totalCost)],
@@ -53291,7 +53331,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
               <div key={label}><span>{label}</span><strong>{value}</strong></div>
             ))}
           </div>
-          {item.purchaserSummary ? <span className="neon-chip purchaser-summary-pill">{item.purchaserSummary}</span> : null}
+          {showPurchaserSummary ? <span className="neon-chip purchaser-summary-pill">{purchaserSummaryLabel}</span> : null}
           {valuationPrompts.length ? (
             <div className="inventory-prompt-row compact">
               {valuationPrompts.slice(0, 4).map((prompt) => (
@@ -53303,53 +53343,87 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
           ) : null}
         </div>
       </div>
-      <div className="catalog-detail-grid">
-        {details.map(([label, value]) => (
+      <div className="vault-detail-primary-actions">
+        <button type="button" onClick={() => onEdit(item)}>Edit / Add details</button>
+        <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
+        {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button> : null}
+      </div>
+      <div className="catalog-detail-grid vault-detail-basics">
+        {primaryDetails.map(([label, value]) => (
           <DetailItem key={label} label={label} value={value} />
         ))}
       </div>
-      <PriceReviewPanel
-        item={item}
-        variant="vault"
-        onReviewMarket={onQuickUpdateMarketValue}
-        onReviewPlanned={onQuickUpdateSalePrice}
-      />
-      <InventoryBreakdownPanel
-        item={item}
-        variant="vault"
-        onEditEntry={onEdit}
-        onDeleteEntry={onDelete}
-        onMoveEntryToForge={onMoveToForge}
-        onCopyEntryToForge={onCopyToForge}
-      />
-      <LazyToolBoundary label="Loading price history...">
-        <MarketPriceHistoryPanel
-          compact
-          catalogProductId={item.catalogProductId || item.catalogItemId}
-          tcgplayerProductId={item.tcgplayerProductId || item.sku}
-          externalProductId={item.externalProductId || item.sku}
-          productName={item.name}
-          currentMarketPrice={item.marketPrice}
-          currentLowPrice={item.lowPrice}
-          currentMidPrice={item.midPrice}
-          currentHighPrice={item.highPrice}
-          lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
-          money={money}
-        />
-      </LazyToolBoundary>
-      <div className="quick-actions">
-        {showVaultSellerTools ? <button type="button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button> : null}
-        {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button> : null}
-        {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button> : null}
-        <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review Market Value</button>
-        {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button> : null}
-        <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Edit</button>
-        <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Vault Item</button>
+      {purchaserDetailRows.length ? (
+        <div className="vault-detail-group-summary" aria-label="Grouped inventory details">
+          <strong>Grouped inventory details</strong>
+          <div>
+            {purchaserDetailRows.slice(0, 4).map((entry) => (
+              <span key={entry.key || entry.name}>
+                {friendlyInventoryLabel(entry.name, "No purchaser assigned")}
+                <b>{entry.quantity}</b>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <div className="vault-detail-advanced-stack">
+        <details className="vault-detail-disclosure">
+          <summary>Advanced item details</summary>
+          <div className="catalog-detail-grid">
+            {advancedDetails.map(([label, value]) => (
+              <DetailItem key={label} label={label} value={value} />
+            ))}
+          </div>
+        </details>
+        <details className="vault-detail-disclosure">
+          <summary>Market data and value history</summary>
+          <PriceReviewPanel
+            item={item}
+            variant="vault"
+            onReviewMarket={onQuickUpdateMarketValue}
+            onReviewPlanned={onQuickUpdateSalePrice}
+          />
+          <LazyToolBoundary label="Loading price history...">
+            <MarketPriceHistoryPanel
+              compact
+              catalogProductId={item.catalogProductId || item.catalogItemId}
+              tcgplayerProductId={item.tcgplayerProductId || item.sku}
+              externalProductId={item.externalProductId || item.sku}
+              productName={item.name}
+              currentMarketPrice={item.marketPrice}
+              currentLowPrice={item.lowPrice}
+              currentMidPrice={item.midPrice}
+              currentHighPrice={item.highPrice}
+              lastPriceChecked={item.lastPriceChecked || item.marketLastUpdated}
+              money={money}
+            />
+          </LazyToolBoundary>
+        </details>
+        <details className="vault-detail-disclosure">
+          <summary>History and grouped entries</summary>
+          <InventoryBreakdownPanel
+            item={item}
+            variant="vault"
+            onEditEntry={onEdit}
+            onDeleteEntry={onDelete}
+            onMoveEntryToForge={onMoveToForge}
+            onCopyEntryToForge={onCopyToForge}
+          />
+        </details>
+        <details className="vault-detail-disclosure">
+          <summary>More actions</summary>
+          <div className="quick-actions">
+            {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button> : null}
+            {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button> : null}
+            {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button> : null}
+            <button type="button" className="secondary-button" onClick={() => onDuplicate?.(item)}>Duplicate Item</button>
+            <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Vault Item</button>
+          </div>
+          {showVaultSellerTools ? (
+            <p className="vault-detail-action-note">Vault is for collection tracking. Move or copy to Forge when this item becomes business inventory.</p>
+          ) : null}
+        </details>
       </div>
-      {showVaultSellerTools ? <details className="vault-status-help">
-        <summary>Selling / Forge</summary>
-        <p>Vault is for collection tracking. Use Move to Forge or Copy to Forge when this item becomes business inventory.</p>
-      </details> : null}
     </div>
   );
 }
@@ -53390,9 +53464,11 @@ function CompactInventoryCard({
     const setLabel = vaultItemSetLabel(item);
     const totalMarket = valuation.estimatedMarketValue || 0;
     const statusLabel = vaultStatusLabel(normalizeVaultStatus(item));
+    const conditionLabel = item.conditionName || item.condition || item.grade || "";
     const vaultFactRows = [
       ["Qty", quantity || 1],
       ["Value", valuation.marketKnownQuantity ? money(totalMarket) : "Value unavailable"],
+      ...(conditionLabel ? [["Condition", conditionLabel]] : []),
       ...(packCount > 0 ? [["Packs", packCount]] : []),
     ];
     const vaultOverflowActions = [
@@ -53449,7 +53525,7 @@ function CompactInventoryCard({
         ) : null}
 
         <div className="compact-actions vault-card-actions">
-          <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View</button>
+          <button type="button" className="secondary-button" aria-label={`View details for ${item.name}`} onClick={() => onViewDetails?.(item)}>View details</button>
           <OverflowMenu
             buttonLabel="More"
             actions={vaultOverflowActions}

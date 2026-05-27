@@ -55067,3 +55067,452 @@ body {
 .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .destination-checkbox span {
   padding-right: 0 !important;
 }
+
+/* Vault final collection pass: summary first, details on click. */
+.app-vault .vault-empty-overview-card,
+.app-vault .vault-empty-summary-card,
+.app-vault .vault-empty-action-card {
+  border: 1px solid rgba(255, 184, 92, 0.2) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 184, 92, 0.12), transparent 13rem),
+    linear-gradient(145deg, rgba(8, 24, 42, 0.96), rgba(4, 13, 27, 0.98)) !important;
+  color: #f7fbff !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.app-vault .vault-empty-overview-card,
+.app-vault .vault-empty-summary-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.app-vault .vault-empty-overview-card dl,
+.app-vault .vault-empty-summary-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.app-vault .vault-empty-overview-card dl div,
+.app-vault .vault-empty-summary-card dl div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(2, 11, 24, 0.54);
+}
+
+.app-vault .vault-empty-overview-card dt,
+.app-vault .vault-empty-summary-card dt {
+  color: rgba(232, 246, 255, 0.66) !important;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.app-vault .vault-empty-overview-card dd,
+.app-vault .vault-empty-summary-card dd {
+  margin: 3px 0 0;
+  color: #fff7ed !important;
+  font-size: 1.08rem;
+  font-weight: 950;
+}
+
+.app-vault .vault-empty-action-card {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+  padding: clamp(16px, 4vw, 22px) !important;
+}
+
+.app-vault .vault-empty-action-card h3 {
+  margin: 0;
+  color: #fff7ed !important;
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+}
+
+.app-vault .vault-empty-action-card p {
+  max-width: 42rem;
+  margin: 0;
+  color: rgba(232, 246, 255, 0.76) !important;
+  line-height: 1.45;
+}
+
+.app-vault .vault-empty-action-card .quick-actions,
+.app-vault .vault-empty-overview-card .quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-vault .vault-primary-controls {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(5, 18, 35, 0.84), rgba(3, 10, 22, 0.88));
+}
+
+.app-vault .vault-primary-controls .vault-search-field {
+  display: grid;
+  gap: 7px;
+}
+
+.app-vault .vault-primary-controls .vault-search-field span {
+  color: rgba(232, 246, 255, 0.66);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.app-vault .vault-primary-controls .vault-search-input {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 16px !important;
+  background: rgba(2, 9, 20, 0.92) !important;
+  color: #f7fbff !important;
+  font-size: 0.95rem;
+}
+
+.app-vault .vault-active-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.app-vault .vault-active-filter-chips span,
+.app-vault .vault-active-filter-chips .inline-text-button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.app-vault .vault-active-filter-chips span {
+  padding: 5px 9px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  background: rgba(124, 231, 255, 0.08);
+  color: rgba(232, 246, 255, 0.82);
+}
+
+.app-vault .vault-active-filter-chips .inline-text-button {
+  padding: 5px 8px;
+  color: #ffba49 !important;
+}
+
+.app-vault .vault-mobile-filter-drawer {
+  border: 1px solid rgba(124, 231, 255, 0.14) !important;
+  border-radius: 16px !important;
+  background: rgba(4, 13, 28, 0.72) !important;
+  overflow: hidden;
+}
+
+.app-vault .vault-mobile-filter-drawer summary {
+  min-height: 42px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  color: #fff7ed !important;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.app-vault .vault-filter-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px !important;
+}
+
+.app-vault .vault-filter-panel .vault-filter-field {
+  min-width: 0;
+}
+
+.app-vault .vault-filter-panel .vault-filter-field span {
+  color: rgba(232, 246, 255, 0.64) !important;
+}
+
+.app-vault .vault-view-strip {
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(2, 9, 20, 0.54);
+}
+
+.app-vault .vault-view-strip button {
+  color: rgba(232, 246, 255, 0.72) !important;
+}
+
+.app-vault .vault-view-strip button.active {
+  color: #241003 !important;
+  background: linear-gradient(135deg, #ffba49, #ff7a1a) !important;
+}
+
+.app-vault .vault-collection-panel .vault-item-card {
+  cursor: default;
+}
+
+.app-vault .vault-collection-panel .vault-card-topline {
+  gap: 10px;
+}
+
+.app-vault .vault-collection-panel .vault-card-topline .compact-title-block {
+  min-width: 0;
+}
+
+.app-vault .vault-collection-panel .vault-card-topline h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #fff7ed !important;
+  line-height: 1.16;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.app-vault .vault-collection-panel .vault-card-topline .compact-subtitle {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(232, 246, 255, 0.68) !important;
+  line-height: 1.28;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.app-vault .vault-collection-panel .vault-card-main {
+  display: grid;
+  align-items: stretch;
+}
+
+.app-vault .vault-collection-panel .vault-card-facts p {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid rgba(124, 231, 255, 0.1);
+  background: rgba(2, 11, 24, 0.54);
+}
+
+.app-vault .vault-collection-panel .vault-card-actions {
+  align-items: center;
+}
+
+.app-vault .vault-collection-panel .vault-card-actions > .secondary-button {
+  min-height: 42px !important;
+  border-color: rgba(255, 184, 92, 0.28) !important;
+  background: rgba(255, 184, 92, 0.11) !important;
+  color: #fff7ed !important;
+}
+
+.app-vault .vault-collection-panel .vault-card-actions .overflow-menu {
+  justify-self: end;
+}
+
+.app-vault .vault-detail-card {
+  gap: 14px;
+  margin-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  scroll-margin-top: 84px;
+}
+
+.app-vault .ember-assist-shell {
+  display: none !important;
+}
+
+html body .app-command-shell.app-vault .ember-assist-shell {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.app-vault .vault-detail-card .compact-card-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.app-vault .vault-detail-card .compact-card-header h3 {
+  color: #fff7ed !important;
+}
+
+.app-vault .vault-detail-card .compact-card-header .secondary-button {
+  width: auto !important;
+  min-width: 82px;
+}
+
+.app-vault .vault-detail-card .compact-subtitle,
+.app-vault .vault-detail-card .inventory-detail-summary p {
+  color: rgba(232, 246, 255, 0.74) !important;
+}
+
+.app-vault .vault-detail-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-vault .vault-detail-primary-actions button {
+  min-height: 42px;
+}
+
+.app-vault .vault-detail-basics {
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 16px;
+  padding: 10px;
+  background: rgba(2, 11, 24, 0.46);
+}
+
+.app-vault .vault-detail-group-summary {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.13);
+  border-radius: 16px;
+  background: rgba(2, 11, 24, 0.46);
+}
+
+.app-vault .vault-detail-group-summary > strong {
+  color: #fff7ed;
+  font-size: 0.9rem;
+}
+
+.app-vault .vault-detail-group-summary > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-vault .vault-detail-group-summary span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(124, 231, 255, 0.08);
+  color: rgba(232, 246, 255, 0.84);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.app-vault .vault-detail-group-summary b {
+  color: #ffba49;
+  font-weight: 950;
+}
+
+.app-vault .vault-detail-advanced-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.app-vault .vault-detail-disclosure {
+  border: 1px solid rgba(124, 231, 255, 0.13) !important;
+  border-radius: 16px !important;
+  background: rgba(3, 12, 26, 0.58) !important;
+  overflow: hidden;
+}
+
+.app-vault .vault-detail-disclosure summary {
+  min-height: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  color: #fff7ed !important;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.app-vault .vault-detail-disclosure[open] {
+  padding-bottom: 10px;
+}
+
+.app-vault .vault-detail-disclosure > :not(summary) {
+  margin: 0 10px 10px;
+}
+
+.app-vault .vault-detail-action-note {
+  margin: 2px 10px 0 !important;
+  color: rgba(232, 246, 255, 0.68) !important;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.app-vault .vault-detail-card .inventory-detail-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
+@media (min-width: 980px) {
+  .app-vault .vault-collection-panel .compact-inventory-list {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+  }
+
+  .app-vault .vault-primary-controls {
+    grid-template-columns: minmax(360px, 1fr) minmax(0, 1.15fr);
+    align-items: end;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-vault .vault-command-center .vault-command-overview {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 2px 6px !important;
+    scroll-snap-type: x proximity;
+  }
+
+  .app-vault .vault-command-center .vault-overview-card {
+    flex: 0 0 min(154px, 43vw) !important;
+    min-height: 92px !important;
+    scroll-snap-align: start;
+  }
+
+  .app-vault .vault-empty-action-card .quick-actions,
+  .app-vault .vault-empty-overview-card .quick-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app-vault .vault-primary-controls {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .app-vault .vault-filter-panel {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-vault .vault-view-strip {
+    width: 100%;
+  }
+
+  .app-vault .vault-view-strip button {
+    min-width: max-content;
+  }
+
+  .app-vault .vault-collection-panel .vault-card-actions {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-vault .vault-detail-card .inventory-detail-hero {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-vault .vault-detail-card .inventory-detail-image-frame {
+    max-width: 220px;
+    justify-self: center;
+  }
+
+  .app-vault .vault-detail-card {
+    margin-bottom: calc(var(--bottom-nav-offset, 92px) + env(safe-area-inset-bottom, 0px) + 18px);
+  }
+}
