@@ -1681,6 +1681,35 @@ const MULTI_DESTINATION_STEP_INDEX = MULTI_DESTINATION_STEPS.reduce((acc, step, 
   acc[step] = index;
   return acc;
 }, {});
+
+function createQuickAddWizardState(overrides = {}) {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    screen: "entry",
+    path: "",
+    query: "",
+    upcQuery: "",
+    message: "",
+    photoFileName: "",
+    photoPreviewUrl: "",
+    manualItemName: "",
+    manualCategory: "Pokemon",
+    manualQuantity: "1",
+    manualDestination: "vault",
+    manualAmountPaid: "",
+    manualCondition: "",
+    manualNote: "",
+    receiptMerchant: "",
+    receiptDate: today,
+    receiptTotal: "",
+    receiptPhotoUrl: "",
+    receiptFileName: "",
+    receiptNote: "",
+    receiptSaving: false,
+    receiptSaved: null,
+    ...overrides,
+  };
+}
 const ADD_ITEM_QUICK_SEARCH_CHIPS = [
   "ETB",
   "Elite Trainer Box",
@@ -4472,14 +4501,7 @@ export default function App() {
   const [showFullTopbar, setShowFullTopbar] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
-  const [quickAddWizard, setQuickAddWizard] = useState({
-    step: "start",
-    destination: "",
-    itemType: "",
-    detailMethod: "",
-    message: "",
-    moreOpen: false,
-  });
+  const [quickAddWizard, setQuickAddWizard] = useState(() => createQuickAddWizardState());
   const [lockedFeatureKey, setLockedFeatureKey] = useState("");
   const [adminViewMode, setAdminViewMode] = useState("admin");
   const [adminEditMode, setAdminEditMode] = useState(false);
@@ -16467,6 +16489,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "vaultCatalogSearch") {
       setVaultCatalogSearchQuery("");
     }
+    if (type === "addActionSheet") {
+      setQuickAddWizard(createQuickAddWizardState());
+    }
     if (type === "multiDestinationAdd") {
       resetMultiDestinationForm();
     }
@@ -16596,14 +16621,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openAddActionSheet(source = "topbar") {
-    setQuickAddWizard({
-      step: "start",
-      destination: "",
-      itemType: "",
-      detailMethod: "",
-      message: "",
-      moreOpen: false,
-    });
+    setQuickAddWizard(createQuickAddWizardState());
     openFlowModal("addActionSheet", { size: "medium", source });
   }
 
@@ -16635,6 +16653,214 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function destinationDefaults(overrides = {}) {
     return normalizeQuickAddDestinations(overrides);
+  }
+
+  function updateQuickAddWizard(patch = {}) {
+    setQuickAddWizard((current) => ({ ...current, ...patch }));
+  }
+
+  function setQuickAddPath(path, patch = {}) {
+    updateQuickAddWizard({
+      screen: path,
+      path,
+      message: "",
+      ...patch,
+    });
+  }
+
+  function quickAddDestinationSeed(destination = "vault") {
+    const normalized = String(destination || "vault").toLowerCase();
+    if (normalized === "both") return destinationDefaults({ vault: true, forge: Boolean(activeForgeWorkspace) });
+    if (normalized === "forge") return destinationDefaults({ forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace });
+    if (normalized === "wishlist" || normalized === "watch") return destinationDefaults({ wishlist: true });
+    return destinationDefaults({ vault: true });
+  }
+
+  function openQuickAddReviewForProduct(product, source = "quick-add-search") {
+    if (!product) return;
+    setActiveFlowModal(null);
+    window.setTimeout(() => {
+      openProductAddFlow({
+        product,
+        source,
+        seed: {
+          initialStep: "destination",
+          destinations: destinationDefaults({}),
+        },
+      });
+    }, 0);
+  }
+
+  function openQuickAddManualReview(seed = {}) {
+    const itemName = String(seed.itemName ?? quickAddWizard.manualItemName ?? "").trim();
+    if (!itemName) {
+      updateQuickAddWizard({ message: "Add an item name before review." });
+      return;
+    }
+    const destination = seed.destination || quickAddWizard.manualDestination || "vault";
+    const quantity = Math.max(1, Number(seed.quantity || quickAddWizard.manualQuantity || 1));
+    const amountPaid = seed.amountPaid ?? quickAddWizard.manualAmountPaid ?? "";
+    const condition = seed.condition ?? quickAddWizard.manualCondition ?? "";
+    const noteParts = [
+      seed.note ?? quickAddWizard.manualNote,
+      quickAddWizard.photoFileName ? `Photo added in Quick Add: ${quickAddWizard.photoFileName}` : "",
+    ].filter(Boolean);
+    const destinations = quickAddDestinationSeed(destination);
+    const manualSeed = {
+      itemName,
+      category: seed.category || quickAddWizard.manualCategory || "Pokemon",
+      productType: seed.category || quickAddWizard.manualCategory || "",
+      upcSku: seed.upcSku || quickAddWizard.upcQuery || "",
+      notes: noteParts.join("\n"),
+      initialStep: "destination",
+      destinations,
+      vault: {
+        quantity,
+        unitCost: amountPaid,
+        vaultCategory: "Personal collection",
+      },
+      forge: {
+        quantity,
+        unitCost: amountPaid,
+        conditionName: condition || "",
+      },
+      wishlist: {
+        quantity,
+        desiredCondition: condition || "",
+        addToMarketWatch: destination === "watch" || destination === "wishlist",
+      },
+    };
+    setActiveFlowModal(null);
+    window.setTimeout(() => openMultiDestinationAddFlow({ source: "quick-add-manual-item", seed: manualSeed }), 0);
+  }
+
+  function openQuickAddManualItemFlow(seed = {}) {
+    const destination = seed.destination || quickAddWizard.manualDestination || "vault";
+    const quantity = Math.max(1, Number(seed.quantity || quickAddWizard.manualQuantity || 1));
+    const destinations = seed.destinations || quickAddDestinationSeed(destination);
+    const manualSeed = {
+      itemName: seed.itemName || quickAddWizard.manualItemName || "",
+      category: seed.category || quickAddWizard.manualCategory || "Pokemon",
+      productType: seed.productType || quickAddWizard.manualCategory || "",
+      upcSku: seed.upcSku || quickAddWizard.upcQuery || "",
+      notes: seed.note || quickAddWizard.manualNote || "",
+      initialStep: "item",
+      destinations,
+      vault: { quantity, unitCost: seed.amountPaid || quickAddWizard.manualAmountPaid || "" },
+      forge: { quantity, unitCost: seed.amountPaid || quickAddWizard.manualAmountPaid || "" },
+      wishlist: { quantity, addToMarketWatch: destination === "wishlist" || destination === "watch" },
+    };
+    setActiveFlowModal(null);
+    window.setTimeout(() => {
+      resetMultiDestinationForm(manualSeed);
+      setMultiDestinationMatchSearchOpen(false);
+      setMultiDestinationMessage("Manual item mode. Add a name and basic details, then choose where it belongs.");
+      openFlowModal("multiDestinationAdd", { size: "medium", source: "quick-add-manual-item" });
+    }, 0);
+  }
+
+  function openQuickAddMissingProduct() {
+    const lookup = String(quickAddWizard.query || quickAddWizard.upcQuery || quickAddWizard.manualItemName || "").trim();
+    setActiveFlowModal(null);
+    window.setTimeout(() => openMultiDestinationAddFlow({
+      source: "quick-add-missing-item",
+      seed: {
+        itemName: lookup,
+        upcSku: quickAddWizard.upcQuery || "",
+        initialStep: "item",
+        destinations: destinationDefaults({ tidetradr: true }),
+        tidetradr: { ...BLANK_MULTI_DESTINATION_FORM.tidetradr, action: "suggest", upc: quickAddWizard.upcQuery || "" },
+      },
+    }), 0);
+  }
+
+  function handleQuickAddPhotoFile(event, target = "photo") {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      updateQuickAddWizard({ message: "Upload an image for this beta photo helper." });
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setQuickAddWizard((current) => {
+      if (target === "receipt") {
+        if (current.receiptPhotoUrl?.startsWith("blob:")) URL.revokeObjectURL(current.receiptPhotoUrl);
+        return { ...current, receiptPhotoUrl: previewUrl, receiptFileName: file.name, message: "Receipt photo attached. OCR is not automatic in this path." };
+      }
+      if (current.photoPreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(current.photoPreviewUrl);
+      return { ...current, photoPreviewUrl: previewUrl, photoFileName: file.name, message: "Photo attached. Use manual details or request a missing item." };
+    });
+  }
+
+  async function saveQuickAddBasicReceipt(event) {
+    event?.preventDefault?.();
+    if (quickAddWizard.receiptSaving) return;
+    if (blockGuestSave()) return;
+    const merchant = String(quickAddWizard.receiptMerchant || "").trim();
+    if (!merchant) {
+      updateQuickAddWizard({ message: "Add the merchant or store name before saving this receipt." });
+      return;
+    }
+    setQuickAddWizard((current) => ({ ...current, receiptSaving: true, message: "Saving receipt..." }));
+    const now = new Date().toISOString();
+    const purchaseDate = quickAddWizard.receiptDate || now.slice(0, 10);
+    const targetWorkspace = activeForgeWorkspace || activeWorkspace;
+    const receipt = {
+      id: makeId("receipt"),
+      merchant,
+      storeName: merchant,
+      purchasedAt: `${purchaseDate}T12:00:00.000Z`,
+      purchaseDate,
+      total: Number(quickAddWizard.receiptTotal || 0),
+      receiptTotal: Number(quickAddWizard.receiptTotal || 0),
+      subtotal: Number(quickAddWizard.receiptTotal || 0),
+      tax: 0,
+      discounts: 0,
+      paymentMethod: "",
+      category: "Quick Add Receipt",
+      imageUrl: quickAddWizard.receiptPhotoUrl || "",
+      receiptImageUrl: quickAddWizard.receiptPhotoUrl || "",
+      receiptImage: quickAddWizard.receiptPhotoUrl || "",
+      status: "submitted",
+      source: quickAddWizard.receiptPhotoUrl ? "quick_add_photo" : "quick_add_manual",
+      splitMode: "unlinked",
+      businessTotal: Number(quickAddWizard.receiptTotal || 0),
+      personalTotal: 0,
+      workspaceId: targetWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspace_id: targetWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID,
+      workspaceName: targetWorkspace?.name || "Workspace",
+      notes: quickAddWizard.receiptNote || "Quick Add receipt. Link items later when supported.",
+      rawOcrText: "",
+      lines: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    try {
+      const result = await saveReceiptRecord(forgePhase2Context(), receipt);
+      updatePhase2Status(result, "Receipt saved locally.");
+      const savedReceipt = {
+        ...receipt,
+        ...(result.data || {}),
+        id: result.data?.id || receipt.id,
+      };
+      syncForgeReceiptWorkflowState(savedReceipt, result.lines || []);
+      setQuickAddWizard((current) => ({
+        ...current,
+        screen: "receiptSuccess",
+        path: "receipt",
+        receiptSaving: false,
+        receiptSaved: savedReceipt,
+        message: "Receipt saved. You can link items later or add items now.",
+      }));
+      setVaultToast("Receipt saved.");
+    } catch (error) {
+      logAppError("quick_add_receipt_save", error, { merchant }, "normal");
+      setQuickAddWizard((current) => ({
+        ...current,
+        receiptSaving: false,
+        message: error?.message ? `Could not save receipt: ${error.message}` : "Could not save receipt.",
+      }));
+    }
   }
 
   function openProductAddFlow({ product = null, source = "quick-add", seed = {}, destinations = {} } = {}) {
@@ -37234,12 +37460,366 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       };
     }
     if (activeFlowModal?.type === "addActionSheet") {
-      return { title: "Quick Add", description: "Pick a quick action.", size: activeFlowModal?.size || "medium" };
+      return { title: "Quick Add", description: "Add something, then decide where it belongs.", size: activeFlowModal?.size || "medium" };
     }
     return { title: "Add", description: "Create a new record.", size: activeFlowModal?.size || "medium" };
   }
 
+  function renderAddAnythingFlowContent() {
+    const quickAddScreen = quickAddWizard.screen || "entry";
+    const searchQuery = String(quickAddWizard.query || "").trim();
+    const upcQuery = String(quickAddWizard.upcQuery || "").trim();
+    const searchResults = searchQuery ? getCatalogPickerResults(searchQuery, 8) : [];
+    const upcResults = upcQuery ? getCatalogPickerResults(upcQuery, 8) : [];
+    const destinationOptions = [
+      { value: "vault", label: "Vault", helper: "Personal collection" },
+      ...(activeForgeWorkspace ? [{ value: "forge", label: "Forge", helper: "Seller inventory" }] : []),
+      ...(activeForgeWorkspace ? [{ value: "both", label: "Both", helper: "Vault and Forge" }] : []),
+      { value: "wishlist", label: "Wishlist/Watch", helper: "Track for later" },
+    ];
+    const runSearch = (value = quickAddWizard.query) => {
+      const query = String(value || "").trim();
+      if (!query) {
+        updateQuickAddWizard({ message: "Enter a product, set, UPC, SKU, or card name." });
+        return;
+      }
+      updateQuickAddWizard({ query, message: "Search results are below." });
+      const normalizedCode = normalizeBarcodeValue(query);
+      const exactIdentifier = isLikelyBarcodeValue(query) || /^\d{6,}$/.test(normalizedCode);
+      void loadImportedPokemonCatalog(query, {
+        page: 1,
+        pageSize: Math.min(24, catalogPageSize || 24),
+        mode: exactIdentifier ? "barcode" : "general",
+        barcode: exactIdentifier ? normalizedCode || query : "",
+        forceSearch: true,
+      });
+    };
+    const runUpcLookup = () => {
+      if (!upcQuery) {
+        updateQuickAddWizard({ message: "Enter or paste a UPC, barcode, SKU, or product ID." });
+        return;
+      }
+      runSearch(upcQuery);
+      updateQuickAddWizard({ upcQuery, message: upcResults.length ? "Matches are below." : "Looking for an exact identifier match." });
+    };
+    const renderFlowHeader = (title, copy) => (
+      <div className="add-anything-path-header">
+        <button type="button" className="ghost-button" onClick={() => setQuickAddWizard(createQuickAddWizardState())}>
+          Back
+        </button>
+        <div>
+          <strong>{title}</strong>
+          <p>{copy}</p>
+        </div>
+      </div>
+    );
+    const renderProductResult = (product, source = "quick-add-search") => {
+      const priceInfo = getTideTradrMarketInfo(product);
+      return (
+        <button
+          type="button"
+          className="quick-add-result-card"
+          key={product.id || catalogTitle(product)}
+          onClick={() => openQuickAddReviewForProduct(product, source)}
+        >
+          <span className="quick-add-result-thumb">
+            {catalogImage(product) ? (
+              <img
+                src={catalogImage(product)}
+                alt=""
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                  event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                }}
+              />
+            ) : null}
+            {renderProductImageFallback(product, { hidden: Boolean(catalogImage(product)) })}
+          </span>
+          <span className="quick-add-result-copy">
+            <strong>{catalogTitle(product)}</strong>
+            <small>{[catalogExpansionName(product), catalogProductTypeLabel(product)].filter(Boolean).join(" | ") || "Catalog product"}</small>
+            <small>{hasCatalogMarketPrice(product) ? `Market ${money(priceInfo.currentMarketValue)}` : "Market data unavailable"}</small>
+          </span>
+          <span className="status-badge">Review/Add</span>
+        </button>
+      );
+    };
+    const renderSearchResults = (results, source, emptyCopy) => (
+      <div className="quick-add-results-panel">
+        {results.length ? (
+          <>
+            <div className="quick-add-results-heading">
+              <strong>{results.length} match{results.length === 1 ? "" : "es"}</strong>
+              <span>Tap a result to choose destination and save.</span>
+            </div>
+            <div className="quick-add-result-list">
+              {results.map((product) => renderProductResult(product, source))}
+            </div>
+          </>
+        ) : (
+          <div className="empty-state small-empty-state quick-add-empty-result">
+            <h3>No match yet.</h3>
+            <p>{emptyCopy || "Try a set name, product name, UPC, SKU, or card name."}</p>
+            <div className="quick-add-inline-actions">
+              <button type="button" className="secondary-button" onClick={() => setQuickAddPath("search", { query: upcQuery || searchQuery })}>
+                Try name search
+              </button>
+              <button type="button" className="secondary-button" onClick={openQuickAddMissingProduct}>
+                Request missing item
+              </button>
+              <button type="button" onClick={() => openQuickAddManualItemFlow({ itemName: searchQuery || upcQuery, upcSku: upcQuery })}>
+                Manual item
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+
+    if (quickAddScreen === "search") {
+      return (
+        <div className="add-anything-flow add-anything-search">
+          {renderFlowHeader("Search item", "Find cards, sets, sealed products, UPCs, or SKUs. Choose one match, then pick where it goes.")}
+          <Field label="Search cards, sets, sealed products, UPC, or SKU">
+            <LazySmartCatalogSearchBox
+              value={quickAddWizard.query}
+              onChange={(value) => updateQuickAddWizard({ query: value, message: "" })}
+              onSearch={runSearch}
+              onSelectSuggestion={(suggestion) => {
+                if (suggestion.product?.id) {
+                  openQuickAddReviewForProduct(suggestion.product, "quick-add-search-suggestion");
+                  return;
+                }
+                runSearch(suggestion.searchValue || suggestion.label || quickAddWizard.query);
+              }}
+              supabase={supabase}
+              isSupabaseConfigured={isSupabaseConfigured}
+              mapRow={mapCatalog}
+              productGroup="All"
+              dataFilter="All"
+              placeholder="Search product, set, card, UPC, or SKU"
+              maxSuggestions={6}
+              inputClassName="add-item-search-input"
+              localCatalogProducts={catalogProducts}
+              autoFocus
+              inputLabel="Search product, set, card, UPC, or SKU"
+              includeScopeSuggestions
+              searchCategories={MARKET_SEARCH_CATEGORIES}
+              scopeSets={POKEMON_SETS}
+              scopeProductTypes={MARKET_SEARCH_TYPE_SCOPES}
+              emptyMessage="No matches yet. Try fewer words, UPC, SKU, or set name."
+              money={money}
+            />
+          </Field>
+          <div className="quick-add-inline-actions">
+            <button type="button" onClick={() => runSearch()}>Search</button>
+            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("upc", { upcQuery: searchQuery })}>UPC/SKU lookup</button>
+            <button type="button" className="ghost-button" onClick={() => setQuickAddPath("manual", { manualItemName: searchQuery })}>Manual item</button>
+          </div>
+          {searchQuery ? renderSearchResults(searchResults, "quick-add-search", "No matches yet. Try a set name, product name, UPC, or card name.") : (
+            <div className="quick-add-search-starter">
+              {ADD_ITEM_QUICK_SEARCH_CHIPS.slice(0, 6).map((value) => (
+                <button key={value} type="button" className="secondary-button" onClick={() => runSearch(value)}>
+                  {value}
+                </button>
+              ))}
+            </div>
+          )}
+          {quickAddWizard.message ? <p className="flow-inline-message is-info">{quickAddWizard.message}</p> : null}
+        </div>
+      );
+    }
+
+    if (quickAddScreen === "upc") {
+      return (
+        <div className="add-anything-flow add-anything-upc">
+          {renderFlowHeader("Scan / enter UPC", "Type or paste a UPC, barcode, SKU, or product ID. Camera scanning can be added here when supported.")}
+          <Field label="UPC, barcode, SKU, or product ID">
+            <input
+              value={quickAddWizard.upcQuery}
+              autoFocus
+              inputMode="search"
+              onChange={(event) => updateQuickAddWizard({ upcQuery: event.target.value, message: "" })}
+              placeholder="0820650..., SKU, or product ID"
+            />
+          </Field>
+          <div className="quick-add-inline-actions">
+            <button type="button" onClick={runUpcLookup}>Lookup UPC/SKU</button>
+            <button type="button" className="secondary-button" onClick={() => runAddSheetAction("scanProduct")}>Open scanner</button>
+          </div>
+          {upcQuery ? renderSearchResults(upcResults, "quick-add-upc", "No match yet. You can add this product to the catalog or try a name search.") : null}
+          {quickAddWizard.message ? <p className="flow-inline-message is-info">{quickAddWizard.message}</p> : null}
+        </div>
+      );
+    }
+
+    if (quickAddScreen === "photo") {
+      return (
+        <div className="add-anything-flow add-anything-photo">
+          {renderFlowHeader("Photo lookup", "Photo lookup can help with manual matching. Upload a product or card photo, then add details or request a missing item.")}
+          <div className="quick-add-photo-panel">
+            {quickAddWizard.photoPreviewUrl ? (
+              <div className="picture-lookup-preview quick-add-photo-preview">
+                <img src={quickAddWizard.photoPreviewUrl} alt="Uploaded product reference" />
+                <span>{quickAddWizard.photoFileName || "Photo attached"}</span>
+              </div>
+            ) : (
+              <div className="small-empty-state">
+                <strong>No automatic AI match yet.</strong>
+                <span>Upload a reference photo, then continue manually or request a catalog item.</span>
+              </div>
+            )}
+            <label className="secondary-button file-action-label">
+              Upload photo
+              <input type="file" accept="image/*" onChange={(event) => handleQuickAddPhotoFile(event, "photo")} />
+            </label>
+          </div>
+          <div className="quick-add-inline-actions">
+            <button type="button" onClick={() => openQuickAddManualItemFlow({ note: quickAddWizard.photoFileName ? `Photo reference: ${quickAddWizard.photoFileName}` : "" })}>Manual item</button>
+            <button type="button" className="secondary-button" onClick={openQuickAddMissingProduct}>Request missing item</button>
+            <button type="button" className="ghost-button" onClick={() => setQuickAddPath("search")}>Search by name instead</button>
+          </div>
+          {quickAddWizard.message ? <p className="flow-inline-message is-info">{quickAddWizard.message}</p> : null}
+        </div>
+      );
+    }
+
+    if (quickAddScreen === "receipt") {
+      return (
+        <form className="add-anything-flow add-anything-receipt" onSubmit={saveQuickAddBasicReceipt}>
+          {renderFlowHeader("Receipt", "Save a basic receipt now. Item linking and OCR stay optional follow-up steps.")}
+          <div className="flow-form-grid quick-add-receipt-grid">
+            <Field label="Merchant / store">
+              <input value={quickAddWizard.receiptMerchant} autoFocus onChange={(event) => updateQuickAddWizard({ receiptMerchant: event.target.value, message: "" })} placeholder="Target, Walmart, local shop..." />
+            </Field>
+            <Field label="Date">
+              <input type="date" value={quickAddWizard.receiptDate} onChange={(event) => updateQuickAddWizard({ receiptDate: event.target.value })} />
+            </Field>
+            <Field label="Total optional">
+              <input type="number" min="0" step="0.01" value={quickAddWizard.receiptTotal} onChange={(event) => updateQuickAddWizard({ receiptTotal: event.target.value })} placeholder="0.00" />
+            </Field>
+            <Field label="Note optional">
+              <input value={quickAddWizard.receiptNote} onChange={(event) => updateQuickAddWizard({ receiptNote: event.target.value })} placeholder="What this receipt is for" />
+            </Field>
+          </div>
+          <div className="quick-add-photo-panel">
+            {quickAddWizard.receiptPhotoUrl ? (
+              <div className="picture-lookup-preview quick-add-photo-preview">
+                <img src={quickAddWizard.receiptPhotoUrl} alt="Receipt proof" />
+                <span>{quickAddWizard.receiptFileName || "Receipt photo attached"}</span>
+              </div>
+            ) : null}
+            <label className="secondary-button file-action-label">
+              Add receipt photo optional
+              <input type="file" accept="image/*" onChange={(event) => handleQuickAddPhotoFile(event, "receipt")} />
+            </label>
+          </div>
+          <p className="compact-subtitle">No OCR or automatic item extraction is promised here. Add items from the receipt after saving.</p>
+          <div className="quick-add-inline-actions">
+            <button type="submit" disabled={quickAddWizard.receiptSaving}>{quickAddWizard.receiptSaving ? "Saving..." : "Save receipt"}</button>
+            <button type="button" className="secondary-button" onClick={() => runAddSheetAction("receipt")}>Open receipt review</button>
+          </div>
+          {quickAddWizard.message ? <p className="flow-inline-message is-info">{quickAddWizard.message}</p> : null}
+        </form>
+      );
+    }
+
+    if (quickAddScreen === "receiptSuccess") {
+      return (
+        <div className="add-anything-flow add-anything-success">
+          <div className="quick-add-success-card">
+            <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="receipt" /></span>
+            <strong>Receipt saved.</strong>
+            <p>{quickAddWizard.message || "You can link existing items or add new items from this receipt later."}</p>
+          </div>
+          <div className="quick-add-inline-actions">
+            <button type="button" onClick={() => setQuickAddPath("search")}>Add items from receipt</button>
+            <button type="button" className="secondary-button" disabled title="Linking existing items is coming later.">Link existing items</button>
+            <button type="button" className="secondary-button" onClick={() => { closeFlowModal({ force: true, reset: false }); setActiveTab("forge"); }}>View receipt</button>
+            <button type="button" className="ghost-button" onClick={() => setQuickAddWizard(createQuickAddWizardState({ screen: "receipt", path: "receipt" }))}>Add another receipt</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (quickAddScreen === "manual") {
+      return (
+        <form className="add-anything-flow add-anything-manual" onSubmit={(event) => { event.preventDefault(); openQuickAddManualReview(); }}>
+          {renderFlowHeader("Manual item", "Add something that is not in the catalog yet. Advanced details can be filled later.")}
+          <div className="flow-form-grid quick-add-manual-grid">
+            <Field label="Item name">
+              <input value={quickAddWizard.manualItemName} autoFocus onChange={(event) => updateQuickAddWizard({ manualItemName: event.target.value, message: "" })} placeholder="Product, card, supply, or item" />
+            </Field>
+            <Field label="Category / type">
+              <input value={quickAddWizard.manualCategory} onChange={(event) => updateQuickAddWizard({ manualCategory: event.target.value })} placeholder="Pokemon, sealed, single, supply..." />
+            </Field>
+            <Field label="Quantity">
+              <input type="number" min="1" value={quickAddWizard.manualQuantity} onChange={(event) => updateQuickAddWizard({ manualQuantity: event.target.value })} />
+            </Field>
+            <Field label="Destination">
+              <select value={quickAddWizard.manualDestination} onChange={(event) => updateQuickAddWizard({ manualDestination: event.target.value })}>
+                {destinationOptions.map((option) => <option key={option.value} value={option.value}>{option.label} - {option.helper}</option>)}
+              </select>
+            </Field>
+            <Field label="Amount paid optional">
+              <input type="number" min="0" step="0.01" value={quickAddWizard.manualAmountPaid} onChange={(event) => updateQuickAddWizard({ manualAmountPaid: event.target.value })} placeholder="0.00" />
+            </Field>
+            <Field label="Condition optional">
+              <input value={quickAddWizard.manualCondition} onChange={(event) => updateQuickAddWizard({ manualCondition: event.target.value })} placeholder="Sealed, near mint, played..." />
+            </Field>
+          </div>
+          <Field label="Note optional">
+            <textarea value={quickAddWizard.manualNote} onChange={(event) => updateQuickAddWizard({ manualNote: event.target.value })} placeholder="Identifiers, location, receipt note, or details to finish later." />
+          </Field>
+          <div className="quick-add-inline-actions">
+            <button type="submit">Review/Add</button>
+            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("search", { query: quickAddWizard.manualItemName })}>Try catalog search</button>
+          </div>
+          {quickAddWizard.message ? <p className="flow-inline-message is-warning">{quickAddWizard.message}</p> : null}
+        </form>
+      );
+    }
+
+    const entryOptions = [
+      { key: "search", title: "Search item", helper: "Find cards, sets, sealed products, UPCs, or SKUs.", icon: "search", tone: "search", onClick: () => setQuickAddPath("search") },
+      { key: "upc", title: "Scan / enter UPC", helper: "Use scanner when available or type a code.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
+      { key: "photo", title: "Photo lookup", helper: "Upload a reference photo, then match manually.", icon: "camera", tone: "vault", onClick: () => setQuickAddPath("photo") },
+      { key: "scout", title: "Scout Report", helper: "Post store, status, and time first.", icon: "scout", tone: "scout", onClick: () => runAddSheetAction("storeReport") },
+      { key: "receipt", title: "Receipt", helper: "Save proof now; link items later.", icon: "receipt", tone: "forge", onClick: () => setQuickAddPath("receipt") },
+      { key: "manual", title: "Manual Item", helper: "Add anything without a catalog match.", icon: "manual_entry", tone: "warning", ariaLabel: "Manual Add item", onClick: () => openQuickAddManualItemFlow() },
+    ];
+
+    return (
+      <div className="add-anything-flow add-anything-entry">
+        <div className="add-anything-hero">
+          <div>
+            <strong>Add something</strong>
+            <p>What are you adding, and where should it go?</p>
+          </div>
+          <span aria-hidden="true">+</span>
+        </div>
+        <div className="add-anything-option-grid">
+          {entryOptions.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className={`add-anything-option add-anything-option--${option.tone || option.key}`}
+              onClick={option.onClick}
+              aria-label={option.ariaLabel}
+            >
+              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={option.icon || option.key} /></span>
+              <strong>{option.title}</strong>
+              <small>{option.helper}</small>
+            </button>
+          ))}
+        </div>
+        <p className="quick-add-missing-help">Search and UPC use the Market catalog. Scout reports post without requiring products or proof.</p>
+      </div>
+    );
+  }
+
   function renderAddActionSheetContent() {
+    return renderAddAnythingFlowContent();
     const steps = [
       { key: "where", label: "Where" },
       { key: "what", label: "What" },
@@ -39499,7 +40079,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const validationErrorSummary = shouldShowValidationErrors && visibleValidationErrors.length
       ? `Please fix ${visibleValidationErrors.length} item${visibleValidationErrors.length === 1 ? "" : "s"} before saving.`
       : "";
-    const manualItemSelected = !selectedCatalog && !multiDestinationMatchSearchOpen && String(multiDestinationForm.itemName || "").trim();
+    const manualModeActive = !selectedCatalog && !multiDestinationMatchSearchOpen;
     const selectedItemSummary = selectedCatalog
       ? `${catalogTitle(selectedCatalog)}${catalogExpansionName(selectedCatalog) ? ` | ${catalogExpansionName(selectedCatalog)}` : ""}`
       : String(multiDestinationForm.itemName || "No item selected").trim();
@@ -39617,14 +40197,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </button>
                   </div>
                 </div>
-              ) : manualItemSelected ? (
+              ) : manualModeActive ? (
                 <div className="selected-product-card selected-match-card manual-selected-card">
                   <div className="catalog-thumb selected-match-thumb manual-selected-thumb">
                     <span>Manual</span>
                   </div>
                   <div className="selected-match-copy">
                     <span className="neon-chip add-item-selected-chip">Manual item</span>
-                    <strong>{multiDestinationForm.itemName}</strong>
+                    <strong>{multiDestinationForm.itemName || "Manual item"}</strong>
                     <span>{[multiDestinationForm.productType || "Type not set", multiDestinationForm.setName || "Set optional"].filter(Boolean).join(" | ")}</span>
                     <small>{multiDestinationForm.upcSku ? `UPC/SKU: ${multiDestinationForm.upcSku}` : "You can add UPC/SKU, price, and notes below."}</small>
                   </div>
@@ -46023,6 +46603,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <strong>Observed</strong>
                   <span>{scoutReportDateTimeLabel(selectedScoutReport)}</span>
                 </div>
+                {(() => {
+                  const submittedLabel = scoutReportSubmittedDateTimeLabel(selectedScoutReport);
+                  return (
+                    <div className="scout-report-detail-row">
+                      <strong>Submitted</strong>
+                      <span>Submitted: {submittedLabel}</span>
+                    </div>
+                  );
+                })()}
                 <div className="scout-report-detail-row">
                   <strong>Status</strong>
                   <span>{scoutReportObservationStatusLabel(selectedScoutReport)}</span>

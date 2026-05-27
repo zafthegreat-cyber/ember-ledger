@@ -39901,6 +39901,316 @@ body,
   white-space: normal;
 }
 
+/* Quick Add / Add Anything flow */
+.app .flow-modal[data-flow="addActionSheet"],
+.app-command-shell .flow-modal[data-flow="addActionSheet"],
+.app-shell-dark .flow-modal[data-flow="addActionSheet"] {
+  max-width: min(680px, calc(100vw - 20px));
+}
+
+.app .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+.app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-body {
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.add-anything-flow {
+  display: grid;
+  gap: 14px;
+  color: #fff8e8;
+}
+
+.add-anything-hero,
+.add-anything-path-header,
+.quick-add-success-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(255, 122, 26, 0.14), transparent 8rem),
+    linear-gradient(145deg, rgba(9, 26, 48, 0.94), rgba(4, 13, 27, 0.96));
+}
+
+.add-anything-hero strong,
+.add-anything-path-header strong,
+.quick-add-success-card strong {
+  color: #fff8e8;
+  font-size: 1.08rem;
+}
+
+.add-anything-hero p,
+.add-anything-path-header p,
+.quick-add-success-card p {
+  margin: 4px 0 0;
+  color: rgba(229, 240, 255, 0.74);
+  line-height: 1.38;
+}
+
+.add-anything-hero > span,
+.quick-add-success-card > .command-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  border: 1px solid rgba(255, 122, 26, 0.36);
+  background: rgba(255, 122, 26, 0.12);
+  color: #ffb36b;
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.add-anything-path-header {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.add-anything-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.add-anything-option {
+  display: grid;
+  min-height: 106px;
+  align-content: start;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  background: linear-gradient(145deg, rgba(10, 28, 51, 0.94), rgba(5, 15, 30, 0.92));
+  color: #fff8e8;
+  text-align: left;
+  box-shadow: none;
+}
+
+.add-anything-option:hover,
+.add-anything-option:focus-visible,
+.quick-add-result-card:hover,
+.quick-add-result-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(124, 231, 255, 0.42);
+  background: rgba(10, 34, 58, 0.96);
+}
+
+.add-anything-option .command-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.add-anything-option strong {
+  color: #fff8e8;
+  line-height: 1.15;
+}
+
+.add-anything-option small {
+  color: rgba(229, 240, 255, 0.72);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.add-anything-option--search .command-icon,
+.add-anything-option--scout .command-icon {
+  color: #7ce7ff;
+  background: rgba(124, 231, 255, 0.1);
+  border-color: rgba(124, 231, 255, 0.24);
+}
+
+.add-anything-option--forge .command-icon {
+  color: #ffb36b;
+  background: rgba(255, 122, 26, 0.11);
+  border-color: rgba(255, 122, 26, 0.24);
+}
+
+.add-anything-option--vault .command-icon {
+  color: #d9c7ff;
+  background: rgba(183, 148, 244, 0.12);
+  border-color: rgba(183, 148, 244, 0.24);
+}
+
+.add-anything-option--warning .command-icon {
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.12);
+  border-color: rgba(255, 209, 102, 0.24);
+}
+
+.quick-add-inline-actions,
+.quick-add-search-starter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+}
+
+.quick-add-inline-actions button,
+.quick-add-search-starter button {
+  min-height: 42px;
+}
+
+.quick-add-results-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.quick-add-results-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  color: rgba(229, 240, 255, 0.76);
+  font-size: 0.84rem;
+}
+
+.quick-add-results-heading strong {
+  color: #fff8e8;
+}
+
+.quick-add-result-list {
+  display: grid;
+  gap: 9px;
+}
+
+.quick-add-result-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 78px;
+  padding: 10px;
+  border: 1px solid rgba(124, 231, 255, 0.15);
+  border-radius: 16px;
+  background: rgba(6, 20, 38, 0.78);
+  color: #fff8e8;
+  text-align: left;
+  box-shadow: none;
+}
+
+.quick-add-result-thumb {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 13px;
+  background: rgba(124, 231, 255, 0.08);
+}
+
+.quick-add-result-thumb img,
+.quick-add-result-thumb .branded-product-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.quick-add-result-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.quick-add-result-copy strong,
+.quick-add-result-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-add-result-copy strong {
+  color: #fff8e8;
+}
+
+.quick-add-result-copy small {
+  color: rgba(229, 240, 255, 0.68);
+  font-size: 0.75rem;
+}
+
+.quick-add-photo-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(6, 20, 38, 0.7);
+}
+
+.quick-add-photo-preview {
+  max-width: 100%;
+}
+
+.quick-add-receipt-grid,
+.quick-add-manual-grid {
+  gap: 10px;
+}
+
+.quick-add-success-card {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+@media (max-width: 640px) {
+  .app .flow-modal[data-flow="addActionSheet"],
+  .app-command-shell .flow-modal[data-flow="addActionSheet"],
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] {
+    width: calc(100vw - 12px);
+    max-width: calc(100vw - 12px);
+    max-height: calc(100dvh - 18px);
+  }
+
+  .add-anything-flow {
+    gap: 11px;
+  }
+
+  .add-anything-option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .add-anything-option {
+    min-height: 92px;
+    padding: 10px;
+  }
+
+  .add-anything-option .command-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .add-anything-option strong {
+    font-size: 0.86rem;
+  }
+
+  .add-anything-option small {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 0.7rem;
+  }
+
+  .quick-add-result-card {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .quick-add-result-card > .status-badge {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .quick-add-inline-actions button {
+    flex: 1 1 150px;
+  }
+}
+
+@media (max-width: 360px) {
+  .add-anything-option-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Pass 3 Scout final reporting: essentials first, calm signals, and safe report sheets. */
 .app-scout .standard-page-header.scout-summary-card {
   grid-template-columns: 1fr !important;
