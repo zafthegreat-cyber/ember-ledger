@@ -6969,6 +6969,51 @@ async function handleUpdateStore(e) {
                       )}
                     </div>
                   </details>
+                  <details className="scout-report-detail-section">
+                    <summary>
+                      <span>Proof / Photos</span>
+                      <small>{getScoutReportPhotoUrls(selectedReportTarget).length ? "Proof attached" : "No proof yet"}</small>
+                    </summary>
+                    <div className="scout-report-detail-row">
+                      <strong>{getScoutReportPhotoUrls(selectedReportTarget).length ? "Proof attached" : "Proof optional"}</strong>
+                      <span>{getScoutReportPhotoUrls(selectedReportTarget).length ? `${getScoutReportPhotoUrls(selectedReportTarget).length} photo${getScoutReportPhotoUrls(selectedReportTarget).length === 1 ? "" : "s"} saved for this report.` : "Photos and proof help the community, but they are optional."}</span>
+                    </div>
+                    {getScoutReportPhotoUrls(selectedReportTarget).length ? (
+                      <div className="scout-report-proof-strip" aria-label="Report proof photos">
+                        {getScoutReportPhotoUrls(selectedReportTarget).slice(0, 4).map((photoUrl, index) => (
+                          <img src={photoUrl} alt={`Report proof ${index + 1}`} key={photoUrl || index} />
+                        ))}
+                      </div>
+                    ) : null}
+                  </details>
+                  <details className="scout-report-detail-section">
+                    <summary>
+                      <span>Confidence</span>
+                      <small>{scoutFreshnessLabel(selectedReportTarget)}</small>
+                    </summary>
+                    <div className="scout-report-detail-row">
+                      <strong>{selectedReportTarget.confidence || "Possible"}</strong>
+                      <span>{scoutFreshnessLabel(selectedReportTarget)}. This is a community signal, not guaranteed live stock.</span>
+                    </div>
+                    <div className="scout-report-detail-row">
+                      <strong>Source</strong>
+                      <span>{scoutSourceTypeLabel(selectedReportTarget.sourceType || selectedReportTarget.source_type || "user_report")}</span>
+                    </div>
+                  </details>
+                  <details className="scout-report-detail-section">
+                    <summary>
+                      <span>Context / Source</span>
+                      <small>Store, timing, and reporter context.</small>
+                    </summary>
+                    <div className="scout-report-detail-row">
+                      <strong>{getReportStore(selectedReportTarget).name || selectedReportTarget.storeName || "Store not selected"}</strong>
+                      <span>{[getReportStore(selectedReportTarget).address, getReportStore(selectedReportTarget).city, getReportStore(selectedReportTarget).state].filter(Boolean).join(", ") || "Address not available"}</span>
+                    </div>
+                    <div className="scout-report-detail-row">
+                      <strong>Observed</strong>
+                      <span>{friendlyScoutTimestamp(selectedReportTarget)}</span>
+                    </div>
+                  </details>
                 </div>
               </div>
               <div className="location-modal-actions modal-sticky-footer">

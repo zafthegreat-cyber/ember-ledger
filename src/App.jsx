@@ -28680,7 +28680,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <div className={className} hidden={Boolean(options.hidden)}>
         <strong>{fallback.title}</strong>
         <span>{fallback.meta}</span>
-        <b>{options.badge || "Photo coming soon"}</b>
+        <b>{options.badge || "Image unavailable"}</b>
       </div>
     );
   }
@@ -29886,6 +29886,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   alt=""
                   onError={(event) => {
                     event.currentTarget.style.display = "none";
+                    event.currentTarget.closest(".catalog-thumb")?.classList.add("image-fallback-active");
                     event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                   }}
                 />
@@ -37231,19 +37232,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "App Content / Admin Edit", value: adminEditModeActive ? "On" : "Off", helper: "Safe edit mode and content review", filter: "App Content / Admin Edit" },
       { title: "System Health / Logs", value: (betaReadinessData.appErrorLogs || []).length + auditLogs.length, helper: "Client errors and admin audit log", filter: "System Health / Logs" },
     ];
+    const activeAdminQueue = adminEssentialQueues.find((queue) => queue.filter === adminReviewFilter)
+      || adminQueueRows.find((queue) => queue.filter === adminReviewFilter)
+      || adminOpsSections.find((section) => section.filter === adminReviewFilter)
+      || null;
+    const chooseAdminQueue = (filter) => {
+      setAdminReviewFilter(filter);
+      window.setTimeout(() => {
+        document.getElementById("admin-selected-queue-panel")?.scrollIntoView?.({
+          block: "nearest",
+          behavior: "smooth",
+        });
+      }, 80);
+    };
     return (
       <section className="admin-ops-dashboard">
         <div className="admin-security-panel admin-secure-access-card">
           <div>
-            <strong>Admin access is restricted</strong>
-            <p>Only approved admins/founders should reach this dashboard. Frontend visibility is only a convenience layer; protected writes must remain guarded by Supabase RLS, backend checks, and audit logs.</p>
+            <strong>Protected admin workspace</strong>
+            <p>You are viewing protected queues. Frontend visibility is only a convenience layer; protected writes remain guarded by Supabase RLS, backend checks, and audit logs.</p>
           </div>
           <span className={adminEditModeActive ? "status-badge danger" : "status-badge"}>{adminEditModeActive ? "Admin Edit On" : "View Mode"}</span>
         </div>
 
         <section className="admin-overview-strip" aria-label="Admin overview">
           {adminOverviewRows.map((item) => (
-            <button type="button" className={`admin-overview-tile tone-${item.tone}`} key={item.key} onClick={() => setAdminReviewFilter(item.filter)}>
+            <button type="button" className={`admin-overview-tile tone-${item.tone}`} key={item.key} onClick={() => chooseAdminQueue(item.filter)}>
               <span>{item.label}</span>
               <strong>{item.value}</strong>
             </button>
@@ -37257,9 +37271,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p>Choose the protected area you need. Raw records, IDs, and audit details stay inside each section.</p>
             </div>
             <div className="summary-pill-row">
-              <button type="button" className={adminReviewFilter === "All" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("All")}>All queues</button>
-              <button type="button" className={adminReviewFilter === "Trust Command Center" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("Trust Command Center")}>Trust</button>
-              <button type="button" className={adminReviewFilter === "Reports & Moderation" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("Reports & Moderation")}>Moderation</button>
+              <button type="button" className={adminReviewFilter === "All" ? "secondary-button active" : "secondary-button"} onClick={() => chooseAdminQueue("All")}>All queues</button>
+              <button type="button" className={adminReviewFilter === "Trust Command Center" ? "secondary-button active" : "secondary-button"} onClick={() => chooseAdminQueue("Trust Command Center")}>Trust</button>
+              <button type="button" className={adminReviewFilter === "Reports & Moderation" ? "secondary-button active" : "secondary-button"} onClick={() => chooseAdminQueue("Reports & Moderation")}>Moderation</button>
             </div>
           </div>
           <div className="admin-queue-toolbar">
@@ -37273,13 +37287,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </label>
             <span className="status-badge">{filteredAdminEssentialQueues.length} section{filteredAdminEssentialQueues.length === 1 ? "" : "s"}</span>
           </div>
+          {activeAdminQueue && adminReviewFilter !== "All" ? (
+            <div id="admin-selected-queue-panel" className="admin-selected-queue-panel" role="status">
+              <span className="status-badge">Selected queue</span>
+              <div>
+                <strong>{activeAdminQueue.title}</strong>
+                <p>{activeAdminQueue.detail || activeAdminQueue.details || activeAdminQueue.helper}</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => chooseAdminQueue(activeAdminQueue.filter)}>Review details below</button>
+            </div>
+          ) : null}
           <div className="admin-essential-queue-grid" aria-label="Priority admin queues">
             {filteredAdminEssentialQueues.length ? filteredAdminEssentialQueues.map((queue) => (
               <button
                 type="button"
                 className={`admin-essential-queue-card ${adminReviewFilter === queue.filter ? "active" : ""}`}
                 key={queue.key}
-                onClick={() => setAdminReviewFilter(queue.filter)}
+                aria-pressed={adminReviewFilter === queue.filter}
+                onClick={() => chooseAdminQueue(queue.filter)}
               >
                 <span>{queue.title}</span>
                 <strong>{queue.count}</strong>
@@ -37296,7 +37321,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="admin-command-section-grid">
             {adminCommandSections.map((section) => (
-              <button type="button" className="admin-command-section-card" key={section.key} onClick={() => setAdminReviewFilter(section.filter)}>
+              <button type="button" className="admin-command-section-card" key={section.key} onClick={() => chooseAdminQueue(section.filter)}>
                 <span>{section.title}</span>
                 <strong>{section.status}</strong>
                 <p>{section.purpose}</p>
@@ -37309,7 +37334,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <summary>Detailed queue cards</summary>
               <div className="admin-queue-grid compact">
                 {[...primaryQueueRows, ...secondaryQueueRows].map((queue) => (
-                  <button type="button" className="admin-queue-card compact" key={queue.key} onClick={() => setAdminReviewFilter(queue.filter)}>
+                  <button type="button" className="admin-queue-card compact" key={queue.key} onClick={() => chooseAdminQueue(queue.filter)}>
                     <span>{queue.title}</span>
                     <strong>{queue.count}</strong>
                     <small>{queue.priority}</small>
@@ -37325,7 +37350,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <summary>All admin areas</summary>
           <div className="admin-ops-grid">
             {adminOpsSections.map((section) => (
-              <button type="button" className="admin-ops-card" key={section.title} onClick={() => setAdminReviewFilter(section.filter)}>
+              <button type="button" className="admin-ops-card" key={section.title} onClick={() => chooseAdminQueue(section.filter)}>
                 <span>{section.title}</span>
                 <strong>{section.value}</strong>
                 <small>{section.helper}</small>
@@ -37510,6 +37535,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         activeTab={adminReviewFilter}
         onTabChange={setAdminReviewFilter}
       />
+      {adminReviewFilter !== "All" ? (
+        <section className="admin-selected-queue-panel admin-selected-queue-panel--top" role="status">
+          <span className="status-badge">Selected queue</span>
+          <div>
+            <strong>{adminReviewFilter}</strong>
+            <p>Review context is focused below. Actions remain permission-protected and empty queues stay visible.</p>
+          </div>
+        </section>
+      ) : null}
       <section className="panel approval-page">
         <div className="drawer-info-card admin-identity-card">
           <strong>{adminReviewIdentityLabel}</strong>
@@ -39774,7 +39808,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       maxVisible: quickAddPreferencePlan.maxVisible,
       preferredKeys: quickAddPreferencePlan.preferredKeys,
     });
-    const sellerQuickAddActive = Boolean(personalizationContext.sellerToolsEnabled || adaptiveUiState.showSellerTools);
+    const smartSetupSellerToolsActive = Boolean(
+      (smartSetupPreferences.enabledToolsets || []).some((key) => ["forge_seller_tools", "sales_tracking", "receipts_and_expenses", "mileage_tracking"].includes(key)) ||
+      ["casual_seller", "business_seller", "seller"].includes(smartSetupPreferences.primaryMode) ||
+      (smartSetupPreferences.businessTools && smartSetupPreferences.businessTools !== "no_i_only_collect")
+    );
+    const sellerQuickAddActive = Boolean(
+      personalizationContext.sellerToolsEnabled ||
+      adaptiveUiState.showSellerTools ||
+      smartSetupSellerToolsActive ||
+      sellerModeEnabled(userType, dashboardPreset)
+    );
     const sellerQuickAddOrder = ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind", "expense"];
     const entryOptionByPreferenceKey = {
       vault: { key: "vault", title: "Add to Vault", helper: "Save a card or product to your collection.", icon: "vault", tone: "vault", onClick: () => runAddSheetAction("vaultItem") },
@@ -39826,7 +39870,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ))}
         </div>
         {overflowEntryOptions.length ? (
-          <details className="add-anything-more">
+          <details
+            className="add-anything-more"
+            onToggle={(event) => {
+              if (!event.currentTarget.open) {
+                return;
+              }
+              window.requestAnimationFrame(() => {
+                event.currentTarget.scrollIntoView?.({
+                  block: "nearest",
+                  behavior: "smooth",
+                });
+              });
+            }}
+          >
             <summary>More actions</summary>
             <div className="add-anything-option-grid add-anything-option-grid--more">
               {overflowEntryOptions.map((option) => (
@@ -45608,9 +45665,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       className: "settings-utility-page",
       children: (
         <>
-          {renderAppSetupProminentEntryCard()}
-          {renderSettingsProfileSummaryCard({ compact: true })}
           {renderAppSetupPersonalizationCard()}
+          {renderSettingsProfileSummaryCard({ compact: true })}
           {renderSettingsWorkspaceCard()}
           <div className="drawer-info-card settings-command-overview utility-card">
             <strong>Settings map</strong>
@@ -53728,28 +53784,29 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               ) : null}
               <div className="forge-daily-grid forge-business-grid">
                 {[
-                  { label: "Profit this month", value: money(monthlyProfitLoss), helper: `${money(monthlySalesProfit)} sales profit | ${money(monthlyExpenses)} expenses`, action: () => setActiveTab("reports") },
-                  { label: "Sales", value: money(totalSalesRevenue), helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} | ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`, action: () => setActiveTab("sales") },
-                  { label: "Receipts needing review", value: forgeReceiptsNeedingReviewCount, helper: forgeReceiptsNeedingReviewCount ? "Review receipts before trusting profit reports." : "No receipt review blockers.", action: () => openBasicReceiptFlow("forge-business-card") },
-                  { label: "Mileage", value: `${totalBusinessMiles.toFixed(1)} mi`, helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | ${money(totalMileageValue)} tracked value`, action: () => setActiveTab("mileage") },
-                  { label: "Inventory health", value: `${forgeInventoryReviewCount} review`, helper: `${lowStockItems.length} low stock | ${needsPhotosItems.length} need photos`, action: () => setInventorySearch("Needs Market Check") },
-                  { label: "Products", value: forgeTotalProductQuantity, helper: `${forgeInventoryItems.length} grouped product${forgeInventoryItems.length === 1 ? "" : "s"} | ${money(totalMarketValue)} market value`, action: () => setInventorySearch("") },
-                  { label: "Price tools", value: missingMarketPriceItems.length + missingMsrpItems.length, helper: `${missingMarketPriceItems.length} missing market | ${missingMsrpItems.length} missing MSRP`, action: () => setInventorySearch("Needs Market Check") },
-                  { label: "Active projects", value: readyToListItems.length + listedItems.length + activeMarketplaceCount, helper: `${readyToListItems.length} ready | ${listedItems.length} listed | ${activeMarketplaceCount} marketplace`, action: () => { setMarketplaceView("browse"); setForgeSubTab("marketplace"); setActiveTab("inventory"); } },
-                  { label: "Recent activity", value: forgeRecentActivity.length, helper: forgeRecentActivity.length ? "Latest seller records are below." : "Add inventory, receipts, mileage, or sales to start.", action: () => setActiveTab("inventory") },
+                  { group: "Money", label: "Profit this month", value: money(monthlyProfitLoss), helper: `${money(monthlySalesProfit)} sales profit | ${money(monthlyExpenses)} expenses`, action: () => setActiveTab("reports") },
+                  { group: "Sales", label: "Sales", value: money(totalSalesRevenue), helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} | ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`, action: () => setActiveTab("sales") },
+                  { group: "Records", label: "Receipts needing review", value: forgeReceiptsNeedingReviewCount, helper: forgeReceiptsNeedingReviewCount ? "Review receipts before trusting profit reports." : "No receipt review blockers.", action: () => openBasicReceiptFlow("forge-business-card") },
+                  { group: "Travel", label: "Mileage", value: `${totalBusinessMiles.toFixed(1)} mi`, helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | ${money(totalMileageValue)} tracked value`, action: () => setActiveTab("mileage") },
+                  { group: "Inventory", label: "Inventory health", value: `${forgeInventoryReviewCount} review`, helper: `${lowStockItems.length} low stock | ${needsPhotosItems.length} need photos`, action: () => setInventorySearch("Needs Market Check") },
+                  { group: "Inventory", label: "Products", value: forgeTotalProductQuantity, helper: `${forgeInventoryItems.length} grouped product${forgeInventoryItems.length === 1 ? "" : "s"} | ${money(totalMarketValue)} market value`, action: () => setInventorySearch("") },
+                  { group: "Pricing", label: "Price tools", value: missingMarketPriceItems.length + missingMsrpItems.length, helper: `${missingMarketPriceItems.length} missing market | ${missingMsrpItems.length} missing MSRP`, action: () => setInventorySearch("Needs Market Check") },
+                  { group: "Workflow", label: "Active projects", value: readyToListItems.length + listedItems.length + activeMarketplaceCount, helper: `${readyToListItems.length} ready | ${listedItems.length} listed | ${activeMarketplaceCount} marketplace`, action: () => { setMarketplaceView("browse"); setForgeSubTab("marketplace"); setActiveTab("inventory"); } },
+                  { group: "Activity", label: "Recent activity", value: forgeRecentActivity.length, helper: forgeRecentActivity.length ? "Latest seller records are below." : "Add inventory, receipts, mileage, or sales to start.", action: () => setActiveTab("inventory") },
                 ].slice(0, 6).map((card) => {
                   const compactCardCopy = {
-                    "Profit this month": { label: "Profit", helper: `${money(monthlySalesProfit)} sales | ${money(monthlyExpenses)} expenses` },
-                    Sales: { helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} | ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold` },
-                    "Receipts needing review": { label: "Receipts", helper: forgeReceiptsNeedingReviewCount ? "Review before trusting profit." : "No receipt review blockers." },
-                    Mileage: { helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | ${money(totalMileageValue)} tracked` },
-                    "Inventory health": { label: "Inventory", helper: `${lowStockItems.length} low stock | ${needsPhotosItems.length} need photos` },
-                    Products: { label: "Products", helper: `${forgeInventoryItems.length} grouped | ${money(totalMarketValue)} market value` },
+                    "Profit this month": { label: "Profit", helper: `${money(monthlySalesProfit)} sales | ${money(monthlyExpenses)} expenses`, group: "Money" },
+                    Sales: { helper: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} | ${totalItemsSold} item${totalItemsSold === 1 ? "" : "s"} sold`, group: "Sales" },
+                    "Receipts needing review": { label: "Receipts", helper: forgeReceiptsNeedingReviewCount ? "Review before trusting profit." : "No receipt review blockers.", group: "Records" },
+                    Mileage: { helper: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | ${money(totalMileageValue)} tracked`, group: "Travel" },
+                    "Inventory health": { label: "Inventory", helper: `${lowStockItems.length} low stock | ${needsPhotosItems.length} need photos`, group: "Inventory" },
+                    Products: { label: "Products", helper: `${forgeInventoryItems.length} grouped | ${money(totalMarketValue)} market value`, group: "Inventory" },
                   }[card.label];
                   const displayCard = compactCardCopy ? { ...card, ...compactCardCopy } : card;
                   return (
                     <button type="button" className="forge-daily-card forge-business-card" key={displayCard.label} onClick={displayCard.action}>
-                      <span>{displayCard.label}</span>
+                      <span className="forge-business-card-group">{displayCard.group || "Forge"}</span>
+                      <span className="forge-business-card-label">{displayCard.label}</span>
                       <strong>{displayCard.value}</strong>
                       <small>{displayCard.helper}</small>
                     </button>
