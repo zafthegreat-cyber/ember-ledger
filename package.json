@@ -13,6 +13,8 @@
     "backfill:master-catalog": "node scripts/backfill-master-catalog-batches.cjs",
     "test:catalog-search": "node scripts/test-catalog-shorthand.mjs && node scripts/test-catalog-recovery.mjs",
     "beta:clear-demo-data": "node scripts/clear-beta-demo-data.cjs",
+    "admin:clean-demo-scout-data:dry": "node scripts/admin-clean-demo-and-scout-data.cjs --dry-run",
+    "admin:clean-demo-scout-data": "node scripts/admin-clean-demo-and-scout-data.cjs",
     "catalog:import": "node scripts/import-pokemon-catalog.cjs",
     "sync:market-prices": "node --use-system-ca scripts/sync-catalog-prices-stores.cjs",
     "sync:catalog-prices": "node --use-system-ca scripts/sync-catalog-prices-stores.cjs",
