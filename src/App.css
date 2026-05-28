@@ -49592,6 +49592,251 @@ body {
   }
 }
 
+/* Scout trust and admin stabilization */
+.app-scout .scout-field-error,
+.app-command-shell.app-scout .scout-field-error,
+.app.app-scout .scout-field-error {
+  margin: 4px 0 0 !important;
+  padding: 10px 12px !important;
+  color: #fed7aa !important;
+  font-size: 0.86rem !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+  border: 1px solid rgba(251, 146, 60, 0.35) !important;
+  border-radius: 12px !important;
+  background: rgba(124, 45, 18, 0.3) !important;
+}
+
+.app-scout .scout-report-compact-card,
+.app-command-shell.app-scout .scout-report-compact-card,
+.app.app-scout .scout-report-compact-card {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: start !important;
+  gap: 14px !important;
+  min-height: auto !important;
+  padding: 15px !important;
+  overflow: hidden !important;
+}
+
+.app-scout .scout-report-card-main,
+.app-command-shell.app-scout .scout-report-card-main,
+.app.app-scout .scout-report-card-main,
+.app-scout .scout-report-card-top > div,
+.app-command-shell.app-scout .scout-report-card-top > div,
+.app.app-scout .scout-report-card-top > div,
+.app-scout .scout-report-human-summary,
+.app-command-shell.app-scout .scout-report-human-summary,
+.app.app-scout .scout-report-human-summary {
+  min-width: 0 !important;
+}
+
+.app-scout .scout-report-card-top,
+.app-command-shell.app-scout .scout-report-card-top,
+.app.app-scout .scout-report-card-top {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+
+.app-scout .scout-report-card-top h3,
+.app-command-shell.app-scout .scout-report-card-top h3,
+.app.app-scout .scout-report-card-top h3 {
+  display: -webkit-box !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: var(--color-heading) !important;
+  line-height: 1.15 !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.app-scout .scout-report-card-top p,
+.app-command-shell.app-scout .scout-report-card-top p,
+.app.app-scout .scout-report-card-top p,
+.app-scout .scout-report-human-summary span,
+.app-command-shell.app-scout .scout-report-human-summary span,
+.app.app-scout .scout-report-human-summary span,
+.app-scout .scout-report-human-summary strong,
+.app-command-shell.app-scout .scout-report-human-summary strong,
+.app.app-scout .scout-report-human-summary strong {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+.app-scout .scout-report-card-top p,
+.app-command-shell.app-scout .scout-report-card-top p,
+.app.app-scout .scout-report-card-top p,
+.app-scout .scout-report-human-summary span,
+.app-command-shell.app-scout .scout-report-human-summary span,
+.app.app-scout .scout-report-human-summary span {
+  -webkit-line-clamp: 1 !important;
+}
+
+.app-scout .scout-report-human-summary strong,
+.app-command-shell.app-scout .scout-report-human-summary strong,
+.app.app-scout .scout-report-human-summary strong {
+  -webkit-line-clamp: 2 !important;
+}
+
+.app-scout .scout-report-card-action,
+.app-command-shell.app-scout .scout-report-card-action,
+.app.app-scout .scout-report-card-action {
+  position: static !important;
+  display: flex !important;
+  align-items: start !important;
+  justify-content: flex-end !important;
+  min-width: 116px !important;
+  width: auto !important;
+}
+
+.app-scout .scout-report-card-action .secondary-button,
+.app-command-shell.app-scout .scout-report-card-action .secondary-button,
+.app.app-scout .scout-report-card-action .secondary-button {
+  min-height: 40px !important;
+  white-space: nowrap !important;
+}
+
+.app-scout .scout-report-detail-sheet,
+.app-command-shell.app-scout .scout-report-detail-sheet,
+.app.app-scout .scout-report-detail-sheet {
+  display: flex !important;
+  flex-direction: column !important;
+  width: min(760px, calc(100vw - 20px)) !important;
+  max-height: min(820px, calc(100dvh - env(safe-area-inset-top, 0px) - 18px)) !important;
+  overflow: hidden !important;
+}
+
+.app-scout .scout-report-detail-body,
+.app-command-shell.app-scout .scout-report-detail-body,
+.app.app-scout .scout-report-detail-body {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  padding-bottom: calc(var(--et-mobile-form-clearance, 168px) + 24px) !important;
+  scroll-padding-bottom: calc(var(--et-mobile-form-clearance, 168px) + 24px) !important;
+}
+
+.app-scout .scout-report-detail-sheet .modal-sticky-footer,
+.app-command-shell.app-scout .scout-report-detail-sheet .modal-sticky-footer,
+.app.app-scout .scout-report-detail-sheet .modal-sticky-footer {
+  flex-shrink: 0 !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.18) !important;
+}
+
+.app .admin-queue-toolbar,
+.app-command-shell .admin-queue-toolbar,
+.app-shell-dark .admin-queue-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: end !important;
+}
+
+.app .admin-queue-toolbar label,
+.app-command-shell .admin-queue-toolbar label,
+.app-shell-dark .admin-queue-toolbar label {
+  display: grid !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+.app .admin-essential-queue-grid,
+.app-command-shell .admin-essential-queue-grid,
+.app-shell-dark .admin-essential-queue-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)) !important;
+  gap: 10px !important;
+}
+
+.app .admin-essential-queue-card,
+.app-command-shell .admin-essential-queue-card,
+.app-shell-dark .admin-essential-queue-card {
+  display: grid !important;
+  justify-items: start !important;
+  gap: 6px !important;
+  min-height: 154px !important;
+  padding: 14px !important;
+  color: var(--color-text) !important;
+  text-align: left !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  border-radius: 14px !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.2) !important;
+}
+
+.app .admin-essential-queue-card.active,
+.app-command-shell .admin-essential-queue-card.active,
+.app-shell-dark .admin-essential-queue-card.active,
+.app .admin-essential-queue-card:focus-visible,
+.app-command-shell .admin-essential-queue-card:focus-visible,
+.app-shell-dark .admin-essential-queue-card:focus-visible {
+  border-color: rgba(45, 212, 191, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.18), 0 16px 36px rgba(2, 6, 23, 0.2) !important;
+}
+
+.app .admin-essential-queue-card span,
+.app-command-shell .admin-essential-queue-card span,
+.app-shell-dark .admin-essential-queue-card span,
+.app .admin-essential-queue-card small,
+.app-command-shell .admin-essential-queue-card small,
+.app-shell-dark .admin-essential-queue-card small,
+.app .admin-essential-queue-card p,
+.app-command-shell .admin-essential-queue-card p,
+.app-shell-dark .admin-essential-queue-card p {
+  margin: 0 !important;
+  line-height: 1.35 !important;
+}
+
+.app .admin-essential-queue-card strong,
+.app-command-shell .admin-essential-queue-card strong,
+.app-shell-dark .admin-essential-queue-card strong {
+  color: var(--color-heading) !important;
+  font-size: 1.65rem !important;
+  line-height: 1 !important;
+}
+
+.app .admin-essential-queue-card b,
+.app-command-shell .admin-essential-queue-card b,
+.app-shell-dark .admin-essential-queue-card b {
+  align-self: end !important;
+  color: var(--color-accent, #f59e0b) !important;
+}
+
+@media (max-width: 640px) {
+  .app-scout .scout-report-compact-card,
+  .app-command-shell.app-scout .scout-report-compact-card,
+  .app.app-scout .scout-report-compact-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-scout .scout-report-card-action,
+  .app-command-shell.app-scout .scout-report-card-action,
+  .app.app-scout .scout-report-card-action {
+    justify-content: stretch !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .app-scout .scout-report-card-action .secondary-button,
+  .app-command-shell.app-scout .scout-report-card-action .secondary-button,
+  .app.app-scout .scout-report-card-action .secondary-button {
+    width: 100% !important;
+  }
+
+  .app .admin-queue-toolbar,
+  .app-command-shell .admin-queue-toolbar,
+  .app-shell-dark .admin-queue-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Live beta stabilization: mileage purpose chips must wrap on mobile. */
 .app .mileage-purpose-rail,
 .app-command-shell .mileage-purpose-rail,

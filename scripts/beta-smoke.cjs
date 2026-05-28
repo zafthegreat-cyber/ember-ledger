@@ -1386,21 +1386,14 @@ async function main() {
     const reportCard = await visibleScoutReportCard(savedScoutReport.storeName || "Smoke Shared Target");
     const reportDetailSheet = await assertScoutReportDeleteHidden(reportCard);
     await reportDetailSheet.getByRole("button", { name: /^Add details$/ }).click();
-    const editReportPanel = page.locator("form.scout-report-flow").first();
-    await editReportPanel.getByRole("button", { name: "Back to details" }).click();
-    await editReportPanel.getByPlaceholder("Search product, UPC, SKU").first().fill("Smoke ETB Edited");
-    await editReportPanel.getByPlaceholder("Qty or estimate").first().fill("3");
-    await editReportPanel.getByPlaceholder("Notes, shelf status, employee quote, limit, or context").fill("Three ETBs after edit.");
-    await editReportPanel.getByRole("button", { name: "Review report" }).click();
-    await editReportPanel.getByRole("button", { name: "Save Report" }).click();
-    await assertVisibleText("Smoke ETB Edited");
-    await closeReportSuccess();
-    await page.getByRole("button", { name: "My Reports" }).first().click();
-    await page.waitForTimeout(250);
-
-    const editedReportCard = await visibleScoutReportCard(savedScoutReport.storeName || "Smoke Shared Target");
-    const editedDetailSheet = await assertScoutReportDeleteHidden(editedReportCard);
-    await closeScoutReportDetails(editedDetailSheet);
+    await reportDetailSheet.locator('[data-scout-detail-section="details"]').waitFor({ state: "visible", timeout: 5000 });
+    await assertVisibleText(savedScoutReport.storeName || "Smoke Shared Target");
+    const matchingReportCount = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-scout") || "{}");
+      return (data.reports || []).filter((report) => String(report.note || report.notes || "").includes("Two ETBs on the shelf.")).length;
+    });
+    assert.equal(matchingReportCount, 1, "Add details should open the saved report without creating a duplicate");
+    await closeScoutReportDetails(reportDetailSheet);
 
     const quickReportForm = await openReportWizard();
     await fillScoutReportWizard(quickReportForm, {

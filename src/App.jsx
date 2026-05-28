@@ -4879,6 +4879,7 @@ export default function App() {
   const [scoutReportsPage, setScoutReportsPage] = useState(1);
   const [scoutScoreModalOpen, setScoutScoreModalOpen] = useState(false);
   const [selectedScoutReport, setSelectedScoutReport] = useState(null);
+  const [scoutReportDetailFocus, setScoutReportDetailFocus] = useState("");
   const [scoutDateTimeEdit, setScoutDateTimeEdit] = useState({
     report: null,
     value: "",
@@ -5372,6 +5373,7 @@ export default function App() {
   const [backupImportMessage, setBackupImportMessage] = useState("");
   const [suggestions, setSuggestions] = useState(() => loadSuggestions());
   const [adminReviewFilter, setAdminReviewFilter] = useState("All");
+  const [adminQueueSearch, setAdminQueueSearch] = useState("");
   const [mySuggestionFilter, setMySuggestionFilter] = useState("All");
   const [adminReviewPage, setAdminReviewPage] = useState(1);
   const [marketplaceReviewPage, setMarketplaceReviewPage] = useState(1);
@@ -5614,6 +5616,7 @@ export default function App() {
   const [quickScoutReportStep, setQuickScoutReportStep] = useState("product");
   const [quickScoutReportMessage, setQuickScoutReportMessage] = useState("");
   const [quickScoutReportSaved, setQuickScoutReportSaved] = useState(null);
+  const [quickScoutReportSubmitting, setQuickScoutReportSubmitting] = useState(false);
   const [vaultCatalogSearchQuery, setVaultCatalogSearchQuery] = useState("");
   const [multiDestinationCatalogQuery, setMultiDestinationCatalogQuery] = useState("");
   const [multiDestinationMatchSearchOpen, setMultiDestinationMatchSearchOpen] = useState(true);
@@ -5622,6 +5625,7 @@ export default function App() {
   const flowModalOpenerRef = useRef(null);
   const flowModalBaselineRef = useRef({});
   const quickScoutWizardTouchRef = useRef(0);
+  const quickScoutReportSubmitLockRef = useRef(false);
   const marketAddReturnRef = useRef({ scrollY: 0 });
   const marketAddLastActionRef = useRef({ key: "", time: 0 });
   const phase2AppPreferencesAppliedRef = useRef("");
@@ -18730,7 +18734,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function quickScoutReportReady() {
-    return Boolean(quickScoutReportForm.reportType && resolveQuickScoutStoreSelection().valid);
+    const currentType = quickScoutReportTypeMeta();
+    const storeSelection = resolveQuickScoutStoreSelection();
+    const visitValidation = currentType.isGuess
+      ? { ok: true }
+      : validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
+    return Boolean(
+      quickScoutReportForm.reportType &&
+      quickScoutReportForm.proofType &&
+      storeSelection.valid &&
+      visitValidation.ok
+    );
   }
 
   function quickScoutStoreNeedsReviewConfirmation(form = quickScoutReportForm) {
@@ -18752,8 +18766,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return "Choose the shelf status before continuing.";
     }
     if (stepKey === "details" && currentType.isGuess && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
+    if (stepKey === "details" && !currentType.isGuess && !quickScoutReportForm.proofType) return "Choose how you know this report before posting.";
     if (stepKey === "product" && !quickScoutReportForm.productCategory && !currentType.isGuess) return "Choose a product category before continuing.";
-    if (stepKey === "review" && !currentType.isGuess) return scoutWizardStepError("where") || scoutWizardStepError("status");
+    if (stepKey === "review" && !currentType.isGuess) return scoutWizardStepError("where") || scoutWizardStepError("status") || scoutWizardStepError("details");
     if (stepKey === "review" && !quickScoutReportReady()) return scoutWizardStepError("where") || scoutWizardStepError("details") || "Complete the missing Scout report details before submitting.";
     if (stepKey === "review" && quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before posting.";
     if (["details", "review"].includes(stepKey) && !currentType.isGuess) {
@@ -19028,6 +19043,13 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   async function submitQuickScoutReport(event) {
     event?.preventDefault?.();
+    if (quickScoutReportSubmitLockRef.current) {
+      setQuickScoutReportMessage("Scout report is already saving. Please wait a moment.");
+      return;
+    }
+    quickScoutReportSubmitLockRef.current = true;
+    setQuickScoutReportSubmitting(true);
+    try {
     if (guestPreviewActive) {
       setQuickScoutReportMessage("Create a free account to submit reports and build forecasts.");
       setVaultToast("Create a free account to submit reports and build forecasts.");
@@ -19132,13 +19154,15 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       backendSaveResult = await persistScoutReportToSupabase(report);
       if (backendSaveResult?.ok && backendSaveResult.report) {
         savedReport = backendSaveResult.report;
+        const localReportId = getScoutReportId(report);
         const latestScoutData = getSharedScoutData();
-        const mergedReports = mergeScoutRows(latestScoutData.reports || [], [savedReport], scoutBackendReportMergeKey)
+        const cloudMergeBase = (latestScoutData.reports || []).filter((candidate) => String(getScoutReportId(candidate)) !== String(localReportId));
+        const mergedReports = mergeScoutRows(cloudMergeBase, [savedReport], scoutBackendReportMergeKey)
           .sort((a, b) => scoutReportSortTime(b) - scoutReportSortTime(a));
         saveSharedScoutData({ ...latestScoutData, reports: mergedReports });
         setScoutSnapshot((current) => ({
           ...current,
-          reports: mergeScoutRows(current.reports || [], [savedReport], scoutBackendReportMergeKey),
+          reports: mergeScoutRows((current.reports || []).filter((candidate) => String(getScoutReportId(candidate)) !== String(localReportId)), [savedReport], scoutBackendReportMergeKey),
         }));
       }
     } catch (error) {
@@ -19178,13 +19202,23 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       entityId: savedReport.id || report.id,
       metadata: { confidence: savedReport.confidence || report.confidence || "", storeId: savedReport.storeId || report.storeId || "", savedToCloud },
     });
+    } finally {
+      quickScoutReportSubmitLockRef.current = false;
+      setQuickScoutReportSubmitting(false);
+    }
   }
 
   function openQuickScoutReportDetails() {
-    if (quickScoutReportSaved) setSelectedScoutReport(quickScoutReportSaved);
+    const savedReport = quickScoutReportSaved;
+    const savedReportId = getScoutReportId(savedReport || {});
     closeFlowModal({ force: true, reset: true });
     setActiveTab("scout");
     setScoutView("reports");
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => openScoutReportDetail(savedReportId || savedReport, { fallback: savedReport, focus: "details" }), 80);
+    } else {
+      openScoutReportDetail(savedReportId || savedReport, { fallback: savedReport, focus: "details" });
+    }
   }
 
   function openScoutSubmitFlow(options = {}) {
@@ -26700,8 +26734,42 @@ function renderForgeAccessState() {
     { label: "Price changes", value: recentMarketUpdates[0]?.name || "No catalog changes", updatedAt: recentMarketUpdates[0]?.createdAt || "Local catalog" },
     { label: "Store limit changes", value: scoutSnapshot.stores.find((store) => store.limitPolicy || store.limit_policy)?.limitPolicy || "No limits logged", updatedAt: scoutLastUpdated },
   ];
+  function isScoutPlaceholderReport(row = {}) {
+    if (!row || typeof row !== "object") return true;
+    if (isDemoLikeRecord(row)) return true;
+    const storeName = String(row.storeName || row.store_name || row.storeLocation || row.store_location || "").trim();
+    const retailer = String(row.retailer || row.chain || row.storeRetailer || row.store_retailer || "").trim();
+    const source = String(row.sourceType || row.source_type || row.sourceStatus || row.source_status || "").trim().toLowerCase();
+    const combinedText = [
+      storeName,
+      retailer,
+      row.notes,
+      row.note,
+      row.reportText,
+      row.report_text,
+      row.proofText,
+      row.proof_text,
+      row.itemName,
+      row.item_name,
+      row.productName,
+      row.product_name,
+      row.submittedBy,
+      row.submitted_by,
+    ].filter(Boolean).join(" ").toLowerCase();
+    if (/^(demo|mock|fake|sample|placeholder|dummy|local-beta-fake)$/.test(source)) return true;
+    if (/^store location$/i.test(storeName)) return true;
+    if (/retailer\s*(?:-|\u2013)\s*area not listed/i.test(`${retailer} ${storeName}`)) return true;
+    if (/\b(sample report|placeholder report|fake report|mock report|demo report|test report)\b/.test(combinedText)) return true;
+    if (/\bstore location:\s*not selected\b/.test(combinedText)) return true;
+    return false;
+  }
+
+  function isScoutReportAllowedForUi(row = {}) {
+    return !isScoutPlaceholderReport(row);
+  }
+
   const scoutReportsByStore = useMemo(() => {
-    const grouped = (scoutSnapshot.reports || []).filter((report) => !isScoutGuessRow(report)).reduce((acc, report) => {
+    const grouped = (scoutSnapshot.reports || []).filter((report) => !isScoutGuessRow(report) && isScoutReportAllowedForUi(report)).reduce((acc, report) => {
       const storeId = report.storeId || report.store_id || "";
       if (!storeId) return acc;
       acc[storeId] = [...(acc[storeId] || []), report];
@@ -27236,7 +27304,7 @@ function renderForgeAccessState() {
     return false;
   }
 
-  const rawScoutReportRows = useMemo(() => [...(scoutSnapshot.reports || [])], [scoutSnapshot.reports]);
+  const rawScoutReportRows = useMemo(() => [...(scoutSnapshot.reports || [])].filter(isScoutReportAllowedForUi), [scoutSnapshot.reports]);
   const scoutReportRows = useMemo(() => rawScoutReportRows
     .filter(canSeeScoutReport)
     .filter((report) => !isScoutGuessRow(report))
@@ -30730,6 +30798,52 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ];
   }
 
+  function findScoutReportForDetail(reportOrId, fallback = null) {
+    const reportId = typeof reportOrId === "string" ? reportOrId : getScoutReportId(reportOrId || {});
+    const candidates = [
+      ...(scoutReportRows || []),
+      ...(rawScoutReportRows || []),
+      ...(scoutSnapshot.reports || []),
+      quickScoutReportSaved,
+      fallback,
+      typeof reportOrId === "object" ? reportOrId : null,
+    ].filter(Boolean);
+    if (!reportId) return fallback || (typeof reportOrId === "object" ? reportOrId : null);
+    return candidates.find((candidate) => String(getScoutReportId(candidate)) === String(reportId)) || fallback || null;
+  }
+
+  function closeScoutReportDetail() {
+    setSelectedScoutReport(null);
+    setScoutReportDetailFocus("");
+  }
+
+  function openScoutReportDetail(reportOrId, options = {}) {
+    const report = findScoutReportForDetail(reportOrId, options.fallback);
+    const reportId = getScoutReportId(report || {});
+    if (!report || !reportId) {
+      setVaultToast("That Scout report could not be opened. Try the Reports feed.");
+      return;
+    }
+    setSelectedScoutReport(report);
+    setScoutReportDetailFocus(options.focus || "");
+    setActiveTab("scout");
+    setScoutView("reports");
+    setScoutSubTabTarget({ tab: "reports", reportId, id: Date.now(), action: options.focus ? "focusDetails" : "viewReport" });
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        const selector = options.focus ? `[data-scout-detail-section="${options.focus}"]` : ".scout-report-detail-summary";
+        const target = document.querySelector(selector);
+        target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+        const focusTarget = target?.querySelector?.("summary, button, input, textarea, select") || target;
+        focusTarget?.focus?.({ preventScroll: true });
+      }, 140);
+    }
+  }
+
+  function openScoutReportAddDetails(report = selectedScoutReport) {
+    openScoutReportDetail(report, { focus: "details", fallback: report });
+  }
+
   function editScoutReport(report) {
     const reportId = getScoutReportId(report);
     setSelectedScoutReport(null);
@@ -30887,7 +31001,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       || report.product_name
       || report.itemName
       || report.item_name
-      || note
       || "";
     const reportLocationCopy = [retailer, area].filter(Boolean).join(" - ");
     return (
@@ -30913,7 +31026,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
         </div>
         <div className="scout-report-card-action">
-          <button type="button" className="secondary-button" onClick={() => setSelectedScoutReport(report)}>
+          <button type="button" className="secondary-button" onClick={() => openScoutReportDetail(report)}>
             View details
           </button>
         </div>
@@ -36537,7 +36650,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAdminScoutReportQueue() {
-    if (!["Trust Command Center", "Reports & Moderation", "Scout Report Moderation"].includes(adminReviewFilter)) return null;
+    if (!["Trust Command Center", "Reports & Moderation", "Scout Report Moderation", "Scout Report Review"].includes(adminReviewFilter)) return null;
     const reports = adminReviewFilter === "All"
       ? scoutReportRows.slice(0, 8)
       : scoutNeedsReviewReports.length ? scoutNeedsReviewReports : scoutReportRows.slice(0, 8);
@@ -36545,8 +36658,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <section className="settings-subsection admin-ops-section">
         <div className="compact-card-header">
           <div>
-            <h3>Reports & Moderation</h3>
-            <p>Review Scout reports, confirm good reports, reject bad reports, or hide unsafe entries. Writes still depend on admin edit mode and backend/RLS protections.</p>
+            <h3>Scout Report Review</h3>
+            <p>Review Scout reports, confirm useful signals, reject bad reports, or hide unsafe entries. Writes still depend on admin edit mode and backend/RLS protections.</p>
           </div>
           <div className="summary-pill-row">
             <span className="status-badge">{scoutNeedsReviewReports.length} need review</span>
@@ -37031,7 +37144,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "beta-users", title: "Beta users dashboard", count: approvedBetaUserCount + betaRequests.length, priority: betaRequests.length ? "Access review" : "Track", submittedBy: "Profiles/invites", details: "Track pending, approved, invited, joined, and active beta users.", filter: "Beta Users" },
       { key: "beta", title: "Beta access requests", count: betaRequests.length, priority: betaRequests.length ? "Today" : "Clear", submittedBy: "Applicants", details: "Approve, waitlist, pause, or deny app access.", filter: "Beta Access" },
       { key: "kids", title: "Kids Program requests", count: kidsReviewCount, priority: kidsApplications.length ? "High privacy" : "Clear", submittedBy: "Parents/guardians", details: "Private family requests. No child details are public.", filter: "Kids Program Applications" },
-      { key: "scout", title: "Scout moderation", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "Review" : "Clear", submittedBy: "Scout reporters", details: "Moderate unusual, conflicting, flagged, or hidden reports.", filter: "Scout Report Moderation" },
+      { key: "scout", title: "Scout moderation", count: commandSummary.pendingScoutReports, priority: commandSummary.pendingScoutReports ? "Review" : "Clear", submittedBy: "Scout reporters", details: "Moderate unusual, conflicting, flagged, or hidden reports.", filter: "Scout Report Review" },
       { key: "guesses", title: "Community guesses / predictions", count: commandSummary.pendingCommunityGuesses, priority: commandSummary.pendingCommunityGuesses ? "Review" : "Clear", submittedBy: "Qualified Scouts", details: "Keep guesses separate from confirmed restock history.", filter: "Community Guess Review" },
       { key: "assist", title: "Ember Assist admin messages", count: commandSummary.openAssistMessages, priority: commandSummary.openAssistMessages ? "Review" : "Clear", submittedBy: "App users", details: "Questions escalated from Ember Assist with safe context.", filter: REVIEW_SECTION_LABELS.assist },
       { key: "shops", title: "Family-friendly shop review", count: commandSummary.shopsNeedingReview, priority: commandSummary.shopsNeedingReview ? "Review" : "Clear", submittedBy: "Admin/store metadata", details: "Approve mission-aligned shop badges without pricing guarantees.", filter: "Family-Friendly Shop Review" },
@@ -37044,13 +37157,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const adminOverviewRows = [
       { key: "beta", label: "Beta requests", value: betaRequests.length, tone: betaRequests.length ? "warning" : "success", filter: "Beta Access" },
       { key: "invites", label: "Invites", value: activeBetaInviteCount, tone: activeBetaInviteCount ? "info" : "muted", filter: "Beta Access" },
-      { key: "scout", label: "Scout review", value: commandSummary.pendingScoutReports, tone: commandSummary.pendingScoutReports ? "warning" : "success", filter: "Scout Report Moderation" },
+      { key: "scout", label: "Scout review", value: commandSummary.pendingScoutReports, tone: commandSummary.pendingScoutReports ? "warning" : "success", filter: "Scout Report Review" },
       { key: "catalog", label: "Missing catalog", value: catalogCorrectionCount, tone: catalogCorrectionCount ? "warning" : "success", filter: "Catalog Suggestions" },
       { key: "feedback", label: "Feedback", value: feedbackMessageCount, tone: feedbackMessageCount ? "info" : "success", filter: "Beta Feedback" },
       { key: "flagged", label: "Flagged content", value: flaggedContentCount, tone: flaggedContentCount ? "danger" : "success", filter: "Reports & Moderation" },
       { key: "kids", label: "Kids requests", value: kidsReviewCount, tone: kidsReviewCount ? "warning" : "success", filter: "Kids Program Applications" },
       { key: "shops", label: "Shop approvals", value: commandSummary.shopsNeedingReview, tone: commandSummary.shopsNeedingReview ? "warning" : "success", filter: "Family-Friendly Shop Review" },
     ];
+    const adminEssentialQueues = [
+      { key: "beta-requests", title: "Beta Requests", count: betaRequests.length, status: betaRequests.length ? "Needs review" : "Clear", detail: "Approve, waitlist, deny, or reset beta access requests.", filter: "Beta Access" },
+      { key: "invites", title: "Invites", count: activeBetaInviteCount, status: activeBetaInviteCount ? "Active" : "No active invites", detail: "Create, copy, and review invitation links.", filter: "Beta Access" },
+      { key: "scout-review", title: "Scout Report Review", count: commandSummary.pendingScoutReports, status: commandSummary.pendingScoutReports ? "Needs review" : "Clear", detail: "Moderate reports that affect Tide Score and community trust.", filter: "Scout Report Review" },
+      { key: "missing-catalog", title: "Missing Catalog Requests", count: catalogCorrectionCount, status: catalogCorrectionCount ? "Needs review" : "Clear", detail: "Review missing products, UPC/SKU fixes, and catalog corrections.", filter: "Catalog Suggestions" },
+      { key: "feedback", title: "Feedback Inbox", count: feedbackMessageCount, status: feedbackMessageCount ? "Open" : "Clear", detail: "Review app feedback, bug reports, and support messages.", filter: "Beta Feedback" },
+      { key: "moderation", title: "Moderation / Flagged Content", count: flaggedContentCount, status: flaggedContentCount ? "Flagged" : "Clear", detail: "Review flagged Tidepool, Scout, and marketplace safety items.", filter: "Reports & Moderation" },
+      { key: "kids", title: "Kids Program Requests", count: kidsReviewCount, status: kidsReviewCount ? "Needs review" : "Clear", detail: "Review The Spark requests with family safety context.", filter: "Kids Program Applications" },
+      { key: "shops", title: "Family-friendly Shop Approvals", count: commandSummary.shopsNeedingReview, status: commandSummary.shopsNeedingReview ? "Needs review" : "Clear", detail: "Approve shop badges and community-safe partner metadata.", filter: "Family-Friendly Shop Review" },
+      { key: "roles", title: "User / Role Controls", count: roleManagementCount || approvedBetaUserCount || 0, status: roleManagementVisible ? "Protected" : "View only", detail: "Manage users and roles only when protected admin tools allow it.", filter: "Role Management" },
+    ];
+    const adminQueueSearchText = adminQueueSearch.trim().toLowerCase();
+    const filteredAdminEssentialQueues = adminQueueSearchText
+      ? adminEssentialQueues.filter((queue) => [
+          queue.title,
+          queue.status,
+          queue.detail,
+        ].join(" ").toLowerCase().includes(adminQueueSearchText))
+      : adminEssentialQueues;
     const adminCommandSections = [
       { key: "beta-access", title: "Beta Access", purpose: "Review access requests and beta status.", status: betaRequests.length ? `${betaRequests.length} pending` : "Clear", cta: "Review", filter: "Beta Access" },
       { key: "invites", title: "Invites", purpose: "Create, copy, and review invite links.", status: activeBetaInviteCount ? `${activeBetaInviteCount} active` : "No active invites", cta: "Open", filter: "Beta Access" },
@@ -37115,6 +37247,38 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className={adminReviewFilter === "Trust Command Center" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("Trust Command Center")}>Trust</button>
               <button type="button" className={adminReviewFilter === "Reports & Moderation" ? "secondary-button active" : "secondary-button"} onClick={() => setAdminReviewFilter("Reports & Moderation")}>Moderation</button>
             </div>
+          </div>
+          <div className="admin-queue-toolbar">
+            <label>
+              <span>Search queues</span>
+              <input
+                value={adminQueueSearch}
+                onChange={(event) => setAdminQueueSearch(event.target.value)}
+                placeholder="Beta, Scout, feedback, roles..."
+              />
+            </label>
+            <span className="status-badge">{filteredAdminEssentialQueues.length} section{filteredAdminEssentialQueues.length === 1 ? "" : "s"}</span>
+          </div>
+          <div className="admin-essential-queue-grid" aria-label="Priority admin queues">
+            {filteredAdminEssentialQueues.length ? filteredAdminEssentialQueues.map((queue) => (
+              <button
+                type="button"
+                className={`admin-essential-queue-card ${adminReviewFilter === queue.filter ? "active" : ""}`}
+                key={queue.key}
+                onClick={() => setAdminReviewFilter(queue.filter)}
+              >
+                <span>{queue.title}</span>
+                <strong>{queue.count}</strong>
+                <small>{queue.status}</small>
+                <p>{queue.detail}</p>
+                <b>Review</b>
+              </button>
+            )) : (
+              <div className="small-empty-state">
+                <strong>No admin queues match that search</strong>
+                <span>Clear the queue search or choose a section from All admin areas.</span>
+              </div>
+            )}
           </div>
           <div className="admin-command-section-grid">
             {adminCommandSections.map((section) => (
@@ -37277,6 +37441,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "All",
       ...ADMIN_COMMAND_CENTER_FILTERS.filter((section) => section !== "All"),
       "Reports & Moderation",
+      "Scout Report Review",
       "Store Management",
       "Announcements / New Stuff",
       "Family / Kid Accounts",
@@ -37307,7 +37472,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const totalOpenCount = openCount + listingReviewItems.length + trustOpenCount;
     const pagedVisibleSuggestions = getPagedItems(visibleSuggestions, adminReviewPage, LONG_LIST_PAGE_SIZE);
     const pagedListingReviewItems = getPagedItems(listingReviewItems, marketplaceReviewPage, LONG_LIST_PAGE_SIZE);
-    const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Community Guess Review", "Family-Friendly Shop Review", "Store Management", "Beta Users", "Role Management"]);
+    const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Scout Report Review", "Community Guess Review", "Family-Friendly Shop Review", "Store Management", "Beta Users", "Role Management"]);
     return (
       <>
       <PageHeader
@@ -40710,6 +40875,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }));
     const activeStepIndex = Math.max(0, wizardSteps.findIndex((step) => step.key === quickScoutReportStep));
     const activeWizardStep = wizardSteps[activeStepIndex] || wizardSteps[0];
+    const whereStepError = scoutWizardStepError("where");
+    const statusStepError = scoutWizardStepError("status");
+    const detailsStepError = scoutWizardStepError("details");
+    const reviewStepError = scoutWizardStepError("review");
+    const scoutSubmitBlocked = quickScoutReportSubmitting || Boolean(reviewStepError) || (currentType.isGuess && !currentUserCanSubmitScoutGuess);
     const confidenceBadge = quickScoutConfidenceBadge(quickScoutReportForm, currentType, storeSelection);
     const scoutPointsRemaining = Math.max(0, MIN_SCOUT_POINTS_FOR_GUESS - scoutGuessPoints);
     const scoutPointsProgress = Math.min(100, Math.round((scoutGuessPoints / Math.max(1, MIN_SCOUT_POINTS_FOR_GUESS)) * 100));
@@ -41377,6 +41547,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : null}
               </>
             )}
+            {whereStepError ? <p className="scout-field-error">{whereStepError}</p> : null}
           </section>
         ) : null}
 
@@ -41411,6 +41582,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>Products come after posting</strong>
               <span>You can post this basic report now and add products, quantities, proof, or shelf details after it exists.</span>
             </div>
+            {statusStepError ? <p className="scout-field-error">{statusStepError}</p> : null}
           </section>
         ) : null}
 
@@ -41489,6 +41661,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               </div>
             ) : null}
+            {detailsStepError ? <p className="scout-field-error">{detailsStepError}</p> : null}
           </section>
         ) : null}
 
@@ -41602,6 +41775,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>Privacy and freshness</strong>
               <span>Reports are shared by store, not private address. Old reports are kept for history and should not be treated as live stock.</span>
             </div>
+            {reviewStepError ? <div className="form-error">{reviewStepError}</div> : null}
           </section>
         ) : null}
 
@@ -41614,8 +41788,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {activeStepIndex <= 0 ? "Cancel" : "Back"}
               </button>
               {quickScoutReportStep === "review" ? (
-                <button type="button" disabled={currentType.isGuess && !currentUserCanSubmitScoutGuess} onClick={submitQuickScoutReport}>
-                  {currentType.isGuess ? "Save Guess" : "Post Report"}
+                <button type="button" disabled={scoutSubmitBlocked} onClick={submitQuickScoutReport}>
+                  {quickScoutReportSubmitting ? (currentType.isGuess ? "Saving..." : "Posting...") : currentType.isGuess ? "Save Guess" : "Post Report"}
                 </button>
               ) : (
                 <button type="button" onClick={goNextScoutWizardStep}>Next</button>
@@ -43146,7 +43320,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       }
       if (selectedScoutReport) {
         event.preventDefault();
-        setSelectedScoutReport(null);
+        closeScoutReportDetail();
         return;
       }
       if (adminConfirmAction) {
@@ -48367,8 +48541,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       {getScoutWizardSteps().findIndex((step) => step.key === quickScoutReportStep) <= 0 ? "Cancel" : "Back"}
                     </button>
                     {quickScoutReportStep === "review" ? (
-                      <button type="button" disabled={quickScoutReportTypeMeta().isGuess && !currentUserCanSubmitScoutGuess} onClick={submitQuickScoutReport}>
-                        {quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Post Report"}
+                      <button type="button" disabled={quickScoutReportSubmitting || Boolean(scoutWizardStepError("review")) || (quickScoutReportTypeMeta().isGuess && !currentUserCanSubmitScoutGuess)} onClick={submitQuickScoutReport}>
+                        {quickScoutReportSubmitting ? (quickScoutReportTypeMeta().isGuess ? "Saving..." : "Posting...") : quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Post Report"}
                       </button>
                     ) : (
                       <button type="button" onClick={goNextScoutWizardStep}>Next</button>
@@ -48833,14 +49007,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ) : null}
 
       {selectedScoutReport ? (
-        <div className="location-modal-backdrop" role="presentation" onClick={() => setSelectedScoutReport(null)}>
+        <div className="location-modal-backdrop" role="presentation" onClick={closeScoutReportDetail}>
           <section className="location-modal scout-report-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-report-detail-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header">
               <div>
                 <h2 id="scout-report-detail-title">Scout Report</h2>
                 <p>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Store not selected"}</p>
               </div>
-              <button type="button" className="modal-close-button" aria-label="Close Scout report" onClick={() => setSelectedScoutReport(null)}>X</button>
+              <button type="button" className="modal-close-button" aria-label="Close Scout report" onClick={closeScoutReportDetail}>X</button>
             </div>
             <div className="scout-report-detail-body">
               <div className="scout-report-detail-summary">
@@ -48857,7 +49031,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               </div>
               <div className="scout-report-detail-breakdown">
-              <details className="scout-report-detail-section">
+              <details className="scout-report-detail-section" data-scout-detail-section="details" open={scoutReportDetailFocus === "details" ? true : undefined}>
                 <summary>
                   <span>Details</span>
                   <small>Products, quantity, price, and report notes.</small>
@@ -48873,7 +49047,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <p>Product details have not been added yet.</p>
                 )}
               </details>
-              <details className="scout-report-detail-section">
+              <details className="scout-report-detail-section" data-scout-detail-section="proof" open={scoutReportDetailFocus === "proof" ? true : undefined}>
                 <summary>
                   <span>Proof / Photos</span>
                   <small>{scoutReportPhotoUrls(selectedScoutReport).length ? "Proof attached" : "No proof attached yet"}</small>
@@ -48950,7 +49124,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <button type="button" onClick={() => openScoutReportDateTimeEditor(selectedScoutReport)}>Edit date/time</button>
               ) : null}
               {(isCurrentUserScoutReport(selectedScoutReport) || adminEditModeActive) ? (
-                <button type="button" onClick={() => editScoutReport(selectedScoutReport)}>{adminEditModeActive ? "Edit details" : "Add details"}</button>
+                <button type="button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>{adminEditModeActive ? "Review details" : "Add details"}</button>
               ) : null}
               {adminEditModeActive ? (
                 <OverflowMenu
@@ -48958,7 +49132,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   actions={getScoutReportAdminActions(selectedScoutReport)}
                 />
               ) : null}
-              <button type="button" className="ghost-button" onClick={() => setSelectedScoutReport(null)}>Close</button>
+              <button type="button" className="ghost-button" onClick={closeScoutReportDetail}>Close</button>
             </div>
           </section>
         </div>

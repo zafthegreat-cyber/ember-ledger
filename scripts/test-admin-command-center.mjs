@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   applyEmberAssistMessageStatus,
   applyShopReviewPatch,
@@ -11,6 +12,8 @@ import {
   scoutReportFeedsPredictions,
   shopReviewBadges,
 } from "../src/utils/adminCommandCenterUtils.js";
+
+const app = fs.readFileSync("src/App.jsx", "utf8");
 
 const confirmedReport = {
   id: "report-1",
@@ -90,5 +93,22 @@ assert.equal(summary.pendingCommunityGuesses, 1);
 assert.equal(summary.openAssistMessages, 1);
 assert.equal(summary.shopsNeedingReview, 1);
 assert.equal(summary.totalOpen, 6);
+
+for (const label of [
+  "Beta Requests",
+  "Invites",
+  "Scout Report Review",
+  "Missing Catalog Requests",
+  "Feedback Inbox",
+  "Moderation / Flagged Content",
+  "Kids Program Requests",
+  "Family-friendly Shop Approvals",
+  "User / Role Controls",
+]) {
+  assert.match(app, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Admin Command Center should expose ${label}`);
+}
+assert.match(app, /adminQueueSearch/, "Admin Command Center should provide search/filter over priority queues");
+assert.match(app, /admin-essential-queue-grid/, "Admin Command Center should render a compact priority queue grid");
+assert.match(app, /Permission Denied/, "Non-admin users should see a permission denied state instead of admin tools");
 
 console.log("Admin Command Center utility tests passed.");

@@ -14,6 +14,16 @@ assert.match(app, /backend_unavailable/, "Scout submit flow should distinguish u
 assert.match(app, /await persistScoutReportToSupabase\(report\)/, "Scout submit should await the backend save before showing final save status");
 assert.doesNotMatch(app, /void persistScoutReportToSupabase\(report\)\.then/, "Scout submit should not fire-and-forget report saves");
 assert.match(app, /reports: mergeScoutRows\(current\.reports \|\| \[\], \[report\]/, "Scout submit should merge the new report into current visible state");
+assert.match(app, /quickScoutReportSubmitLockRef/, "Scout submit should use an immediate submit lock to prevent duplicate reports");
+assert.match(app, /const cloudMergeBase = \(latestScoutData\.reports \|\| \[\]\)\.filter/, "Scout cloud saves should replace the temporary local report instead of duplicating it");
+assert.match(app, /String\(getScoutReportId\(candidate\)\) !== String\(localReportId\)/, "Scout cloud merge should remove the local report by id before adding the synced report");
+assert.match(app, /const savedReportId = getScoutReportId\(savedReport \|\| \{\}\)/, "Scout Add More Details should retain the submitted report id");
+assert.match(app, /openScoutReportDetail\(savedReportId \|\| savedReport/, "Scout Add More Details should open the submitted report, not a blank draft");
+assert.match(app, /Choose how you know this report before posting\./, "Scout submit should require a proof/source choice before posting");
+assert.doesNotMatch(app, /\|\|\s*note\s*\|\|\s*""/, "Scout cards should not fall back to long report notes as the default card summary");
+assert.match(app, /function isScoutPlaceholderReport/, "Scout should filter placeholder/demo reports from user-facing report rows");
+assert.match(app, /\^store location\$/, "Scout placeholder filtering should block fake Store location rows");
+assert.match(app, /sample report\|placeholder report\|fake report\|mock report\|demo report\|test report/, "Scout placeholder filtering should block sample/fake report text");
 assert.match(app, /Scout report saved locally\./, "Scout submit should show a visible local-save fallback");
 assert.match(app, /Couldn't save Scout report\./, "Scout submit should show a visible save error");
 
