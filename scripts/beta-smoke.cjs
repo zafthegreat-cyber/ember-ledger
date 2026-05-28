@@ -870,7 +870,7 @@ async function main() {
     const inlinePurchaserForm = form.locator(".purchaser-inline-form").first();
     await inlinePurchaserForm.getByPlaceholder("Display name").fill("Smoke Buyer");
     await inlinePurchaserForm.getByPlaceholder(/Optional note/i).fill("business card");
-    await inlinePurchaserForm.getByRole("button", { name: "Save Purchaser" }).click();
+    await inlinePurchaserForm.getByRole("button", { name: "Save Person" }).click();
     await fillByLabel(form, "Quantity for Forge", "1");
     await fillByLabel(form, "Cost Basis", "10");
     await clickAddWizardNext();
@@ -900,9 +900,9 @@ async function main() {
     const manager = page.locator(".purchaser-manager-modal").first();
     await manager.waitFor({ state: "visible", timeout: 5000 });
     await overflowAction(manager.locator(".compact-card").filter({ hasText: "Smoke Buyer" }).first(), "Edit");
-    await manager.getByPlaceholder("Purchaser name").fill("Smoke Buyer Renamed");
+    await manager.getByPlaceholder("Person name").fill("Smoke Buyer Renamed");
     await manager.getByRole("button", { name: "Save" }).click();
-    await assertVisibleText("Renamed purchaser to Smoke Buyer Renamed.");
+    await assertVisibleText("Updated person: Smoke Buyer Renamed.");
     await overflowAction(manager.locator(".compact-card").filter({ hasText: "Smoke Buyer Renamed" }).first(), "Archive");
     await assertVisibleText("Archived");
     await manager.getByRole("button", { name: "Close", exact: true }).click();
@@ -2276,9 +2276,17 @@ async function main() {
     await searchForm.getByRole("button", { name: /Search Catalog|Search Market Watch|Search/i }).first().click();
     const resultCard = page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first();
     await resultCard.waitFor({ state: "visible", timeout: 10000 });
-    await resultCard.getByRole("button", { name: /^Add$/i }).first().click();
+    const marketResultAddButton = resultCard.getByRole("button", { name: /^Add$/i }).first();
+    await marketResultAddButton.scrollIntoViewIfNeeded();
+    await marketResultAddButton.click();
     const marketAddModal = addWizardModal();
-    await marketAddModal.waitFor({ state: "visible", timeout: 5000 });
+    await marketAddModal.waitFor({ state: "visible", timeout: 10000 }).catch(async () => {
+      const productDetailAdd = page.locator(".location-modal, .catalog-detail-modal, .market-product-detail-modal").filter({ hasText: "Prismatic Evolutions Booster Bundle" }).getByRole("button", { name: /^Add$/i }).first();
+      if (await productDetailAdd.isVisible().catch(() => false)) {
+        await productDetailAdd.click();
+      }
+      await marketAddModal.waitFor({ state: "visible", timeout: 10000 });
+    });
     await marketAddModal.getByRole("button", { name: /^Both$/ }).click();
     await clickAddWizardNext();
     await clickAddWizardNext();

@@ -1703,6 +1703,8 @@ const BLANK_MULTI_DESTINATION_FORM = {
     vaultStatus: "personal_collection",
     vaultCategory: "Personal collection",
     unitCost: "",
+    purchaserId: "",
+    purchaserName: "",
     purchaseDate: "",
     storageLocation: "",
     notes: "",
@@ -1779,6 +1781,7 @@ function createQuickAddWizardState(overrides = {}) {
     receiptPhotoUrl: "",
     receiptFileName: "",
     receiptNote: "",
+    receiptPayerName: "",
     receiptEditingId: "",
     receiptLinkTargetType: "",
     receiptLinkTargetId: "",
@@ -3406,6 +3409,27 @@ function createDefaultPurchasers() {
   return [];
 }
 
+const PERSON_TYPE_OPTIONS = ["Family", "Seller", "Helper", "Partner", "Business", "Other"];
+const PAYOUT_ASSIST_DISCLAIMER = "Payout Assist is an estimate for planning. It is not payroll, tax, or legal advice.";
+const INFO_TOOLTIP_COPY = {
+  whoPaid: "The person or account that originally paid for this item or expense.",
+  ownerPerson: "The person this record belongs to for family, collection, or business tracking.",
+  costBasis: "What this item cost before profit is calculated.",
+  plannedSalePrice: "The price you expect to sell this item for later.",
+  profit: "Estimated money left after the known costs in this record.",
+  netProfit: "Estimated profit after known costs, expenses, fees, and reimbursements.",
+  mileage: "Business miles can help estimate travel cost and records for later review.",
+  reimbursement: "Money someone may need back for expenses or mileage they covered.",
+  payoutEstimate: "Estimated amount available to pay after costs, expenses, and reimbursements.",
+  vehicle: "A reusable vehicle profile for mileage logs and business records.",
+};
+
+function normalizePersonType(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "Family";
+  return PERSON_TYPE_OPTIONS.find((option) => option.toLowerCase() === text.toLowerCase()) || text;
+}
+
 function purchaserWorkspaceId(purchaser = {}) {
   return purchaser.workspaceId || purchaser.workspace_id || DEFAULT_PERSONAL_WORKSPACE_ID;
 }
@@ -3421,7 +3445,11 @@ function normalizePurchasers(savedPurchasers = []) {
             id: purchaser.id || makeId("purchaser"),
             name: String(purchaser.name || "").trim(),
             note: String(purchaser.note || purchaser.label || purchaser.description || "").trim(),
+            type: normalizePersonType(purchaser.type || purchaser.role || purchaser.personType || purchaser.person_type),
+            role: purchaser.role || purchaser.type || purchaser.personType || purchaser.person_type || "Family",
             active: purchaser.active !== false && purchaser.is_active !== false,
+            defaultWorkspaceId: purchaser.defaultWorkspaceId || purchaser.default_workspace_id || workspaceId,
+            default_workspace_id: purchaser.default_workspace_id || purchaser.defaultWorkspaceId || workspaceId,
             workspaceId,
             workspace_id: workspaceId,
             createdAt: purchaser.createdAt || purchaser.created_at || now,
@@ -3753,11 +3781,55 @@ function statusClass(status) {
     .replace(/^-|-$/g, "")}`;
 }
 
-function Field({ label, children, error = "", fieldId = "", className = "" }) {
+function InfoTooltip({ label = "More information", children }) {
+  const [open, setOpen] = useState(false);
+  if (!children) return null;
+  return (
+    <span className="info-tooltip">
+      <button
+        type="button"
+        className="info-tooltip-trigger"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+      >
+        ⓘ
+      </button>
+      {open ? (
+        <span className="info-tooltip-bubble" role="tooltip">
+          {children}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function Field({ label, children, error = "", fieldId = "", className = "", help = "" }) {
   const classes = [className, error ? "has-error" : ""].filter(Boolean).join(" ");
+  if (help) {
+    return (
+      <div className={["field-help-wrapper", classes].filter(Boolean).join(" ")}>
+        <div className="field-help-heading">
+          <span>{label}</span>
+          <InfoTooltip label="Field information">{help}</InfoTooltip>
+        </div>
+        <label className="field-control-label" data-validation-field={fieldId || undefined}>
+          <span className="sr-only">{label}</span>
+          {children}
+          {error ? <span className="field-error" role="alert">{error}</span> : null}
+        </label>
+      </div>
+    );
+  }
   return (
     <label className={classes || undefined} data-validation-field={fieldId || undefined}>
-      {label}
+      <span className="field-label-row">
+        <span>{label}</span>
+      </span>
       {children}
       {error ? <span className="field-error" role="alert">{error}</span> : null}
     </label>
@@ -3772,10 +3844,15 @@ function PurchaserSelect({
   onSelect,
   onCreatePurchaser,
   onManagePurchasers,
+  help = "",
+  emptyCopy = "No purchasers yet. Add one to track who paid. People you add here are reusable across Vault, Forge, receipts, mileage, sales, and Payout Assist.",
+  addLabel = "Add person",
+  manageLabel = "Manage People",
 }) {
   const [showNewPurchaser, setShowNewPurchaser] = useState(false);
   const [newPurchaserName, setNewPurchaserName] = useState("");
   const [newPurchaserNote, setNewPurchaserNote] = useState("");
+  const [newPurchaserType, setNewPurchaserType] = useState("Family");
   const currentActive = purchasers.find((purchaser) => String(purchaser.id) === String(valueId));
   const currentByName = purchasers.find((purchaser) => purchaser.name === valueName);
   const historicalName = valueName && !currentActive && !currentByName ? valueName : "";
@@ -3796,34 +3873,35 @@ function PurchaserSelect({
   }
 
   function saveInlinePurchaser() {
-    const created = onCreatePurchaser?.(newPurchaserName, newPurchaserNote);
+    const created = onCreatePurchaser?.(newPurchaserName, newPurchaserNote, newPurchaserType);
     if (!created) return;
     onSelect?.(created);
     setNewPurchaserName("");
     setNewPurchaserNote("");
+    setNewPurchaserType("Family");
     setShowNewPurchaser(false);
   }
 
   return (
     <div className="purchaser-select-field">
-      <Field label={label}>
+      <Field label={label} help={help || INFO_TOOLTIP_COPY.whoPaid}>
         <select value={currentValue} onChange={handleChange}>
-          <option value="">No purchaser selected</option>
+          <option value="">No person selected</option>
           {historicalName ? <option value="__historical__" disabled>{historicalName} (historical)</option> : null}
           {purchasers.map((purchaser) => (
             <option key={purchaser.id} value={purchaser.id}>
-              {purchaser.name}{purchaser.note ? ` - ${purchaser.note}` : ""}
+              {purchaser.name}{purchaser.type ? ` - ${purchaser.type}` : ""}{purchaser.note ? ` - ${purchaser.note}` : ""}
             </option>
           ))}
-          <option value="__add__">Add new purchaser...</option>
-          <option value="__manage__">Manage purchasers...</option>
+          <option value="__add__">Add new person...</option>
+          <option value="__manage__">{manageLabel}...</option>
         </select>
       </Field>
       {!purchasers.length ? (
         <div className="small-empty-state purchaser-empty-state">
-          <p>No purchasers yet. Add one to track who paid.</p>
+          <p>{emptyCopy}</p>
           <button type="button" className="secondary-button" onClick={() => setShowNewPurchaser(true)}>
-            Add purchaser
+            {addLabel}
           </button>
         </div>
       ) : null}
@@ -3835,13 +3913,83 @@ function PurchaserSelect({
             onChange={(event) => setNewPurchaserName(event.target.value)}
             placeholder="Display name"
           />
+          <select value={newPurchaserType} onChange={(event) => setNewPurchaserType(event.target.value)}>
+            {PERSON_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+          </select>
           <input
             value={newPurchaserNote}
             onChange={(event) => setNewPurchaserNote(event.target.value)}
             placeholder="Optional note, card, partner..."
           />
-          <button type="button" onClick={saveInlinePurchaser}>Save Purchaser</button>
+          <button type="button" onClick={saveInlinePurchaser}>Save Person</button>
           <button type="button" className="secondary-button" onClick={() => setShowNewPurchaser(false)}>Cancel</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function VehicleSelect({
+  label = "Vehicle",
+  vehicles = [],
+  valueId = "",
+  onSelect,
+  onCreateVehicle,
+  help = INFO_TOOLTIP_COPY.vehicle,
+}) {
+  const [showNewVehicle, setShowNewVehicle] = useState(false);
+  const [draft, setDraft] = useState({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
+  const currentValue = vehicles.some((vehicle) => String(vehicle.id) === String(valueId)) ? valueId : "";
+
+  function updateDraft(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveInlineVehicle() {
+    const created = await onCreateVehicle?.(draft);
+    if (!created) return;
+    onSelect?.(created);
+    setDraft({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
+    setShowNewVehicle(false);
+  }
+
+  return (
+    <div className="vehicle-select-field">
+      <Field label={label} help={help}>
+        <select
+          value={currentValue}
+          onChange={(event) => {
+            const vehicle = vehicles.find((candidate) => String(candidate.id) === String(event.target.value));
+            onSelect?.(vehicle || null);
+          }}
+        >
+          <option value="">No vehicle selected</option>
+          {vehicles.filter((vehicle) => vehicle.active !== false).map((vehicle) => (
+            <option key={vehicle.id} value={vehicle.id}>
+              {vehicle.name}{vehicle.owner ? ` - ${vehicle.owner}` : ""}{vehicle.averageMpg ? ` - ${vehicle.averageMpg} MPG` : ""}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {!vehicles.length ? (
+        <div className="small-empty-state vehicle-empty-state">
+          <p>No vehicles yet. Add one once, then reuse it for mileage and business records.</p>
+          <button type="button" className="secondary-button" onClick={() => setShowNewVehicle(true)}>Add vehicle</button>
+        </div>
+      ) : (
+        <button type="button" className="text-link-button add-inline-link" onClick={() => setShowNewVehicle(true)}>
+          Add another vehicle
+        </button>
+      )}
+      {showNewVehicle ? (
+        <div className="inline-form vehicle-inline-form">
+          <input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} placeholder="Vehicle name" />
+          <input value={draft.owner} onChange={(event) => updateDraft("owner", event.target.value)} placeholder="Owner or driver" />
+          <input type="number" step="0.1" value={draft.averageMpg} onChange={(event) => updateDraft("averageMpg", event.target.value)} placeholder="Average MPG optional" />
+          <input type="number" step="0.01" value={draft.wearCostPerMile} onChange={(event) => updateDraft("wearCostPerMile", event.target.value)} placeholder="Cost per mile optional" />
+          <input value={draft.notes} onChange={(event) => updateDraft("notes", event.target.value)} placeholder="Optional notes" />
+          <button type="button" onClick={() => void saveInlineVehicle()}>Save Vehicle</button>
+          <button type="button" className="secondary-button" onClick={() => setShowNewVehicle(false)}>Cancel</button>
         </div>
       ) : null}
     </div>
@@ -5277,9 +5425,11 @@ export default function App() {
   const [editingPurchaserId, setEditingPurchaserId] = useState(null);
   const [purchaserDraft, setPurchaserDraft] = useState("");
   const [purchaserNoteDraft, setPurchaserNoteDraft] = useState("");
+  const [purchaserTypeDraft, setPurchaserTypeDraft] = useState("Family");
   const [purchaserManagerOpen, setPurchaserManagerOpen] = useState(false);
   const [purchaserManagerWorkspaceId, setPurchaserManagerWorkspaceId] = useState("");
   const [purchaserMessage, setPurchaserMessage] = useState("");
+  const [personLedgerFilter, setPersonLedgerFilter] = useState("all");
 
   const blankItem = {
   name: "",
@@ -10792,6 +10942,7 @@ export default function App() {
     setPurchaserManagerWorkspaceId(workspaceId || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID);
     setPurchaserDraft("");
     setPurchaserNoteDraft("");
+    setPurchaserTypeDraft("Family");
     setEditingPurchaserId(null);
     setPurchaserMessage("");
     setPurchaserManagerOpen(true);
@@ -10802,6 +10953,7 @@ export default function App() {
     setEditingPurchaserId(null);
     setPurchaserDraft("");
     setPurchaserNoteDraft("");
+    setPurchaserTypeDraft("Family");
     setPurchaserMessage("");
   }
 
@@ -10821,16 +10973,16 @@ export default function App() {
 
   function validatePurchaserName(name, workspaceId = activeWorkspace?.id, existingId = "") {
     const trimmed = String(name || "").trim();
-    if (!trimmed) return { error: "Purchaser name cannot be blank." };
+    if (!trimmed) return { error: "Person name cannot be blank." };
     if (trimmed.length > PURCHASER_NAME_MAX_LENGTH) {
-      return { error: `Purchaser name must be ${PURCHASER_NAME_MAX_LENGTH} characters or fewer.` };
+      return { error: `Person name must be ${PURCHASER_NAME_MAX_LENGTH} characters or fewer.` };
     }
     const duplicate = purchasers.find((purchaser) =>
       String(purchaser.id) !== String(existingId) &&
       purchaserBelongsToWorkspace(purchaser, workspaceId) &&
       String(purchaser.name || "").trim().toLowerCase() === trimmed.toLowerCase()
     );
-    if (duplicate) return { error: "That purchaser already exists for this collection.", duplicate };
+    if (duplicate) return { error: "That person already exists for this collection.", duplicate };
     return { name: trimmed };
   }
 
@@ -10842,7 +10994,7 @@ export default function App() {
         setPurchasers((current) =>
           current.map((purchaser) =>
             purchaser.id === result.duplicate.id
-              ? { ...purchaser, active: true, note: String(options.note || purchaser.note || "").trim(), updatedAt: new Date().toISOString() }
+              ? { ...purchaser, active: true, note: String(options.note || purchaser.note || "").trim(), type: normalizePersonType(options.type || purchaser.type), role: options.type || purchaser.role || purchaser.type || "Family", updatedAt: new Date().toISOString() }
               : purchaser
           )
         );
@@ -10860,7 +11012,11 @@ export default function App() {
       id: makeId("purchaser"),
       name: result.name,
       note: String(options.note || "").trim(),
+      type: normalizePersonType(options.type || "Family"),
+      role: options.type || "Family",
       active: true,
+      defaultWorkspaceId: workspaceId,
+      default_workspace_id: workspaceId,
       workspaceId,
       workspace_id: workspaceId,
       createdAt: now,
@@ -10868,11 +11024,11 @@ export default function App() {
     };
     setPurchasers((current) => [...current, purchaser]);
     setPurchaserMessage(`Added ${purchaser.name}.`);
-    showAppMessage(`Added purchaser: ${purchaser.name}.`);
+    showAppMessage(`Added person: ${purchaser.name}.`);
     return purchaser;
   }
 
-  function savePurchaserName(id, name, note = purchaserNoteDraft) {
+  function savePurchaserName(id, name, note = purchaserNoteDraft, type = purchaserTypeDraft) {
     const purchaser = purchasers.find((candidate) => candidate.id === id);
     if (!purchaser) return;
     const workspaceId = purchaserWorkspaceId(purchaser);
@@ -10882,10 +11038,11 @@ export default function App() {
       return;
     }
     const trimmedNote = String(note || "").trim();
+    const normalizedType = normalizePersonType(type || purchaser.type || "Family");
 
     setPurchasers((current) =>
       current.map((purchaser) =>
-        purchaser.id === id ? { ...purchaser, name: result.name, note: trimmedNote, updatedAt: new Date().toISOString() } : purchaser
+        purchaser.id === id ? { ...purchaser, name: result.name, note: trimmedNote, type: normalizedType, role: normalizedType, updatedAt: new Date().toISOString() } : purchaser
       )
     );
     setItems((currentItems) =>
@@ -10896,7 +11053,8 @@ export default function App() {
     setEditingPurchaserId(null);
     setPurchaserDraft("");
     setPurchaserNoteDraft("");
-    setPurchaserMessage(`Renamed purchaser to ${result.name}.`);
+    setPurchaserTypeDraft("Family");
+    setPurchaserMessage(`Updated person: ${result.name}.`);
   }
 
   function archiveOrDeletePurchaser(id) {
@@ -16167,6 +16325,8 @@ export default function App() {
     if (!receiptRecordId(receipt)) return;
     setSelectedReceiptId("");
     const receiptDate = receiptDateInputValue(receipt);
+    const receiptPersonName = receipt.buyer || receipt.purchaserName || receipt.purchaser_name || receipt.paidBy || receipt.paid_by || "";
+    const receiptPerson = purchasers.find((purchaser) => purchaser.name === receiptPersonName);
     openProductAddFlow({
       source: "receipt-add-item",
       seed: {
@@ -16177,8 +16337,8 @@ export default function App() {
         receiptMerchant: receiptMerchantLabel(receipt),
         receiptDate,
         notes: `Added from receipt ${receiptMerchantLabel(receipt)} ${receiptDateLabel(receipt)}.`,
-        vault: { purchaseDate: receiptDate, unitCost: "" },
-        forge: { source: receiptMerchantLabel(receipt), unitCost: "" },
+        vault: { purchaseDate: receiptDate, unitCost: "", purchaserId: receiptPerson?.id || "", purchaserName: receiptPersonName },
+        forge: { source: receiptMerchantLabel(receipt), unitCost: "", purchaserId: receiptPerson?.id || "", purchaserName: receiptPersonName },
         ...seed,
       },
     });
@@ -16194,6 +16354,7 @@ export default function App() {
       date: receiptDateInputValue(receipt),
       vendor: receiptMerchantLabel(receipt),
       amount: Number(receipt.total ?? receipt.receiptTotal ?? receipt.receipt_total ?? 0) ? String(receipt.total ?? receipt.receiptTotal ?? receipt.receipt_total) : "",
+      buyer: receipt.buyer || receipt.purchaserName || receipt.purchaser_name || receipt.paidBy || receipt.paid_by || "",
       receiptImage: receiptImageUrl(receipt),
       receiptId: receiptRecordId(receipt),
       notes: appendUniqueText(receipt.notes || "", `Expense linked from receipt ${receiptRecordId(receipt)}.`),
@@ -16217,6 +16378,7 @@ export default function App() {
       receiptPhotoUrl: receiptImageUrl(receipt),
       receiptFileName: receiptImageUrl(receipt) ? "Saved receipt proof" : "",
       receiptNote: receipt.notes || "",
+      receiptPayerName: receipt.buyer || receipt.purchaserName || receipt.purchaser_name || receipt.paidBy || receipt.paid_by || "",
       receiptSaved: receipt,
     });
   }
@@ -17286,6 +17448,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       tax: 0,
       discounts: 0,
       paymentMethod: "",
+      buyer: quickAddWizard.receiptPayerName || "",
+      purchaserName: quickAddWizard.receiptPayerName || "",
+      paidBy: quickAddWizard.receiptPayerName || "",
       category: "Quick Add Receipt",
       imageUrl: quickAddWizard.receiptPhotoUrl || "",
       receiptImageUrl: quickAddWizard.receiptPhotoUrl || "",
@@ -19137,6 +19302,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         if (!canWriteDestination("vault")) throw new Error("You do not have permission to edit this workspace.");
         const vaultQuantity = Math.max(1, Number(multiDestinationForm.vault.quantity || 1));
         const vaultWorkspace = destinationWorkspace("vault");
+        const vaultPurchaser = resolvePurchaser(multiDestinationForm.vault, vaultWorkspace?.id);
         const vaultItem = applyWorkspaceToRecord({
           id: makeId("vault"),
           ...shared,
@@ -19148,6 +19314,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           ownedQuantity: vaultQuantity,
           forgeQuantity: 0,
           unitCost: Number(multiDestinationForm.vault.unitCost || 0),
+          buyer: vaultPurchaser.purchaserName,
+          purchaserId: vaultPurchaser.purchaserId,
+          purchaserName: vaultPurchaser.purchaserName,
           status: vaultStatusLabel(multiDestinationForm.vault.vaultStatus),
           vaultStatus: multiDestinationForm.vault.vaultStatus,
           vaultCategory: multiDestinationForm.vault.vaultCategory,
@@ -19900,7 +20069,21 @@ function mapCatalog(row) {
   }
 
   function mapVehicle(row) {
-    return { id: row.id, name: row.name || "", owner: row.owner || "", averageMpg: Number(row.average_mpg || 0), wearCostPerMile: Number(row.wear_cost_per_mile || 0), notes: row.notes || "", createdAt: row.created_at };
+    const workspaceId = row.workspaceId || row.workspace_id || activeForgeWorkspace?.id || activeWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID;
+    return {
+      id: row.id,
+      name: row.name || "",
+      owner: row.owner || "",
+      active: row.active !== false && row.is_active !== false,
+      averageMpg: Number(row.average_mpg ?? row.averageMpg ?? 0),
+      wearCostPerMile: Number(row.wear_cost_per_mile ?? row.wearCostPerMile ?? 0),
+      defaultMileageRate: Number(row.defaultMileageRate ?? row.default_mileage_rate ?? IRS_MILEAGE_RATE),
+      notes: row.notes || "",
+      workspaceId,
+      workspace_id: workspaceId,
+      createdAt: row.createdAt || row.created_at,
+      updatedAt: row.updatedAt || row.updated_at,
+    };
   }
 
   function mapTrip(row) {
@@ -23053,32 +23236,69 @@ function renderForgeAccessState() {
     );
   }
 
-  async function addVehicle(event) {
-    event.preventDefault();
+  async function saveVehicleRecord(draft = {}, options = {}) {
     if (blockGuestSave()) return;
     if (!user) return showAppMessage("Please log in first.");
-    if (!vehicleForm.name || !vehicleForm.averageMpg) return showAppMessage("Please enter vehicle name and average MPG.");
+    const name = String(draft.name || "").trim();
+    if (!name) return showAppMessage("Please enter vehicle name.");
+    const targetForgeWorkspace = activeForgeWorkspace || activeWorkspace || { id: DEFAULT_PERSONAL_WORKSPACE_ID, name: "My Personal Space" };
+    const vehicleId = options.editingId || editingVehicleId || "";
+    const now = new Date().toISOString();
+    const averageMpg = Number(draft.averageMpg || 0);
+    const wearCostPerMile = Number(draft.wearCostPerMile || 0);
 
     const row = {
       user_id: user.id,
-      name: vehicleForm.name,
-      owner: vehicleForm.owner,
-      average_mpg: Number(vehicleForm.averageMpg),
-      wear_cost_per_mile: Number(vehicleForm.wearCostPerMile || 0),
-      notes: vehicleForm.notes,
+      workspace_id: uuidOrNull(targetForgeWorkspace.id),
+      name,
+      owner: String(draft.owner || "").trim(),
+      average_mpg: averageMpg,
+      wear_cost_per_mile: wearCostPerMile,
+      notes: String(draft.notes || "").trim(),
     };
 
-    const { data, error } = editingVehicleId
-      ? await supabase.from("vehicles").update({ ...row, updated_at: new Date().toISOString() }).eq("id", editingVehicleId).select().single()
+    if (BETA_LOCAL_MODE || user.id === "local-beta") {
+      const localRow = {
+        ...row,
+        id: vehicleId || makeId("vehicle"),
+        workspaceId: targetForgeWorkspace.id,
+        workspace_id: targetForgeWorkspace.id,
+        averageMpg,
+        wearCostPerMile,
+        active: true,
+        defaultMileageRate: IRS_MILEAGE_RATE,
+        createdAt: vehicles.find((vehicle) => vehicle.id === vehicleId)?.createdAt || now,
+        updatedAt: now,
+      };
+      const mapped = mapVehicle(localRow);
+      setVehicles((current) => vehicleId ? current.map((vehicle) => (vehicle.id === vehicleId ? mapped : vehicle)) : [mapped, ...current]);
+      if (!options.keepForm) {
+        setEditingVehicleId(null);
+        setVehicleForm({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
+      }
+      setVaultToast(vehicleId ? "Vehicle updated." : "Vehicle added.");
+      return mapped;
+    }
+
+    const { data, error } = vehicleId
+      ? await supabase.from("vehicles").update({ ...row, updated_at: now }).eq("id", vehicleId).select().single()
       : await supabase.from("vehicles").insert(row).select().single();
 
     if (error) return showAppMessage("Could not save vehicle: " + error.message);
 
     const mapped = mapVehicle(data);
-    setVehicles(editingVehicleId ? vehicles.map((v) => (v.id === editingVehicleId ? mapped : v)) : [mapped, ...vehicles]);
-    setEditingVehicleId(null);
-    setVehicleForm({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
-    setVaultToast(editingVehicleId ? "Vehicle updated." : "Vehicle added.");
+    setVehicles((current) => vehicleId ? current.map((v) => (v.id === vehicleId ? mapped : v)) : [mapped, ...current]);
+    if (!options.keepForm) {
+      setEditingVehicleId(null);
+      setVehicleForm({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" });
+    }
+    setVaultToast(vehicleId ? "Vehicle updated." : "Vehicle added.");
+    return mapped;
+  }
+
+  async function addVehicle(event) {
+    event.preventDefault();
+    await saveVehicleRecord(vehicleForm);
   }
 
   function startEditingVehicle(vehicle) {
@@ -23094,6 +23314,11 @@ function renderForgeAccessState() {
       confirmLabel: "Delete vehicle",
     });
     if (!confirmed) return;
+    if (BETA_LOCAL_MODE || user?.id === "local-beta") {
+      setVehicles(vehicles.filter((vehicle) => vehicle.id !== id));
+      setVaultToast("Vehicle deleted.");
+      return;
+    }
     const { error } = await supabase.from("vehicles").delete().eq("id", id);
     if (error) return showAppMessage("Could not delete vehicle: " + error.message);
     setVehicles(vehicles.filter((vehicle) => vehicle.id !== id));
@@ -23106,10 +23331,11 @@ function renderForgeAccessState() {
     const mpg = Number(vehicle?.averageMpg || 0);
     const wearRate = Number(vehicle?.wearCostPerMile || 0);
     const gasPrice = Number(form.gasPrice || 0);
+    const mileageRate = Number(vehicle?.defaultMileageRate || IRS_MILEAGE_RATE);
     const fuelCost = mpg > 0 ? (businessMiles / mpg) * gasPrice : 0;
     const wearCost = businessMiles * wearRate;
 
-    return { vehicle, businessMiles, gasPrice, fuelCost, wearCost, totalVehicleCost: fuelCost + wearCost, mileageValue: businessMiles * IRS_MILEAGE_RATE };
+    return { vehicle, businessMiles, gasPrice, fuelCost, wearCost, totalVehicleCost: fuelCost + wearCost, mileageValue: businessMiles * mileageRate };
   }
 
   async function addTrip(event) {
@@ -24270,6 +24496,80 @@ function renderForgeAccessState() {
       "No purchaser assigned",
     ]),
   ].filter(Boolean), [purchasers, forgeInventoryItems]);
+
+  const payoutAssistRows = useMemo(() => {
+    const itemById = new Map(forgeInventoryItems.map((item) => [String(item.id), item]));
+    const names = new Set([
+      ...purchaserSummaryNames,
+      ...workspaceExpenses.map((expense) => expense.buyer),
+      ...workspaceMileageTrips.map((trip) => trip.driver),
+      ...forgeReceiptRecords.map((receipt) => receipt.buyer || receipt.purchaserName || receipt.purchaser_name || receipt.paidBy || receipt.paid_by || receipt.uploadedBy || receipt.uploaded_by),
+      ...workspaceSales.map((sale) => itemPurchaserName(itemById.get(String(sale.itemId || sale.linkedInventoryItemId)) || {})),
+    ].filter(Boolean));
+    names.delete("No purchaser assigned");
+
+    return [...names].sort((a, b) => a.localeCompare(b)).map((name) => {
+      const inventoryItemsForPerson = forgeInventoryItems.filter((item) => itemPurchaserName(item) === name);
+      const expenseRows = workspaceExpenses.filter((expense) => expense.buyer === name);
+      const mileageRows = workspaceMileageTrips.filter((trip) => trip.driver === name);
+      const receiptRows = forgeReceiptRecords.filter((receipt) => (
+        [receipt.buyer, receipt.purchaserName, receipt.purchaser_name, receipt.paidBy, receipt.paid_by, receipt.uploadedBy, receipt.uploaded_by]
+          .filter(Boolean)
+          .some((value) => String(value) === String(name))
+      ));
+      const salesRows = workspaceSales.filter((sale) => {
+        const item = itemById.get(String(sale.itemId || sale.linkedInventoryItemId));
+        return itemPurchaserName(item || {}) === name;
+      });
+      const inventoryCost = inventoryItemsForPerson.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitCost || 0), 0);
+      const expensesPaid = expenseRows.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+      const mileageValue = mileageRows.reduce((sum, trip) => sum + Number(trip.mileageValue || trip.totalVehicleCost || 0), 0);
+      const grossSales = salesRows.reduce((sum, sale) => sum + Number(sale.grossSale || 0), 0);
+      const netProfit = salesRows.reduce((sum, sale) => sum + Number(sale.netProfit ?? sale.estimatedProfitLoss ?? 0), 0);
+      const reimbursementsOwed = expensesPaid + mileageValue;
+      return {
+        name,
+        type: purchasers.find((purchaser) => purchaser.name === name)?.type || "Person",
+        inventoryCount: inventoryItemsForPerson.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+        inventoryCost,
+        expensesPaid,
+        mileageCount: mileageRows.length,
+        mileageValue,
+        receiptCount: receiptRows.length,
+        salesCount: salesRows.length,
+        grossSales,
+        netProfit,
+        reimbursementsOwed,
+        suggestedPayout: reimbursementsOwed + Math.max(0, netProfit),
+      };
+    });
+  }, [purchaserSummaryNames, workspaceExpenses, workspaceMileageTrips, forgeReceiptRecords, workspaceSales, forgeInventoryItems, purchasers]);
+
+  const selectedPayoutAssistRows = useMemo(
+    () => personLedgerFilter === "all"
+      ? payoutAssistRows
+      : payoutAssistRows.filter((row) => row.name === personLedgerFilter),
+    [personLedgerFilter, payoutAssistRows]
+  );
+
+  const payoutAssistSummary = useMemo(() => {
+    const costOfGoods = workspaceSales.reduce((sum, sale) => sum + Number(sale.costBasis || sale.itemCost || 0), 0);
+    const fees = workspaceSales.reduce((sum, sale) => sum + Number(sale.platformFees || 0) + Number(sale.paymentProcessingFees || 0) + Number(sale.shippingCost || 0) + Number(sale.suppliesCost || 0), 0);
+    const reimbursementsOwed = payoutAssistRows.reduce((sum, row) => sum + Number(row.reimbursementsOwed || 0), 0);
+    const personProfit = payoutAssistRows.reduce((sum, row) => sum + Math.max(0, Number(row.netProfit || 0)), 0);
+    const netProfit = Number(salesSummary.estimatedProfitLoss || 0) - totalExpenses - totalMileageValue;
+    return {
+      grossSales: salesSummary.grossSales || 0,
+      costOfGoods,
+      expenses: totalExpenses,
+      mileageReimbursement: totalMileageValue,
+      fees,
+      reimbursementsOwed,
+      netProfit,
+      personProfit,
+      suggestedPayout: payoutAssistRows.reduce((sum, row) => sum + Number(row.suggestedPayout || 0), 0),
+    };
+  }, [workspaceSales, payoutAssistRows, salesSummary, totalExpenses, totalMileageValue]);
 
   const salesByPlatform = useMemo(
     () => salesSummary.byPlatform.reduce((acc, row) => ({ ...acc, [row.label]: row.grossSales }), {}),
@@ -38247,6 +38547,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="receipt-summary-grid">
                   <DetailItem label="Date" value={receiptDateLabel(receipt)} />
                   <DetailItem label="Total" value={receiptTotalLabel(receipt)} />
+                  <DetailItem label="Paid by" value={receipt.buyer || receipt.purchaserName || receipt.purchaser_name || receipt.paidBy || receipt.paid_by || "Not assigned"} />
                   <DetailItem label="Linked items" value={linkedItems.length} />
                   <DetailItem label="Expense links" value={linkedExpenses.length} />
                 </div>
@@ -38760,6 +39061,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <Field label="Total optional">
               <input type="number" min="0" step="0.01" value={quickAddWizard.receiptTotal} onChange={(event) => updateQuickAddWizard({ receiptTotal: event.target.value })} placeholder="0.00" />
             </Field>
+            <PurchaserSelect
+              label="Who paid?"
+              purchasers={forgePurchaserOptions}
+              valueName={quickAddWizard.receiptPayerName || ""}
+              onSelect={(purchaser) => updateQuickAddWizard({ receiptPayerName: purchaser?.name || "" })}
+              onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id })}
+              onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id || activeWorkspace?.id)}
+            />
             <Field label="Note optional">
               <input value={quickAddWizard.receiptNote} onChange={(event) => updateQuickAddWizard({ receiptNote: event.target.value })} placeholder="What this receipt is for" />
             </Field>
@@ -39413,7 +39722,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           setForm={updateItemForm}
           catalogProducts={catalogProducts}
           purchasers={forgePurchaserOptions}
-          onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+          onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id })}
           onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
           applyCatalogProduct={applyCatalogProduct}
           handleImageUpload={handleImageUpload}
@@ -39505,8 +39814,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <Field label="Sale Date"><input type="date" value={saleForm.saleDate} onChange={(e) => updateSaleForm("saleDate", e.target.value)} /></Field>
           <Field label="Platform"><select value={saleForm.platform} onChange={(e) => updateSaleForm("platform", e.target.value)}>{PLATFORMS.map((x) => <option key={x}>{x}</option>)}</select></Field>
           <Field label="Quantity Sold"><input type="number" min="1" value={saleForm.quantitySold} onChange={(e) => updateSaleForm("quantitySold", e.target.value)} /></Field>
-          <Field label="Sale Price Each"><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
-          {!selectedSaleItem ? <Field label="Cost Basis"><input type="number" step="0.01" value={saleForm.costBasis} onChange={(e) => updateSaleForm("costBasis", e.target.value)} /></Field> : null}
+          <Field label="Sale Price Each" help={INFO_TOOLTIP_COPY.plannedSalePrice}><input type="number" step="0.01" value={saleForm.finalSalePrice} onChange={(e) => updateSaleForm("finalSalePrice", e.target.value)} /></Field>
+          {!selectedSaleItem ? <Field label="Cost Basis" help={INFO_TOOLTIP_COPY.costBasis}><input type="number" step="0.01" value={saleForm.costBasis} onChange={(e) => updateSaleForm("costBasis", e.target.value)} /></Field> : null}
         </div>
         <details className="forge-optional-details forge-sale-optional-details">
           <summary>Optional sale details</summary>
@@ -39531,7 +39840,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div><span>Net Proceeds</span><strong>{money(saleNetProceedsPreview)}</strong></div>
             <div><span>Cost Basis</span><strong>{money(saleCostBasis)}</strong></div>
             <div><span>Shipping + Fees</span><strong>{money(saleShippingCost + saleSuppliesCost + saleFees)}</strong></div>
-            <div><span>Estimated Profit/Loss</span><strong>{money(saleProfitPreview)}</strong></div>
+            <div><span>Estimated Profit/Loss <InfoTooltip label="About estimated profit">{INFO_TOOLTIP_COPY.profit}</InfoTooltip></span><strong>{money(saleProfitPreview)}</strong></div>
           </div>
           {!saleValidation.valid ? <p className="flow-inline-message is-warning">{Object.values(saleValidation.errors)[0]}</p> : null}
         </div>
@@ -39569,7 +39878,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           purchasers={forgePurchaserOptions}
           valueName={expenseForm.buyer}
           onSelect={(purchaser) => updateExpenseForm("buyer", purchaser?.name || "")}
-          onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+          onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id })}
           onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
         />
         <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
@@ -39642,11 +39951,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <span>Purpose suggestions are for tracking only and are not tax advice.</span>
           <button type="button" className="secondary-button" onClick={() => void runMileageAiAssist()}>Suggest purpose</button>
         </div>
-        <Field label="Driver"><select value={tripForm.driver} onChange={(e) => updateTripForm("driver", e.target.value)}><option value="">No driver selected</option>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
-        <Field label="Vehicle"><select value={tripForm.vehicleId} onChange={(e) => updateTripForm("vehicleId", e.target.value)}><option value="">No vehicle selected</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} - {v.averageMpg} MPG</option>)}</select></Field>
-        <Field label="Starting Odometer"><input type="number" value={tripForm.startMiles} onChange={(e) => updateTripForm("startMiles", e.target.value)} /></Field>
-        <Field label="Ending Odometer"><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
-        <Field label="Gas Price Paid"><input type="number" step="0.01" value={tripForm.gasPrice} placeholder="Optional" onChange={(e) => updateTripForm("gasPrice", e.target.value)} /></Field>
+        <PurchaserSelect
+          label="Who logged this mileage?"
+          purchasers={forgePurchaserOptions}
+          valueName={tripForm.driver}
+          onSelect={(purchaser) => updateTripForm("driver", purchaser?.name || "")}
+          onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id })}
+          onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
+          help={INFO_TOOLTIP_COPY.ownerPerson}
+        />
+        <VehicleSelect
+          label="Vehicle"
+          vehicles={vehicles}
+          valueId={tripForm.vehicleId}
+          onSelect={(vehicle) => updateTripForm("vehicleId", vehicle?.id || "")}
+          onCreateVehicle={(draft) => saveVehicleRecord(draft, { keepForm: true })}
+        />
+        <Field label="Starting Odometer" help={INFO_TOOLTIP_COPY.mileage}><input type="number" value={tripForm.startMiles} onChange={(e) => updateTripForm("startMiles", e.target.value)} /></Field>
+        <Field label="Ending Odometer" help={INFO_TOOLTIP_COPY.mileage}><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
+        <Field label="Gas Price Paid" help="Optional gas price for estimating fuel cost on this trip."><input type="number" step="0.01" value={tripForm.gasPrice} placeholder="Optional" onChange={(e) => updateTripForm("gasPrice", e.target.value)} /></Field>
         <Field label="Gas Receipt"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateTripForm("gasReceiptImage", url), "gas")} /></Field>
         {tripForm.gasReceiptImage ? <div className="receipt-preview"><p>Gas Receipt</p><img src={tripForm.gasReceiptImage} alt="Gas Receipt" /></div> : null}
         <Field label="Notes"><input value={tripForm.notes} onChange={(e) => updateTripForm("notes", e.target.value)} /></Field>
@@ -41757,9 +42080,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <Field label="Collection Category">
                 <input value={multiDestinationForm.vault.vaultCategory} onChange={(event) => updateMultiDestinationSection("vault", "vaultCategory", event.target.value)} />
               </Field>
-              <Field label="Cost Basis" fieldId="vault-unit-cost" error={fieldError("vault-unit-cost")}>
+              <Field label="Cost Basis" fieldId="vault-unit-cost" error={fieldError("vault-unit-cost")} help={INFO_TOOLTIP_COPY.costBasis}>
                 <input aria-invalid={Boolean(fieldError("vault-unit-cost"))} type="number" min="0" step="0.01" value={multiDestinationForm.vault.unitCost} onChange={(event) => updateMultiDestinationSection("vault", "unitCost", event.target.value)} placeholder="Optional" />
               </Field>
+              <PurchaserSelect
+                label="Who owns or paid?"
+                purchasers={purchasersForWorkspace(multiDestinationForm.vault.workspaceId || activeWorkspace?.id)}
+                valueId={multiDestinationForm.vault.purchaserId}
+                valueName={multiDestinationForm.vault.purchaserName}
+                onSelect={(purchaser) => {
+                  updateMultiDestinationSection("vault", "purchaserId", purchaser?.id || "");
+                  updateMultiDestinationSection("vault", "purchaserName", purchaser?.name || "");
+                }}
+                onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: multiDestinationForm.vault.workspaceId || activeWorkspace?.id })}
+                onManagePurchasers={() => openPurchaserManager(multiDestinationForm.vault.workspaceId || activeWorkspace?.id)}
+                help={INFO_TOOLTIP_COPY.ownerPerson}
+              />
               <Field label="Purchase Date">
                 <input type="date" value={multiDestinationForm.vault.purchaseDate} onChange={(event) => updateMultiDestinationSection("vault", "purchaseDate", event.target.value)} />
               </Field>
@@ -41827,10 +42163,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <Field label="Quantity for Forge" fieldId="forge-quantity" error={fieldError("forge-quantity")}>
                 <input aria-invalid={Boolean(fieldError("forge-quantity"))} type="number" min="1" value={multiDestinationForm.forge.quantity} onChange={(event) => updateMultiDestinationSection("forge", "quantity", event.target.value)} />
               </Field>
-              <Field label="Cost Basis" fieldId="forge-unit-cost" error={fieldError("forge-unit-cost")}>
+              <Field label="Cost Basis" fieldId="forge-unit-cost" error={fieldError("forge-unit-cost")} help={INFO_TOOLTIP_COPY.costBasis}>
                 <input aria-invalid={Boolean(fieldError("forge-unit-cost"))} type="number" min="0" step="0.01" value={multiDestinationForm.forge.unitCost} onChange={(event) => updateMultiDestinationSection("forge", "unitCost", event.target.value)} placeholder="Optional" />
               </Field>
-              <Field label="Planned Sell Price" fieldId="forge-planned-sell-price" error={fieldError("forge-planned-sell-price")}>
+              <Field label="Planned Sell Price" fieldId="forge-planned-sell-price" error={fieldError("forge-planned-sell-price")} help={INFO_TOOLTIP_COPY.plannedSalePrice}>
                 <input aria-invalid={Boolean(fieldError("forge-planned-sell-price"))} type="number" min="0" step="0.01" value={multiDestinationForm.forge.plannedSellPrice} onChange={(event) => updateMultiDestinationSection("forge", "plannedSellPrice", event.target.value)} placeholder="Optional" />
               </Field>
               <Field label="Source / Purchase Location">
@@ -41845,7 +42181,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   updateMultiDestinationSection("forge", "purchaserId", purchaser?.id || "");
                   updateMultiDestinationSection("forge", "purchaserName", purchaser?.name || "");
                 }}
-                onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: forgeDestinationWorkspaceId || activeForgeWorkspace?.id })}
+                onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: forgeDestinationWorkspaceId || activeForgeWorkspace?.id })}
                 onManagePurchasers={() => openPurchaserManager(forgeDestinationWorkspaceId || activeForgeWorkspace?.id)}
               />
               <Field label="Where is this inventory?" fieldId="forge-physical-location" error={fieldError("forge-physical-location")}>
@@ -47392,7 +47728,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           >
             <div className="modal-title-row modal-sticky-header">
               <div>
-                <h2 id="purchaser-manager-title">Manage Purchasers</h2>
+                <h2 id="purchaser-manager-title">People Directory</h2>
                 <p>{purchaserManagerWorkspace?.name || "Current collection"} · Only active purchasers appear on new “Who paid?” fields.</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close purchaser manager" onClick={closePurchaserManager}>
@@ -47406,11 +47742,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   event.preventDefault();
                   const added = addPurchaserName(purchaserDraft, {
                     note: purchaserNoteDraft,
+                    type: purchaserTypeDraft,
                     workspaceId: purchaserManagerWorkspace?.id,
                   });
                   if (added) {
                     setPurchaserDraft("");
                     setPurchaserNoteDraft("");
+                    setPurchaserTypeDraft("Family");
                   }
                 }}
               >
@@ -47425,7 +47763,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onChange={(event) => setPurchaserNoteDraft(event.target.value)}
                   placeholder="Optional note, card, partner..."
                 />
-                <button type="submit">Add Purchaser</button>
+                <select value={purchaserTypeDraft} onChange={(event) => setPurchaserTypeDraft(event.target.value)}>
+                  {PERSON_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+                <button type="submit">Add Person</button>
               </form>
               {purchaserMessage ? <p className="flow-inline-message" role="status">{purchaserMessage}</p> : null}
               <div className="inventory-list compact-inventory-list purchaser-manager-list">
@@ -47437,15 +47778,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           className="inline-form"
                           onSubmit={(event) => {
                             event.preventDefault();
-                            savePurchaserName(purchaser.id, purchaserDraft, purchaserNoteDraft);
+                            savePurchaserName(purchaser.id, purchaserDraft, purchaserNoteDraft, purchaserTypeDraft);
                           }}
                         >
                           <input
                             value={purchaserDraft}
                             maxLength={PURCHASER_NAME_MAX_LENGTH}
                             onChange={(event) => setPurchaserDraft(event.target.value)}
-                            placeholder="Purchaser name"
+                            placeholder="Person name"
                           />
+                          <select value={purchaserTypeDraft} onChange={(event) => setPurchaserTypeDraft(event.target.value)}>
+                            {PERSON_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+                          </select>
                           <input
                             value={purchaserNoteDraft}
                             onChange={(event) => setPurchaserNoteDraft(event.target.value)}
@@ -47459,6 +47803,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                               setEditingPurchaserId(null);
                               setPurchaserDraft("");
                               setPurchaserNoteDraft("");
+                              setPurchaserTypeDraft("Family");
                             }}
                           >
                             Cancel
@@ -47478,6 +47823,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                                 setEditingPurchaserId(purchaser.id);
                                 setPurchaserDraft(purchaser.name);
                                 setPurchaserNoteDraft(purchaser.note || "");
+                                setPurchaserTypeDraft(purchaser.type || "Family");
                                 setPurchaserMessage("");
                               }}
                               onDelete={() => archiveOrDeletePurchaser(purchaser.id)}
@@ -50250,10 +50596,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
 
               <div className="settings-subsection">
-                <h3>Purchaser Tracking</h3>
-                <p>Track who made each purchase. Purchasers are scoped to the current collection/workspace.</p>
+                <h3>People Directory</h3>
+                <p>Track who paid, owns, logs mileage, uploads receipts, or needs payout planning. People are scoped to the current collection/workspace.</p>
                 <button type="button" className="secondary-button" onClick={() => openPurchaserManager(activeWorkspace?.id)}>
-                  Manage Purchasers
+                  Manage People
                 </button>
                 <div className="inventory-list compact-inventory-list">
                   {purchasersForWorkspace(activeWorkspace?.id, { includeArchived: true }).map((purchaser) => (
@@ -50263,14 +50609,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           className="inline-form"
                           onSubmit={(event) => {
                             event.preventDefault();
-                            savePurchaserName(purchaser.id, purchaserDraft);
+                            savePurchaserName(purchaser.id, purchaserDraft, purchaserNoteDraft, purchaserTypeDraft);
                           }}
                         >
                           <input
                             value={purchaserDraft}
                             onChange={(event) => setPurchaserDraft(event.target.value)}
-                            placeholder="Purchaser name"
+                            placeholder="Person name"
                           />
+                          <select value={purchaserTypeDraft} onChange={(event) => setPurchaserTypeDraft(event.target.value)}>
+                            {PERSON_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+                          </select>
                           <button type="submit">Save</button>
                           <button
                             type="button"
@@ -50278,6 +50627,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             onClick={() => {
                               setEditingPurchaserId(null);
                               setPurchaserDraft("");
+                              setPurchaserNoteDraft("");
+                              setPurchaserTypeDraft("Family");
                             }}
                           >
                             Cancel
@@ -50297,6 +50648,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                                 onEdit={() => {
                                   setEditingPurchaserId(purchaser.id);
                                   setPurchaserDraft(purchaser.name);
+                                  setPurchaserNoteDraft(purchaser.note || "");
+                                  setPurchaserTypeDraft(purchaser.type || "Family");
                                 }}
                                 onDelete={() => archiveOrDeletePurchaser(purchaser.id)}
                                 deleteLabel="Archive"
@@ -50805,7 +51158,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   item={rawVaultItems.find((item) => item.id === editingItemId)}
                   catalogProducts={catalogProducts}
                   purchasers={purchaserOptions}
-                  onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeWorkspace?.id })}
+                  onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeWorkspace?.id })}
                   onManagePurchasers={() => openPurchaserManager(activeWorkspace?.id)}
                   applyCatalogProduct={applyCatalogProduct}
                   handleImageUpload={handleImageUpload}
@@ -52611,7 +52964,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
       setForm={updateItemForm}
       catalogProducts={catalogProducts}
       purchasers={forgePurchaserOptions}
-      onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+      onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id })}
       onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
       applyCatalogProduct={applyCatalogProduct}
       handleImageUpload={handleImageUpload}
@@ -52880,7 +53233,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   setForm={updateItemForm}
                   catalogProducts={catalogProducts}
                   purchasers={forgePurchaserOptions}
-                  onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+                  onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id })}
                   onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
                   applyCatalogProduct={applyCatalogProduct}
                   handleImageUpload={handleImageUpload}
@@ -53211,7 +53564,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   purchasers={forgePurchaserOptions}
                   valueName={expenseForm.buyer}
                   onSelect={(purchaser) => updateExpenseForm("buyer", purchaser?.name || "")}
-                  onCreatePurchaser={(name, note) => addPurchaserName(name, { note, workspaceId: activeForgeWorkspace?.id })}
+                  onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id })}
                   onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
                 />
                 <Field label="Amount"><input type="number" step="0.01" value={expenseForm.amount} onChange={(e) => updateExpenseForm("amount", e.target.value)} /></Field>
@@ -53289,9 +53642,17 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <h2>{editingVehicleId ? "Edit Vehicle" : "Add Vehicle"}</h2>
               <form onSubmit={addVehicle} className="form">
                 <Field label="Vehicle Name"><input value={vehicleForm.name} onChange={(e) => updateVehicleForm("name", e.target.value)} /></Field>
-                <Field label="Owner / Driver"><select value={vehicleForm.owner} onChange={(e) => updateVehicleForm("owner", e.target.value)}><option value="">No owner selected</option>{peopleOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
-                <Field label="Average MPG"><input type="number" step="0.1" value={vehicleForm.averageMpg} onChange={(e) => updateVehicleForm("averageMpg", e.target.value)} /></Field>
-                <Field label="Wear Cost Per Mile"><input type="number" step="0.01" value={vehicleForm.wearCostPerMile} onChange={(e) => updateVehicleForm("wearCostPerMile", e.target.value)} /></Field>
+                <PurchaserSelect
+                  label="Owner / Driver"
+                  purchasers={forgePurchaserOptions}
+                  valueName={vehicleForm.owner}
+                  onSelect={(purchaser) => updateVehicleForm("owner", purchaser?.name || "")}
+                  onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id })}
+                  onManagePurchasers={() => openPurchaserManager(activeForgeWorkspace?.id)}
+                  help={INFO_TOOLTIP_COPY.ownerPerson}
+                />
+                <Field label="Average MPG" help="Used only to estimate fuel cost when gas price is entered."><input type="number" step="0.1" value={vehicleForm.averageMpg} onChange={(e) => updateVehicleForm("averageMpg", e.target.value)} /></Field>
+                <Field label="Wear Cost Per Mile" help="Optional maintenance or wear estimate per business mile."><input type="number" step="0.01" value={vehicleForm.wearCostPerMile} onChange={(e) => updateVehicleForm("wearCostPerMile", e.target.value)} /></Field>
                 <Field label="Notes"><input value={vehicleForm.notes} onChange={(e) => updateVehicleForm("notes", e.target.value)} /></Field>
                 <button type="submit">{editingVehicleId ? "Save Vehicle" : "Add Vehicle"}</button>
                 {editingVehicleId && <button type="button" className="secondary-button" onClick={() => { setEditingVehicleId(null); setVehicleForm({ name: "", owner: "", averageMpg: "", wearCostPerMile: "", notes: "" }); }}>Cancel Edit</button>}
@@ -53404,6 +53765,90 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <div><span>Sales recorded</span><strong>{workspaceSales.length}</strong><small>{money(yearEndTaxSummary.sales.profit)} profit</small></div>
                 <div><span>Missing cost basis</span><strong>{missingMarketPriceItems.length + missingMsrpItems.length}</strong><small>Review before export</small></div>
               </div>
+            </section>
+
+            <section className="panel payout-assist-panel">
+              <div className="compact-card-header">
+                <div>
+                  <p className="eyebrow">Payout Assist</p>
+                  <h2>Person ledger and payout planning</h2>
+                  <p>{PAYOUT_ASSIST_DISCLAIMER}</p>
+                </div>
+                <button type="button" className="secondary-button" onClick={() => openPurchaserManager(activeForgeWorkspace?.id)}>
+                  Manage People
+                </button>
+              </div>
+              <div className="payout-summary-grid">
+                <div>
+                  <span>Gross sales</span>
+                  <strong>{money(payoutAssistSummary.grossSales)}</strong>
+                  <small>Recorded sales</small>
+                </div>
+                <div>
+                  <span>Cost of goods <InfoTooltip label="About cost basis">{INFO_TOOLTIP_COPY.costBasis}</InfoTooltip></span>
+                  <strong>{money(payoutAssistSummary.costOfGoods)}</strong>
+                  <small>Known sale cost basis</small>
+                </div>
+                <div>
+                  <span>Expenses</span>
+                  <strong>{money(payoutAssistSummary.expenses)}</strong>
+                  <small>Business expenses</small>
+                </div>
+                <div>
+                  <span>Mileage <InfoTooltip label="About mileage">{INFO_TOOLTIP_COPY.mileage}</InfoTooltip></span>
+                  <strong>{money(payoutAssistSummary.mileageReimbursement)}</strong>
+                  <small>Reimbursement estimate</small>
+                </div>
+                <div>
+                  <span>Net profit <InfoTooltip label="About net profit">{INFO_TOOLTIP_COPY.netProfit}</InfoTooltip></span>
+                  <strong>{money(payoutAssistSummary.netProfit)}</strong>
+                  <small>After known costs</small>
+                </div>
+                <div>
+                  <span>Payout estimate <InfoTooltip label="About payout estimate">{INFO_TOOLTIP_COPY.payoutEstimate}</InfoTooltip></span>
+                  <strong>{money(payoutAssistSummary.suggestedPayout)}</strong>
+                  <small>Planning only</small>
+                </div>
+              </div>
+              <div className="person-ledger-tabs" role="tablist" aria-label="Person ledger filters">
+                <button type="button" className={personLedgerFilter === "all" ? "active" : ""} onClick={() => setPersonLedgerFilter("all")}>All</button>
+                {payoutAssistRows.slice(0, 8).map((row) => (
+                  <button type="button" key={row.name} className={personLedgerFilter === row.name ? "active" : ""} onClick={() => setPersonLedgerFilter(row.name)}>
+                    {row.name}
+                  </button>
+                ))}
+              </div>
+              {selectedPayoutAssistRows.length ? (
+                <div className="person-ledger-grid">
+                  {selectedPayoutAssistRows.map((row) => (
+                    <article className="person-ledger-card" key={row.name}>
+                      <div className="compact-card-header">
+                        <div>
+                          <h3>{row.name}</h3>
+                          <p className="compact-subtitle">{row.type} | {row.inventoryCount} item{row.inventoryCount === 1 ? "" : "s"} | {row.salesCount} sale{row.salesCount === 1 ? "" : "s"}</p>
+                        </div>
+                        <span className="neon-chip">Person</span>
+                      </div>
+                      <div className="person-ledger-stats">
+                        <div><span>Purchased</span><strong>{money(row.inventoryCost)}</strong></div>
+                        <div><span>Expenses paid</span><strong>{money(row.expensesPaid)}</strong></div>
+                        <div><span>Mileage</span><strong>{money(row.mileageValue)}</strong></div>
+                        <div><span>Gross sales</span><strong>{money(row.grossSales)}</strong></div>
+                        <div><span>Net profit</span><strong>{money(row.netProfit)}</strong></div>
+                        <div><span>Payout estimate</span><strong>{money(row.suggestedPayout)}</strong></div>
+                      </div>
+                      <p className="compact-subtitle">
+                        Reimbursements owed: {money(row.reimbursementsOwed)}. Receipts linked: {row.receiptCount}. This is planning support, not payroll.
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="small-empty-state">
+                  <strong>No people activity yet.</strong>
+                  <span>Add a person on an item, expense, receipt, sale, or mileage log to start Payout Assist.</span>
+                </div>
+              )}
             </section>
 
             <section className="panel tax-readiness-panel">
@@ -55245,7 +55690,7 @@ function InventoryForm({
       <Field label="Store / Source"><input value={form.store} onChange={(e) => setForm("store", e.target.value)} /></Field>
       <Field label="Barcode / UPC"><input value={form.barcode} onChange={(e) => setForm("barcode", e.target.value)} /></Field>
       <Field label="Quantity Purchased"><input type="number" min="0" value={form.quantity} onChange={(e) => setForm("quantity", e.target.value)} /></Field>
-      <Field label="Unit Cost"><input type="number" step="0.01" value={form.unitCost} onChange={(e) => setForm("unitCost", e.target.value)} /></Field>
+      <Field label="Unit Cost" help={INFO_TOOLTIP_COPY.costBasis}><input type="number" step="0.01" value={form.unitCost} onChange={(e) => setForm("unitCost", e.target.value)} /></Field>
       </section>
       <section className="forge-form-step forge-selling-step">
         <div className="forge-step-heading">
@@ -55255,7 +55700,7 @@ function InventoryForm({
             <p>Set a status, planned sale price, and profit expectation.</p>
           </div>
         </div>
-      <Field label="Planned Sale Price"><input type="number" step="0.01" value={form.salePrice} onChange={(e) => setForm("salePrice", e.target.value)} /></Field>
+      <Field label="Planned Sale Price" help={INFO_TOOLTIP_COPY.plannedSalePrice}><input type="number" step="0.01" value={form.salePrice} onChange={(e) => setForm("salePrice", e.target.value)} /></Field>
       <Field label="Status"><select value={form.status} onChange={(e) => setForm("status", e.target.value)}>{statusOptions.map((x) => <option key={x}>{x}</option>)}</select></Field>
       <Field label="Listing Platform"><input value={form.listingPlatform} onChange={(e) => setForm("listingPlatform", e.target.value)} placeholder="eBay, Whatnot, Marketplace..." /></Field>
       <Field label="Market Watch Price"><input type="number" step="0.01" value={form.marketPrice} onChange={(e) => setForm("marketPrice", e.target.value)} /></Field>
