@@ -57740,12 +57740,335 @@ html body .app-command-shell.app-vault .ember-assist-shell {
   .dashboard-layout,
   .scout-report-card-grid,
   .catalog-results-grid,
+  .market-result-add-actions,
   .vault-list,
   .forge-dashboard,
   .collection-workspace-page,
   .collections-utility-page .utility-page-layout,
+  .collections-action-grid,
+  .collections-primary-actions,
+  .menu-drawer-body,
+  .drawer-menu-stack,
+  .add-anything-flow,
+  .add-anything-more,
+  .add-anything-receipt,
+  .flow-form-grid,
   .quick-add-success-actions {
     padding-bottom: max(var(--et-mobile-scroll-clearance, 150px), calc(var(--bottom-nav-height, 62px) + env(safe-area-inset-bottom, 0px) + 72px)) !important;
     scroll-padding-bottom: max(var(--et-mobile-scroll-clearance, 150px), calc(var(--bottom-nav-height, 62px) + env(safe-area-inset-bottom, 0px) + 72px)) !important;
+  }
+}
+
+/* UI/UX stabilization sprint: mobile action clearance and denser admin/market controls. */
+@media (max-width: 780px) {
+  .app-home .hearth-command-layout,
+  .app-home .hearth-homepage,
+  .app-scout .scout-dashboard-overview,
+  .app-scout .scout-report-card-grid,
+  .app-market .marketplace-section,
+  .app-market .catalog-results-grid,
+  .app-vault .vault-page,
+  .app-forge .forge-page,
+  .app-collections .collections-utility-page .utility-page-layout,
+  .app-settings .settings-utility-page,
+  .app-adminreview .admin-ops-dashboard,
+  .app-command-shell .menu-drawer-body,
+  .app-command-shell .drawer-menu-stack {
+    padding-bottom: max(156px, calc(var(--bottom-nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 88px)) !important;
+    scroll-padding-bottom: max(156px, calc(var(--bottom-nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 88px)) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app .flow-modal[data-flow="receipt"] .flow-modal-body,
+  .app .flow-modal[data-flow="mileage"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="receipt"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="mileage"] .flow-modal-body {
+    padding-bottom: max(170px, calc(var(--bottom-nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 108px)) !important;
+    scroll-padding-bottom: max(170px, calc(var(--bottom-nav-height, 70px) + env(safe-area-inset-bottom, 0px) + 108px)) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-body {
+    padding-top: 96px !important;
+    scroll-padding-top: 108px !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .add-anything-option,
+  .app .flow-modal[data-flow="addActionSheet"] .add-anything-more summary,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .add-anything-option,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .add-anything-more summary,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .add-anything-option,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .add-anything-more summary {
+    scroll-margin-top: 108px;
+  }
+
+  .add-anything-more[open],
+  .add-anything-receipt,
+  .add-anything-flow .quick-add-inline-actions,
+  .app-forge .flow-form-grid,
+  .app-command-shell .flow-form-grid {
+    margin-bottom: 10px !important;
+  }
+
+  .app .settings-app-setup-entry-card,
+  .app-command-shell .settings-app-setup-entry-card,
+  .app-shell-dark .settings-app-setup-entry-card {
+    order: -20;
+  }
+
+  .app .settings-profile-summary-card,
+  .app-command-shell .settings-profile-summary-card,
+  .app-shell-dark .settings-profile-summary-card {
+    padding: 12px !important;
+  }
+
+  .app .settings-profile-summary-card .settings-action-row,
+  .app-command-shell .settings-profile-summary-card .settings-action-row,
+  .app-shell-dark .settings-profile-summary-card .settings-action-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app .settings-app-setup-entry-card .settings-action-row,
+  .app-command-shell .settings-app-setup-entry-card .settings-action-row,
+  .app-shell-dark .settings-app-setup-entry-card .settings-action-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app .settings-app-setup-entry-card .settings-action-row > button:first-child,
+  .app-command-shell .settings-app-setup-entry-card .settings-action-row > button:first-child,
+  .app-shell-dark .settings-app-setup-entry-card .settings-action-row > button:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .app .admin-overview-strip,
+  .app-command-shell .admin-overview-strip,
+  .app-shell-dark .admin-overview-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .app .admin-overview-tile,
+  .app-command-shell .admin-overview-tile,
+  .app-shell-dark .admin-overview-tile {
+    min-height: 68px !important;
+    padding: 9px !important;
+  }
+
+  .app .admin-overview-tile span,
+  .app-command-shell .admin-overview-tile span,
+  .app-shell-dark .admin-overview-tile span {
+    font-size: 0.62rem !important;
+    line-height: 1.1 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .app .admin-overview-tile strong,
+  .app-command-shell .admin-overview-tile strong,
+  .app-shell-dark .admin-overview-tile strong {
+    font-size: 1.08rem !important;
+  }
+
+  .app .admin-essential-queue-grid,
+  .app-command-shell .admin-essential-queue-grid,
+  .app-shell-dark .admin-essential-queue-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app .admin-essential-queue-card,
+  .app-command-shell .admin-essential-queue-card,
+  .app-shell-dark .admin-essential-queue-card {
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 6px 10px !important;
+  }
+
+  .app .admin-essential-queue-card p,
+  .app-command-shell .admin-essential-queue-card p,
+  .app-shell-dark .admin-essential-queue-card p {
+    grid-column: 1 / -1;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .app .admin-essential-queue-card b,
+  .app-command-shell .admin-essential-queue-card b,
+  .app-shell-dark .admin-essential-queue-card b {
+    justify-self: end;
+  }
+
+  .app-adminreview .summary-pill-row,
+  .app-command-shell.app-adminreview .summary-pill-row,
+  .app-shell-dark.app-adminreview .summary-pill-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    justify-content: stretch !important;
+    overflow: visible !important;
+  }
+
+  .app-adminreview .summary-pill-row > *,
+  .app-command-shell.app-adminreview .summary-pill-row > *,
+  .app-shell-dark.app-adminreview .summary-pill-row > * {
+    min-width: 0 !important;
+    width: 100% !important;
+    white-space: normal !important;
+  }
+
+  .app-adminreview .standard-page-header-tabs,
+  .app-command-shell.app-adminreview .standard-page-header-tabs,
+  .app-shell-dark.app-adminreview .standard-page-header-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+    gap: 8px !important;
+  }
+
+  .app-adminreview .standard-page-header-tabs button,
+  .app-command-shell.app-adminreview .standard-page-header-tabs button,
+  .app-shell-dark.app-adminreview .standard-page-header-tabs button {
+    min-width: 0 !important;
+    width: 100% !important;
+    white-space: normal !important;
+  }
+
+  .app-forge .forge-section-tabs {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    padding: 6px 2px 10px !important;
+    scroll-padding-inline: 12px;
+    scrollbar-width: none;
+  }
+
+  .app-forge .forge-section-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-forge .forge-section-tab,
+  .app-forge .forge-section-tabs button {
+    flex: 0 0 auto !important;
+    min-width: min(112px, 34vw) !important;
+    max-width: 132px !important;
+    padding: 10px !important;
+  }
+
+  .app-forge .forge-section-tab small {
+    display: none !important;
+  }
+
+  .app-forge .forge-section-tab strong {
+    font-size: 0.86rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .app-market .market-mobile-product-card {
+    gap: 10px !important;
+    padding-bottom: 14px !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-add-actions,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-add-actions,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    padding-left: 0 !important;
+    gap: 8px !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-add-actions button,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-add-actions button,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions button {
+    min-height: 42px !important;
+    padding-inline: 10px !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-add-actions button:not(.market-result-add-button),
+  .app-command-shell.app-market .market-mobile-product-card .market-result-add-actions button:not(.market-result-add-button),
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions button:not(.market-result-add-button) {
+    min-width: 82px !important;
+    width: auto !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-add-actions .market-result-add-button,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-add-actions .market-result-add-button,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions .market-result-add-button {
+    grid-column: auto !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-card-hint,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-card-hint,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-card-hint {
+    display: none !important;
+  }
+
+  .app-scout .scout-report-detail-breakdown details,
+  .app-command-shell.app-scout .scout-report-detail-breakdown details,
+  .app.app-scout .scout-report-detail-breakdown details {
+    min-height: 0 !important;
+  }
+
+  .app-scout .scout-report-detail-breakdown details:not([open]),
+  .app-command-shell.app-scout .scout-report-detail-breakdown details:not([open]),
+  .app.app-scout .scout-report-detail-breakdown details:not([open]) {
+    padding-bottom: 0 !important;
+  }
+
+  .app-scout .scout-report-detail-sheet .modal-sticky-footer,
+  .app-command-shell.app-scout .scout-report-detail-sheet .modal-sticky-footer,
+  .app.app-scout .scout-report-detail-sheet .modal-sticky-footer {
+    position: static !important;
+  }
+
+  .collections-action-grid,
+  .collections-primary-actions,
+  .collection-manager-actions {
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .app .settings-app-setup-entry-card .settings-action-row,
+  .app-command-shell .settings-app-setup-entry-card .settings-action-row,
+  .app-shell-dark .settings-app-setup-entry-card .settings-action-row,
+  .app .settings-profile-summary-card .settings-action-row,
+  .app-command-shell .settings-profile-summary-card .settings-action-row,
+  .app-shell-dark .settings-profile-summary-card .settings-action-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app .admin-overview-strip,
+  .app-command-shell .admin-overview-strip,
+  .app-shell-dark .admin-overview-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app .mileage-purpose-rail,
+  .app-command-shell .mileage-purpose-rail,
+  .app-shell-dark .mileage-purpose-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+  }
+
+  .app .mileage-purpose-rail button,
+  .app-command-shell .mileage-purpose-rail button,
+  .app-shell-dark .mileage-purpose-rail button {
+    min-height: 52px !important;
+    font-size: 0.76rem !important;
+  }
+
+  .app .guided-quick-more-grid,
+  .app-command-shell .guided-quick-more-grid,
+  .app-shell-dark .guided-quick-more-grid,
+  .app .add-anything-option-grid--more,
+  .app-command-shell .add-anything-option-grid--more,
+  .app-shell-dark .add-anything-option-grid--more {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 8px !important;
   }
 }

@@ -82,7 +82,7 @@ const sellerState = resolveAdaptiveUiState({
 });
 const sellerPlan = selectSmartQuickAddActionPlan(sellerState, { currentPage: "forge", forgeAvailable: true });
 assert.deepEqual(sellerPlan.visibleKeys, ["forge", "sale", "receipt", "mileage", "vault", "missing"]);
-assert.deepEqual(sellerPlan.overflowKeys, ["quickFind"]);
+assert.deepEqual(sellerPlan.overflowKeys, ["scout", "quickFind"]);
 
 const businessState = resolveAdaptiveUiState({
   currentRoute: "forge",
@@ -91,6 +91,8 @@ const businessState = resolveAdaptiveUiState({
 const businessPlan = selectSmartQuickAddActionPlan(businessState, { currentPage: "forge", forgeAvailable: true });
 assert.deepEqual(businessPlan.visibleKeys, ["forge", "sale", "receipt", "mileage", "vault", "missing"]);
 assert.ok(businessPlan.overflowKeys.includes("expense"));
+assert.ok(businessPlan.overflowKeys.includes("scout"));
+assert.ok(businessPlan.overflowKeys.includes("quickFind"));
 assert.ok(businessPlan.visibleKeys.length <= 6);
 
 const adminState = resolveAdaptiveUiState({ currentRoute: "admin", adminToolsVisible: true });
@@ -101,6 +103,6 @@ assert.equal(collectorQuickAdd.includes("reviewMissing"), false);
 
 assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "scout", forgeAvailable: true })[0], "scout");
 assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "vault", forgeAvailable: true })[0], "vault");
-assert.equal(selectSmartQuickAddKeys(sellerState, { currentPage: "market", forgeAvailable: true })[0], "vault");
+assert.equal(selectSmartQuickAddKeys(sellerState, { currentPage: "market", forgeAvailable: true })[0], "forge");
 
 console.log("Quick Add routing tests passed.");

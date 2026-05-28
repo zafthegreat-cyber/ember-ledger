@@ -326,21 +326,21 @@ export function selectSmartQuickAddActionPlan(state = {}, { forgeAvailable = fal
     }
   } else if (state.showSellerTools) {
     if (pageKey === "scout") {
-      orderedKeys = ["scout", "missing", "forge", "vault", "sale", "receipt", "quickFind", "mileage"];
+      orderedKeys = ["scout", "forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind", "expense"];
     } else if (pageKey === "vault") {
-      orderedKeys = ["vault", "forge", "sale", "receipt", "missing", "mileage", "quickFind"];
+      orderedKeys = ["vault", "forge", "sale", "receipt", "mileage", "missing", "scout", "quickFind", "expense"];
     } else if (pageKey === "forge") {
       orderedKeys = businessTools
-        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "expense", "quickFind"]
-        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind"];
+        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind", "expense"]
+        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind"];
     } else if (pageKey === "market") {
       orderedKeys = businessTools
-        ? ["vault", "forge", "sale", "receipt", "missing", "mileage", "expense", "quickFind"]
-        : ["vault", "forge", "sale", "missing", "receipt", "mileage", "quickFind"];
+        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind", "scout", "expense"]
+        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind", "scout"];
     } else {
       orderedKeys = businessTools
-        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "expense", "quickFind"]
-        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind"];
+        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind", "expense"]
+        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind"];
     }
   } else if (state.familyMode) {
     visibleLimit = Math.min(maxVisible, 4);

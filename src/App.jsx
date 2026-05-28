@@ -11087,7 +11087,20 @@ export default function App() {
   const forgePurchaserOptions = activeForgeWorkspace
     ? purchasersForWorkspace(activeForgeWorkspace.id)
     : purchaserOptions;
-  const peopleOptions = forgePurchaserOptions.map((purchaser) => purchaser.name);
+  function mergePurchaserLists(...lists) {
+    const byKey = new Map();
+    for (const list of lists) {
+      for (const purchaser of list || []) {
+        if (!purchaser || purchaser.active === false) continue;
+        const key = String(purchaser.id || purchaser.name || "").trim().toLowerCase();
+        if (!key || byKey.has(key)) continue;
+        byKey.set(key, purchaser);
+      }
+    }
+    return [...byKey.values()].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+  }
+  const sharedPeopleOptions = mergePurchaserLists(purchaserOptions, forgePurchaserOptions, purchasers);
+  const peopleOptions = sharedPeopleOptions.map((purchaser) => purchaser.name);
   const purchaserManagerWorkspace = visibleWorkspaceOptions.find((workspace) => String(workspace.id) === String(purchaserManagerWorkspaceId)) || activeWorkspace;
   const purchaserManagerList = purchasersForWorkspace(purchaserManagerWorkspace?.id, { includeArchived: true });
 
@@ -37163,6 +37176,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "flagged", label: "Flagged content", value: flaggedContentCount, tone: flaggedContentCount ? "danger" : "success", filter: "Reports & Moderation" },
       { key: "kids", label: "Kids requests", value: kidsReviewCount, tone: kidsReviewCount ? "warning" : "success", filter: "Kids Program Applications" },
       { key: "shops", label: "Shop approvals", value: commandSummary.shopsNeedingReview, tone: commandSummary.shopsNeedingReview ? "warning" : "success", filter: "Family-Friendly Shop Review" },
+      { key: "roles", label: "User roles", value: roleManagementCount || approvedBetaUserCount || 0, tone: roleManagementVisible ? "info" : "muted", filter: "Role Management" },
     ];
     const adminEssentialQueues = [
       { key: "beta-requests", title: "Beta Requests", count: betaRequests.length, status: betaRequests.length ? "Needs review" : "Clear", detail: "Approve, waitlist, deny, or reset beta access requests.", filter: "Beta Access" },
@@ -39656,7 +39670,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </Field>
             <PurchaserSelect
               label="Who paid?"
-              purchasers={forgePurchaserOptions}
+              purchasers={sharedPeopleOptions}
               valueName={quickAddWizard.receiptPayerName || ""}
               onSelect={(purchaser) => updateQuickAddWizard({ receiptPayerName: purchaser?.name || "" })}
               onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id || activeWorkspace?.id })}
@@ -39761,7 +39775,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       preferredKeys: quickAddPreferencePlan.preferredKeys,
     });
     const sellerQuickAddActive = Boolean(personalizationContext.sellerToolsEnabled || adaptiveUiState.showSellerTools);
-    const sellerQuickAddOrder = ["forge", "sale", "receipt", "mileage", "vault", "missing", "expense", "quickFind"];
+    const sellerQuickAddOrder = ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind", "expense"];
     const entryOptionByPreferenceKey = {
       vault: { key: "vault", title: "Add to Vault", helper: "Save a card or product to your collection.", icon: "vault", tone: "vault", onClick: () => runAddSheetAction("vaultItem") },
       scout: { key: "scout", title: "Scout Report", helper: "Post store, status, and time first.", icon: "scout", tone: "scout", onClick: () => runAddSheetAction("storeReport") },
@@ -40595,7 +40609,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
         <PurchaserSelect
           label="Who logged this mileage?"
-          purchasers={forgePurchaserOptions}
+          purchasers={sharedPeopleOptions}
           valueName={tripForm.driver}
           onSelect={(purchaser) => updateTripForm("driver", purchaser?.name || "")}
           onCreatePurchaser={(name, note, type) => addPurchaserName(name, { note, type, workspaceId: activeForgeWorkspace?.id })}
@@ -43157,6 +43171,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }, [activeFlowModal?.id, activeFlowModal?.type, multiDestinationStep, quickScoutReportStep]);
 
   useEffect(() => {
+    if (activeFlowModal?.type !== "addActionSheet") return undefined;
+    const frame = requestAnimationFrame(() => {
+      flowModalRef.current?.querySelector(".flow-modal-body")?.scrollTo?.({ top: 0, behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeFlowModal?.type, quickAddWizard.screen, quickAddWizard.path]);
+
+  useEffect(() => {
     if (!activeFlowModal || typeof window === "undefined") return undefined;
     const modalId = activeFlowModal.id;
     const currentState = window.history.state || {};
@@ -45356,8 +45378,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
         <div className="drawer-inline-actions settings-action-row">
           <button type="button" className="drawer-link" onClick={() => openAppSetupPersonalizationPanel("setup")}>Open setup</button>
-          <button type="button" className="secondary-button" onClick={() => openAppSetupPersonalizationPanel("customize")}>Customize app</button>
           <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: false })}>Change tools</button>
+          <button type="button" className="secondary-button" onClick={() => openAppSetupPersonalizationPanel("customize")}>Customize app</button>
+          <button type="button" className="secondary-button" onClick={() => openAppSetupPersonalizationPanel("recommendations")}>Review recommendations</button>
         </div>
       </section>
     );
@@ -45586,7 +45609,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       children: (
         <>
           {renderAppSetupProminentEntryCard()}
-          {renderSettingsProfileSummaryCard()}
+          {renderSettingsProfileSummaryCard({ compact: true })}
           {renderAppSetupPersonalizationCard()}
           {renderSettingsWorkspaceCard()}
           <div className="drawer-info-card settings-command-overview utility-card">
