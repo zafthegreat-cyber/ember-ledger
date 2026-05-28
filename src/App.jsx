@@ -33898,7 +33898,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     };
 
     return (
-      <section className="drawer-info-card app-setup-personalization-card settings-app-setup-card utility-card utility-card-wide">
+      <section id="app-setup-personalization" className="drawer-info-card app-setup-personalization-card settings-app-setup-card utility-card utility-card-wide">
         <div className="compact-card-header app-setup-personalization-header">
           <div>
             <p className="section-kicker">App Setup &amp; Personalization</p>
@@ -34012,8 +34012,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : (
               <div className="small-empty-state app-setup-empty-recommendations">
-                <strong>No recommendations right now.</strong>
-                <span>Use the app normally. Ember &amp; Tide will suggest helpful changes when there is enough signal.</span>
+                <strong>No recommendations yet</strong>
+                <span>Use Ember &amp; Tide a little more and we&apos;ll suggest ways to simplify your pages.</span>
+                <div className="drawer-inline-actions app-setup-empty-actions">
+                  <button type="button" className="drawer-link" onClick={resetAppSetupToRecommended}>Reset to recommended setup</button>
+                  <button type="button" className="secondary-button" onClick={() => setAppSetupPanel("customize")}>Customize manually</button>
+                  <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: false })}>Review setup answers</button>
+                </div>
               </div>
             )}
             <p className="compact-subtitle">Storage: recommendations and dismissed cards are saved locally in beta. Cross-device sync needs a backend profile preference field later.</p>
@@ -38690,6 +38695,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span className="status-badge">{visiblePosts} visible</span>
           </div>
 
+          <div className="tidepool-support-strip">
+            <div>
+              <strong>Need help?</strong>
+              <span>Send app feedback or report a bug. Post safety reports stay in each post&apos;s Safety menu.</span>
+            </div>
+            <div className="tidepool-support-actions">
+              <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Tidepool Community" })}>Send feedback</button>
+              <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("bug", { page: "Tidepool Community" })}>Report an issue</button>
+            </div>
+          </div>
+
           <div className="tidepool-feed-grid">
             {filteredTidepoolPosts.length === 0 ? (
               <div className="empty-state tidepool-empty-state">
@@ -39571,7 +39587,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       );
     }
 
-    const quickAddPreferencePlan = resolveQuickAddPreferenceActionKeys(currentAppSetupPreferences(), appPersonalizationContext(), { maxVisible: 6 });
+    const personalizationContext = appPersonalizationContext();
+    const quickAddPreferencePlan = resolveQuickAddPreferenceActionKeys(currentAppSetupPreferences(), personalizationContext, { maxVisible: 6 });
+    const quickAddAdaptivePlan = selectSmartQuickAddActionPlan(adaptiveUiState, {
+      forgeAvailable: Boolean(activeForgeWorkspace),
+      currentPage: activeTab,
+      maxVisible: quickAddPreferencePlan.maxVisible,
+      preferredKeys: quickAddPreferencePlan.preferredKeys,
+    });
+    const sellerQuickAddActive = Boolean(personalizationContext.sellerToolsEnabled || adaptiveUiState.showSellerTools);
+    const sellerQuickAddOrder = ["forge", "sale", "receipt", "mileage", "vault", "missing", "expense", "quickFind"];
     const entryOptionByPreferenceKey = {
       vault: { key: "vault", title: "Add to Vault", helper: "Save a card or product to your collection.", icon: "vault", tone: "vault", onClick: () => runAddSheetAction("vaultItem") },
       scout: { key: "scout", title: "Scout Report", helper: "Post store, status, and time first.", icon: "scout", tone: "scout", onClick: () => runAddSheetAction("storeReport") },
@@ -39589,8 +39614,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "photo", title: "Photo lookup", helper: "Upload a reference photo, then match manually.", icon: "camera", tone: "vault", onClick: () => setQuickAddPath("photo") },
       { key: "manual", title: "Manual Item", helper: "Add anything without a catalog match.", icon: "manual_entry", tone: "warning", ariaLabel: "Manual Add item", onClick: () => openQuickAddManualItemFlow() },
     ];
+    const preferredEntryKeys = sellerQuickAddActive ? sellerQuickAddOrder : quickAddAdaptivePlan.allKeys;
     const allEntryOptions = [
-      ...quickAddPreferencePlan.preferredKeys.map((key) => entryOptionByPreferenceKey[key]).filter(Boolean),
+      ...preferredEntryKeys.map((key) => entryOptionByPreferenceKey[key]).filter(Boolean),
       ...fallbackEntryOptions,
     ].filter((option, index, rows) => rows.findIndex((candidate) => candidate.key === option.key) === index);
     const entryOptions = allEntryOptions.slice(0, quickAddPreferencePlan.maxVisible);
@@ -45139,6 +45165,30 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function openAppSetupPersonalizationPanel(panel = "setup") {
+    setAppSetupPanel(panel);
+    window.setTimeout(() => {
+      document.getElementById("app-setup-personalization")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 40);
+  }
+
+  function renderAppSetupProminentEntryCard() {
+    return (
+      <section className="drawer-info-card settings-app-setup-entry-card utility-card utility-card-wide">
+        <div>
+          <p className="section-kicker">App Setup &amp; Personalization</p>
+          <h3>Choose your tools, customize pages, and review smart recommendations.</h3>
+          <p className="compact-subtitle">Keep Ember &amp; Tide simple for families, detailed for sellers, and easy to change anytime.</p>
+        </div>
+        <div className="drawer-inline-actions settings-action-row">
+          <button type="button" className="drawer-link" onClick={() => openAppSetupPersonalizationPanel("setup")}>Open setup</button>
+          <button type="button" className="secondary-button" onClick={() => openAppSetupPersonalizationPanel("customize")}>Customize app</button>
+          <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: false })}>Change tools</button>
+        </div>
+      </section>
+    );
+  }
+
   function renderSettingsWorkspaceCard() {
     const activeRecords = workspaceRecordCountsFor(activeWorkspace?.id) || { total: 0 };
     return (
@@ -45361,6 +45411,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       className: "settings-utility-page",
       children: (
         <>
+          {renderAppSetupProminentEntryCard()}
           {renderSettingsProfileSummaryCard()}
           {renderAppSetupPersonalizationCard()}
           {renderSettingsWorkspaceCard()}
