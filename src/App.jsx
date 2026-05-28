@@ -453,6 +453,17 @@ import {
   selectAdaptiveHearthQuickActionKeys,
   selectSmartQuickAddActionPlan,
 } from "./utils/adaptiveUi";
+import {
+  APP_SETUP_PAGE_GROUPS,
+  appSetupOptionAllowed,
+  applyAppSetupRecommendation,
+  buildAppSetupRecommendations,
+  buildRecommendedAppPreferences,
+  dismissAppSetupRecommendation,
+  normalizeAppPersonalizationPreferences,
+  resolveQuickAddPreferenceActionKeys,
+  sanitizeAppSetupVisibleKeys,
+} from "./utils/appPersonalizationUtils";
 
 const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
 const SmartAddCatalog = lazy(() => import("./components/SmartAddCatalog"));
@@ -3422,6 +3433,13 @@ const INFO_TOOLTIP_COPY = {
   reimbursement: "Money someone may need back for expenses or mileage they covered.",
   payoutEstimate: "Estimated amount available to pay after costs, expenses, and reimbursements.",
   vehicle: "A reusable vehicle profile for mileage logs and business records.",
+  smartSetup: "Smart Setup shapes the app around your collecting, family, Scout, or seller needs. You can change this anytime.",
+  customizeMyApp: "Choose which sections each page shows first. This changes visibility only, not your saved data or permissions.",
+  smartRecommendations: "Ember & Tide can suggest layout changes based on app use, but it will not change your layout without confirmation.",
+  resetRecommended: "Restore the recommended layout for your current setup mode.",
+  sellerTools: "Seller tools unlock Forge, receipts, mileage, expenses, sales, and planning summaries when you choose to use them.",
+  adminTools: "Admin tools are protected by account permissions. Visibility settings cannot grant admin access.",
+  lockedTools: "Locked tools stay unavailable until your role, setup, or beta access allows them.",
 };
 
 function normalizePersonType(value = "") {
@@ -3797,7 +3815,7 @@ function InfoTooltip({ label = "More information", children }) {
           setOpen((current) => !current);
         }}
       >
-        ⓘ
+        &#9432;
       </button>
       {open ? (
         <span className="info-tooltip-bubble" role="tooltip">
@@ -4784,6 +4802,8 @@ export default function App() {
   const [smartSetupOpen, setSmartSetupOpen] = useState(false);
   const [smartSetupStep, setSmartSetupStep] = useState(SMART_SETUP_STEPS[0]);
   const [smartSetupDraft, setSmartSetupDraft] = useState(() => normalizeSmartSetupPreferences());
+  const [appSetupPanel, setAppSetupPanel] = useState("setup");
+  const [appSetupPersonalization, setAppSetupPersonalization] = useState(() => normalizeAppPersonalizationPreferences());
   const [hearthStartHereExpanded, setHearthStartHereExpanded] = useState(false);
   const [hearthDetailsExpanded, setHearthDetailsExpanded] = useState(false);
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
@@ -5727,6 +5747,135 @@ export default function App() {
     setupPreferences: smartSetupPreferences,
   });
   const adaptiveSellerToolsVisible = adaptiveUiState.showSellerTools;
+
+  function appPersonalizationContext() {
+    return {
+      userType,
+      dashboardPreset,
+      sellerToolsEnabled: adaptiveUiState.showSellerTools,
+      adminToolsVisible: adaptiveUiState.showAdminTools,
+      familyMode: adaptiveUiState.familyMode,
+      scoutMode: adaptiveUiState.scoutMode,
+    };
+  }
+
+  function currentAppSetupPreferences() {
+    return normalizeAppPersonalizationPreferences(appSetupPersonalization, appPersonalizationContext());
+  }
+
+  function updateAppSetupPersonalization(updater, message = "") {
+    if (blockGuestSave()) return;
+    setAppSetupPersonalization((current) => {
+      const context = appPersonalizationContext();
+      const normalized = normalizeAppPersonalizationPreferences(current, context);
+      const next = typeof updater === "function" ? updater(normalized, context) : { ...normalized, ...updater };
+      return normalizeAppPersonalizationPreferences({ ...next, updatedAt: new Date().toISOString() }, context);
+    });
+    if (message) setVaultToast(message);
+  }
+
+  function toggleAppSetupPageOption(pageKey, optionKey, enabled) {
+    updateAppSetupPersonalization((current, context) => {
+      const currentKeys = current.pagePreferences?.[pageKey]?.visibleKeys || [];
+      const nextKeys = enabled
+        ? [...currentKeys, optionKey]
+        : currentKeys.filter((key) => key !== optionKey);
+      return {
+        ...current,
+        pagePreferences: {
+          ...current.pagePreferences,
+          [pageKey]: {
+            ...(current.pagePreferences?.[pageKey] || {}),
+            visibleKeys: sanitizeAppSetupVisibleKeys(pageKey, nextKeys, context),
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    }, "App setup preference updated.");
+  }
+
+  function saveAppSetupPreferences() {
+    updateAppSetupPersonalization((current) => current, "Preferences saved on this device.");
+  }
+
+  function resetAppSetupToRecommended() {
+    if (blockGuestSave()) return;
+    const context = appPersonalizationContext();
+    setAppSetupPersonalization({
+      ...buildRecommendedAppPreferences(context),
+      updatedAt: new Date().toISOString(),
+    });
+    resetHomeStatsForUserType(userType);
+    resetDashboardLayoutForPreset(dashboardPreset);
+    setVaultToast("Recommended setup restored.");
+  }
+
+  function acceptAppSetupRecommendation(recommendationId) {
+    updateAppSetupPersonalization((current, context) => applyAppSetupRecommendation(current, recommendationId, context), "Recommendation applied. Review and save preferences.");
+  }
+
+  function dismissAppSetupRecommendationCard(recommendationId) {
+    updateAppSetupPersonalization((current, context) => dismissAppSetupRecommendation(current, recommendationId, context), "Recommendation dismissed.");
+  }
+
+  function setSmartRecommendationsEnabled(enabled) {
+    updateAppSetupPersonalization((current) => ({
+      ...current,
+      smartRecommendationsEnabled: Boolean(enabled),
+    }), enabled ? "Smart Recommendations are on." : "Smart Recommendations are off.");
+  }
+
+  function turnOnSellerToolsFromPersonalization() {
+    const sellerSetup = normalizeSmartSetupPreferences({
+      ...smartSetupPreferences,
+      enabledToolsets: [...new Set([...(smartSetupPreferences.enabledToolsets || []), "forge_seller_tools", "sales_tracking", "receipts_and_expenses"])],
+      primaryMode: "casual_seller",
+      businessTools: smartSetupPreferences.businessTools === "no_i_only_collect" ? "maybe_later" : smartSetupPreferences.businessTools,
+    });
+    const recommendation = recommendSmartSetup(sellerSetup, { adminAllowed: adaptiveAdminNavVisible });
+    setSmartSetupDraft(sellerSetup);
+    applySmartSetupMode(recommendation, sellerSetup);
+    updateBetaReadinessData((current) => ({
+      ...current,
+      onboarding: {
+        ...(current.onboarding || {}),
+        smartSetup: {
+          ...sellerSetup,
+          recommendedPlanType: recommendation.planType,
+          recommendedPlanLabel: recommendation.label,
+          completedAt: sellerSetup.completedAt || new Date().toISOString(),
+          setupCompletedAt: sellerSetup.setupCompletedAt || new Date().toISOString(),
+        },
+      },
+    }));
+    setVaultToast("Seller tools are on. Forge, receipts, mileage, and Payout Assist are available.");
+  }
+
+  function turnOffSellerToolsFromPersonalization() {
+    const collectorSetup = normalizeSmartSetupPreferences({
+      ...smartSetupPreferences,
+      enabledToolsets: (smartSetupPreferences.enabledToolsets || []).filter((key) => !["forge_seller_tools", "sales_tracking", "receipts_and_expenses", "mileage_tracking"].includes(key)),
+      primaryMode: "collector_parent",
+      businessTools: "no_i_only_collect",
+    });
+    const recommendation = recommendSmartSetup(collectorSetup, { adminAllowed: adaptiveAdminNavVisible });
+    setSmartSetupDraft(collectorSetup);
+    applySmartSetupMode(recommendation, collectorSetup);
+    updateBetaReadinessData((current) => ({
+      ...current,
+      onboarding: {
+        ...(current.onboarding || {}),
+        smartSetup: {
+          ...collectorSetup,
+          recommendedPlanType: recommendation.planType,
+          recommendedPlanLabel: recommendation.label,
+          completedAt: collectorSetup.completedAt || new Date().toISOString(),
+          setupCompletedAt: collectorSetup.setupCompletedAt || new Date().toISOString(),
+        },
+      },
+    }));
+    setVaultToast("Seller tools are tucked away. Collector setup is active.");
+  }
 
   const mainTabByKey = {
     home: { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
@@ -13555,6 +13704,12 @@ export default function App() {
       setDashboardPreset(savedPreset);
       setDashboardLayout(normalizeDashboardLayout(saved.dashboardLayout, savedPreset));
       setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
+      setAppSetupPersonalization(normalizeAppPersonalizationPreferences(saved.appSetupPersonalization || saved.settings?.appSetupPersonalization, {
+        userType: savedUserType,
+        dashboardPreset: savedPreset,
+        sellerToolsEnabled: sellerModeEnabled(savedUserType, savedPreset),
+        adminToolsVisible: false,
+      }));
       setCloudSyncPreference(saved.cloudSyncPreference || "local");
       setSubscriptionProfile(normalizeLocalSubscriptionProfile(saved.subscriptionProfile));
       setLocationSettings({
@@ -13975,6 +14130,12 @@ export default function App() {
         dashboardPreset,
         dashboardLayout,
         dashboardCardStyle,
+        appSetupPersonalization: normalizeAppPersonalizationPreferences(appSetupPersonalization, {
+          userType,
+          dashboardPreset,
+          sellerToolsEnabled: sellerModeEnabled(userType, dashboardPreset),
+          adminToolsVisible: Boolean(adminModeStorageReady && adminViewMode === "admin" && canManageBeta(currentUserProfile)),
+        }),
         cloudSyncPreference,
         locationSettings: hasCurrentLocation || !hasPersistedLocation ? locationSettings : persistedLocationSettings,
         subscriptionProfile,
@@ -13986,7 +14147,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -23874,6 +24035,7 @@ function renderForgeAccessState() {
           dashboardPreset,
           dashboardLayout,
           dashboardCardStyle,
+          appSetupPersonalization: normalizeAppPersonalizationPreferences(appSetupPersonalization, appPersonalizationContext()),
           forgeModeSettings: normalizeForgeModeSettings(forgeModeSettings),
           locationSettings,
           userSearchAliases,
@@ -24094,6 +24256,7 @@ function renderForgeAccessState() {
       if (data.settings.dashboardPreset) setDashboardPreset(normalizeDashboardPreset(data.settings.dashboardPreset));
       if (data.settings.dashboardLayout) setDashboardLayout(normalizeDashboardLayout(data.settings.dashboardLayout, data.settings.dashboardPreset || dashboardPreset));
       if (data.settings.dashboardCardStyle) setDashboardCardStyle(normalizeDashboardCardStyle(data.settings.dashboardCardStyle));
+      if (data.settings.appSetupPersonalization) setAppSetupPersonalization(normalizeAppPersonalizationPreferences(data.settings.appSetupPersonalization, appPersonalizationContext()));
       if (data.settings.forgeModeSettings) setForgeModeSettings(normalizeForgeModeSettings(data.settings.forgeModeSettings));
       if (data.settings.locationSettings) setLocationSettings((current) => ({ ...current, ...data.settings.locationSettings }));
       if (Array.isArray(data.settings.userSearchAliases)) setUserSearchAliases(data.settings.userSearchAliases);
@@ -33645,6 +33808,255 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderAppSetupPersonalizationCard() {
+    const context = appPersonalizationContext();
+    const preferences = currentAppSetupPreferences();
+    const setupLabelFor = (key, rows) => rows.find((row) => row.key === key)?.label || String(key || "").replace(/_/g, " ");
+    const setupPurposes = smartSetupPreferences.purposes.map((key) => setupLabelFor(key, SMART_SETUP_PURPOSE_OPTIONS));
+    const setupTools = smartSetupPreferences.enabledToolsets.map((key) => setupLabelFor(key, SMART_SETUP_TOOL_OPTIONS));
+    const businessNeed = setupLabelFor(smartSetupPreferences.businessTools, SMART_SETUP_BUSINESS_OPTIONS);
+    const primaryMode = setupLabelFor(smartSetupPreferences.primaryMode, SMART_SETUP_PRIMARY_MODE_OPTIONS);
+    const quickAddKeys = preferences.pagePreferences.quickAdd?.visibleKeys || [];
+    const quickAddVisibleCount = Math.min(6, quickAddKeys.length);
+    const appSetupUsage = {
+      vaultItems: workspaceItems.filter(isVaultItemRecord).length,
+      forgeItems: forgeInventoryItems.length,
+      scoutReports: scoutSnapshot.reports?.length || 0,
+      watchlistItems: tideTradrWatchlist.length,
+      sales: workspaceSales.length,
+      expenses: workspaceExpenses.length,
+      mileageTrips: workspaceMileageTrips.length,
+      sparkFocus: smartSetupPreferences.purposes.includes("the_spark_kids_program") || smartSetupPreferences.enabledToolsets.includes("the_spark_kids_program"),
+    };
+    const recommendationCards = buildAppSetupRecommendations(preferences, context, appSetupUsage);
+    const setupStats = [
+      { label: "Current mode", value: smartSetupRecommendation.label, helper: smartSetupRecommendation.summary },
+      { label: "Purpose", value: setupPurposes.slice(0, 2).join(", ") || "Not set yet", helper: setupPurposes.length > 2 ? `${setupPurposes.length - 2} more selected` : "Change this anytime." },
+      { label: "Tools needed", value: setupTools.slice(0, 2).join(", ") || "Recommended defaults", helper: setupTools.length > 2 ? `${setupTools.length - 2} more tools selected` : "Based on Smart Setup." },
+      { label: "Business/tax needs", value: businessNeed || "Not set", helper: context.sellerToolsEnabled ? "Seller tools are enabled." : "Seller tools stay tucked away." },
+      { label: "Home area", value: locationSettings.manualLocation || locationSettings.selectedSavedLocation || smartSetupPreferences.homeArea || "Not set", helper: "Used for Scout sorting and favorite stores." },
+      { label: "Quick Add", value: `${quickAddVisibleCount} visible`, helper: "Extra enabled actions go under More." },
+    ];
+    const panelRows = [
+      { key: "setup", label: "Setup", help: INFO_TOOLTIP_COPY.smartSetup },
+      { key: "customize", label: "Customize", help: INFO_TOOLTIP_COPY.customizeMyApp },
+      { key: "recommendations", label: "Recommendations", help: INFO_TOOLTIP_COPY.smartRecommendations },
+      { key: "reset", label: "Reset", help: INFO_TOOLTIP_COPY.resetRecommended },
+    ];
+    const modeRows = [
+      { key: "budget", title: "Collector / family", helper: "Simple family-friendly collection tools.", active: normalizeUserType(userType) === "budget" || normalizeDashboardPreset(dashboardPreset) === "budget_parent" },
+      { key: "collector", title: "Collector", helper: "Vault, Scout, Market Watch, and community.", active: normalizeUserType(userType) === "collector" && normalizeDashboardPreset(dashboardPreset) !== "seller" },
+      { key: "seller", title: "Seller / business", helper: "Forge, receipts, mileage, sales, and Payout Assist.", active: context.sellerToolsEnabled },
+    ];
+
+    const renderCustomizeGroup = (group) => {
+      const groupLocked = group.sellerOnly && !context.sellerToolsEnabled && !context.adminToolsVisible;
+      const visibleKeys = preferences.pagePreferences[group.key]?.visibleKeys || [];
+      const allowedOptions = group.options.filter((option) => appSetupOptionAllowed(option, context));
+      return (
+        <details className={groupLocked ? "app-setup-custom-group is-locked" : "app-setup-custom-group"} key={group.key} open={group.key === "hearth" || group.key === "quickAdd"}>
+          <summary>
+            <span>
+              <strong>{group.label}</strong>
+              <small>{group.subtitle}</small>
+            </span>
+            <b>{groupLocked ? "Locked" : `${visibleKeys.length} on`}</b>
+          </summary>
+          {groupLocked ? (
+            <div className="app-setup-locked-note">
+              <strong>Seller tools are off</strong>
+              <p>{INFO_TOOLTIP_COPY.sellerTools}</p>
+              <button type="button" className="secondary-button" onClick={turnOnSellerToolsFromPersonalization}>Turn on seller tools</button>
+            </div>
+          ) : (
+            <div className="app-setup-option-list">
+              {allowedOptions.map((option) => {
+                const enabled = visibleKeys.includes(option.key);
+                const disabled = Boolean(option.locked);
+                return (
+                  <label className={disabled ? "toggle-row app-setup-option-row is-locked" : "toggle-row app-setup-option-row"} key={option.key}>
+                    <span>
+                      <strong>{option.label}</strong>
+                      <small>{option.helper}</small>
+                      {option.sellerOnly ? <small className="status-badge">Seller tools</small> : null}
+                      {option.adminOnly ? <small className="status-badge admin-badge">Admin only</small> : null}
+                      {disabled ? <small>{INFO_TOOLTIP_COPY.lockedTools}</small> : null}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      disabled={disabled}
+                      onChange={(event) => toggleAppSetupPageOption(group.key, option.key, event.target.checked)}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </details>
+      );
+    };
+
+    return (
+      <section className="drawer-info-card app-setup-personalization-card settings-app-setup-card utility-card utility-card-wide">
+        <div className="compact-card-header app-setup-personalization-header">
+          <div>
+            <p className="section-kicker">App Setup &amp; Personalization</p>
+            <strong>Choose your tools, customize pages, and let Ember &amp; Tide recommend what fits you.</strong>
+            <p className="compact-subtitle">Smart enough to guide. Easy enough for families. Detailed enough for serious collectors and sellers. You can change this anytime.</p>
+          </div>
+          <span className="status-badge settings-mode-badge">{smartSetupRecommendation.label}</span>
+        </div>
+
+        <div className="app-setup-tabs" role="tablist" aria-label="App Setup and Personalization sections">
+          {panelRows.map((panel) => (
+            <button
+              key={panel.key}
+              type="button"
+              className={appSetupPanel === panel.key ? "app-setup-tab is-active" : "app-setup-tab"}
+              onClick={() => setAppSetupPanel(panel.key)}
+              aria-pressed={appSetupPanel === panel.key}
+            >
+              <span>{panel.label}</span>
+              <InfoTooltip label={`${panel.label} help`}>{panel.help}</InfoTooltip>
+            </button>
+          ))}
+        </div>
+
+        {appSetupPanel === "setup" ? (
+          <div className="app-setup-panel app-setup-panel--setup">
+            <div className="settings-toolset-grid app-setup-summary-grid">
+              {setupStats.map((stat) => (
+                <article key={stat.label}>
+                  <span>{stat.label}</span>
+                  <strong>{stat.value}</strong>
+                  <small>{stat.helper}</small>
+                </article>
+              ))}
+            </div>
+            <div className="settings-mode-grid app-setup-mode-grid">
+              {modeRows.map((mode) => (
+                <button key={mode.key} type="button" className={mode.active ? "settings-mode-card active" : "settings-mode-card"} aria-pressed={mode.active} onClick={() => mode.key === "seller" ? turnOnSellerToolsFromPersonalization() : applyHomeViewPreset(mode.key)}>
+                  <strong>{mode.title}</strong>
+                  <span>{mode.helper}</span>
+                </button>
+              ))}
+            </div>
+            <div className="drawer-two-column app-setup-inline-fields">
+              <Field label="Home area / ZIP" help="Used to sort nearby stores. We do not need your exact address.">
+                <input
+                  className="drawer-field"
+                  value={locationSettings.manualLocation}
+                  onChange={(event) => updateLocationSettings({ mode: "manual", manualLocation: event.target.value, trackingEnabled: false })}
+                  placeholder="ZIP or city"
+                />
+              </Field>
+              <Field label="Recommended setup" help={INFO_TOOLTIP_COPY.smartSetup}>
+                <input className="drawer-field" value={`${smartSetupRecommendation.label} - ${primaryMode}`} readOnly />
+              </Field>
+            </div>
+            <div className="drawer-inline-actions settings-action-row">
+              <button type="button" className="drawer-link" onClick={() => openSmartSetupFlow({ reset: false })}>Change my setup answers</button>
+              <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: true })}>Re-run setup flow</button>
+              <button type="button" className="secondary-button" onClick={() => { saveManualLocation(); setScoutView("stores"); setActiveTab("scout"); }}>Manage favorite stores</button>
+            </div>
+          </div>
+        ) : null}
+
+        {appSetupPanel === "customize" ? (
+          <div className="app-setup-panel app-setup-panel--customize">
+            <div className="settings-recommendation-copy">
+              Preferences change UI visibility only. They never grant hidden permissions, reveal admin tools, or bypass backend security.
+            </div>
+            <div className="app-setup-customize-list">
+              {APP_SETUP_PAGE_GROUPS.map(renderCustomizeGroup)}
+            </div>
+            <div className="app-setup-save-row">
+              <span>{quickAddVisibleCount} Quick Add actions show first. Extra enabled actions appear under More.</span>
+              <button type="button" className="drawer-link" onClick={saveAppSetupPreferences}>Save Preferences</button>
+            </div>
+          </div>
+        ) : null}
+
+        {appSetupPanel === "recommendations" ? (
+          <div className="app-setup-panel app-setup-panel--recommendations">
+            <label className="toggle-row app-setup-recommendation-toggle">
+              <span>
+                <strong>Let Ember &amp; Tide suggest tools based on how I use the app</strong>
+                <small>Recommendations require confirmation before they change your layout.</small>
+              </span>
+              <input
+                type="checkbox"
+                checked={preferences.smartRecommendationsEnabled !== false}
+                onChange={(event) => setSmartRecommendationsEnabled(event.target.checked)}
+              />
+            </label>
+            {preferences.smartRecommendationsEnabled === false ? (
+              <div className="small-empty-state app-setup-empty-recommendations">
+                <strong>Smart Recommendations are off.</strong>
+                <span>You can still customize pages manually.</span>
+              </div>
+            ) : recommendationCards.length ? (
+              <div className="app-setup-recommendation-grid">
+                {recommendationCards.map((recommendation) => (
+                  <article className="app-setup-recommendation-card" key={recommendation.id}>
+                    <span className="status-badge">Suggestion</span>
+                    <strong>{recommendation.title}</strong>
+                    <p>{recommendation.body}</p>
+                    <div className="drawer-inline-actions">
+                      <button type="button" className="drawer-link" onClick={() => acceptAppSetupRecommendation(recommendation.id)}>Accept recommendation</button>
+                      <button type="button" className="secondary-button" onClick={() => dismissAppSetupRecommendationCard(recommendation.id)}>Dismiss</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="small-empty-state app-setup-empty-recommendations">
+                <strong>No recommendations right now.</strong>
+                <span>Use the app normally. Ember &amp; Tide will suggest helpful changes when there is enough signal.</span>
+              </div>
+            )}
+            <p className="compact-subtitle">Storage: recommendations and dismissed cards are saved locally in beta. Cross-device sync needs a backend profile preference field later.</p>
+          </div>
+        ) : null}
+
+        {appSetupPanel === "reset" ? (
+          <div className="app-setup-panel app-setup-panel--reset">
+            <div className="settings-section-grid compact">
+              <article className="settings-section-card">
+                <strong>Reset to recommended</strong>
+                <span>Restore recommended visibility for the current setup mode.</span>
+                <button type="button" className="drawer-link" onClick={resetAppSetupToRecommended}>Reset to Recommended</button>
+              </article>
+              <article className="settings-section-card">
+                <strong>Seller tools</strong>
+                <span>{context.sellerToolsEnabled ? "Forge and business tools are enabled." : "Seller tools are hidden for collector/family mode."}</span>
+                {context.sellerToolsEnabled ? (
+                  <button type="button" className="secondary-button" onClick={turnOffSellerToolsFromPersonalization}>Turn off seller tools</button>
+                ) : (
+                  <button type="button" className="secondary-button" onClick={turnOnSellerToolsFromPersonalization}>Turn on seller tools</button>
+                )}
+              </article>
+              <article className="settings-section-card">
+                <strong>Favorite stores</strong>
+                <span>Update stores and nearby Scout area.</span>
+                <button type="button" className="secondary-button" onClick={() => { setScoutView("stores"); setActiveTab("scout"); }}>Manage favorite stores</button>
+              </article>
+              <article className="settings-section-card">
+                <strong>Smart Setup</strong>
+                <span>Change purpose, tools, mode, business needs, and home area.</span>
+                <button type="button" className="secondary-button" onClick={() => openSmartSetupFlow({ reset: true })}>Re-run setup flow</button>
+              </article>
+            </div>
+            <div className="settings-recommendation-copy">
+              App Setup and safety-critical Settings cannot be fully hidden. Hidden UI preferences are convenience only and do not change permissions, roles, or backend access.
+            </div>
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   function renderSmartSetupModal() {
     if (!smartSetupOpen) return null;
     const stepIndex = SMART_SETUP_STEPS.indexOf(smartSetupStep);
@@ -39159,14 +39571,30 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       );
     }
 
-    const entryOptions = [
-      { key: "search", title: "Search item", helper: "Find cards, sets, sealed products, UPCs, or SKUs.", icon: "search", tone: "search", onClick: () => setQuickAddPath("search") },
+    const quickAddPreferencePlan = resolveQuickAddPreferenceActionKeys(currentAppSetupPreferences(), appPersonalizationContext(), { maxVisible: 6 });
+    const entryOptionByPreferenceKey = {
+      vault: { key: "vault", title: "Add to Vault", helper: "Save a card or product to your collection.", icon: "vault", tone: "vault", onClick: () => runAddSheetAction("vaultItem") },
+      scout: { key: "scout", title: "Scout Report", helper: "Post store, status, and time first.", icon: "scout", tone: "scout", onClick: () => runAddSheetAction("storeReport") },
+      missing: { key: "missing", title: "Request Missing Item", helper: "Ask for a missing catalog item or add manually.", icon: "search", tone: "warning", onClick: () => runAddSheetAction("suggestCatalogItem") },
+      spark: { key: "spark", title: "The Spark", helper: "Open the Kids Program request flow.", icon: "spark", tone: "spark", onClick: () => runAddSheetAction("kidsRequest") },
+      quickFind: { key: "quickFind", title: "Search / Scan Item", helper: "Find cards, sets, sealed products, UPCs, or SKUs.", icon: "search", tone: "search", onClick: () => setQuickAddPath("search") },
+      forge: { key: "forge", title: "Add to Forge", helper: "Add seller inventory.", icon: "forge", tone: "forge", onClick: () => runAddSheetAction("inventory") },
+      sale: { key: "sale", title: "Add Sale", helper: "Record a sale.", icon: "forge", tone: "forge", onClick: () => runAddSheetAction("sale") },
+      receipt: { key: "receipt", title: "Add Receipt", helper: "Save proof now; link items later.", icon: "receipt", tone: "forge", onClick: () => setQuickAddPath("receipt") },
+      mileage: { key: "mileage", title: "Add Mileage", helper: "Log a store or business trip.", icon: "mileage", tone: "forge", onClick: () => runAddSheetAction("mileage") },
+      expense: { key: "expense", title: "Add Expense", helper: "Track seller or business costs.", icon: "expense", tone: "forge", onClick: () => runAddSheetAction("expense") },
+    };
+    const fallbackEntryOptions = [
       { key: "upc", title: "Scan / enter UPC", helper: "Use scanner when available or type a code.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
       { key: "photo", title: "Photo lookup", helper: "Upload a reference photo, then match manually.", icon: "camera", tone: "vault", onClick: () => setQuickAddPath("photo") },
-      { key: "scout", title: "Scout Report", helper: "Post store, status, and time first.", icon: "scout", tone: "scout", onClick: () => runAddSheetAction("storeReport") },
-      { key: "receipt", title: "Receipt", helper: "Save proof now; link items later.", icon: "receipt", tone: "forge", onClick: () => setQuickAddPath("receipt") },
       { key: "manual", title: "Manual Item", helper: "Add anything without a catalog match.", icon: "manual_entry", tone: "warning", ariaLabel: "Manual Add item", onClick: () => openQuickAddManualItemFlow() },
     ];
+    const allEntryOptions = [
+      ...quickAddPreferencePlan.preferredKeys.map((key) => entryOptionByPreferenceKey[key]).filter(Boolean),
+      ...fallbackEntryOptions,
+    ].filter((option, index, rows) => rows.findIndex((candidate) => candidate.key === option.key) === index);
+    const entryOptions = allEntryOptions.slice(0, quickAddPreferencePlan.maxVisible);
+    const overflowEntryOptions = allEntryOptions.slice(quickAddPreferencePlan.maxVisible);
 
     return (
       <div className="add-anything-flow add-anything-entry">
@@ -39192,6 +39620,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </button>
           ))}
         </div>
+        {overflowEntryOptions.length ? (
+          <details className="add-anything-more">
+            <summary>More actions</summary>
+            <div className="add-anything-option-grid add-anything-option-grid--more">
+              {overflowEntryOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={`add-anything-option add-anything-option--${option.tone || option.key}`}
+                  onClick={option.onClick}
+                  aria-label={option.ariaLabel}
+                >
+                  <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={option.icon || option.key} /></span>
+                  <strong>{option.title}</strong>
+                  <small>{option.helper}</small>
+                </button>
+              ))}
+            </div>
+          </details>
+        ) : null}
         <p className="quick-add-missing-help">Search and UPC use the Market catalog. Scout reports post without requiring products or proof.</p>
       </div>
     );
@@ -39243,9 +39691,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       reviewMissing: { key: "reviewMissing", title: "Review Missing Item", helper: "Catalog review", action: "reviewMissingCatalog", icon: "search", tone: "admin" },
       announcement: { key: "announcement", title: "Add Announcement", helper: "Admin update", action: "addAnnouncement", icon: "bell", tone: "admin" },
     };
+    const quickAddPreferencePlan = resolveQuickAddPreferenceActionKeys(currentAppSetupPreferences(), appPersonalizationContext(), { maxVisible: 6 });
     const quickAddActionPlan = selectSmartQuickAddActionPlan(adaptiveUiState, {
       forgeAvailable: Boolean(activeForgeWorkspace),
       currentPage: activeTab,
+      maxVisible: quickAddPreferencePlan.maxVisible,
+      preferredKeys: quickAddPreferencePlan.preferredKeys,
     });
     const quickChoices = quickAddActionPlan.visibleKeys
       .map((key) => quickChoiceByKey[key])
@@ -44911,7 +45362,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       children: (
         <>
           {renderSettingsProfileSummaryCard()}
-          {renderSmartSetupSettingsCard()}
+          {renderAppSetupPersonalizationCard()}
           {renderSettingsWorkspaceCard()}
           <div className="drawer-info-card settings-command-overview utility-card">
             <strong>Settings map</strong>
@@ -44967,26 +45418,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className="drawer-link" onClick={() => openUtilityPage("account")}>Open account</button>
               <button type="button" className="secondary-button" onClick={() => openUtilityPage("profile")}>Edit profile</button>
               {signedInWithSupabase ? <button type="button" className="secondary-button logout-link" onClick={signOut}>Sign out</button> : null}
-            </div>
-          </div>
-          <div className="drawer-info-card settings-dashboard-card utility-card">
-            <strong>Hearth display</strong>
-            <p className="compact-subtitle">Choose which Home cards and sections are visible. This changes display only.</p>
-            <div className="menu-toggle-list">
-              {menuHomeStatRows.slice(0, 5).map((row) => (
-                <label className="toggle-row" key={row.key}>
-                  <span><strong>{row.label}</strong></span>
-                  <input
-                    type="checkbox"
-                    checked={row.key === "alerts" ? scoutSnapshot.alertSettings?.showHomeActiveAlerts !== false : row.key === "marketUpdates" ? scoutSnapshot.alertSettings?.showHomeMarketUpdates !== false : homeStatsEnabled[row.key] !== false}
-                    onChange={(event) => {
-                      if (row.key === "alerts") return updateScoutAlertPreference("showHomeActiveAlerts", event.target.checked);
-                      if (row.key === "marketUpdates") return updateScoutAlertPreference("showHomeMarketUpdates", event.target.checked);
-                      return updateHomeStatsEnabled({ [row.key]: event.target.checked });
-                    }}
-                  />
-                </label>
-              ))}
             </div>
           </div>
         </>

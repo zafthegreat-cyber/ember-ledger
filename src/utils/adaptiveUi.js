@@ -311,7 +311,7 @@ export function selectSmartQuickAddKeys(state = {}, { forgeAvailable = false, cu
   return selectSmartQuickAddActionPlan(state, { forgeAvailable, currentPage }).visibleKeys;
 }
 
-export function selectSmartQuickAddActionPlan(state = {}, { forgeAvailable = false, currentPage = "", maxVisible = 6 } = {}) {
+export function selectSmartQuickAddActionPlan(state = {}, { forgeAvailable = false, currentPage = "", maxVisible = 6, preferredKeys = [] } = {}) {
   const pageKey = resolveSmartRouteContext(currentPage || state.routeContext?.key).key;
   const businessTools = hasBusinessQuickAddTools(state);
   let orderedKeys = [];
@@ -365,7 +365,11 @@ export function selectSmartQuickAddActionPlan(state = {}, { forgeAvailable = fal
     orderedKeys = ["vault", "scout", "missing", "quickFind"];
   }
 
-  const allKeys = uniqueActionKeys(orderedKeys);
+  const adaptiveKeys = uniqueActionKeys(orderedKeys);
+  const preferredVisibleKeys = uniqueActionKeys(preferredKeys);
+  const allKeys = preferredVisibleKeys.length
+    ? uniqueActionKeys([...preferredVisibleKeys, ...adaptiveKeys.filter((key) => !preferredVisibleKeys.includes(key))])
+    : adaptiveKeys;
   const visibleKeys = clampActionKeys(allKeys, visibleLimit);
   const overflowKeys = allKeys.filter((key) => !visibleKeys.includes(key));
   return { pageKey, visibleKeys, overflowKeys, allKeys, businessTools };
