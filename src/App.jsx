@@ -1797,6 +1797,20 @@ function createQuickAddWizardState(overrides = {}) {
     message: "",
     photoFileName: "",
     photoPreviewUrl: "",
+    scoutScanSourceType: "screenshot",
+    scoutScanPhotoUrl: "",
+    scoutScanPhotoFileName: "",
+    scoutScanStoreName: "",
+    scoutScanDate: today,
+    scoutScanTime: "",
+    scoutScanTimeUnknown: false,
+    scoutScanItems: "",
+    scoutScanNotes: "",
+    scoutScanSaving: false,
+    scoutScanSavedReport: null,
+    cardScanRows: [
+      { id: "card-scan-row-1", cardName: "", setName: "", cardNumber: "", variant: "", condition: "", destination: "vault" },
+    ],
     manualItemName: "",
     manualCategory: "Pokemon",
     manualSetName: "",
@@ -17552,6 +17566,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     });
   }
 
+  function createQuickAddCardScanRow(overrides = {}) {
+    return {
+      id: makeId("card-scan-row"),
+      cardName: "",
+      setName: "",
+      cardNumber: "",
+      variant: "",
+      condition: "",
+      destination: "vault",
+      ...overrides,
+    };
+  }
+
   function quickAddDestinationSeed(destination = "vault") {
     const normalized = String(destination || "vault").toLowerCase();
     if (normalized === "both") return destinationDefaults({ vault: true, forge: Boolean(activeForgeWorkspace) });
@@ -17694,9 +17721,126 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         if (current.receiptPhotoUrl?.startsWith("blob:")) URL.revokeObjectURL(current.receiptPhotoUrl);
         return { ...current, receiptPhotoUrl: previewUrl, receiptFileName: file.name, message: "Receipt photo attached. OCR is not automatic in this path." };
       }
+      if (target === "scoutScan") {
+        if (current.scoutScanPhotoUrl?.startsWith("blob:")) URL.revokeObjectURL(current.scoutScanPhotoUrl);
+        return { ...current, scoutScanPhotoUrl: previewUrl, scoutScanPhotoFileName: file.name, scoutScanSourceType: "screenshot", message: "Screenshot attached for manual Scout review. OCR is not automatic in this path." };
+      }
       if (current.photoPreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(current.photoPreviewUrl);
       return { ...current, photoPreviewUrl: previewUrl, photoFileName: file.name, message: "Photo attached. Use manual details or request a missing item." };
     });
+  }
+
+  function quickAddScoutScanValidation(form = quickAddWizard) {
+    const storeName = String(form.scoutScanStoreName || "").trim();
+    const hasTime = Boolean(form.scoutScanTimeUnknown || (form.scoutScanDate && form.scoutScanTime));
+    const hasEvidence = Boolean(
+      String(form.scoutScanItems || "").trim() ||
+      String(form.scoutScanNotes || "").trim() ||
+      String(form.scoutScanPhotoFileName || "").trim() ||
+      String(form.scoutScanPhotoUrl || "").trim()
+    );
+    if (!storeName) return "Add the store or store name before saving.";
+    if (!hasTime) return "Add observed date/time or mark the time unknown.";
+    if (!hasEvidence) return "Add at least one item, note, or screenshot/photo indicator.";
+    return "";
+  }
+
+  async function saveQuickAddScoutScanReport(event) {
+    event?.preventDefault?.();
+    if (quickAddWizard.scoutScanSaving) return;
+    const validationError = quickAddScoutScanValidation();
+    if (validationError) {
+      updateQuickAddWizard({ message: validationError });
+      return;
+    }
+    setQuickAddWizard((current) => ({ ...current, scoutScanSaving: true, message: "Saving Scout report..." }));
+    const now = new Date().toISOString();
+    const observedAt = quickAddWizard.scoutScanTimeUnknown
+      ? now
+      : new Date(`${quickAddWizard.scoutScanDate || now.slice(0, 10)}T${quickAddWizard.scoutScanTime || getLocalTimeKey()}`).toISOString();
+    const itemRows = String(quickAddWizard.scoutScanItems || "")
+      .split(/\r?\n|,/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const id = makeId("scan-scout-report");
+    const report = {
+      id,
+      reportId: id,
+      reportType: "Scout Report",
+      quickReportType: "scan_review",
+      quickReportLabel: "Scan Anything review",
+      reportStatus: "manual_review",
+      stockStatus: "unknown",
+      sourceType: quickAddWizard.scoutScanSourceType || "screenshot",
+      source_type: quickAddWizard.scoutScanSourceType || "screenshot",
+      storeName: String(quickAddWizard.scoutScanStoreName || "").trim(),
+      store_name: String(quickAddWizard.scoutScanStoreName || "").trim(),
+      manualLocation: String(quickAddWizard.scoutScanStoreName || "").trim(),
+      itemName: itemRows[0] || "",
+      productName: itemRows[0] || "",
+      product_name: itemRows[0] || "",
+      productCategory: itemRows.length ? "Pokemon" : "",
+      product_category: itemRows.length ? "Pokemon" : "",
+      itemsSeen: itemRows.map((productName) => ({ productName, category: "Pokemon", source: "scan_anything_manual_review" })),
+      reportText: [
+        "Scan Anything manual Scout review.",
+        itemRows.length ? `Items/products mentioned: ${itemRows.join(", ")}` : "",
+        quickAddWizard.scoutScanNotes ? `Notes: ${quickAddWizard.scoutScanNotes}` : "",
+        quickAddWizard.scoutScanTimeUnknown ? "Observed date/time: unknown" : "",
+        quickAddWizard.scoutScanPhotoFileName ? `Proof/image indicator: ${quickAddWizard.scoutScanPhotoFileName}` : "",
+      ].filter(Boolean).join(" | "),
+      notes: [
+        quickAddWizard.scoutScanNotes,
+        itemRows.length ? `Items/products mentioned: ${itemRows.join(", ")}` : "",
+        quickAddWizard.scoutScanTimeUnknown ? "Observed date/time explicitly marked unknown." : "",
+        quickAddWizard.scoutScanPhotoFileName ? `Source image: ${quickAddWizard.scoutScanPhotoFileName}` : "",
+      ].filter(Boolean).join(" | "),
+      photoUrls: quickAddWizard.scoutScanPhotoUrl ? [quickAddWizard.scoutScanPhotoUrl] : [],
+      proofType: quickAddWizard.scoutScanSourceType || "screenshot",
+      visibility: "workspace",
+      verificationStatus: "needs_review",
+      verification_status: "needs_review",
+      needsReview: true,
+      needs_review: true,
+      confidence: "low-confidence",
+      confidenceLabel: "Manual review",
+      confidence_label: "Manual review",
+      sourceLabel: "Manual Scan Anything review",
+      source_label: "Manual Scan Anything review",
+      observedAt,
+      observed_at: observedAt,
+      reportDate: quickAddWizard.scoutScanDate || now.slice(0, 10),
+      reportTime: quickAddWizard.scoutScanTimeUnknown ? "" : quickAddWizard.scoutScanTime,
+      reportedAt: observedAt,
+      reported_at: observedAt,
+      submittedAt: now,
+      submitted_at: now,
+      createdAt: now,
+      created_at: now,
+      updatedAt: now,
+      updated_at: now,
+      userId: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
+      user_id: currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta-scout",
+      displayName: publicProfileLabel(),
+      username: currentPublicUsername(),
+      publicUsername: currentPublicUsername(),
+      public_username: currentPublicUsername(),
+      workspaceId: activeWorkspaceId || currentUserProfile?.workspaceId || currentUserProfile?.workspace_id || "",
+      workspace_id: activeWorkspaceId || currentUserProfile?.workspaceId || currentUserProfile?.workspace_id || "",
+      sourceStatus: BETA_LOCAL_MODE ? "local_beta" : "local",
+      report_type: "other",
+    };
+    const scoutData = getSharedScoutData();
+    const nextReports = [report, ...(scoutData.reports || [])]
+      .filter((entry, index, list) => list.findIndex((candidate) => String(getScoutReportId(candidate)) === String(getScoutReportId(entry))) === index);
+    saveSharedScoutData({ ...scoutData, reports: nextReports });
+    setQuickAddWizard((current) => ({ ...current, scoutScanSaving: false, scoutScanSavedReport: report, screen: "scoutScanSuccess", path: "scoutScanSuccess", message: "Scout report saved from Scan Anything." }));
+    setScoutView("reports");
+    setScoutReportFilter("Latest");
+    window.setTimeout(() => {
+      closeFlowModal({ force: true, reset: false });
+      window.setTimeout(() => openScoutReportDetail(report, { fallback: report, focus: "details" }), 80);
+    }, 400);
   }
 
   async function saveQuickAddBasicReceipt(event) {
@@ -39573,7 +39717,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       };
     }
     if (activeFlowModal?.type === "addActionSheet") {
-      if (["scanAnything", "search", "upc", "manual", "photo"].includes(quickAddWizard.screen || "")) {
+      if (["scanAnything", "scoutScreenshotReview", "cardPageReview", "scoutScanSuccess", "search", "upc", "manual", "photo"].includes(quickAddWizard.screen || "")) {
         return {
           title: "Scan Anything",
           description: "Search, enter UPC/SKU, or add manually.",
@@ -39707,7 +39851,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       };
     }
     if (activeFlowModal?.type === "addActionSheet") {
-      if (["scanAnything", "search", "upc", "manual", "photo"].includes(quickAddWizard.screen || "")) {
+      if (["scanAnything", "scoutScreenshotReview", "cardPageReview", "scoutScanSuccess", "search", "upc", "manual", "photo"].includes(quickAddWizard.screen || "")) {
         return { title: "Scan Anything", description: "Search, enter UPC/SKU, or add manually.", size: activeFlowModal?.size || "medium" };
       }
       return { title: "Quick Add", description: "Add something, then decide where it belongs.", size: activeFlowModal?.size || "medium" };
@@ -39857,6 +40001,45 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <em>Coming later</em>
       </button>
     );
+    const updateCardScanRow = (rowId, patch = {}) => {
+      const rows = Array.isArray(quickAddWizard.cardScanRows) && quickAddWizard.cardScanRows.length
+        ? quickAddWizard.cardScanRows
+        : [createQuickAddCardScanRow({ id: "card-scan-row-1" })];
+      updateQuickAddWizard({
+        cardScanRows: rows.map((row) => String(row.id) === String(rowId) ? { ...row, ...patch } : row),
+        message: "",
+      });
+    };
+    const addCardScanRow = () => {
+      const rows = Array.isArray(quickAddWizard.cardScanRows) && quickAddWizard.cardScanRows.length
+        ? quickAddWizard.cardScanRows
+        : [createQuickAddCardScanRow({ id: "card-scan-row-1" })];
+      updateQuickAddWizard({ cardScanRows: [...rows, createQuickAddCardScanRow()], message: "" });
+    };
+    const removeCardScanRow = (rowId) => {
+      const rows = Array.isArray(quickAddWizard.cardScanRows) && quickAddWizard.cardScanRows.length
+        ? quickAddWizard.cardScanRows
+        : [createQuickAddCardScanRow({ id: "card-scan-row-1" })];
+      updateQuickAddWizard({ cardScanRows: rows.length > 1 ? rows.filter((row) => String(row.id) !== String(rowId)) : rows, message: "" });
+    };
+    const reviewFirstCardScanRow = () => {
+      const row = (quickAddWizard.cardScanRows || []).find((candidate) => String(candidate.cardName || "").trim());
+      if (!row) {
+        updateQuickAddWizard({ message: "Add at least one card row before review." });
+        return;
+      }
+      openQuickAddManualReview({
+        itemName: row.cardName,
+        setName: row.setName,
+        cardNumber: row.cardNumber,
+        variant: row.variant,
+        condition: row.condition,
+        destination: row.destination || "vault",
+        itemKind: "single",
+        productType: "Single Card",
+        note: "Scan page of cards manual review. Automatic card detection is coming later.",
+      });
+    };
 
     if (quickAddScreen === "scanAnything") {
       return (
@@ -39864,9 +40047,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {renderFlowHeader("Scan Anything", "Search, enter UPC/SKU, or add manually.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
-            <p>Search, UPC/SKU lookup, and manual entry work now. Automated scan modes are not live in this flow yet.</p>
+            <p>Search, UPC/SKU lookup, Scout screenshot review, and manual card-page review work now. Camera, OCR, and automatic card detection are coming later.</p>
           </div>
           <div className="add-anything-option-grid">
+            <button type="button" className="add-anything-option add-anything-option--scout" onClick={() => setQuickAddPath("scoutScreenshotReview")}>
+              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
+              <strong>Scout screenshot/photo review</strong>
+              <small>Manually turn store screenshots or shelf photos into a Scout report.</small>
+            </button>
+            <button type="button" className="add-anything-option add-anything-option--vault" onClick={() => setQuickAddPath("cardPageReview")}>
+              <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="vault" /></span>
+              <strong>Scan page of cards</strong>
+              <small>Manual multi-card review foundation. Detection is not automatic yet.</small>
+            </button>
             <button type="button" className="add-anything-option add-anything-option--search" onClick={() => setQuickAddPath("search")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="search" /></span>
               <strong>Search by name</strong>
@@ -39892,6 +40085,145 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {comingLaterScanModes.map(renderComingLaterTile)}
           </div>
           <p className="quick-add-missing-help">Unknown items route to search, manual entry, or Request Missing Item. Nothing is auto-submitted.</p>
+        </div>
+      );
+    }
+
+    if (quickAddScreen === "scoutScreenshotReview") {
+      const validationError = quickAddScoutScanValidation();
+      return (
+        <form className="add-anything-flow add-anything-scout-scan-review" onSubmit={saveQuickAddScoutScanReport}>
+          {renderFlowHeader("Scout screenshot/photo review", "Upload a reference image if you have one, then edit the report before saving. OCR is not automatic here.")}
+          <div className="scan-anything-principle-card">
+            <strong>Review before saving.</strong>
+            <p>Store, date/time, products, notes, and source are manual fields. Screenshot/photo helps as proof, but nothing is extracted automatically.</p>
+          </div>
+          <div className="quick-add-photo-panel">
+            {quickAddWizard.scoutScanPhotoUrl ? (
+              <div className="picture-lookup-preview quick-add-photo-preview">
+                <img src={quickAddWizard.scoutScanPhotoUrl} alt="Scout screenshot reference" />
+                <span>{quickAddWizard.scoutScanPhotoFileName || "Screenshot/photo attached"}</span>
+              </div>
+            ) : (
+              <div className="small-empty-state">
+                <strong>No screenshot attached.</strong>
+                <span>You can still save if items or notes explain what was observed.</span>
+              </div>
+            )}
+            <label className="secondary-button file-action-label">
+              Upload screenshot/photo
+              <input type="file" accept="image/*" onChange={(event) => handleQuickAddPhotoFile(event, "scoutScan")} />
+            </label>
+          </div>
+          <div className="flow-form-grid quick-add-scout-scan-grid">
+            <Field label="Store or store name">
+              <input value={quickAddWizard.scoutScanStoreName} autoFocus onChange={(event) => updateQuickAddWizard({ scoutScanStoreName: event.target.value, message: "" })} placeholder="Target, Walmart, local shop..." />
+            </Field>
+            <Field label="Observed date">
+              <input type="date" value={quickAddWizard.scoutScanDate} onChange={(event) => updateQuickAddWizard({ scoutScanDate: event.target.value, message: "" })} />
+            </Field>
+            <Field label="Observed time">
+              <input type="time" value={quickAddWizard.scoutScanTime} disabled={quickAddWizard.scoutScanTimeUnknown} onChange={(event) => updateQuickAddWizard({ scoutScanTime: event.target.value, message: "" })} />
+            </Field>
+            <label className="field checkbox-field quick-add-unknown-time">
+              <input type="checkbox" checked={Boolean(quickAddWizard.scoutScanTimeUnknown)} onChange={(event) => updateQuickAddWizard({ scoutScanTimeUnknown: event.target.checked, message: "" })} />
+              <span>Time unknown</span>
+            </label>
+            <Field label="Source type">
+              <select value={quickAddWizard.scoutScanSourceType} onChange={(event) => updateQuickAddWizard({ scoutScanSourceType: event.target.value, message: "" })}>
+                <option value="screenshot">Screenshot</option>
+                <option value="photo">Photo</option>
+                <option value="manual">Manual note</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Items/products mentioned">
+            <textarea value={quickAddWizard.scoutScanItems} onChange={(event) => updateQuickAddWizard({ scoutScanItems: event.target.value, message: "" })} placeholder="One item per line, or comma-separated products seen." />
+          </Field>
+          <Field label="Notes">
+            <textarea value={quickAddWizard.scoutScanNotes} onChange={(event) => updateQuickAddWizard({ scoutScanNotes: event.target.value, message: "" })} placeholder="Stock status, limits, shelf context, or what needs review." />
+          </Field>
+          {quickAddWizard.message ? <p className="flow-inline-message is-warning" role="alert">{quickAddWizard.message}</p> : null}
+          <div className="quick-add-inline-actions quick-add-sticky-actions">
+            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("scanAnything")}>Search Again</button>
+            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("manual")}>Manual Entry</button>
+            <button type="button" className="ghost-button" onClick={openQuickAddMissingProduct}>Request Missing Item</button>
+            <button type="submit" disabled={Boolean(validationError) || quickAddWizard.scoutScanSaving}>{quickAddWizard.scoutScanSaving ? "Saving..." : "Save Scout Report"}</button>
+          </div>
+          {validationError ? <p className="compact-subtitle">Required before saving: {validationError}</p> : null}
+        </form>
+      );
+    }
+
+    if (quickAddScreen === "scoutScanSuccess") {
+      return (
+        <div className="add-anything-flow add-anything-success">
+          <div className="quick-add-success-card">
+            <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
+            <strong>Scout report saved.</strong>
+            <p>{quickAddWizard.message || "Opening the created Scout report detail."}</p>
+          </div>
+          <div className="quick-add-inline-actions">
+            <button type="button" onClick={() => openScoutReportDetail(quickAddWizard.scoutScanSavedReport, { fallback: quickAddWizard.scoutScanSavedReport, focus: "details" })}>View Scout report</button>
+            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("scoutScreenshotReview")}>Add another screenshot</button>
+            <button type="button" className="ghost-button" onClick={() => closeFlowModal({ force: true, reset: true })}>Finish</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (quickAddScreen === "cardPageReview") {
+      const rows = Array.isArray(quickAddWizard.cardScanRows) && quickAddWizard.cardScanRows.length
+        ? quickAddWizard.cardScanRows
+        : [createQuickAddCardScanRow({ id: "card-scan-row-1" })];
+      return (
+        <div className="add-anything-flow add-anything-card-page-review">
+          {renderFlowHeader("Scan page of cards", "Manual multi-card review foundation. Add rows yourself; automatic card detection is coming later.")}
+          <div className="scan-anything-principle-card">
+            <strong>Review before saving.</strong>
+            <p>Each row defaults to Vault. Change the destination only when the card should go somewhere else.</p>
+          </div>
+          <div className="quick-add-card-scan-list">
+            {rows.map((row, index) => (
+              <div className="quick-add-card-scan-row" key={row.id}>
+                <div className="quick-add-row-heading">
+                  <strong>Card row {index + 1}</strong>
+                  <button type="button" className="ghost-button" onClick={() => removeCardScanRow(row.id)} disabled={rows.length <= 1}>Remove</button>
+                </div>
+                <div className="flow-form-grid quick-add-card-scan-grid">
+                  <Field label="Card name">
+                    <input value={row.cardName} onChange={(event) => updateCardScanRow(row.id, { cardName: event.target.value })} placeholder="Pikachu, Charizard..." />
+                  </Field>
+                  <Field label="Set">
+                    <input value={row.setName} onChange={(event) => updateCardScanRow(row.id, { setName: event.target.value })} placeholder="151, Prismatic Evolutions..." />
+                  </Field>
+                  <Field label="Card number">
+                    <input value={row.cardNumber} onChange={(event) => updateCardScanRow(row.id, { cardNumber: event.target.value })} placeholder="025/165, SVP..." />
+                  </Field>
+                  <Field label="Variant">
+                    <input value={row.variant} onChange={(event) => updateCardScanRow(row.id, { variant: event.target.value })} placeholder="Holo, Reverse Holo, promo..." />
+                  </Field>
+                  <Field label="Condition">
+                    <input value={row.condition} onChange={(event) => updateCardScanRow(row.id, { condition: event.target.value })} placeholder="Near mint, played..." />
+                  </Field>
+                  <Field label="Destination">
+                    <select value={row.destination || "vault"} onChange={(event) => updateCardScanRow(row.id, { destination: event.target.value })}>
+                      <option value="vault">Vault - collection</option>
+                      {sellerQuickAddActive && activeForgeWorkspace ? <option value="forge">Forge - seller inventory</option> : null}
+                      <option value="wishlist">Wishlist/Watch</option>
+                    </select>
+                  </Field>
+                </div>
+              </div>
+            ))}
+          </div>
+          {quickAddWizard.message ? <p className="flow-inline-message is-warning" role="alert">{quickAddWizard.message}</p> : null}
+          <div className="quick-add-inline-actions quick-add-sticky-actions">
+            <button type="button" className="secondary-button" onClick={addCardScanRow}>Add card row</button>
+            <button type="button" onClick={reviewFirstCardScanRow}>Review first card</button>
+            <button type="button" className="ghost-button" onClick={() => setQuickAddPath("manual")}>Manual Entry</button>
+            <button type="button" className="ghost-button" onClick={openQuickAddMissingProduct}>Request Missing Item</button>
+          </div>
         </div>
       );
     }

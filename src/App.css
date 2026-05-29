@@ -41617,6 +41617,18 @@ body,
   gap: 10px;
 }
 
+.quick-add-empty-result {
+  align-content: start;
+  justify-items: stretch;
+  min-height: 0;
+  padding: 12px;
+}
+
+.quick-add-empty-result h3,
+.quick-add-empty-result p {
+  margin: 0;
+}
+
 .quick-add-results-heading {
   display: flex;
   justify-content: space-between;
@@ -41703,8 +41715,53 @@ body,
 }
 
 .quick-add-receipt-grid,
-.quick-add-manual-grid {
+.quick-add-manual-grid,
+.quick-add-scout-scan-grid,
+.quick-add-card-scan-grid {
   gap: 10px;
+}
+
+.quick-add-unknown-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 13px;
+  background: rgba(3, 13, 27, 0.42);
+}
+
+.quick-add-card-scan-list {
+  display: grid;
+  gap: 11px;
+}
+
+.quick-add-card-scan-row {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(6, 20, 38, 0.7);
+}
+
+.quick-add-row-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.quick-add-row-heading strong {
+  color: #fff8e8;
+}
+
+.quick-add-sticky-actions {
+  padding-top: 10px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .quick-add-success-card {
@@ -41762,6 +41819,11 @@ body,
 
   .quick-add-inline-actions button {
     flex: 1 1 150px;
+  }
+
+  .quick-add-sticky-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .scan-anything-coming-soon-grid {
