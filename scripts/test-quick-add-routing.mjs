@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   buildQuickAddSuccessMessage,
   calendarEventToQuickAddSeed,
@@ -110,5 +111,14 @@ assert.match(scanAnythingOption.helper, /Search, UPC\/SKU, or manual entry/);
 assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "scout", forgeAvailable: true })[0], "scout");
 assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "vault", forgeAvailable: true })[0], "vault");
 assert.equal(selectSmartQuickAddKeys(sellerState, { currentPage: "market", forgeAvailable: true })[0], "forge");
+
+const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+const upcFallbackStart = appSource.indexOf("quick-add-upc-fallback");
+assert.ok(upcFallbackStart > 0, "UPC/SKU flow should render a nearby no-results fallback action panel.");
+const upcFallbackSource = appSource.slice(upcFallbackStart, upcFallbackStart + 1600);
+assert.match(upcFallbackSource, /Search Again/);
+assert.match(upcFallbackSource, /Manual Entry/);
+assert.match(upcFallbackSource, /Request Missing Item/);
+assert.match(appSource, /const visibleEntryCount = sellerQuickAddActive \? Math\.max\(6, quickAddPreferencePlan\.maxVisible\) : quickAddPreferencePlan\.maxVisible;/);
 
 console.log("Quick Add routing tests passed.");

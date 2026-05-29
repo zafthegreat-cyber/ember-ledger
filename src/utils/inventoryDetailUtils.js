@@ -174,7 +174,60 @@ export function inventoryVariantSignature(item = {}) {
     .join("|");
 }
 
+function inventoryFirstValue(item = {}, fields = []) {
+  for (const field of fields) {
+    const value = item[field];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+function inventoryCardNumber(item = {}) {
+  const details = item.cardDetails || item.card_details || item.tcgCardDetails || item.tcg_card_details || {};
+  return String(
+    item.cardNumber ||
+    item.card_number ||
+    details.cardNumber ||
+    details.card_number ||
+    details.number ||
+    item.number ||
+    ""
+  ).trim();
+}
+
+function inventoryVaultCardIdentityKey(item = {}) {
+  const typeText = normalizeInventoryGroupText([
+    item.productType,
+    item.product_type,
+    item.category,
+    item.catalogType,
+    item.catalog_type,
+    item.productKind,
+    item.product_kind,
+  ].filter(Boolean).join(" "));
+  const name = normalizeInventoryGroupText(item.name || item.itemName || item.item_name || item.catalogProductName || item.catalog_product_name || item.productName || item.product_name || "");
+  const cardNumber = normalizeInventoryGroupText(inventoryCardNumber(item));
+  const setKey = normalizeInventoryGroupText(inventoryFirstValue(item, ["setCode", "set_code", "expansionCode", "expansion_code", "setId", "set_id", "setName", "set_name", "expansion", "series", "productLine", "product_line"]));
+  const cardSignals = Boolean(
+    cardNumber ||
+    item.rarity ||
+    typeText.includes("card") ||
+    typeText.includes("single") ||
+    typeText.includes("promo") ||
+    typeText.includes("slab")
+  );
+
+  if (!cardSignals || !name || !setKey) return "";
+  if (cardNumber) return `card:set:${setKey}|number:${cardNumber}|name:${name}`;
+  return `card:set:${setKey}|name:${name}`;
+}
+
 export function inventoryProductIdentityGroupKey(item = {}, context = "inventory") {
+  if (context === "vault") {
+    const vaultCardKey = inventoryVaultCardIdentityKey(item);
+    if (vaultCardKey) return `${context}:${vaultCardKey}`;
+  }
+
   const productId = [
     item.catalogProductId,
     item.catalog_product_id,

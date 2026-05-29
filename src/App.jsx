@@ -39936,6 +39936,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <button type="button" onClick={runUpcLookup}>Lookup UPC/SKU</button>
             <button type="button" className="secondary-button" disabled>Camera scan coming later</button>
           </div>
+          <div className="empty-state small-empty-state quick-add-empty-result quick-add-upc-fallback">
+            <h3>No UPC match?</h3>
+            <p>Keep the fallback actions close: search by name, add manually, or request the catalog item.</p>
+            <div className="quick-add-inline-actions">
+              <button type="button" className="secondary-button" onClick={() => setQuickAddPath("search", { query: upcQuery })}>
+                Search Again
+              </button>
+              <button type="button" onClick={() => openQuickAddManualItemFlow({ itemName: upcQuery, upcSku: upcQuery })}>
+                Manual Entry
+              </button>
+              <button type="button" className="secondary-button" onClick={openQuickAddMissingProduct}>
+                Request Missing Item
+              </button>
+            </div>
+          </div>
           {upcQuery ? renderSearchResults(upcResults, "quick-add-upc", "No UPC match yet. Try searching by product name or request a missing item.") : null}
           {quickAddWizard.message ? <p className="flow-inline-message is-info">{quickAddWizard.message}</p> : null}
         </div>
@@ -40147,8 +40162,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ...preferredEntryKeys.map((key) => entryOptionByPreferenceKey[key]).filter(Boolean),
       ...fallbackEntryOptions,
     ].filter((option, index, rows) => rows.findIndex((candidate) => candidate.key === option.key) === index);
-    const entryOptions = allEntryOptions.slice(0, quickAddPreferencePlan.maxVisible);
-    const overflowEntryOptions = allEntryOptions.slice(quickAddPreferencePlan.maxVisible);
+    const visibleEntryCount = sellerQuickAddActive ? Math.max(6, quickAddPreferencePlan.maxVisible) : quickAddPreferencePlan.maxVisible;
+    const entryOptions = allEntryOptions.slice(0, visibleEntryCount);
+    const overflowEntryOptions = allEntryOptions.slice(visibleEntryCount);
 
     return (
       <div className="add-anything-flow add-anything-entry">

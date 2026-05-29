@@ -180,6 +180,29 @@ assert.equal(getCardNumber({ card_details: { number: "123/091" } }), "123/091");
 
 assert.equal(classifyItemAsSingleOrSealed(ownedItems[0]), "single");
 assert.equal(classifyItemAsSingleOrSealed(ownedItems[3]), "sealed");
+assert.equal(classifyItemAsSingleOrSealed({
+  name: "Pikachu",
+  setName: "Prismatic Evolutions",
+  productType: "Single Card",
+  status: "Personal Collection",
+  cardNumber: "057",
+}), "single");
+assert.equal(classifyItemAsSingleOrSealed({
+  name: "Pikachu Single Card",
+  setName: "Prismatic Evolutions",
+  category: "Single card",
+  status: "sealed",
+  condition: "Keep sealed",
+}), "single");
+assert.equal(classifyItemAsSingleOrSealed({
+  name: "Mystery Pikachu",
+  setName: "Prismatic Evolutions",
+  category: "Pokemon",
+}), "unknown");
+assert.equal(classifyItemAsSingleOrSealed({
+  name: "Prismatic Evolutions Elite Trainer Box",
+  productType: "Elite Trainer Box",
+}), "sealed");
 assert.equal(getVariantKey(ownedItems[0]), "holo");
 assert.equal(getVariantKey(ownedItems[1]), "reverse_holo");
 assert.equal(getVariantKey({ productType: "Individual Card", cardNumber: "001" }), "unknown");
@@ -204,8 +227,10 @@ assert.equal(unknownGroup.items.some((item) => item.id === "unknown-sealed"), tr
 const summary = deriveSetCompletionSummary({ items: ownedItems, wishlistItems, catalogProducts, knownSets });
 const prismatic = summary.find((row) => row.name === "Prismatic Evolutions");
 assert.equal(prismatic.ownedCount, 2);
-assert.equal(prismatic.ownedQuantity, 5);
+assert.equal(prismatic.ownedQuantity, 4);
 assert.equal(prismatic.trackedSealedCount, 1);
+assert.equal(prismatic.ownedSealedItems.some((item) => item.id === "owned-057"), false);
+assert.equal(prismatic.ownedCardItems.some((item) => item.id === "owned-057"), true);
 assert.equal(prismatic.checklistAvailable, false);
 assert.equal(prismatic.missingSupported, false);
 assert.equal(prismatic.missingCount, null);
@@ -219,6 +244,13 @@ assert.equal(findSetSummaryForItem(wishlistItems[0], summary).name, "Prismatic E
 
 assert.equal(getSetCatalogItems(prismatic, catalogProducts).length, 4);
 assert.equal(getSetSealedProducts(prismatic, catalogProducts).length, 1);
+assert.equal(getSetSealedProducts(prismatic, [...catalogProducts, {
+  id: "cat-pre-pikachu-single",
+  name: "Pikachu Single Card",
+  setName: "Prismatic Evolutions",
+  productType: "Single Card",
+  cardNumber: "057",
+}]).some((product) => product.id === "cat-pre-pikachu-single"), false);
 assert.equal(getUserOwnedItemsForSet(prismatic, ownedItems).filter((item) => classifyItemAsSingleOrSealed(item) === "single").length, 3);
 assert.equal(getWishlistItemsForSet(prismatic, wishlistItems).length, 1);
 
@@ -227,6 +259,7 @@ const pikachuRow = prismaticCardRows.find((row) => row.title === "Pikachu ex");
 assert.equal(pikachuRow.ownedQuantity, 3);
 assert.equal(pikachuRow.variantCount, 2);
 assert.equal(pikachuRow.variantOwnedCount, 2);
+assert.deepEqual(pikachuRow.variants.map((variant) => variant.key).sort(), ["holo", "reverse_holo"]);
 assert.equal(pikachuRow.missing, false);
 assert.equal(pikachuRow.variantCompletionLabel, "Variant checklist unavailable.");
 const umbreonRow = prismaticCardRows.find((row) => row.title === "Umbreon ex");

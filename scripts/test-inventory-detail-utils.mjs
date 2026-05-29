@@ -5,6 +5,7 @@ import {
   GRADE_ASSIST_DISCLAIMER,
   normalizeGradeAssistChecklist,
   groupedInventoryEntryIds,
+  inventoryProductIdentityGroupKey,
   plannedSalePriceUpdateSummary,
 } from "../src/utils/inventoryDetailUtils.js";
 
@@ -64,5 +65,43 @@ const reviewChecklist = normalizeGradeAssistChecklist({
 });
 assert.equal(reviewChecklist.notes, "Whitening on one corner.");
 assert.equal(deriveGradeAssistReadiness(reviewChecklist).label, "Manual review recommended");
+
+const vaultPikachuHolo = {
+  id: "vault-pikachu-holo",
+  catalogProductId: "catalog-pikachu-holo",
+  name: "Pikachu",
+  setName: "Scarlet & Violet Promo",
+  productType: "Single Card",
+  cardNumber: "027",
+  variant: "Holo",
+};
+const vaultPikachuReverse = {
+  ...vaultPikachuHolo,
+  id: "vault-pikachu-reverse",
+  catalogProductId: "catalog-pikachu-reverse",
+  variant: "Reverse Holo",
+};
+const vaultDifferentCard = {
+  ...vaultPikachuHolo,
+  id: "vault-raichu-holo",
+  catalogProductId: "catalog-raichu-holo",
+  name: "Raichu",
+};
+
+assert.equal(
+  inventoryProductIdentityGroupKey(vaultPikachuHolo, "vault"),
+  inventoryProductIdentityGroupKey(vaultPikachuReverse, "vault"),
+  "Vault card grouping should keep variants under one canonical card identity"
+);
+assert.notEqual(
+  inventoryProductIdentityGroupKey(vaultPikachuHolo, "vault"),
+  inventoryProductIdentityGroupKey(vaultDifferentCard, "vault"),
+  "Vault card grouping should not merge unrelated cards with the same set and number"
+);
+assert.notEqual(
+  inventoryProductIdentityGroupKey(vaultPikachuHolo, "inventory"),
+  inventoryProductIdentityGroupKey(vaultPikachuReverse, "inventory"),
+  "Non-vault inventory grouping should continue separating variant-specific product ids"
+);
 
 console.log("Inventory detail tests passed.");

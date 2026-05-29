@@ -386,27 +386,38 @@ export function getSetDisplayName(source = {}) {
 }
 
 export function classifyItemAsSingleOrSealed(source = {}) {
-  const text = catalogText(source);
+  const identityText = textKey([
+    productTitle(source),
+    source.productType,
+    source.product_type,
+    source.sealedProductType,
+    source.sealed_product_type,
+    source.productKind,
+    source.product_kind,
+    source.catalogType,
+    source.catalog_type,
+    source.category,
+  ].filter(Boolean).join(" "));
   const catalogType = textKey(source.catalogType || source.catalog_type);
   const productKind = textKey(source.productKind || source.product_kind);
   const sealedFlag = source.isSealed ?? source.is_sealed;
-  if (
-    sealedFlag === true ||
-    sealedFlag === "true" ||
-    catalogType === "sealed" ||
-    productKind === "sealed product" ||
-    /\bsealed\b|\bbooster\b|\belite trainer\b|\betb\b|\bbox\b|\btin\b|\bbundle\b|\bpack\b|\bcollection\b|\bblister\b|\btrainer toolkit\b/.test(text)
-  ) {
-    return "sealed";
-  }
   if (
     catalogType === "card" ||
     productKind === "card" ||
     getCardNumber(source) ||
     source.rarity ||
-    /\bsingle card\b|\bindividual card\b|\bpromo card\b|\bgraded card\b|\bslab\b|\bcode card\b/.test(text)
+    /\bsingle card\b|\bindividual card\b|\bpromo card\b|\bgraded card\b|\bslab\b|\bcode card\b/.test(identityText)
   ) {
     return "single";
+  }
+  if (
+    sealedFlag === true ||
+    sealedFlag === "true" ||
+    catalogType === "sealed" ||
+    productKind === "sealed product" ||
+    /\bsealed\b|\bbooster\b|\belite trainer\b|\betb\b|\bbox\b|\btin\b|\bbundle\b|\bpack\b|\bcollection\b|\bblister\b|\btrainer toolkit\b/.test(identityText)
+  ) {
+    return "sealed";
   }
   return "unknown";
 }
@@ -723,7 +734,7 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
       return !ownedCardKeys.has(productKey) && !(cardNumber && ownedCardNumberKeys.has(compactKey(cardNumber)));
     }) : [];
     const ownedCount = ownedCardGroups.length;
-    const ownedQuantity = getOwnedQuantity(row.ownedItems);
+    const ownedQuantity = getOwnedQuantity(row.ownedCardItems);
     const missingCount = checklistAvailable ? missingCards.length : null;
     const hasCompletionBasis = row.totalCards > 0 && (ownedCount > 0 || catalogCards.length > 0);
     const percent = hasCompletionBasis ? Math.min(100, Math.round((ownedCount / row.totalCards) * 100)) : null;
