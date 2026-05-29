@@ -20,11 +20,15 @@ import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/mark
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
 import {
+  buildSetCardRows,
+  classifyItemAsSingleOrSealed as classifyVaultSetItem,
   compareSetMasteryRows,
   deriveSetCompletionSummary,
   findSetSummaryForItem,
+  getCanonicalCardKey,
   getCardNumber as getSetMasteryCardNumber,
   getVariantLabel as getSetMasteryVariantLabel,
+  searchSetsByName,
   variantMatches as setMasteryVariantMatches,
 } from "./utils/vaultSetMastery";
 import { buildWishlistAddSeed, buildWishlistToOwnedRecord } from "./utils/vaultWorkflowUtils";
@@ -3550,6 +3554,10 @@ function itemPurchaserKey(item = {}) {
 }
 
 function inventoryProductGroupKey(item = {}, context = "inventory") {
+  if (context === "vault" && classifyVaultSetItem(item) === "single") {
+    const canonicalKey = getCanonicalCardKey(item);
+    if (canonicalKey) return `${context}:${canonicalKey}`;
+  }
   return inventoryProductIdentityGroupKey(item, context);
 }
 
@@ -4933,6 +4941,9 @@ export default function App() {
   const [vaultSetVariantFilter, setVaultSetVariantFilter] = useState("all");
   const [vaultSetViewMode, setVaultSetViewMode] = useState("grid");
   const [vaultSetSort, setVaultSetSort] = useState("cardNumber");
+  const [vaultSetMasteryTab, setVaultSetMasteryTab] = useState("my");
+  const [vaultSetSearchQuery, setVaultSetSearchQuery] = useState("");
+  const [selectedVaultCardGroupKey, setSelectedVaultCardGroupKey] = useState("");
   const scoutReportsRef = useRef(null);
   const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
   const [forgeSubTab, setForgeSubTab] = useState(initialRouteState.forgeSubTab || "overview");
@@ -25135,10 +25146,17 @@ function renderForgeAccessState() {
     catalogProducts,
     knownSets: POKEMON_SETS,
   }), [activeVaultItems, wishlistItems, catalogProducts]);
+  const vaultSetLibraryRows = useMemo(() => deriveSetCompletionSummary({
+    items: activeVaultItems,
+    wishlistItems,
+    catalogProducts,
+    knownSets: POKEMON_SETS,
+    includeEmptyKnownSets: true,
+  }), [activeVaultItems, wishlistItems, catalogProducts]);
   const missingSetCardCount = useMemo(() => vaultSetCompletionRows.reduce((sum, row) => sum + Number(row.missingSupported ? row.missingCount || 0 : 0), 0), [vaultSetCompletionRows]);
   const selectedVaultSet = useMemo(
-    () => vaultSetCompletionRows.find((set) => String(set.id) === String(selectedVaultSetId)) || null,
-    [vaultSetCompletionRows, selectedVaultSetId]
+    () => vaultSetLibraryRows.find((set) => String(set.id) === String(selectedVaultSetId)) || null,
+    [vaultSetLibraryRows, selectedVaultSetId]
   );
   const topVaultSetProgress = useMemo(
     () => vaultSetCompletionRows.find((row) => row.trackedItemCount > 0 || row.ownedCount > 0) || vaultSetCompletionRows[0] || null,
@@ -25149,7 +25167,13 @@ function renderForgeAccessState() {
     .slice(0, 3), [activeVaultItems]);
   const selectedVaultSetView = useMemo(() => {
     if (!selectedVaultSet) return null;
-    const effectiveDetailFilter = selectedVaultSet.missingSupported || vaultSetDetailFilter !== "missing" ? vaultSetDetailFilter : "all";
+    const effectiveDetailFilter = vaultSetDetailFilter;
+    const cardRows = buildSetCardRows(selectedVaultSet, { sortMode: vaultSetSort })
+      .filter((row) => vaultSetVariantFilter === "all" || row.variants.some((variant) => variant.key === vaultSetVariantFilter));
+    const ownedCardRows = cardRows.filter((row) => row.ownedQuantity > 0);
+    const missingCardRows = selectedVaultSet.missingSupported ? cardRows.filter((row) => row.missing) : [];
+    const wishlistCardRows = cardRows.filter((row) => row.wishlistQuantity > 0);
+    const variantCardRows = cardRows.filter((row) => row.variantCount > 1 || row.variantOwnedCount > 0 || row.variantWishlistCount > 0);
     const ownedItems = [...(selectedVaultSet.ownedItems || [])]
       .filter((item) => vaultSetVariantFilter === "all" || !isInventoryCardProduct(item) || vaultVariantMatches(item, vaultSetVariantFilter))
       .sort((a, b) => compareVaultSetRows(a, b, vaultSetSort));
@@ -25165,16 +25189,44 @@ function renderForgeAccessState() {
       .filter((item) => vaultSetVariantFilter === "all" || !isInventoryCardProduct(item) || vaultVariantMatches(item, vaultSetVariantFilter))
       .sort((a, b) => compareVaultSetRows(a, b, vaultSetSort));
     return {
+      cardRows,
+      ownedCardRows,
+      missingCardRows,
+      wishlistCardRows,
+      variantCardRows,
       ownedItems,
       missingCards,
       sealedProducts,
       wishlistItems,
+      showAllCards: effectiveDetailFilter === "all",
       showOwned: effectiveDetailFilter === "all" || effectiveDetailFilter === "owned",
-      showMissing: selectedVaultSet.missingSupported && (effectiveDetailFilter === "all" || effectiveDetailFilter === "missing"),
+      showMissing: effectiveDetailFilter === "all" || effectiveDetailFilter === "missing",
+      showMissingUnavailable: !selectedVaultSet.missingSupported && (effectiveDetailFilter === "missing"),
       showSealed: effectiveDetailFilter === "all" || effectiveDetailFilter === "sealed",
-      showWishlist: wishlistItems.length > 0 && (effectiveDetailFilter === "all" || effectiveDetailFilter === "wishlist"),
+      showWishlist: effectiveDetailFilter === "all" || effectiveDetailFilter === "wishlist",
+      showVariants: effectiveDetailFilter === "all" || effectiveDetailFilter === "variants",
     };
   }, [selectedVaultSet, vaultSetDetailFilter, vaultSetSort, vaultSetVariantFilter]);
+  const selectedVaultCardGroup = useMemo(
+    () => selectedVaultSetView?.cardRows?.find((row) => row.key === selectedVaultCardGroupKey) || null,
+    [selectedVaultSetView, selectedVaultCardGroupKey]
+  );
+  const vaultSetMasteryRows = useMemo(() => {
+    const searchedRows = vaultSetSearchQuery.trim()
+      ? searchSetsByName(vaultSetSearchQuery, vaultSetLibraryRows, { limit: 50 })
+      : vaultSetLibraryRows;
+    return searchedRows.filter((row) => {
+      if (vaultSetMasteryTab === "all") return true;
+      if (vaultSetMasteryTab === "wishlist") return Number(row.wishlistItems?.length || 0) > 0;
+      if (vaultSetMasteryTab === "recent") return Number(row.trackedItemCount || 0) > 0;
+      return Number(row.ownedCount || 0) > 0 || Number(row.trackedItemCount || 0) > 0;
+    });
+  }, [vaultSetLibraryRows, vaultSetMasteryTab, vaultSetSearchQuery]);
+  const marketSetSearchResults = useMemo(() => {
+    if (!catalogSearchHasRun) return [];
+    const query = submittedCatalogSearch || catalogSearch || catalogSetFilter;
+    return searchSetsByName(query, vaultSetLibraryRows, { limit: 4 });
+  }, [catalogSearchHasRun, submittedCatalogSearch, catalogSearch, catalogSetFilter, vaultSetLibraryRows]);
   const dashboardStats = [
     { key: "collection_value", label: "Collection Value", value: money(vaultValue) },
     { key: "monthly_spending", label: "Monthly Spending", value: money(monthlySpending) },
@@ -28418,6 +28470,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     setVaultSubTab("sets");
     setSelectedVaultSetId(setSummary.id);
     setSelectedVaultDetailId("");
+    setSelectedVaultCardGroupKey("");
+    if (
+      isSupabaseConfigured &&
+      !setSummary.unknownSet &&
+      !Number(setSummary.catalogCards?.length || 0)
+    ) {
+      void loadImportedPokemonCatalog(setSummary.name, {
+        productGroup: "Cards",
+        setName: setSummary.name,
+        forceSearch: true,
+        page: 1,
+        pageSize: 50,
+        mode: "set",
+      });
+    }
     scrollToPageTop();
   }
 
@@ -52004,12 +52071,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="vault-view-strip" aria-label="Vault view choices">
                 {[
                   { label: "Collection", tab: "collection" },
-                  { label: "Set Completion", tab: "sets", feature: "set_completion" },
-                  { label: "Value View", tab: "portfolio", feature: "portfolio_value" },
+                  { label: "Set Mastery", tab: "sets", feature: "set_completion" },
+                  { label: "Wishlist", tab: "wishlist" },
+                  { label: "Sealed", tab: "sealed" },
+                  { label: "Activity", tab: "activity", feature: "portfolio_value" },
                 ].map((item) => (
                   <button
                     key={item.label}
                     type="button"
+                    aria-label={`Vault section ${item.label}`}
                     className={vaultSubTab === item.tab || (item.tab === "collection" && vaultSubTab === "overview") ? "active" : ""}
                     onClick={() => {
                       if (item.feature && !featureAllowed(item.feature)) return openLockedFeatureNotice(item.feature);
@@ -52211,6 +52281,31 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <button type="button" className="secondary-button" onClick={() => openVaultCatalogSearchFlow({ source: "vault-sets" })}>Search Set</button>
                   </div>
                 </div>
+                {!selectedVaultSet ? (
+                  <div className="vault-set-master-toolbar">
+                    <label className="vault-filter-field vault-search-field">
+                      <span>Search sets</span>
+                      <input
+                        value={vaultSetSearchQuery}
+                        onInput={(event) => setVaultSetSearchQuery(event.target.value)}
+                        onChange={(event) => setVaultSetSearchQuery(event.target.value)}
+                        placeholder="Prismatic Evolutions, 151, Crown Zenith..."
+                      />
+                    </label>
+                    <div className="vault-set-chip-row vault-set-master-tabs" role="group" aria-label="Set Mastery views">
+                      {[
+                        ["my", "My Sets"],
+                        ["all", "All Sets"],
+                        ["wishlist", "Wishlist Sets"],
+                        ["recent", "Recent Sets"],
+                      ].map(([value, label]) => (
+                        <button key={value} type="button" className={vaultSetMasteryTab === value ? "active" : ""} onClick={() => setVaultSetMasteryTab(value)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {selectedVaultSet ? (
                     <div className="vault-set-detail">
                       <div className="vault-set-detail-hero">
@@ -52245,9 +52340,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         {[
                           ["all", "All"],
                           ["owned", "Owned"],
-                          ...(selectedVaultSet.missingSupported ? [["missing", "Missing"]] : []),
+                          ["missing", "Missing"],
+                          ["wishlist", "Wishlist"],
+                          ["variants", "Variants"],
                           ["sealed", "Sealed"],
-                          ...(selectedVaultSet.wishlistItems?.length ? [["wishlist", "Wishlist"]] : []),
                         ].map(([value, label]) => (
                           <button key={value} type="button" className={vaultSetDetailFilter === value ? "active" : ""} onClick={() => setVaultSetDetailFilter(value)}>
                             {label}
@@ -52270,6 +52366,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         <select value={vaultSetSort} onChange={(event) => setVaultSetSort(event.target.value)}>
                           <option value="cardNumber">Card number</option>
                           <option value="name">Name</option>
+                          <option value="rarity">Rarity</option>
                         </select>
                       </label>
                       <div className="vault-set-chip-row" role="group" aria-label="Set layout">
@@ -52284,26 +52381,68 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       </div>
                     </div>
 
+                    {selectedVaultCardGroup ? (
+                      <VaultGroupedCardDetail
+                        cardGroup={selectedVaultCardGroup}
+                        setSummary={selectedVaultSet}
+                        onClose={() => setSelectedVaultCardGroupKey("")}
+                        onViewSet={openVaultSetSummary}
+                        onAddVariant={(cardGroup) => openProductAddFlow({ product: cardGroup.primaryRecord, source: "vault-set-card-add-variant", destinations: { vault: true }, seed: buildWishlistAddSeed({ ...cardGroup.primaryRecord, name: cardGroup.title, setName: selectedVaultSet.name, cardNumber: cardGroup.cardNumber }) })}
+                        onAddWishlist={(cardGroup) => openProductAddFlow({ product: cardGroup.primaryRecord, source: "vault-set-card-add-wishlist", destinations: { wishlist: true }, seed: buildWishlistAddSeed({ ...cardGroup.primaryRecord, name: cardGroup.title, setName: selectedVaultSet.name, cardNumber: cardGroup.cardNumber }) })}
+                        onMarkOwned={markWishlistItemOwned}
+                        onOpenMarket={openMarketWatchForVaultItem}
+                        onOpenRecord={(record) => setSelectedVaultDetailId(record.id)}
+                        showSellerTools={adaptiveSellerToolsVisible}
+                      />
+                    ) : null}
+
+                    {selectedVaultSetView?.showAllCards ? (
+                    <div className="vault-set-subsection">
+                      <div className="compact-card-header">
+                        <div>
+                          <h3>Set checklist</h3>
+                          <p>{selectedVaultSet.checklistAvailable ? "Known catalog cards from this set, grouped by canonical card identity." : "Tracked catalog cards only. Full checklist not available yet."}</p>
+                        </div>
+                        <span className="status-badge">{selectedVaultSetView.cardRows.length} card{selectedVaultSetView.cardRows.length === 1 ? "" : "s"}</span>
+                      </div>
+                      <div className={`vault-set-product-grid vault-set-card-row-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
+                        {selectedVaultSetView.cardRows.length ? selectedVaultSetView.cardRows.slice(0, 36).map((row) => (
+                          <VaultSetCardRow
+                            key={`set-card-${row.key}`}
+                            row={row}
+                            onOpen={() => setSelectedVaultCardGroupKey(row.key)}
+                            onAddOwned={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-card-add-owned", destinations: { vault: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onAddWishlist={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-card-add-wishlist", destinations: { wishlist: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onOpenMarket={() => openMarketWatchForVaultItem(row.primaryRecord)}
+                          />
+                        )) : (
+                          <div className="small-empty-state">
+                            <strong>No catalog cards connected yet.</strong>
+                            <span>Search Market Watch by set name or add cards with set details to start this checklist.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    ) : null}
+
                     {selectedVaultSetView?.showOwned ? (
                     <div className="vault-set-subsection">
                       <div className="compact-card-header">
                         <div>
                           <h3>Owned from this set</h3>
-                          <p>Items already in your Vault.</p>
+                          <p>Canonical cards you own. Variants stay visible inside card detail.</p>
                         </div>
                       </div>
-                      <div className={`vault-set-product-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
-                        {selectedVaultSetView.ownedItems.length ? selectedVaultSetView.ownedItems.slice(0, 24).map((item) => (
-                          <article className="vault-set-mini-card" key={`set-owned-${item.id || item.name}`}>
-                            {vaultItemDisplayImage(item) ? <img src={vaultItemDisplayImage(item)} alt="" /> : <span className="vault-set-mini-thumb">{isInventorySealedProduct(item) ? "Box" : "Card"}</span>}
-                            <strong>{item.name}</strong>
-                            <span>{[vaultCardNumberLabel(item) ? `#${vaultCardNumberLabel(item)}` : "", vaultVariantLabel(item), item.productType || item.setName || "Vault item"].filter(Boolean).join(" - ")}</span>
-                            <span>{[itemPurchaserName(item), `Qty ${item.quantity || 1}`].filter(Boolean).join(" - ")}</span>
-                            <div className="vault-set-mini-actions">
-                              <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(item.id)}>View details</button>
-                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: item, source: "vault-set-owned-duplicate", destinations: { vault: true }, seed: buildWishlistAddSeed(item) })}>Add duplicate</button>
-                            </div>
-                          </article>
+                      <div className={`vault-set-product-grid vault-set-card-row-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
+                        {selectedVaultSetView.ownedCardRows.length ? selectedVaultSetView.ownedCardRows.slice(0, 24).map((row) => (
+                          <VaultSetCardRow
+                            key={`set-owned-${row.key}`}
+                            row={row}
+                            onOpen={() => setSelectedVaultCardGroupKey(row.key)}
+                            onAddOwned={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-owned-variant", destinations: { vault: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onAddWishlist={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-owned-wishlist", destinations: { wishlist: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onOpenMarket={() => openMarketWatchForVaultItem(row.primaryRecord)}
+                          />
                         )) : (
                           <div className="small-empty-state">
                             <strong>No owned items from this set yet.</strong>
@@ -52320,24 +52459,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <div className="compact-card-header">
                         <div>
                           <h3>Missing cards</h3>
-                          <p>Catalog cards not yet matched to your Vault.</p>
+                          <p>{selectedVaultSet.missingSupported ? "Catalog cards not yet matched to your Vault." : "Missing count needs checklist data before this set can show true missing cards."}</p>
                         </div>
                       </div>
-                      <div className={`vault-set-product-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
-                        {selectedVaultSetView.missingCards.length ? selectedVaultSetView.missingCards.slice(0, 24).map((product) => (
-                          <article className="vault-set-mini-card" key={`set-missing-${product.id || catalogTitle(product)}`}>
-                            {getCatalogImage(product) ? <img src={getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Card</span>}
-                            <strong>{catalogTitle(product)}</strong>
-                            <span>{[vaultCardNumberLabel(product) ? `#${vaultCardNumberLabel(product)}` : "", vaultVariantLabel(product), product.rarity || "Missing"].filter(Boolean).join(" - ")}</span>
-                            <div className="vault-set-mini-actions">
-                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-missing", destinations: { vault: true } })}>Add Item</button>
-                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-missing-wishlist", destinations: { wishlist: true }, seed: buildWishlistAddSeed(product) })}>Add to wishlist</button>
-                            </div>
-                          </article>
+                      <div className={`vault-set-product-grid vault-set-card-row-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
+                        {selectedVaultSet.missingSupported && selectedVaultSetView.missingCardRows.length ? selectedVaultSetView.missingCardRows.slice(0, 24).map((row) => (
+                          <VaultSetCardRow
+                            key={`set-missing-${row.key}`}
+                            row={row}
+                            onOpen={() => setSelectedVaultCardGroupKey(row.key)}
+                            onAddOwned={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-missing", destinations: { vault: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onAddWishlist={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-missing-wishlist", destinations: { wishlist: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onOpenMarket={() => openMarketWatchForVaultItem(row.primaryRecord)}
+                          />
                         )) : (
                           <div className="small-empty-state">
-                            <strong>No missing catalog cards found.</strong>
-                            <span>This set may need more catalog data, or your collection is complete for known cards.</span>
+                            <strong>{selectedVaultSet.missingSupported ? "No missing catalog cards found." : "Missing count needs checklist data."}</strong>
+                            <span>{selectedVaultSet.missingSupported ? "This set may need more catalog data, or your collection is complete for known cards." : "Full checklist not available yet. Vault will show tracked items and wishlist cards without inventing missing cards."}</span>
                           </div>
                         )}
                       </div>
@@ -52352,18 +52490,54 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <p>Wanted items tied to this set stay separate from owned Vault records.</p>
                         </div>
                       </div>
-                      <div className={`vault-set-product-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
-                        {selectedVaultSetView.wishlistItems.slice(0, 16).map((item) => (
-                          <article className="vault-set-mini-card" key={`set-wishlist-${item.id || item.name}`}>
-                            {vaultItemDisplayImage(item) ? <img src={vaultItemDisplayImage(item)} alt="" /> : <span className="vault-set-mini-thumb">Want</span>}
-                            <strong>{item.name || item.itemName || "Wishlist item"}</strong>
-                            <span>{[vaultCardNumberLabel(item) ? `#${vaultCardNumberLabel(item)}` : "", vaultVariantLabel(item), item.productType || "Wishlist"].filter(Boolean).join(" - ")}</span>
-                            <div className="vault-set-mini-actions">
-                              <button type="button" className="secondary-button" onClick={() => markWishlistItemOwned(item)}>Mark owned</button>
-                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: item, source: "vault-set-wishlist", destinations: { vault: true }, seed: buildWishlistAddSeed(item) })}>Add duplicate</button>
-                            </div>
-                          </article>
-                        ))}
+                      <div className={`vault-set-product-grid vault-set-card-row-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
+                        {selectedVaultSetView.wishlistCardRows.length ? selectedVaultSetView.wishlistCardRows.slice(0, 16).map((row) => (
+                          <VaultSetCardRow
+                            key={`set-wishlist-${row.key}`}
+                            row={row}
+                            onOpen={() => setSelectedVaultCardGroupKey(row.key)}
+                            onAddOwned={() => {
+                              const wishlistRecord = row.wishlistRecords?.[0];
+                              if (wishlistRecord?.id) markWishlistItemOwned(wishlistRecord);
+                              else openProductAddFlow({ product: row.primaryRecord, source: "vault-set-wishlist-owned", destinations: { vault: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) });
+                            }}
+                            onAddWishlist={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-wishlist-duplicate", destinations: { wishlist: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onOpenMarket={() => openMarketWatchForVaultItem(row.primaryRecord)}
+                          />
+                        )) : (
+                          <div className="small-empty-state">
+                            <strong>No wishlist cards for this set.</strong>
+                            <span>Add a missing or wanted card to track it without counting it as owned.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    ) : null}
+
+                    {selectedVaultSetView?.showVariants ? (
+                    <div className="vault-set-subsection">
+                      <div className="compact-card-header">
+                        <div>
+                          <h3>Variants</h3>
+                          <p>Known owned and wishlist variants grouped under one canonical card identity. Variant checklist unavailable.</p>
+                        </div>
+                      </div>
+                      <div className={`vault-set-product-grid vault-set-card-row-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
+                        {selectedVaultSetView.variantCardRows.length ? selectedVaultSetView.variantCardRows.slice(0, 24).map((row) => (
+                          <VaultSetCardRow
+                            key={`set-variant-${row.key}`}
+                            row={row}
+                            onOpen={() => setSelectedVaultCardGroupKey(row.key)}
+                            onAddOwned={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-variant", destinations: { vault: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onAddWishlist={() => openProductAddFlow({ product: row.primaryRecord, source: "vault-set-variant-wishlist", destinations: { wishlist: true }, seed: buildWishlistAddSeed({ ...row.primaryRecord, name: row.title, setName: selectedVaultSet.name, cardNumber: row.cardNumber }) })}
+                            onOpenMarket={() => openMarketWatchForVaultItem(row.primaryRecord)}
+                          />
+                        )) : (
+                          <div className="small-empty-state">
+                            <strong>No variant records yet.</strong>
+                            <span>Add another finish or condition to see variant detail here. Missing variant count needs checklist data.</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     ) : null}
@@ -52401,8 +52575,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 ) : (
                   <div className="vault-set-grid">
-                    {vaultSetCompletionRows.length ? vaultSetCompletionRows.map((set) => (
-                      <button type="button" className="vault-set-card vault-set-card-button" key={set.id} onClick={() => setSelectedVaultSetId(set.id)}>
+                    {vaultSetMasteryRows.length ? vaultSetMasteryRows.map((set) => (
+                      <button type="button" className="vault-set-card vault-set-card-button" key={set.key || `${set.id}-${set.name}`} onClick={() => setSelectedVaultSetId(set.id)}>
                         {set.logoUrl || set.symbolUrl ? <img className="vault-set-card-logo" src={set.logoUrl || set.symbolUrl} alt="" /> : null}
                         <span>{set.series || "Pokemon set"}</span>
                         <h3>{set.name}</h3>
@@ -52425,12 +52599,57 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </section>
             ) : null}
 
-            {vaultSubTab === "portfolio" ? (
+            {vaultSubTab === "sealed" ? (
+              <section className="panel vault-sealed-panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Sealed Products</h2>
+                    <p>Sealed items stay organized by safe set matches. Uncertain products remain honest as Set unknown.</p>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "vault-sealed-tab", destinations: { vault: true }, seed: { productType: "Sealed Product" } })}>Add sealed</button>
+                </div>
+                {activeVaultSealedItems.length ? (
+                  <div className="inventory-list compact-inventory-list vault-sealed-list">
+                    {activeVaultSealedItems.map((item) => {
+                      const setSummary = findSetSummaryForItem(item, vaultSetCompletionRows);
+                      return (
+                        <article className="inventory-card compact-card vault-item-card vault-sealed-card" key={item.id}>
+                          <div className="compact-card-header">
+                            <div>
+                              <h3>{item.name}</h3>
+                              <p className="compact-subtitle">{setSummary?.unknownSet ? "Set unknown" : setSummary?.name || vaultItemSetLabel(item) || "Set unknown"}</p>
+                            </div>
+                            <span className={statusClass(vaultStatusLabel(normalizeVaultStatus(item)))}>{vaultStatusLabel(normalizeVaultStatus(item))}</span>
+                          </div>
+                          <div className="vault-card-facts">
+                            <p><span>Qty</span><strong>{item.quantity || 1}</strong></p>
+                            <p><span>Value</span><strong>{vaultItemTotalMarketValue(item) ? money(vaultItemTotalMarketValue(item)) : "Value unavailable"}</strong></p>
+                            <p><span>Owner</span><strong>{itemPurchaserName(item)}</strong></p>
+                          </div>
+                          <div className="compact-actions vault-card-actions">
+                            <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(item.id)}>View details</button>
+                            {setSummary && !setSummary.unknownSet ? <button type="button" className="secondary-button" onClick={() => openVaultSetSummary(setSummary)}>View Set</button> : null}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="empty-state small-empty-state">
+                    <h3>No sealed products yet.</h3>
+                    <p>Add sealed products with a known set when possible. If the set is uncertain, Vault will keep it as Set unknown.</p>
+                    <button type="button" onClick={() => openProductAddFlow({ source: "vault-sealed-empty", destinations: { vault: true }, seed: { productType: "Sealed Product" } })}>Add sealed product</button>
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            {vaultSubTab === "activity" || vaultSubTab === "portfolio" ? (
               <section className="panel vault-portfolio-panel">
                 <div className="compact-card-header">
                   <div>
-                    <h2>Portfolio</h2>
-                    <p>Collector value, cost basis, MSRP, duplicates, and trade/sell readiness stay separate from Forge business inventory.</p>
+                    <h2>Activity</h2>
+                    <p>Recent collection changes, value context, and missing details stay calm and reviewable.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => setHomeSubTab("activity")}>Home Metrics</button>
                 </div>
@@ -52447,6 +52666,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span>{activeVaultSealedItems.length} sealed products</span>
                   <span>{activeVaultItems.filter((item) => item.graded || item.grade || item.gradingCompany).length} graded/slab records</span>
                   <span>{wishlistItems.length} wishlist items</span>
+                </div>
+                <div className="home-list compact-home-list">
+                  {recentVaultItems.length ? recentVaultItems.map((item) => (
+                    <button type="button" className="home-list-row" key={item.id} onClick={() => setSelectedVaultDetailId(item.id)}>
+                      <span>
+                        <strong>{item.name}</strong>
+                        <small>{[vaultItemSetLabel(item), vaultStatusLabel(normalizeVaultStatus(item)), `Qty ${item.quantity || 1}`].filter(Boolean).join(" | ")}</small>
+                      </span>
+                      <b>{vaultItemLastUpdatedLabel(item)}</b>
+                    </button>
+                  )) : (
+                    <div className="empty-state small-empty-state">
+                      <h3>No Vault activity yet.</h3>
+                      <p>Newly added cards, sealed products, wishlist updates, and value reviews will appear here.</p>
+                    </div>
+                  )}
                 </div>
               </section>
             ) : null}
@@ -52956,7 +53191,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                   ) : null}
 
-                  {catalogSearchHasRun && !supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 ? (
+                  {catalogSearchHasRun && !supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? (
                     <div className="empty-state market-empty-state">
                       <h3>No matches found{catalogEmptyTerm ? ` for "${catalogEmptyTerm}"` : ""}.</h3>
                       <p>
@@ -52992,6 +53227,48 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         ) : null}
                       </div>
                     </div>
+                  ) : null}
+
+                  {catalogSearchHasRun && !supabaseCatalogStatus.loading && marketSetSearchResults.length ? (
+                    <section className="market-set-results" aria-label="Set matches">
+                      <div className="catalog-result-group-header">
+                        <h3>Set matches</h3>
+                        <span className="status-badge">{marketSetSearchResults.length}</span>
+                      </div>
+                      <div className="market-set-result-grid">
+                        {marketSetSearchResults.map((set) => (
+                          <article className="market-set-card" key={`market-set-${set.key || set.id}`}>
+                            <div>
+                              <span>{set.series || "Pokemon set"}</span>
+                              <h3>{set.name}</h3>
+                              <p>
+                                {[
+                                  set.releaseDate ? `Released ${shortDate(set.releaseDate)}` : "",
+                                  set.checklistAvailable ? `${set.totalCards || set.catalogCards.length} checklist cards` : "Full checklist not available yet",
+                                  set.trackedSealedCount || set.sealedProducts.length ? `${set.trackedSealedCount || set.sealedProducts.length} sealed tracked` : "",
+                                ].filter(Boolean).join(" - ")}
+                              </p>
+                            </div>
+                            <div className="market-set-card-progress">
+                              <div className="vault-progress-track" aria-label={`${set.name} completion`}>
+                                <i style={{ width: `${set.percent ?? 0}%` }} />
+                              </div>
+                              <span>{set.checklistAvailable ? set.completionLabel : `${set.ownedCount || 0} owned - ${set.checklistStatus}`}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTab("vault");
+                                setVaultSubTab("sets");
+                                openVaultSetSummary(set);
+                              }}
+                            >
+                              View Set
+                            </button>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
                   ) : null}
 
 	                  {catalogSearchHasRun && tideTradrCatalogResults.length > 0 ? (
@@ -55778,6 +56055,99 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
         </details>
       </div>
     </div>
+  );
+}
+
+function VaultSetCardRow({ row, onOpen, onAddOwned, onAddWishlist, onOpenMarket }) {
+  if (!row) return null;
+  const image = getCatalogImage(row.imageRecord || row.primaryRecord || {}) || vaultItemDisplayImage(row.imageRecord || row.primaryRecord || {});
+  const statusCopy = row.ownedQuantity > 0 ? "Owned" : row.wishlistQuantity > 0 ? "Wishlist" : row.missing ? "Missing" : "Tracked";
+  const variantCopy = row.variantCount === 1 ? "1 variant" : `${row.variantCount || 0} variants`;
+  const primaryActionLabel = row.ownedQuantity > 0 ? "Add variant" : row.wishlistQuantity > 0 ? "Mark owned" : "Add to wishlist";
+  const primaryAction = row.ownedQuantity > 0 || row.wishlistQuantity > 0 ? onAddOwned : onAddWishlist;
+  return (
+    <article className="vault-set-card-row">
+      <div className={image ? "vault-set-card-row-image" : "vault-set-card-row-image placeholder"}>
+        {image ? <img src={image} alt="" /> : <span>Card</span>}
+      </div>
+      <div className="vault-set-card-row-body">
+        <span className={statusClass(statusCopy)}>{statusCopy}</span>
+        <h4>{row.title}</h4>
+        <p>{[`#${row.cardNumber || "?"}`, row.rarity || "", row.setName || ""].filter(Boolean).join(" - ")}</p>
+        <div className="vault-card-facts vault-set-card-row-facts">
+          <p><span>Owned</span><strong>{row.ownedQuantity || 0}</strong></p>
+          <p><span>Wishlist</span><strong>{row.wishlistQuantity || 0}</strong></p>
+          <p><span>Variants</span><strong>{variantCopy}</strong></p>
+        </div>
+      </div>
+      <div className="vault-set-mini-actions">
+        <button type="button" className="secondary-button" onClick={onOpen}>View variants</button>
+        <button type="button" className="secondary-button" onClick={primaryAction}>
+          {primaryActionLabel}
+        </button>
+        <button type="button" className="secondary-button" onClick={onOpenMarket}>Market Watch</button>
+      </div>
+    </article>
+  );
+}
+
+function VaultGroupedCardDetail({ cardGroup, setSummary, onClose, onViewSet, onAddVariant, onAddWishlist, onMarkOwned, onOpenMarket, onOpenRecord, showSellerTools = false }) {
+  if (!cardGroup) return null;
+  const image = getCatalogImage(cardGroup.imageRecord || cardGroup.primaryRecord || {}) || vaultItemDisplayImage(cardGroup.imageRecord || cardGroup.primaryRecord || {});
+  const primaryRecord = cardGroup.primaryRecord || cardGroup.records?.[0] || {};
+  return (
+    <section className="vault-grouped-card-detail" aria-label={`${cardGroup.title} variants`}>
+      <div className="compact-card-header">
+        <div>
+          <span className="trust-badge trust-badge--verified">Card detail</span>
+          <h3>{cardGroup.title}</h3>
+          <p>{[setSummary?.name || cardGroup.setName, cardGroup.cardNumber ? `#${cardGroup.cardNumber}` : "", cardGroup.rarity].filter(Boolean).join(" - ") || "Canonical card identity"}</p>
+        </div>
+        <button type="button" className="secondary-button" onClick={onClose}>Close card</button>
+      </div>
+      <div className="inventory-detail-hero vault-card-identity-hero">
+        <div className={image ? "inventory-detail-image-frame" : "inventory-detail-image-frame placeholder"}>
+          {image ? <img src={image} alt={cardGroup.title} /> : <span>Photo needed</span>}
+        </div>
+        <div className="inventory-detail-summary">
+          <h4>{cardGroup.ownedQuantity ? `${cardGroup.ownedQuantity} owned` : cardGroup.wishlistQuantity ? `${cardGroup.wishlistQuantity} wanted` : "Not owned yet"}</h4>
+          <p>{cardGroup.variantCompletionLabel || "Variant checklist unavailable."}</p>
+          <div className="inventory-detail-metrics">
+            <div><span>Variants</span><strong>{cardGroup.variantCount || 0}</strong></div>
+            <div><span>Owned variants</span><strong>{cardGroup.variantOwnedCount || 0}</strong></div>
+            <div><span>Wishlist</span><strong>{cardGroup.variantWishlistCount || 0}</strong></div>
+          </div>
+          <p className="vault-detail-action-note">Interactive card preview coming later.</p>
+        </div>
+      </div>
+      <div className="vault-detail-primary-actions">
+        {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
+        <button type="button" onClick={() => onAddVariant?.(cardGroup)}>Add another variant</button>
+        <button type="button" className="secondary-button" onClick={() => onAddWishlist?.(cardGroup)}>Add to wishlist</button>
+        <button type="button" className="secondary-button" onClick={() => onOpenMarket?.(primaryRecord)}>Open Market Watch</button>
+      </div>
+      <div className="vault-variant-list">
+        {cardGroup.variants.map((variant) => {
+          const firstOwned = variant.ownedRecords[0];
+          const firstWishlist = variant.wishlistRecords[0];
+          const firstRecord = firstOwned || firstWishlist || variant.catalogRecords[0] || variant.records[0] || {};
+          return (
+            <article className="vault-variant-card" key={variant.key}>
+              <div>
+                <span className="status-badge">{variant.label}</span>
+                <h4>{variant.ownedQuantity ? `${variant.ownedQuantity} owned` : variant.wishlistQuantity ? `${variant.wishlistQuantity} wanted` : "Not owned"}</h4>
+                <p>{[itemPurchaserName(firstRecord), firstRecord.condition || firstRecord.conditionName, firstRecord.notes].filter(Boolean).join(" - ") || "Variant details can be added later."}</p>
+              </div>
+              <div className="vault-set-mini-actions">
+                {firstOwned ? <button type="button" className="secondary-button" onClick={() => onOpenRecord?.(firstOwned)}>View item</button> : null}
+                {firstWishlist ? <button type="button" className="secondary-button" onClick={() => onMarkOwned?.(firstWishlist)}>Mark owned</button> : null}
+                {showSellerTools && firstOwned ? <span className="status-badge">Forge actions in item detail</span> : null}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

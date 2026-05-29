@@ -109,6 +109,7 @@ function explicitSetAliases(source = {}) {
     explicitSetName(source),
     source.name,
     source.code,
+    ...(Array.isArray(source.aliases) ? source.aliases : []),
     ...(Array.isArray(source.setAliases) ? source.setAliases : []),
     ...(Array.isArray(source.set_aliases) ? source.set_aliases : []),
   ].filter(Boolean).map(textKey).filter(Boolean);
@@ -139,11 +140,14 @@ function variantSourceText(source = {}) {
 }
 
 function cardIdentityKey(source = {}) {
+  const title = productTitle(source);
+  const setKey = getSetKey(source);
+  const cardNumber = getCardNumber(source);
+  if (setKey !== UNKNOWN_SET_KEY && title && cardNumber) return `card:${setKey}|number:${compactKey(cardNumber)}|title:${compactKey(title)}`;
+  if (setKey !== UNKNOWN_SET_KEY && cardNumber) return `card:${setKey}|number:${compactKey(cardNumber)}`;
+  if (setKey !== UNKNOWN_SET_KEY && title) return `card:${setKey}|title:${compactKey(title)}`;
   const productKey = explicitProductKey(source);
   if (productKey) return `product:${productKey}`;
-  const cardNumber = getCardNumber(source);
-  if (cardNumber) return `number:${compactKey(cardNumber)}`;
-  const title = productTitle(source);
   return title ? `title:${compactKey(title)}` : "";
 }
 
@@ -288,6 +292,66 @@ function compareText(a, b) {
   return String(a || "").localeCompare(String(b || ""), undefined, { numeric: true, sensitivity: "base" });
 }
 
+function setRefMatchesRecord(record = {}, setRef = {}) {
+  if (!record || !setRef) return false;
+  const refKey = typeof setRef === "string"
+    ? getSetKey({ setName: setRef })
+    : setRef.key || getSetKey(setRef, { fallbackName: setRef.name });
+  const recordKey = getSetKey(record);
+  if (refKey !== UNKNOWN_SET_KEY && recordKey === refKey) return true;
+
+  const refName = typeof setRef === "string" ? setRef : setRef.name || setRef.setName || setRef.expansion || "";
+  const refAliases = [
+    refName,
+    typeof setRef === "string" ? "" : setRef.id,
+    typeof setRef === "string" ? "" : setRef.key?.replace(/^set:/, ""),
+    ...(typeof setRef === "string" ? [] : Array.isArray(setRef.aliases) ? setRef.aliases : []),
+    ...(typeof setRef === "string" ? [] : Array.isArray(setRef.setAliases) ? setRef.setAliases : []),
+  ].filter(Boolean).map(normalizeSetName);
+  const recordAliases = [
+    explicitSetId(record),
+    explicitSetName(record),
+    record.setName,
+    record.expansion,
+    record.productLine,
+  ].filter(Boolean).map(normalizeSetName);
+  if (refAliases.some((alias) => recordAliases.includes(alias))) return true;
+
+  return classifyItemAsSingleOrSealed(record) === "sealed" && titleContainsSetName(record, refName);
+}
+
+function addSetCardRecord(group, record = {}, sourceType = "catalog") {
+  const variantKey = getVariantKey(record);
+  let variant = group.variants.find((entry) => entry.key === variantKey);
+  if (!variant) {
+    variant = {
+      key: variantKey,
+      label: getVariantLabel(variantKey),
+      records: [],
+      catalogRecords: [],
+      ownedRecords: [],
+      wishlistRecords: [],
+      ownedQuantity: 0,
+      wishlistQuantity: 0,
+    };
+    group.variants.push(variant);
+  }
+  variant.records.push(record);
+  variant[`${sourceType}Records`]?.push(record);
+  if (sourceType === "owned") {
+    const quantity = getOwnedQuantity([record]);
+    variant.ownedQuantity += quantity;
+    group.ownedQuantity += quantity;
+  }
+  if (sourceType === "wishlist") {
+    const quantity = getOwnedQuantity([record]);
+    variant.wishlistQuantity += quantity;
+    group.wishlistQuantity += quantity;
+  }
+  group.records.push(record);
+  group[`${sourceType}Records`]?.push(record);
+}
+
 export function normalizeSetName(value = "") {
   return textKey(value);
 }
@@ -311,6 +375,14 @@ export function getCardNumber(source = {}) {
     source.number ||
     ""
   ).trim();
+}
+
+export function getCanonicalCardKey(source = {}) {
+  return cardIdentityKey(source);
+}
+
+export function getSetDisplayName(source = {}) {
+  return explicitSetName(source) || source.name || source.setName || source.expansion || "Set unknown";
 }
 
 export function classifyItemAsSingleOrSealed(source = {}) {
@@ -377,6 +449,10 @@ export function compareSetMasteryRows(a = {}, b = {}, sortMode = "cardNumber") {
   if (sortMode === "name") {
     return compareText(productTitle(a), productTitle(b));
   }
+  if (sortMode === "rarity") {
+    return compareText(a.rarity || a.primaryRecord?.rarity || "", b.rarity || b.primaryRecord?.rarity || "") ||
+      compareSetMasteryRows(a, b, "cardNumber");
+  }
   const aNumber = getCardNumber(a);
   const bNumber = getCardNumber(b);
   const aMeta = getCardSortMeta({ ...a, cardNumber: aNumber });
@@ -439,6 +515,127 @@ export function groupItemsBySet(items = [], catalogProducts = [], knownSets = []
   return [...groups.values()].filter((group) => group.items.length || group.catalogProducts.length);
 }
 
+export function groupCatalogItemsBySet(catalogProducts = [], knownSets = []) {
+  return groupItemsBySet([], catalogProducts, knownSets);
+}
+
+export function getSetCatalogItems(setRef = {}, catalogProducts = []) {
+  return catalogProducts.filter((product) =>
+    classifyItemAsSingleOrSealed(product) === "single" &&
+    setRefMatchesRecord(product, setRef)
+  );
+}
+
+export function getSetSealedProducts(setRef = {}, catalogProducts = []) {
+  return catalogProducts.filter((product) =>
+    classifyItemAsSingleOrSealed(product) === "sealed" &&
+    setRefMatchesRecord(product, setRef)
+  );
+}
+
+export function getUserOwnedItemsForSet(setRef = {}, items = []) {
+  return items.filter((item) => setRefMatchesRecord(item, setRef));
+}
+
+export function getWishlistItemsForSet(setRef = {}, wishlistItems = []) {
+  return wishlistItems.filter((item) => setRefMatchesRecord(item, setRef));
+}
+
+export function searchSetsByName(query = "", setRows = [], options = {}) {
+  const needle = textKey(query);
+  if (!needle) return [];
+  const limit = Number(options.limit || 6);
+  const resultKey = (row = {}) => compactKey(String(row.name || getSetDisplayName(row)).replace(/^(sv|swsh|xy|ex|dp|hgss|bw|sm|scarlet\s*&?\s*violet|sword\s*&?\s*shield)\s*:\s*/i, ""));
+  return setRows
+    .map((row) => {
+      const name = row.name || getSetDisplayName(row);
+      const haystack = textKey([
+        name,
+        row.series,
+        row.id,
+        row.key,
+        row.releaseDate,
+        row.code,
+        ...(Array.isArray(row.aliases) ? row.aliases : []),
+        ...(Array.isArray(row.setAliases) ? row.setAliases : []),
+      ].filter(Boolean).join(" "));
+      const normalizedName = textKey(name);
+      const exact = normalizedName === needle || (row.aliases || []).some((alias) => textKey(alias) === needle);
+      const starts = normalizedName.startsWith(needle);
+      const reverseContains = normalizedName.length >= 4 && needle.length > normalizedName.length && needle.includes(normalizedName);
+      const contains = haystack.includes(needle) || reverseContains;
+      return contains ? { row, score: exact ? 0 : starts ? 1 : normalizedName.includes(needle) ? 2 : 3 } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) =>
+      a.score - b.score ||
+      Number(b.row.trackedItemCount || 0) - Number(a.row.trackedItemCount || 0) ||
+      Number(b.row.catalogCards?.length || 0) - Number(a.row.catalogCards?.length || 0) ||
+      compareText(a.row.name, b.row.name)
+    )
+    .filter((entry, index, sorted) => {
+      const key = resultKey(entry.row);
+      return sorted.findIndex((candidate) => resultKey(candidate.row) === key) === index;
+    })
+    .slice(0, limit)
+    .map((entry) => entry.row);
+}
+
+export function buildSetCardRows(setRow = {}, options = {}) {
+  const sortMode = options.sortMode || "cardNumber";
+  const groups = new Map();
+  const ensureGroup = (record = {}) => {
+    const key = cardIdentityKey(record) || `record:${groups.size}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        title: productTitle(record) || "Unknown card",
+        setName: getSetDisplayName(setRow),
+        cardNumber: getCardNumber(record),
+        rarity: record.rarity || "",
+        imageRecord: record,
+        primaryRecord: record,
+        records: [],
+        catalogRecords: [],
+        ownedRecords: [],
+        wishlistRecords: [],
+        variants: [],
+        ownedQuantity: 0,
+        wishlistQuantity: 0,
+        missing: false,
+      });
+    }
+    const group = groups.get(key);
+    if (!group.cardNumber && getCardNumber(record)) group.cardNumber = getCardNumber(record);
+    if (!group.rarity && record.rarity) group.rarity = record.rarity;
+    if (!group.title || group.title === "Unknown card") group.title = productTitle(record) || group.title;
+    if (!group.imageRecord || explicitProductKey(record)) group.imageRecord = record;
+    return group;
+  };
+
+  (setRow.catalogCards || []).forEach((record) => addSetCardRecord(ensureGroup(record), record, "catalog"));
+  (setRow.ownedCardItems || []).forEach((record) => addSetCardRecord(ensureGroup(record), record, "owned"));
+  (setRow.wishlistItems || [])
+    .filter((record) => classifyItemAsSingleOrSealed(record) !== "sealed")
+    .forEach((record) => addSetCardRecord(ensureGroup(record), record, "wishlist"));
+
+  return [...groups.values()].map((group) => {
+    const missing = Boolean(setRow.checklistAvailable && !group.ownedRecords.length);
+    const variantOwnedCount = group.variants.filter((variant) => variant.ownedQuantity > 0).length;
+    const variantWishlistCount = group.variants.filter((variant) => variant.wishlistQuantity > 0).length;
+    return {
+      ...group,
+      missing,
+      status: group.ownedQuantity > 0 ? "owned" : group.wishlistQuantity > 0 ? "wishlist" : missing ? "missing" : "tracked",
+      variantCount: group.variants.length,
+      variantOwnedCount,
+      variantWishlistCount,
+      variantCompletionLabel: "Variant checklist unavailable.",
+      primaryRecord: group.catalogRecords[0] || group.ownedRecords[0] || group.wishlistRecords[0] || group.primaryRecord,
+    };
+  }).sort((a, b) => compareSetMasteryRows(a.primaryRecord, b.primaryRecord, sortMode));
+}
+
 export function findSetSummaryForItem(item = {}, setRows = []) {
   if (!item || !setRows.length) return null;
   const directContainer = setRows.find((row) => [
@@ -465,7 +662,7 @@ export function findSetSummaryForItem(item = {}, setRows = []) {
   return setRows.find((row) => row.key === UNKNOWN_SET_KEY || row.unknownSet) || null;
 }
 
-export function deriveSetCompletionSummary({ items = [], wishlistItems = [], catalogProducts = [], knownSets = [] } = {}) {
+export function deriveSetCompletionSummary({ items = [], wishlistItems = [], catalogProducts = [], knownSets = [], includeEmptyKnownSets = false } = {}) {
   const allRecords = [...items, ...wishlistItems, ...catalogProducts];
   const descriptors = buildDescriptors(knownSets, allRecords);
   const rows = new Map(descriptors.map((descriptor) => [descriptor.key, {
@@ -476,6 +673,7 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
     releaseDate: descriptor.releaseDate,
     logoUrl: descriptor.logoUrl,
     symbolUrl: descriptor.symbolUrl,
+    aliases: descriptor.aliases,
     totalCards: descriptor.totalCards,
     checklistAvailable: descriptor.checklistComplete,
     unknownSet: Boolean(descriptor.unknown),
@@ -527,7 +725,8 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
     const ownedCount = ownedCardGroups.length;
     const ownedQuantity = getOwnedQuantity(row.ownedItems);
     const missingCount = checklistAvailable ? missingCards.length : null;
-    const percent = row.totalCards > 0 ? Math.min(100, Math.round((ownedCount / row.totalCards) * 100)) : null;
+    const hasCompletionBasis = row.totalCards > 0 && (ownedCount > 0 || catalogCards.length > 0);
+    const percent = hasCompletionBasis ? Math.min(100, Math.round((ownedCount / row.totalCards) * 100)) : null;
     const trackedItemCount = row.ownedItems.length + row.wishlistItems.length;
     return {
       ...row,
@@ -559,10 +758,14 @@ export function deriveSetCompletionSummary({ items = [], wishlistItems = [], cat
           : `${trackedItemCount} tracked items. Missing count needs checklist data.`,
     };
   })
-    .filter((row) => row.trackedItemCount > 0 || row.catalogCards.length || row.sealedProducts.length)
+    .filter((row) => row.trackedItemCount > 0 || row.catalogCards.length || row.sealedProducts.length || (includeEmptyKnownSets && !row.unknownSet))
     .sort((a, b) =>
       Number(b.trackedItemCount || 0) - Number(a.trackedItemCount || 0) ||
       Number(b.ownedCount || 0) - Number(a.ownedCount || 0) ||
       compareText(a.name, b.name)
     );
+}
+
+export function deriveSetCompletion(options = {}) {
+  return deriveSetCompletionSummary(options);
 }
