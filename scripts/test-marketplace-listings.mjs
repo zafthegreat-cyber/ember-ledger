@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { buildEmberAssistFallbackResponse } from "../src/utils/emberAssist.js";
 import { buildPublicCommunityProfile } from "../src/utils/communityProfile.js";
 import {
@@ -89,5 +90,17 @@ assert.match(trustAnswer.answer, /Private email/i);
 const paymentAnswer = buildEmberAssistFallbackResponse("Can I pay through Ember and Tide?", { page: "market" });
 assert.match(paymentAnswer.answer, /does not provide checkout\/payment/i);
 assert.doesNotMatch(paymentAnswer.answer, /guaranteed|payment is available/i);
+
+const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+assert.match(appSource, /primaryAddLabel = sellerMarketMode && activeForgeWorkspace \? "Add to Forge" : "Add to Vault"/);
+assert.match(appSource, /Review before saving\. Choose the destination now/);
+assert.match(appSource, /market-review-add-card/);
+assert.match(appSource, /market-set-mastery-context/);
+assert.match(appSource, /market-add-inline-destination-actions/);
+assert.match(appSource, /Search Again/);
+assert.match(appSource, /Manual Entry/);
+assert.match(appSource, /Request Missing Item/);
+assert.match(appSource, /Add to both/);
+assert.match(appSource, /Notes can be added before saving/);
 
 console.log("Marketplace listing tests passed.");

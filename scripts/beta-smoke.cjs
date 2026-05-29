@@ -2269,18 +2269,18 @@ async function main() {
     await searchForm.getByRole("button", { name: /Search Catalog|Search Market Watch|Search/i }).first().click();
     const resultCard = page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first();
     await resultCard.waitFor({ state: "visible", timeout: 10000 });
-    const marketResultAddButton = resultCard.getByRole("button", { name: /^Add$/i }).first();
+    const marketResultAddButton = resultCard.getByRole("button", { name: /Add to (Vault|Forge)/i }).first();
     await marketResultAddButton.scrollIntoViewIfNeeded();
     await marketResultAddButton.click();
     const marketAddModal = addWizardModal();
     await marketAddModal.waitFor({ state: "visible", timeout: 10000 }).catch(async () => {
-      const productDetailAdd = page.locator(".location-modal, .catalog-detail-modal, .market-product-detail-modal").filter({ hasText: "Prismatic Evolutions Booster Bundle" }).getByRole("button", { name: /^Add$/i }).first();
+      const productDetailAdd = page.locator(".location-modal, .catalog-detail-modal, .market-product-detail-modal").filter({ hasText: "Prismatic Evolutions Booster Bundle" }).getByRole("button", { name: /Add to (Vault|Forge)/i }).first();
       if (await productDetailAdd.isVisible().catch(() => false)) {
         await productDetailAdd.click();
       }
       await marketAddModal.waitFor({ state: "visible", timeout: 10000 });
     });
-    await marketAddModal.getByRole("button", { name: /^Both$/ }).click();
+    await marketAddModal.locator('[aria-label="Market add destination choices"]').getByRole("button", { name: /^Add to both$/i }).click();
     await clickAddWizardNext();
     await clickAddWizardNext();
     await page.locator(".flow-modal").getByRole("button", { name: /Save and Close/ }).click();

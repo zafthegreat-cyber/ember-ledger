@@ -17860,20 +17860,25 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }, 80);
   }
 
-  function openMarketProductAddFlow(product, source = "market-detail") {
+  function openMarketProductAddFlow(product, source = "market-detail", options = {}) {
     if (!product) return;
     rememberCatalogProduct(product);
     rememberMarketAddReturnContext(product);
     setSelectedCatalogDetailId("");
     setMarketAddChooserProductId("");
     setMarketAddConfirmation(null);
+    const defaultDestinations = options.destinations || (options.defaultDestination === "forge"
+      ? { forge: true }
+      : options.defaultDestination === "both"
+        ? { vault: true, forge: Boolean(activeForgeWorkspace) }
+        : { vault: true });
     window.setTimeout(() => {
       openProductAddFlow({
         product,
         source,
         seed: {
           initialStep: "destination",
-          destinations: destinationDefaults({}),
+          destinations: destinationDefaults(defaultDestinations),
         },
       });
     }, 0);
@@ -30081,6 +30086,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const productTypeLabel = catalogProductTypeLabel(product);
     const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Market data unavailable";
     const sellerMarketMode = Boolean(adaptiveSellerToolsVisible || adminToolsVisible);
+    const primaryAddLabel = sellerMarketMode && activeForgeWorkspace ? "Add to Forge" : "Add to Vault";
+    const primaryAddDestination = sellerMarketMode && activeForgeWorkspace ? "forge" : "vault";
     const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
     return (
       <div className="catalog-result-card market-fair-card market-mobile-product-card market-result-clickable-card" key={product.id}>
@@ -30161,14 +30168,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <button
             type="button"
             className="gradient-button market-result-add-button"
-            onClick={() => openMarketProductAddFlow(product, "market-card")}
+            onClick={() => openMarketProductAddFlow(product, "market-card", { defaultDestination: primaryAddDestination })}
           >
-            Add
+            {primaryAddLabel}
           </button>
           <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
             {watched ? "Watched" : "Watch"}
           </button>
-          <span className="market-result-card-hint">Tap card for details</span>
+          <button type="button" className="secondary-button market-result-view-button" onClick={() => openCatalogDetails(product)}>
+            Details
+          </button>
         </div>
       </div>
     );
@@ -42593,6 +42602,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const selectedCatalogMarketText = selectedCatalog && hasCatalogMarketPrice(selectedCatalog)
       ? `Market ${money(getTideTradrMarketInfo(selectedCatalog).currentMarketValue)}`
       : "Market data unavailable";
+    const selectedCatalogMarketSourceText = selectedCatalog
+      ? `${getCatalogMarketSourceLabel(selectedCatalog)} source - ${getTideTradrMarketInfo(selectedCatalog).marketDataLabel || "freshness unknown"}`
+      : "";
+    const marketAddSetSummary = marketAddFlowActive && selectedCatalog
+      ? findSetSummaryForItem(selectedCatalog, vaultSetCompletionRows)
+      : null;
+    const marketAddSetCanOpen = Boolean(marketAddSetSummary?.id && !marketAddSetSummary.unknownSet);
+    const marketAddTypeLabel = selectedCatalog
+      ? isCatalogCardProduct(selectedCatalog)
+        ? "Single card"
+        : isCatalogSealedProduct(selectedCatalog)
+          ? "Sealed product"
+          : "Type unknown"
+      : addFlowIsCard
+        ? "Single card"
+        : addFlowIsSealed
+          ? "Sealed product"
+          : "Type unknown";
     const itemSearchQuery = String(multiDestinationCatalogQuery || "").trim();
     const itemSearchResults = itemSearchQuery ? getCatalogPickerResults(itemSearchQuery, 10) : [];
     const recentAddItems = [...items]
@@ -42726,6 +42753,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>{[catalogExpansionName(selectedCatalog), catalogProductTypeLabel(selectedCatalog)].filter(Boolean).join(" | ") || "Catalog product"}</span>
               <small>{[selectedCatalogIdentifierText, selectedCatalogMarketText].filter(Boolean).join(" | ")}</small>
             </div>
+            {multiDestinationStep === "destination" ? (
+              <div className="market-add-inline-destination-actions" aria-label="Market add destination choices">
+                <button type="button" className={multiDestinationForm.destinations.vault && !multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.wishlist ? "active" : ""} onClick={() => applyDestinationPreset("vault")}>Add to Vault</button>
+                <button type="button" className={multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.vault ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("forge")}>Add to Forge</button>
+                <button type="button" className={multiDestinationForm.destinations.vault && multiDestinationForm.destinations.forge ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("both")}>Add to both</button>
+              </div>
+            ) : null}
             <div className="selected-match-actions">
               <button type="button" className="secondary-button" onClick={() => {
                 setMultiDestinationStep("item");
@@ -43079,7 +43113,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <h3>Destinations</h3>
           <div className="quick-add-destination-helper">
             <strong>Where should this item go?</strong>
-            <span>Vault is for your collection. Forge is for business inventory. Wishlist and Market Watch are optional tracking destinations.</span>
+            <span>{marketAddFlowActive ? "Review before saving. Choose the destination now, then correct quantity, owner, notes, price, and source details before submit." : "Vault is for your collection. Forge is for business inventory. Wishlist and Market Watch are optional tracking destinations."}</span>
           </div>
           {fieldError("destination") ? (
             <p className="field-error destination-field-error" role="alert" data-validation-field="destination">
@@ -43093,9 +43127,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : null}
           {marketAddFlowActive ? (
             <div className="market-add-destination-presets" aria-label="Common Market add destinations">
-              <button type="button" className={multiDestinationForm.destinations.vault && !multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.wishlist ? "active" : ""} onClick={() => applyDestinationPreset("vault")}>Vault</button>
-              <button type="button" className={multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.vault ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("forge")}>Forge</button>
-              <button type="button" className={multiDestinationForm.destinations.vault && multiDestinationForm.destinations.forge ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("both")}>Both</button>
+              <button type="button" className={multiDestinationForm.destinations.vault && !multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.wishlist ? "active" : ""} onClick={() => applyDestinationPreset("vault")}>Add to Vault</button>
+              <button type="button" className={multiDestinationForm.destinations.forge && !multiDestinationForm.destinations.vault ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("forge")}>Add to Forge</button>
+              <button type="button" className={multiDestinationForm.destinations.vault && multiDestinationForm.destinations.forge ? "active" : ""} disabled={!activeForgeWorkspace} onClick={() => applyDestinationPreset("both")}>Add to both</button>
               <button type="button" className={multiDestinationForm.destinations.wishlist || multiDestinationForm.destinations.tidetradr ? "active" : ""} onClick={() => applyDestinationPreset("watch")}>Wishlist / Watch</button>
             </div>
           ) : null}
@@ -43333,6 +43367,54 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {multiDestinationStep === "review" ? (
           <section className="flow-form-section wizard-review-section">
             <h3>Review and Add</h3>
+            {marketAddFlowActive ? (
+              <div className="market-review-add-card">
+                <div className="catalog-thumb market-review-add-thumb">
+                  {selectedCatalog && catalogImage(selectedCatalog) ? (
+                    <>
+                      <img
+                        src={catalogImage(selectedCatalog)}
+                        alt=""
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                          event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                        }}
+                      />
+                      {renderProductImageFallback(selectedCatalog, { hidden: true })}
+                    </>
+                  ) : selectedCatalog ? renderProductImageFallback(selectedCatalog) : <span className="market-card-thumb-placeholder">Manual</span>}
+                </div>
+                <div className="market-review-add-copy">
+                  <span className="neon-chip">Review before saving.</span>
+                  <strong>{multiDestinationForm.itemName || selectedItemSummary}</strong>
+                  <span>{[multiDestinationForm.setName || selectedCatalog && catalogExpansionName(selectedCatalog) || "Set unknown", selectedCatalog?.cardNumber || multiDestinationForm.cardNumber ? `#${selectedCatalog?.cardNumber || multiDestinationForm.cardNumber}` : "", multiDestinationForm.variant || "Variant unknown"].filter(Boolean).join(" | ")}</span>
+                  <small>{[marketAddTypeLabel, selectedCatalogMarketText, selectedCatalogMarketSourceText].filter(Boolean).join(" | ")}</small>
+                  <small>{multiDestinationForm.notes ? `Notes: ${multiDestinationForm.notes}` : "Notes can be added before saving."}</small>
+                </div>
+              </div>
+            ) : null}
+            {marketAddFlowActive && marketAddSetSummary ? (
+              <div className="market-set-mastery-context">
+                <div>
+                  <strong>Set Mastery context</strong>
+                  <span>{marketAddSetSummary.name} - {marketAddSetSummary.checklistAvailable ? "Checklist available" : "Missing count needs checklist data."}</span>
+                </div>
+                {marketAddSetCanOpen ? (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      closeFlowModal({ force: true, reset: false });
+                      setActiveTab("vault");
+                      setVaultSubTab("sets");
+                      openVaultSetSummary(marketAddSetSummary);
+                    }}
+                  >
+                    View Set
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <div className="wizard-review-grid">
               <div className="wizard-summary-card">
                 <span>Item</span>
@@ -43357,7 +43439,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="wizard-summary-card">
                   <span>Vault</span>
                   <strong>Qty {multiDestinationForm.vault.quantity || 1}</strong>
-                  <small>{[vaultStatusLabel(multiDestinationForm.vault.vaultStatus), multiDestinationForm.vault.storageLocation, multiDestinationForm.vault.unitCost ? `Cost ${money(Number(multiDestinationForm.vault.unitCost))}` : ""].filter(Boolean).join(" | ")}</small>
+                  <small>{[vaultStatusLabel(multiDestinationForm.vault.vaultStatus), multiDestinationForm.vault.purchaserName ? `Owner ${multiDestinationForm.vault.purchaserName}` : "", multiDestinationForm.vault.storageLocation, multiDestinationForm.vault.unitCost ? `Cost ${money(Number(multiDestinationForm.vault.unitCost))}` : ""].filter(Boolean).join(" | ")}</small>
                 </div>
               ) : null}
               {multiDestinationForm.destinations.wishlist ? (
@@ -53372,6 +53454,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           : "No matches yet. Try a set name, product name, UPC, or card name."}
                       </p>
                       <div className="quick-actions market-empty-actions">
+                        <button type="button" className="secondary-button" onClick={() => {
+                          setCatalogSearch(catalogEmptyTerm || catalogSearch);
+                          setCatalogSearchHasRun(false);
+                          setSupabaseCatalogStatus((current) => ({ ...current, error: "", message: "" }));
+                        }}>
+                          Search Again
+                        </button>
+                        <button type="button" onClick={() => openProductAddFlow({
+                          source: "market-result",
+                          seed: {
+                            initialStep: "item",
+                            itemName: catalogEmptyTerm || catalogSearch,
+                            catalogSearchQuery: catalogEmptyTerm || catalogSearch,
+                            destinations: destinationDefaults({ vault: true }),
+                            notes: "Manual entry from Market Watch no-results fallback.",
+                          },
+                        })}>
+                          Manual Entry
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -55603,7 +55704,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   </div>
                 </section>
 	                <div className="catalog-detail-action-group catalog-detail-primary-actions">
-	                  <button type="button" onClick={() => openMarketProductAddFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, "market-detail")}>Add</button>
+	                  <button type="button" onClick={() => openMarketProductAddFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, "market-detail", { defaultDestination: adaptiveSellerToolsVisible && activeForgeWorkspace ? "forge" : "vault" })}>
+	                    {adaptiveSellerToolsVisible && activeForgeWorkspace ? "Add to Forge" : "Add to Vault"}
+	                  </button>
 	                  <button type="button" className="secondary-button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Watch</button>
 	                  <button type="button" className="secondary-button" onClick={() => checkCatalogDetailDeal(selectedCatalogDetailProduct)}>Check Deal</button>
 	                  <button type="button" className="secondary-button" onClick={() => setSelectedCatalogDetailId("")}>Back to results</button>
