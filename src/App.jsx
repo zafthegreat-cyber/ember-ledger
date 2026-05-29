@@ -40176,11 +40176,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               if (!event.currentTarget.open) {
                 return;
               }
+              const detailsElement = event.currentTarget;
               window.requestAnimationFrame(() => {
-                event.currentTarget.scrollIntoView?.({
-                  block: "nearest",
-                  behavior: "smooth",
-                });
+                if (detailsElement && typeof detailsElement.scrollIntoView === "function") {
+                  detailsElement.scrollIntoView({
+                    block: "nearest",
+                    behavior: "smooth",
+                  });
+                }
               });
             }}
           >
