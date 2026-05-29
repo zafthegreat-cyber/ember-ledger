@@ -241,12 +241,17 @@ import {
 } from "./utils/productDisplayUtils";
 import {
   buildForgeGroupSaleHistory,
+  deriveGradeAssistReadiness,
+  GRADE_ASSIST_CHECK_FIELDS,
+  GRADE_ASSIST_CHECK_OPTIONS,
+  GRADE_ASSIST_DISCLAIMER,
   buildPlannedSalePricePatch,
   compareInventoryGroupsAlphabetically,
   groupedInventoryEntryIds,
   groupedInventoryUnsoldEntryIds,
   inventoryEntryIsSold,
   inventoryProductIdentityGroupKey,
+  normalizeGradeAssistChecklist,
   plannedSalePriceUpdateSummary,
   restoreSaleItemsToInventory,
   summarizeForgeGroupedInventoryStatus,
@@ -56300,7 +56305,116 @@ function VaultGroupedCardDetail({ cardGroup, setSummary, onClose, onViewSet, onA
   );
 }
 
+const GRADE_ASSIST_LOCAL_STORAGE_KEY = "et-grade-assist-checklists";
+
+function gradeAssistRecordKey(item = {}) {
+  return String(
+    item.id ||
+    item.groupId ||
+    item.catalogVariantId ||
+    item.catalog_variant_id ||
+    item.catalogProductId ||
+    item.catalog_product_id ||
+    item.externalProductId ||
+    item.external_product_id ||
+    item.name ||
+    "",
+  ).trim();
+}
+
+function readGradeAssistLocalStore() {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(GRADE_ASSIST_LOCAL_STORAGE_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadGradeAssistDraft(item = {}) {
+  const key = gradeAssistRecordKey(item);
+  const localStore = readGradeAssistLocalStore();
+  return normalizeGradeAssistChecklist(
+    localStore[key] ||
+    item.gradeAssistChecklist ||
+    item.grade_assist_checklist ||
+    item.gradeAssist ||
+    {},
+  );
+}
+
+function saveGradeAssistDraft(item = {}, checklist = {}) {
+  const normalized = normalizeGradeAssistChecklist({
+    ...checklist,
+    updatedAt: new Date().toISOString(),
+  });
+  const key = gradeAssistRecordKey(item);
+  if (!key || typeof localStorage === "undefined") {
+    return { mode: "session", checklist: normalized };
+  }
+  const localStore = readGradeAssistLocalStore();
+  localStorage.setItem(GRADE_ASSIST_LOCAL_STORAGE_KEY, JSON.stringify({
+    ...localStore,
+    [key]: normalized,
+  }));
+  return { mode: "local", checklist: normalized };
+}
+
+function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
+  const rawValue = firstKnownVaultNumber(
+    item.marketValue,
+    item.market_value,
+    item.marketPrice,
+    item.market_price,
+    item.estimatedMarketValue,
+    item.estimated_market_value,
+  );
+  const gradedValue = firstKnownVaultNumber(
+    item.marketValueGraded,
+    item.market_value_graded,
+    item.gradedMarketValue,
+    item.graded_market_value,
+    item.psaMarketValue,
+    item.psa_market_value,
+    item.bgsMarketValue,
+    item.bgs_market_value,
+    item.cgcMarketValue,
+    item.cgc_market_value,
+  );
+
+  if (!rawValue && !gradedValue) {
+    return {
+      label: "Not enough market data yet.",
+      helper: "Open Market Watch or review value data before comparing raw and graded references.",
+    };
+  }
+
+  if (rawValue && gradedValue) {
+    return {
+      label: `Raw ${moneyFormatter(rawValue)} / graded reference ${moneyFormatter(gradedValue)}`,
+      helper: "Use sourced market data only as a comparison. Values are not guaranteed.",
+    };
+  }
+
+  return {
+    label: rawValue ? `Raw reference ${moneyFormatter(rawValue)}` : `Graded reference ${moneyFormatter(gradedValue)}`,
+    helper: rawValue
+      ? "Graded comparison needs sourced graded market data."
+      : "Raw comparison needs sourced raw market data.",
+  };
+}
+
 function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, showSellerTools = false }) {
+  const gradeAssistKey = gradeAssistRecordKey(item || {});
+  const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
+  const [gradeAssistMessage, setGradeAssistMessage] = useState("");
+
+  useEffect(() => {
+    setGradeAssistDraft(loadGradeAssistDraft(item || {}));
+    setGradeAssistMessage("");
+  }, [gradeAssistKey]);
+
   if (!item) return null;
   const showVaultSellerTools = Boolean(showSellerTools);
   const itemIsWishlist = isWishlistLikeVaultItem(item);
@@ -56408,6 +56522,34 @@ function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSe
     ["Grade", item.grade],
     ["Certification", item.certNumber || item.cert_number || item.certificationNumber || item.certification_number],
   ].filter(([, value]) => hasValue(value));
+  const gradeAssistReadiness = deriveGradeAssistReadiness(gradeAssistDraft);
+  const gradeAssistValue = gradeAssistValueComparison(item, money);
+  const updateGradeAssistField = (fieldKey, value) => {
+    setGradeAssistDraft((current) => normalizeGradeAssistChecklist({
+      ...current,
+      checks: {
+        ...(current.checks || {}),
+        [fieldKey]: value,
+      },
+    }));
+    setGradeAssistMessage("");
+  };
+  const updateGradeAssistNotes = (value) => {
+    setGradeAssistDraft((current) => normalizeGradeAssistChecklist({
+      ...current,
+      notes: value,
+    }));
+    setGradeAssistMessage("");
+  };
+  const saveGradeAssist = () => {
+    const result = saveGradeAssistDraft(item, gradeAssistDraft);
+    setGradeAssistDraft(result.checklist);
+    setGradeAssistMessage(
+      result.mode === "local"
+        ? "Checklist saved on this device. Cloud sync needs backend Grade Assist storage."
+        : "Checklist updated for this session. Cloud sync needs backend Grade Assist storage.",
+    );
+  };
   const detailMetricRows = [
     ["Qty", item.quantity || 0],
     ["Market", valuation.marketKnownQuantity ? money(totalMarket) : "Price data unavailable"],
@@ -56598,14 +56740,78 @@ function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSe
             onCopyEntryToForge={onCopyToForge}
           />
         </details>
-        <details className="vault-detail-disclosure">
-          <summary>Condition / Grade Assist later</summary>
+        <details className="vault-detail-disclosure grade-assist-disclosure" open>
+          <summary>Condition / Grade Assist</summary>
           <div className="catalog-detail-grid">
-            {conditionDetails.map(([label, value]) => (
+            {(conditionDetails.length ? conditionDetails : [["Condition", "Not set"]]).map(([label, value]) => (
               <DetailItem key={label} label={label} value={value} />
             ))}
           </div>
-          <p className="vault-detail-action-note">Grade Assist is coming later. Estimates are not guaranteed grades.</p>
+          <section className="grade-assist-panel" aria-label="Manual Grade Assist checklist">
+            <div className="grade-assist-header">
+              <div>
+                <span className="trust-badge trust-badge--secure">Estimate only</span>
+                <h4>Grade Assist</h4>
+                <p>{GRADE_ASSIST_DISCLAIMER}</p>
+              </div>
+              <div className={`grade-assist-readiness ${gradeAssistReadiness.tone}`}>
+                <span>Grade readiness</span>
+                <strong>{gradeAssistReadiness.label}</strong>
+                <p>{gradeAssistReadiness.helper}</p>
+              </div>
+            </div>
+            <div className="grade-assist-photo-grid" aria-label="Grade Assist photo references">
+              <div className={detailImage ? "grade-assist-photo-card has-image" : "grade-assist-photo-card"}>
+                <span>Front/reference photo</span>
+                {detailImage ? <img src={detailImage} alt="" /> : <strong>No photo yet</strong>}
+                <p>{detailImage ? "Using the current item image for manual review." : "Add an item photo from Edit / Add details when available."}</p>
+              </div>
+              <div className="grade-assist-photo-card">
+                <span>Back photo</span>
+                <strong>No back photo yet</strong>
+                <p>Dedicated front/back photo storage needs backend Grade Assist support.</p>
+              </div>
+            </div>
+            <div className="grade-assist-checklist" aria-label="Manual condition checklist">
+              {GRADE_ASSIST_CHECK_FIELDS.map((field) => (
+                <label className="grade-assist-field" key={field.key}>
+                  <span>{field.label}</span>
+                  <select
+                    value={gradeAssistDraft.checks?.[field.key] || "not_checked"}
+                    onChange={(event) => updateGradeAssistField(field.key, event.target.value)}
+                  >
+                    {GRADE_ASSIST_CHECK_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <label className="grade-assist-notes">
+              <span>Notes</span>
+              <textarea
+                value={gradeAssistDraft.notes || ""}
+                onChange={(event) => updateGradeAssistNotes(event.target.value)}
+                placeholder="Manual notes only: centering, whitening, print lines, dents, surface marks, or anything to review before deciding."
+                rows={3}
+              />
+            </label>
+            <div className="grade-assist-value-card">
+              <span>Value comparison</span>
+              <strong>{gradeAssistValue.label}</strong>
+              <p>{gradeAssistValue.helper}</p>
+            </div>
+            {showVaultSellerTools ? (
+              <p className="vault-detail-action-note">Seller context: use this as pre-listing review notes only. It does not change Forge pricing or listing status.</p>
+            ) : null}
+            <div className="quick-actions grade-assist-actions">
+              <button type="button" onClick={saveGradeAssist}>Save notes / Update checklist</button>
+              <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Open value review</button>
+            </div>
+            <p className="vault-detail-action-note">
+              {gradeAssistMessage || "Checklist storage is local to this browser for now. Cloud sync needs backend Grade Assist storage."}
+            </p>
+          </section>
         </details>
         <details className="vault-detail-disclosure">
           <summary>Identifiers</summary>

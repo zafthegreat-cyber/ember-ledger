@@ -57874,6 +57874,147 @@ html body .app-command-shell.app-vault .ember-assist-shell {
   line-height: 1.35;
 }
 
+.app-vault .grade-assist-disclosure[open] {
+  border-color: rgba(255, 186, 73, 0.24) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 186, 73, 0.13), transparent 12rem),
+    rgba(3, 12, 26, 0.66) !important;
+}
+
+.app-vault .grade-assist-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.app-vault .grade-assist-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.app-vault .grade-assist-header h4 {
+  margin: 7px 0 3px;
+  color: #fff7ed;
+  font-size: 1rem;
+}
+
+.app-vault .grade-assist-header p,
+.app-vault .grade-assist-value-card p,
+.app-vault .grade-assist-photo-card p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.72);
+  line-height: 1.35;
+}
+
+.app-vault .grade-assist-readiness {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(2, 11, 24, 0.58);
+}
+
+.app-vault .grade-assist-readiness > span,
+.app-vault .grade-assist-value-card > span,
+.app-vault .grade-assist-photo-card > span,
+.app-vault .grade-assist-field > span,
+.app-vault .grade-assist-notes > span {
+  color: rgba(232, 246, 255, 0.64);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.app-vault .grade-assist-readiness strong,
+.app-vault .grade-assist-value-card strong,
+.app-vault .grade-assist-photo-card strong {
+  color: #fff7ed;
+  font-size: 0.96rem;
+}
+
+.app-vault .grade-assist-readiness.success {
+  border-color: rgba(100, 255, 178, 0.28);
+  background: rgba(31, 137, 96, 0.14);
+}
+
+.app-vault .grade-assist-readiness.info {
+  border-color: rgba(124, 231, 255, 0.28);
+  background: rgba(54, 166, 255, 0.12);
+}
+
+.app-vault .grade-assist-readiness.warning {
+  border-color: rgba(255, 186, 73, 0.34);
+  background: rgba(255, 186, 73, 0.12);
+}
+
+.app-vault .grade-assist-photo-grid,
+.app-vault .grade-assist-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 10px;
+}
+
+.app-vault .grade-assist-photo-card,
+.app-vault .grade-assist-value-card,
+.app-vault .grade-assist-field,
+.app-vault .grade-assist-notes {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(124, 231, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(2, 11, 24, 0.5);
+}
+
+.app-vault .grade-assist-photo-card img {
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: rgba(2, 11, 24, 0.58);
+}
+
+.app-vault .grade-assist-field select,
+.app-vault .grade-assist-notes textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(124, 231, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(3, 12, 26, 0.84);
+  color: #fff7ed;
+  font: inherit;
+}
+
+.app-vault .grade-assist-field select {
+  min-height: 42px;
+  padding: 0 10px;
+}
+
+.app-vault .grade-assist-notes textarea {
+  min-height: 88px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.app-vault .grade-assist-actions {
+  align-items: stretch;
+}
+
+.app-vault .grade-assist-actions button {
+  min-height: 42px;
+}
+
+@media (min-width: 760px) {
+  .app-vault .grade-assist-header {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.65fr);
+  }
+}
+
 .app-vault .vault-detail-card .inventory-detail-metrics {
   grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
 }

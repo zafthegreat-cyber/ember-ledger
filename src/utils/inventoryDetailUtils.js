@@ -12,6 +12,104 @@ export function normalizeInventoryGroupText(value) {
     .trim();
 }
 
+export const GRADE_ASSIST_DISCLAIMER = "Grade Assist is an estimate, not a guaranteed grade.";
+
+export const GRADE_ASSIST_CHECK_FIELDS = [
+  { key: "centering", label: "Centering" },
+  { key: "corners", label: "Corners" },
+  { key: "edges", label: "Edges" },
+  { key: "surface", label: "Surface" },
+  { key: "printQuality", label: "Print quality" },
+];
+
+export const GRADE_ASSIST_CHECK_OPTIONS = [
+  { value: "not_checked", label: "Not checked" },
+  { value: "looks_clean", label: "Looks clean" },
+  { value: "minor_issue", label: "Minor issue" },
+  { value: "major_issue", label: "Major issue" },
+];
+
+const GRADE_ASSIST_OPTION_VALUES = new Set(GRADE_ASSIST_CHECK_OPTIONS.map((option) => option.value));
+
+function normalizeGradeAssistOption(value) {
+  const normalized = normalizeInventoryGroupText(value).replace(/\s+/g, "_");
+  if (GRADE_ASSIST_OPTION_VALUES.has(normalized)) return normalized;
+  if (normalized === "clean" || normalized === "good") return "looks_clean";
+  if (normalized === "minor" || normalized === "needs_review") return "minor_issue";
+  if (normalized === "major" || normalized === "damage") return "major_issue";
+  return "not_checked";
+}
+
+export function normalizeGradeAssistChecklist(value = {}) {
+  const checks = value.checks && typeof value.checks === "object" ? value.checks : value;
+  const normalizedChecks = {};
+  GRADE_ASSIST_CHECK_FIELDS.forEach((field) => {
+    normalizedChecks[field.key] = normalizeGradeAssistOption(checks[field.key]);
+  });
+  return {
+    checks: normalizedChecks,
+    notes: String(value.notes || "").trim(),
+    updatedAt: value.updatedAt || value.updated_at || "",
+  };
+}
+
+export function deriveGradeAssistReadiness(checklist = {}) {
+  const normalized = normalizeGradeAssistChecklist(checklist);
+  const values = GRADE_ASSIST_CHECK_FIELDS.map((field) => normalized.checks[field.key]);
+  const checkedCount = values.filter((value) => value !== "not_checked").length;
+  const cleanCount = values.filter((value) => value === "looks_clean").length;
+  const minorCount = values.filter((value) => value === "minor_issue").length;
+  const majorCount = values.filter((value) => value === "major_issue").length;
+
+  if (checkedCount < 3) {
+    return {
+      key: "not_enough_info",
+      label: "Not enough info yet",
+      helper: "Complete more manual checks before using this as grade-readiness guidance.",
+      tone: "muted",
+      checkedCount,
+    };
+  }
+
+  if (majorCount > 0) {
+    return {
+      key: "manual_review_recommended",
+      label: "Manual review recommended",
+      helper: "One or more major issues were marked. Review the card carefully before deciding.",
+      tone: "warning",
+      checkedCount,
+    };
+  }
+
+  if (cleanCount === GRADE_ASSIST_CHECK_FIELDS.length) {
+    return {
+      key: "strong_candidate",
+      label: "Strong candidate",
+      helper: "All manual checks look clean. This is still only grade-readiness guidance.",
+      tone: "success",
+      checkedCount,
+    };
+  }
+
+  if (cleanCount >= 3 && minorCount <= 1) {
+    return {
+      key: "looks_promising",
+      label: "Looks promising",
+      helper: "Most manual checks look clean. Review photos and notes before deciding.",
+      tone: "info",
+      checkedCount,
+    };
+  }
+
+  return {
+    key: "needs_review",
+    label: "Needs review",
+    helper: "Some manual checks need attention before this card is a grading candidate.",
+    tone: "warning",
+    checkedCount,
+  };
+}
+
 export function inventoryGroupDisplayName(item = {}) {
   const entries = Array.isArray(item.rawItems) && item.rawItems.length ? item.rawItems : [item];
   const firstEntry = entries[0] || {};

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import {
   buildPlannedSalePricePatch,
+  deriveGradeAssistReadiness,
+  GRADE_ASSIST_DISCLAIMER,
+  normalizeGradeAssistChecklist,
   groupedInventoryEntryIds,
   plannedSalePriceUpdateSummary,
 } from "../src/utils/inventoryDetailUtils.js";
@@ -31,5 +34,35 @@ assert.deepEqual(patch.plannedSalePriceHistory[1], {
   changedAt,
   source: "quick_update",
 });
+
+assert.equal(GRADE_ASSIST_DISCLAIMER, "Grade Assist is an estimate, not a guaranteed grade.");
+
+const emptyChecklist = normalizeGradeAssistChecklist({});
+assert.equal(emptyChecklist.checks.centering, "not_checked");
+assert.equal(deriveGradeAssistReadiness(emptyChecklist).label, "Not enough info yet");
+
+const strongChecklist = normalizeGradeAssistChecklist({
+  checks: {
+    centering: "looks_clean",
+    corners: "looks_clean",
+    edges: "looks_clean",
+    surface: "looks_clean",
+    printQuality: "looks_clean",
+  },
+});
+assert.equal(deriveGradeAssistReadiness(strongChecklist).label, "Strong candidate");
+
+const reviewChecklist = normalizeGradeAssistChecklist({
+  checks: {
+    centering: "looks_clean",
+    corners: "minor_issue",
+    edges: "major_issue",
+    surface: "looks_clean",
+    printQuality: "looks_clean",
+  },
+  notes: "Whitening on one corner.",
+});
+assert.equal(reviewChecklist.notes, "Whitening on one corner.");
+assert.equal(deriveGradeAssistReadiness(reviewChecklist).label, "Manual review recommended");
 
 console.log("Inventory detail tests passed.");
