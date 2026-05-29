@@ -39558,6 +39558,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       };
     }
     if (activeFlowModal?.type === "addActionSheet") {
+      if (["scanAnything", "search", "upc", "manual", "photo"].includes(quickAddWizard.screen || "")) {
+        return {
+          title: "Scan Anything",
+          description: "Search, enter UPC/SKU, or add manually.",
+          size: "medium",
+        };
+      }
       return {
         title: "Quick Add",
         description: "Add something, then decide where it belongs.",
@@ -39685,6 +39692,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       };
     }
     if (activeFlowModal?.type === "addActionSheet") {
+      if (["scanAnything", "search", "upc", "manual", "photo"].includes(quickAddWizard.screen || "")) {
+        return { title: "Scan Anything", description: "Search, enter UPC/SKU, or add manually.", size: activeFlowModal?.size || "medium" };
+      }
       return { title: "Quick Add", description: "Add something, then decide where it belongs.", size: activeFlowModal?.size || "medium" };
     }
     return { title: "Add", description: "Create a new record.", size: activeFlowModal?.size || "medium" };
@@ -39704,10 +39714,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { value: "wishlist", label: "Wishlist/Watch", helper: "Track for later" },
     ];
     const comingLaterScanModes = [
-      { key: "card", title: "Scan card", helper: "Camera card matching is coming later.", icon: "scan", tone: "search" },
-      { key: "binder", title: "Scan binder", helper: "Binder scanning is coming later.", icon: "vault", tone: "vault" },
-      { key: "slab", title: "Scan slab", helper: "Slab scanning is coming later.", icon: "grade", tone: "warning" },
-      { key: "receipt", title: "Scan receipt", helper: "Receipt OCR is coming later.", icon: "receipt", tone: "forge" },
+      { key: "card", title: "Scan Card", helper: "Card image matching is coming later.", icon: "scan", tone: "search" },
+      { key: "binder", title: "Scan Binder", helper: "Binder intake is coming later.", icon: "vault", tone: "vault" },
+      { key: "slab", title: "Scan Slab", helper: "Slab intake is coming later.", icon: "grade", tone: "warning" },
+      { key: "receipt", title: "Scan Receipt", helper: "Receipt parsing is coming later.", icon: "receipt", tone: "forge" },
     ];
     const runSearch = (value = quickAddWizard.query) => {
       const query = String(value || "").trim();
@@ -39729,6 +39739,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const runUpcLookup = () => {
       if (!upcQuery) {
         updateQuickAddWizard({ message: "Enter or paste a UPC, barcode, SKU, or product ID." });
+        return;
+      }
+      const normalizedUpcQuery = normalizeBarcodeValue(upcQuery);
+      if (/^\d+$/.test(normalizedUpcQuery) && normalizedUpcQuery.length > 18) {
+        updateQuickAddWizard({ upcQuery, message: "No exact identifier match. Use Search Again, Manual Entry, or Request Missing Item." });
         return;
       }
       runSearch(upcQuery);
@@ -39831,10 +39846,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (quickAddScreen === "scanAnything") {
       return (
         <div className="add-anything-flow add-anything-scan-foundation">
-          {renderFlowHeader("Scan Anything", "Scan, search, or enter manually - then review before saving.")}
+          {renderFlowHeader("Scan Anything", "Search, enter UPC/SKU, or add manually.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
-            <p>Search and manual entry work now. Camera scanning, OCR, and AI matching are not live in this flow yet.</p>
+            <p>Search, UPC/SKU lookup, and manual entry work now. Automated scan modes are not live in this flow yet.</p>
           </div>
           <div className="add-anything-option-grid">
             <button type="button" className="add-anything-option add-anything-option--search" onClick={() => setQuickAddPath("search")}>
@@ -39844,7 +39859,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </button>
             <button type="button" className="add-anything-option add-anything-option--search" onClick={() => setQuickAddPath("upc")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scan" /></span>
-              <strong>Enter UPC / SKU</strong>
+              <strong>Enter UPC/SKU</strong>
               <small>Look up sealed products or identifiers manually.</small>
             </button>
             <button type="button" className="add-anything-option add-anything-option--warning" onClick={() => setQuickAddPath("manual")}>
@@ -39901,6 +39916,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               searchCategories={MARKET_SEARCH_CATEGORIES}
               scopeSets={POKEMON_SETS}
               scopeProductTypes={MARKET_SEARCH_TYPE_SCOPES}
+              suppressSuggestions
               emptyMessage="No matches yet. Try fewer words, UPC, SKU, or set name."
               money={money}
             />
@@ -39927,7 +39943,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (quickAddScreen === "upc") {
       return (
         <div className="add-anything-flow add-anything-upc">
-          {renderFlowHeader("Enter UPC / SKU", "Type or paste a UPC, barcode, SKU, or product ID. Camera UPC scanning is coming later.")}
+          {renderFlowHeader("Enter UPC/SKU", "Type or paste a UPC, barcode, SKU, or product ID. Automated scan lookup is coming later.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
             <p>If the source is weak or the match looks wrong, search again or request a missing item.</p>
@@ -39943,7 +39959,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </Field>
           <div className="quick-add-inline-actions">
             <button type="button" onClick={runUpcLookup}>Lookup UPC/SKU</button>
-            <button type="button" className="secondary-button" disabled>Camera scan coming later</button>
+            <button type="button" className="secondary-button" disabled>Scan lookup coming later</button>
           </div>
           <div className="empty-state small-empty-state quick-add-empty-result quick-add-upc-fallback">
             <h3>No UPC match?</h3>
@@ -39960,7 +39976,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </button>
             </div>
           </div>
-          {upcQuery ? renderSearchResults(upcResults, "quick-add-upc", "No UPC match yet. Try searching by product name or request a missing item.") : null}
+          {upcQuery && upcResults.length ? renderSearchResults(upcResults, "quick-add-upc", "No UPC match yet. Try searching by product name or request a missing item.") : null}
           {quickAddWizard.message ? <p className="flow-inline-message is-info">{quickAddWizard.message}</p> : null}
         </div>
       );
@@ -40162,7 +40178,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       expense: { key: "expense", title: "Add Expense", helper: "Track seller or business costs.", icon: "expense", tone: "forge", onClick: () => runAddSheetAction("expense") },
     };
     const fallbackEntryOptions = [
-      { key: "upc", title: "Enter UPC / SKU", helper: "Look up identifiers manually.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
+      { key: "upc", title: "Enter UPC/SKU", helper: "Look up identifiers manually.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
       { key: "photo", title: "Photo reference", helper: "Camera AI is coming later.", icon: "camera", tone: "vault", onClick: () => setQuickAddPath("photo") },
       { key: "manual", title: "Manual Entry", helper: "Add anything without a catalog match.", icon: "manual_entry", tone: "warning", ariaLabel: "Manual Add item", onClick: () => setQuickAddPath("manual") },
     ];
@@ -40235,7 +40251,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </details>
         ) : null}
-        <p className="quick-add-missing-help">Search and UPC use the Market catalog. Camera scanning and OCR are coming later.</p>
+        <p className="quick-add-missing-help">Search and UPC use the Market catalog. Automated scan modes are coming later.</p>
       </div>
     );
   }
@@ -47289,7 +47305,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <>
           <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />
 
-          <aside className="drawer open">
+          <aside className="drawer menu-drawer navigation-drawer open">
             <div className="drawer-header">
               <div><p>Ember & Tide</p><h3>Menu</h3></div>
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>X</button>

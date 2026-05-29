@@ -119,6 +119,20 @@ const upcFallbackSource = appSource.slice(upcFallbackStart, upcFallbackStart + 1
 assert.match(upcFallbackSource, /Search Again/);
 assert.match(upcFallbackSource, /Manual Entry/);
 assert.match(upcFallbackSource, /Request Missing Item/);
+assert.match(appSource, /normalizedUpcQuery\.length > 18/);
+assert.match(appSource, /No exact identifier match\. Use Search Again, Manual Entry, or Request Missing Item\./);
 assert.match(appSource, /const visibleEntryCount = sellerQuickAddActive \? Math\.max\(6, quickAddPreferencePlan\.maxVisible\) : quickAddPreferencePlan\.maxVisible;/);
+assert.match(appSource, /title: "Scan Anything", description: "Search, enter UPC\/SKU, or add manually\."/);
+assert.match(appSource, /openQuickAddReviewForProduct\(product, source = "quick-add-search"\)/);
+assert.match(appSource, /quickAddDestinationSeed\(sellerDestinationDefault\)/);
+assert.match(appSource, /suppressSuggestions\s+emptyMessage="No matches yet\. Try fewer words, UPC, SKU, or set name\."/);
+assert.match(appSource, /Scan Card/);
+assert.match(appSource, /Scan Binder/);
+assert.match(appSource, /Scan Slab/);
+assert.match(appSource, /Scan Receipt/);
+assert.match(appSource, /add-anything-option--locked/);
+assert.doesNotMatch(appSource, /Receipt OCR is coming later/);
+assert.doesNotMatch(appSource, /Camera scan coming later/);
+assert.doesNotMatch(appSource, /Camera scanning and OCR are coming later/);
 
 console.log("Quick Add routing tests passed.");

@@ -10040,6 +10040,156 @@ textarea {
   }
 }
 
+/* Mobile Navigation + Scan Anything stabilization */
+@media (max-width: 640px) {
+  body.menu-open {
+    overflow: hidden !important;
+  }
+
+  .app .drawer.open.menu-drawer,
+  .app-command-shell .drawer.open.menu-drawer,
+  .app-shell-dark .drawer.open.menu-drawer,
+  .app .drawer.open.navigation-drawer,
+  .app-command-shell .drawer.open.navigation-drawer,
+  .app-shell-dark .drawer.open.navigation-drawer {
+    position: fixed !important;
+    inset: env(safe-area-inset-top, 0px) 0 0 0 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: calc(100dvh - env(safe-area-inset-top, 0px)) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px)) !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-header,
+  .app-command-shell .drawer.open.menu-drawer .drawer-header,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-header,
+  .app .drawer.open.navigation-drawer .drawer-header,
+  .app-command-shell .drawer.open.navigation-drawer .drawer-header,
+  .app-shell-dark .drawer.open.navigation-drawer .drawer-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 4 !important;
+    flex: none !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack,
+  .app .drawer.open.navigation-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.navigation-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.navigation-drawer .drawer-menu-stack {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 12px calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 112px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 112px) !important;
+  }
+
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]) {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"],
+  .app .flow-modal[data-flow="multiDestinationAdd"],
+  .app-command-shell .flow-modal[data-flow="addActionSheet"],
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"],
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"],
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] {
+    position: fixed !important;
+    inset: 0 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    box-sizing: border-box !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: calc(100dvh - 4px) !important;
+    max-height: calc(100dvh - 4px) !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 12px calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 120px) !important;
+    scroll-padding: 12px 0 calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 120px) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+  .app .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 5 !important;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .add-anything-flow,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .add-anything-flow,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .add-anything-flow {
+    min-height: 100%;
+    align-content: start;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .add-anything-scan-foundation .add-anything-option-grid,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .add-anything-scan-foundation .add-anything-option-grid,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .add-anything-scan-foundation .add-anything-option-grid,
+  .app .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .quick-add-inline-actions,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .quick-add-inline-actions,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .quick-add-inline-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .app .scanner-review-modal,
+  .app-command-shell .scanner-review-modal,
+  .app-shell-dark .scanner-review-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow-y: auto !important;
+    padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+  }
+}
+
 /* Finish-line polish: keep dense utility surfaces readable without changing behavior. */
 .app .admin-selected-queue-panel,
 .app-command-shell .admin-selected-queue-panel,
@@ -59341,5 +59491,137 @@ html body .app-command-shell.app-vault .ember-assist-shell {
     align-content: start !important;
     gap: 6px !important;
     padding: 12px !important;
+  }
+}
+
+/* Final mobile route treatment for Scan Anything and Review/Add. Keep this late in the cascade. */
+@media (max-width: 640px) {
+  body.menu-open {
+    overflow: hidden !important;
+  }
+
+  .app .drawer.open.menu-drawer,
+  .app-command-shell .drawer.open.menu-drawer,
+  .app-shell-dark .drawer.open.menu-drawer,
+  .app .drawer.open.navigation-drawer,
+  .app-command-shell .drawer.open.navigation-drawer,
+  .app-shell-dark .drawer.open.navigation-drawer {
+    position: fixed !important;
+    inset: env(safe-area-inset-top, 0px) 0 0 0 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: calc(100dvh - env(safe-area-inset-top, 0px)) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px)) !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack,
+  .app .drawer.open.navigation-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.navigation-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.navigation-drawer .drawer-menu-stack {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 12px calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 112px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 112px) !important;
+  }
+
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]) {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"],
+  .app .flow-modal[data-flow="multiDestinationAdd"],
+  .app-command-shell .flow-modal[data-flow="addActionSheet"],
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"],
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"],
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] {
+    position: fixed !important;
+    inset: 0 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    box-sizing: border-box !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: calc(100dvh - 2px) !important;
+    max-height: calc(100dvh - 2px) !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 12px calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 120px) !important;
+    scroll-padding: 12px 0 calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 120px) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+  .app .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 5 !important;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback {
+    padding: 14px !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback .quick-add-inline-actions,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback .quick-add-inline-actions,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback .quick-add-inline-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    width: 100%;
+    gap: 8px !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback .quick-add-inline-actions button,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback .quick-add-inline-actions button,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .add-anything-upc .quick-add-upc-fallback .quick-add-inline-actions button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding-inline: 8px;
+    font-size: 0.74rem;
+    line-height: 1.1;
+    white-space: normal;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }

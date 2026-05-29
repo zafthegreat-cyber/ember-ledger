@@ -4,7 +4,9 @@ import path from "node:path";
 
 const root = process.cwd();
 const appPath = path.join(root, "src", "App.jsx");
+const cssPath = path.join(root, "src", "App.css");
 const appSource = fs.readFileSync(appPath, "utf8");
+const cssSource = fs.readFileSync(cssPath, "utf8");
 
 const expectedRoutes = [
   ['section === "settings"', 'activeTab: "settings"'],
@@ -48,6 +50,20 @@ assert.equal(
   /keepOpen:\s*true/.test(appSource),
   false,
   "Menu launcher items should not keep the drawer open for inline utility panels."
+);
+assert.ok(
+  appSource.includes('className="drawer menu-drawer navigation-drawer open"'),
+  "Mobile menu should use the menu/navigation drawer classes targeted by scroll-safe CSS."
+);
+assert.ok(
+  cssSource.includes(".drawer.open.menu-drawer .drawer-menu-stack") && cssSource.includes("overflow-y: auto"),
+  "Mobile menu drawer stack should scroll independently."
+);
+assert.ok(
+  cssSource.includes('.flow-modal[data-flow="addActionSheet"]') &&
+    cssSource.includes('.flow-modal[data-flow="multiDestinationAdd"]') &&
+    cssSource.includes("height: 100dvh"),
+  "Mobile Scan Anything and Review/Add flows should receive full-page modal treatment."
 );
 
 console.log("Menu full-page route tests passed.");
