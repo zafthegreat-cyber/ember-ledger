@@ -27397,8 +27397,23 @@ function renderForgeAccessState() {
   }
 
   function isCurrentUserScoutReport(report = {}) {
-    const userIds = [currentUserProfile.userId, user?.id, "local-beta", "local-beta-scout"].filter(Boolean).map(String);
-    return userIds.some((id) => String(report.userId || report.user_id || report.reportedBy || report.reported_by || "").includes(id));
+    const currentUserIds = [
+      currentUserProfile?.userId,
+      currentUserProfile?.user_id,
+      currentUserProfile?.id,
+      user?.id,
+      BETA_LOCAL_MODE ? "local-beta" : "",
+      BETA_LOCAL_MODE ? "local-beta-scout" : "",
+    ].filter(Boolean).map((id) => String(id).trim()).filter(Boolean);
+    const reportUserIds = [
+      report.userId,
+      report.user_id,
+      report.reportedBy,
+      report.reported_by,
+      report.submittedByUserId,
+      report.submitted_by_user_id,
+    ].filter(Boolean).map((id) => String(id).trim()).filter(Boolean);
+    return reportUserIds.some((reportUserId) => currentUserIds.includes(reportUserId));
   }
 
   function isScoutGuessRow(row = {}) {

@@ -60248,4 +60248,23 @@ html body .app-command-shell.app-vault .ember-assist-shell {
     min-width: 0 !important;
     max-width: 100% !important;
   }
+
+  .app-scout .scout-report-detail-section > summary,
+  .app-command-shell.app-scout .scout-report-detail-section > summary,
+  .app.app-scout .scout-report-detail-section > summary {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: 5px !important;
+  }
+
+  .app-scout .scout-report-detail-section > summary span,
+  .app-scout .scout-report-detail-section > summary small,
+  .app-command-shell.app-scout .scout-report-detail-section > summary span,
+  .app-command-shell.app-scout .scout-report-detail-section > summary small,
+  .app.app-scout .scout-report-detail-section > summary span,
+  .app.app-scout .scout-report-detail-section > summary small {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
 }

@@ -3,6 +3,7 @@ import fs from "node:fs";
 
 const app = fs.readFileSync("src/App.jsx", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20260523204500_scout_reports_manual_store_saves.sql", "utf8");
+const ownerPolicyMigration = fs.readFileSync("supabase/migrations/20260529123000_store_reports_owner_update_policy.sql", "utf8");
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
 assert.match(app, /const rawStoreId = report\.storeId/, "Scout cloud save should preserve the original store id for diagnostics");
@@ -19,6 +20,8 @@ assert.match(app, /const cloudMergeBase = \(latestScoutData\.reports \|\| \[\]\)
 assert.match(app, /String\(getScoutReportId\(candidate\)\) !== String\(localReportId\)/, "Scout cloud merge should remove the local report by id before adding the synced report");
 assert.match(app, /const savedReportId = getScoutReportId\(savedReport \|\| \{\}\)/, "Scout Add More Details should retain the submitted report id");
 assert.match(app, /openScoutReportDetail\(savedReportId \|\| savedReport/, "Scout Add More Details should open the submitted report, not a blank draft");
+assert.match(app, /currentUserIds\.includes\(reportUserId\)/, "Scout report ownership should use exact user-id matching");
+assert.doesNotMatch(app, /report\.userId \|\| report\.user_id \|\| report\.reportedBy \|\| report\.reported_by \|\| ""\)\.includes\(id\)/, "Scout report ownership must not use substring matching");
 assert.match(app, /Choose how you know this report before posting\./, "Scout submit should require a proof/source choice before posting");
 assert.doesNotMatch(app, /\|\|\s*note\s*\|\|\s*""/, "Scout cards should not fall back to long report notes as the default card summary");
 assert.match(app, /function isScoutPlaceholderReport/, "Scout should filter placeholder/demo reports from user-facing report rows");
@@ -30,6 +33,9 @@ assert.match(app, /Couldn't save Scout report\./, "Scout submit should show a vi
 assert.match(migration, /alter column store_id drop not null/i, "store_reports should allow directory/manual reports without a stores.id UUID");
 assert.match(migration, /store_reports_store_name_time_idx/i, "manual store reports should be indexable by store name and time");
 assert.match(migration, /store_name when submitted against generated directory\/manual stores/i, "migration should document why store_id is optional");
+assert.match(ownerPolicyMigration, /store_reports_update_details_owner_or_admin/i, "Scout report updates should use an owner-or-admin policy");
+assert.match(ownerPolicyMigration, /or user_id = \(select auth\.uid\(\)\)/i, "Normal users should only update their own Scout reports");
+assert.doesNotMatch(ownerPolicyMigration, /can_edit_workspace\(workspace_id\)/i, "Workspace edit rights should not allow editing another user's Scout report details");
 
 assert.equal(
   pkg.scripts["test:scout-report-save-flow"],
