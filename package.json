@@ -5,6 +5,8 @@
     "start": "vite preview",
     "preview": "vite preview",
     "smoke:beta": "node scripts/beta-smoke.cjs",
+    "test:beta-regression": "node scripts/beta-smoke.cjs --regression",
+    "smoke:beta-regression": "node scripts/beta-smoke.cjs --regression",
     "smoke:catalog-search": "node --use-system-ca scripts/smoke-catalog-search.cjs",
     "test:drop-radar": "node scripts/test-drop-radar-utils.mjs",
     "verify:phase2-supabase": "node scripts/verify-phase2-supabase.cjs",

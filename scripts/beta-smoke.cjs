@@ -5,6 +5,9 @@ const rawAppUrl = process.env.APP_URL || "http://127.0.0.1:5200/";
 const appUrl = new URL(rawAppUrl);
 appUrl.searchParams.set("betaLocalMode", "true");
 const APP_URL = appUrl.toString();
+const BETA_SMOKE_MODE = process.argv.includes("--regression") || process.env.BETA_SMOKE_MODE === "regression"
+  ? "regression"
+  : "smoke";
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
@@ -12,6 +15,7 @@ async function main() {
   page.setDefaultTimeout(20000);
   page.setDefaultNavigationTimeout(45000);
   const results = [];
+  console.log(`Beta smoke mode: ${BETA_SMOKE_MODE}`);
 
   await page.addInitScript(() => {
     const appSeed = sessionStorage.getItem("__etSmokeAppData");
@@ -31,13 +35,17 @@ async function main() {
   });
 
   async function step(name, fn) {
+    const startedAt = Date.now();
+    console.log(`START ${name}`);
     try {
       await fn();
-      results.push({ name, status: "PASS" });
-      console.log(`PASS ${name}`);
+      const elapsedMs = Date.now() - startedAt;
+      results.push({ name, status: "PASS", elapsedMs });
+      console.log(`PASS ${name} (${elapsedMs}ms)`);
     } catch (error) {
-      results.push({ name, status: "FAIL", error: error.message });
-      console.error(`FAIL ${name}: ${error.message}`);
+      const elapsedMs = Date.now() - startedAt;
+      results.push({ name, status: "FAIL", elapsedMs, error: error.message });
+      console.error(`FAIL ${name} (${elapsedMs}ms): ${error.message}`);
       throw error;
     }
   }
@@ -451,6 +459,51 @@ async function main() {
     }
     if (label) throw new Error(`No visible ${label} found`);
     return false;
+  }
+
+  if (BETA_SMOKE_MODE === "smoke") {
+    await step("app opens and local beta shell loads", async () => {
+      await resetBetaData();
+      await assertVisibleText("E&T TCG");
+      await assertVisibleText("Beta");
+      await assertVisibleText("Collector");
+      await assertVisibleText("Hearth");
+    });
+
+    await step("Quick Add opens from command shell", async () => {
+      await nav("Hearth");
+      const commandCenterButtons = [
+        page.locator('button[aria-label="Open Quick Add command center"]'),
+        page.locator(".hearth-command-hero").getByRole("button", { name: "Quick Add", exact: true }),
+      ];
+      const opened = await clickFirstVisible(commandCenterButtons[0], "").catch(() => false)
+        || await clickFirstVisible(commandCenterButtons[1], "").catch(() => false);
+      assert.equal(opened, true, "Quick Add command entry should be visible");
+      const quickAddModal = page.locator('.flow-modal[data-flow="addActionSheet"]').first();
+      await quickAddModal.waitFor({ state: "visible", timeout: 5000 });
+      await assertVisibleText("Scan Anything");
+      await quickAddModal.locator('.modal-close-button[aria-label="Close Quick Add"]').click();
+      await quickAddModal.waitFor({ state: "hidden", timeout: 5000 });
+    });
+
+    await step("Scout opens", async () => {
+      await nav("Scout");
+      await assertVisibleText("Scout");
+    });
+
+    await step("Vault opens", async () => {
+      await nav("Vault");
+      await assertVisibleText("Vault");
+    });
+
+    await step("Market opens", async () => {
+      await nav("TideTradr");
+      await assertVisibleText(/Market|TideTradr/i);
+    });
+
+    await browser.close();
+    console.log(JSON.stringify(results, null, 2));
+    return;
   }
 
   await step("app opens and beta data resets", async () => {
