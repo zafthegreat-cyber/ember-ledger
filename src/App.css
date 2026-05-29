@@ -41389,6 +41389,57 @@ body,
   border-color: rgba(255, 209, 102, 0.24);
 }
 
+.add-anything-option--locked,
+.add-anything-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+}
+
+.add-anything-option--locked em {
+  align-self: end;
+  justify-self: start;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 209, 102, 0.26);
+  border-radius: 999px;
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.08);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.scan-anything-principle-card,
+.scan-anything-review-note {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 231, 255, 0.09), transparent 9rem),
+    rgba(6, 20, 38, 0.72);
+}
+
+.scan-anything-principle-card strong,
+.scan-anything-review-note strong {
+  color: #fff8e8;
+}
+
+.scan-anything-principle-card p,
+.scan-anything-review-note p {
+  margin: 0;
+  color: rgba(229, 240, 255, 0.74);
+  line-height: 1.38;
+}
+
+.scan-anything-coming-soon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .quick-add-inline-actions,
 .quick-add-search-starter {
   display: flex;
@@ -41552,6 +41603,11 @@ body,
 
   .quick-add-inline-actions button {
     flex: 1 1 150px;
+  }
+
+  .scan-anything-coming-soon-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 }
 

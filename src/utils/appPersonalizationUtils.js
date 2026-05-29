@@ -51,7 +51,7 @@ export const APP_SETUP_PAGE_GROUPS = [
       { key: "scout", label: "Scout Report", helper: "Report store stock.", recommended: APP_SETUP_MODES },
       { key: "missing", label: "Request Missing Item", helper: "Request or manually add an item.", recommended: APP_SETUP_MODES },
       { key: "spark", label: "The Spark", helper: "Open the Kids Program request flow.", recommended: ["collector", "family", "admin"] },
-      { key: "quickFind", label: "Search / Scan Item", helper: "Find by name, UPC, or SKU.", recommended: APP_SETUP_MODES },
+      { key: "quickFind", label: "Scan Anything", helper: "Search, UPC/SKU, or manual entry.", recommended: APP_SETUP_MODES },
       { key: "forge", label: "Add to Forge", helper: "Add seller inventory.", sellerOnly: true, recommended: ["seller", "admin"] },
       { key: "sale", label: "Add Sale", helper: "Record a sale.", sellerOnly: true, recommended: ["seller", "admin"] },
       { key: "receipt", label: "Add Receipt", helper: "Save purchase proof.", sellerOnly: true, recommended: ["seller", "admin"] },

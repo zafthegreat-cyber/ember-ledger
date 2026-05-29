@@ -11,6 +11,7 @@ import {
   selectSmartQuickAddActionPlan,
   selectSmartQuickAddKeys,
 } from "../src/utils/adaptiveUi.js";
+import { APP_SETUP_PAGE_GROUPS } from "../src/utils/appPersonalizationUtils.js";
 
 assert.deepEqual(
   normalizeQuickAddDestinations({ forge: true, vault: false, ignored: true }),
@@ -100,6 +101,11 @@ const adminQuickAdd = selectSmartQuickAddKeys(adminState, { currentPage: "admin"
 assert.ok(adminQuickAdd.includes("reviewMissing"));
 assert.ok(adminQuickAdd.includes("store"));
 assert.equal(collectorQuickAdd.includes("reviewMissing"), false);
+
+const quickAddSetupGroup = APP_SETUP_PAGE_GROUPS.find((group) => group.key === "quickAdd");
+const scanAnythingOption = quickAddSetupGroup.options.find((option) => option.key === "quickFind");
+assert.equal(scanAnythingOption.label, "Scan Anything");
+assert.match(scanAnythingOption.helper, /Search, UPC\/SKU, or manual entry/);
 
 assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "scout", forgeAvailable: true })[0], "scout");
 assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "vault", forgeAvailable: true })[0], "vault");
