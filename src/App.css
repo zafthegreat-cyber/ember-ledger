@@ -57535,6 +57535,28 @@ html body .app-command-shell.app-vault .ember-assist-shell {
   font-weight: 950;
 }
 
+.app-vault .vault-detail-set-summary {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(164, 83, 255, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(164, 83, 255, 0.16), transparent 10rem),
+    rgba(3, 12, 26, 0.62);
+}
+
+.app-vault .vault-detail-set-summary h4 {
+  margin: 6px 0 2px;
+  color: #fff7ed;
+}
+
+.app-vault .vault-detail-set-summary p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.72);
+  line-height: 1.35;
+}
+
 .app-vault .vault-detail-advanced-stack {
   display: grid;
   gap: 10px;
@@ -57574,6 +57596,30 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 
 .app-vault .vault-detail-card .inventory-detail-metrics {
   grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
+.app-vault .vault-wishlist-list {
+  align-items: stretch;
+}
+
+.app-vault .vault-wishlist-card {
+  gap: 12px;
+}
+
+.app-vault .vault-wishlist-card .compact-subtitle {
+  margin: 0;
+}
+
+.vault-set-mini-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+  align-self: end;
+}
+
+.vault-set-mini-actions button {
+  min-height: 38px;
+  padding-inline: 10px;
 }
 
 @media (min-width: 980px) {

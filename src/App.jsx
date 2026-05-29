@@ -22,10 +22,12 @@ import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from ".
 import {
   compareSetMasteryRows,
   deriveSetCompletionSummary,
+  findSetSummaryForItem,
   getCardNumber as getSetMasteryCardNumber,
   getVariantLabel as getSetMasteryVariantLabel,
   variantMatches as setMasteryVariantMatches,
 } from "./utils/vaultSetMastery";
+import { buildWishlistAddSeed, buildWishlistToOwnedRecord } from "./utils/vaultWorkflowUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
 import {
   DROP_RADAR_GUESS_LOCKED_MESSAGE,
@@ -2166,6 +2168,22 @@ function vaultStatusLabel(value) {
 
 function isActiveVaultItem(item = {}) {
   return ACTIVE_VAULT_STATUSES.has(normalizeVaultStatus(item));
+}
+
+function isWishlistLikeVaultItem(item = {}) {
+  const scopes = [
+    ...(Array.isArray(item.destinationScope) ? item.destinationScope : []),
+    ...(Array.isArray(item.itemScope) ? item.itemScope : []),
+    ...(Array.isArray(item.destination_scope) ? item.destination_scope : []),
+  ].map((scope) => String(scope || "").toLowerCase());
+  const recordType = String(item.recordType || item.record_type || "").toLowerCase();
+  const status = String(item.status || item.vaultStatus || item.vault_status || "").toLowerCase();
+  return scopes.includes("wishlist")
+    || recordType === "wishlist_item"
+    || item.isWishlist
+    || item.is_wishlist
+    || normalizeVaultStatus(item) === "wishlist"
+    || status === "wishlist";
 }
 
 function hasValue(value) {
@@ -21550,6 +21568,36 @@ function mapCatalog(row) {
     setItems((current) => current.map((candidate) => candidate.id === item.id ? { ...candidate, marketStatus: candidate.marketStatus || "manual", updatedAt: new Date().toISOString() } : candidate));
   }
 
+  async function markWishlistItemOwned(item = {}) {
+    if (!item?.id || !ensureWorkspaceEditor(item?.workspaceId || item?.workspace_id || activeWorkspace?.id)) return;
+    const now = new Date().toISOString();
+    const updated = buildWishlistToOwnedRecord(item, { now });
+    if (BETA_LOCAL_MODE || !supabase || !user?.id) {
+      setItems((currentItems) => currentItems.map((candidate) => candidate.id === item.id ? updated : candidate));
+      setVaultToast(`${updated.name || "Wishlist item"} marked as owned.`);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .update(sanitizeInventorySupabaseRow({
+        quantity: Number(updated.quantity || 1),
+        status: "Personal Collection",
+        vault_status: "personal_collection",
+        action_notes: updated.actionNotes,
+        updated_at: now,
+      }))
+      .eq("id", item.id)
+      .select()
+      .single();
+    if (error) {
+      showAppMessage(`Could not mark Wishlist item owned: ${error.message}`);
+      return;
+    }
+    setItems((currentItems) => currentItems.map((candidate) => candidate.id === item.id ? mapItem(data) : candidate));
+    setVaultToast(`${updated.name || "Wishlist item"} marked as owned.`);
+  }
+
   function confirmVaultForgeTransfer(modeOverride, quantityOverride) {
     if (!vaultForgeTransfer?.item) return;
     const groupedSourceItem = vaultForgeTransfer.item;
@@ -28330,7 +28378,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     [groupedSortedFilteredItems]
   );
   const selectedVaultDetailItem = groupedVisibleVaultItems.find((item) => item.id === selectedVaultDetailId)
-    || vaultItems.find((item) => item.id === selectedVaultDetailId);
+    || vaultItems.find((item) => item.id === selectedVaultDetailId)
+    || wishlistItems.find((item) => item.id === selectedVaultDetailId);
+  const selectedVaultDetailSetSummary = useMemo(
+    () => findSetSummaryForItem(selectedVaultDetailItem, vaultSetCompletionRows),
+    [selectedVaultDetailItem, vaultSetCompletionRows]
+  );
   const selectedForgeDetailItem = groupedSortedFilteredItems.find((item) => item.groupId === selectedForgeDetailId || item.id === selectedForgeDetailId)
     || forgeInventoryItems.find((item) => item.id === selectedForgeDetailId);
   const pagedVaultItems = getPagedItems(groupedVisibleVaultItems, vaultPage, LONG_LIST_PAGE_SIZE);
@@ -28355,6 +28408,37 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     setVaultOwnerFilter("all");
     setVaultValueFilter("all");
     setVaultSort("newest");
+  }
+
+  function openVaultSetSummary(setSummary) {
+    if (!setSummary?.id) {
+      setVaultToast("Set unknown. Add set details before opening Set Mastery.");
+      return;
+    }
+    setVaultSubTab("sets");
+    setSelectedVaultSetId(setSummary.id);
+    setSelectedVaultDetailId("");
+    scrollToPageTop();
+  }
+
+  function openVaultSetForItem(item) {
+    const setSummary = findSetSummaryForItem(item, vaultSetCompletionRows);
+    if (!setSummary) {
+      setVaultToast("Set unknown. Add set details before opening Set Mastery.");
+      return;
+    }
+    openVaultSetSummary(setSummary);
+  }
+
+  function openMarketWatchForVaultItem(item = {}) {
+    setActiveTab("market");
+    setTideTradrSubTab("overview");
+    const productId = item.catalogProductId || item.catalog_product_id || item.tideTradrProductId || item.externalProductId || "";
+    if (productId) {
+      openCatalogDetails(productId);
+      return;
+    }
+    setCatalogSearch([item.name || item.itemName, item.setName || item.expansion, item.productType].filter(Boolean).join(" "));
   }
 
   const catalogPagedResultSet = useMemo(
@@ -51955,9 +52039,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {selectedVaultDetailId ? (
                 <VaultItemDetail
                   item={selectedVaultDetailItem}
+                  setSummary={selectedVaultDetailSetSummary}
                   onClose={() => setSelectedVaultDetailId("")}
                   onEdit={startEditingVaultItem}
                   onDelete={async (item) => { const deleted = await deleteItem(item.id); if (deleted) setSelectedVaultDetailId(""); }}
+                  onViewSet={openVaultSetSummary}
+                  onMarkOwned={markWishlistItemOwned}
                   onMoveToForge={(item) => openVaultForgeTransfer(item, "move")}
                   onCopyToForge={(item) => openVaultForgeTransfer(item, "copy")}
                   onCreateListing={openVaultMarketplaceDecision}
@@ -52043,19 +52130,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     Add Wishlist Item
                   </button>
                 </div>
-                <div className="inventory-list compact-inventory-list">
+                <div className="inventory-list compact-inventory-list vault-wishlist-list">
                   {wishlistItems.length === 0 ? (
                     <div className="empty-state vault-empty-state">
                       <h3>No wishlist items yet.</h3>
                       <p>Add wants here without counting them as owned collection or sellable inventory.</p>
+                      <div className="quick-actions">
+                        <button type="button" onClick={() => openProductAddFlow({ source: "vault-wishlist-empty", destinations: { wishlist: true } })}>Add to wishlist</button>
+                        <button type="button" className="secondary-button" onClick={() => setVaultSubTab("sets")}>Browse Set Mastery</button>
+                      </div>
                     </div>
                   ) : (
-                    wishlistItems.map((item) => (
-                      <article className="inventory-card compact-card vault-item-card" key={item.id}>
+                    wishlistItems.map((item) => {
+                      const setSummary = findSetSummaryForItem(item, vaultSetCompletionRows);
+                      const wantedQuantity = item.quantityWanted || item.wantedQuantity || item.quantity || 1;
+                      const setDisplay = setSummary?.name || vaultItemSetLabel(item) || "Set unknown";
+                      const targetDisplay = formatPriceDisplay(item.targetPrice || item.marketPrice, { moneyFormatter: money, missingLabel: "Price data unavailable" });
+                      const wishlistSeed = buildWishlistAddSeed(item);
+                      return (
+                      <article className="inventory-card compact-card vault-item-card vault-wishlist-card" key={item.id}>
                         <div className="compact-card-header">
                           <div className="compact-title-block">
                             <h3>{item.name}</h3>
-                            <p className="compact-subtitle">Wanted Qty {item.quantityWanted || item.quantity || 1}</p>
+                            <p className="compact-subtitle">{setDisplay} - Tracked wishlist item</p>
                           </div>
                           <span className={statusClass("Wishlist")}>Wishlist</span>
                         </div>
@@ -52065,33 +52162,38 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           </div>
                         ) : null}
                         <div className="vault-card-facts">
-                          <p><strong>Target:</strong> {formatPriceDisplay(item.targetPrice || item.marketPrice, { moneyFormatter: money, missingLabel: "Price data unavailable" })}</p>
-                          <p><strong>Type:</strong> {item.productType || "Not listed"}</p>
-                          <p><strong>Notes:</strong> {item.wishlistNotes || item.actionNotes || item.notes || "No notes"}</p>
+                          <p><span>Wanted</span><strong>{wantedQuantity}</strong></p>
+                          <p><span>Target</span><strong>{targetDisplay}</strong></p>
+                          <p><span>Set</span><strong>{setDisplay}</strong></p>
+                          <p><span>Variant</span><strong>{vaultVariantLabel(item)}</strong></p>
                         </div>
+                        <p className="compact-subtitle">{item.wishlistNotes || item.actionNotes || item.notes || "No wishlist notes yet."}</p>
                         <div className="compact-actions vault-card-actions">
+                          <button type="button" onClick={() => markWishlistItemOwned(item)}>Mark owned</button>
                           <button
                             type="button"
                             className="secondary-button"
                             onClick={() => openProductAddFlow({
                               source: "wishlist-owned-copy",
                               destinations: { vault: true },
-                              seed: {
-                                itemName: item.name,
-                                category: item.category || "Pokemon",
-                                productType: item.productType || "",
-                                setName: item.setName || item.expansion || "",
-                                catalogProductId: item.catalogProductId || "",
-                                marketPrice: item.marketPrice || "",
-                                msrpPrice: item.msrpPrice || "",
-                              },
+                              seed: wishlistSeed,
                             })}
                           >
-                            Add Item
+                            Add duplicate
                           </button>
+                          <OverflowMenu
+                            buttonLabel="More"
+                            actions={[
+                              { label: "View details", onClick: () => setSelectedVaultDetailId(item.id) },
+                              { label: "View Set", onClick: () => setSummary ? openVaultSetSummary(setSummary) : openVaultSetForItem(item) },
+                              { label: "Open Market Watch", onClick: () => openMarketWatchForVaultItem(item) },
+                            ]}
+                            onDelete={() => deleteItem(item.id)}
+                            deleteLabel="Remove from Wishlist"
+                          />
                         </div>
                       </article>
-                    ))
+                    );})
                   )}
                 </div>
               </section>
@@ -52196,6 +52298,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             {vaultItemDisplayImage(item) ? <img src={vaultItemDisplayImage(item)} alt="" /> : <span className="vault-set-mini-thumb">{isInventorySealedProduct(item) ? "Box" : "Card"}</span>}
                             <strong>{item.name}</strong>
                             <span>{[vaultCardNumberLabel(item) ? `#${vaultCardNumberLabel(item)}` : "", vaultVariantLabel(item), item.productType || item.setName || "Vault item"].filter(Boolean).join(" - ")}</span>
+                            <span>{[itemPurchaserName(item), `Qty ${item.quantity || 1}`].filter(Boolean).join(" - ")}</span>
+                            <div className="vault-set-mini-actions">
+                              <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(item.id)}>View details</button>
+                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: item, source: "vault-set-owned-duplicate", destinations: { vault: true }, seed: buildWishlistAddSeed(item) })}>Add duplicate</button>
+                            </div>
                           </article>
                         )) : (
                           <div className="small-empty-state">
@@ -52222,7 +52329,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             {getCatalogImage(product) ? <img src={getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Card</span>}
                             <strong>{catalogTitle(product)}</strong>
                             <span>{[vaultCardNumberLabel(product) ? `#${vaultCardNumberLabel(product)}` : "", vaultVariantLabel(product), product.rarity || "Missing"].filter(Boolean).join(" - ")}</span>
-                            <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-missing", destinations: { vault: true } })}>Add Item</button>
+                            <div className="vault-set-mini-actions">
+                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-missing", destinations: { vault: true } })}>Add Item</button>
+                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-missing-wishlist", destinations: { wishlist: true }, seed: buildWishlistAddSeed(product) })}>Add to wishlist</button>
+                            </div>
                           </article>
                         )) : (
                           <div className="small-empty-state">
@@ -52248,7 +52358,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             {vaultItemDisplayImage(item) ? <img src={vaultItemDisplayImage(item)} alt="" /> : <span className="vault-set-mini-thumb">Want</span>}
                             <strong>{item.name || item.itemName || "Wishlist item"}</strong>
                             <span>{[vaultCardNumberLabel(item) ? `#${vaultCardNumberLabel(item)}` : "", vaultVariantLabel(item), item.productType || "Wishlist"].filter(Boolean).join(" - ")}</span>
-                            <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: item, source: "vault-set-wishlist", destinations: { vault: true } })}>Add to Vault</button>
+                            <div className="vault-set-mini-actions">
+                              <button type="button" className="secondary-button" onClick={() => markWishlistItemOwned(item)}>Mark owned</button>
+                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: item, source: "vault-set-wishlist", destinations: { vault: true }, seed: buildWishlistAddSeed(item) })}>Add duplicate</button>
+                            </div>
                           </article>
                         ))}
                       </div>
@@ -52269,6 +52382,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             {(product.__vaultOwnedSealed ? vaultItemDisplayImage(product) : getCatalogImage(product)) ? <img src={product.__vaultOwnedSealed ? vaultItemDisplayImage(product) : getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Box</span>}
                             <strong>{product.name || product.itemName || catalogTitle(product)}</strong>
                             <span>{product.productType || product.product_type || "Sealed Product"}</span>
+                            <span>{product.__vaultOwnedSealed ? [itemPurchaserName(product), `Qty ${product.quantity || 1}`, vaultItemTotalMarketValue(product) ? money(vaultItemTotalMarketValue(product)) : "Value unavailable"].filter(Boolean).join(" - ") : "Catalog sealed product"}</span>
                             {product.__vaultOwnedSealed ? (
                               <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(product.id)}>View details</button>
                             ) : (
@@ -55463,6 +55577,7 @@ function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPla
   const rows = buildPriceReviewFields(item, { context: variant, moneyFormatter: money });
   const marketRow = rows.find((row) => row.role === "market");
   const plannedRow = rows.find((row) => row.role === "planned");
+  const showPlannedReview = Boolean(onReviewPlanned) && (variant === "forge" || plannedRow);
   const reliabilityCopy = variant === "forge"
     ? "Market value, MSRP, planned sale price, and sale records stay separate. Estimates are for planning and record review."
     : "Vault value only uses known market values. Missing or manual prices stay labeled so the collection total does not pretend to be perfect.";
@@ -55495,9 +55610,9 @@ function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPla
         <button type="button" className="secondary-button" onClick={() => onReviewMarket?.(item)}>
           {marketRow?.isMissing ? "Add market value" : marketRow?.isStale ? "Review stale price" : "Review market value"}
         </button>
-        <button type="button" className="secondary-button" onClick={() => onReviewPlanned?.(item)}>
+        {showPlannedReview ? <button type="button" className="secondary-button" onClick={() => onReviewPlanned?.(item)}>
           {plannedRow?.isMissing ? "Set planned sale price" : "Update planned sale price"}
-        </button>
+        </button> : null}
       </div>
       {item.priceReviewNote ? <p className="compact-subtitle">Last review note: {item.priceReviewNote}</p> : null}
     </section>
@@ -55666,9 +55781,10 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
   );
 }
 
-function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, showSellerTools = false }) {
+function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, showSellerTools = false }) {
   if (!item) return null;
   const showVaultSellerTools = Boolean(showSellerTools);
+  const itemIsWishlist = isWishlistLikeVaultItem(item);
   const detailImage = vaultItemDisplayImage(item);
   const setLabel = vaultItemSetLabel(item);
   const itemType = vaultItemTypeLabel(item);
@@ -55688,6 +55804,22 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
   const totalMarket = valuation.estimatedMarketValue || 0;
   const plannedTotal = valuation.plannedSaleTotal || 0;
   const marketDisplay = priceByRole.market?.isMissing ? "Price data unavailable" : priceByRole.market?.displayValue;
+  const itemCardNumber = vaultCardNumberLabel(item);
+  const itemVariantLabel = vaultVariantLabel(item);
+  const itemSetName = setSummary?.name || setLabel || "Set unknown";
+  const itemSetKnown = Boolean(setSummary && !setSummary.unknownSet && itemSetName !== "Set unknown");
+  const setMasteryCopy = setSummary
+    ? setSummary.checklistAvailable
+      ? setSummary.progressCopy
+      : "Missing count needs checklist data."
+    : "Set checklist unavailable.";
+  const setMasteryDetails = [
+    ["Set", itemSetName],
+    ["Card Number", itemCardNumber || "Not set"],
+    ["Variant", itemVariantLabel || "Variant unknown"],
+    ["Progress", setSummary?.completionLabel || "Tracked item"],
+    ["Checklist", setSummary?.checklistStatus || "Set checklist unavailable"],
+  ].filter(([, value]) => hasValue(value));
   const primaryDetails = [
     ["Status", vaultStatusLabel(normalizeVaultStatus(item))],
     ["Condition", conditionLabel || "Not set"],
@@ -55774,7 +55906,11 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
       <div className="compact-card-header">
         <div>
           <h3>{item.name}</h3>
-          <p className="compact-subtitle">Vault is collection and held inventory. Move or copy to Forge when it becomes sellable business stock.</p>
+          <p className="compact-subtitle">
+            {showVaultSellerTools
+              ? "Vault keeps collection records protected. Move or copy to Forge when this becomes business stock."
+              : "Vault keeps collection records protected, readable, and separate from seller tools."}
+          </p>
         </div>
         <button type="button" className="secondary-button" onClick={onClose}>Close</button>
       </div>
@@ -55785,7 +55921,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
         <div className="inventory-detail-summary">
           <span className="trust-badge trust-badge--verified">Vault collection</span>
           <h4>{item.name}</h4>
-          <p>{[setLabel, itemType].filter(Boolean).join(" - ") || "Collection item"}</p>
+          <p>{[setLabel, itemType, itemIsWishlist ? "Tracked wishlist item" : ""].filter(Boolean).join(" - ") || "Collection item"}</p>
           <div className="inventory-detail-metrics">
             {detailMetricRows.map(([label, value]) => (
               <div key={label}><span>{label}</span><strong>{value}</strong></div>
@@ -55805,14 +55941,11 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
       </div>
       <div className="vault-detail-primary-actions">
         <button type="button" onClick={() => onEdit(item)}>Edit / Add details</button>
+        {itemIsWishlist ? <button type="button" onClick={() => onMarkOwned?.(item)}>Mark owned</button> : null}
+        {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
         <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
         {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button> : null}
-      </div>
-      <div className="catalog-detail-grid vault-detail-basics">
-        {primaryDetails.map(([label, value]) => (
-          <DetailItem key={label} label={label} value={value} />
-        ))}
       </div>
       {purchaserDetailRows.length ? (
         <div className="vault-detail-group-summary" aria-label="Grouped inventory details">
@@ -55827,7 +55960,36 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
           </div>
         </div>
       ) : null}
+      <section className="vault-detail-set-summary" aria-label="Set Mastery connection">
+        <div>
+          <span className={itemSetKnown ? "trust-badge trust-badge--verified" : "trust-badge trust-badge--unconfirmed"}>
+            {itemSetKnown ? "Set matched" : "Set unknown"}
+          </span>
+          <h4>{itemSetName}</h4>
+          <p>{setMasteryCopy}</p>
+        </div>
+        <div className="catalog-detail-grid">
+          {setMasteryDetails.map(([label, value]) => (
+            <DetailItem key={label} label={label} value={value} />
+          ))}
+        </div>
+        {setSummary ? (
+          <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>
+            View Set
+          </button>
+        ) : (
+          <p className="vault-detail-action-note">Add a set name or catalog match before treating this item as part of a set.</p>
+        )}
+      </section>
       <div className="vault-detail-advanced-stack">
+        <details className="vault-detail-disclosure" open>
+          <summary>Overview</summary>
+          <div className="catalog-detail-grid">
+            {primaryDetails.map(([label, value]) => (
+              <DetailItem key={label} label={label} value={value} />
+            ))}
+          </div>
+        </details>
         <details className="vault-detail-disclosure">
           <summary>Ownership</summary>
           <div className="catalog-detail-grid">
@@ -55849,7 +56011,7 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
             item={item}
             variant="vault"
             onReviewMarket={onQuickUpdateMarketValue}
-            onReviewPlanned={onQuickUpdateSalePrice}
+            onReviewPlanned={showVaultSellerTools ? onQuickUpdateSalePrice : undefined}
           />
           <LazyToolBoundary label="Loading price history...">
             <MarketPriceHistoryPanel
@@ -55866,6 +56028,22 @@ function VaultItemDetail({ item, onClose, onEdit, onDelete, onMoveToForge, onCop
               money={money}
             />
           </LazyToolBoundary>
+        </details>
+        <details className="vault-detail-disclosure">
+          <summary>Set Mastery</summary>
+          <div className="catalog-detail-grid">
+            {setMasteryDetails.map(([label, value]) => (
+              <DetailItem key={label} label={label} value={value} />
+            ))}
+          </div>
+          <p className="vault-detail-action-note">
+            {setSummary?.missingSupported ? "Owned and missing counts use available checklist data." : "Missing count needs checklist data."}
+          </p>
+          {setSummary ? (
+            <div className="quick-actions">
+              <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button>
+            </div>
+          ) : null}
         </details>
         <details className="vault-detail-disclosure">
           <summary>Photos / Receipts</summary>
@@ -55974,9 +56152,11 @@ function CompactInventoryCard({
     const totalMarket = valuation.estimatedMarketValue || 0;
     const statusLabel = vaultStatusLabel(normalizeVaultStatus(item));
     const conditionLabel = item.conditionName || item.condition || item.grade || "";
+    const ownerLabel = item.purchaserSummary || itemPurchaserName(item);
     const vaultFactRows = [
       ["Qty", quantity || 1],
       ["Value", valuation.marketKnownQuantity ? money(totalMarket) : "Value unavailable"],
+      ...(ownerLabel && ownerLabel !== "No purchaser assigned" ? [["Owner", ownerLabel]] : []),
       ...(conditionLabel ? [["Condition", conditionLabel]] : []),
       ...(packCount > 0 ? [["Packs", packCount]] : []),
     ];

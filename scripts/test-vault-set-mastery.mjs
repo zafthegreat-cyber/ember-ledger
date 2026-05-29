@@ -3,6 +3,7 @@ import {
   classifyItemAsSingleOrSealed,
   compareSetMasteryRows,
   deriveSetCompletionSummary,
+  findSetSummaryForItem,
   getCardNumber,
   getOwnedQuantity,
   getSetKey,
@@ -166,6 +167,8 @@ assert.equal(prismatic.percent, 50);
 assert.equal(prismatic.completionLabel, "50% completion estimate");
 assert.equal(prismatic.wishlistItems.length, 1);
 assert.equal(prismatic.sealedProducts.length, 0, "No catalog sealed product should be forced into the set without safe data.");
+assert.equal(findSetSummaryForItem(ownedItems[0], summary).name, "Prismatic Evolutions");
+assert.equal(findSetSummaryForItem(wishlistItems[0], summary).name, "Prismatic Evolutions");
 
 const complete = summary.find((row) => row.name === "Checklist Complete");
 assert.equal(complete.checklistAvailable, true);
@@ -177,5 +180,6 @@ const unknown = summary.find((row) => row.name === "Set unknown");
 assert.equal(unknown.unknownSet, true);
 assert.equal(unknown.trackedSealedCount, 1);
 assert.equal(unknown.completionLabel, "1 tracked");
+assert.equal(findSetSummaryForItem(ownedItems[3], summary).name, "Set unknown");
 
 console.log("Vault Set Mastery tests passed.");

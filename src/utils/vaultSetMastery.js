@@ -265,6 +265,25 @@ function uniqueBy(records = [], getKey) {
   });
 }
 
+function recordReferenceMatches(record = {}, item = {}) {
+  if (!record || !item) return false;
+  const recordId = String(record.id || record.itemId || record.item_id || "").trim();
+  const itemId = String(item.id || item.itemId || item.item_id || "").trim();
+  if (recordId && itemId && recordId === itemId) return true;
+
+  const recordProduct = explicitProductKey(record);
+  const itemProduct = explicitProductKey(item);
+  if (recordProduct && itemProduct && recordProduct === itemProduct) return true;
+
+  const recordSet = getSetKey(record);
+  const itemSet = getSetKey(item);
+  const recordNumber = compactKey(getCardNumber(record));
+  const itemNumber = compactKey(getCardNumber(item));
+  if (recordSet !== UNKNOWN_SET_KEY && recordSet === itemSet && recordNumber && itemNumber && recordNumber === itemNumber) return true;
+
+  return false;
+}
+
 function compareText(a, b) {
   return String(a || "").localeCompare(String(b || ""), undefined, { numeric: true, sensitivity: "base" });
 }
@@ -418,6 +437,32 @@ export function groupItemsBySet(items = [], catalogProducts = [], knownSets = []
   });
 
   return [...groups.values()].filter((group) => group.items.length || group.catalogProducts.length);
+}
+
+export function findSetSummaryForItem(item = {}, setRows = []) {
+  if (!item || !setRows.length) return null;
+  const directContainer = setRows.find((row) => [
+    ...(row.ownedItems || []),
+    ...(row.ownedCardItems || []),
+    ...(row.ownedSealedItems || []),
+    ...(row.wishlistItems || []),
+    ...(row.catalogCards || []),
+    ...(row.sealedProducts || []),
+    ...(row.catalogSealedProducts || []),
+  ].some((record) => recordReferenceMatches(record, item)));
+  if (directContainer) return directContainer;
+
+  const key = getSetKey(item);
+  if (key !== UNKNOWN_SET_KEY) {
+    const normalizedName = key.replace(/^set:/, "");
+    return setRows.find((row) =>
+      row.key === key ||
+      compactKey(row.id) === normalizedName ||
+      compactKey(row.name) === normalizedName
+    ) || null;
+  }
+
+  return setRows.find((row) => row.key === UNKNOWN_SET_KEY || row.unknownSet) || null;
 }
 
 export function deriveSetCompletionSummary({ items = [], wishlistItems = [], catalogProducts = [], knownSets = [] } = {}) {
