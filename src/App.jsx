@@ -19,6 +19,13 @@ import { VIRGINIA_RETAILERS } from "./data/storeGroups";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
 import { CATALOG_SORT_OPTIONS, compareCatalogProducts, getCardSortMeta } from "./utils/catalogSortUtils";
+import {
+  compareSetMasteryRows,
+  deriveSetCompletionSummary,
+  getCardNumber as getSetMasteryCardNumber,
+  getVariantLabel as getSetMasteryVariantLabel,
+  variantMatches as setMasteryVariantMatches,
+} from "./utils/vaultSetMastery";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
 import {
   DROP_RADAR_GUESS_LOCKED_MESSAGE,
@@ -2661,65 +2668,19 @@ function vaultItemSetLabel(item = {}) {
 }
 
 function vaultCardNumberLabel(value = {}) {
-  const details = value.cardDetails || value.card_details || value.tcgCardDetails || value.tcg_card_details || {};
-  return String(
-    value.cardNumber ||
-    value.card_number ||
-    details.cardNumber ||
-    details.card_number ||
-    details.number ||
-    value.number ||
-    ""
-  ).trim();
+  return getSetMasteryCardNumber(value);
 }
 
 function vaultVariantLabel(value = {}) {
-  const details = value.cardDetails || value.card_details || value.tcgCardDetails || value.tcg_card_details || {};
-  return String(
-    value.variantName ||
-    value.variant_name ||
-    value.finish ||
-    value.printing ||
-    value.priceSubtype ||
-    value.price_subtype ||
-    value.conditionName ||
-    value.condition_name ||
-    details.finish ||
-    details.printing ||
-    ""
-  ).trim();
+  return getSetMasteryVariantLabel(value);
 }
 
 function vaultVariantMatches(value = {}, filter = "all") {
-  if (filter === "all") return true;
-  const text = normalizeSearchText([
-    vaultVariantLabel(value),
-    value.name,
-    value.productName,
-    value.product_name,
-    value.cardName,
-    value.card_name,
-    value.notes,
-  ].filter(Boolean).join(" "));
-  if (filter === "holo") return /\bholo\b|holofoil/.test(text) && !/reverse/.test(text);
-  if (filter === "reverse_holo") return /reverse/.test(text) && /holo|foil/.test(text);
-  if (filter === "normal") return /\bnormal\b|non[-\s]?holo|regular/.test(text);
-  return true;
+  return setMasteryVariantMatches(value, filter);
 }
 
 function compareVaultSetRows(a = {}, b = {}, sortMode = "cardNumber") {
-  if (sortMode === "name") {
-    return String(a.name || a.productName || a.cardName || "").localeCompare(String(b.name || b.productName || b.cardName || ""));
-  }
-  const aNumber = vaultCardNumberLabel(a);
-  const bNumber = vaultCardNumberLabel(b);
-  const aMeta = getCardSortMeta({ ...a, cardNumber: aNumber });
-  const bMeta = getCardSortMeta({ ...b, cardNumber: bNumber });
-  const rawASort = Number(a.cardNumberSort ?? a.card_number_sort);
-  const rawBSort = Number(b.cardNumberSort ?? b.card_number_sort);
-  const aSort = Number.isFinite(rawASort) ? rawASort : aMeta.sort;
-  const bSort = Number.isFinite(rawBSort) ? rawBSort : bMeta.sort;
-  return aSort - bSort || String(aNumber).localeCompare(String(bNumber), undefined, { numeric: true }) || String(a.name || a.productName || "").localeCompare(String(b.name || b.productName || ""));
+  return compareSetMasteryRows(a, b, sortMode);
 }
 
 function vaultItemLocationLabel(item = {}) {
@@ -25097,16 +25058,6 @@ function renderForgeAccessState() {
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.marketPrice || item.targetPrice || 0),
     0
   ) + workspaceWatchlist.reduce((sum, item) => sum + Number(item.marketPrice || item.marketValue || item.targetPrice || 0), 0), [wishlistItems, workspaceWatchlist]);
-  const ownedCatalogKeys = useMemo(() => new Set(activeVaultItems.map((item) => {
-    const setName = String(item.setName || item.expansion || "").toLowerCase();
-    const cardNumber = String(item.cardNumber || item.card_number || "").toLowerCase();
-    return setName && cardNumber ? `${setName}:${cardNumber}` : "";
-  }).filter(Boolean)), [activeVaultItems]);
-  const missingSetCardCount = useMemo(() => catalogProducts.filter((product) => {
-    const setName = String(product.setName || product.expansion || product.set_name || "").toLowerCase();
-    const cardNumber = String(product.cardNumber || product.card_number || "").toLowerCase();
-    return setName && cardNumber && !ownedCatalogKeys.has(`${setName}:${cardNumber}`);
-  }).length, [catalogProducts, ownedCatalogKeys]);
   const activeListingCount = useMemo(() => workspaceMarketplaceListings.filter((listing) =>
     ["Active", "Listed", "Cross-listed", "cross_listed", "listed", "active"].includes(listing.status || listing.listingStatus)
   ).length, [workspaceMarketplaceListings]);
@@ -25130,61 +25081,19 @@ function renderForgeAccessState() {
     { key: "duplicates", label: "Duplicates", value: activeVaultItems.filter((item) => Number(item.quantity || 0) > 1).length },
     { key: "trade", label: "Trade / Sell", value: activeVaultItems.filter((item) => ["trade_pile", "listed", "ready_for_forge"].includes(normalizeVaultStatus(item))).length },
   ], [vaultMarketValueDisplay, vaultCostBasis, vaultGainLoss, vaultMsrpValue, activeVaultItems]);
-  const vaultSetCompletionRows = useMemo(() => {
-    const catalogSetNames = [...new Set(catalogProducts.map((product) => catalogExpansionName(product) || product.setName || product.expansion || product.series || "").filter(Boolean))];
-    const knownSetKeys = new Set(POKEMON_SETS.flatMap((set) => [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase())));
-    const vaultSetSourceRows = [
-      ...POKEMON_SETS,
-      ...catalogSetNames
-        .filter((name) => !knownSetKeys.has(String(name).toLowerCase()))
-        .map((name) => ({ name, code: name, series: "Catalog", total: 0, setAliases: [] })),
-    ];
-    return vaultSetSourceRows.map((set) => {
-      const aliases = [set.name, set.code, ...(set.setAliases || [])].filter(Boolean).map((value) => String(value).toLowerCase());
-      const setMatches = (value = "") => {
-        const setName = String(value || "").toLowerCase();
-        return setName && aliases.some((alias) => setName === alias || setName.includes(alias) || alias.includes(setName));
-      };
-      const owned = activeVaultItems.filter((item) => {
-        return setMatches(item.setName || item.expansion || item.setCode || "");
-      });
-      const catalogInSet = catalogProducts.filter((product) => setMatches(catalogExpansionName(product) || product.setName || product.expansion || product.series || ""));
-      const catalogCards = catalogInSet.filter((product) => isCatalogCardProduct(product) && !isCatalogCodeCardProduct(product));
-      const catalogSealedProducts = catalogInSet.filter((product) => isCatalogSealedProduct(product) && !isCatalogCardProduct(product));
-      const ownedCards = new Set(owned.filter(isInventoryCardProduct).map((item) => item.cardNumber || item.card_number || item.catalogProductId || item.name).filter(Boolean));
-      const ownedProductKeys = new Set(owned.map((item) => String(item.catalogProductId || item.catalog_product_id || item.name || "").toLowerCase()).filter(Boolean));
-      const totalCards = Number(set.total || set.printedTotal || catalogCards.length || 0);
-      const ownedCount = ownedCards.size || owned.length;
-      const missingCards = catalogCards.filter((product) => {
-        const key = String(product.id || catalogTitle(product) || "").toLowerCase();
-        const fallback = String(catalogTitle(product) || "").toLowerCase();
-        return key ? !ownedProductKeys.has(key) && !ownedProductKeys.has(fallback) : true;
-      });
-      return {
-        id: set.setId || set.code || set.name,
-        name: set.name,
-        series: set.series,
-        releaseDate: set.releaseDate || set.release_date || "",
-        logoUrl: set.logoUrl || set.logo_url || "",
-        symbolUrl: set.symbolUrl || set.symbol_url || "",
-        totalCards,
-        ownedCount,
-        percent: totalCards > 0 ? Math.min(100, Math.round((ownedCount / totalCards) * 100)) : 0,
-        ownedItems: owned,
-        catalogCards,
-        sealedProducts: catalogSealedProducts,
-        missingCards,
-      };
-    })
-      .filter((row) => row.ownedCount > 0 || row.totalCards > 0 || row.catalogCards.length || row.sealedProducts.length)
-      .sort((a, b) => b.ownedCount - a.ownedCount || String(a.name).localeCompare(String(b.name)));
-  }, [activeVaultItems, catalogProducts]);
+  const vaultSetCompletionRows = useMemo(() => deriveSetCompletionSummary({
+    items: activeVaultItems,
+    wishlistItems,
+    catalogProducts,
+    knownSets: POKEMON_SETS,
+  }), [activeVaultItems, wishlistItems, catalogProducts]);
+  const missingSetCardCount = useMemo(() => vaultSetCompletionRows.reduce((sum, row) => sum + Number(row.missingSupported ? row.missingCount || 0 : 0), 0), [vaultSetCompletionRows]);
   const selectedVaultSet = useMemo(
     () => vaultSetCompletionRows.find((set) => String(set.id) === String(selectedVaultSetId)) || null,
     [vaultSetCompletionRows, selectedVaultSetId]
   );
   const topVaultSetProgress = useMemo(
-    () => vaultSetCompletionRows.find((row) => row.ownedCount > 0 && (row.totalCards > 0 || row.catalogCards.length)) || vaultSetCompletionRows[0] || null,
+    () => vaultSetCompletionRows.find((row) => row.trackedItemCount > 0 || row.ownedCount > 0) || vaultSetCompletionRows[0] || null,
     [vaultSetCompletionRows]
   );
   const recentVaultItems = useMemo(() => [...activeVaultItems]
@@ -25192,21 +25101,30 @@ function renderForgeAccessState() {
     .slice(0, 3), [activeVaultItems]);
   const selectedVaultSetView = useMemo(() => {
     if (!selectedVaultSet) return null;
+    const effectiveDetailFilter = selectedVaultSet.missingSupported || vaultSetDetailFilter !== "missing" ? vaultSetDetailFilter : "all";
     const ownedItems = [...(selectedVaultSet.ownedItems || [])]
       .filter((item) => vaultSetVariantFilter === "all" || !isInventoryCardProduct(item) || vaultVariantMatches(item, vaultSetVariantFilter))
       .sort((a, b) => compareVaultSetRows(a, b, vaultSetSort));
     const missingCards = [...(selectedVaultSet.missingCards || [])]
       .filter((product) => vaultVariantMatches(product, vaultSetVariantFilter))
       .sort((a, b) => compareVaultSetRows(a, b, vaultSetSort));
-    const sealedProducts = [...(selectedVaultSet.sealedProducts || [])]
+    const sealedProducts = [
+      ...(selectedVaultSet.ownedSealedItems || []).map((item) => ({ ...item, __vaultOwnedSealed: true })),
+      ...(selectedVaultSet.sealedProducts || []),
+    ]
+      .sort((a, b) => compareVaultSetRows(a, b, vaultSetSort));
+    const wishlistItems = [...(selectedVaultSet.wishlistItems || [])]
+      .filter((item) => vaultSetVariantFilter === "all" || !isInventoryCardProduct(item) || vaultVariantMatches(item, vaultSetVariantFilter))
       .sort((a, b) => compareVaultSetRows(a, b, vaultSetSort));
     return {
       ownedItems,
       missingCards,
       sealedProducts,
-      showOwned: vaultSetDetailFilter === "all" || vaultSetDetailFilter === "owned",
-      showMissing: vaultSetDetailFilter === "all" || vaultSetDetailFilter === "missing",
-      showSealed: vaultSetDetailFilter === "all" || vaultSetDetailFilter === "sealed",
+      wishlistItems,
+      showOwned: effectiveDetailFilter === "all" || effectiveDetailFilter === "owned",
+      showMissing: selectedVaultSet.missingSupported && (effectiveDetailFilter === "all" || effectiveDetailFilter === "missing"),
+      showSealed: effectiveDetailFilter === "all" || effectiveDetailFilter === "sealed",
+      showWishlist: wishlistItems.length > 0 && (effectiveDetailFilter === "all" || effectiveDetailFilter === "wishlist"),
     };
   }, [selectedVaultSet, vaultSetDetailFilter, vaultSetSort, vaultSetVariantFilter]);
   const dashboardStats = [
@@ -51816,8 +51734,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     setVaultSubTab("sets");
                   }}>
                     <span>Set Mastery</span>
-                    <strong>{topVaultSetProgress ? `${topVaultSetProgress.percent}%` : "Ready"}</strong>
-                    <small>{topVaultSetProgress ? `${topVaultSetProgress.name} · ${topVaultSetProgress.ownedCount} owned${topVaultSetProgress.totalCards ? ` of ${topVaultSetProgress.totalCards}` : ""}` : "Add set/card details to start completion tracking."}</small>
+                    <strong>{topVaultSetProgress ? topVaultSetProgress.completionLabel : "Ready"}</strong>
+                    <small>{topVaultSetProgress ? `${topVaultSetProgress.name} - ${topVaultSetProgress.checklistAvailable ? topVaultSetProgress.progressCopy : topVaultSetProgress.checklistStatus}` : "Add set/card details to start completion tracking."}</small>
                   </button>
                   <button type="button" className="vault-home-preview-card" onClick={() => setVaultSubTab("wishlist")}>
                     <span>Wishlist</span>
@@ -51840,7 +51758,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   }}>
                     <span>Recent Additions</span>
                     <strong>{recentVaultItems.length ? recentVaultItems[0].name : "None"}</strong>
-                    <small>{recentVaultItems.length ? `Qty ${recentVaultItems[0].quantity || 1} · ${vaultStatusLabel(normalizeVaultStatus(recentVaultItems[0]))}` : "New items will appear here."}</small>
+                    <small>{recentVaultItems.length ? `Qty ${recentVaultItems[0].quantity || 1} - ${vaultStatusLabel(normalizeVaultStatus(recentVaultItems[0]))}` : "New items will appear here."}</small>
                   </button>
                 </div>
               ) : null}
@@ -52184,7 +52102,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="compact-card-header">
                   <div>
                     <h2>{selectedVaultSet ? selectedVaultSet.name : "Pokemon Sets"}</h2>
-                    <p>{selectedVaultSet ? "Cards, sealed products, owned items, and missing cards for this set." : "Browse every known set, then open a set to review cards, sealed products, owned items, and completion."}</p>
+                    <p>{selectedVaultSet ? "Tracked cards, variants, sealed products, wishlist gaps, and honest checklist status for this set." : "Open a set to review tracked items, safe sealed matches, wishlist gaps, and completion only when checklist data supports it."}</p>
                   </div>
                   <div className="summary-pill-row">
                     {selectedVaultSet ? <button type="button" className="secondary-button" onClick={() => setSelectedVaultSetId("")}>All Sets</button> : null}
@@ -52201,26 +52119,33 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       ) : null}
                       <div>
                         <span>{selectedVaultSet.series || "Pokemon set"}</span>
-                        <h3>{selectedVaultSet.percent}% complete</h3>
-                        <p>{selectedVaultSet.ownedCount} owned of {selectedVaultSet.totalCards || selectedVaultSet.catalogCards.length || "unknown"} cards{selectedVaultSet.releaseDate ? ` · Released ${shortDate(selectedVaultSet.releaseDate)}` : ""}.</p>
+                        <h3>{selectedVaultSet.completionLabel}</h3>
+                        <p>{selectedVaultSet.progressCopy}{selectedVaultSet.releaseDate ? ` Released ${shortDate(selectedVaultSet.releaseDate)}.` : ""}</p>
                       </div>
                       <div className="vault-progress-track" aria-label={`${selectedVaultSet.name} completion`}>
-                        <i style={{ width: `${selectedVaultSet.percent}%` }} />
+                        <i style={{ width: `${selectedVaultSet.percent ?? 0}%` }} />
                       </div>
                     </div>
                     <div className="vault-set-detail-grid">
-                      <div className="stat-tile"><span>Cards in set</span><strong>{selectedVaultSet.totalCards || selectedVaultSet.catalogCards.length || 0}</strong></div>
-                      <div className="stat-tile"><span>Owned items</span><strong>{selectedVaultSet.ownedItems.length}</strong></div>
-                      <div className="stat-tile"><span>Missing cards</span><strong>{selectedVaultSet.missingCards.length}</strong></div>
-                      <div className="stat-tile"><span>Sealed products</span><strong>{selectedVaultSet.sealedProducts.length}</strong></div>
+                      <div className="stat-tile"><span>{selectedVaultSet.checklistAvailable ? "Checklist cards" : "Tracked items"}</span><strong>{selectedVaultSet.checklistAvailable ? selectedVaultSet.totalCards || selectedVaultSet.catalogCards.length : selectedVaultSet.trackedItemCount}</strong></div>
+                      <div className="stat-tile"><span>Owned variants</span><strong>{selectedVaultSet.ownedQuantity}</strong></div>
+                      <div className="stat-tile"><span>{selectedVaultSet.missingSupported ? "Missing cards" : "Checklist status"}</span><strong>{selectedVaultSet.missingSupported ? selectedVaultSet.missingCount : "Unavailable"}</strong></div>
+                      <div className="stat-tile"><span>Sealed products</span><strong>{selectedVaultSet.trackedSealedCount || selectedVaultSet.sealedProducts.length}</strong></div>
                     </div>
+                    {!selectedVaultSet.checklistAvailable ? (
+                      <div className="vault-set-trust-note">
+                        <strong>{selectedVaultSet.checklistStatus}</strong>
+                        <span>Missing count needs checklist data. Add catalog checklist rows before treating this as full set completion.</span>
+                      </div>
+                    ) : null}
                     <div className="vault-set-controls" aria-label="Set Mastery controls">
                       <div className="vault-set-chip-row" role="group" aria-label="Set view filter">
                         {[
                           ["all", "All"],
                           ["owned", "Owned"],
-                          ["missing", "Missing"],
+                          ...(selectedVaultSet.missingSupported ? [["missing", "Missing"]] : []),
                           ["sealed", "Sealed"],
+                          ...(selectedVaultSet.wishlistItems?.length ? [["wishlist", "Wishlist"]] : []),
                         ].map(([value, label]) => (
                           <button key={value} type="button" className={vaultSetDetailFilter === value ? "active" : ""} onClick={() => setVaultSetDetailFilter(value)}>
                             {label}
@@ -52234,6 +52159,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <option value="normal">Normal</option>
                           <option value="holo">Holo</option>
                           <option value="reverse_holo">Reverse holo</option>
+                          <option value="promo">Promo</option>
+                          <option value="unknown">Variant unknown</option>
                         </select>
                       </label>
                       <label>
@@ -52268,7 +52195,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <article className="vault-set-mini-card" key={`set-owned-${item.id || item.name}`}>
                             {vaultItemDisplayImage(item) ? <img src={vaultItemDisplayImage(item)} alt="" /> : <span className="vault-set-mini-thumb">{isInventorySealedProduct(item) ? "Box" : "Card"}</span>}
                             <strong>{item.name}</strong>
-                            <span>{[vaultCardNumberLabel(item) ? `#${vaultCardNumberLabel(item)}` : "", vaultVariantLabel(item), item.productType || item.setName || "Vault item"].filter(Boolean).join(" · ")}</span>
+                            <span>{[vaultCardNumberLabel(item) ? `#${vaultCardNumberLabel(item)}` : "", vaultVariantLabel(item), item.productType || item.setName || "Vault item"].filter(Boolean).join(" - ")}</span>
                           </article>
                         )) : (
                           <div className="small-empty-state">
@@ -52294,7 +52221,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <article className="vault-set-mini-card" key={`set-missing-${product.id || catalogTitle(product)}`}>
                             {getCatalogImage(product) ? <img src={getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Card</span>}
                             <strong>{catalogTitle(product)}</strong>
-                            <span>{[vaultCardNumberLabel(product) ? `#${vaultCardNumberLabel(product)}` : "", vaultVariantLabel(product), product.rarity || "Missing"].filter(Boolean).join(" · ")}</span>
+                            <span>{[vaultCardNumberLabel(product) ? `#${vaultCardNumberLabel(product)}` : "", vaultVariantLabel(product), product.rarity || "Missing"].filter(Boolean).join(" - ")}</span>
                             <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-missing", destinations: { vault: true } })}>Add Item</button>
                           </article>
                         )) : (
@@ -52303,6 +52230,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             <span>This set may need more catalog data, or your collection is complete for known cards.</span>
                           </div>
                         )}
+                      </div>
+                    </div>
+                    ) : null}
+
+                    {selectedVaultSetView?.showWishlist ? (
+                    <div className="vault-set-subsection">
+                      <div className="compact-card-header">
+                        <div>
+                          <h3>Wishlist gaps</h3>
+                          <p>Wanted items tied to this set stay separate from owned Vault records.</p>
+                        </div>
+                      </div>
+                      <div className={`vault-set-product-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
+                        {selectedVaultSetView.wishlistItems.slice(0, 16).map((item) => (
+                          <article className="vault-set-mini-card" key={`set-wishlist-${item.id || item.name}`}>
+                            {vaultItemDisplayImage(item) ? <img src={vaultItemDisplayImage(item)} alt="" /> : <span className="vault-set-mini-thumb">Want</span>}
+                            <strong>{item.name || item.itemName || "Wishlist item"}</strong>
+                            <span>{[vaultCardNumberLabel(item) ? `#${vaultCardNumberLabel(item)}` : "", vaultVariantLabel(item), item.productType || "Wishlist"].filter(Boolean).join(" - ")}</span>
+                            <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product: item, source: "vault-set-wishlist", destinations: { vault: true } })}>Add to Vault</button>
+                          </article>
+                        ))}
                       </div>
                     </div>
                     ) : null}
@@ -52318,10 +52266,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <div className={`vault-set-product-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
                         {selectedVaultSetView.sealedProducts.length ? selectedVaultSetView.sealedProducts.slice(0, 16).map((product) => (
                           <article className="vault-set-mini-card" key={`set-sealed-${product.id || catalogTitle(product)}`}>
-                            {getCatalogImage(product) ? <img src={getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Box</span>}
-                            <strong>{catalogTitle(product)}</strong>
+                            {(product.__vaultOwnedSealed ? vaultItemDisplayImage(product) : getCatalogImage(product)) ? <img src={product.__vaultOwnedSealed ? vaultItemDisplayImage(product) : getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Box</span>}
+                            <strong>{product.name || product.itemName || catalogTitle(product)}</strong>
                             <span>{product.productType || product.product_type || "Sealed Product"}</span>
-                            <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-sealed", destinations: { vault: true } })}>Add Item</button>
+                            {product.__vaultOwnedSealed ? (
+                              <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(product.id)}>View details</button>
+                            ) : (
+                              <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-sealed", destinations: { vault: true } })}>Add Item</button>
+                            )}
                           </article>
                         )) : (
                           <div className="small-empty-state">
@@ -52341,11 +52293,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         <span>{set.series || "Pokemon set"}</span>
                         <h3>{set.name}</h3>
                         <div className="vault-progress-track" aria-label={`${set.name} completion`}>
-                          <i style={{ width: `${set.percent}%` }} />
+                          <i style={{ width: `${set.percent ?? 0}%` }} />
                         </div>
-                        <p>{set.ownedCount} owned{set.totalCards ? ` of ${set.totalCards}` : ""}</p>
+                        <p>{set.checklistAvailable ? set.progressCopy : `${set.trackedItemCount} tracked item${set.trackedItemCount === 1 ? "" : "s"} - ${set.checklistStatus}`}</p>
                         {set.releaseDate ? <span>Released {shortDate(set.releaseDate)}</span> : null}
-                        <strong>{set.totalCards ? `${set.percent}% complete` : "Open set"}</strong>
+                        <strong>{set.completionLabel}</strong>
                       </button>
                     )) : (
                       <div className="empty-state small-empty-state">
