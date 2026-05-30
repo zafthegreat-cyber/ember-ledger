@@ -1496,6 +1496,11 @@ function formatWatchCalendarDay(dateKey = "") {
 
 function normalizeDailyTideState(value = {}) {
   const today = getLocalDateKey();
+  const dismissedSparks = Array.isArray(value.dismissedSparks)
+    ? value.dismissedSparks
+    : Array.isArray(value.dismissed_sparks)
+      ? value.dismissed_sparks
+      : [];
   return {
     date: today,
     lastCheckInDate: value.lastCheckInDate || "",
@@ -1507,6 +1512,7 @@ function normalizeDailyTideState(value = {}) {
     completedActions: value.date === today && value.completedActions && typeof value.completedActions === "object"
       ? value.completedActions
       : {},
+    dismissedSparks: value.date === today ? dismissedSparks.map((key) => String(key || "").trim()).filter(Boolean) : [],
     lastCelebration: value.lastCelebration || "",
   };
 }
@@ -45352,6 +45358,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onSecondary: () => openAddActionSheet("hearth-calm"),
       };
     })();
+    const openQuickAddPathFromHearth = (path, patch = {}, source = "hearth-sparks") => {
+      setQuickAddWizard(createQuickAddWizardState({
+        screen: path,
+        path,
+        ...patch,
+      }));
+      openFlowModal("addActionSheet", { size: "medium", source });
+    };
     const quickActionByKey = {
       quickAdd: { key: "quick-add", label: "Quick Add", helper: "Add anything.", icon: "plus", onClick: () => openAddActionSheet("hearth") },
       scoutReport: { key: "scout-report", label: "Scout Report", helper: "Share a find.", icon: "scout", onClick: () => openQuickAddAction("storeReport") },
@@ -45447,37 +45461,330 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Forecasts are limited during beta.",
       "Some stores and regions are still being added.",
     ];
-    const hearthSnapshotCards = [
+    const hearthTodayKey = getLocalDateKey();
+    const isTodayRecord = (value) => {
+      if (!value) return false;
+      const parsed = new Date(value);
+      return !Number.isNaN(parsed.getTime()) && getLocalDateKey(parsed) === hearthTodayKey;
+    };
+    const recordDateForToday = (record = {}, fallback = "") =>
+      record.createdAt || record.created_at || record.submittedAt || record.submitted_at ||
+      record.updatedAt || record.updated_at || record.date || record.reportDate || record.report_date ||
+      fallback;
+    const reportHasProof = (report = {}) => Boolean(
+      scoutReportPhotoUrls(report).length ||
+      String(report.proofUrl || report.proof_url || report.sourceText || report.source_text || "").trim() ||
+      ["stock_photo", "receipt", "screenshot", "photo"].includes(String(report.proofType || report.proof_type || report.sourceType || report.source_type || "").toLowerCase())
+    );
+    const userScoutReportsToday = scoutReportRows.filter((report) =>
+      isCurrentUserRecord(report) && isTodayRecord(recordDateForToday(report, scoutReportSubmittedAt(report) || scoutReportObservedAt(report)))
+    );
+    const userScoutProofReportsToday = userScoutReportsToday.filter(reportHasProof);
+    const userVaultItemsToday = activeVaultItems.filter((item) =>
+      isCurrentUserRecord(item) && isTodayRecord(recordDateForToday(item, item.purchaseDate || item.purchase_date))
+    );
+    const vaultMissingPhotoCount = activeVaultItems.filter((item) => !vaultItemDisplayImage(item)).length;
+    const vaultPhotoUpdatesToday = activeVaultItems.filter((item) =>
+      isCurrentUserRecord(item) &&
+      Boolean(vaultItemDisplayImage(item)) &&
+      isTodayRecord(item.updatedAt || item.updated_at || item.createdAt || item.created_at)
+    );
+    const receiptUploadsToday = visibleReceiptRecords.filter((receipt) =>
+      isCurrentUserRecord(receipt) && isTodayRecord(receipt.receiptDate || receipt.receipt_date || receipt.purchaseDate || receipt.purchase_date || receipt.createdAt || receipt.created_at)
+    );
+    const salesToday = workspaceSales.filter((sale) =>
+      isCurrentUserRecord(sale) && isTodayRecord(sale.saleDate || sale.sale_date || sale.createdAt || sale.created_at)
+    );
+    const sparkDonationItemsToday = activeVaultItems.filter((item) => {
+      const status = normalizeVaultStatus(item);
+      const text = `${status} ${item.vaultCategory || item.vault_category || ""} ${item.notes || ""}`.toLowerCase();
+      return isCurrentUserRecord(item) && isTodayRecord(recordDateForToday(item)) && (status === "gift_donation" || /donation|gift|spark|kids pack|kid pack/.test(text));
+    });
+    const hearthCanUseScout = featureAllowed("scout_submit_reports") || BETA_LOCAL_MODE || scoutReportRows.length > 0;
+    const hearthCanUseVault = featureAllowed("vault_basic") || featureAllowed("collection_basic") || BETA_LOCAL_MODE || activeVaultItems.length > 0;
+    const hearthSparkRelevant = Boolean(hearthMode === "simple" || adaptiveUiState.familyMode || kidsApplication || pendingKidsRequests || adminToolsVisible);
+    const hearthSellerRelevant = Boolean(sellerAccessVisible || forgeInventoryItems.length || workspaceSales.length || workspaceExpenses.length || visibleReceiptRecords.length);
+    const openSparkManualSeed = (kind) => {
+      const donation = kind === "donation";
+      openQuickAddPathFromHearth("manual", {
+        manualItemName: donation ? "Spark donation" : "Kids pack",
+        manualCategory: "The Spark",
+        manualItemKind: donation ? "supply" : "accessory",
+        manualDestination: "vault",
+        manualNote: donation
+          ? "Donation or support item for The Spark."
+          : "Build or prepare a kid pack for The Spark.",
+      }, `hearth-spark-${kind}`);
+    };
+    const routeToAdminReportReview = () => {
+      setAdminReviewFilter("Scout Report Review");
+      setActiveTab("adminReview");
+    };
+    const hearthSparkQuickActions = [
+      hearthCanUseScout ? { key: "add-scout-report", title: "Add Scout Report", helper: "Share a store signal.", icon: "scout", tone: "scout", onClick: () => openQuickAddAction("storeReport") } : null,
+      hearthCanUseScout ? { key: "scan-screenshot", title: "Scan Screenshot", helper: "Review before saving.", icon: "scan", tone: "vault", onClick: () => openQuickAddPathFromHearth("scoutScreenshotReview", {}, "hearth-scan-screenshot") } : null,
+      hearthCanUseVault ? { key: "scan-cards", title: "Scan Cards", helper: "Manual card-page review.", icon: "scan", tone: "vault", onClick: () => openQuickAddPathFromHearth("cardPageReview", {}, "hearth-scan-cards") } : null,
+      hearthCanUseVault ? { key: "add-vault-item", title: "Add Vault Item", helper: "Save one item.", icon: "vault", tone: "vault", onClick: () => openQuickAddAction("vaultItem") } : null,
+      hearthSellerRelevant ? { key: "upload-receipt", title: "Upload Receipt", helper: "Track seller proof.", icon: "clipboard", tone: "forge", onClick: () => openQuickAddPathFromHearth("receipt", {}, "hearth-upload-receipt") } : null,
+      hearthSparkRelevant ? { key: "build-kids-pack", title: "Build Kids Pack", helper: "Prepare family support.", icon: "spark", tone: "spark", onClick: () => openSparkManualSeed("pack") } : null,
+      hearthSparkRelevant ? { key: "add-donation", title: "Add Donation", helper: "Track Spark support.", icon: "spark", tone: "spark", onClick: () => openSparkManualSeed("donation") } : null,
+      adminToolsVisible ? { key: "review-reports", title: "Review Reports", helper: "Admin moderation.", icon: "settings", tone: "admin", onClick: routeToAdminReportReview } : null,
+    ].filter(Boolean).slice(0, 6);
+    const sparkHash = (key = "") => {
+      const text = `${hearthTodayKey}:${key}`;
+      let hash = 0;
+      for (let index = 0; index < text.length; index += 1) {
+        hash = ((hash << 5) - hash) + text.charCodeAt(index);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    };
+    const sparkMissionCandidates = [
+      hearthCanUseScout ? {
+        key: "add-scout-report",
+        title: "Add one Scout report",
+        icon: "scout",
+        tone: "scout",
+        reward: 10,
+        current: Math.min(1, userScoutReportsToday.length),
+        target: 1,
+        onAction: () => openQuickAddAction("storeReport"),
+      } : null,
+      hearthCanUseScout ? {
+        key: "add-scout-proof",
+        title: "Add proof to one Scout report",
+        icon: "scan",
+        tone: "scout",
+        reward: 12,
+        current: Math.min(1, userScoutProofReportsToday.length),
+        target: 1,
+        onAction: () => openQuickAddPathFromHearth("scoutScreenshotReview", {}, "hearth-spark-proof"),
+      } : null,
+      hearthCanUseVault ? {
+        key: "add-vault-item",
+        title: "Add one Vault item",
+        icon: "vault",
+        tone: "vault",
+        reward: 10,
+        current: Math.min(1, userVaultItemsToday.length),
+        target: 1,
+        onAction: () => openQuickAddAction("vaultItem"),
+      } : null,
+      hearthCanUseVault && activeVaultItems.length ? {
+        key: "add-vault-photos",
+        title: "Add photos to 3 Vault items",
+        icon: "scan",
+        tone: "vault",
+        reward: 15,
+        current: Math.min(3, vaultPhotoUpdatesToday.length),
+        target: 3,
+        onAction: () => setActiveTab("vault"),
+      } : null,
+      hearthSellerRelevant ? {
+        key: "upload-receipt",
+        title: "Upload one receipt",
+        icon: "clipboard",
+        tone: "forge",
+        reward: 15,
+        current: Math.min(1, receiptUploadsToday.length),
+        target: 1,
+        onAction: () => openQuickAddPathFromHearth("receipt", {}, "hearth-spark-receipt"),
+      } : null,
+      sellerAccessVisible ? {
+        key: "record-sale",
+        title: "Record one sale",
+        icon: "forge",
+        tone: "forge",
+        reward: 15,
+        current: Math.min(1, salesToday.length),
+        target: 1,
+        onAction: () => openQuickAddAction("sale"),
+      } : null,
+      hearthSparkRelevant ? {
+        key: "add-spark-donation",
+        title: "Add one Spark donation item",
+        icon: "spark",
+        tone: "spark",
+        reward: 15,
+        current: Math.min(1, sparkDonationItemsToday.length),
+        target: 1,
+        onAction: () => openSparkManualSeed("donation"),
+      } : null,
+    ].filter(Boolean)
+      .sort((a, b) => sparkHash(a.key) - sparkHash(b.key) || a.key.localeCompare(b.key))
+      .slice(0, 5);
+    const dismissedSparkKeys = new Set(dailyTideToday.dismissedSparks || []);
+    const visibleSparkMissions = sparkMissionCandidates.filter((mission) => !dismissedSparkKeys.has(mission.key));
+    const allSparksDismissed = sparkMissionCandidates.length > 0 && visibleSparkMissions.length === 0;
+    const allSparksComplete = visibleSparkMissions.length > 0 && visibleSparkMissions.every((mission) => mission.current >= mission.target);
+    const todaySparkEarnedPoints = visibleSparkMissions
+      .filter((mission) => mission.current >= mission.target)
+      .reduce((sum, mission) => sum + Number(mission.reward || 0), 0);
+    const hearthEmberPoints = Number(scoutSnapshot.scoutProfile?.rewardPoints || scoutSnapshot.scoutProfile?.emberPoints || dailyTideToday.tidePoints || 0) + todaySparkEarnedPoints;
+    const dismissTodaySpark = async (sparkKey) => {
+      const confirmed = await requestConfirmation({
+        title: "Dismiss Spark?",
+        message: "You won't earn Ember Points for this Spark today.",
+        confirmLabel: "Dismiss",
+        cancelLabel: "Keep Spark",
+        destructive: true,
+      });
+      if (!confirmed) return;
+      setDailyTide((current) => {
+        const base = normalizeDailyTideState(current);
+        return {
+          ...base,
+          date: hearthTodayKey,
+          dismissedSparks: [...new Set([...(base.dismissedSparks || []), sparkKey])],
+        };
+      });
+    };
+    const restoreTodaySparks = () => {
+      setDailyTide((current) => ({
+        ...normalizeDailyTideState(current),
+        date: hearthTodayKey,
+        dismissedSparks: [],
+      }));
+      showInfoToast("Today's Sparks restored.", { message: "Sparks still need real actions before they earn Ember Points." });
+    };
+    const renderSparkQuickActions = () => (
+      <div className="hearth-spark-quick-actions" aria-label="Quick Actions">
+        <h3>Quick Actions</h3>
+        <div className="hearth-spark-quick-grid">
+          {hearthSparkQuickActions.map((action) => (
+            <button type="button" className={`hearth-spark-quick-action hearth-accent-${action.tone}`} key={action.key} onClick={action.onClick}>
+              <span aria-hidden="true"><AppNavIcon kind={action.icon} /></span>
+              <span>
+                <strong>{action.title}</strong>
+                <small>{action.helper}</small>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+    const renderTodaySparksPanel = () => (
+      <section className={`panel hearth-today-sparks-panel ${allSparksComplete ? "is-complete" : allSparksDismissed ? "is-dismissed" : ""}`} aria-label="Today's Sparks">
+        {allSparksComplete ? (
+          <>
+            <div className="hearth-sparks-state-header">
+              <span className="hearth-sparks-state-icon" aria-hidden="true"><AppNavIcon kind="plan" /></span>
+              <div>
+                <h2>Today&apos;s Sparks Complete</h2>
+                <p>Great job! You earned {todaySparkEarnedPoints} Ember Points today.</p>
+              </div>
+            </div>
+            {renderSparkQuickActions()}
+          </>
+        ) : allSparksDismissed ? (
+          <>
+            <div className="hearth-sparks-state-header">
+              <span className="hearth-sparks-state-icon" aria-hidden="true"><AppNavIcon kind="help" /></span>
+              <div>
+                <h2>No Sparks today</h2>
+                <p>You dismissed today&apos;s Sparks. You can check back tomorrow for new ones.</p>
+              </div>
+            </div>
+            {renderSparkQuickActions()}
+            <button type="button" className="hearth-sparks-restore-button" onClick={restoreTodaySparks}>Restore Sparks</button>
+          </>
+        ) : (
+          <>
+            <div className="hearth-sparks-heading">
+              <div>
+                <h2>Today&apos;s Sparks</h2>
+                <p>Complete helpful actions to earn Ember Points.</p>
+              </div>
+            </div>
+            <div className="hearth-spark-mission-list">
+              {visibleSparkMissions.map((mission) => {
+                const complete = mission.current >= mission.target;
+                const started = mission.current > 0 && !complete;
+                return (
+                  <article className={`hearth-spark-mission-card hearth-accent-${mission.tone} ${complete ? "is-complete" : ""}`} key={mission.key}>
+                    <span className="hearth-spark-mission-icon" aria-hidden="true"><AppNavIcon kind={mission.icon} /></span>
+                    <div className="hearth-spark-mission-copy">
+                      <h3>{mission.title}</h3>
+                      <p>{mission.current}/{mission.target} complete</p>
+                    </div>
+                    <strong className="hearth-spark-reward">+{mission.reward} Ember Points</strong>
+                    <div className="hearth-spark-mission-actions">
+                      <button type="button" className="hearth-spark-action-button" onClick={mission.onAction} disabled={complete}>
+                        {complete ? "Done" : started ? "Continue" : "Start"}
+                      </button>
+                      <button
+                        type="button"
+                        className="hearth-spark-dismiss"
+                        aria-label={`Dismiss ${mission.title}`}
+                        onClick={() => dismissTodaySpark(mission.key)}
+                        disabled={complete}
+                      >
+                        x
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            <p className="hearth-sparks-footnote">Sparks refresh tomorrow. Points are awarded only when the action is completed in the app.</p>
+          </>
+        )}
+      </section>
+    );
+    const latestVaultSetName = latestVaultActivityItem?.setName || latestVaultActivityItem?.set_name || latestVaultActivityItem?.expansion || "";
+    const scoutSignalLabel = latestScoutReport
+      ? `${scoutReportStatusLabel(latestScoutReport)}${isConfirmedScoutSignal(latestScoutReport) ? " | confirmed" : " | needs context"}`
+      : "Start Scout";
+    const hearthFeatureCards = [
       {
         key: "scout",
-        label: "Scout Signals",
-        title: latestScoutReport ? "Active nearby" : "No fresh local signal yet",
-        detail: latestScoutReport ? `${latestScoutStoreName} | ${latestScoutItem}${latestScoutTime ? ` | ${latestScoutTime}` : ""}` : "Submit or follow stores to help the map.",
-        value: scoutReportRows.length || 0,
-        cta: "Open Scout",
+        title: "Scout",
+        value: latestScoutReport ? `${latestScoutStoreName}` : "Start Scout",
+        detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` | ${latestScoutTime}` : ""}` : "Choose your first watched store or share a report.",
+        meta: scoutSignalLabel,
+        icon: "scout",
         onClick: () => setActiveTab("scout"),
         accent: "scout",
+        visible: hearthCanUseScout,
       },
       {
-        key: "vault-forge",
-        label: "Collection & Business",
-        title: `${activeVaultItems.length} Vault item${activeVaultItems.length === 1 ? "" : "s"}`,
-        detail: sellerAccessVisible
-          ? `${forgeInventoryItems.length} Forge item${forgeInventoryItems.length === 1 ? "" : "s"} | ${forgeReviewCount} review item${forgeReviewCount === 1 ? "" : "s"}.`
-          : hearthVaultValueLabel,
-        value: sellerAccessVisible ? forgeReviewCount : activeVaultItems.length,
-        cta: "View details",
-        onClick: () => setActiveTab(sellerAccessVisible ? "inventory" : "vault"),
+        key: "vault",
+        title: "Vault",
+        value: activeVaultItems.length ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"} tracked` : "Start Vault",
+        detail: activeVaultItems.length
+          ? `${vaultMissingPhotoCount} missing photo${vaultMissingPhotoCount === 1 ? "" : "s"}${latestVaultSetName ? ` | Newest: ${latestVaultSetName}` : ""}`
+          : "Add your first card or sealed product.",
+        meta: hearthVaultValueLabel,
+        icon: "vault",
+        onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
         accent: "vault",
+        visible: hearthCanUseVault,
       },
-    ];
-    const hearthSparkCard = {
-      label: "The Spark",
-      title: kidsApplication ? "Kids Program tracked" : "Collecting is better together.",
-      detail: kidsApplication ? statusLabel(kidsApplication.status || "pending") : "Fun, fair, and family-friendly.",
-      cta: "Open The Spark",
-      onClick: () => setActiveTab("kidsProgram"),
-    };
+      {
+        key: "spark",
+        title: "The Spark",
+        value: kidsApplication ? "Kids Program tracked" : hearthSparkRelevant ? "Build family support" : "Add The Spark",
+        detail: kidsApplication ? statusLabel(kidsApplication.status || "pending") : pendingKidsRequests ? `${pendingKidsRequests} request${pendingKidsRequests === 1 ? "" : "s"} need review` : "Kid packs, donations, and parent-safe requests.",
+        meta: "Next: Build a kids pack",
+        icon: "spark",
+        onClick: () => setActiveTab("kidsProgram"),
+        accent: "spark",
+        visible: hearthSparkRelevant,
+      },
+      {
+        key: "forge",
+        title: "Forge",
+        value: workspaceSales.length || workspaceExpenses.length ? `${money(totalSalesRevenue)} revenue` : "Start Forge",
+        detail: workspaceSales.length || workspaceExpenses.length
+          ? `${money(monthlyProfitLoss)} profit | ${receiptsNeedingReviewCount} receipt${receiptsNeedingReviewCount === 1 ? "" : "s"} missing`
+          : "Add Forge to your Hearth when seller tools are part of your workflow.",
+        meta: forgeInventoryItems.length ? `${forgeInventoryItems.length} inventory item${forgeInventoryItems.length === 1 ? "" : "s"}` : "Seller tools",
+        icon: "forge",
+        onClick: () => sellerAccessVisible ? setActiveTab("inventory") : requestLockedFeatureAccess("seller_tools"),
+        accent: "forge",
+        visible: hearthSellerRelevant,
+      },
+    ].filter((card) => card.visible);
     const hearthAdminShortcutVisible = Boolean(adminViewingAsAdmin || adminEditModeActive);
     return (
       <div className={`dashboard-layout home-clean-layout hearth-command-layout hearth-command-view hearth-northstar hearth-mode-${hearthMode}`}>
@@ -45496,6 +45803,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             </div>
             <div className="hearth-header-actions">
+              <span className="hearth-points-badge" aria-label={`${hearthEmberPoints} Ember Points`}>
+                <strong>{hearthEmberPoints}</strong>
+                <small>Ember Points</small>
+              </span>
               <span className="status-badge hearth-beta-badge">Beta</span>
               <span className="hearth-mode-chip">{hearthModeChipLabel}</span>
               {hearthAdminShortcutVisible ? (
@@ -45503,6 +45814,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ) : null}
             </div>
           </section>
+
+          {renderTodaySparksPanel()}
 
           {isOffline ? (
             <section className="hearth-state-card hearth-state-card--offline" role="status">
@@ -45567,27 +45880,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
 
         <div className="hearth-side-column">
-          <section className="hearth-snapshot-grid" aria-label="Hearth compact snapshots">
-            {hearthSnapshotCards.map((card) => (
-              <button type="button" className={`hearth-snapshot-card hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
-                <span>{card.label}</span>
-                <strong>{card.title}</strong>
-                <small>{card.detail}</small>
-                <b>{card.cta}</b>
+          <section className="hearth-feature-list" aria-label="Hearth feature status">
+            {hearthFeatureCards.map((card) => (
+              <button type="button" className={`hearth-feature-card hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
+                <span className="hearth-feature-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>
+                <span className="hearth-feature-copy">
+                  <strong>{card.title}</strong>
+                  <span>{card.value}</span>
+                  <small>{card.detail}</small>
+                  {card.meta ? <em>{card.meta}</em> : null}
+                </span>
+                <span className="hearth-feature-chevron" aria-hidden="true">&gt;</span>
               </button>
             ))}
-          </section>
-
-          <section className="panel hearth-spark-card" aria-label="The Spark">
-            <div className="hearth-spark-art" aria-hidden="true">
-              <span />
-            </div>
-            <div>
-              <p className="section-kicker">{hearthSparkCard.label}</p>
-              <h2>{hearthSparkCard.title}</h2>
-              <p>{hearthSparkCard.detail}</p>
-            </div>
-            <button type="button" onClick={hearthSparkCard.onClick}>{hearthSparkCard.cta}</button>
           </section>
 
           <section className="panel hearth-recent-panel" aria-label="Recent activity">

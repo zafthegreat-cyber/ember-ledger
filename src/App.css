@@ -60565,3 +60565,476 @@ html body .app-command-shell.app-vault .ember-assist-shell {
     max-width: 100% !important;
   }
 }
+
+/* Phone Hearth Today’s Sparks pass. */
+.app-home .hearth-points-badge {
+  display: inline-grid;
+  gap: 1px;
+  min-width: 92px;
+  min-height: 42px;
+  justify-items: start;
+  align-content: center;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 174, 66, 0.34);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 16% 12%, rgba(255, 177, 66, 0.2), transparent 45%),
+    rgba(13, 17, 24, 0.74);
+  color: rgba(255, 235, 205, 0.92);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+}
+
+.app-home .hearth-points-badge strong {
+  color: #ffd36a;
+  font-size: 1.02rem;
+  line-height: 1;
+}
+
+.app-home .hearth-points-badge small {
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.app-home .hearth-today-sparks-panel {
+  display: grid;
+  gap: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 174, 66, 0.22);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 182, 76, 0.18), transparent 36%),
+    radial-gradient(circle at 95% 5%, rgba(164, 91, 255, 0.16), transparent 34%),
+    linear-gradient(145deg, rgba(16, 22, 31, 0.96), rgba(8, 12, 18, 0.98));
+}
+
+.app-home .hearth-today-sparks-panel.is-complete {
+  border-color: rgba(80, 220, 154, 0.4);
+  background:
+    radial-gradient(circle at 88% 10%, rgba(80, 220, 154, 0.22), transparent 32%),
+    linear-gradient(145deg, rgba(8, 42, 32, 0.92), rgba(8, 13, 18, 0.98));
+}
+
+.app-home .hearth-today-sparks-panel.is-dismissed {
+  border-color: rgba(255, 174, 66, 0.32);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 174, 66, 0.15), transparent 34%),
+    linear-gradient(145deg, rgba(35, 20, 10, 0.9), rgba(8, 13, 18, 0.98));
+}
+
+.app-home .hearth-sparks-heading,
+.app-home .hearth-sparks-state-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.app-home .hearth-sparks-heading h2,
+.app-home .hearth-sparks-state-header h2 {
+  margin: 0;
+  color: #ffe3ad;
+  font-size: 1.18rem;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.app-home .hearth-sparks-heading p,
+.app-home .hearth-sparks-state-header p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.76);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.app-home .hearth-sparks-state-header {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.app-home .hearth-sparks-state-icon {
+  display: inline-grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffd36a;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.app-home .hearth-spark-mission-list {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.app-home .hearth-spark-mission-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025)),
+    rgba(3, 8, 14, 0.58);
+}
+
+.app-home .hearth-spark-mission-card.is-complete {
+  border-color: rgba(80, 220, 154, 0.34);
+  background: rgba(16, 70, 48, 0.28);
+}
+
+.app-home .hearth-spark-mission-icon,
+.app-home .hearth-feature-icon,
+.app-home .hearth-spark-quick-action > span:first-child {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border: 1px solid rgba(255, 174, 66, 0.25);
+  border-radius: 14px;
+  background: rgba(255, 174, 66, 0.1);
+  color: #ffb23f;
+}
+
+.app-home .hearth-accent-vault .hearth-spark-mission-icon,
+.app-home .hearth-accent-vault .hearth-feature-icon,
+.app-home .hearth-accent-vault.hearth-spark-quick-action > span:first-child {
+  border-color: rgba(78, 190, 255, 0.32);
+  background: rgba(78, 190, 255, 0.11);
+  color: #65c8ff;
+}
+
+.app-home .hearth-accent-forge .hearth-spark-mission-icon,
+.app-home .hearth-accent-forge .hearth-feature-icon,
+.app-home .hearth-accent-forge.hearth-spark-quick-action > span:first-child {
+  border-color: rgba(69, 214, 153, 0.28);
+  background: rgba(69, 214, 153, 0.1);
+  color: #62e1b0;
+}
+
+.app-home .hearth-accent-spark .hearth-spark-mission-icon,
+.app-home .hearth-accent-spark .hearth-feature-icon,
+.app-home .hearth-accent-spark.hearth-spark-quick-action > span:first-child {
+  border-color: rgba(202, 120, 255, 0.34);
+  background: rgba(202, 120, 255, 0.11);
+  color: #d798ff;
+}
+
+.app-home .hearth-spark-mission-copy,
+.app-home .hearth-feature-copy,
+.app-home .hearth-spark-quick-action span:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.app-home .hearth-spark-mission-copy h3 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 0.92rem;
+  letter-spacing: 0;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.app-home .hearth-spark-mission-copy p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.app-home .hearth-spark-reward {
+  justify-self: end;
+  color: #ffd36a;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.app-home .hearth-spark-mission-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-column: 2 / -1;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-home .hearth-spark-action-button,
+.app-home .hearth-sparks-restore-button {
+  min-height: 38px;
+  border: 1px solid rgba(255, 174, 66, 0.38);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 174, 66, 0.98), rgba(255, 125, 37, 0.92));
+  color: #221102;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.app-home .hearth-spark-action-button:disabled {
+  border-color: rgba(80, 220, 154, 0.34);
+  background: rgba(80, 220, 154, 0.16);
+  color: rgba(232, 246, 255, 0.78);
+}
+
+.app-home .hearth-spark-dismiss {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(232, 246, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(232, 246, 255, 0.78);
+  font-weight: 900;
+}
+
+.app-home .hearth-spark-dismiss:disabled {
+  opacity: 0.42;
+}
+
+.app-home .hearth-sparks-footnote {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.62);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.app-home .hearth-spark-quick-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-home .hearth-spark-quick-actions h3 {
+  margin: 0;
+  color: #ffd36a;
+  font-size: 0.9rem;
+  letter-spacing: 0;
+}
+
+.app-home .hearth-spark-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  min-width: 0;
+}
+
+.app-home .hearth-spark-quick-action {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  min-height: 72px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 255, 255, 0.92);
+  text-align: left;
+}
+
+.app-home .hearth-spark-quick-action strong,
+.app-home .hearth-feature-card strong {
+  color: #ffe3ad;
+  font-size: 0.95rem;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.app-home .hearth-spark-quick-action small,
+.app-home .hearth-feature-card small,
+.app-home .hearth-feature-card em {
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.74rem;
+  font-style: normal;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.app-home .hearth-feature-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-home .hearth-feature-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 96px;
+  padding: 14px;
+  border: 1px solid rgba(255, 174, 66, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 96% 10%, rgba(255, 174, 66, 0.12), transparent 36%),
+    linear-gradient(145deg, rgba(15, 22, 32, 0.92), rgba(6, 11, 17, 0.96));
+  color: rgba(255, 255, 255, 0.92);
+  text-align: left;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+
+.app-home .hearth-feature-card span,
+.app-home .hearth-feature-card small,
+.app-home .hearth-feature-card em {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-home .hearth-feature-card .hearth-feature-copy > span {
+  color: rgba(232, 246, 255, 0.88);
+  font-size: 0.88rem;
+  font-weight: 900;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.app-home .hearth-feature-chevron {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  color: #ffd36a;
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+@media (max-width: 780px) {
+  .app-home .hearth-northstar-header {
+    align-items: start !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-home .hearth-header-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, auto);
+    justify-items: end;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .app-home .hearth-points-badge {
+    grid-column: 1 / -1;
+    justify-self: end;
+    min-width: 86px;
+    min-height: 38px;
+    padding: 6px 9px;
+  }
+
+  .app-home .hearth-points-badge strong {
+    font-size: 0.94rem;
+  }
+
+  .app-home .hearth-points-badge small {
+    font-size: 0.58rem;
+  }
+
+  .app-home .hearth-today-sparks-panel {
+    padding: 13px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-home .hearth-sparks-heading h2,
+  .app-home .hearth-sparks-state-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .app-home .hearth-sparks-heading p,
+  .app-home .hearth-sparks-state-header p {
+    font-size: 0.78rem;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .app-home .hearth-spark-reward {
+    grid-column: 2 / 3;
+    justify-self: start;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .app-home .hearth-spark-mission-actions {
+    grid-column: 1 / -1;
+  }
+
+  .app-home .hearth-spark-action-button {
+    width: 100%;
+  }
+
+  .app-home .hearth-spark-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .app-home .hearth-spark-quick-action {
+    grid-template-columns: 34px minmax(0, 1fr);
+    min-height: 66px;
+    padding: 9px;
+  }
+
+  .app-home .hearth-spark-quick-action > span:first-child {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+
+  .app-home .hearth-spark-quick-action small {
+    display: none;
+  }
+
+  .app-home .hearth-feature-list {
+    gap: 9px;
+  }
+
+  .app-home .hearth-feature-card {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    min-height: 82px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .app-home .hearth-feature-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .app-home .hearth-feature-card strong {
+    font-size: 0.92rem;
+  }
+
+  .app-home .hearth-feature-card .hearth-feature-copy > span {
+    font-size: 0.8rem;
+  }
+
+  .app-home .hearth-feature-card small,
+  .app-home .hearth-feature-card em {
+    font-size: 0.7rem;
+  }
+
+  .app-home .hearth-best-action-card,
+  .app-home .hearth-quick-actions-panel,
+  .app-home .hearth-snapshot-grid,
+  .app-home .hearth-spark-card {
+    display: none !important;
+  }
+}
