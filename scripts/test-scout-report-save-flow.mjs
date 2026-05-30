@@ -21,6 +21,11 @@ assert.match(app, /const cloudMergeBase = \(latestScoutData\.reports \|\| \[\]\)
 assert.match(app, /String\(getScoutReportId\(candidate\)\) !== String\(localReportId\)/, "Scout cloud merge should remove the local report by id before adding the synced report");
 assert.match(app, /const savedReportId = getScoutReportId\(savedReport \|\| \{\}\)/, "Scout Add More Details should retain the submitted report id");
 assert.match(app, /openScoutReportDetail\(savedReportId \|\| savedReport/, "Scout Add More Details should open the submitted report, not a blank draft");
+assert.match(app, /scoutReportDetailsDraft/, "Scout Add Details should open an editable details draft");
+assert.match(app, /function canAddScoutReportDetails/, "Scout Add Details should use an explicit owner-or-admin permission gate");
+assert.match(app, /function saveScoutReportDetails/, "Scout Add Details should save product, proof, and source context");
+assert.match(app, /Only the reporter or an admin can add Scout report details\./, "Scout Add Details should deny non-owner edits");
+assert.match(app, /Scout report details updated\./, "Scout Add Details should confirm successful updates");
 assert.match(app, /currentUserIds\.includes\(reportUserId\)/, "Scout report ownership should use exact user-id matching");
 assert.doesNotMatch(app, /report\.userId \|\| report\.user_id \|\| report\.reportedBy \|\| report\.reported_by \|\| ""\)\.includes\(id\)/, "Scout report ownership must not use substring matching");
 assert.match(app, /Choose how you know this report before posting\./, "Scout submit should require a proof/source choice before posting");

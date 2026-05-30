@@ -59263,6 +59263,64 @@ html body .app-command-shell.app-vault .ember-assist-shell {
   gap: 8px !important;
 }
 
+.scout-report-add-details-form {
+  display: grid;
+  gap: 12px;
+  margin: 12px 13px 13px;
+  padding: 13px;
+  border: 1px solid rgba(124, 231, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(10, 23, 42, 0.76);
+}
+
+.scout-report-add-details-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.scout-report-add-details-heading strong {
+  color: #fff7ed;
+}
+
+.scout-report-add-details-heading small,
+.scout-report-add-details-form label span {
+  color: rgba(232, 246, 255, 0.68);
+}
+
+.scout-report-add-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scout-report-add-details-form label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.scout-report-add-details-form input,
+.scout-report-add-details-form select,
+.scout-report-add-details-form textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.scout-report-add-details-form textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.scout-report-add-details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.scout-report-add-details-actions button {
+  flex: 1 1 150px;
+}
+
 .app-scout .scout-report-detail-sheet .modal-sticky-footer,
 .app-command-shell.app-scout .scout-report-detail-sheet .modal-sticky-footer,
 .app.app-scout .scout-report-detail-sheet .modal-sticky-footer {
@@ -59273,6 +59331,14 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 }
 
 @media (max-width: 780px) {
+  .scout-report-add-details-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scout-report-add-details-actions {
+    display: grid;
+  }
+
   .app-scout .flow-modal[data-flow="scoutSubmit"],
   .app-command-shell.app-scout .flow-modal[data-flow="scoutSubmit"],
   .app.app-scout .flow-modal[data-flow="scoutSubmit"] {

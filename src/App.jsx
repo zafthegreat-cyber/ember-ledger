@@ -4960,6 +4960,7 @@ export default function App() {
   const [scoutScoreModalOpen, setScoutScoreModalOpen] = useState(false);
   const [selectedScoutReport, setSelectedScoutReport] = useState(null);
   const [scoutReportDetailFocus, setScoutReportDetailFocus] = useState("");
+  const [scoutReportDetailsDraft, setScoutReportDetailsDraft] = useState(null);
   const [scoutDateTimeEdit, setScoutDateTimeEdit] = useState({
     report: null,
     value: "",
@@ -31245,9 +31246,209 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return candidates.find((candidate) => String(getScoutReportId(candidate)) === String(reportId)) || fallback || null;
   }
 
+  function canAddScoutReportDetails(report = {}) {
+    return Boolean(report && getScoutReportId(report) && (isCurrentUserScoutReport(report) || adminEditModeActive));
+  }
+
+  function createScoutReportDetailsDraft(report = {}) {
+    const items = normalizeScoutReportItems(report);
+    const firstItem = items[0] || {};
+    const photoUrls = scoutReportPhotoUrls(report);
+    return {
+      reportId: getScoutReportId(report),
+      productName: firstItem.productName || report.productName || report.product_name || report.itemName || "",
+      quantity: firstItem.quantity || report.quantitySeen || report.quantity_estimate || "",
+      price: firstItem.price || report.price || report.priceSeen || report.price_seen || "",
+      detailNote: firstItem.note || report.detailNote || report.detail_note || "",
+      sourceType: report.sourceType || report.source_type || report.proofType || report.proof_type || "manual",
+      sourceText: report.sourceText || report.source_text || report.rawSourceText || report.raw_source_text || report.proofText || report.proof_text || "",
+      proofUrl: photoUrls[0] || report.imageUrl || report.image_url || "",
+      message: "",
+      saving: false,
+    };
+  }
+
+  function updateScoutReportDetailsDraft(field, value) {
+    setScoutReportDetailsDraft((current) => current ? { ...current, [field]: value, message: "" } : current);
+  }
+
+  function buildScoutReportDetailsPatch(report = {}, draft = scoutReportDetailsDraft) {
+    const reportId = getScoutReportId(report);
+    const productName = String(draft?.productName || "").trim();
+    const quantity = String(draft?.quantity || "").trim();
+    const price = String(draft?.price || "").trim();
+    const detailNote = String(draft?.detailNote || "").trim();
+    const sourceText = String(draft?.sourceText || "").trim();
+    const sourceType = String(draft?.sourceType || "manual").trim() || "manual";
+    const proofUrl = String(draft?.proofUrl || "").trim();
+    const existingItems = normalizeScoutReportItems(report);
+    const nextItems = productName
+      ? [
+          {
+            ...(existingItems[0] || {}),
+            productName,
+            productId: existingItems[0]?.productId || report.catalogProductId || report.catalog_product_id || "",
+            category: existingItems[0]?.category || report.productCategory || report.product_category || "Pokemon",
+            productType: existingItems[0]?.productType || report.productType || report.product_type || "",
+            setName: existingItems[0]?.setName || report.setName || report.set_name || "",
+            imageUrl: existingItems[0]?.imageUrl || report.productImageUrl || report.product_image_url || "",
+            quantity,
+            price,
+            note: detailNote,
+          },
+          ...existingItems.slice(1),
+        ]
+      : existingItems;
+    const existingPhotoUrls = scoutReportPhotoUrls(report);
+    const nextPhotoUrls = proofUrl
+      ? [proofUrl, ...existingPhotoUrls.filter((url) => String(url || "") !== proofUrl)]
+      : existingPhotoUrls;
+    const noteParts = [
+      report.notes || report.note || report.reportText || report.report_text || "",
+      detailNote ? `Added detail: ${detailNote}` : "",
+      sourceText ? `Source text: ${sourceText}` : "",
+      productName ? `Products seen: ${productName}` : "",
+      quantity ? `Quantity estimate: ${quantity}` : "",
+      price ? `Price/MSRP note: ${price}` : "",
+      proofUrl ? "Proof/photo attached." : "",
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+    const nextNotes = [...new Set(noteParts)].join(" | ");
+    const now = new Date().toISOString();
+    const patched = {
+      ...report,
+      id: report.id || reportId,
+      reportId,
+      report_id: report.report_id || reportId,
+      itemName: productName || report.itemName || report.item_name || "",
+      item_name: productName || report.item_name || report.itemName || "",
+      productName: productName || report.productName || report.product_name || "",
+      product_name: productName || report.product_name || report.productName || "",
+      productCategory: productName ? (report.productCategory || report.product_category || "Pokemon") : report.productCategory,
+      product_category: productName ? (report.product_category || report.productCategory || "Pokemon") : report.product_category,
+      quantitySeen: quantity || report.quantitySeen || report.quantity_seen || report.quantity_estimate || "",
+      quantity_seen: quantity || report.quantity_seen || report.quantitySeen || report.quantity_estimate || "",
+      quantity_estimate: quantity || report.quantity_estimate || report.quantitySeen || report.quantity_seen || "",
+      price: price || report.price || report.priceSeen || report.price_seen || "",
+      priceSeen: price || report.priceSeen || report.price_seen || report.price || "",
+      price_seen: price || report.price_seen || report.priceSeen || report.price || "",
+      itemsSeen: nextItems,
+      items_seen: nextItems,
+      notes: nextNotes,
+      note: detailNote || report.note || "",
+      reportText: nextNotes || report.reportText || report.report_text || "",
+      report_text: nextNotes || report.report_text || report.reportText || "",
+      proofType: sourceType,
+      proof_type: sourceType,
+      sourceType,
+      source_type: sourceType,
+      sourceText,
+      source_text: sourceText,
+      rawSourceText: sourceText || report.rawSourceText || report.raw_source_text || "",
+      raw_source_text: sourceText || report.raw_source_text || report.rawSourceText || "",
+      proofText: sourceText || report.proofText || report.proof_text || "",
+      proof_text: sourceText || report.proof_text || report.proofText || "",
+      photoUrls: nextPhotoUrls,
+      photo_urls: nextPhotoUrls,
+      imageUrl: proofUrl || report.imageUrl || report.image_url || "",
+      image_url: proofUrl || report.image_url || report.imageUrl || "",
+      updatedAt: now,
+      updated_at: now,
+    };
+    const reliability = evaluateScoutReportReliability(patched, { needsReview: Boolean(patched.needsReview || patched.needs_review) });
+    return {
+      ...patched,
+      confidence: reliability.key,
+      confidenceLevel: reliability.key,
+      confidence_level: reliability.key,
+      confidenceLabel: reliability.label,
+      confidence_label: reliability.label,
+      confidenceScore: reliability.score,
+      confidence_score: reliability.score,
+      confidenceReasons: reliability.reasons || [],
+      confidence_reasons: reliability.reasons || [],
+      reliabilityLabel: reliability.label,
+      reliability_label: reliability.label,
+      reliabilityReason: reliability.helper,
+      reliability_reason: reliability.helper,
+    };
+  }
+
+  function saveScoutReportDetailsLocally(report = {}) {
+    const reportId = getScoutReportId(report);
+    const scoutData = getSharedScoutData();
+    const baseReports = (scoutData.reports || scoutSnapshot.reports || []).filter(Boolean);
+    const nextReports = baseReports.some((candidate) => String(getScoutReportId(candidate)) === String(reportId))
+      ? baseReports.map((candidate) => String(getScoutReportId(candidate)) === String(reportId) ? { ...candidate, ...report } : candidate)
+      : [report, ...baseReports];
+    saveSharedScoutData({ ...scoutData, reports: nextReports });
+    return nextReports.find((candidate) => String(getScoutReportId(candidate)) === String(reportId)) || report;
+  }
+
+  async function persistScoutReportDetailsToSupabase(report = {}) {
+    if (!scoutBackendSyncReady()) return null;
+    const reportId = uuidOrNull(getScoutReportId(report));
+    if (!reportId) return null;
+    const now = new Date().toISOString();
+    const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,source_type,source_label,submitted_by_display,confidence,imported_batch,imported_by_admin,scout_points_awarded,import_key,report_status,created_at,updated_at";
+    const result = await supabase
+      .from("store_reports")
+      .update({
+        product_name: report.productName || report.product_name || null,
+        quantity_estimate: report.quantitySeen || report.quantity_seen || report.quantity_estimate || null,
+        price_seen: scoutBackendNumberOrNull(report.priceSeen || report.price_seen || report.price),
+        photo_url: scoutReportPhotoUrls(report)[0] || null,
+        notes: report.notes || report.reportText || report.report_text || null,
+        source_type: report.sourceType || report.source_type || "manual",
+        source_label: report.sourceLabel || report.source_label || "Manual Scout detail update",
+        updated_at: now,
+      })
+      .eq("id", reportId)
+      .select(reportSelect)
+      .single();
+    if (result.error) throw result.error;
+    return mapSupabaseScoutReport(result.data, getScoutQuickStores({ admin: adminEditModeActive }));
+  }
+
+  async function saveScoutReportDetails(event) {
+    event?.preventDefault?.();
+    const report = findScoutReportForDetail(scoutReportDetailsDraft?.reportId, selectedScoutReport);
+    if (!report || !canAddScoutReportDetails(report)) {
+      showErrorToast("Permission denied.", { message: "Only the reporter or an admin can add Scout report details." });
+      return;
+    }
+    const patchedReport = buildScoutReportDetailsPatch(report);
+    const hasNewDetail = Boolean(
+      String(scoutReportDetailsDraft?.productName || "").trim() ||
+      String(scoutReportDetailsDraft?.detailNote || "").trim() ||
+      String(scoutReportDetailsDraft?.sourceText || "").trim() ||
+      String(scoutReportDetailsDraft?.proofUrl || "").trim()
+    );
+    if (!hasNewDetail) {
+      setScoutReportDetailsDraft((current) => ({ ...current, message: "Add a product, detail note, source text, or proof link before saving." }));
+      return;
+    }
+    setScoutReportDetailsDraft((current) => ({ ...current, saving: true, message: "" }));
+    try {
+      const cloudReport = await persistScoutReportDetailsToSupabase(patchedReport);
+      const updatedReport = saveScoutReportDetailsLocally(cloudReport ? { ...cloudReport, ...patchedReport } : patchedReport);
+      setSelectedScoutReport(updatedReport);
+      setScoutReportDetailsDraft(null);
+      showSuccessToast("Scout report details updated.", { message: "Products, proof, and source context now appear on the report." });
+    } catch (error) {
+      logAppError("scout_report_details_update", error, { reportId: getScoutReportId(report) }, "normal");
+      setScoutReportDetailsDraft((current) => ({
+        ...current,
+        saving: false,
+        message: error?.message || "Couldn't update this Scout report. Please try again.",
+      }));
+      showErrorToast("Couldn't update Scout report.", { message: "Please try again in a moment." });
+    }
+  }
+
   function closeScoutReportDetail() {
     setSelectedScoutReport(null);
     setScoutReportDetailFocus("");
+    setScoutReportDetailsDraft(null);
   }
 
   function openScoutReportDetail(reportOrId, options = {}) {
@@ -31274,7 +31475,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function openScoutReportAddDetails(report = selectedScoutReport) {
-    openScoutReportDetail(report, { focus: "details", fallback: report });
+    const targetReport = findScoutReportForDetail(report, report);
+    if (!targetReport || !canAddScoutReportDetails(targetReport)) {
+      showErrorToast("Permission denied.", { message: "Only the reporter or an admin can add Scout report details." });
+      return;
+    }
+    setScoutReportDetailsDraft(createScoutReportDetailsDraft(targetReport));
+    openScoutReportDetail(targetReport, { focus: "details", fallback: targetReport });
   }
 
   function editScoutReport(report) {
@@ -50385,6 +50592,80 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : (
                   <p>Product details have not been added yet.</p>
                 )}
+                {scoutReportDetailsDraft?.reportId === getScoutReportId(selectedScoutReport) && canAddScoutReportDetails(selectedScoutReport) ? (
+                  <form className="scout-report-add-details-form" onSubmit={saveScoutReportDetails}>
+                    <div className="scout-report-add-details-heading">
+                      <strong>Add products, proof, or context</strong>
+                      <small>Manual details only. Nothing is extracted automatically.</small>
+                    </div>
+                    <div className="scout-report-add-details-grid">
+                      <label>
+                        <span>Product/item seen</span>
+                        <input
+                          value={scoutReportDetailsDraft.productName}
+                          onChange={(event) => updateScoutReportDetailsDraft("productName", event.target.value)}
+                          placeholder="Booster Bundle, ETB, sleeved booster..."
+                        />
+                      </label>
+                      <label>
+                        <span>Quantity estimate</span>
+                        <input
+                          value={scoutReportDetailsDraft.quantity}
+                          onChange={(event) => updateScoutReportDetailsDraft("quantity", event.target.value)}
+                          placeholder="2, several, low stock..."
+                        />
+                      </label>
+                      <label>
+                        <span>Price/MSRP note</span>
+                        <input
+                          value={scoutReportDetailsDraft.price}
+                          onChange={(event) => updateScoutReportDetailsDraft("price", event.target.value)}
+                          placeholder="49.99 or price unknown"
+                        />
+                      </label>
+                      <label>
+                        <span>Source type</span>
+                        <select value={scoutReportDetailsDraft.sourceType} onChange={(event) => updateScoutReportDetailsDraft("sourceType", event.target.value)}>
+                          <option value="manual">Manual note</option>
+                          <option value="screenshot">Screenshot</option>
+                          <option value="stock_photo">Shelf/photo proof</option>
+                          <option value="receipt">Receipt</option>
+                          <option value="text_link">Text/link</option>
+                          <option value="called_store">Called store</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label className="scout-report-add-details-wide">
+                      <span>Proof/source text</span>
+                      <textarea
+                        value={scoutReportDetailsDraft.sourceText}
+                        onChange={(event) => updateScoutReportDetailsDraft("sourceText", event.target.value)}
+                        placeholder="Paste cleaned screenshot text, receipt detail, link context, or store note."
+                      />
+                    </label>
+                    <label className="scout-report-add-details-wide">
+                      <span>Context note</span>
+                      <textarea
+                        value={scoutReportDetailsDraft.detailNote}
+                        onChange={(event) => updateScoutReportDetailsDraft("detailNote", event.target.value)}
+                        placeholder="Shelf location, limits, display notes, or what changed."
+                      />
+                    </label>
+                    <label className="scout-report-add-details-wide">
+                      <span>Proof image/link</span>
+                      <input
+                        value={scoutReportDetailsDraft.proofUrl}
+                        onChange={(event) => updateScoutReportDetailsDraft("proofUrl", event.target.value)}
+                        placeholder="Optional image/proof URL"
+                      />
+                    </label>
+                    {scoutReportDetailsDraft.message ? <p className="form-error">{scoutReportDetailsDraft.message}</p> : null}
+                    <div className="scout-report-add-details-actions">
+                      <button type="submit" disabled={scoutReportDetailsDraft.saving}>{scoutReportDetailsDraft.saving ? "Saving..." : "Save details"}</button>
+                      <button type="button" className="secondary-button" disabled={scoutReportDetailsDraft.saving} onClick={() => setScoutReportDetailsDraft(null)}>Cancel</button>
+                    </div>
+                  </form>
+                ) : null}
               </details>
               <details className="scout-report-detail-section" data-scout-detail-section="proof" open={scoutReportDetailFocus === "proof" ? true : undefined}>
                 <summary>
