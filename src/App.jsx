@@ -1813,6 +1813,9 @@ function createQuickAddWizardState(overrides = {}) {
     scoutScanTimeUnknown: false,
     scoutScanItems: "",
     scoutScanNotes: "",
+    scoutScanOcrStatus: "idle",
+    scoutScanOcrConfidence: "",
+    scoutScanOcrFlags: [],
     scoutScanSaving: false,
     scoutScanSavedReport: null,
     cardScanRows: [
@@ -17720,7 +17723,199 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }), 0);
   }
 
-  function handleQuickAddPhotoFile(event, target = "photo") {
+  function scoutScanStoreCandidateValues(store = {}) {
+    return [
+      getScoutStoreDisplayName(store),
+      getScoutQuickStoreName(store),
+      store.nickname,
+      store.storeName,
+      store.store_name,
+      store.name,
+      store.retailer,
+      store.chain,
+      store.address,
+      ...(Array.isArray(store.aliases) ? store.aliases : []),
+      ...(Array.isArray(store.storeAliases) ? store.storeAliases : []),
+    ].filter(Boolean);
+  }
+
+  function scoutScanStoreCandidates() {
+    const rows = [...(scoutSnapshot.stores || []), ...SCOUT_KNOWN_LOCAL_STORE_SEED, ...(virginiaStoreSeed || [])];
+    const seen = new Set();
+    return rows.filter((store, index) => {
+      const key = getScoutQuickStoreId(store) || getStoreMapStoreId(store, index);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function findScoutScanStoreFromText(text = "") {
+    const normalized = normalizeSearchText(text);
+    if (!normalized) return { storeName: "", confidence: 0, source: "" };
+    let best = { storeName: "", confidence: 0, source: "" };
+    for (const store of scoutScanStoreCandidates()) {
+      const values = scoutScanStoreCandidateValues(store);
+      for (const value of values) {
+        const candidate = normalizeSearchText(value);
+        if (!candidate || candidate.length < 2) continue;
+        const hasFullMatch = normalized.includes(candidate);
+        const hasTokenMatch = candidate.length <= 4
+          ? new RegExp(`(^|\\s)${candidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`).test(normalized)
+          : normalized.includes(candidate);
+        if (!hasFullMatch && !hasTokenMatch) continue;
+        const score = Math.min(98, 45 + Math.min(candidate.length, 35) + (value === getScoutStoreDisplayName(store) ? 12 : 0));
+        if (score > best.confidence) {
+          best = { storeName: getScoutStoreDisplayName(store), confidence: score, source: String(value) };
+        }
+      }
+    }
+    if (!best.storeName) {
+      for (const [retailer, aliases] of Object.entries(STORE_ALIASES)) {
+        const matchedAlias = aliases.find((alias) => {
+          const candidate = normalizeSearchText(alias);
+          return candidate && new RegExp(`(^|\\s)${candidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`).test(normalized);
+        });
+        if (matchedAlias) return { storeName: retailer, confidence: 48, source: matchedAlias };
+      }
+    }
+    return best;
+  }
+
+  function parseScoutScanDateFromText(text = "") {
+    const now = new Date();
+    const normalized = String(text || "").toLowerCase();
+    if (/\btoday\b/.test(normalized)) return getLocalDateInputKey(now);
+    if (/\byesterday\b/.test(normalized)) return getYesterdayDateInputKey();
+    const isoMatch = normalized.match(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+    const slashMatch = normalized.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
+    if (slashMatch) {
+      const [, month, day, rawYear] = slashMatch;
+      const year = rawYear ? (rawYear.length === 2 ? `20${rawYear}` : rawYear) : String(now.getFullYear());
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+    const monthMatch = normalized.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:,?\s+(20\d{2}))?\b/);
+    if (monthMatch) {
+      const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+      const monthIndex = monthNames.findIndex((name) => monthMatch[1].startsWith(name));
+      const year = monthMatch[3] || String(now.getFullYear());
+      return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(monthMatch[2]).padStart(2, "0")}`;
+    }
+    return "";
+  }
+
+  function parseScoutScanTimeFromText(text = "") {
+    const normalized = String(text || "").toLowerCase();
+    const match = normalized.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b|\b(\d{1,2}):(\d{2})\b/);
+    if (!match) return "";
+    if (match[4] && match[5]) {
+      return `${String(match[4]).padStart(2, "0")}:${match[5]}`;
+    }
+    let hours = Number(match[1]);
+    const minutes = match[2] || "00";
+    const period = match[3] || "";
+    if (period.startsWith("p") && hours < 12) hours += 12;
+    if (period.startsWith("a") && hours === 12) hours = 0;
+    if (!Number.isFinite(hours) || hours > 23) return "";
+    return `${String(hours).padStart(2, "0")}:${minutes}`;
+  }
+
+  function extractScoutScanItemsFromText(text = "") {
+    const blocked = /^(today|yesterday|posted|updated|available|in stock|restock|restocked|target|walmart|best buy|gamestop|barnes|five below|address|hours?)\b/i;
+    const productWords = /\b(pokemon|pok[e\u00e9]mon|etb|elite trainer|booster|bundle|sleeved|pack|packs|tin|collection|binder|poster|blister|box|surging sparks|prismatic|evolutions|151|journey together|black bolt|white flare|trainer box|cards?)\b/i;
+    const lines = String(text || "")
+      .split(/\r?\n|[;]+/)
+      .map((line) => line.replace(/\s+/g, " ").trim())
+      .filter((line) => line.length >= 3 && line.length <= 90)
+      .filter((line) => productWords.test(line) && !blocked.test(line));
+    const seen = new Set();
+    return lines.filter((line) => {
+      const key = normalizeSearchText(line);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 8);
+  }
+
+  function buildScoutScanExtractionPatch(rawText = "", options = {}) {
+    const sourceText = String(rawText || "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").trim();
+    const flags = [];
+    const storeMatch = findScoutScanStoreFromText(sourceText);
+    const date = parseScoutScanDateFromText(sourceText);
+    const time = parseScoutScanTimeFromText(sourceText);
+    const items = extractScoutScanItemsFromText(sourceText);
+    if (!sourceText) flags.push("No readable text was extracted.");
+    if (!storeMatch.storeName) flags.push("Store needs review.");
+    if (!date) flags.push("Date needs review.");
+    if (!time) flags.push("Time needs review or mark unknown.");
+    if (!items.length) flags.push("Items/products need review.");
+    const detectedCount = [storeMatch.storeName, date, time, items.length ? "items" : ""].filter(Boolean).length;
+    const confidenceScore = Math.min(98, Math.max(12, Math.round((sourceText ? 24 : 0) + storeMatch.confidence * 0.25 + detectedCount * 14 + Math.min(items.length, 4) * 7)));
+    const confidence = confidenceScore >= 72 ? "high" : confidenceScore >= 45 ? "medium" : "low";
+    return {
+      sourceText,
+      storeName: storeMatch.storeName,
+      date,
+      time,
+      items: items.join("\n"),
+      confidence,
+      flags,
+      status: options.status || (sourceText ? "complete" : "low_confidence"),
+    };
+  }
+
+  function applyScoutScanExtraction(extraction = {}) {
+    const defaultDate = new Date().toISOString().slice(0, 10);
+    setQuickAddWizard((current) => ({
+      ...current,
+      scoutScanSourceText: extraction.sourceText || current.scoutScanSourceText || "",
+      scoutScanStoreName: current.scoutScanStoreName || extraction.storeName || "",
+      scoutScanDate: extraction.date && (!current.scoutScanDate || current.scoutScanDate === defaultDate) ? extraction.date : current.scoutScanDate || extraction.date || getLocalDateInputKey(),
+      scoutScanTime: current.scoutScanTime || extraction.time || "",
+      scoutScanTimeUnknown: extraction.time ? false : current.scoutScanTimeUnknown,
+      scoutScanItems: current.scoutScanItems || extraction.items || "",
+      scoutScanOcrStatus: extraction.status || "complete",
+      scoutScanOcrConfidence: extraction.confidence || "low",
+      scoutScanOcrFlags: extraction.flags || [],
+      message: extraction.sourceText
+        ? "Text extraction filled a review draft. Please confirm every field before saving."
+        : "We could not read text automatically. You can still type or paste details for review.",
+    }));
+  }
+
+  async function extractTextFromScoutScanImage(file) {
+    if (typeof window === "undefined" || typeof window.TextDetector !== "function") {
+      return { status: "unsupported", text: "", message: "Automatic text extraction is not available in this browser. Paste visible text or enter details manually." };
+    }
+    let bitmap = null;
+    try {
+      bitmap = await createImageBitmap(file);
+      const detector = new window.TextDetector();
+      const detections = await detector.detect(bitmap);
+      const text = detections
+        .map((entry) => entry.rawValue || entry.text || "")
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+      return { status: text ? "complete" : "low_confidence", text, message: text ? "Text extracted from image." : "No readable text was detected in that image." };
+    } catch (error) {
+      logAppError("scout_scan_ocr", error, { fileName: file?.name || "" }, "normal");
+      return { status: "failed", text: "", message: "Text extraction failed. The manual review form is still available." };
+    } finally {
+      bitmap?.close?.();
+    }
+  }
+
+  async function runScoutScanExtractionFromText() {
+    const extraction = buildScoutScanExtractionPatch(quickAddWizard.scoutScanSourceText, { status: quickAddWizard.scoutScanSourceText ? "complete" : "low_confidence" });
+    applyScoutScanExtraction(extraction);
+  }
+
+  async function handleQuickAddPhotoFile(event, target = "photo") {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -17735,11 +17930,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       }
       if (target === "scoutScan") {
         if (current.scoutScanPhotoUrl?.startsWith("blob:")) URL.revokeObjectURL(current.scoutScanPhotoUrl);
-        return { ...current, scoutScanPhotoUrl: previewUrl, scoutScanPhotoFileName: file.name, scoutScanSourceType: "screenshot", message: "Screenshot attached for manual Scout review. OCR is not automatic in this path." };
+        return { ...current, scoutScanPhotoUrl: previewUrl, scoutScanPhotoFileName: file.name, scoutScanSourceType: "screenshot", scoutScanOcrStatus: "running", scoutScanOcrConfidence: "", scoutScanOcrFlags: [], message: "Screenshot attached. Attempting text extraction for review..." };
       }
       if (current.photoPreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(current.photoPreviewUrl);
       return { ...current, photoPreviewUrl: previewUrl, photoFileName: file.name, message: "Photo attached. Use manual details or request a missing item." };
     });
+    if (target === "scoutScan") {
+      const ocrResult = await extractTextFromScoutScanImage(file);
+      const extraction = buildScoutScanExtractionPatch(ocrResult.text, { status: ocrResult.status });
+      applyScoutScanExtraction({
+        ...extraction,
+        flags: [...(extraction.flags || []), ...(ocrResult.status === "unsupported" || ocrResult.status === "failed" ? [ocrResult.message] : [])],
+      });
+    }
   }
 
   function quickAddScoutScanValidation(form = quickAddWizard) {
@@ -17825,8 +18028,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       confidence: "low-confidence",
       confidenceLabel: "Manual review",
       confidence_label: "Manual review",
-      sourceLabel: "Manual Scan Anything review",
-      source_label: "Manual Scan Anything review",
+      ocrConfidence: quickAddWizard.scoutScanOcrConfidence || "manual_review",
+      ocr_confidence: quickAddWizard.scoutScanOcrConfidence || "manual_review",
+      ocrFlags: quickAddWizard.scoutScanOcrFlags || [],
+      ocr_flags: quickAddWizard.scoutScanOcrFlags || [],
+      sourceLabel: quickAddWizard.scoutScanOcrStatus === "complete" ? "OCR-assisted Scan Anything review" : "Manual Scan Anything review",
+      source_label: quickAddWizard.scoutScanOcrStatus === "complete" ? "OCR-assisted Scan Anything review" : "Manual Scan Anything review",
       observedAt,
       observed_at: observedAt,
       reportDate: quickAddWizard.scoutScanDate || now.slice(0, 10),
@@ -40430,13 +40637,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {renderFlowHeader("Scan Anything", "Search, enter UPC/SKU, or add manually.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
-            <p>Search, UPC/SKU lookup, Scout screenshot review, and manual card-page review work now. Camera, OCR, and automatic card detection are coming later.</p>
+            <p>Search, UPC/SKU lookup, Scout screenshot review, and manual card-page review work now. Camera scanning and automatic card detection are coming later.</p>
           </div>
           <div className="add-anything-option-grid">
             <button type="button" className="add-anything-option add-anything-option--scout" onClick={() => setQuickAddPath("scoutScreenshotReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
               <strong>Scout screenshot/photo review</strong>
-              <small>Manually turn store screenshots or shelf photos into a Scout report.</small>
+              <small>Try text extraction, then review before saving a Scout report.</small>
             </button>
             <button type="button" className="add-anything-option add-anything-option--vault" onClick={() => setQuickAddPath("cardPageReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="vault" /></span>
@@ -40474,12 +40681,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
     if (quickAddScreen === "scoutScreenshotReview") {
       const validationError = quickAddScoutScanValidation();
+      const ocrFlags = Array.isArray(quickAddWizard.scoutScanOcrFlags) ? quickAddWizard.scoutScanOcrFlags : [];
+      const ocrStatusLabel = quickAddWizard.scoutScanOcrStatus === "running"
+        ? "Reading screenshot..."
+        : quickAddWizard.scoutScanOcrStatus === "complete"
+          ? "Extraction ready for review"
+          : quickAddWizard.scoutScanOcrStatus === "unsupported"
+            ? "Manual review fallback"
+            : quickAddWizard.scoutScanOcrStatus === "failed"
+              ? "Extraction failed safely"
+              : quickAddWizard.scoutScanOcrStatus === "low_confidence"
+                ? "Needs manual review"
+                : "Waiting for screenshot or text";
       return (
         <form className="add-anything-flow add-anything-scout-scan-review" onSubmit={saveQuickAddScoutScanReport}>
-          {renderFlowHeader("Scout screenshot/photo review", "Upload a reference image if you have one, then edit the report before saving. OCR is not automatic here.")}
+          {renderFlowHeader("Scout screenshot/photo review", "Upload a reference image, let Scout try text extraction, then review every field before saving.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
-            <p>Store, date/time, products, notes, and source are manual fields. Screenshot/photo helps as proof, but nothing is extracted automatically.</p>
+            <p>OCR results never save silently. Confirm the store, observed time, items, and notes before submitting a Scout report.</p>
           </div>
           <div className="quick-add-photo-panel">
             {quickAddWizard.scoutScanPhotoUrl ? (
@@ -40497,6 +40716,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               Upload screenshot/photo
               <input type="file" accept="image/*" onChange={(event) => handleQuickAddPhotoFile(event, "scoutScan")} />
             </label>
+          </div>
+          <div className={`scout-scan-ocr-panel scout-scan-ocr-panel--${quickAddWizard.scoutScanOcrStatus || "idle"}`} aria-live="polite">
+            <div>
+              <strong>{ocrStatusLabel}</strong>
+              <span>{quickAddWizard.scoutScanOcrConfidence ? `Confidence: ${quickAddWizard.scoutScanOcrConfidence}` : "Upload an image or paste visible text to prefill the draft."}</span>
+            </div>
+            {ocrFlags.length ? (
+              <ul>
+                {ocrFlags.map((flag) => <li key={flag}>{flag}</li>)}
+              </ul>
+            ) : (
+              <p>Store, date, time, items, and source text can be adjusted before saving.</p>
+            )}
           </div>
           <div className="flow-form-grid quick-add-scout-scan-grid">
             <Field label="Store or store name">
@@ -40524,13 +40756,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <textarea value={quickAddWizard.scoutScanItems} onChange={(event) => updateQuickAddWizard({ scoutScanItems: event.target.value, message: "" })} placeholder="One item per line, or comma-separated products seen." />
           </Field>
           <Field label="Source text">
-            <textarea value={quickAddWizard.scoutScanSourceText} onChange={(event) => updateQuickAddWizard({ scoutScanSourceText: event.target.value, message: "" })} placeholder="Paste the store update, Facebook post text, caption, or screenshot wording if available." />
+            <textarea value={quickAddWizard.scoutScanSourceText} onChange={(event) => updateQuickAddWizard({ scoutScanSourceText: event.target.value, message: "" })} placeholder="Extracted OCR text appears here when available. You can also paste the store update, Facebook post text, caption, or screenshot wording." />
           </Field>
           <Field label="Notes">
             <textarea value={quickAddWizard.scoutScanNotes} onChange={(event) => updateQuickAddWizard({ scoutScanNotes: event.target.value, message: "" })} placeholder="Stock status, limits, shelf context, or what needs review." />
           </Field>
           {quickAddWizard.message ? <p className="flow-inline-message is-warning" role="alert">{quickAddWizard.message}</p> : null}
           <div className="quick-add-inline-actions quick-add-sticky-actions">
+            <button type="button" className="secondary-button" onClick={runScoutScanExtractionFromText}>Extract fields from text</button>
             <button type="button" className="secondary-button" onClick={() => setQuickAddPath("scanAnything")}>Search Again</button>
             <button type="button" className="secondary-button" onClick={() => setQuickAddPath("manual")}>Manual Entry</button>
             <button type="button" className="ghost-button" onClick={openQuickAddMissingProduct}>Request Missing Item</button>
