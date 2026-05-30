@@ -63034,3 +63034,570 @@ html body .app-command-shell.app-vault .ember-assist-shell {
     grid-template-columns: minmax(0, 1.75fr) minmax(460px, 0.72fr) !important;
   }
 }
+
+/* Final UI Pass 1: Vault Scan Product/Card */
+.scan-product-modal {
+  --scan-ember: #ff7a1a;
+  --scan-ember-hot: #ff3d1f;
+  --scan-gold: #ffd166;
+  --scan-card: #d946ef;
+  --scan-photo: #22d3ee;
+  --scan-receipt: #2f6bff;
+  --scan-ink: #050b1b;
+  --scan-panel: rgba(7, 18, 38, 0.88);
+  --scan-line: rgba(126, 231, 255, 0.2);
+  width: min(100%, 720px) !important;
+  max-height: calc(100dvh - 16px) !important;
+  padding: 0 14px calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+  gap: 14px !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 13% 4%, rgba(255, 122, 26, 0.18), transparent 17rem),
+    radial-gradient(circle at 90% 8%, rgba(34, 211, 238, 0.16), transparent 18rem),
+    linear-gradient(160deg, rgba(6, 12, 31, 0.98), rgba(2, 6, 18, 0.99)) !important;
+  border-color: rgba(126, 231, 255, 0.24) !important;
+  box-shadow:
+    0 34px 86px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 46px rgba(24, 184, 255, 0.12) !important;
+}
+
+.scan-product-modal .scanner-modal-header {
+  margin: 0 -14px !important;
+  padding: 16px 16px 13px !important;
+  background:
+    linear-gradient(180deg, rgba(4, 10, 26, 0.98), rgba(4, 10, 26, 0.9)) !important;
+  border-bottom: 1px solid rgba(126, 231, 255, 0.16) !important;
+}
+
+.scan-product-modal .scanner-modal-header h2 {
+  margin: 0;
+  color: #fff8ed !important;
+  font-size: clamp(1.14rem, 1.03rem + 0.34vw, 1.44rem);
+}
+
+.scan-product-modal .scanner-modal-header p {
+  margin: 4px 0 0;
+  color: rgba(232, 244, 255, 0.78) !important;
+  font-size: 0.86rem;
+  line-height: 1.34;
+}
+
+.scan-product-modal .modal-close-button {
+  border: 1px solid rgba(255, 195, 112, 0.32) !important;
+  background: rgba(11, 18, 36, 0.88) !important;
+  color: #fff4df !important;
+  box-shadow: 0 0 18px rgba(255, 122, 26, 0.14) !important;
+}
+
+.scan-product-mode-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.scan-product-mode-button {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 68px;
+  padding: 9px 6px;
+  border: 1px solid rgba(126, 231, 255, 0.16);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(12, 26, 52, 0.92), rgba(4, 11, 27, 0.94));
+  color: rgba(238, 248, 255, 0.78);
+  box-shadow: none;
+  text-align: center;
+}
+
+.scan-product-mode-button span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: currentColor;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.scan-product-mode-button strong {
+  max-width: 100%;
+  color: currentColor;
+  font-size: 0.72rem;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.scan-product-mode-button.is-selected {
+  color: #fff8ed;
+  transform: translateY(-1px);
+}
+
+.scan-product-mode-button--barcode.is-selected,
+.scan-product-mode-button--manual.is-selected {
+  border-color: rgba(255, 151, 54, 0.8);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 209, 102, 0.22), transparent 4rem),
+    linear-gradient(145deg, rgba(255, 122, 26, 0.34), rgba(88, 24, 8, 0.88));
+  box-shadow: 0 0 20px rgba(255, 122, 26, 0.28);
+}
+
+.scan-product-mode-button--card.is-selected {
+  border-color: rgba(217, 70, 239, 0.84);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(217, 70, 239, 0.22), transparent 4rem),
+    linear-gradient(145deg, rgba(147, 51, 234, 0.34), rgba(35, 11, 59, 0.9));
+  box-shadow: 0 0 20px rgba(217, 70, 239, 0.3);
+}
+
+.scan-product-mode-button--photo.is-selected {
+  border-color: rgba(34, 211, 238, 0.86);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.2), transparent 4rem),
+    linear-gradient(145deg, rgba(8, 145, 178, 0.34), rgba(5, 38, 48, 0.92));
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.28);
+}
+
+.scan-product-mode-button--receipt.is-selected {
+  border-color: rgba(77, 139, 255, 0.9);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(47, 107, 255, 0.22), transparent 4rem),
+    linear-gradient(145deg, rgba(37, 99, 235, 0.38), rgba(9, 30, 83, 0.9));
+  box-shadow: 0 0 20px rgba(47, 107, 255, 0.28);
+}
+
+.scan-product-barcode-layout,
+.scan-product-mode-panel,
+.scan-product-search-card,
+.scan-product-modal .scanner-camera-panel {
+  min-width: 0;
+}
+
+.scan-product-barcode-layout {
+  display: grid;
+  gap: 12px;
+}
+
+.scan-product-modal .scanner-camera-panel,
+.scan-product-mode-panel,
+.scan-product-search-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--scan-line);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(34, 211, 238, 0.1), transparent 9rem),
+    linear-gradient(145deg, rgba(9, 23, 48, 0.9), rgba(4, 10, 26, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.scan-product-modal--barcode .scanner-camera-panel,
+.scan-product-modal--manual .scan-product-mode-panel {
+  border-color: rgba(255, 151, 54, 0.34);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(255, 122, 26, 0.14), transparent 9rem),
+    linear-gradient(145deg, rgba(20, 20, 35, 0.9), rgba(6, 12, 27, 0.95));
+}
+
+.scan-product-modal--card .scan-product-mode-panel {
+  border-color: rgba(217, 70, 239, 0.34);
+}
+
+.scan-product-modal--picture .scan-product-mode-panel,
+.scan-product-modal--photo .scan-product-mode-panel {
+  border-color: rgba(34, 211, 238, 0.34);
+}
+
+.scan-product-modal--receipt .scan-product-mode-panel {
+  border-color: rgba(77, 139, 255, 0.36);
+}
+
+.scan-product-section-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.scan-product-section-heading strong,
+.scan-product-modal .scanner-camera-panel h2 {
+  margin: 0;
+  color: #fff8ed !important;
+  font-size: 1.03rem;
+}
+
+.scan-product-section-heading span,
+.scan-product-modal .scanner-camera-panel p,
+.scan-product-message {
+  margin: 0;
+  color: rgba(232, 244, 255, 0.76) !important;
+  line-height: 1.4;
+}
+
+.scanner-ready-label {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  color: #fff4df;
+  font-size: 0.92rem;
+}
+
+.scan-product-modal .scanner-video {
+  width: 100%;
+  max-width: none;
+  min-height: 176px;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border: 1px solid rgba(255, 151, 54, 0.6);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.18), transparent 45%),
+    #020617;
+  box-shadow:
+    0 0 0 1px rgba(255, 209, 102, 0.08),
+    0 0 22px rgba(255, 122, 26, 0.26),
+    inset 0 0 34px rgba(34, 211, 238, 0.14);
+}
+
+.scan-product-modal .scanner-camera-empty {
+  border-color: rgba(255, 151, 54, 0.36);
+  background: rgba(255, 122, 26, 0.08);
+}
+
+.scan-product-or-divider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 248, 237, 0.72);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.scan-product-or-divider span {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 151, 54, 0.38), transparent);
+}
+
+.scan-product-primary-button,
+.scan-product-modal .scanner-camera-panel > .secondary-button,
+.scan-product-secondary-action,
+.scan-product-file-action {
+  min-height: 48px;
+  border-radius: 14px;
+}
+
+.scan-product-primary-button {
+  border: 0;
+  color: #fff8ed;
+  font-weight: 900;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.scan-product-primary-button--barcode,
+.scan-product-primary-button--manual {
+  background: linear-gradient(135deg, #ffb132, #ff5a1f) !important;
+}
+
+.scan-product-primary-button--card {
+  background: linear-gradient(135deg, #f472ff, #a21caf) !important;
+}
+
+.scan-product-primary-button--photo {
+  background: linear-gradient(135deg, #22d3ee, #0891b2) !important;
+}
+
+.scan-product-primary-button--receipt {
+  background: linear-gradient(135deg, #5b8cff, #1d4ed8) !important;
+}
+
+.scan-product-modal .scanner-camera-panel > .secondary-button,
+.scan-product-secondary-action,
+.scan-product-file-action {
+  border: 1px solid rgba(255, 151, 54, 0.24) !important;
+  color: #ffe4b5 !important;
+  background: rgba(8, 17, 34, 0.8) !important;
+}
+
+.scan-product-photo-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.scan-product-helper-card,
+.scan-product-tip-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(126, 231, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(3, 12, 29, 0.62);
+}
+
+.scan-product-helper-card strong {
+  color: #fff8ed;
+}
+
+.scan-product-helper-card span,
+.scan-product-helper-card li,
+.scan-product-tip-list li {
+  color: rgba(232, 244, 255, 0.76);
+}
+
+.scan-product-helper-card ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scan-product-tip-list {
+  padding-left: 28px;
+}
+
+.scan-product-photo-preview {
+  max-height: 220px;
+  border-radius: 16px;
+  border-color: rgba(126, 231, 255, 0.2);
+  background: rgba(3, 12, 29, 0.68);
+}
+
+.scan-product-photo-preview img {
+  max-height: 180px;
+  object-fit: contain;
+}
+
+.scan-product-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scan-product-type-row button {
+  flex: 1 1 84px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid rgba(126, 231, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(4, 12, 27, 0.78);
+  color: rgba(232, 244, 255, 0.8);
+}
+
+.scan-product-type-row button.is-selected {
+  color: #fff8ed;
+  border-color: rgba(255, 151, 54, 0.7);
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.44), rgba(120, 42, 10, 0.86));
+}
+
+.scan-product-quantity-stepper {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  gap: 8px;
+}
+
+.scan-product-quantity-stepper button,
+.scan-product-quantity-stepper input {
+  min-height: 44px;
+  text-align: center;
+}
+
+.scan-product-modal .scanner-review-card {
+  border-color: rgba(255, 151, 54, 0.22) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 122, 26, 0.12), transparent 12rem),
+    linear-gradient(145deg, rgba(10, 22, 44, 0.92), rgba(4, 10, 25, 0.96)) !important;
+}
+
+.scan-product-modal .scanner-review-card > .quick-actions,
+.scan-product-modal .scanner-modal-footer {
+  position: static !important;
+  z-index: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.scan-product-modal input,
+.scan-product-modal textarea,
+.scan-product-modal select {
+  min-width: 0;
+  font-size: 0.88rem !important;
+}
+
+.scan-product-modal input::placeholder,
+.scan-product-modal textarea::placeholder {
+  font-size: 0.78rem;
+  color: rgba(232, 244, 255, 0.58);
+}
+
+.scan-product-modal .scanner-review-image {
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 16px;
+  background: rgba(3, 10, 23, 0.82);
+}
+
+.vault-item-card {
+  gap: 12px !important;
+  padding: clamp(12px, 1.2vw, 16px) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 122, 26, 0.1), transparent 10rem),
+    radial-gradient(circle at 100% 12%, rgba(34, 211, 238, 0.11), transparent 11rem),
+    linear-gradient(145deg, rgba(9, 23, 48, 0.9), rgba(3, 10, 24, 0.95)) !important;
+}
+
+.vault-item-card .compact-title-block h3 {
+  color: #fff8ed;
+  line-height: 1.16;
+  overflow-wrap: anywhere;
+}
+
+.vault-item-card .compact-subtitle {
+  color: rgba(232, 244, 255, 0.72) !important;
+  overflow-wrap: anywhere;
+}
+
+.vault-card-main {
+  display: grid;
+  grid-template-columns: minmax(86px, 104px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.vault-image-wrap,
+.inventory-card.vault-item-card .vault-image-wrap {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 96px !important;
+  max-height: none !important;
+  aspect-ratio: 1 / 1 !important;
+  overflow: hidden;
+  border-radius: 16px !important;
+  border: 1px solid rgba(126, 231, 255, 0.18);
+  background: rgba(3, 12, 29, 0.7);
+}
+
+.vault-image-wrap img,
+.inventory-card.vault-item-card .vault-image-wrap img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  padding: 6px;
+}
+
+.vault-image-wrap.placeholder {
+  padding: 8px;
+  text-align: center;
+}
+
+.vault-card-facts {
+  align-content: start;
+  gap: 7px !important;
+  min-width: 0;
+}
+
+.vault-card-facts p {
+  display: grid;
+  grid-template-columns: minmax(0, 0.62fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid rgba(126, 231, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(3, 12, 29, 0.52);
+}
+
+.vault-card-facts span {
+  color: rgba(232, 244, 255, 0.62);
+  font-size: 0.75rem;
+}
+
+.vault-card-facts strong {
+  color: #fff8ed;
+  font-size: 0.84rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.vault-card-actions {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 8px;
+}
+
+.vault-card-actions .secondary-button {
+  min-height: 42px !important;
+  border-color: rgba(255, 151, 54, 0.24) !important;
+  color: #ffe4b5 !important;
+  background: rgba(255, 122, 26, 0.08) !important;
+}
+
+@media (max-width: 520px) {
+  .scan-product-modal {
+    width: calc(100vw - 12px) !important;
+    min-height: min(100dvh - 12px, 900px);
+    border-radius: 20px !important;
+  }
+
+  .scan-product-mode-rail {
+    gap: 6px;
+  }
+
+  .scan-product-mode-button {
+    min-height: 62px;
+    padding: 8px 4px;
+    border-radius: 14px;
+  }
+
+  .scan-product-mode-button span {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+
+  .scan-product-mode-button strong {
+    font-size: 0.67rem;
+  }
+
+  .scan-product-photo-actions,
+  .scan-product-helper-card ul {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-card-main {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 860px) {
+  .scan-product-modal {
+    width: min(920px, calc(100vw - 48px)) !important;
+  }
+
+  .scan-product-barcode-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.86fr);
+    align-items: stretch;
+  }
+
+  .scan-product-or-divider {
+    display: none;
+  }
+
+  .scan-product-modal .scanner-video {
+    min-height: 260px;
+  }
+}

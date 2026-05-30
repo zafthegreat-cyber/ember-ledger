@@ -10,7 +10,6 @@ import {
   APP_STRUCTURE_LINKS,
   DASHBOARD_PRESET_OPTIONS,
   DEAL_SCORE_BANDS,
-  SCANNER_INTAKE_TYPES,
   TCG_OS_MODES,
   UNIVERSAL_DATA_ENTITIES,
 } from "./data/tcgOperatingSystem";
@@ -4933,7 +4932,14 @@ function LazySmartCatalogSearchBox(props) {
   );
 }
 
-function BarcodeScanner({ onScan, onClose }) {
+function BarcodeScanner({
+  onScan,
+  onClose,
+  title = "Scan Barcode",
+  helper = "Point your camera at the barcode. Use good lighting and hold the barcode flat.",
+  readyLabel = "",
+  manualLabel = "Enter Manually",
+}) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   const [scannerError, setScannerError] = useState("");
@@ -4969,21 +4975,22 @@ function BarcodeScanner({ onScan, onClose }) {
 
   return (
     <div className="panel scanner-camera-panel">
-      <h2>Scan Barcode</h2>
+      <h2>{title}</h2>
       {scannerError ? (
         <div className="scanner-camera-empty">
           <h3>Camera unavailable.</h3>
           <p>Check browser permissions or enter the UPC/card name manually.</p>
           <div className="quick-actions">
             <button type="button" onClick={() => setRetryKey((current) => current + 1)}>Try Camera Again</button>
-            <button type="button" className="secondary-button" onClick={onClose}>Enter Manually</button>
+            <button type="button" className="secondary-button" onClick={onClose}>{manualLabel}</button>
           </div>
         </div>
       ) : (
         <>
-          <p>Point your camera at the barcode. Use good lighting and hold the barcode flat.</p>
+          {readyLabel ? <strong className="scanner-ready-label">{readyLabel}</strong> : null}
+          <p>{helper}</p>
           <video ref={videoRef} autoPlay muted playsInline className="scanner-video" />
-          <button type="button" className="secondary-button" onClick={onClose}>Enter Manually</button>
+          <button type="button" className="secondary-button" onClick={onClose}>{manualLabel}</button>
         </>
       )}
     </div>
@@ -5462,6 +5469,7 @@ export default function App() {
   const [scanSearchState, setScanSearchState] = useState("idle");
   const [scanMessage, setScanMessage] = useState("");
   const [scanInput, setScanInput] = useState("");
+  const [scanManualDraft, setScanManualDraft] = useState({ itemType: "Sealed", quantity: 1, purchasePrice: "" });
   const [receiptScanOpen, setReceiptScanOpen] = useState(false);
   const [receiptScanStatus, setReceiptScanStatus] = useState("draft_extracted");
   const [receiptScanMessage, setReceiptScanMessage] = useState("");
@@ -7299,7 +7307,7 @@ export default function App() {
     const commandQuickActions = [
       { key: "report", label: "Quick Scout Report", category: "activity", onClick: () => openCommandCenterAction("scout", "Submit Report") },
       { key: "add", label: "Add Item", category: "tools", onClick: () => openCommandCenterQuickAdd("vaultItem") },
-      { key: "scan", label: "Scan / Review Item", category: "tools", onClick: () => openCommandCenterQuickAdd("scanProduct") },
+      { key: "scan", label: "Scan Product/Card", category: "tools", onClick: () => openCommandCenterQuickAdd("scanProduct") },
       { key: "search", label: "Search", category: "tools", onClick: () => openCommandCenterAction("catalog", "Search Catalog") },
       { key: "import", label: "Import / Bulk Add", category: "manage", onClick: () => openCommandCenterBulkAdd() },
       { key: "watch", label: "Ember Watch", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
@@ -16035,6 +16043,7 @@ export default function App() {
     setScanDestination(normalizeAddDestinationValue(defaultDestination, "none", { allowIgnore: true }));
     setScanMessage("");
     setScanInput("");
+    setScanManualDraft({ itemType: "Sealed", quantity: 1, purchasePrice: "" });
     setPictureLookup({ imageUrl: "", fileName: "", text: "", message: "" });
     setShowInventoryScanner(true);
     setQuickAddMenuOpen(false);
@@ -16198,6 +16207,7 @@ export default function App() {
     setScanMatches([]);
     setScanSearchState("idle");
     setScanInput("");
+    setScanManualDraft({ itemType: "Sealed", quantity: 1, purchasePrice: "" });
     setPictureLookup((current) => {
       if (current.imageUrl?.startsWith("blob:")) URL.revokeObjectURL(current.imageUrl);
       return { imageUrl: "", fileName: "", text: "", message: "" };
@@ -17168,7 +17178,7 @@ export default function App() {
       imageUrl: "",
       fileName: "",
       text: "",
-      message: "Photo lookup is coming soon. For now, search by name or scan a barcode.",
+      message: "Take or upload a photo, then enter any visible text, UPC/SKU, card number, or product name for a reviewable match.",
     });
   }
 
@@ -17284,7 +17294,7 @@ export default function App() {
     if (matches.length) {
       setScanReview({ ...buildScanReview(lookupValue, matches, scanDestination), aiSummary: aiSummary.outputSummary });
       setScanSearchState("results");
-      setScanMessage(`${aiSummary.outputSummary} ${AI_REVIEW_DISCLAIMER}`);
+      setScanMessage(`${aiSummary.outputSummary} Review every match before saving.`);
     } else {
       setScanReview(null);
       setScanSearchState("empty");
@@ -17756,7 +17766,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function openVaultScanFlow() {
     setActiveTab("vault");
-    openFlowModal("vaultScan", { size: "small", source: "vault" });
+    closeFlowModal({ force: true, reset: false });
+    beginScanProduct("vault");
   }
 
   function openVaultImportCollectionFlow() {
@@ -41209,8 +41220,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     if (activeFlowModal?.type === "vaultScan") {
       return {
-        title: "Scan to Vault",
-        description: "Scan is being prepared for private beta. Use search or UPC/SKU entry when scanning is not available.",
+        title: "Scan Product/Card",
+        description: "Find a card, sealed product, receipt, or add it manually. Nothing is saved until you review it.",
         size: "small",
       };
     }
@@ -41532,7 +41543,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <button type="button" className="add-anything-option add-anything-option--vault" onClick={() => setQuickAddPath("cardPageReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="vault" /></span>
               <strong>Scan page of cards</strong>
-              <small>Manual multi-card review foundation. Detection is not automatic yet.</small>
+              <small>Manual multi-card review. Add rows yourself; automatic card detection is not live yet.</small>
             </button>
             <button type="button" className="add-anything-option add-anything-option--search" onClick={() => setQuickAddPath("search")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="search" /></span>
@@ -41698,7 +41709,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         : [createQuickAddCardScanRow({ id: "card-scan-row-1" })];
       return (
         <div className="add-anything-flow add-anything-card-page-review">
-          {renderFlowHeader("Scan page of cards", "Manual multi-card review foundation. Add rows yourself; automatic card detection is coming later.")}
+          {renderFlowHeader("Scan page of cards", "Manual multi-card review. Add rows yourself; automatic card detection is not live yet.")}
           <div className="scan-anything-principle-card">
             <strong>Review before saving.</strong>
             <p>Each row defaults to Vault. Change the destination only when the card should go somewhere else.</p>
@@ -42187,7 +42198,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       addCardManual: { key: "addCardManual", title: "Add Card Manually", helper: "Create a card record", action: "addCardManual", icon: "vault", tone: "vault" },
       addSealedProduct: { key: "addSealedProduct", title: "Add Sealed Product", helper: "Create a sealed product record", action: "addSealedProduct", icon: "vault", tone: "vault" },
       addPhotos: { key: "addPhotos", title: "Add Photos", helper: "Start item review with photo notes", action: "addPhotos", icon: "scan", tone: "vault" },
-      reviewUnmatchedScans: { key: "reviewUnmatchedScans", title: "Review Unmatched Scans", helper: "Manual scan review foundation", action: "reviewUnmatchedScans", icon: "scan", tone: "vault" },
+      reviewUnmatchedScans: { key: "reviewUnmatchedScans", title: "Review Unmatched Scans", helper: "Review unmatched manual scans", action: "reviewUnmatchedScans", icon: "scan", tone: "vault" },
       searchCard: { key: "searchCard", title: "Search Card", helper: "Search Market Watch", action: "searchCard", icon: "search", tone: "search" },
       scanUpc: { key: "scanUpc", title: "Scan UPC", helper: "Search by UPC or SKU", action: "scanUpc", icon: "scan", tone: "search" },
       scanCard: { key: "scanCard", title: "Scan Card", helper: "Open scanner review", action: "scanCard", icon: "scan", tone: "search" },
@@ -42229,7 +42240,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             : "Collector view. Seller tools stay hidden.";
     const detailMethodOptions = [
       { key: "catalog_search", title: "Search catalog", helper: "Best for cards and sealed Pokemon products.", types: ["card", "sealed", "listing", "photo_import"] },
-      { key: "scan", title: "Scan barcode/card", helper: "Open scanner review before saving.", types: ["card", "sealed", "photo_import"] },
+      { key: "scan", title: "Scan Product/Card", helper: "Open scanner review before saving.", types: ["card", "sealed", "photo_import"] },
       { key: "photo_upload", title: "Upload photo", helper: "Use photo lookup; failed uploads show an error before save.", types: ["card", "sealed", "photo_import", "store_report"] },
       { key: "receipt_upload", title: "Upload receipt", helper: "Receipt review opens before anything is saved.", types: ["receipt", "photo_import"] },
       { key: "manual_entry", title: "Manual entry", helper: "Fallback when the catalog item is missing.", types: ["card", "sealed", "listing", "kids_request", "photo_import"] },
@@ -44354,13 +44365,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "scan",
-        title: "Scan / Review Item",
+        title: "Scan Product/Card",
         helper: "Scan first, verify the match, then choose Vault or another destination.",
         onClick: () => runVaultQuickAction(() => openVaultScanFlow()),
       },
       {
         key: "picture",
-        title: "Look Up by Photo",
+        title: "Photo Lookup",
         helper: "Use a product/card photo without requiring a UPC.",
         onClick: () => runVaultQuickAction(() => openPictureLookupFlow("none")),
       },
@@ -44545,8 +44556,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <div className="flow-modal-stack vault-placeholder-flow">
         <div className="small-empty-state">
-          <strong>Scanning is being prepared for private beta.</strong>
-          <span>For now, you can search Market Watch or enter UPC/SKU manually.</span>
+          <strong>Scan Product/Card</strong>
+          <span>Choose how to find your item. Nothing is saved until you review it.</span>
         </div>
         <div className="forge-quick-add-grid quick-find-options">
           <button type="button" className="forge-quick-add-option" onClick={() => openVaultCatalogSearchFlow({ source: "vault-scan" })}>
@@ -44561,8 +44572,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             if (!closeFlowModal({ force: true, reset: false })) return;
             beginScanProduct("none");
           }}>
-            <strong>Open Scanner</strong>
-            <span>Use the camera scanner when permissions are available.</span>
+            <strong>Open Scan Product/Card</strong>
+            <span>Use camera scan, search, photo lookup, receipt, or manual add.</span>
           </button>
           <button type="button" className="forge-quick-add-option" onClick={() => {
             if (!closeFlowModal({ force: true, reset: false })) return;
@@ -45129,14 +45140,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       closeFlowModal({ force: true, reset: false });
                       openVaultScanFlow();
                     }}>
-                      Scan / Review Item
+                      Scan Product/Card
                     </button>
                     <button type="button" className="secondary-button" onClick={() => {
                       const destination = multiDestinationForm.destinations.forge ? "forge" : multiDestinationForm.destinations.wishlist ? "wishlist" : multiDestinationForm.destinations.vault ? "vault" : "none";
                       closeFlowModal({ force: true, reset: false });
                       openPictureLookupFlow(destination);
                     }}>
-                      Look Up by Photo
+                      Photo Lookup
                     </button>
                     {selectedCatalog ? (
                       <button type="button" className="secondary-button" onClick={() => setMultiDestinationMatchSearchOpen(false)}>
@@ -52558,7 +52569,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="quick-action-rail vault-add-tabs">
               {[
                 ["catalog", "Search Market Watch"],
-                ["scan", "Scan to Vault"],
+                ["scan", "Scan Product/Card"],
                 ["manual", "Manual Add"],
                 ["import", "Import Collection"],
               ].map(([mode, label]) => (
@@ -53027,53 +53038,55 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
       {showInventoryScanner ? (
         <div className="location-modal-backdrop" role="presentation" onClick={closeInventoryScanner}>
-          <section className="scanner-review-modal" role="dialog" aria-modal="true" aria-labelledby="scanner-review-title" onClick={(event) => event.stopPropagation()}>
+          <section className={`scanner-review-modal scan-product-modal scan-product-modal--${scanMode === "upc" ? "barcode" : scanMode}`} role="dialog" aria-modal="true" aria-labelledby="scanner-review-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header scanner-modal-header">
               <div>
                 <h2 id="scanner-review-title">Scan Product/Card</h2>
-                <p>{scanReview ? "Confirm the match, choose the destination, then continue to review. Nothing is saved automatically." : "Scan a barcode/UPC, enter a product or card name, or use manual fallback. Nothing is saved until you review and submit."}</p>
+                <p>Find a card, sealed product, receipt, or add it manually.</p>
+                <p>Nothing is saved until you review it.</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close scanner" onClick={closeInventoryScanner}>X</button>
             </div>
-            <div className="quick-action-rail">
+            <div className="scan-product-mode-rail" role="tablist" aria-label="Scan Product/Card modes">
               {[
-                ["upc", "Barcode / UPC"],
-                ["card", "Card"],
-                ["picture", "Look Up by Photo"],
-                ["receipt", "Scan Receipt"],
-                ["manual", "Manual"],
-              ].map(([key, label]) => (
-                <button key={key} type="button" className={scanMode === key ? "primary" : ""} onClick={() => key === "receipt" ? openReceiptScanWorkflow() : setScanMode(key)}>
-                  {label}
+                ["upc", "Barcode", "barcode", "▥"],
+                ["card", "Card", "card", "▣"],
+                ["picture", "Photo", "photo", "□"],
+                ["receipt", "Receipt", "receipt", "▤"],
+                ["manual", "Manual", "manual", "✎"],
+              ].map(([key, label, tone, icon]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={scanMode === key}
+                  className={`scan-product-mode-button scan-product-mode-button--${tone} ${scanMode === key ? "is-selected" : ""}`}
+                  onClick={() => {
+                    setScanMode(key);
+                    setScanMessage("");
+                  }}
+                >
+                  <span aria-hidden="true">{icon}</span>
+                  <strong>{label}</strong>
                 </button>
               ))}
             </div>
-            <div className="scanner-intake-grid" aria-label="Supported scanner intake types">
-              {SCANNER_INTAKE_TYPES.map((type) => (
-                <span className="scanner-intake-chip" key={type.key}>
-                  <strong>{type.label}</strong>
-                  <small>{type.status}</small>
-                </span>
-              ))}
-            </div>
+
             {scanMode === "picture" ? (
-              <div className="picture-lookup-panel">
-                <div className="small-empty-state">
-                  <strong>AI Photo Lookup</strong>
-                  <span>Use visible text from a product/card photo to search Market Watch. {AI_REVIEW_DISCLAIMER}</span>
+              <div className="scan-product-mode-panel scan-product-mode-panel--photo">
+                <div className="scan-product-section-heading">
+                  <strong>Photo Lookup</strong>
+                  <span>Use this for sealed products, boxes, tins, packs, or accessories.</span>
                 </div>
-                <div className="picture-lookup-actions">
-                  <button type="button" className="secondary-button" onClick={() => setScanMode("manual")}>Search manually instead</button>
-                  <button type="button" className="secondary-button" onClick={() => {
-                    closeInventoryScanner();
-                    openProductAddFlow({
-                      source: "picture-lookup-manual",
-                      seed: buildManualFallbackItemSeed({
-                        rawValue: pictureLookup.text || scanInput,
-                        destination: scanDestination,
-                      }),
-                    });
-                  }}>Add custom item</button>
+                <div className="scan-product-photo-actions">
+                  <label className="secondary-button file-action-label scan-product-file-action">
+                    Take Photo
+                    <input type="file" accept="image/*" capture="environment" onChange={handlePictureLookupFile} />
+                  </label>
+                  <label className="secondary-button file-action-label scan-product-file-action">
+                    Choose from Gallery
+                    <input type="file" accept="image/*" onChange={handlePictureLookupFile} />
+                  </label>
                 </div>
                 <Field label="Visible text or UPC/SKU from picture">
                   <input
@@ -53082,39 +53095,223 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     placeholder="Product name, set, UPC, SKU, TCIN, or shorthand"
                   />
                 </Field>
-                <div className="quick-actions">
-                  <button type="button" onClick={runPictureLookupSearch}>Find matches</button>
-                  <button type="button" className="secondary-button" onClick={runPictureLookupSearch}>Help identify item</button>
-                  <button type="button" className="secondary-button" onClick={() => { setScanMode("manual"); setPictureLookup((current) => ({ ...current, message: "Enter a product name, set, UPC, SKU, or shorthand to search Market Watch." })); }}>Search Market Watch</button>
+                {pictureLookup.imageUrl ? (
+                  <div className="picture-lookup-preview scan-product-photo-preview">
+                    <img src={pictureLookup.imageUrl} alt="Uploaded product reference" />
+                    <span>{pictureLookup.fileName || "Selected photo"}</span>
+                  </div>
+                ) : null}
+                <div className="scan-product-helper-card">
+                  <strong>We’ll suggest the closest match before anything is saved.</strong>
+                  <span>You review every match and can edit details before saving.</span>
                 </div>
-                {pictureLookup.message ? <p className="compact-subtitle">{pictureLookup.message}</p> : null}
+                <button type="button" className="scan-product-primary-button scan-product-primary-button--photo" disabled={scanSearchState === "loading"} onClick={runPictureLookupSearch}>
+                  {scanSearchState === "loading" ? "Checking..." : "Continue"}
+                </button>
+                {pictureLookup.message ? <p className="compact-subtitle scan-product-message">{pictureLookup.message}</p> : null}
               </div>
-            ) : scanMode === "upc" ? (
-              <BarcodeScanner onScan={handleCatalogScanMatch} onClose={() => setScanMode("manual")} />
-            ) : null}
-            {scanMode === "manual" || scanMode === "card" || scanMode === "upc" ? (
-              <div className="form">
-                <Field label={scanMode === "card" ? "Card name, collector number, or set code" : "Enter UPC, SKU, TCIN, barcode, product name, or shorthand"}>
+            ) : scanMode === "receipt" ? (
+              <div className="scan-product-mode-panel scan-product-mode-panel--receipt">
+                <div className="scan-product-section-heading">
+                  <strong>Receipt</strong>
+                  <span>Scan a receipt to add multiple items at once.</span>
+                </div>
+                <div className="scan-product-photo-actions">
+                  <label className="secondary-button file-action-label scan-product-file-action">
+                    Take Photo
+                    <input type="file" accept="image/*" capture="environment" onChange={(event) => handleReceiptScanFile(event, "camera")} />
+                  </label>
+                  <label className="secondary-button file-action-label scan-product-file-action">
+                    Choose from Gallery
+                    <input type="file" accept="image/*,application/pdf" onChange={(event) => handleReceiptScanFile(event, "upload")} />
+                  </label>
+                </div>
+                {receiptScanForm.filePreviewUrl ? (
+                  <div className="picture-lookup-preview scan-product-photo-preview">
+                    <img src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
+                    <span>{receiptScanForm.fileName || "Selected receipt"}</span>
+                  </div>
+                ) : null}
+                <div className="scan-product-helper-card scan-product-helper-card--receipt">
+                  <strong>We’ll capture:</strong>
+                  <ul>
+                    <li>Store</li>
+                    <li>Date</li>
+                    <li>Items</li>
+                    <li>Price</li>
+                    <li>Quantity</li>
+                  </ul>
+                </div>
+                <button type="button" className="scan-product-primary-button scan-product-primary-button--receipt" onClick={openReceiptScanWorkflow}>
+                  Continue
+                </button>
+                {receiptScanMessage ? <p className="compact-subtitle scan-product-message">{receiptScanMessage}</p> : null}
+              </div>
+            ) : scanMode === "card" ? (
+              <div className="scan-product-mode-panel scan-product-mode-panel--card">
+                <div className="scan-product-section-heading">
+                  <strong>Card</strong>
+                  <span>Take or upload a clear photo of the card.</span>
+                </div>
+                <div className="scan-product-photo-actions">
+                  <label className="secondary-button file-action-label scan-product-file-action">
+                    Take Photo
+                    <input type="file" accept="image/*" capture="environment" onChange={handlePictureLookupFile} />
+                  </label>
+                  <label className="secondary-button file-action-label scan-product-file-action">
+                    Choose from Gallery
+                    <input type="file" accept="image/*" onChange={handlePictureLookupFile} />
+                  </label>
+                </div>
+                <Field label="Card name, number, set, or visible text">
                   <input
-                    value={scanReview?.rawValue || scanInput}
+                    value={scanInput}
                     onChange={(event) => {
                       const nextValue = event.target.value;
                       setScanInput(nextValue);
                       setScanMatches([]);
                       setScanReview(null);
                       setScanSearchState("idle");
-                      setScanMessage(nextValue.trim().length >= 2 ? "Tap Search Item to run fast catalog matching." : "");
                     }}
-                    placeholder={scanMode === "card" ? "Try 199/165, zard sir, sv8 card 159" : "Try 151 upc, pr evo etb, Target TCIN, or UPC/SKU"}
+                    placeholder="Charizard ex 199/165, SV8 159, or card name"
                   />
                 </Field>
-                <button type="button" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput)}>
-                  {scanSearchState === "loading" ? "Searching..." : "Search Item"}
+                {pictureLookup.imageUrl ? (
+                  <div className="picture-lookup-preview scan-product-photo-preview">
+                    <img src={pictureLookup.imageUrl} alt="Uploaded card reference" />
+                    <span>{pictureLookup.fileName || "Selected card photo"}</span>
+                  </div>
+                ) : null}
+                <ul className="scan-product-tip-list">
+                  <li>Place card on a plain background</li>
+                  <li>Avoid glare</li>
+                  <li>Include the full card</li>
+                  <li>Make sure it is in focus</li>
+                </ul>
+                <button type="button" className="scan-product-primary-button scan-product-primary-button--card" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput || pictureLookup.text)}>
+                  {scanSearchState === "loading" ? "Checking..." : "Continue"}
                 </button>
-                <button type="button" className="secondary-button" onClick={() => void runItemIdentificationAssist(scanInput)}>
-                  Help identify item
+              </div>
+            ) : scanMode === "manual" ? (
+              <div className="scan-product-mode-panel scan-product-mode-panel--manual">
+                <div className="scan-product-section-heading">
+                  <strong>Manual Add</strong>
+                  <span>Add an item when scan or search does not find it.</span>
+                </div>
+                <Field label="Item type">
+                  <div className="scan-product-type-row">
+                    {["Card", "Sealed", "Accessory", "Other"].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        className={scanManualDraft.itemType === type ? "is-selected" : ""}
+                        onClick={() => setScanManualDraft((current) => ({ ...current, itemType: type }))}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                <Field label="Item name">
+                  <input
+                    value={scanInput}
+                    onChange={(event) => {
+                      setScanInput(event.target.value);
+                      setScanMessage("");
+                    }}
+                    placeholder="Enter item name"
+                  />
+                </Field>
+                <Field label="Quantity">
+                  <div className="scan-product-quantity-stepper">
+                    <button type="button" onClick={() => setScanManualDraft((current) => ({ ...current, quantity: Math.max(1, Number(current.quantity || 1) - 1) }))}>-</button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={scanManualDraft.quantity}
+                      onChange={(event) => setScanManualDraft((current) => ({ ...current, quantity: Math.max(1, Number(event.target.value || 1)) }))}
+                    />
+                    <button type="button" onClick={() => setScanManualDraft((current) => ({ ...current, quantity: Math.max(1, Number(current.quantity || 1) + 1) }))}>+</button>
+                  </div>
+                </Field>
+                <Field label="Purchase price (optional)">
+                  <input
+                    inputMode="decimal"
+                    value={scanManualDraft.purchasePrice}
+                    onChange={(event) => setScanManualDraft((current) => ({ ...current, purchasePrice: event.target.value }))}
+                    placeholder="$0.00"
+                  />
+                </Field>
+                <button
+                  type="button"
+                  className="scan-product-primary-button scan-product-primary-button--manual"
+                  onClick={() => {
+                    const itemName = String(scanInput || "").trim();
+                    if (!itemName) {
+                      setScanMessage("Enter an item name before review.");
+                      return;
+                    }
+                    closeInventoryScanner();
+                    openProductAddFlow({
+                      source: "scanner-manual",
+                      seed: {
+                        ...buildManualFallbackItemSeed({
+                          rawValue: itemName,
+                          itemName,
+                          productType: scanManualDraft.itemType,
+                          destination: scanDestination === "forge" ? "forge" : scanDestination === "wishlist" ? "wishlist" : "vault",
+                          destinations: scanDestination === "forge" ? { forge: true } : scanDestination === "wishlist" ? { wishlist: true } : { vault: true },
+                          marketPrice: scanManualDraft.purchasePrice,
+                          notes: "Manual add from Scan Product/Card review.",
+                        }),
+                        initialStep: "item",
+                        vault: { quantity: scanManualDraft.quantity, unitCost: scanManualDraft.purchasePrice },
+                        forge: { quantity: scanManualDraft.quantity, unitCost: scanManualDraft.purchasePrice },
+                      },
+                    });
+                  }}
+                >
+                  Review Item
                 </button>
-                <p className="compact-subtitle">Scanner matching checks verified UPC/EAN/GTIN and retailer identifiers before lower-confidence name or alias matches.</p>
+                {scanMessage ? <p className="compact-subtitle scan-product-message">{scanMessage}</p> : null}
+              </div>
+            ) : scanMode === "upc" ? (
+              <div className="scan-product-barcode-layout">
+                <BarcodeScanner
+                  title="Camera Scan"
+                  readyLabel="Ready to scan."
+                  helper="Hold the barcode flat and centered."
+                  manualLabel="Help Identify Item"
+                  onScan={handleCatalogScanMatch}
+                  onClose={() => void runItemIdentificationAssist(scanInput)}
+                />
+                <div className="scan-product-or-divider" aria-hidden="true"><span />OR<span /></div>
+                <div className="scan-product-search-card">
+                  <div className="scan-product-section-heading">
+                    <strong>Search Item</strong>
+                    <span>Enter UPC, SKU, TCIN, or product name</span>
+                  </div>
+                  <Field label="Search Item">
+                    <input
+                      value={scanReview?.rawValue || scanInput}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setScanInput(nextValue);
+                        setScanMatches([]);
+                        setScanReview(null);
+                        setScanSearchState("idle");
+                        setScanMessage(nextValue.trim().length >= 2 ? "Tap Search Item to run catalog matching." : "");
+                      }}
+                      placeholder="Enter UPC, SKU, TCIN, or product name"
+                    />
+                  </Field>
+                  <button type="button" className="scan-product-primary-button scan-product-primary-button--barcode" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput)}>
+                    {scanSearchState === "loading" ? "Searching..." : "Search Item"}
+                  </button>
+                  <button type="button" className="secondary-button scan-product-secondary-action" onClick={() => void runItemIdentificationAssist(scanInput)}>
+                    Help Identify Item
+                  </button>
+                </div>
               </div>
             ) : null}
 
@@ -53143,13 +53340,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : null}
 
-            {!scanReview && scanSearchState === "idle" ? (
-              <div className="small-empty-state scanner-start-state">
-                <strong>Ready to scan or search.</strong>
-                <span>Use the camera, enter a UPC/SKU, or type a product name. Nothing is saved until you review the match and choose a destination.</span>
-              </div>
-            ) : null}
-
             {scanReview ? (
               <div className="scanner-review-card">
                 <div className="scanner-review-steps" aria-label="Scanner add flow">
@@ -53159,12 +53349,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span>4. Submit</span>
                 </div>
                 <div className="scanner-section-heading">
-                  <strong>Smart Matches</strong>
-                  <span>Best match selected. Change it below if needed.</span>
+                  <strong>Review Before Saving</strong>
+                  <span>Best match selected. Change it below if needed. Nothing is saved early.</span>
                 </div>
                 <div className="small-empty-state ai-helper-note">
                   <strong>{aiConfidenceLabel(scanReview.matchConfidence)}</strong>
-                  <span>{scanReview.aiSummary || AI_REVIEW_DISCLAIMER}</span>
+                  <span>{scanReview.aiSummary || "Suggested matches may be incomplete. Review every detail before saving."}</span>
                 </div>
                 <div className="compact-card-header">
                   <div>
@@ -53195,9 +53385,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <Field label="Destination">
                   <select value={scanDestination} onChange={(event) => setScanDestination(normalizeAddDestinationValue(event.target.value, "none", { allowIgnore: true }))}>
-                    {SCAN_DESTINATIONS.map((destination) => (
-                      <option key={destination.value} value={destination.value}>{destination.label}</option>
-                    ))}
+                    {SCAN_DESTINATIONS
+                      .filter((destination) => {
+                        if (["deal_finder", "watchlist", "pinned", "scout_report"].includes(destination.value)) return false;
+                        if (destination.value === "forge" && !activeForgeWorkspace) return false;
+                        return true;
+                      })
+                      .map((destination) => (
+                        <option key={destination.value} value={destination.value}>{destination.label}</option>
+                      ))}
                   </select>
                 </Field>
                 <p className="compact-subtitle">
@@ -53248,7 +53444,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
             {scanMatches.length > 1 ? (
               <div className="inventory-list compact-inventory-list">
-                <h3>Other Smart Matches</h3>
+                <h3>Other Matches</h3>
                 {scanMatches.slice(0, 5).map((match) => (
                   <button type="button" className="catalog-picker-card scanner-match-row" key={match.item.id} onClick={() => confirmScanMatch(match.item.id)}>
                     <div className="catalog-thumb">
@@ -59766,10 +59962,11 @@ function CompactInventoryCard({
     const statusLabel = vaultStatusLabel(normalizeVaultStatus(item));
     const conditionLabel = item.conditionName || item.condition || item.grade || "";
     const ownerLabel = item.purchaserSummary || itemPurchaserName(item);
+    const showOwnerLabel = ownerLabel && !/no purchaser assigned/i.test(String(ownerLabel));
     const vaultFactRows = [
       ["Qty", quantity || 1],
       ["Value", valuation.marketKnownQuantity ? money(totalMarket) : "Value unavailable"],
-      ...(ownerLabel && ownerLabel !== "No purchaser assigned" ? [["Owner", ownerLabel]] : []),
+      ...(showOwnerLabel ? [["Owner", ownerLabel]] : []),
       ...(conditionLabel ? [["Condition", conditionLabel]] : []),
       ...(packCount > 0 ? [["Packs", packCount]] : []),
     ];
