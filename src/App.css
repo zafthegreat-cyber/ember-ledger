@@ -26645,6 +26645,116 @@ button,
   background: linear-gradient(135deg, rgba(255, 90, 47, 0.1), rgba(123, 77, 243, 0.1));
 }
 
+.app-scout .store-map-detail-sheet {
+  width: min(880px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+}
+
+.app-scout .store-map-detail-body {
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.app-scout .store-detail-hero,
+.app-scout .store-detail-signal-card,
+.app-scout .store-detail-current-activity {
+  min-width: 0;
+  border: 1px solid rgba(132, 226, 255, 0.15);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 176, 64, 0.1), transparent 9rem),
+    rgba(5, 18, 34, 0.84);
+  color: #f8fbff;
+}
+
+.app-scout .store-detail-hero {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.app-scout .store-detail-hero .store-map-retailer-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+.app-scout .store-detail-hero strong,
+.app-scout .store-detail-signal-card h3,
+.app-scout .store-detail-current-activity h3 {
+  color: #fff7ed;
+  overflow-wrap: anywhere;
+}
+
+.app-scout .store-detail-hero p,
+.app-scout .store-detail-signal-card p,
+.app-scout .store-detail-current-activity p {
+  color: rgba(232, 246, 255, 0.74);
+}
+
+.app-scout .store-detail-signal-card,
+.app-scout .store-detail-current-activity {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-card);
+}
+
+.app-scout .store-detail-signal-card h3,
+.app-scout .store-detail-signal-card p {
+  margin: 0;
+}
+
+.app-scout .store-detail-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-scout .store-detail-signal-grid .detail-item {
+  min-width: 0;
+  border-color: rgba(132, 226, 255, 0.14);
+  background: rgba(3, 13, 24, 0.62);
+}
+
+.app-scout .store-detail-signal-grid .detail-item strong,
+.app-scout .store-detail-signal-grid .detail-item span {
+  overflow-wrap: anywhere;
+}
+
+.app-scout .store-detail-category-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-scout .store-detail-category-row span {
+  min-width: 0;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 190, 102, 0.22);
+  border-radius: 999px;
+  background: rgba(47, 24, 8, 0.62);
+  color: #ffe2a5;
+  font-size: 0.78rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.app-scout .store-detail-action-bar {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px !important;
+  pointer-events: auto !important;
+}
+
+.app-scout .store-detail-action-bar button {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+}
+
 @media (max-width: 980px) {
   .store-map-hero,
   .store-map-layout {
@@ -26688,6 +26798,10 @@ button,
   .store-map-filters,
   .store-map-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .app-scout .store-detail-signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .store-map-canvas {

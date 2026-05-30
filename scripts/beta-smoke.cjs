@@ -583,8 +583,24 @@ async function main() {
     await assertVisibleText(/Choose watched store|Change watched store/i);
     await expectVisible(page.locator(".scout-watch-picker-sheet").first(), "watched store picker sheet");
     await assertVisibleText("Raw restock patterns stay protected.");
-    await closeOpenModals();
+    await page.getByRole("button", { name: /^Close watched store picker$/ }).first().click();
+    await page.locator(".scout-watch-picker-sheet").first().waitFor({ state: "hidden", timeout: 5000 });
     await assertNoHorizontalOverflow("Scout stores mobile");
+    await clickFirstVisible(page.locator(".scout-watch-store-picker-panel").getByRole("button", { name: /^View$/ }), "Scout store detail View action");
+    const storeDetailSheet = page.locator(".store-map-detail-sheet").first();
+    await expectVisible(storeDetailSheet, "Scout Store Detail sheet");
+    await assertVisibleText("Current reports only.");
+    await assertVisibleText(/Signal: Hot|Signal: Warm|Signal: Cool|Signal: Calm/);
+    await assertVisibleText("Current Activity");
+    await assertVisibleText("Recent Reports");
+    await expectVisible(storeDetailSheet.getByRole("button", { name: /^Add Report$/ }).first(), "Store Detail Add Report action");
+    await expectVisible(storeDetailSheet.getByRole("button", { name: /^Scan Screenshot$/ }).first(), "Store Detail Scan Screenshot action");
+    const storeDetailText = await storeDetailSheet.innerText();
+    assert.equal(/Known restock\/truck days|Predicted Windows|Community Guesses/i.test(storeDetailText), false, "Store Detail should not expose raw pattern or forecast sections to normal users");
+    await storeDetailSheet.getByRole("button", { name: /^Add Report$/ }).first().click();
+    await expectVisible(page.locator("form.scout-report-flow").first(), "Store Detail Add Report form");
+    await closeOpenModals();
+    await assertNoHorizontalOverflow("Scout Store Detail mobile");
     await page.setViewportSize({ width: 1366, height: 1600 });
   }
 

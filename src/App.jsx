@@ -32768,6 +32768,67 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     });
   }
 
+  function storeDetailSignalMeta(row = {}) {
+    const statusText = `${row.status || ""} ${row.confidence || ""}`.toLowerCase();
+    if (/stock reported|restock|high|in stock|found|vendor/.test(statusText)) {
+      return { label: "Hot", tone: "hot", helper: "Current reports suggest active stock or restock activity." };
+    }
+    if (/recent|low stock|medium/.test(statusText)) {
+      return { label: "Warm", tone: "warm", helper: "There is a useful current report, but it may need another confirmation." };
+    }
+    if (/empty|no_stock|no stock|low/.test(statusText)) {
+      return { label: "Cool", tone: "cool", helper: "Current reports do not show strong stock activity." };
+    }
+    return { label: "Calm", tone: "calm", helper: "No current report is strong enough to call this hot." };
+  }
+
+  function storeDetailReportProofAttached(report = {}) {
+    const proofType = String(report.proofType || report.proof_type || report.sourceType || report.source_type || "").toLowerCase();
+    return Boolean(
+      scoutReportPhotoUrls(report).length ||
+      String(report.proofUrl || report.proof_url || report.imageUrl || report.image_url || "").trim() ||
+      ["stock_photo", "receipt", "screenshot", "photo", "text_screenshot"].includes(proofType)
+    );
+  }
+
+  function storeDetailTrustedConfirmationCount(reports = []) {
+    return reports.reduce((sum, report) => {
+      const confirmations = Number(report.confirmationCount || report.confirmation_count || report.communityConfirmations || report.community_confirmations || 0);
+      const verified = Boolean(report.verified || /verified|confirmed/i.test(`${report.status || ""} ${report.verificationStatus || report.verification_status || ""} ${report.confidence || ""}`));
+      return sum + (Number.isFinite(confirmations) ? confirmations : 0) + (verified ? 1 : 0);
+    }, 0);
+  }
+
+  function storeDetailConfidenceScore(row = {}) {
+    if (row.latestReport) return scoutReportConfidenceBadge(row.latestReport).score;
+    const numeric = Number(row.confidence || row.store?.confidenceScore || row.store?.confidence_score || 0);
+    if (Number.isFinite(numeric) && numeric > 0) return Math.min(100, Math.round(numeric));
+    const label = String(row.confidence || "").toLowerCase();
+    if (label === "high") return 80;
+    if (label === "medium") return 60;
+    if (label === "low") return 40;
+    return scoutConfidenceScore(label || "unconfirmed");
+  }
+
+  function storeDetailCategorySummary(row = {}) {
+    const categoryLabels = [
+      ...(Array.isArray(row.categories) ? row.categories : []),
+      ...(row.reports || []).flatMap((report) => normalizeScoutReportItems(report).map((item) => item.productType || item.productName || "")),
+    ]
+      .map((label) => String(label || "").trim())
+      .filter(Boolean);
+    return [...new Set(categoryLabels)].slice(0, 5);
+  }
+
+  function openStoreDetailScanScreenshot(row = selectedStoreMapStore) {
+    const storeName = row?.name || getScoutQuickStoreName(row?.store || {}) || "";
+    closeStoreProfile();
+    openQuickAddPathFlow("scoutScreenshotReview", {
+      scoutScanStoreName: storeName,
+      scoutScanNotes: storeName ? `Screenshot or photo for ${storeName}.` : "",
+    }, "store-detail-scan-screenshot");
+  }
+
   function openStoreMapSightingForm() {
     setStoreMapSightingForm({
       category: "Pokemon",
@@ -50803,12 +50864,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="modal-title-row modal-sticky-header">
               <div>
                 <h2 id="store-map-detail-title">{selectedStoreMapStore.name}</h2>
-                <p>{selectedStoreMapStore.retailer} | {selectedStoreMapStore.profile?.storeType || selectedStoreMapStore.storeType || "Store"} | {selectedStoreMapStore.area || "Area not listed"}</p>
+                <p>{selectedStoreMapStore.retailer} | {selectedStoreMapStore.profile?.storeType || selectedStoreMapStore.storeType || "Store"} | {selectedStoreMapStore.area || "Area not listed"} | Current reports only.</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close store details" onClick={closeStoreProfile}>X</button>
             </div>
             <div className="store-map-detail-body">
-              <article className="store-map-detail-summary">
+              <article className="store-map-detail-summary store-detail-hero">
                 <div className="store-map-retailer-mark">{selectedStoreMapStore.retailer.slice(0, 2).toUpperCase()}</div>
                 <div>
                   <strong>{selectedStoreMapStore.name}</strong>
@@ -50822,12 +50883,35 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               </article>
 
-              <div className="store-map-detail-grid">
-                <DetailItem label="Last Scout report" value={selectedStoreMapStore.latestReport ? scoutReportDateTimeLabel(selectedStoreMapStore.latestReport) : "No report yet"} />
-                <DetailItem label="Known restock/truck days" value={selectedStoreMapStore.store.restockDays || selectedStoreMapStore.store.truckDays || selectedStoreMapStore.store.bestCheckWindow || "Not logged yet"} />
-                <DetailItem label="Product categories" value={selectedStoreMapStore.categories.length ? selectedStoreMapStore.categories.join(", ") : "No category reports yet"} />
-                <DetailItem label="User notes" value={selectedStoreMapStore.store.notes || selectedStoreMapStore.store.userNotes || "No notes yet"} />
-              </div>
+              <section className="store-detail-signal-card">
+                <div>
+                  <span className="section-kicker">Current store signal</span>
+                  <h3>Signal: {storeDetailSignalMeta(selectedStoreMapStore).label}</h3>
+                  <p>{storeDetailSignalMeta(selectedStoreMapStore).helper} Store Detail stays focused on current reports only.</p>
+                </div>
+                <div className="store-detail-signal-grid">
+                  <DetailItem label="Confidence score" value={`${storeDetailConfidenceScore(selectedStoreMapStore)}/100`} />
+                  <DetailItem label="Last confirmed" value={selectedStoreMapStore.latestReport ? scoutReportDateTimeLabel(selectedStoreMapStore.latestReport) : "No current report yet"} />
+                  <DetailItem label="Trusted confirmations" value={String(storeDetailTrustedConfirmationCount(selectedStoreMapStore.reports || []))} />
+                  <DetailItem label="Proof count" value={String((selectedStoreMapStore.reports || []).filter(storeDetailReportProofAttached).length)} />
+                </div>
+              </section>
+
+              <section className="store-detail-current-activity">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>Current Activity</h3>
+                    <p>Safe category summaries only. This view does not include future-looking tools or detailed store history.</p>
+                  </div>
+                </div>
+                <div className="store-detail-category-row" aria-label="Current category summary">
+                  {storeDetailCategorySummary(selectedStoreMapStore).length ? storeDetailCategorySummary(selectedStoreMapStore).map((category) => (
+                    <span key={category}>{category}</span>
+                  )) : (
+                    <span>No product category reports yet</span>
+                  )}
+                </div>
+              </section>
 
               {selectedStoreMapStore.profile?.showFamilyFriendlyProfile ? (
                 <section className="store-profile-partner-panel">
@@ -50842,21 +50926,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </section>
               ) : null}
 
-              {renderStoreProfileActivity(selectedStoreMapStore.profile)}
-
               <section className="store-map-detail-reports">
                 <div className="compact-card-header">
                   <div>
-                    <h3>Recent Scout Reports</h3>
-                    <p>{selectedStoreMapStore.reports.length} report{selectedStoreMapStore.reports.length === 1 ? "" : "s"} connected to this store.</p>
+                    <h3>Recent Reports</h3>
+                    <p>{selectedStoreMapStore.reports.length ? `${selectedStoreMapStore.reports.length} current report${selectedStoreMapStore.reports.length === 1 ? "" : "s"} connected to this store.` : "No current reports yet."}</p>
                   </div>
                 </div>
                 <div className="scout-preview-list">
-                  {selectedStoreMapStore.reports.slice(0, 3).map((report) => renderScoutReportCard(report, { compact: true }))}
+                  {selectedStoreMapStore.reports.slice(0, 4).map((report) => renderScoutReportCard(report, { compact: true }))}
                   {!selectedStoreMapStore.reports.length ? (
                     <div className="small-empty-state">
-                      <strong>No reports for this store yet</strong>
-                      <span>Submit a stock or empty shelf report after your next check.</span>
+                      <strong>No current reports yet.</strong>
+                      <span>Add a report or scan a screenshot if you saw something recently.</span>
+                      <div className="quick-actions">
+                        <button type="button" onClick={() => openStoreMapReport(selectedStoreMapStore, "stock_on_shelf")}>Add Report</button>
+                        <button type="button" className="secondary-button" onClick={() => openStoreDetailScanScreenshot(selectedStoreMapStore)}>Scan Screenshot</button>
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -50904,10 +50990,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </section>
 
               <section className="store-map-detail-reports">
-                <div className="compact-card-header">
+                  <div className="compact-card-header">
                   <div>
                     <h3>Related Tidepool Posts</h3>
-                    <p>Community posts that reference this store stay separate from confirmed Scout reports.</p>
+                    <p>Community posts that reference this store stay separate from current Scout reports.</p>
                   </div>
                 </div>
                 <div className="scout-preview-list">
@@ -50921,7 +51007,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {!selectedStoreMapStore.profile?.activity?.relatedTidepoolPosts?.length ? (
                     <div className="small-empty-state">
                       <strong>No related Tidepool posts yet</strong>
-                      <span>Community discussion can reference shops without changing confirmed restock history.</span>
+                      <span>Community discussion can reference shops without changing current Scout reports.</span>
                     </div>
                   ) : null}
                 </div>
@@ -50929,22 +51015,40 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
               {adminEditModeActive ? (
                 <section className="store-map-admin-box">
-                  <strong>Admin basics</strong>
-                  <p>Edit name, nickname, retailer, address, coordinates, notes, status, and duplicate records through the existing admin review flow when wired.</p>
+                  <strong>Admin tools</strong>
+                  <p>Admin-only review actions stay hidden from normal users. Raw history access remains limited to moderation-safe workflows.</p>
                   <div className="summary-pill-row">
-                    <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Scout Stores", topic: selectedStoreMapStore.name })}>Suggest/Edit Store Data</button>
-                    <button type="button" className="ghost-button" onClick={() => setVaultToast("Duplicate record review is staged for the admin store approval flow.")}>Flag Duplicate</button>
+                    <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Scout Stores", topic: selectedStoreMapStore.name })}>Edit Store</button>
+                    <button type="button" className="secondary-button" onClick={() => { closeStoreProfile(); setScoutView("reports"); }}>Review Reports</button>
+                    <button type="button" className="ghost-button" onClick={() => setVaultToast("Duplicate record review is staged for the admin store approval flow.")}>Merge Duplicates</button>
                   </div>
                 </section>
               ) : null}
             </div>
-            <div className="location-modal-actions modal-sticky-footer">
-              <button type="button" onClick={() => openStoreMapReport(selectedStoreMapStore, "stock_on_shelf")}>Submit Report</button>
-              <button type="button" className="secondary-button" onClick={() => openStoreMapReport(selectedStoreMapStore, "no_stock")}>Report Empty</button>
-              <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(selectedStoreMapStore)}>{selectedStoreMapStore.watchlisted ? "Unfollow Store" : "Follow Store"}</button>
-              <button type="button" className="secondary-button" onClick={() => { closeStoreProfile(); setWatchCalendarView("stores"); setScoutView("alerts"); }}>Open Ember Watch</button>
+            <div className="location-modal-actions modal-sticky-footer store-detail-action-bar">
+              <button type="button" onClick={() => openStoreMapReport(selectedStoreMapStore, "stock_on_shelf")}>Add Report</button>
+              <button type="button" className="secondary-button" onClick={() => openStoreDetailScanScreenshot(selectedStoreMapStore)}>Scan Screenshot</button>
+              {selectedStoreMapStore.latestReport ? (
+                <button type="button" className="secondary-button" onClick={() => {
+                  const report = selectedStoreMapStore.latestReport;
+                  const canAddProof = canAddScoutReportDetails(report);
+                  closeStoreProfile();
+                  if (canAddProof) openScoutReportAddDetails(report);
+                  else openScoutReportDetail(report);
+                }}>
+                  {canAddScoutReportDetails(selectedStoreMapStore.latestReport) ? "Add Proof" : "Review Recent"}
+                </button>
+              ) : null}
+              <button type="button" className="secondary-button" onClick={() => {
+                if (selectedStoreMapStore.watchlisted) {
+                  const replaceStoreId = getStoreMapStoreId(selectedStoreMapStore.store);
+                  closeStoreProfile();
+                  openWatchStorePicker({ replaceStoreId });
+                  return;
+                }
+                void selectWatchedStore(selectedStoreMapStore);
+              }}>{selectedStoreMapStore.watchlisted ? "Change Store" : "Watch Store"}</button>
               <button type="button" className="secondary-button" onClick={() => askEmberAboutStore(selectedStoreMapStore)}>Ask Ember Assist</button>
-              <button type="button" className="ghost-button" onClick={() => setVaultToast("Store notes are staged for a later persistence pass.")}>Add Note</button>
               <button type="button" className="ghost-button" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([selectedStoreMapStore.name, selectedStoreMapStore.address, selectedStoreMapStore.city].filter(Boolean).join(" "))}`, "_blank", "noopener,noreferrer")}>Directions</button>
             </div>
           </section>
