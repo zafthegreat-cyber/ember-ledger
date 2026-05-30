@@ -80,6 +80,51 @@ Pokemon Watch Calendar should become a full month/week/agenda calendar.
 
 TideTradr should become a clean searchable, catalog-driven experience.
 
+### TideTradr — future value-checking hub
+
+This is a future feature note only. TideTradr should become the shared Ember & Tide work area for checking value before buying or trading. It should eventually combine Deal Finder and Trade Checker into one mobile-first, family-friendly tool.
+
+Deal Finder:
+- Helps users decide if a product is worth buying.
+- Lets users enter/search an item, asking price, quantity, condition, and notes.
+- Compares asking price against estimated market value and MSRP when available.
+- Shows simple results:
+  - Great Deal
+  - Fair Price
+  - A Little High
+  - Overpriced
+  - Needs Review
+- Missing value data should show Needs Review instead of guessing.
+
+Trade Checker:
+- Helps users decide if a trade is fair.
+- Lets users select what they are giving from their own inventory.
+- Lets users search or manually enter what they are receiving.
+- Compares total value given versus total value received.
+- Shows simple results:
+  - Great Deal
+  - Fair Trade
+  - Slight Loss
+  - Bad Trade
+  - Needs Review
+- Should warn users when a trade looks unfair, especially for kids or new collectors.
+- Should never remove inventory automatically.
+
+Future placement:
+- TideTradr should be one shared work area, not separate scattered pages.
+- It should eventually be accessible from Market, Vault, Forge, and Menu.
+- It should not be added to bottom nav unless navigation is later personalized.
+
+Future upgrades:
+- Saved deal checks
+- Saved trade history
+- Kid-safe warning mode
+- MSRP vs market vs asking price comparison
+- Add to Vault action
+- Add to Forge action
+- Copy/share trade or deal result
+- Admin/community guidance for fair trading
+
 - Clean All / Cards / Sealed / Code Cards / Supplies toggle
 - Code cards classified as code cards, not sealed
 - Code card detail pages
