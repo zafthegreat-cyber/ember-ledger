@@ -57381,6 +57381,58 @@ body {
   padding: 0 !important;
 }
 
+.app-scout .scout-report-required-detail-panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 190, 102, 0.2);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 176, 64, 0.12), transparent 8rem),
+    rgba(7, 18, 33, 0.72);
+}
+
+.app-scout .scout-report-mini-header {
+  align-items: start;
+  margin: 0;
+}
+
+.app-scout .scout-report-mini-header h4,
+.app-scout .scout-report-mini-header p {
+  margin: 0;
+}
+
+.app-scout .scout-report-mini-header h4 {
+  color: #fff7ed;
+  font-size: 0.98rem;
+}
+
+.app-scout .scout-category-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-scout .scout-category-chip-row button {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+}
+
+.app-scout .scout-category-chip-row button.selected,
+.app-scout .scout-category-chip-row button[aria-pressed="true"] {
+  border-color: rgba(255, 190, 102, 0.62);
+  background: linear-gradient(135deg, rgba(255, 176, 64, 0.24), rgba(14, 165, 233, 0.14));
+  color: #fff7ed;
+}
+
+.app-scout .scout-report-product-field input {
+  width: 100%;
+  min-width: 0;
+}
+
 @media (max-width: 780px) {
   .app-scout .flow-modal[data-flow="scoutSubmit"] {
     width: min(372px, calc(100vw - 18px)) !important;

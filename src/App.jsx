@@ -1216,7 +1216,7 @@ const SCOUT_QUICK_PROOF_TYPES = [
   { value: "text_link", label: "Text/link" },
   { value: "manual", label: "No proof" },
 ];
-const SCOUT_PRODUCT_CATEGORY_OPTIONS = ["Pokemon", "One Piece", "Lorcana", "Sports cards", "Other TCG"];
+const SCOUT_PRODUCT_CATEGORY_OPTIONS = ["Pokemon TCG", "Sealed product", "Packs", "ETBs", "Booster bundles", "Binders", "Sleeves", "Sports cards", "Other"];
 const SCOUT_QUICK_REPORT_TYPES = [
   { value: "stock_on_shelf", label: "Stock seen", helper: "Product was seen on shelf, display, or behind counter.", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "possible" },
   { value: "no_stock", label: "No stock", helper: "Nothing found", reportType: "Store Restock Report", stockStatus: "empty", sourceType: "user_report", confidence: "possible" },
@@ -18354,7 +18354,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       productType: "",
       productSetName: "",
       productImageUrl: "",
-      productCategory: "Pokemon",
+      productCategory: "",
       productName: "",
       quantity: "",
       price: "",
@@ -18715,7 +18715,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     return {
       valid: false,
-      message: "Choose the store or enter a manual store/location before posting.",
+      message: "Choose the store or enter a manual store/location before saving.",
       storeId: "",
     };
   }
@@ -18750,6 +18750,16 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function applyQuickScoutReportTimePreset(preset = "now") {
+    if (preset === "pick_date") {
+      setQuickScoutReportMessage("");
+      setQuickScoutReportForm((current) => ({
+        ...current,
+        dateMode: "pick_date",
+        reportDate: current.reportDate || getLocalDateInputKey(),
+        reportTime: current.reportTime || getLocalTimeKey(),
+      }));
+      return;
+    }
     const date = new Date();
     if (preset === "earlier_today") date.setHours(Math.max(0, date.getHours() - 2));
     if (preset === "yesterday") date.setDate(date.getDate() - 1);
@@ -19236,6 +19246,17 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     return "other";
   }
 
+  function quickScoutHasMeaningfulReportDetail(form = quickScoutReportForm) {
+    return Boolean(
+      scoutText(form.productCategory) ||
+      scoutText(form.productName) ||
+      scoutText(form.catalogProductName) ||
+      scoutText(form.note) ||
+      scoutText(form.proofText) ||
+      scoutText(form.photoUrl)
+    );
+  }
+
   function quickScoutReportReady() {
     const currentType = quickScoutReportTypeMeta();
     const storeSelection = resolveQuickScoutStoreSelection();
@@ -19246,7 +19267,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       quickScoutReportForm.reportType &&
       quickScoutReportForm.proofType &&
       storeSelection.valid &&
-      visitValidation.ok
+      visitValidation.ok &&
+      (currentType.isGuess || quickScoutHasMeaningfulReportDetail())
     );
   }
 
@@ -19261,7 +19283,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (stepKey === "where" || stepKey === "essentials") {
       const storeSelection = resolveQuickScoutStoreSelection();
       if (!storeSelection.valid) return storeSelection.message;
-      if (quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before posting.";
+      if (quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before saving.";
       const visitValidation = validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
       if (!visitValidation.ok) return visitValidation.message;
     }
@@ -19269,11 +19291,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return "Choose the shelf status before continuing.";
     }
     if (stepKey === "details" && currentType.isGuess && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
-    if (stepKey === "details" && !currentType.isGuess && !quickScoutReportForm.proofType) return "Choose how you know this report before posting.";
-    if (stepKey === "product" && !quickScoutReportForm.productCategory && !currentType.isGuess) return "Choose a product category before continuing.";
+    if (stepKey === "details" && !currentType.isGuess && !quickScoutReportForm.proofType) return "Choose how you know this report before saving.";
+    if (stepKey === "details" && !currentType.isGuess && !quickScoutHasMeaningfulReportDetail()) return "Add a category, item name, or useful detail before saving this report.";
+    if (stepKey === "product" && !quickScoutHasMeaningfulReportDetail() && !currentType.isGuess) return "Add a category, item name, or useful detail before continuing.";
     if (stepKey === "review" && !currentType.isGuess) return scoutWizardStepError("where") || scoutWizardStepError("status") || scoutWizardStepError("details");
     if (stepKey === "review" && !quickScoutReportReady()) return scoutWizardStepError("where") || scoutWizardStepError("details") || "Complete the missing Scout report details before submitting.";
-    if (stepKey === "review" && quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before posting.";
+    if (stepKey === "review" && quickScoutStoreNeedsReviewConfirmation()) return "Confirm the manual store/location before saving.";
     if (["details", "review"].includes(stepKey) && !currentType.isGuess) {
       const visitValidation = validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
       if (!visitValidation.ok) return visitValidation.message;
@@ -19337,6 +19360,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       || quickScoutReportForm.productType
       || "";
     const productName = explicitProductName;
+    const reportProductCategory = quickScoutReportForm.productCategory || (productName ? "Pokemon TCG" : "");
     const storeName = storeSelection.storeName;
     const retailer = storeSelection.retailer;
     const notes = [
@@ -19346,7 +19370,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       storeSelection.needsStoreReview ? `Manual location confirmed: ${quickScoutReportForm.storeConfirmed ? "yes" : "no"}` : "",
       quickScoutReportForm.storeFollowPreference ? `Store follow preference: ${quickScoutReportForm.storeFollowPreference.replace(/_/g, " ")}` : "",
       `Proof source: ${quickScoutProofLabel()}`,
-      productName ? `Products seen: ${productName}` : "Products seen: not added yet",
+      productName ? `Products seen: ${productName}` : reportProductCategory ? `Product category: ${reportProductCategory}` : "Products seen: not added yet",
       `Stock left: ${quickScoutStockLeftLabel()}`,
       quickScoutReportForm.dateMode === "day_only" ? `Day reported: ${quickScoutReportForm.dayOfWeek}` : "",
       quickScoutReportForm.dateMode === "not_sure" ? "Date/time not sure" : "",
@@ -19394,10 +19418,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       catalogProductName: quickScoutReportForm.catalogProductName || "",
       productImageUrl: quickScoutReportForm.productImageUrl || "",
       product_image_url: quickScoutReportForm.productImageUrl || "",
-      productCategory: productName ? quickScoutReportForm.productCategory || "Pokemon" : "",
-      product_category: productName ? quickScoutReportForm.productCategory || "Pokemon" : "",
-      productType: productName ? quickScoutReportForm.productType || quickScoutReportForm.productCategory || "" : "",
-      product_type: productName ? quickScoutReportForm.productType || quickScoutReportForm.productCategory || "" : "",
+      productCategory: reportProductCategory,
+      product_category: reportProductCategory,
+      productType: productName ? quickScoutReportForm.productType || reportProductCategory || "" : "",
+      product_type: productName ? quickScoutReportForm.productType || reportProductCategory || "" : "",
       setName: quickScoutReportForm.productSetName || "",
       set_name: quickScoutReportForm.productSetName || "",
       quantitySeen: quickScoutReportForm.quantity,
@@ -19406,8 +19430,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemsSeen: productName ? [{
         productName,
         productId: quickScoutReportForm.catalogProductId || "",
-        category: quickScoutReportForm.productCategory || "Pokemon",
-        productType: quickScoutReportForm.productType || quickScoutReportForm.productCategory || "",
+        category: reportProductCategory || "Pokemon TCG",
+        productType: quickScoutReportForm.productType || reportProductCategory || "",
         setName: quickScoutReportForm.productSetName || "",
         imageUrl: quickScoutReportForm.productImageUrl || "",
         quantity: quickScoutReportForm.quantity,
@@ -19630,7 +19654,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     const report = buildQuickScoutReportRecord();
     if (!report) {
-      setQuickScoutReportMessage(scoutWizardStepError("where") || "Choose the store/location before posting this report.");
+      setQuickScoutReportMessage(scoutWizardStepError("where") || "Choose the store/location before saving this report.");
       setQuickScoutReportStep("where");
       return;
     }
@@ -19646,8 +19670,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       }));
     } catch (error) {
       logAppError("scout_report_local_save", error, { storeName: report.storeName || report.store_name || "" }, "normal");
-      setQuickScoutReportMessage("Couldn't save Scout report. Please try again.");
-      showErrorToast("Couldn't save Scout report.", { message: "Your device could not save the report locally." });
+      setQuickScoutReportMessage("Report could not be saved. Please review and try again.");
+      showErrorToast("Report could not be saved.", { message: "Please review and try again." });
       return;
     }
 
@@ -19676,12 +19700,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const savedToCloud = Boolean(backendSaveResult?.ok);
     const savedLocallyOnly = !savedToCloud;
     const scoutSaveMessage = savedToCloud
-      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Scout report posted.")
+      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Scout report saved.")
       : "Scout report saved locally. Cloud sync is unavailable right now.";
     setQuickScoutReportSaved(savedReport);
     setQuickScoutReportStep("submitted");
     setQuickScoutReportMessage(savedToCloud
-      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Report posted. You can add products, proof, or details now or later.")
+      ? (visitValidation.oldBackfill ? "Backfilled report saved." : "Scout report saved. Want to add proof or more details?")
       : "Report saved on this device and is visible in Scout. Cloud sync is unavailable right now.");
     setScoutReportFilter("Latest");
     setScoutReportsPage(1);
@@ -40497,8 +40521,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "scoutSubmit") {
       const isGuess = quickScoutReportTypeMeta(quickScoutReportForm.reportType)?.isGuess;
       return {
-        title: isGuess ? "Add Scout Guess" : "Submit Scout Report",
-        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Post store, status, and time first. Add product details after.",
+        title: isGuess ? "Add Scout Guess" : "Add Scout Report",
+        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Share what you saw. Scout uses current reports, not raw restock patterns.",
         size: "medium",
       };
     }
@@ -42482,7 +42506,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         : step.key === "status"
           ? "Shelf status"
           : step.key === "details" && !currentType.isGuess
-            ? "Optional proof/details"
+            ? "Items and proof"
         : step.key === "where"
           ? "Select store/location"
           : step.key === "details"
@@ -42501,7 +42525,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const scoutPointsProgress = Math.min(100, Math.round((scoutGuessPoints / Math.max(1, MIN_SCOUT_POINTS_FOR_GUESS)) * 100));
     const productDetailSummary = quickScoutReportForm.productName
       ? [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ")
-      : (currentType.isGuess ? quickScoutReportForm.productCategory || "Not selected" : "Optional after posting");
+      : (quickScoutReportForm.productCategory || (quickScoutReportForm.note ? "Details added in note" : currentType.isGuess ? "Not selected" : "Missing item/category"));
     const summaryRows = [
       [currentType.isGuess ? "Planner type" : "Report type", currentType.label],
       ["Reporting at", storeSelection.valid ? storeSelection.storeName : "Store not selected"],
@@ -42518,15 +42542,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ["Scout point gate", currentUserCanSubmitScoutGuess ? `${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS} points` : DROP_RADAR_GUESS_LOCKED_MESSAGE],
           ]
         : [
-            ["Quantity", quickScoutReportForm.quantity || "Optional after posting"],
-            ["Stock left", quickScoutStockLeftLabel() || "Optional after posting"],
+            ["Quantity", quickScoutReportForm.quantity || "Optional"],
+            ["Stock left", quickScoutStockLeftLabel() || "Optional"],
             ["Visit date & time", quickScoutDateLabel()],
           ]),
       ["Visibility", scoutVisibilityOptionLabel(quickScoutReportForm.visibility || (currentType.isGuess ? "private" : "public"), currentType.isGuess)],
       ["Store follow", (quickScoutReportForm.storeFollowPreference || "verified_restocks").replace(/_/g, " ")],
     ];
     const selectedTypeOption = quickReportTypeOptions.find((option) => option.value === quickScoutReportForm.reportType);
-    const selectedProductSummary = productDetailSummary || (currentType.isGuess ? "Product not selected" : "Optional after posting");
+    const selectedProductSummary = productDetailSummary || (currentType.isGuess ? "Product not selected" : "Item/category needed");
     const selectedStoreSummary = storeSelection.valid ? `${storeSelection.storeName} (${storeSelection.retailer})` : "Store not selected";
     const selectedStockSummary = currentType.isGuess ? quickScoutDateLabel() : (selectedTypeOption?.title || currentType.label);
     const selectedCatalogProduct = quickScoutReportForm.catalogProductId
@@ -42543,7 +42567,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         catalogProductId: product.id || "",
         catalogProductName: catalogTitle(product),
         productName: catalogTitle(product),
-        productCategory: "Pokemon",
+        productCategory: "Pokemon TCG",
         productType: known.productType || product.productType || product.product_type || "",
         productSetName: known.setName || catalogExpansionName(product) || "",
         productImageUrl: known.itemImage || catalogImage(product) || "",
@@ -42596,7 +42620,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     };
 
     if (quickScoutReportStep === "submitted") {
-      const savedProductName = quickScoutReportSaved?.productName || quickScoutReportSaved?.itemName || quickScoutReportForm.productName || "Optional after posting";
+      const savedProductName = quickScoutReportSaved?.productName || quickScoutReportSaved?.itemName || quickScoutReportForm.productName || quickScoutReportForm.productCategory || "Report detail saved";
       const savedStockStatus = scoutStockStatusLabel(quickScoutReportSaved?.stockStatus || quickScoutReportSaved?.stock_status || quickScoutReportForm.stockLeft)
         || quickScoutReportSaved?.quickReportLabel
         || quickScoutReportTypeMeta(quickScoutReportSaved?.quickReportType || quickScoutReportForm.reportType).label;
@@ -42619,8 +42643,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <section className="scout-quick-report-v2 scout-quick-report-sent">
           <div className="scout-quick-report-success">
             <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Posted" : "Saved locally"}</span>
-            <h3>{currentType.isGuess ? "Scout note saved." : "Scout report posted."}</h3>
-            <p>{currentType.isGuess ? "Your planning note stays separate from live stock reports." : "Thanks. Your report helps families find product and keeps the community informed."}</p>
+            <h3>{currentType.isGuess ? "Scout note saved." : "Scout report saved."}</h3>
+            <p>{currentType.isGuess ? "Your planning note stays separate from live stock reports." : "Want to add proof or more details? You can do that now or later."}</p>
             {quickScoutReportMessage ? <small>{quickScoutReportMessage}</small> : null}
           </div>
           <div className="scout-report-review-grid scout-submit-confirmation-grid" aria-label="Submitted Scout report confirmation">
@@ -42771,7 +42795,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {!recommendedStoreRows.length ? (
                       <div className="scout-report-empty-step">
                         <strong>No matching stores</strong>
-                        <p>Enter a manual location and confirm it before posting.</p>
+                        <p>Enter a manual location and confirm it before saving.</p>
                       </div>
                     ) : null}
                   </div>
@@ -42802,9 +42826,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <small>Use this if you are backfilling a store visit from earlier.</small>
                 </label>
                 <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
-                  <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Now</button>
-                  <button type="button" className={quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
+                  <button type="button" className={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Today</button>
                   <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+                  <button type="button" className={quickScoutReportForm.dateMode === "pick_date" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "pick_date"} onClick={() => applyQuickScoutReportTimePreset("pick_date")}>Pick date</button>
                 </div>
                 <label className="scout-report-notes-field scout-report-notes-field--secondary">
                   Optional quick note
@@ -43009,7 +43033,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>{currentType.isGuess ? "Store" : "Step 1"}</span>
               <div>
                 <h3>{currentType.isGuess ? "Choose the store or location" : "Where and when"}</h3>
-                <p>{currentType.isGuess ? "Choose where this planner note belongs. Guesses stay separate from confirmed reports." : "Pick the store and observed time first. Product details and proof can come after posting."}</p>
+                <p>{currentType.isGuess ? "Choose where this planner note belongs. Guesses stay separate from confirmed reports." : "Pick the store and observed time first. Then add item/category detail before saving."}</p>
               </div>
             </div>
             {selectedStoreContext ? (
@@ -43057,9 +43081,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <small>Use this if you are backfilling a store visit from earlier.</small>
                     </label>
                     <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
-                      <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Now</button>
-                      <button type="button" className={quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
+                      <button type="button" className={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Today</button>
                       <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+                      <button type="button" className={quickScoutReportForm.dateMode === "pick_date" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "pick_date"} onClick={() => applyQuickScoutReportTimePreset("pick_date")}>Pick date</button>
                     </div>
                   </div>
                 ) : null}
@@ -43155,9 +43179,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <small>Use this if you are backfilling a store visit from earlier.</small>
                     </label>
                     <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
-                      <button type="button" className={quickScoutReportForm.dateMode === "today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Now</button>
-                      <button type="button" className={quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("earlier_today")}>Earlier today</button>
+                      <button type="button" className={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Today</button>
                       <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+                      <button type="button" className={quickScoutReportForm.dateMode === "pick_date" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "pick_date"} onClick={() => applyQuickScoutReportTimePreset("pick_date")}>Pick date</button>
                     </div>
                   </div>
                 ) : null}
@@ -43195,8 +43219,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               })}
             </div>
             <div className="scout-location-trust-note">
-              <strong>Products come after posting</strong>
-              <span>You can post this basic report now and add products, quantities, proof, or shelf details after it exists.</span>
+              <strong>Item/category is next</strong>
+              <span>Before saving, add a product category, item name, or useful shelf detail so the report is meaningful.</span>
             </div>
             {statusStepError ? <p className="scout-field-error">{statusStepError}</p> : null}
           </section>
@@ -43207,14 +43231,49 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="scout-report-step-header">
               <span>{currentType.isGuess ? "Step 2" : "Step 3"}</span>
               <div>
-                <h3>{currentType.isGuess ? "Add guess context" : "Optional proof/details"}</h3>
-                <p>{currentType.isGuess ? "Keep planner notes separate from observed reports." : "Proof, photos, and notes are optional. Product lookup happens after the report is posted."}</p>
+                <h3>{currentType.isGuess ? "Add guess context" : "Items and proof"}</h3>
+                <p>{currentType.isGuess ? "Keep planner notes separate from observed reports." : "Add a category, item name, or useful detail. Proof helps trust but is optional."}</p>
               </div>
             </div>
             <div className="scout-confidence-preview">
               <span className={`scout-confidence-pill scout-confidence-pill--${confidenceBadge.key}`}>{confidenceBadge.label}</span>
               <p>{confidenceBadge.helper}</p>
             </div>
+            {!currentType.isGuess ? (
+              <div className="scout-report-required-detail-panel">
+                <div className="scout-report-step-header scout-report-mini-header">
+                  <span>Required</span>
+                  <div>
+                    <h4>What did you see?</h4>
+                    <p>Choose a category chip or type the product/details you remember.</p>
+                  </div>
+                </div>
+                <div className="scout-product-chip-row scout-category-chip-row" role="group" aria-label="Scout report item category">
+                  {SCOUT_PRODUCT_CATEGORY_OPTIONS.map((category) => {
+                    const isSelected = quickScoutReportForm.productCategory === category;
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        className={`secondary-button ${isSelected ? "selected" : ""}`}
+                        aria-pressed={isSelected}
+                        onClick={() => updateQuickScoutReportForm("productCategory", category)}
+                      >
+                        {category}
+                      </button>
+                    );
+                  })}
+                </div>
+                <label className="scout-report-notes-field scout-report-product-field">
+                  Item or product mentioned
+                  <input
+                    value={quickScoutReportForm.productName}
+                    onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)}
+                    placeholder="Optional: Surging Sparks ETB, booster bundles, binders..."
+                  />
+                </label>
+              </div>
+            ) : null}
             <div className="scout-stock-status-grid">
               {SCOUT_QUICK_PROOF_TYPES.map((option) => {
                 const isSelected = quickScoutReportForm.proofType === option.value;
@@ -43249,17 +43308,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </label>
             </div>
             <label className="scout-report-notes-field">
-              Quick note
+              Details / notes
               <textarea
                 value={quickScoutReportForm.note}
                 onChange={(event) => updateQuickScoutReportForm("note", event.target.value)}
-                placeholder="Optional quick note: aisle, limit sign, vendor stocking, shelf status..."
+                placeholder="Aisle, limit sign, vendor stocking, shelf status, or anything useful..."
               />
             </label>
             {!currentType.isGuess ? (
               <div className="scout-location-trust-note">
-                <strong>Products after posting</strong>
-                <span>Add products seen, quantity, receipt proof, shelf/display details, price notes, or signage after this basic report posts.</span>
+                <strong>Proof is optional</strong>
+                <span>Photos, screenshots, receipts, and links increase trust, but the report can save with a store, time, status, and useful item/category detail.</span>
               </div>
             ) : null}
             {!locationAvailable && quickScoutReportForm.proofType === "manual" ? (
@@ -43344,8 +43403,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="scout-report-step-header">
               <span>Step {activeStepIndex + 1}</span>
               <div>
-                <h3>{currentType.isGuess ? "Review and save" : "Review and post"}</h3>
-                <p>{currentType.isGuess ? "Nothing is saved until you submit this note." : "This posts the essential report first. Products and proof can be added after."}</p>
+                <h3>Review and save</h3>
+                <p>{currentType.isGuess ? "Nothing is saved until you submit this note." : "Review before saving. Nothing is saved until you tap Save Report."}</p>
               </div>
             </div>
             <div className="scout-report-review-grid">
@@ -43387,6 +43446,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>{confidenceBadge.label}</strong>
               <span>{confidenceBadge.helper}</span>
             </div>
+            {quickScoutStoreHasHistory(storeSelection) ? (
+              <div className="scout-location-trust-note">
+                <strong>Check for duplicates</strong>
+                <span>This store already has current Scout activity. Save only if this is a fresh visit or adds useful context.</span>
+              </div>
+            ) : null}
             <div className="scout-location-trust-note">
               <strong>Privacy and freshness</strong>
               <span>Reports are shared by store, not private address. Old reports are kept for history and should not be treated as live stock.</span>
@@ -43405,7 +43470,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </button>
               {quickScoutReportStep === "review" ? (
                 <button type="button" disabled={scoutSubmitBlocked} onClick={submitQuickScoutReport}>
-                  {quickScoutReportSubmitting ? (currentType.isGuess ? "Saving..." : "Posting...") : currentType.isGuess ? "Save Guess" : "Post Report"}
+                  {quickScoutReportSubmitting ? "Saving..." : currentType.isGuess ? "Save Guess" : "Save Report"}
                 </button>
               ) : (
                 <button type="button" onClick={goNextScoutWizardStep}>Next</button>
@@ -50548,7 +50613,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </button>
                     {quickScoutReportStep === "review" ? (
                       <button type="button" disabled={quickScoutReportSubmitting || Boolean(scoutWizardStepError("review")) || (quickScoutReportTypeMeta().isGuess && !currentUserCanSubmitScoutGuess)} onClick={submitQuickScoutReport}>
-                        {quickScoutReportSubmitting ? (quickScoutReportTypeMeta().isGuess ? "Saving..." : "Posting...") : quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Post Report"}
+                        {quickScoutReportSubmitting ? "Saving..." : quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Save Report"}
                       </button>
                     ) : (
                       <button type="button" onClick={goNextScoutWizardStep}>Next</button>

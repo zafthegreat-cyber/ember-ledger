@@ -28,13 +28,16 @@ assert.match(app, /Only the reporter or an admin can add Scout report details\./
 assert.match(app, /Scout report details updated\./, "Scout Add Details should confirm successful updates");
 assert.match(app, /currentUserIds\.includes\(reportUserId\)/, "Scout report ownership should use exact user-id matching");
 assert.doesNotMatch(app, /report\.userId \|\| report\.user_id \|\| report\.reportedBy \|\| report\.reported_by \|\| ""\)\.includes\(id\)/, "Scout report ownership must not use substring matching");
-assert.match(app, /Choose how you know this report before posting\./, "Scout submit should require a proof/source choice before posting");
+assert.match(app, /Choose how you know this report before saving\./, "Scout submit should require a proof/source choice before saving");
+assert.match(app, /function quickScoutHasMeaningfulReportDetail/, "Scout submit should require a category, item, or useful detail before saving");
+assert.match(app, /Add a category, item name, or useful detail before saving this report\./, "Scout submit should show a clear item/detail validation message");
+assert.match(app, /Review before saving\. Nothing is saved until you tap Save Report\./, "Scout submit review should make the no-auto-save behavior explicit");
 assert.doesNotMatch(app, /\|\|\s*note\s*\|\|\s*""/, "Scout cards should not fall back to long report notes as the default card summary");
 assert.match(app, /function isScoutPlaceholderReport/, "Scout should filter placeholder/demo reports from user-facing report rows");
 assert.match(app, /\^store location\$/, "Scout placeholder filtering should block fake Store location rows");
 assert.match(app, /sample report\|placeholder report\|fake report\|mock report\|demo report\|test report/, "Scout placeholder filtering should block sample/fake report text");
 assert.match(app, /Scout report saved locally\./, "Scout submit should show a visible local-save fallback");
-assert.match(app, /Couldn't save Scout report\./, "Scout submit should show a visible save error");
+assert.match(app, /Report could not be saved\. Please review and try again\./, "Scout submit should show a visible save error");
 assert.match(scoutPage, /const canManageScoutReport = adminMode \|\| isUserOwnedScoutReport\(report\)/, "Scout page cards should gate edit actions to owners or admins");
 assert.match(scoutPage, /actions=\{compactReportActions\}/, "Scout page card overflow actions should use permission-filtered actions");
 assert.match(scoutPage, /onDelete=\{adminMode \? \(\) => setDeleteReportTarget\(report\) : null\}/, "Admins should be able to delete visible Scout reports");

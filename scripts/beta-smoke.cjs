@@ -569,6 +569,8 @@ async function main() {
     await addReportButton.click();
     const form = page.locator("form.scout-report-flow").first();
     await expectVisible(form, "Scout report form");
+    await assertVisibleText("Add Scout Report");
+    await assertVisibleText("Share what you saw. Scout uses current reports, not raw restock patterns.");
     await assertVisibleText(/Where and when|Post the restock essentials|Post store, status, and time|What did you see\?/i);
     await closeOpenModals();
     await assertNoHorizontalOverflow("Scout mobile");
@@ -1385,7 +1387,7 @@ async function main() {
       }
     }
     if (await page.locator("form.scout-report-flow").count() === 0) {
-      await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+      await page.getByRole("button", { name: /^Add Report$|^Submit Report$/ }).first().click();
     }
     const form = page.locator("form.scout-report-flow").first();
     await form.waitFor({ state: "visible", timeout: 10000 });
@@ -1479,7 +1481,20 @@ async function main() {
       { timeout: 3000 }
     );
     await form.getByRole("button", { name: "Next" }).click();
-    await form.getByText(/Optional proof\/details|Add details and proof|Add guess context/i).first().waitFor({ state: "visible", timeout: 5000 });
+    await form.getByText(/Items and proof|Optional proof\/details|Add details and proof|Add guess context/i).first().waitFor({ state: "visible", timeout: 5000 });
+    const detailsText = await form.innerText().catch(() => "");
+    if (!/Add guess context|Save Guess|Community guess/i.test(detailsText)) {
+      const categoryButton = form.getByRole("button", { name: /Pokemon TCG|Sealed product|Packs|ETBs/i }).first();
+      if (await categoryButton.isVisible().catch(() => false)) {
+        await categoryButton.click();
+      }
+    }
+    if (productName) {
+      const productInput = form.getByPlaceholder(/Surging Sparks ETB|booster bundles|binders/i).first();
+      if (await productInput.count()) {
+        await productInput.fill(productName);
+      }
+    }
     if (note) {
       await form.getByPlaceholder(/Optional quick note|Aisle, limit sign|vendor cart|display location/i).fill(note);
     }
@@ -1494,7 +1509,7 @@ async function main() {
     await form.getByText(/Review and post|Review and save/).first().waitFor({ state: "visible", timeout: 5000 }).catch(async (error) => {
       const formText = await form.innerText().catch(() => "");
       const bodyText = await page.locator("body").innerText().catch(() => "");
-      if (bodyText.includes("Report posted. You can add products, proof, or details now or later.")) return;
+      if (bodyText.includes("Scout report saved. Want to add proof or more details?")) return;
       error.message = `${error.message}\nScout wizard state:\n${formText.slice(0, 1200)}\nBody:\n${bodyText.slice(0, 1600)}`;
       throw error;
     });
@@ -1548,17 +1563,20 @@ async function main() {
     );
     await assertVisibleText("Selected");
     await form.getByRole("button", { name: "Next" }).click();
-    await form.getByText(/Optional proof\/details/i).first().waitFor({ state: "visible", timeout: 5000 });
+    await form.getByText(/Items and proof|Optional proof\/details/i).first().waitFor({ state: "visible", timeout: 5000 });
+    await form.getByRole("button", { name: "Next" }).click();
+    await assertVisibleText("Add a category, item name, or useful detail before saving this report.");
+    await form.getByRole("button", { name: /Pokemon TCG/i }).first().click();
     await form.getByRole("button", { name: "Next" }).click();
     await assertVisibleText("Reporting at: Visible Selection Target");
     await assertVisibleText("Product details");
-    await assertVisibleText("Optional after posting");
+    await assertVisibleText("Pokemon TCG");
     await assertVisibleText("No stock");
     await closeOpenModals();
   });
 
   async function submitScoutWizardIfNeeded(form) {
-    const explicitAction = form.getByRole("button", { name: /Submit Report|Post Report|Save Guess/i }).last();
+    const explicitAction = form.getByRole("button", { name: /Submit Report|Post Report|Save Report|Save Guess/i }).last();
     if (await explicitAction.isVisible().catch(() => false)) {
       await explicitAction.click();
       return;
@@ -1589,7 +1607,7 @@ async function main() {
     await assert.match(await page.locator("body").innerText(), /Smoke Shared Target/);
     const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first();
     await smokeStoreCard.getByRole("button", { name: /Open Store|Open/i }).click();
-    await assertVisibleText("Submit Report");
+    await assertVisibleText(/Add Report|Submit Report/);
   });
 
   await step("Scout: reports preserve selected stores and remain visible", async () => {
@@ -1688,7 +1706,7 @@ async function main() {
 
     const blankForm = await openScoutReportWizard();
     await blankForm.getByRole("button", { name: "Next" }).click();
-    await assertVisibleText("Choose the store or enter a manual store/location before posting.");
+    await assertVisibleText("Choose the store or enter a manual store/location before saving.");
     await closeOpenModals();
   });
 
@@ -1696,7 +1714,7 @@ async function main() {
     async function openReportWizard() {
       await nav("Scout");
       if (await page.locator("form.scout-report-flow").count() === 0) {
-        await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+        await page.getByRole("button", { name: /^Add Report$|^Submit Report$/ }).first().click();
       }
       const form = page.locator("form.scout-report-flow").first();
       await form.waitFor({ state: "visible", timeout: 10000 });
@@ -1716,7 +1734,7 @@ async function main() {
       reportTime: "09:30",
     });
     await submitScoutWizardIfNeeded(reportForm);
-    await assertVisibleText("Scout report posted.");
+    await assertVisibleText("Scout report saved.");
     const savedScoutReport = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-scout") || "{}");
       return (data.reports || []).find((report) => String(report.note || report.notes || "").includes("Two ETBs on the shelf.")) || null;
@@ -1846,7 +1864,7 @@ async function main() {
 
   await step("Scout: Screenshot upload/manual save", async () => {
     await nav("Scout");
-    await page.getByRole("button", { name: /^Submit Report$/ }).first().click();
+    await page.getByRole("button", { name: /^Add Report$|^Submit Report$/ }).first().click();
     const reportForm = page.locator("form.scout-report-flow").first();
     await reportForm.waitFor({ state: "visible", timeout: 10000 });
     const png = Buffer.from(
