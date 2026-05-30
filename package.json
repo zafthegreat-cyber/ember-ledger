@@ -45,6 +45,7 @@
     "test:price-review": "node --no-warnings scripts/test-price-review.mjs",
     "test:workspace-identity": "node --no-warnings scripts/test-workspace-identity.mjs",
     "test:app-fallbacks": "node --no-warnings scripts/test-app-fallbacks.mjs",
+    "test:tier-foundation": "node --no-warnings scripts/test-tier-foundation.mjs",
     "test:quick-add": "node --no-warnings scripts/test-quick-add-routing.mjs",
     "test:forge-grouped-inventory": "node --no-warnings scripts/test-forge-grouped-inventory.mjs",
     "test:inventory-detail": "node --no-warnings scripts/test-inventory-detail-utils.mjs",

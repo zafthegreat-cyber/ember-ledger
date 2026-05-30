@@ -165,10 +165,7 @@ import {
   SUPPORT_EMAIL,
   TRUST_PAGE_CONTENT,
   UPLOAD_SAFETY_WARNING,
-  canAccessBetaFeature,
   createEmptyBetaReadinessData,
-  getEffectivePlan,
-  getFeatureLimit,
   isTrialActive,
   loadBetaReadinessData,
   normalizePersonName,
@@ -183,6 +180,9 @@ import {
   TIER_LABELS,
   USER_ROLES,
   canUseFeature,
+  getTierAccess,
+  getTierAddOns,
+  getTierPricingCards,
   getLockedFeatures,
   getUnlockedFeatures,
   getUserPlan,
@@ -6081,6 +6081,7 @@ export default function App() {
     moderator: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible ? { key: "moderator", label: "Moderator", helper: "Limited review tools", icon: "settings", target: "moderator" } : null,
     "ember-watch": { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
     profile: { key: "profile", label: "Ember ID", helper: "Public username and trust identity", icon: "settings", action: () => openUtilityPage("profile") },
+    membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing and feature gates", icon: "settings", action: () => setActiveTab("membership") },
     settings: { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     help: { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
   };
@@ -6089,6 +6090,7 @@ export default function App() {
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
     { key: "profile", label: "Ember ID", helper: "Public username and trust identity", icon: "settings", action: () => openUtilityPage("profile") },
+    { key: "membership", label: "Plans & Features", helper: "Beta pricing and feature gates", icon: "settings", action: () => setActiveTab("membership") },
     { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
   ].map((item) => desktopMoreByKey[item.key] || item).filter(Boolean);
@@ -6120,6 +6122,7 @@ export default function App() {
     "emberWatch": { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
     profile: { key: "profile", label: "Ember ID", helper: "Public username and trust identity.", icon: "settings", action: () => openUtilityPage("profile") },
     account: { key: "account", label: "Account", helper: "Sign-in, beta status, and app version.", icon: "settings", action: () => openUtilityPage("account") },
+    membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing, trials, add-ons, and Scout gates.", icon: "settings", action: () => setActiveTab("membership") },
     help: { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and support.", icon: "search", action: () => openUtilityPage("help") },
     settings: { key: "settings", label: "Settings", helper: "Profile, workspace, alerts, and privacy.", icon: "settings", action: () => openUtilityPage("settings") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Protected approvals, reviews, and roles.", icon: "settings", target: "adminReview" } : null,
@@ -6142,6 +6145,7 @@ export default function App() {
     mobileMenuByKey.tidepool,
     mobileMenuByKey.spark,
     { key: "collections", label: "Collections", helper: "Workspace and members.", icon: "settings", action: () => openUtilityPage("collections") },
+    mobileMenuByKey.membership,
     mobileMenuByKey.settings,
   ].filter(Boolean);
   const menuAdminItems = [
@@ -25562,11 +25566,16 @@ function renderForgeAccessState() {
   const featureGateOptions = {
     admin: adminViewingAsAdmin && roleAdminUser,
     betaTester: !guestPreviewActive && !actualAdminUser && (BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester),
+    localBeta: BETA_LOCAL_MODE,
     qaUnlock: QA_UNLOCK_PAID_FEATURES,
   };
   const featureAllowed = (featureKey) => canUseFeature(regularPreviewPlanProfile, featureKey, featureGateOptions);
   const unlockedFeatureKeys = getUnlockedFeatures(regularPreviewPlanProfile, featureGateOptions);
   const lockedFeatureKeys = getLockedFeatures(regularPreviewPlanProfile, featureGateOptions);
+  const tierAccess = getTierAccess(regularPreviewPlanProfile, {
+    admin: adminViewingAsAdmin && roleAdminUser,
+    betaTester: featureGateOptions.betaTester,
+  });
   const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
   const accountStatusTitle = guestPreviewActive ? "Guest Preview" : signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Private Beta Mode" : "Supabase Sign-In Required";
   const accountStatusDescription = signedInWithSupabase
@@ -27372,6 +27381,20 @@ function renderForgeAccessState() {
   }
 
   function renderScoutReportRelatedContext(report = {}) {
+    if (!tierAccess.canViewRawScoutHistory) {
+      return (
+        <div className="scout-report-detail-section-body scout-report-related-context scout-protected-context">
+          <div className="scout-report-detail-row">
+            <strong>Scout history protected</strong>
+            <span>Users follow selected stores. They do not get the whole network.</span>
+          </div>
+          <div className="scout-report-detail-row">
+            <strong>Fair Scout rule</strong>
+            <span>Raw restock patterns are protected to keep Scout fair. Admin can review full history for moderation.</span>
+          </div>
+        </div>
+      );
+    }
     const relatedRows = scoutReportRelatedRows(report);
     const rows = relatedRows.conflicting.length
       ? relatedRows.conflicting.map((row) => ({ ...row, relationLabel: "Conflicting" }))
@@ -32719,6 +32742,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
         </article>
 
+        {renderScoutTierLockCard({ compact: true })}
+
         <article className="panel scout-overview-card scout-nearby-list-card">
           <div className="compact-card-header">
             <div>
@@ -32939,6 +32964,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderScoutPredictionsPanel() {
     const forecastRows = regionalScoutForecastPreviewRows;
+    if (!tierAccess.canViewPatternTools) {
+      return (
+        <section className="panel scout-subpage-panel scout-protected-forecast-panel">
+          <div className="compact-card-header">
+            <div>
+              <h2>Forecast Windows</h2>
+              <p>Raw restock patterns are protected to keep Scout fair. Paid tiers unlock deeper current details for selected stores, not the whole network.</p>
+            </div>
+            <span className="status-badge">Protected</span>
+          </div>
+          {renderScoutTierLockCard({ compact: true })}
+          <div className="quick-actions">
+            <button type="button" onClick={() => openScoutSubmitFlow({ source: "forecast-protected" })}>Submit Scout Report</button>
+            <button type="button" className="secondary-button" onClick={() => setScoutView("reports")}>View current reports</button>
+          </div>
+        </section>
+      );
+    }
     return (
       <section className="panel scout-subpage-panel">
         <div className="compact-card-header">
@@ -33079,6 +33122,31 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </section>
         </div>
       </section>
+    );
+  }
+
+  function renderScoutTierLockCard({ compact = false } = {}) {
+    return (
+      <article className={`panel scout-tier-lock-card${compact ? " compact" : ""}`} data-qa="scout-tier-lock-card">
+        <div className="compact-card-header">
+          <div>
+            <p className="section-kicker">Scout access foundation</p>
+            <h2>Fair access, not raw patterns.</h2>
+            <p>Free users help the community and follow 1 Scout store. Collector unlocks 3 Scout stores and deeper current Scout details.</p>
+          </div>
+          <span className="status-badge">Protected</span>
+        </div>
+        <div className="scout-tier-lock-list">
+          <span>Family includes Collector plus parent-managed kid profiles.</span>
+          <span>Seller adds Forge business tools.</span>
+          <span>Users follow selected stores. They do not get the whole network.</span>
+          <span>Raw restock patterns are protected to keep Scout fair.</span>
+        </div>
+        <div className="quick-actions">
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("membership")}>View beta pricing</button>
+          <button type="button" className="ghost-button" onClick={() => openScoutSubmitFlow({ source: "scout-tier-foundation" })}>Submit Scout Report</button>
+        </div>
+      </article>
     );
   }
 
@@ -35475,26 +35543,85 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderMembershipFoundation() {
-    const plan = getEffectivePlan(currentUserProfile);
+    const plan = tierAccess.planTier;
+    const planLabel = tierAccess.tierLabel || TIER_LABELS[currentTier] || "Free";
     const trialActive = isTrialActive(currentUserProfile);
+    const tierCards = getTierPricingCards();
+    const addOns = getTierAddOns();
     return (
-      <section className="panel membership-foundation-panel">
+      <section className="panel membership-foundation-panel tier-foundation-panel" data-qa="tier-pricing-explainer">
         <div className="compact-card-header">
           <div>
             <h2>Membership Foundation</h2>
-            <p>Paid tiers are planned, but Stripe and checkout are not connected in this beta task.</p>
+            <p>Beta launch pricing is modeled for feature gates. Checkout is not live; upgrades are admin-managed during beta.</p>
           </div>
-          <span className="status-badge">{plan}</span>
+          <span className="status-badge">{planLabel}</span>
         </div>
         <div className="cards mini-cards">
-          <div className="card"><p>Current plan</p><h2>{plan}</h2></div>
+          <div className="card"><p>Current plan</p><h2>{planLabel}</h2></div>
           <div className="card"><p>Trial</p><h2>{trialActive ? "Active" : "None"}</h2></div>
-          <div className="card"><p>Watched store limit</p><h2>{String(getFeatureLimit("watched_stores", currentUserProfile))}</h2></div>
-          <div className="card"><p>Advanced exports</p><h2>{canAccessBetaFeature("marketplace_exports", currentUserProfile, actualAdminRole) ? "Allowed" : "Locked"}</h2></div>
+          <div className="card"><p>Scout stores</p><h2>{String(tierAccess.scoutStoreSlots)}</h2></div>
+          <div className="card"><p>Swap cadence</p><h2>{tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays} days` : "Admin"}</h2></div>
+          <div className="card"><p>Raw Scout history</p><h2>{tierAccess.canViewRawScoutHistory ? "Admin" : "Protected"}</h2></div>
+          <div className="card"><p>Pattern tools</p><h2>{tierAccess.canViewPatternTools ? "Admin" : "Protected"}</h2></div>
+        </div>
+        <div className="tier-foundation-note">
+          <strong>Scout fairness guardrail</strong>
+          <p>Free users can still submit and confirm Scout reports. Paid tiers unlock deeper current details for selected stores, not raw restock history, pattern tools, or all-store exact access.</p>
+        </div>
+        <div className="tier-plan-grid" aria-label="Ember & Tide public plans">
+          {tierCards.map((tier) => (
+            <article className={`tier-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>
+              <div className="tier-plan-card-top">
+                <span>{tier.id === plan ? "Current" : "Beta preview"}</span>
+                <strong>{tier.label}</strong>
+              </div>
+              <h3>{tier.price}</h3>
+              <p>{tier.summary}</p>
+              {tier.trialCopy ? <p className="tier-trial-copy">{tier.trialCopy}</p> : null}
+              {tier.futurePrice ? <p className="compact-subtitle">{tier.futurePrice}</p> : null}
+              <ul>
+                {tier.features.map((feature) => <li key={`${tier.id}-${feature}`}>{feature}</li>)}
+              </ul>
+              <button type="button" className="secondary-button" disabled>{tier.cta}</button>
+            </article>
+          ))}
+        </div>
+        <section className="tier-add-on-panel" aria-label="Membership add-ons">
+          <div className="compact-card-header">
+            <div>
+              <h3>Add-ons</h3>
+              <p>Coming soon as beta preview copy. No add-on checkout is connected.</p>
+            </div>
+            <span className="status-badge">Coming soon</span>
+          </div>
+          <div className="tier-add-on-grid">
+            {addOns.map((addOn) => (
+              <article className="tier-add-on-card" key={addOn.id}>
+                <strong>{addOn.label}</strong>
+                <span>{addOn.price}</span>
+                <p>{addOn.appliesTo}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+        <div className="tier-beta-flags">
+          <article>
+            <strong>Beta</strong>
+            <p>Early access/status flag. It can stack with Free, Collector, Family, Seller, or Shop, but it is not a paid tier.</p>
+          </article>
+          <article>
+            <strong>Admin</strong>
+            <p>Internal moderation flag with full Scout history for review, beta/report/shop/family management, and tier override for testing.</p>
+          </article>
+          <article>
+            <strong>Payment status</strong>
+            <p>Stripe, Apple, Google, and real checkout are not wired in this pass. Ask admin to upgrade during beta.</p>
+          </article>
         </div>
         <div className="quick-actions">
-          <button type="button" className="secondary-button" disabled>Upgrade coming soon</button>
-          <button type="button" className="secondary-button" disabled>14-day no-card trial coming soon</button>
+          <button type="button" className="secondary-button" disabled>Checkout coming soon</button>
+          <button type="button" className="secondary-button" onClick={() => requestLockedFeatureAccess("seller_tools")}>Ask admin to upgrade during beta</button>
         </div>
       </section>
     );
@@ -48769,12 +48896,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {renderMenuPullDown("subscription", "Plans & Features", "Free vs paid features and beta planning", (
                 <div className="drawer-links">
                   <div className="drawer-info-card">
-                    <strong>Billing coming soon.</strong>
-                    <p className="compact-subtitle">Current plan: {TIER_LABELS[currentTier] || currentPlan}. Paid gates are active for product behavior, but no payment processing or checkout is connected.</p>
+                    <strong>Beta launch pricing preview.</strong>
+                    <p className="compact-subtitle">Current plan: {TIER_LABELS[currentTier] || currentPlan}. Beta is a status flag, Admin is internal, and no payment processing or checkout is connected.</p>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Open Settings / Billing</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Request beta access</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Ask admin to upgrade during beta</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Stripe Not Connected</button>
                 </div>
               ), "plan")}
@@ -51987,7 +52114,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <div className="quick-actions">
                   <button type="button" disabled>Billing Coming Soon</button>
-                  <button type="button" className="secondary-button" onClick={() => requestLockedFeatureAccess("seller_tools")}>Request beta access</button>
+                  <button type="button" className="secondary-button" onClick={() => requestLockedFeatureAccess("seller_tools")}>Ask admin to upgrade during beta</button>
                 </div>
                 <div className="settings-groups plan-comparison-grid">
                   {PLAN_FEATURE_GROUPS.map((plan) => (

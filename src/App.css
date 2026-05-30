@@ -10040,6 +10040,206 @@ textarea {
   }
 }
 
+.tier-foundation-panel,
+.scout-tier-lock-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tier-foundation-panel .compact-card-header,
+.scout-tier-lock-card .compact-card-header {
+  align-items: start;
+  gap: 12px;
+}
+
+.tier-foundation-note,
+.scout-tier-lock-card,
+.tier-beta-flags article {
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(44, 23, 4, 0.92), rgba(9, 18, 29, 0.92));
+  box-shadow: 0 16px 42px rgba(2, 6, 23, 0.22);
+}
+
+.tier-foundation-note {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  margin: 14px 0;
+}
+
+.tier-foundation-note p,
+.tier-beta-flags p,
+.scout-tier-lock-card p,
+.scout-tier-lock-card span,
+.tier-plan-card p,
+.tier-plan-card li,
+.tier-add-on-card p {
+  overflow-wrap: anywhere;
+}
+
+.tier-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.tier-plan-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.74);
+}
+
+.tier-plan-card.current {
+  border-color: rgba(245, 158, 11, 0.48);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.12);
+}
+
+.tier-plan-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tier-plan-card-top span,
+.tier-trial-copy,
+.tier-add-on-card span {
+  color: var(--color-accent, #f59e0b);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tier-plan-card h3 {
+  margin: 0;
+  font-size: clamp(1rem, 1.8vw, 1.28rem);
+  line-height: 1.15;
+}
+
+.tier-plan-card ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.tier-plan-card button[disabled] {
+  justify-self: start;
+  opacity: 0.72;
+}
+
+.tier-add-on-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.tier-add-on-grid,
+.tier-beta-flags {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.tier-add-on-card,
+.tier-beta-flags article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.tier-add-on-card {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.56);
+}
+
+.scout-tier-lock-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.scout-tier-lock-card.compact {
+  border-radius: 14px;
+}
+
+.scout-tier-lock-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.scout-tier-lock-list span {
+  display: block;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.scout-protected-context .scout-report-detail-row,
+.scout-protected-forecast-panel .scout-tier-lock-card {
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.app .tier-foundation-panel .compact-card-header .status-badge,
+.app-command-shell .tier-foundation-panel .compact-card-header .status-badge,
+.app-shell-dark .tier-foundation-panel .compact-card-header .status-badge,
+.app .scout-tier-lock-card .compact-card-header .status-badge,
+.app-command-shell .scout-tier-lock-card .compact-card-header .status-badge,
+.app-shell-dark .scout-tier-lock-card .compact-card-header .status-badge {
+  align-self: flex-start !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 28px !important;
+  max-height: 34px !important;
+}
+
+@media (max-width: 640px) {
+  .tier-plan-grid,
+  .tier-add-on-grid,
+  .tier-beta-flags,
+  .scout-tier-lock-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tier-plan-card,
+  .tier-foundation-note,
+  .tier-add-on-card,
+  .tier-beta-flags article,
+  .scout-tier-lock-card {
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .tier-plan-card-top {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .tier-plan-card button[disabled],
+  .scout-tier-lock-card .quick-actions button,
+  .tier-foundation-panel .quick-actions button {
+    width: 100%;
+  }
+}
+
 /* Mobile Navigation + Scan Anything stabilization */
 @media (max-width: 640px) {
   body.menu-open {

@@ -53,6 +53,7 @@ const CORE_PROMPTS = [
   "How do alerts work?",
   "How do I use Forge for business records?",
   "How do I submit a restock report?",
+  "What do tiers unlock?",
   "How do I message admin?",
   "How do I join the Kids Program?",
 ];
@@ -75,6 +76,7 @@ const VAULT_FORGE_WORDS = /\b(vault|forge|sell|sale price|planned sale|inventory
 const VALUATION_WORDS = /\b(cost basis|market value|price missing|missing price|manual price|manual value|stale price|msrp|exact value|review prices?|price review|estimated profit|profit dashboard|planned sale price|planned price|collection worth|inventory worth|purchaser breakdown|zena and dillon|zena.*dillon|tax advice|financial advice)\b/i;
 const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price|checkout|payment|pay through|buy through)\b/i;
 const TIDEPOOL_WORDS = /\b(tidepool|community post|post safely|why is my post pending|report a post|flag a post|can kids post|community board)\b/i;
+const TIER_WORDS = /\b(tier|tiers|plan|plans|pricing|subscription|subscribe|upgrade|trial|collector plan|family plan|seller plan|shop basic|shop plus|add[-\s]?on|addon|paid tier|billing)\b/i;
 
 function safeJsonParse(value, fallback) {
   try {
@@ -249,6 +251,13 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
   if (context.permissionDenied || /\b(blocked|permission denied|admin role|why am i blocked|user status)\b/i.test(text)) {
     return response("You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth.", {
       actions: ["Message Admin", "Return to Hearth"],
+      category: "Account/beta access question",
+    });
+  }
+
+  if (TIER_WORDS.test(text)) {
+    return response("Ember & Tide public plans are Free, Collector, Family, Seller, and Shop. Free is $0 and still lets users submit, confirm, and add proof/context to Scout reports. Collector is $1.99/month beta pricing with a planned 7-day free trial, later $2.99/month; it follows 3 Scout stores and unlocks deeper current details for selected stores. Family is $3.99/month beta pricing with a planned 7-day trial, later $4.99/month; it includes Collector plus 2 private, parent-managed kid profiles. Seller is $5.99/month beta pricing with a planned 7-day trial, later $7.99/month; it adds Forge business tools. Shop has Shop Basic at $19/month and Shop Plus at $39/month for shop profiles and directory tools. Add-ons are coming soon for extra kids, adults, Scout stores, business partners, staff seats, and shop locations. Beta is an early-access flag, Admin is internal, and checkout is not live yet, so ask admin to upgrade during beta. Paid tiers unlock better current selected-store details, not raw Scout history or restock pattern tools.", {
+      actions: ["Open Membership Foundation", "Message Admin", "Open Scout Report"],
       category: "Account/beta access question",
     });
   }

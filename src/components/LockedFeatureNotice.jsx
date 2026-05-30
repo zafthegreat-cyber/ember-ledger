@@ -19,10 +19,10 @@ export default function LockedFeatureNotice({
       <p>{tierName}</p>
       <h2>{featureName}</h2>
       <p>{description}</p>
-      <p className="compact-subtitle">Billing coming soon. No payment processing is connected in this beta build.</p>
+      <p className="compact-subtitle">Beta launch pricing is a preview. No payment processing or live checkout is connected in this beta build.</p>
       <div className="quick-actions">
         <button type="button" className="secondary-button" onClick={onRequestAccess}>
-          Request beta access
+          Ask admin to upgrade during beta
         </button>
         {onClose ? (
           <button type="button" className="ghost-button" onClick={onClose}>

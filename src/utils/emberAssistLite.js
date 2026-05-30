@@ -40,6 +40,7 @@ const CORE_PROMPTS = [
   "How do alerts work?",
   "How do I use Forge for business records?",
   "How do I submit a restock report?",
+  "What do tiers unlock?",
   "How do I message admin?",
   "How do I join the Kids Program?",
 ];

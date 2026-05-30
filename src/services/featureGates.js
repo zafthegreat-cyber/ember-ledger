@@ -1,20 +1,40 @@
 export const PLAN_IDS = {
   FREE: "free",
-  COLLECTOR_PLUS: "collector_plus",
-  SELLER_PRO: "seller_pro",
-  SCOUT_PREMIUM: "scout_premium",
-  ULTIMATE: "ultimate",
+  COLLECTOR: "collector",
+  FAMILY: "family",
+  SELLER: "seller",
+  SHOP: "shop",
   ADMIN: "admin",
+
+  // Legacy constants kept so older stored profiles and imports normalize cleanly.
+  COLLECTOR_PLUS: "collector",
+  SELLER_PRO: "seller",
+  SCOUT_PREMIUM: "collector",
+  ULTIMATE: "seller",
+  SHOP_BASIC: "shop",
+  SHOP_PLUS: "shop",
 };
 
 export const PLAN_TYPES = {
-  ...PLAN_IDS,
+  FREE: "free",
+  COLLECTOR: "collector",
+  FAMILY: "family",
+  SELLER: "seller",
+  SHOP: "shop",
+  ADMIN: "admin",
+
+  COLLECTOR_PLUS: "collector_plus",
+  SELLER_PRO: "seller_pro",
+  SCOUT_PREMIUM: "scout_premium",
   SCOUT_PRO: "scout_pro",
+  ULTIMATE: "ultimate",
   ALL_ACCESS: "all_access",
   PLUS: "plus",
   PRO: "pro",
   FOUNDER: "founder",
   PAID: "paid",
+  SHOP_BASIC: "shop_basic",
+  SHOP_PLUS: "shop_plus",
 };
 
 export const USER_ROLES = {
@@ -26,55 +46,267 @@ export const USER_ROLES = {
   USER: "user",
 };
 
-export const TIER_ORDER = [
+export const PUBLIC_TIER_ORDER = [
   PLAN_IDS.FREE,
-  PLAN_IDS.COLLECTOR_PLUS,
-  PLAN_IDS.SELLER_PRO,
-  PLAN_IDS.SCOUT_PREMIUM,
-  PLAN_IDS.ULTIMATE,
+  PLAN_IDS.COLLECTOR,
+  PLAN_IDS.FAMILY,
+  PLAN_IDS.SELLER,
+  PLAN_IDS.SHOP,
 ];
+
+export const TIER_ORDER = PUBLIC_TIER_ORDER;
 
 export const SUBSCRIPTION_STATUSES = ["active", "inactive", "trialing", "canceled", "past_due"];
 
 export const PLAN_LABELS = {
   [PLAN_IDS.FREE]: "Free",
-  [PLAN_IDS.COLLECTOR_PLUS]: "Collector Plus",
-  [PLAN_IDS.SELLER_PRO]: "Seller Pro",
-  [PLAN_IDS.SCOUT_PREMIUM]: "Scout Premium",
-  [PLAN_IDS.ULTIMATE]: "Ultimate",
+  [PLAN_IDS.COLLECTOR]: "Collector",
+  [PLAN_IDS.FAMILY]: "Family",
+  [PLAN_IDS.SELLER]: "Seller",
+  [PLAN_IDS.SHOP]: "Shop",
   [PLAN_IDS.ADMIN]: "Admin",
-  plus: "Collector Plus",
-  pro: "Seller Pro",
-  paid: "Seller Pro",
-  scout_pro: "Scout Premium",
-  all_access: "Ultimate",
-  founder: "Ultimate",
+  collector_plus: "Collector",
+  seller_pro: "Seller",
+  scout_premium: "Collector",
+  scout_pro: "Collector",
+  ultimate: "Seller",
+  all_access: "Seller",
+  plus: "Collector",
+  pro: "Seller",
+  paid: "Seller",
+  founder: "Seller",
+  shop_basic: "Shop",
+  shop_plus: "Shop",
 };
 
 export const TIER_LABELS = PLAN_LABELS;
 
-const ALL_PLANS = [
-  PLAN_IDS.FREE,
-  PLAN_IDS.COLLECTOR_PLUS,
-  PLAN_IDS.SELLER_PRO,
-  PLAN_IDS.SCOUT_PREMIUM,
-  PLAN_IDS.ULTIMATE,
-  PLAN_IDS.ADMIN,
+export const TIER_PRICING = {
+  [PLAN_IDS.FREE]: {
+    id: PLAN_IDS.FREE,
+    label: "Free",
+    price: "$0",
+    summary: "Basic Scout contribution, Vault, Market, Ember Assist, and The Spark access.",
+    trialCopy: "No trial needed.",
+    futurePrice: "",
+    cta: "Included during beta",
+    features: [
+      "Follow 1 Scout store",
+      "Change Scout store once every 30 days",
+      "Submit and confirm Scout reports",
+      "Add proof or context where supported",
+      "Limited current Scout details",
+      "Basic Vault, Market, Ember Assist, and The Spark",
+      "No raw Scout history or restock pattern tools",
+    ],
+  },
+  [PLAN_IDS.COLLECTOR]: {
+    id: PLAN_IDS.COLLECTOR,
+    label: "Collector",
+    price: "$1.99/month beta price",
+    summary: "More selected-store Scout context plus collection, wishlist, and set-progress tools.",
+    trialCopy: "7-day free trial planned for launch.",
+    futurePrice: "Later $2.99/month.",
+    cta: "Ask admin to upgrade during beta",
+    features: [
+      "Everything in Free",
+      "Follow 3 Scout stores",
+      "Swap 1 Scout store every 14 days",
+      "Deeper current Scout details for selected stores",
+      "Collection tools, wishlist/chase list, and binder/set progress",
+      "Saved Market searches/watchlists where supported",
+      "No all-store exact Scout access, raw history, or pattern tools",
+    ],
+  },
+  [PLAN_IDS.FAMILY]: {
+    id: PLAN_IDS.FAMILY,
+    label: "Family",
+    price: "$3.99/month beta price",
+    summary: "Collector tools plus parent-managed kid profiles and family collection views.",
+    trialCopy: "7-day free trial planned for launch.",
+    futurePrice: "Later $4.99/month.",
+    cta: "Ask admin to upgrade during beta",
+    features: [
+      "Everything in Collector",
+      "1 primary adult included",
+      "2 kid profiles included",
+      "Family Vault and kid-safe Vault views",
+      "Kid wishlists, chase lists, and collection progress",
+      "Parent-managed privacy and sharing",
+      "The Spark family reminders",
+    ],
+  },
+  [PLAN_IDS.SELLER]: {
+    id: PLAN_IDS.SELLER,
+    label: "Seller",
+    price: "$5.99/month beta price",
+    summary: "Collector tools plus Forge business tracking for sellers.",
+    trialCopy: "7-day free trial planned for launch.",
+    futurePrice: "Later $7.99/month.",
+    cta: "Ask admin to upgrade during beta",
+    features: [
+      "Collector features plus Forge business tools",
+      "Forge sales and expense tracking",
+      "Cost basis, profit/loss, inventory value, and seller dashboard",
+      "Export/tax-support summaries",
+      "Business partner add-on copy",
+      "Does not unlock raw Scout history, patterns, or all-store exact access",
+    ],
+  },
+  [PLAN_IDS.SHOP]: {
+    id: PLAN_IDS.SHOP,
+    label: "Shop",
+    price: "Shop Basic $19/month",
+    summary: "Shop profile and directory foundation for family-friendly local shops.",
+    trialCopy: "Shop Plus $39/month. Trusted status is approval-based.",
+    futurePrice: "Checkout coming soon; beta upgrades are admin-managed.",
+    cta: "Ask admin about shop access",
+    features: [
+      "Shop profile and family-friendly shop directory",
+      "Store rules, limits, events, and donation/support interest",
+      "Trusted Family Friend application",
+      "Featured placement for Shop Plus",
+      "Trusted badge is approval-based, not automatic payment-based",
+      "Staff seat and extra location add-on copy",
+    ],
+  },
+};
+
+export const TIER_ADD_ONS = [
+  { id: "extra_kid_profile", label: "Extra kid profile", price: "$0.99/month", appliesTo: "Family", status: "Coming soon" },
+  { id: "extra_adult_family_member", label: "Extra adult family member", price: "$0.99/month", appliesTo: "Family", status: "Coming soon" },
+  { id: "extra_scout_store", label: "Extra Scout store", price: "$0.99/month", appliesTo: "Collector, Family, Seller", status: "Coming soon" },
+  { id: "seller_business_partner", label: "Seller/business partner", price: "$1.99/month", appliesTo: "Seller", status: "Coming soon" },
+  { id: "shop_staff_seat", label: "Shop staff seat", price: "$2.99/month", appliesTo: "Shop", status: "Coming soon" },
+  { id: "extra_shop_location", label: "Extra shop location", price: "$9.99/month", appliesTo: "Shop", status: "Coming soon" },
 ];
-const COLLECTOR_PLANS = [PLAN_IDS.COLLECTOR_PLUS, PLAN_IDS.ULTIMATE, PLAN_IDS.ADMIN];
-const SELLER_PLANS = [PLAN_IDS.SELLER_PRO, PLAN_IDS.ULTIMATE, PLAN_IDS.ADMIN];
-const SCOUT_PLANS = [PLAN_IDS.SCOUT_PREMIUM, PLAN_IDS.ULTIMATE, PLAN_IDS.ADMIN];
-const ULTIMATE_PLANS = [PLAN_IDS.ULTIMATE, PLAN_IDS.ADMIN];
+
+export const TIER_ACCESS_RULES = {
+  [PLAN_IDS.FREE]: {
+    scoutStoreSlots: 1,
+    scoutStoreSwapDays: 30,
+    maxKidProfilesIncluded: 0,
+    maxExtraKidProfiles: 0,
+    maxAdultMembersIncluded: 1,
+    maxExtraAdultMembers: 0,
+    canCreateKidProfiles: false,
+    canManageFamilyProfiles: false,
+    canUseKidSafeVault: false,
+    canUseForgeAdvancedSellerTools: false,
+    canUseShopProfileTools: false,
+    canAccessAdminModeration: false,
+    canViewRawScoutHistory: false,
+    canViewPatternTools: false,
+  },
+  [PLAN_IDS.COLLECTOR]: {
+    scoutStoreSlots: 3,
+    scoutStoreSwapDays: 14,
+    maxKidProfilesIncluded: 0,
+    maxExtraKidProfiles: 0,
+    maxAdultMembersIncluded: 1,
+    maxExtraAdultMembers: 0,
+    canCreateKidProfiles: false,
+    canManageFamilyProfiles: false,
+    canUseKidSafeVault: false,
+    canUseForgeAdvancedSellerTools: false,
+    canUseShopProfileTools: false,
+    canAccessAdminModeration: false,
+    canViewRawScoutHistory: false,
+    canViewPatternTools: false,
+  },
+  [PLAN_IDS.FAMILY]: {
+    scoutStoreSlots: 3,
+    scoutStoreSwapDays: 14,
+    maxKidProfilesIncluded: 2,
+    maxExtraKidProfiles: 6,
+    maxAdultMembersIncluded: 1,
+    maxExtraAdultMembers: 4,
+    canCreateKidProfiles: true,
+    canManageFamilyProfiles: true,
+    canUseKidSafeVault: true,
+    canUseForgeAdvancedSellerTools: false,
+    canUseShopProfileTools: false,
+    canAccessAdminModeration: false,
+    canViewRawScoutHistory: false,
+    canViewPatternTools: false,
+  },
+  [PLAN_IDS.SELLER]: {
+    scoutStoreSlots: 3,
+    scoutStoreSwapDays: 14,
+    maxKidProfilesIncluded: 0,
+    maxExtraKidProfiles: 0,
+    maxAdultMembersIncluded: 1,
+    maxExtraAdultMembers: 0,
+    canCreateKidProfiles: false,
+    canManageFamilyProfiles: false,
+    canUseKidSafeVault: false,
+    canUseForgeAdvancedSellerTools: true,
+    canUseShopProfileTools: false,
+    canAccessAdminModeration: false,
+    canViewRawScoutHistory: false,
+    canViewPatternTools: false,
+  },
+  [PLAN_IDS.SHOP]: {
+    scoutStoreSlots: 1,
+    scoutStoreSwapDays: 30,
+    maxKidProfilesIncluded: 0,
+    maxExtraKidProfiles: 0,
+    maxAdultMembersIncluded: 1,
+    maxExtraAdultMembers: 0,
+    canCreateKidProfiles: false,
+    canManageFamilyProfiles: false,
+    canUseKidSafeVault: false,
+    canUseForgeAdvancedSellerTools: false,
+    canUseShopProfileTools: true,
+    canAccessAdminModeration: false,
+    canViewRawScoutHistory: false,
+    canViewPatternTools: false,
+  },
+  [PLAN_IDS.ADMIN]: {
+    scoutStoreSlots: 999,
+    scoutStoreSwapDays: 0,
+    maxKidProfilesIncluded: 999,
+    maxExtraKidProfiles: 999,
+    maxAdultMembersIncluded: 999,
+    maxExtraAdultMembers: 999,
+    canCreateKidProfiles: true,
+    canManageFamilyProfiles: true,
+    canUseKidSafeVault: true,
+    canUseForgeAdvancedSellerTools: true,
+    canUseShopProfileTools: true,
+    canAccessAdminModeration: true,
+    canViewRawScoutHistory: true,
+    canViewPatternTools: true,
+  },
+};
+
+const ALL_PUBLIC_PLANS = [...PUBLIC_TIER_ORDER, PLAN_IDS.ADMIN];
+const COLLECTOR_PLANS = [PLAN_IDS.COLLECTOR, PLAN_IDS.FAMILY, PLAN_IDS.SELLER, PLAN_IDS.ADMIN];
+const FAMILY_PLANS = [PLAN_IDS.FAMILY, PLAN_IDS.ADMIN];
+const SELLER_PLANS = [PLAN_IDS.SELLER, PLAN_IDS.ADMIN];
+const SHOP_PLANS = [PLAN_IDS.SHOP, PLAN_IDS.ADMIN];
 const ADMIN_PLANS = [PLAN_IDS.ADMIN];
+const SCOUT_CURRENT_DETAIL_PLANS = [PLAN_IDS.COLLECTOR, PLAN_IDS.FAMILY, PLAN_IDS.SELLER, PLAN_IDS.ADMIN];
+const SCOUT_PROTECTED_PLANS = ADMIN_PLANS;
+
+export const SCOUT_PROTECTED_FEATURES = new Set([
+  "scout_route_planner",
+  "restock_predictions",
+  "watchlist_route_planning",
+  "advanced_store_history",
+  "scout_predictions",
+  "scout_pattern_tools",
+  "scout_raw_history",
+]);
 
 export const FEATURE_GATES = {
-  vault_basic: ALL_PLANS,
-  catalog_basic_search: ALL_PLANS,
-  manual_add: ALL_PLANS,
-  wishlist_basic: ALL_PLANS,
-  scout_reports_basic: ALL_PLANS,
-  marketplace_draft_basic: ALL_PLANS,
-  scanner_search_limited: ALL_PLANS,
+  vault_basic: ALL_PUBLIC_PLANS,
+  catalog_basic_search: ALL_PUBLIC_PLANS,
+  manual_add: ALL_PUBLIC_PLANS,
+  wishlist_basic: ALL_PUBLIC_PLANS,
+  scout_reports_basic: ALL_PUBLIC_PLANS,
+  marketplace_draft_basic: ALL_PUBLIC_PLANS,
+  scanner_search_limited: ALL_PUBLIC_PLANS,
 
   unlimited_vault: COLLECTOR_PLANS,
   unlimited_scans: COLLECTOR_PLANS,
@@ -85,6 +317,14 @@ export const FEATURE_GATES = {
   variants: COLLECTOR_PLANS,
   graded_slab_tracking: COLLECTOR_PLANS,
   collection_export: COLLECTOR_PLANS,
+  saved_market_searches: COLLECTOR_PLANS,
+  scout_current_details: SCOUT_CURRENT_DETAIL_PLANS,
+
+  family_vault: FAMILY_PLANS,
+  kid_profiles: FAMILY_PLANS,
+  kid_safe_vault: FAMILY_PLANS,
+  kid_wishlists: FAMILY_PLANS,
+  spark_family_reminders: FAMILY_PLANS,
 
   forge_inventory: SELLER_PLANS,
   sales_tracking: SELLER_PLANS,
@@ -98,38 +338,45 @@ export const FEATURE_GATES = {
   cross_listing_status: SELLER_PLANS,
   business_reports: SELLER_PLANS,
 
-  scout_route_planner: SCOUT_PLANS,
-  restock_predictions: SCOUT_PLANS,
-  store_confidence_scores: SCOUT_PLANS,
-  watchlist_route_planning: SCOUT_PLANS,
-  advanced_store_history: SCOUT_PLANS,
-  text_alerts: SCOUT_PLANS,
-  online_monitor: SCOUT_PLANS,
-  auto_open_page: SCOUT_PLANS,
+  shop_profile_tools: SHOP_PLANS,
+  shop_directory_profile: SHOP_PLANS,
+  shop_event_support: SHOP_PLANS,
+  shop_featured_placement: SHOP_PLANS,
 
-  shared_workspace: ULTIMATE_PLANS,
-  team_access: ULTIMATE_PLANS,
-  advanced_reports: ULTIMATE_PLANS,
-  priority_alerts: ULTIMATE_PLANS,
-  export_tools: ULTIMATE_PLANS,
+  scout_route_planner: SCOUT_PROTECTED_PLANS,
+  restock_predictions: SCOUT_PROTECTED_PLANS,
+  store_confidence_scores: SCOUT_CURRENT_DETAIL_PLANS,
+  watchlist_route_planning: SCOUT_PROTECTED_PLANS,
+  advanced_store_history: SCOUT_PROTECTED_PLANS,
+  scout_pattern_tools: SCOUT_PROTECTED_PLANS,
+  scout_raw_history: SCOUT_PROTECTED_PLANS,
+  text_alerts: SCOUT_CURRENT_DETAIL_PLANS,
+  online_monitor: SCOUT_CURRENT_DETAIL_PLANS,
+  auto_open_page: SCOUT_CURRENT_DETAIL_PLANS,
+
+  shared_workspace: FAMILY_PLANS,
+  team_access: [...FAMILY_PLANS, PLAN_IDS.SELLER],
+  advanced_reports: SELLER_PLANS,
+  priority_alerts: SCOUT_CURRENT_DETAIL_PLANS,
+  export_tools: SELLER_PLANS,
 
   admin_review: ADMIN_PLANS,
   admin_catalog_manage: ADMIN_PLANS,
   admin_store_manage: ADMIN_PLANS,
 
   // Legacy feature keys used by current UI.
-  catalog_basic: ALL_PLANS,
+  catalog_basic: ALL_PUBLIC_PLANS,
   catalog_advanced: COLLECTOR_PLANS,
   catalog_advanced_details: COLLECTOR_PLANS,
-  collection_basic: ALL_PLANS,
-  stores_basic: ALL_PLANS,
-  restock_reports_basic: ALL_PLANS,
-  scout_view_reports: ALL_PLANS,
-  scout_submit_reports: ALL_PLANS,
-  scout_alerts: SCOUT_PLANS,
-  scout_predictions: SCOUT_PLANS,
-  scout_verified_tips: SCOUT_PLANS,
-  alerts_advanced: SCOUT_PLANS,
+  collection_basic: ALL_PUBLIC_PLANS,
+  stores_basic: ALL_PUBLIC_PLANS,
+  restock_reports_basic: ALL_PUBLIC_PLANS,
+  scout_view_reports: ALL_PUBLIC_PLANS,
+  scout_submit_reports: ALL_PUBLIC_PLANS,
+  scout_alerts: SCOUT_CURRENT_DETAIL_PLANS,
+  scout_predictions: SCOUT_PROTECTED_PLANS,
+  scout_verified_tips: SCOUT_CURRENT_DETAIL_PLANS,
+  alerts_advanced: SCOUT_CURRENT_DETAIL_PLANS,
   seller_tools: SELLER_PLANS,
   forge_sales: SELLER_PLANS,
   forge_expenses: SELLER_PLANS,
@@ -139,13 +386,13 @@ export const FEATURE_GATES = {
   vault_unlimited: COLLECTOR_PLANS,
   vault_scan_add: COLLECTOR_PLANS,
   vault_export: COLLECTOR_PLANS,
-  deal_calculator_limited: ALL_PLANS,
+  deal_calculator_limited: ALL_PUBLIC_PLANS,
   deal_calculator_unlimited: SELLER_PLANS,
-  deal_checker_basic: ALL_PLANS,
+  deal_checker_basic: ALL_PUBLIC_PLANS,
   deal_checker_advanced: SELLER_PLANS,
   market_price_history: COLLECTOR_PLANS,
   cross_listing: SELLER_PLANS,
-  founder_tools: ULTIMATE_PLANS,
+  founder_tools: ADMIN_PLANS,
   admin_tools: ADMIN_PLANS,
 };
 
@@ -168,6 +415,13 @@ export const FEATURE_LABELS = {
   variants: "Variants",
   graded_slab_tracking: "Graded/Slab Tracking",
   collection_export: "Collection Export",
+  saved_market_searches: "Saved Market Searches",
+  scout_current_details: "Deeper Current Scout Details",
+  family_vault: "Family Vault",
+  kid_profiles: "Kid Profiles",
+  kid_safe_vault: "Kid-safe Vault",
+  kid_wishlists: "Kid Wishlists",
+  spark_family_reminders: "The Spark Family Reminders",
   forge_inventory: "Forge Inventory",
   sales_tracking: "Sales Tracking",
   expenses: "Expenses",
@@ -179,11 +433,17 @@ export const FEATURE_LABELS = {
   listing_prep: "Whatnot/eBay/Facebook Listing Prep",
   cross_listing_status: "Cross-listing Status",
   business_reports: "Business Reports",
-  scout_route_planner: "Scout Route Planner",
-  restock_predictions: "Predicted Restock Windows",
+  shop_profile_tools: "Shop Profile Tools",
+  shop_directory_profile: "Shop Directory Profile",
+  shop_event_support: "Shop Event/Support Interest",
+  shop_featured_placement: "Shop Plus Featured Placement",
+  scout_route_planner: "Protected Scout Route Planner",
+  restock_predictions: "Protected Restock Pattern Tools",
   store_confidence_scores: "Store Confidence Scores",
-  watchlist_route_planning: "Watchlist Route Planning",
-  advanced_store_history: "Advanced Store History",
+  watchlist_route_planning: "Protected Watchlist Route Planning",
+  advanced_store_history: "Protected Scout History",
+  scout_pattern_tools: "Protected Scout Pattern Tools",
+  scout_raw_history: "Protected Raw Scout History",
   text_alerts: "Text Alerts",
   online_monitor: "Online Monitor",
   auto_open_page: "Auto-open Page",
@@ -204,7 +464,7 @@ export const FEATURE_LABELS = {
   scout_view_reports: "Scout Reports",
   scout_submit_reports: "Submit Scout Reports",
   scout_alerts: "Scout Alerts",
-  scout_predictions: "Scout Predictions",
+  scout_predictions: "Protected Scout Predictions",
   scout_verified_tips: "Verified Scout Tips",
   alerts_advanced: "Advanced Alerts",
   seller_tools: "Seller / Forge Tools",
@@ -222,7 +482,7 @@ export const FEATURE_LABELS = {
   deal_checker_advanced: "Advanced Deal Checker",
   market_price_history: "Market Price History",
   cross_listing: "Cross-listing",
-  founder_tools: "Ultimate Tools",
+  founder_tools: "Admin Override Tools",
   admin_tools: "Admin Tools",
 };
 
@@ -230,10 +490,18 @@ export const FEATURE_DESCRIPTIONS = {
   receipt_scan_review: "Scan or upload a receipt, review extracted lines, choose destinations, and submit a verified report.",
   deal_finder: "Evaluate deal pricing, market value, MSRP, ROI, and save deal checks.",
   marketplace_exports: "Export marketplace drafts to CSV formats for listing prep.",
-  scout_route_planner: "Plan store runs using watchlists, distance, and store confidence.",
-  restock_predictions: "View predicted restock windows and restock confidence.",
+  scout_route_planner: "Protected Scout route planning is reserved for admin moderation and future governed access.",
+  restock_predictions: "Raw restock patterns are protected to keep Scout fair. Paid tiers unlock deeper current selected-store details, not raw history.",
+  scout_pattern_tools: "Raw restock patterns are protected to keep Scout fair.",
+  scout_raw_history: "Full Scout history is available only for admin moderation.",
+  advanced_store_history: "Full store history is protected and not exposed to normal users.",
+  scout_current_details: "Collector, Family, and Seller plans can see deeper current details for followed stores.",
   set_completion: "Track master set progress and completion gaps.",
   portfolio_value: "Track collector cost basis, market value, and portfolio summary.",
+  family_vault: "Parent-managed family collection views for household collecting.",
+  kid_profiles: "Create private, parent-managed kid profiles.",
+  kid_safe_vault: "Use kid-safe collection views and progress tracking.",
+  shop_profile_tools: "Prepare a shop profile and family-friendly shop directory details. Trusted status is approval-based.",
   shared_workspace: "Use team/shared workspaces and permissions.",
   team_access: "Invite teammates and share selected workspaces.",
 };
@@ -253,24 +521,24 @@ export const PLAN_FEATURE_GROUPS = [
     features: ["vault_basic", "catalog_basic_search", "scanner_search_limited", "manual_add", "wishlist_basic", "scout_reports_basic", "marketplace_draft_basic"],
   },
   {
-    id: PLAN_IDS.COLLECTOR_PLUS,
-    label: PLAN_LABELS[PLAN_IDS.COLLECTOR_PLUS],
-    features: ["unlimited_vault", "unlimited_scans", "set_completion", "portfolio_value", "price_history", "wishlist_alerts", "variants", "graded_slab_tracking", "collection_export"],
+    id: PLAN_IDS.COLLECTOR,
+    label: PLAN_LABELS[PLAN_IDS.COLLECTOR],
+    features: ["unlimited_vault", "set_completion", "portfolio_value", "price_history", "wishlist_alerts", "variants", "collection_export", "saved_market_searches", "scout_current_details"],
   },
   {
-    id: PLAN_IDS.SELLER_PRO,
-    label: PLAN_LABELS[PLAN_IDS.SELLER_PRO],
-    features: ["forge_inventory", "sales_tracking", "expenses", "mileage", "receipt_scan_review", "profit_loss", "deal_finder", "marketplace_exports", "listing_prep", "cross_listing_status", "business_reports"],
+    id: PLAN_IDS.FAMILY,
+    label: PLAN_LABELS[PLAN_IDS.FAMILY],
+    features: ["family_vault", "kid_profiles", "kid_safe_vault", "kid_wishlists", "spark_family_reminders", "shared_workspace"],
   },
   {
-    id: PLAN_IDS.SCOUT_PREMIUM,
-    label: PLAN_LABELS[PLAN_IDS.SCOUT_PREMIUM],
-    features: ["scout_route_planner", "restock_predictions", "store_confidence_scores", "watchlist_route_planning", "advanced_store_history", "text_alerts", "online_monitor", "auto_open_page"],
+    id: PLAN_IDS.SELLER,
+    label: PLAN_LABELS[PLAN_IDS.SELLER],
+    features: ["forge_inventory", "sales_tracking", "expenses", "mileage", "receipt_scan_review", "profit_loss", "deal_finder", "marketplace_exports", "listing_prep", "business_reports"],
   },
   {
-    id: PLAN_IDS.ULTIMATE,
-    label: PLAN_LABELS[PLAN_IDS.ULTIMATE],
-    features: ["shared_workspace", "team_access", "advanced_reports", "priority_alerts", "export_tools"],
+    id: PLAN_IDS.SHOP,
+    label: PLAN_LABELS[PLAN_IDS.SHOP],
+    features: ["shop_profile_tools", "shop_directory_profile", "shop_event_support", "shop_featured_placement"],
   },
 ];
 
@@ -302,6 +570,8 @@ export const PROTECTED_SUBSCRIPTION_FIELDS = [
   "feature_tier",
   "featureTier",
   "tier",
+  "plan_tier",
+  "planTier",
   "app_role",
   "appRole",
   "user_role",
@@ -326,14 +596,18 @@ function runtimeQaUnlock(options = {}) {
   return envUnlock || paramUnlock;
 }
 
+function normalizePlanLikeValue(value = "") {
+  return String(value || PLAN_IDS.FREE).toLowerCase().replace(/-/g, "_").trim();
+}
+
 export function normalizeTier(value) {
-  const tier = String(value || PLAN_IDS.FREE).toLowerCase();
-  if (tier === PLAN_TYPES.PLUS) return PLAN_IDS.COLLECTOR_PLUS;
-  if (tier === PLAN_TYPES.PRO || tier === PLAN_TYPES.PAID) return PLAN_IDS.SELLER_PRO;
-  if (tier === PLAN_TYPES.SCOUT_PRO) return PLAN_IDS.SCOUT_PREMIUM;
-  if (tier === PLAN_TYPES.ALL_ACCESS || tier === PLAN_TYPES.FOUNDER) return PLAN_IDS.ULTIMATE;
+  const tier = normalizePlanLikeValue(value);
+  if (tier === PLAN_TYPES.COLLECTOR_PLUS || tier === PLAN_TYPES.PLUS || tier === PLAN_TYPES.SCOUT_PRO || tier === PLAN_TYPES.SCOUT_PREMIUM) return PLAN_IDS.COLLECTOR;
+  if (tier === PLAN_TYPES.FAMILY) return PLAN_IDS.FAMILY;
+  if (tier === PLAN_TYPES.SELLER || tier === PLAN_TYPES.SELLER_PRO || tier === PLAN_TYPES.PRO || tier === PLAN_TYPES.PAID || tier === PLAN_TYPES.ULTIMATE || tier === PLAN_TYPES.ALL_ACCESS || tier === PLAN_TYPES.FOUNDER) return PLAN_IDS.SELLER;
+  if (tier === PLAN_TYPES.SHOP || tier === PLAN_TYPES.SHOP_BASIC || tier === PLAN_TYPES.SHOP_PLUS) return PLAN_IDS.SHOP;
   if (tier === PLAN_TYPES.ADMIN) return PLAN_IDS.ADMIN;
-  return [...TIER_ORDER, PLAN_IDS.ADMIN].includes(tier) ? tier : PLAN_IDS.FREE;
+  return [...PUBLIC_TIER_ORDER, PLAN_IDS.ADMIN].includes(tier) ? tier : PLAN_IDS.FREE;
 }
 
 export function normalizeUserRole(value) {
@@ -344,8 +618,8 @@ export function normalizeUserRole(value) {
 }
 
 export function getUserTier(profile = {}) {
-  if (profile.lifetimeAccess || profile.lifetime_access) return PLAN_IDS.ULTIMATE;
-  return normalizeTier(profile.tier || profile.featureTier || profile.feature_tier || profile.subscriptionPlan || profile.subscription_plan);
+  if (profile.lifetimeAccess || profile.lifetime_access) return PLAN_IDS.SELLER;
+  return normalizeTier(profile.tier || profile.featureTier || profile.feature_tier || profile.planTier || profile.plan_tier || profile.subscriptionPlan || profile.subscription_plan);
 }
 
 export function getUserPlan(profile = {}) {
@@ -366,6 +640,17 @@ export function isBetaTester(profile = {}) {
     metadataFlag(appMetadata.beta_tester) ||
     metadataFlag(appMetadata.betaTester)
   );
+}
+
+export function isApprovedUser(profile = {}) {
+  const status = String(profile.appAccess || profile.app_access || profile.betaStatus || profile.beta_status || profile.betaAccessStatus || profile.beta_access_status || "").toLowerCase();
+  if (!status) return true;
+  return ["approved", "active", "beta", "beta_user", "admin"].includes(status);
+}
+
+export function isRestrictedUser(profile = {}) {
+  const status = String(profile.appAccess || profile.app_access || profile.betaStatus || profile.beta_status || profile.betaAccessStatus || profile.beta_access_status || "").toLowerCase();
+  return ["restricted", "paused", "denied", "blocked", "suspended"].includes(status);
 }
 
 export function isAdminUser(profile = {}) {
@@ -394,10 +679,45 @@ export function isAdminUser(profile = {}) {
   return role === USER_ROLES.OWNER || role === USER_ROLES.ADMIN || metadataAdmin || tier === PLAN_IDS.ADMIN;
 }
 
+export function getTierAccess(profile = {}, options = {}) {
+  const profileObject = typeof profile === "object" && profile !== null ? profile : { tier: profile };
+  const admin = Boolean(options.admin) || isAdminUser(profileObject);
+  const tier = admin ? PLAN_IDS.ADMIN : getUserTier(profileObject);
+  const base = TIER_ACCESS_RULES[tier] || TIER_ACCESS_RULES[PLAN_IDS.FREE];
+  return {
+    ...base,
+    plan_tier: admin ? PLAN_IDS.ADMIN : tier,
+    planTier: admin ? PLAN_IDS.ADMIN : tier,
+    tierLabel: PLAN_LABELS[admin ? PLAN_IDS.ADMIN : tier] || PLAN_LABELS[PLAN_IDS.FREE],
+    isBeta: Boolean(options.betaTester || isBetaTester(profileObject)),
+    isAdmin: admin,
+    isApproved: isApprovedUser(profileObject),
+    isRestricted: isRestrictedUser(profileObject),
+  };
+}
+
+export function getTierPricingCards() {
+  return PUBLIC_TIER_ORDER.map((tier) => TIER_PRICING[tier]).filter(Boolean);
+}
+
+export function getTierAddOns() {
+  return TIER_ADD_ONS;
+}
+
+export function getTierPricingCard(tier = PLAN_IDS.FREE) {
+  return TIER_PRICING[normalizeTier(tier)] || TIER_PRICING[PLAN_IDS.FREE];
+}
+
+function isProtectedScoutFeature(featureKey = "") {
+  return SCOUT_PROTECTED_FEATURES.has(featureKey);
+}
+
 export function canUseFeature(userPlan = PLAN_IDS.FREE, featureKey, options = {}) {
-  if (options.admin || runtimeQaUnlock(options) || options.betaTester) return true;
+  if (options.admin || runtimeQaUnlock(options)) return true;
+  const localBetaUnlock = Boolean(options.localBeta) && !isProtectedScoutFeature(featureKey);
   const profile = typeof userPlan === "object" && userPlan !== null ? userPlan : {};
-  if (typeof userPlan === "object" && (isAdminUser(profile) || isBetaTester(profile))) return true;
+  if (typeof userPlan === "object" && isAdminUser(profile)) return true;
+  if (localBetaUnlock) return true;
   const tier = typeof userPlan === "object" ? getUserTier(profile) : normalizeTier(userPlan);
   const allowedPlans = FEATURE_GATES[featureKey];
   if (!allowedPlans) return false;
@@ -406,7 +726,7 @@ export function canUseFeature(userPlan = PLAN_IDS.FREE, featureKey, options = {}
 
 export function hasPlanAccess(profile = {}, featureKey, options = {}) {
   if (options.admin || isAdminUser(profile)) return true;
-  if (runtimeQaUnlock(options) || options.betaTester || isBetaTester(profile)) return true;
+  if (runtimeQaUnlock(options) || (options.localBeta && !isProtectedScoutFeature(featureKey))) return true;
   const plan = getUserTier(profile);
   const status = profile.subscriptionStatus || profile.subscription_status || "active";
   if (plan === PLAN_IDS.ADMIN) return true;
@@ -423,8 +743,8 @@ export function getLockedFeatures(userPlan = PLAN_IDS.FREE, options = {}) {
 }
 
 export function isPaidUser(profile = {}) {
-  if (isAdminUser(profile) || isBetaTester(profile)) return true;
-  return TIER_ORDER.indexOf(getUserTier(profile)) >= TIER_ORDER.indexOf(PLAN_IDS.COLLECTOR_PLUS);
+  if (isAdminUser(profile)) return true;
+  return PUBLIC_TIER_ORDER.indexOf(getUserTier(profile)) > PUBLIC_TIER_ORDER.indexOf(PLAN_IDS.FREE);
 }
 
 export function getLockedFeatureMessage(featureKey) {
@@ -434,7 +754,7 @@ export function getLockedFeatureMessage(featureKey) {
 
 export function getUpgradePrompt(featureKey) {
   const description = FEATURE_DESCRIPTIONS[featureKey];
-  return `${getLockedFeatureMessage(featureKey)} ${description || "Billing is coming soon; request beta access if you need this during testing."}`;
+  return `${getLockedFeatureMessage(featureKey)} ${description || "Ask admin to upgrade during beta. Payments and checkout are coming soon."}`;
 }
 
 export function sanitizeUserProfileUpdates(updates = {}) {
