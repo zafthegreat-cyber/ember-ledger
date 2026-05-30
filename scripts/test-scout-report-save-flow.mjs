@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const app = fs.readFileSync("src/App.jsx", "utf8");
+const scoutPage = fs.readFileSync("src/pages/Scout.jsx", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20260523204500_scout_reports_manual_store_saves.sql", "utf8");
 const ownerPolicyMigration = fs.readFileSync("supabase/migrations/20260529123000_store_reports_owner_update_policy.sql", "utf8");
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
@@ -29,6 +30,10 @@ assert.match(app, /\^store location\$/, "Scout placeholder filtering should bloc
 assert.match(app, /sample report\|placeholder report\|fake report\|mock report\|demo report\|test report/, "Scout placeholder filtering should block sample/fake report text");
 assert.match(app, /Scout report saved locally\./, "Scout submit should show a visible local-save fallback");
 assert.match(app, /Couldn't save Scout report\./, "Scout submit should show a visible save error");
+assert.match(scoutPage, /const canManageScoutReport = adminMode \|\| isUserOwnedScoutReport\(report\)/, "Scout page cards should gate edit actions to owners or admins");
+assert.match(scoutPage, /actions=\{compactReportActions\}/, "Scout page card overflow actions should use permission-filtered actions");
+assert.match(scoutPage, /onDelete=\{adminMode \? \(\) => setDeleteReportTarget\(report\) : null\}/, "Admins should be able to delete visible Scout reports");
+assert.doesNotMatch(scoutPage, /adminMode && isUserOwnedScoutReport\(selectedReportTarget\) \? <button type="button" className="delete-button"/, "Admin report deletion should not be limited to admin-owned reports");
 
 assert.match(migration, /alter column store_id drop not null/i, "store_reports should allow directory/manual reports without a stores.id UUID");
 assert.match(migration, /store_reports_store_name_time_idx/i, "manual store reports should be indexable by store name and time");

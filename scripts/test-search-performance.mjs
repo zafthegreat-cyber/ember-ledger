@@ -16,7 +16,8 @@ assert.match(app, /const deferredAppSearchQuery = useDeferredValue\(appSearchQue
 assert.match(app, /const deferredVaultSearch = useDeferredValue\(vaultSearch\)/);
 assert.match(app, /const deferredInventorySearch = useDeferredValue\(inventorySearch\)/);
 assert.match(app, /const deferredImportCatalogSearch = useDeferredValue\(importCatalogSearch\)/);
-assert.match(app, /const filteredItems = useMemo/);
+assert.match(app, /const filteredForgeGroups = useMemo/);
+assert.match(app, /const groupedSortedFilteredItems = useMemo/);
 assert.match(app, /deferredInventorySearch\.toLowerCase\(\)/);
 assert.match(app, /searchVaultItems\(filterVaultItems\(vaultItems, vaultFilter\), deferredVaultSearch\)/);
 

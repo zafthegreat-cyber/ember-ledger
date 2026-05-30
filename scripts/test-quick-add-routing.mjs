@@ -133,6 +133,9 @@ assert.match(appSource, /Scan Receipt/);
 assert.match(appSource, /add-anything-option--locked/);
 assert.match(appSource, /Scout screenshot\/photo review/);
 assert.match(appSource, /quickAddScoutScanValidation/);
+assert.match(appSource, /scoutScanSourceText/);
+assert.match(appSource, /Source text/);
+assert.match(appSource, /sourceText/);
 assert.match(appSource, /Add the store or store name before saving\./);
 assert.match(appSource, /Add observed date\/time or mark the time unknown\./);
 assert.match(appSource, /Add at least one item, note, or screenshot\/photo indicator\./);
@@ -143,6 +146,8 @@ assert.match(appSource, /openScoutReportDetail\(report, \{ fallback: report, foc
 assert.match(appSource, /Scan page of cards/);
 assert.match(appSource, /cardScanRows/);
 assert.match(appSource, /Add card row/);
+assert.match(appSource, /Review this card/);
+assert.match(appSource, /Review first filled card/);
 assert.match(appSource, /destination: "vault"/);
 assert.match(appSource, /Automatic card detection is coming later/);
 assert.doesNotMatch(appSource, /OCR is live|automatic OCR is live|AI extraction is live/i);

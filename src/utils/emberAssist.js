@@ -429,7 +429,7 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
         category: "The Spark/Kids Program question",
       });
     }
-    return response("Tidepool Community is the Ember & Tide board for helpful local updates, questions, family-friendly wins, events, shop notes, and safe collecting talk. Posts stay kind, public-safe, and may go through review first.", {
+    return response("Tidepool Community is the Ember & Tide community board for helpful local updates, questions, family-friendly wins, events, shop notes, and safe collecting talk. Posts stay kind, public-safe, and may go through review first.", {
       actions: ["Open Tidepool", "Send to Admin"],
       category: "Other",
     });

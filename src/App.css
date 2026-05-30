@@ -41759,6 +41759,18 @@ body,
   color: #fff8e8;
 }
 
+.quick-add-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.quick-add-row-actions button {
+  min-height: 38px;
+}
+
 .quick-add-sticky-actions {
   padding-top: 10px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
@@ -41819,6 +41831,17 @@ body,
 
   .quick-add-inline-actions button {
     flex: 1 1 150px;
+  }
+
+  .quick-add-row-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .quick-add-row-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .quick-add-sticky-actions {
@@ -51835,16 +51858,22 @@ body {
 }
 
 .app .spark-learning-grid,
+.app .spark-support-examples,
 .app-command-shell .spark-learning-grid,
-.app-shell-dark .spark-learning-grid {
+.app-command-shell .spark-support-examples,
+.app-shell-dark .spark-learning-grid,
+.app-shell-dark .spark-support-examples {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
 .app .spark-learning-grid span,
+.app .spark-support-examples span,
 .app-command-shell .spark-learning-grid span,
-.app-shell-dark .spark-learning-grid span {
+.app-command-shell .spark-support-examples span,
+.app-shell-dark .spark-learning-grid span,
+.app-shell-dark .spark-support-examples span {
   min-height: 40px;
   padding: 10px;
   border: 1px solid rgba(124, 231, 255, 0.14);
@@ -51971,7 +52000,10 @@ body {
   .app-shell-dark .spark-section-grid,
   .app .spark-learning-grid,
   .app-command-shell .spark-learning-grid,
-  .app-shell-dark .spark-learning-grid {
+  .app-shell-dark .spark-learning-grid,
+  .app .spark-support-examples,
+  .app-command-shell .spark-support-examples,
+  .app-shell-dark .spark-support-examples {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
@@ -52131,7 +52163,10 @@ body {
   .app-shell-dark .spark-section-grid,
   .app .spark-learning-grid,
   .app-command-shell .spark-learning-grid,
-  .app-shell-dark .spark-learning-grid {
+  .app-shell-dark .spark-learning-grid,
+  .app .spark-support-examples,
+  .app-command-shell .spark-support-examples,
+  .app-shell-dark .spark-support-examples {
     grid-template-columns: 1fr 1fr !important;
     gap: 7px !important;
   }

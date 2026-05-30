@@ -4099,6 +4099,11 @@ async function handleUpdateStore(e) {
     const primarySummary = visibleItems[0]
       ? summarizeReportItem(visibleItems[0], money)
       : note || stockStatus || status || "Store report";
+    const canManageScoutReport = adminMode || isUserOwnedScoutReport(report);
+    const compactReportActions = [
+      { label: "View", onClick: () => setSelectedReportTarget(report) },
+      ...(canManageScoutReport ? [{ label: adminMode ? "Edit details" : "Add details", onClick: () => startEditingReport(report) }] : []),
+    ];
     return (
       <article className="scout-report-compact-card scout-page-report-card" key={report.id || report.reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -4152,11 +4157,8 @@ async function handleUpdateStore(e) {
         <div className="scout-report-side">
           {photo ? <img src={photo} alt="" /> : <span>No photo attached</span>}
           <OverflowMenu
-            actions={[
-              { label: "View", onClick: () => setSelectedReportTarget(report) },
-              { label: "Edit", onClick: () => startEditingReport(report) },
-            ]}
-            onDelete={adminMode && isUserOwnedScoutReport(report) ? () => setDeleteReportTarget(report) : null}
+            actions={compactReportActions}
+            onDelete={adminMode ? () => setDeleteReportTarget(report) : null}
           />
         </div>
         {!options.inDetail ? (
@@ -7020,7 +7022,7 @@ async function handleUpdateStore(e) {
                 {(isUserOwnedScoutReport(selectedReportTarget) || adminMode) ? (
                   <button type="button" onClick={() => startEditingReport(selectedReportTarget)}>{adminMode ? "Edit details" : "Add details"}</button>
                 ) : null}
-                {adminMode && isUserOwnedScoutReport(selectedReportTarget) ? <button type="button" className="delete-button" onClick={() => setDeleteReportTarget(selectedReportTarget)}>Delete</button> : null}
+                {adminMode ? <button type="button" className="delete-button" onClick={() => setDeleteReportTarget(selectedReportTarget)}>Delete</button> : null}
                 <button type="button" className="secondary-button" onClick={() => setSelectedReportTarget(null)}>Close</button>
               </div>
             </section>

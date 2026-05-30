@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   SPARK_PROGRAM_STATUS_OPTIONS,
   normalizeSparkProgramStatus,
   sparkProgramStatusLabel,
   validateSparkApplication,
 } from "../src/utils/kidsProgramSafety.js";
+
+const appSource = fs.readFileSync("src/App.jsx", "utf8");
 
 const baseRequest = {
   parentName: "Parent",
@@ -42,5 +45,8 @@ assert.equal(normalizeSparkProgramStatus("waitlist"), "waitlisted");
 assert.equal(normalizeSparkProgramStatus("denied"), "not_available_yet");
 assert.equal(sparkProgramStatusLabel("fulfilled"), "Fulfilled");
 assert.equal(sparkProgramStatusLabel("not_available_yet"), "Not Available Yet");
+assert.match(appSource, /Igniting the spark within them/, "The Spark page should carry the current mission language");
+assert.match(appSource, /Other family collecting support/, "The Spark page should list broader support categories beyond bulk cards");
+assert.match(appSource, /Volunteer time/, "The Spark support examples should include non-product help");
 
 console.log("Kids Program safety tests passed.");

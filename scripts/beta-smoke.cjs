@@ -1831,7 +1831,7 @@ async function main() {
     assert.equal(Number(editedExpense?.amount), 111.11);
 
     await overflowAction(vendorModal.locator(".expense-record-card").filter({ hasText: "WALMART SUPERCENTER" }).first(), "Delete Expense");
-    const deleteExpenseDialog = page.getByRole("dialog", { name: /Delete this expense/i });
+    const deleteExpenseDialog = page.getByRole("dialog", { name: /Delete (?:this )?expense/i });
     await deleteExpenseDialog.waitFor({ state: "visible", timeout: 5000 });
     await deleteExpenseDialog.getByRole("button", { name: "Delete expense" }).click();
     await page.waitForTimeout(300);

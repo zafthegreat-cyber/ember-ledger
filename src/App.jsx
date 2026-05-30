@@ -1798,6 +1798,7 @@ function createQuickAddWizardState(overrides = {}) {
     photoFileName: "",
     photoPreviewUrl: "",
     scoutScanSourceType: "screenshot",
+    scoutScanSourceText: "",
     scoutScanPhotoUrl: "",
     scoutScanPhotoFileName: "",
     scoutScanStoreName: "",
@@ -17736,6 +17737,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const hasEvidence = Boolean(
       String(form.scoutScanItems || "").trim() ||
       String(form.scoutScanNotes || "").trim() ||
+      String(form.scoutScanSourceText || "").trim() ||
       String(form.scoutScanPhotoFileName || "").trim() ||
       String(form.scoutScanPhotoUrl || "").trim()
     );
@@ -17762,6 +17764,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       .split(/\r?\n|,/)
       .map((value) => value.trim())
       .filter(Boolean);
+    const sourceText = String(quickAddWizard.scoutScanSourceText || "").trim();
     const id = makeId("scan-scout-report");
     const report = {
       id,
@@ -17773,6 +17776,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       stockStatus: "unknown",
       sourceType: quickAddWizard.scoutScanSourceType || "screenshot",
       source_type: quickAddWizard.scoutScanSourceType || "screenshot",
+      sourceText,
+      source_text: sourceText,
+      rawSourceText: sourceText,
+      raw_source_text: sourceText,
       storeName: String(quickAddWizard.scoutScanStoreName || "").trim(),
       store_name: String(quickAddWizard.scoutScanStoreName || "").trim(),
       manualLocation: String(quickAddWizard.scoutScanStoreName || "").trim(),
@@ -17784,6 +17791,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemsSeen: itemRows.map((productName) => ({ productName, category: "Pokemon", source: "scan_anything_manual_review" })),
       reportText: [
         "Scan Anything manual Scout review.",
+        sourceText ? `Source text: ${sourceText}` : "",
         itemRows.length ? `Items/products mentioned: ${itemRows.join(", ")}` : "",
         quickAddWizard.scoutScanNotes ? `Notes: ${quickAddWizard.scoutScanNotes}` : "",
         quickAddWizard.scoutScanTimeUnknown ? "Observed date/time: unknown" : "",
@@ -17791,6 +17799,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       ].filter(Boolean).join(" | "),
       notes: [
         quickAddWizard.scoutScanNotes,
+        sourceText ? `Source text reviewed: ${sourceText}` : "",
         itemRows.length ? `Items/products mentioned: ${itemRows.join(", ")}` : "",
         quickAddWizard.scoutScanTimeUnknown ? "Observed date/time explicitly marked unknown." : "",
         quickAddWizard.scoutScanPhotoFileName ? `Source image: ${quickAddWizard.scoutScanPhotoFileName}` : "",
@@ -23635,7 +23644,7 @@ function renderForgeAccessState() {
     const expense = expenses.find((entry) => entry.id === id);
     if (!ensureWorkspaceEditor(expense?.workspaceId || expense?.workspace_id || activeWorkspace?.id)) return;
     requestAdminActionConfirmation({
-      title: "Delete this expense?",
+      title: "Delete expense?",
       message: `This removes ${expense?.vendor || "this expense"} from Forge business expenses. This cannot be undone.`,
       confirmLabel: "Delete expense",
       danger: true,
@@ -34751,6 +34760,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Set collecting",
       "How to spot fair prices",
     ];
+    const sparkSupportExamples = [
+      "Cards",
+      "Sealed products",
+      "Packs",
+      "Supplies",
+      "Binders",
+      "Sleeves",
+      "Deck boxes",
+      "Storage",
+      "Playmats",
+      "Toys/prizes",
+      "Gift cards",
+      "Event support",
+      "Money/sponsorships",
+      "Services",
+      "Volunteer time",
+      "Food/snacks",
+      "Shipping help",
+      "Other family collecting support",
+    ];
     const sparkSections = [
       {
         key: "parent-requests",
@@ -34789,7 +34818,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="spark-mission-copy">
             <p className="section-kicker">The Spark mission</p>
             <h2>Bring Pokemon back to kids.</h2>
-            <p>Kids packs, giveaways, family-friendly events, and learning support should feel safe, fair, and parent-managed.</p>
+            <p>Igniting the spark within them through kids packs, giveaways, family-friendly events, and learning support that stays safe, fair, and parent-managed.</p>
             <div className="spark-mission-facts" aria-label="The Spark guardrails">
               <span>Parent-managed</span>
               <span>Admin-reviewed</span>
@@ -34833,6 +34862,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <p>{section.detail}</p>
                 </button>
               ))}
+            </div>
+            <div className="spark-support-examples" aria-label="The Spark support examples">
+              {sparkSupportExamples.map((item) => <span key={item}>{item}</span>)}
             </div>
           </section>
 
@@ -40022,8 +40054,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         : [createQuickAddCardScanRow({ id: "card-scan-row-1" })];
       updateQuickAddWizard({ cardScanRows: rows.length > 1 ? rows.filter((row) => String(row.id) !== String(rowId)) : rows, message: "" });
     };
-    const reviewFirstCardScanRow = () => {
-      const row = (quickAddWizard.cardScanRows || []).find((candidate) => String(candidate.cardName || "").trim());
+    const openCardScanRowReview = (row) => {
+      if (!String(row?.cardName || "").trim()) {
+        updateQuickAddWizard({ message: "Add a card name before reviewing this row." });
+        return;
+      }
       if (!row) {
         updateQuickAddWizard({ message: "Add at least one card row before review." });
         return;
@@ -40039,6 +40074,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         productType: "Single Card",
         note: "Scan page of cards manual review. Automatic card detection is coming later.",
       });
+    };
+    const reviewFirstCardScanRow = () => {
+      const row = (quickAddWizard.cardScanRows || []).find((candidate) => String(candidate.cardName || "").trim());
+      if (!row) {
+        updateQuickAddWizard({ message: "Add at least one card row before review." });
+        return;
+      }
+      openCardScanRowReview(row);
     };
 
     if (quickAddScreen === "scanAnything") {
@@ -40140,6 +40183,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <Field label="Items/products mentioned">
             <textarea value={quickAddWizard.scoutScanItems} onChange={(event) => updateQuickAddWizard({ scoutScanItems: event.target.value, message: "" })} placeholder="One item per line, or comma-separated products seen." />
           </Field>
+          <Field label="Source text">
+            <textarea value={quickAddWizard.scoutScanSourceText} onChange={(event) => updateQuickAddWizard({ scoutScanSourceText: event.target.value, message: "" })} placeholder="Paste the store update, Facebook post text, caption, or screenshot wording if available." />
+          </Field>
           <Field label="Notes">
             <textarea value={quickAddWizard.scoutScanNotes} onChange={(event) => updateQuickAddWizard({ scoutScanNotes: event.target.value, message: "" })} placeholder="Stock status, limits, shelf context, or what needs review." />
           </Field>
@@ -40188,7 +40234,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="quick-add-card-scan-row" key={row.id}>
                 <div className="quick-add-row-heading">
                   <strong>Card row {index + 1}</strong>
-                  <button type="button" className="ghost-button" onClick={() => removeCardScanRow(row.id)} disabled={rows.length <= 1}>Remove</button>
+                  <div className="quick-add-row-actions">
+                    <button type="button" className="secondary-button" onClick={() => openCardScanRowReview(row)}>Review this card</button>
+                    <button type="button" className="ghost-button" onClick={() => removeCardScanRow(row.id)} disabled={rows.length <= 1}>Remove</button>
+                  </div>
                 </div>
                 <div className="flow-form-grid quick-add-card-scan-grid">
                   <Field label="Card name">
@@ -40220,7 +40269,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {quickAddWizard.message ? <p className="flow-inline-message is-warning" role="alert">{quickAddWizard.message}</p> : null}
           <div className="quick-add-inline-actions quick-add-sticky-actions">
             <button type="button" className="secondary-button" onClick={addCardScanRow}>Add card row</button>
-            <button type="button" onClick={reviewFirstCardScanRow}>Review first card</button>
+            <button type="button" onClick={reviewFirstCardScanRow}>Review first filled card</button>
             <button type="button" className="ghost-button" onClick={() => setQuickAddPath("manual")}>Manual Entry</button>
             <button type="button" className="ghost-button" onClick={openQuickAddMissingProduct}>Request Missing Item</button>
           </div>
