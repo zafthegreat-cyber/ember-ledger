@@ -6355,10 +6355,10 @@ export default function App() {
     mobileMenuByKey.market,
   ].filter(Boolean);
   const menuSecondaryItems = [
+    mobileMenuByKey.comingSoon,
     mobileMenuByKey.forge,
     mobileMenuByKey.tidepool,
     mobileMenuByKey.spark,
-    mobileMenuByKey.comingSoon,
     { key: "collections", label: "Collections", helper: "Workspace and members.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
     mobileMenuByKey.settings,

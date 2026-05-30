@@ -62343,6 +62343,8 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 
 .coming-soon-page .utility-page-layout {
   gap: clamp(16px, 2vw, 24px);
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: stretch;
 }
 
 .coming-soon-hero {
