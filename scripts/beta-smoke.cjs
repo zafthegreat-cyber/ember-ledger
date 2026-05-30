@@ -779,7 +779,6 @@ async function main() {
       const commandCenterButtons = [
         page.locator('button[aria-label="Open Quick Add command center"]'),
         page.locator(".hearth-command-hero").getByRole("button", { name: "Quick Add", exact: true }),
-        page.locator(".mobile-bottom-nav .mobile-dock-add"),
       ];
       let opened = false;
       for (const buttonLocator of commandCenterButtons) {
@@ -2719,7 +2718,6 @@ async function main() {
       const commandCenterButtons = [
         page.locator('button[aria-label="Open Quick Add command center"]'),
         page.locator(".hearth-command-hero").getByRole("button", { name: "Quick Add", exact: true }),
-        page.locator(".mobile-bottom-nav .mobile-dock-add"),
       ];
       let opened = false;
       for (const buttonLocator of commandCenterButtons) {
