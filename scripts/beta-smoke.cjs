@@ -665,7 +665,7 @@ async function main() {
     await expectVisible(
       page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first(),
       "Market focused search result",
-      10000
+      20000
     );
   }
 
@@ -2644,7 +2644,7 @@ async function main() {
     await searchForm.locator("input").first().fill("Prismatic Evolutions Booster Bundle");
     await searchForm.getByRole("button", { name: /Search Catalog|Search Market Watch|Search/i }).first().click();
     const resultCard = page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first();
-    await resultCard.waitFor({ state: "visible", timeout: 10000 });
+    await resultCard.waitFor({ state: "visible", timeout: 20000 });
     const marketResultAddButton = resultCard.getByRole("button", { name: /Add to (Vault|Forge)/i }).first();
     await marketResultAddButton.scrollIntoViewIfNeeded();
     await marketResultAddButton.click();

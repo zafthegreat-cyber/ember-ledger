@@ -32,6 +32,7 @@ import {
   variantMatches as setMasteryVariantMatches,
 } from "./utils/vaultSetMastery";
 import { buildWishlistAddSeed, buildWishlistToOwnedRecord } from "./utils/vaultWorkflowUtils";
+import { normalizeCatalogName } from "./utils/catalogSearchUtils";
 import { getBestCatalogMatches, explainCatalogMatch } from "./utils/scanMatchUtils";
 import {
   DROP_RADAR_GUESS_LOCKED_MESSAGE,
@@ -9612,12 +9613,40 @@ export default function App() {
     setSupabaseImportStatus({ ...nextStatus, loading: false });
   }
 
+  function getExactLocalCatalogSeedMatches(query = "", seedProducts = []) {
+    const normalizedQuery = normalizeCatalogName(query);
+    const queryTokens = normalizedQuery.split(/\s+/).filter((token) => token.length > 1);
+    if (!normalizedQuery || !queryTokens.length) return [];
+    const queryLooksSealed = /\b(sealed|booster|bundle|box|tin|pack|blister|collection|deck|elite trainer|etb)\b/i.test(normalizedQuery);
+    return (seedProducts || [])
+      .filter((product) => {
+        const titleText = normalizeCatalogName([product.name, product.productName, product.cleanName].filter(Boolean).join(" "));
+        const setText = normalizeCatalogName([product.setName, product.expansion, product.productLine].filter(Boolean).join(" "));
+        const typeText = normalizeCatalogName([product.productType, product.sealedProductType, product.catalogType, product.catalogItemType].filter(Boolean).join(" "));
+        const haystack = normalizeCatalogName([titleText, setText, typeText, product.searchName].filter(Boolean).join(" "));
+        const productLooksSealed = isCatalogSealedProduct(product) && !isCatalogCardProduct(product);
+        const titleMatches = titleText === normalizedQuery || titleText.includes(normalizedQuery);
+        const allTokensMatch = queryTokens.every((token) => haystack.includes(token));
+        return (titleMatches || allTokensMatch) && (!queryLooksSealed || productLooksSealed);
+      })
+      .sort((a, b) => {
+        const aTitle = normalizeCatalogName(a.productName || a.name || "");
+        const bTitle = normalizeCatalogName(b.productName || b.name || "");
+        const aExact = aTitle === normalizedQuery ? 0 : aTitle.includes(normalizedQuery) ? 1 : 2;
+        const bExact = bTitle === normalizedQuery ? 0 : bTitle.includes(normalizedQuery) ? 1 : 2;
+        return aExact - bExact || compareCatalogProducts(mapCatalog(a), mapCatalog(b), "bestMatch");
+      });
+  }
+
   function getLocalCatalogSeedMatches(query = "", limit = 16, seedProducts = localCatalogSeedProductsRef.current) {
     const cleaned = String(query || "").trim();
     if (!cleaned) return [];
-    return getBestCatalogMatches(cleaned, seedProducts || [])
-      .map((match) => mapCatalog(match.item))
-      .slice(0, limit);
+    const exactSeedMatches = getExactLocalCatalogSeedMatches(cleaned, seedProducts)
+      .slice(0, Math.max(8, limit))
+      .map(mapCatalog);
+    const fuzzySeedMatches = getBestCatalogMatches(cleaned, seedProducts || [])
+      .map((match) => mapCatalog(match.item));
+    return mergeCatalogProductLists(exactSeedMatches, fuzzySeedMatches).slice(0, limit);
   }
 
   async function loadImportedPokemonCatalog(searchTerm = catalogSearch, options = {}) {
@@ -29457,6 +29486,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const cardResults = [];
     const sealedResults = [];
     const otherResults = [];
+    const sealedSearchIntent = catalogKindFilter === "All" && catalogNameSuggestsSealedProduct({
+      name: submittedCatalogSearch || catalogSearch || catalogTypeFilter,
+    });
     for (const product of tideTradrCatalogResults) {
       const productIsCard = isCatalogCardProduct(product);
       const productIsSealed = isCatalogSealedProduct(product) && !productIsCard;
@@ -29464,12 +29496,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       else if (productIsSealed) sealedResults.push(product);
       else otherResults.push(product);
     }
-    const groups = catalogKindFilter === "All"
+    const allResultGroups = sealedSearchIntent
       ? [
+          { key: "sealed", title: "Sealed Products", items: sealedResults },
+          { key: "cards", title: "Cards", items: cardResults },
+          { key: "other", title: "Other Results", items: otherResults },
+        ]
+      : [
           { key: "cards", title: "Cards", items: cardResults },
           { key: "sealed", title: "Sealed Products", items: sealedResults },
           { key: "other", title: "Other Results", items: otherResults },
-        ].filter((group) => group.items.length)
+        ];
+    const groups = catalogKindFilter === "All"
+      ? allResultGroups.filter((group) => group.items.length)
       : [{ key: catalogKindFilter, title: catalogKindFilter === "card" ? "Cards" : catalogKindFilter === "sealed" ? "Sealed Products" : "Other Results", items: tideTradrCatalogResults }];
     return {
       tideTradrCatalogCardResults: cardResults,
@@ -29477,7 +29516,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       tideTradrCatalogOtherResults: otherResults,
       tideTradrCatalogResultGroups: groups,
     };
-  }, [tideTradrCatalogResults, catalogKindFilter]);
+  }, [tideTradrCatalogResults, catalogKindFilter, submittedCatalogSearch, catalogSearch, catalogTypeFilter]);
   const tideTradrCatalogPageCount = supabaseCatalogStatus.totalCount
     ? Math.max(1, Math.ceil(supabaseCatalogStatus.totalCount / (supabaseCatalogStatus.pageSize || SUPABASE_CATALOG_PAGE_SIZE)))
     : null;
