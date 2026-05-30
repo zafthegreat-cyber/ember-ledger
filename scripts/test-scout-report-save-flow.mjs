@@ -26,6 +26,11 @@ assert.match(app, /function canAddScoutReportDetails/, "Scout Add Details should
 assert.match(app, /function saveScoutReportDetails/, "Scout Add Details should save product, proof, and source context");
 assert.match(app, /Only the reporter or an admin can add Scout report details\./, "Scout Add Details should deny non-owner edits");
 assert.match(app, /Scout report details updated\./, "Scout Add Details should confirm successful updates");
+assert.match(app, /Current report only/, "Scout Report Detail should label reports as current reports only");
+assert.match(app, /Community trust/, "Scout Report Detail should summarize community trust counts");
+assert.match(app, /No proof added yet\. Proof helps Scout trust this report\./, "Scout Report Detail should explain missing proof clearly");
+assert.match(app, /Protected Scout context/, "Scout Report Detail should hide raw history context from normal users");
+assert.match(app, /Add Report for Store/, "Scout Report Detail should offer a safe follow-up report action");
 assert.match(app, /currentUserIds\.includes\(reportUserId\)/, "Scout report ownership should use exact user-id matching");
 assert.doesNotMatch(app, /report\.userId \|\| report\.user_id \|\| report\.reportedBy \|\| report\.reported_by \|\| ""\)\.includes\(id\)/, "Scout report ownership must not use substring matching");
 assert.match(app, /Choose how you know this report before saving\./, "Scout submit should require a proof/source choice before saving");

@@ -471,6 +471,10 @@ async function main() {
   }
 
   async function assertScoutReportDetailDeleteHidden(detailSheet) {
+    await detailSheet.getByText("Current report only").first().waitFor({ state: "visible", timeout: 5000 });
+    await detailSheet.getByText("Community trust").first().waitFor({ state: "visible", timeout: 5000 });
+    await detailSheet.getByRole("button", { name: /^Add Report for Store$/ }).first().waitFor({ state: "visible", timeout: 5000 });
+    await detailSheet.getByText("Protected Scout context").first().waitFor({ state: "visible", timeout: 5000 });
     assert.equal(
       await detailSheet.getByRole("button", { name: /Delete/i }).count(),
       0,
@@ -1755,7 +1759,7 @@ async function main() {
 
     const reportCard = await visibleScoutReportCard(savedScoutReport.storeName || "Smoke Shared Target");
     const reportDetailSheet = await assertScoutReportDeleteHidden(reportCard);
-    await reportDetailSheet.getByRole("button", { name: /^Add details$/ }).click();
+    await reportDetailSheet.getByRole("button", { name: /^Add Details$/i }).click();
     await reportDetailSheet.locator('[data-scout-detail-section="details"]').waitFor({ state: "visible", timeout: 5000 });
     await assertVisibleText(savedScoutReport.storeName || "Smoke Shared Target");
     const matchingReportCount = await page.evaluate(() => {

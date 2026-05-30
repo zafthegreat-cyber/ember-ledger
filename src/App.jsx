@@ -27708,6 +27708,64 @@ function renderForgeAccessState() {
     );
   }
 
+  function scoutReportDetailItemSummary(report = {}) {
+    const items = normalizeScoutReportItems(report);
+    if (items.length) {
+      const visibleItems = items.slice(0, 3).map((item) => item.productName).filter(Boolean);
+      if (visibleItems.length) return `${visibleItems.join(", ")}${items.length > visibleItems.length ? ` +${items.length - visibleItems.length} more` : ""}`;
+    }
+    const category = report.productCategory || report.product_category || report.productType || report.product_type || "";
+    return category || "Details needed";
+  }
+
+  function scoutReportDetailContextSummary(report = {}) {
+    return String(
+      report.detailNote ||
+      report.detail_note ||
+      report.notes ||
+      report.note ||
+      report.reportText ||
+      report.report_text ||
+      report.sourceText ||
+      report.source_text ||
+      ""
+    ).trim();
+  }
+
+  function scoutReportSourceSummaryLabel(report = {}) {
+    const explicit = report.sourceLabel || report.source_label || "";
+    const type = String(report.sourceType || report.source_type || report.proofType || report.proof_type || "manual").toLowerCase();
+    if (explicit) return explicit;
+    if (type.includes("screenshot") || type.includes("text_screenshot")) return "Screenshot review";
+    if (type.includes("photo") || type.includes("stock_photo")) return "Proof photo";
+    if (type.includes("receipt")) return "Receipt";
+    if (type.includes("called_store")) return "Called store";
+    if (type.includes("manual")) return "Manual report";
+    return scoutSourceTypeLabel(type);
+  }
+
+  function scoutReportTrustCounts(report = {}) {
+    const confirmations = Number(report.confirmationCount || report.confirmation_count || report.communityConfirmations || report.community_confirmations || 0);
+    const proofUrls = scoutReportPhotoUrls(report);
+    const hasProofText = Boolean(String(report.proofText || report.proof_text || report.sourceText || report.source_text || "").trim());
+    const proofType = String(report.proofType || report.proof_type || report.sourceType || report.source_type || "").toLowerCase();
+    const proofCount = proofUrls.length + (hasProofText ? 1 : 0) + (["stock_photo", "receipt", "screenshot", "photo", "text_screenshot"].includes(proofType) && !proofUrls.length ? 1 : 0);
+    const flags = Number(report.flagsCount || report.flags_count || report.flagCount || report.flag_count || 0) + (report.flagged ? 1 : 0);
+    return {
+      confirmations: Number.isFinite(confirmations) ? confirmations : 0,
+      proofCount: Number.isFinite(proofCount) ? proofCount : 0,
+      flags: Number.isFinite(flags) ? flags : 0,
+    };
+  }
+
+  function scoutReportReporterSafeLabel(report = {}) {
+    if (isCurrentUserScoutReport(report)) return "You";
+    const publicLabel = String(report.publicUsername || report.public_username || report.username || report.submittedByDisplay || report.submitted_by_display || report.displayName || report.display_name || "").trim();
+    if (adminEditModeActive && publicLabel) return publicLabel;
+    if (publicLabel && !publicLabel.includes("@")) return publicLabel;
+    return "Scout reporter";
+  }
+
   function scoutForecastConfidenceKey(value = "") {
     const normalized = String(value || "").toLowerCase();
     if (normalized === "confirmed" || normalized === "verified") return "confirmed";
@@ -31752,13 +31810,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     setScoutView("reports");
     setScoutSubTabTarget({ tab: "reports", reportId, id: Date.now(), action: options.focus ? "focusDetails" : "viewReport" });
     if (typeof window !== "undefined") {
-      window.setTimeout(() => {
-        const selector = options.focus ? `[data-scout-detail-section="${options.focus}"]` : ".scout-report-detail-summary";
+      const focusScoutReportDetailTarget = () => {
+        const selector = options.focus === "details"
+          ? ".scout-report-add-details-form, [data-scout-detail-section=\"details\"]"
+          : options.focus
+            ? `[data-scout-detail-section="${options.focus}"]`
+            : ".scout-report-detail-summary";
         const target = document.querySelector(selector);
-        target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+        const scrollContainer = target?.closest?.(".scout-report-detail-body, .location-modal-body, .flow-modal-body");
+        if (target && scrollContainer && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          scrollContainer.scrollTo?.({
+            top: scrollContainer.scrollTop + targetRect.top - containerRect.top - 12,
+            behavior: "smooth",
+          });
+        } else {
+          target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+        }
         const focusTarget = target?.querySelector?.("summary, button, input, textarea, select") || target;
         focusTarget?.focus?.({ preventScroll: true });
-      }, 140);
+      };
+      window.setTimeout(focusScoutReportDetailTarget, options.focus === "details" ? 220 : 140);
+      if (options.focus === "details") window.setTimeout(focusScoutReportDetailTarget, 460);
     }
   }
 
@@ -51177,24 +51251,75 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="modal-title-row modal-sticky-header">
               <div>
                 <h2 id="scout-report-detail-title">Scout Report</h2>
-                <p>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Store not selected"}</p>
+                <p>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Manual store name unavailable"} | {scoutReportDateTimeLabel(selectedScoutReport)} | Current report only</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close Scout report" onClick={closeScoutReportDetail}>X</button>
             </div>
             <div className="scout-report-detail-body">
               <div className="scout-report-detail-summary">
-              <strong>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Store not selected"}</strong>
+              <div className="scout-report-detail-kicker">
+                <span>Current report only</span>
+                <b>{scoutReportFreshnessSummaryLabel(selectedScoutReport)}</b>
+              </div>
+              <strong>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Manual store name unavailable"}</strong>
               <span>{scoutReportObservationStatusLabel(selectedScoutReport)}</span>
-              <small className="scout-report-detail-primary-copy">{normalizeScoutReportItems(selectedScoutReport)[0]?.productName || selectedScoutReport.note || selectedScoutReport.notes || "Product details can be added after posting."}</small>
-              <small>{scoutReportObservedSummaryLabel(selectedScoutReport)} · {scoutReportFreshnessSummaryLabel(selectedScoutReport)}</small>
+              <small className="scout-report-detail-primary-copy">{scoutReportDetailItemSummary(selectedScoutReport)}</small>
+              <small>{scoutReportObservedSummaryLabel(selectedScoutReport)}</small>
               <div className="scout-signal-badge-row" aria-label="Scout report detail trust">
                 <span className={`scout-trust-pill scout-trust-pill--${scoutReportConfidenceBadge(selectedScoutReport).key}`}>{scoutReportConfidenceBadge(selectedScoutReport).label}</span>
                 {(() => {
                   const detailProofLabel = scoutReportPhotoUrls(selectedScoutReport).length ? "Photo proof" : quickScoutProofLabel(selectedScoutReport.proofType || selectedScoutReport.proof_type);
-                  return detailProofLabel && detailProofLabel !== "No proof" ? <span className="mini-badge scout-proof-badge">{detailProofLabel}</span> : null;
+                  return detailProofLabel && detailProofLabel !== "No proof" ? <span className="mini-badge scout-proof-badge">{detailProofLabel}</span> : <span className="mini-badge scout-proof-missing-badge">No proof yet</span>;
                 })()}
               </div>
               </div>
+              <div className="scout-report-detail-overview-grid" aria-label="Scout report summary">
+                <section className="scout-report-detail-info-card">
+                  <span>Store</span>
+                  <strong>{getScoutReportStore(selectedScoutReport).name || selectedScoutReport.storeName || "Manual store name unavailable"}</strong>
+                  <small>{[getScoutReportStore(selectedScoutReport).retailer || getScoutReportStore(selectedScoutReport).chain, getScoutReportStore(selectedScoutReport).city || selectedScoutReport.city].filter(Boolean).join(" | ") || "Store match may need review."}</small>
+                </section>
+                <section className="scout-report-detail-info-card">
+                  <span>Observed</span>
+                  <strong>{scoutReportDateTimeLabel(selectedScoutReport)}</strong>
+                  <small>{scoutReportFreshnessSummaryLabel(selectedScoutReport)}</small>
+                </section>
+                <section className="scout-report-detail-info-card">
+                  <span>Items / categories</span>
+                  <strong>{scoutReportDetailItemSummary(selectedScoutReport)}</strong>
+                  <small>{scoutReportDetailItemSummary(selectedScoutReport) === "Details needed" ? "Add Details if you own this report." : "Reviewed item context."}</small>
+                </section>
+                <section className="scout-report-detail-info-card">
+                  <span>Source</span>
+                  <strong>{scoutReportSourceSummaryLabel(selectedScoutReport)}</strong>
+                  <small>{scoutReportConfidenceBadge(selectedScoutReport).label}</small>
+                </section>
+              </div>
+              <section className="scout-report-detail-action-panel" aria-label="Scout report actions">
+                <div>
+                  <h3>Report actions</h3>
+                  <p>{canAddScoutReportDetails(selectedScoutReport) ? "Add proof, item details, or context without changing protected Scout history." : "Only the reporter or an admin can edit this report. You can add a fresh report for the same store."}</p>
+                </div>
+                <div className="scout-report-detail-action-grid">
+                  {canAddScoutReportDetails(selectedScoutReport) ? (
+                    <>
+                      <button type="button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>Add Details</button>
+                      <button type="button" className="secondary-button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>Add Proof</button>
+                    </>
+                  ) : null}
+                  <button type="button" className="secondary-button" onClick={() => {
+                    const store = getScoutReportStore(selectedScoutReport);
+                    closeScoutReportDetail();
+                    openScoutSubmitFlow({ source: "scout-report-detail", store });
+                  }}>Add Report for Store</button>
+                  {adminEditModeActive ? (
+                    <>
+                      <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(selectedScoutReport, "confirm")}>Confirm Accurate</button>
+                      <button type="button" className="ghost-button" onClick={() => queueScoutReportAdminModeration(selectedScoutReport, "needsReview")}>Flag Issue</button>
+                    </>
+                  ) : null}
+                </div>
+              </section>
               <div className="scout-report-detail-breakdown">
               <details className="scout-report-detail-section" data-scout-detail-section="details" open={scoutReportDetailFocus === "details" ? true : undefined}>
                 <summary>
@@ -51209,8 +51334,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                   ))
                 ) : (
-                  <p>Product details have not been added yet.</p>
+                  <div className="scout-report-detail-row scout-report-detail-missing-row">
+                    <strong>Details needed</strong>
+                    <span>Product or category details have not been added yet.</span>
+                  </div>
                 )}
+                <div className="scout-report-detail-row">
+                  <strong>Context</strong>
+                  <span>{scoutReportDetailContextSummary(selectedScoutReport) || "No extra context added yet."}</span>
+                </div>
                 {scoutReportDetailsDraft?.reportId === getScoutReportId(selectedScoutReport) && canAddScoutReportDetails(selectedScoutReport) ? (
                   <form className="scout-report-add-details-form" onSubmit={saveScoutReportDetails}>
                     <div className="scout-report-add-details-heading">
@@ -51292,14 +51424,48 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <small>{scoutReportPhotoUrls(selectedScoutReport).length ? "Proof attached" : "No proof attached yet"}</small>
                 </summary>
                 <div className="scout-report-detail-row">
-                  <strong>{scoutReportPhotoUrls(selectedScoutReport).length ? `${scoutReportPhotoUrls(selectedScoutReport).length} proof image${scoutReportPhotoUrls(selectedScoutReport).length === 1 ? "" : "s"}` : "No proof attached"}</strong>
-                  <span>{selectedScoutReport.proofText || selectedScoutReport.proof_text || selectedScoutReport.notes || selectedScoutReport.note || "Proof/photo is optional."}</span>
+                  <strong>{scoutReportPhotoUrls(selectedScoutReport).length ? `${scoutReportPhotoUrls(selectedScoutReport).length} proof image${scoutReportPhotoUrls(selectedScoutReport).length === 1 ? "" : "s"}` : "No proof added yet."}</strong>
+                  <span>{selectedScoutReport.proofText || selectedScoutReport.proof_text || selectedScoutReport.sourceText || selectedScoutReport.source_text || "No proof added yet. Proof helps Scout trust this report."}</span>
                 </div>
                 {scoutReportPhotoUrls(selectedScoutReport).length ? (
                   <div className="scout-report-proof-strip">
                     {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <img key={url} src={url} alt="" />)}
                   </div>
                 ) : null}
+                {!scoutReportPhotoUrls(selectedScoutReport).length && canAddScoutReportDetails(selectedScoutReport) ? (
+                  <div className="scout-report-proof-empty">
+                    <button type="button" className="secondary-button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>Add Proof</button>
+                  </div>
+                ) : null}
+              </details>
+              <details className="scout-report-detail-section" open>
+                <summary>
+                  <span>Community trust</span>
+                  <small>Confirmations, proof, and owner-safe context.</small>
+                </summary>
+                {(() => {
+                  const trustCounts = scoutReportTrustCounts(selectedScoutReport);
+                  return (
+                    <div className="scout-report-trust-grid">
+                      <div className="scout-report-trust-card">
+                        <span>Confirmations</span>
+                        <strong>{trustCounts.confirmations}</strong>
+                      </div>
+                      <div className="scout-report-trust-card">
+                        <span>Proof</span>
+                        <strong>{trustCounts.proofCount}</strong>
+                      </div>
+                      <div className="scout-report-trust-card">
+                        <span>Flags</span>
+                        <strong>{trustCounts.flags}</strong>
+                      </div>
+                      <div className="scout-report-trust-card">
+                        <span>Reporter</span>
+                        <strong>{scoutReportReporterSafeLabel(selectedScoutReport)}</strong>
+                      </div>
+                    </div>
+                  );
+                })()}
               </details>
               <details className="scout-report-detail-section">
                 <summary>
@@ -51336,8 +51502,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </details>
               <details className="scout-report-detail-section">
                 <summary>
-                  <span>History / Source</span>
-                  <small>Similar and conflicting reports.</small>
+                  <span>{tierAccess.canViewRawScoutHistory ? "History / Source" : "Protected Scout context"}</span>
+                  <small>{tierAccess.canViewRawScoutHistory ? "Similar and conflicting reports." : "Raw history and pattern tools stay protected."}</small>
                 </summary>
                 {renderScoutReportRelatedContext(selectedScoutReport)}
               </details>
@@ -51361,9 +51527,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="location-modal-actions modal-sticky-footer">
               {canEditScoutReportDateTime(selectedScoutReport) ? (
                 <button type="button" onClick={() => openScoutReportDateTimeEditor(selectedScoutReport)}>Edit date/time</button>
-              ) : null}
-              {(isCurrentUserScoutReport(selectedScoutReport) || adminEditModeActive) ? (
-                <button type="button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>{adminEditModeActive ? "Review details" : "Add details"}</button>
               ) : null}
               {adminEditModeActive ? (
                 <OverflowMenu

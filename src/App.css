@@ -59827,7 +59827,8 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 .app-scout .scout-report-detail-body,
 .app-command-shell.app-scout .scout-report-detail-body,
 .app.app-scout .scout-report-detail-body {
-  display: grid !important;
+  display: flex !important;
+  flex-direction: column !important;
   gap: 12px !important;
   min-height: 0 !important;
   overflow-y: auto !important;
@@ -59840,14 +59841,157 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 .app-scout .scout-report-detail-summary,
 .app-command-shell.app-scout .scout-report-detail-summary,
 .app.app-scout .scout-report-detail-summary {
-  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 0 0 auto !important;
+  min-height: max-content !important;
   margin: 0 !important;
+}
+
+.app-scout .scout-report-detail-kicker,
+.app-command-shell.app-scout .scout-report-detail-kicker,
+.app.app-scout .scout-report-detail-kicker {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+.app-scout .scout-report-detail-kicker span,
+.app-command-shell.app-scout .scout-report-detail-kicker span,
+.app.app-scout .scout-report-detail-kicker span {
+  color: #ffd08a !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+  text-transform: uppercase !important;
+}
+
+.app-scout .scout-report-detail-kicker b,
+.app-command-shell.app-scout .scout-report-detail-kicker b,
+.app.app-scout .scout-report-detail-kicker b {
+  color: rgba(232, 246, 255, 0.72) !important;
+  font-size: 0.76rem !important;
+}
+
+.app-scout .scout-report-detail-primary-copy,
+.app-command-shell.app-scout .scout-report-detail-primary-copy,
+.app.app-scout .scout-report-detail-primary-copy {
+  overflow-wrap: anywhere !important;
+}
+
+.app-scout .scout-report-detail-overview-grid,
+.app-command-shell.app-scout .scout-report-detail-overview-grid,
+.app.app-scout .scout-report-detail-overview-grid {
+  display: grid !important;
+  flex: 0 0 auto !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.app-scout .scout-report-detail-info-card,
+.app-command-shell.app-scout .scout-report-detail-info-card,
+.app.app-scout .scout-report-detail-info-card,
+.app-scout .scout-report-detail-action-panel,
+.app-command-shell.app-scout .scout-report-detail-action-panel,
+.app.app-scout .scout-report-detail-action-panel {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  border: 1px solid rgba(124, 231, 255, 0.16) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(145deg, rgba(10, 24, 43, 0.88), rgba(4, 13, 25, 0.88)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.app-scout .scout-report-detail-info-card,
+.app-command-shell.app-scout .scout-report-detail-info-card,
+.app.app-scout .scout-report-detail-info-card {
+  display: grid !important;
+  gap: 4px !important;
+  padding: 12px !important;
+}
+
+.app-scout .scout-report-detail-info-card span,
+.app-command-shell.app-scout .scout-report-detail-info-card span,
+.app.app-scout .scout-report-detail-info-card span,
+.app-scout .scout-report-trust-card span,
+.app-command-shell.app-scout .scout-report-trust-card span,
+.app.app-scout .scout-report-trust-card span {
+  color: rgba(232, 246, 255, 0.62) !important;
+  font-size: 0.74rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+.app-scout .scout-report-detail-info-card strong,
+.app-command-shell.app-scout .scout-report-detail-info-card strong,
+.app.app-scout .scout-report-detail-info-card strong,
+.app-scout .scout-report-trust-card strong,
+.app-command-shell.app-scout .scout-report-trust-card strong,
+.app.app-scout .scout-report-trust-card strong {
+  min-width: 0 !important;
+  color: #fff7ed !important;
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.app-scout .scout-report-detail-info-card small,
+.app-command-shell.app-scout .scout-report-detail-info-card small,
+.app.app-scout .scout-report-detail-info-card small {
+  color: rgba(232, 246, 255, 0.66) !important;
+  line-height: 1.35 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.app-scout .scout-report-detail-action-panel,
+.app-command-shell.app-scout .scout-report-detail-action-panel,
+.app.app-scout .scout-report-detail-action-panel {
+  display: grid !important;
+  gap: 12px !important;
+  padding: 13px !important;
+}
+
+.app-scout .scout-report-detail-action-panel h3,
+.app-command-shell.app-scout .scout-report-detail-action-panel h3,
+.app.app-scout .scout-report-detail-action-panel h3 {
+  margin: 0 !important;
+  color: #fff7ed !important;
+  font-size: 1rem !important;
+}
+
+.app-scout .scout-report-detail-action-panel p,
+.app-command-shell.app-scout .scout-report-detail-action-panel p,
+.app.app-scout .scout-report-detail-action-panel p {
+  margin: 4px 0 0 !important;
+  color: rgba(232, 246, 255, 0.72) !important;
+  line-height: 1.45 !important;
+}
+
+.app-scout .scout-report-detail-action-grid,
+.app-command-shell.app-scout .scout-report-detail-action-grid,
+.app.app-scout .scout-report-detail-action-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+.app-scout .scout-report-detail-action-grid button,
+.app-command-shell.app-scout .scout-report-detail-action-grid button,
+.app.app-scout .scout-report-detail-action-grid button {
+  width: 100% !important;
+  min-width: 0 !important;
 }
 
 .app-scout .scout-report-detail-breakdown,
 .app-command-shell.app-scout .scout-report-detail-breakdown,
 .app.app-scout .scout-report-detail-breakdown {
-  display: grid !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 0 0 auto !important;
   gap: 10px !important;
   min-height: 0 !important;
   overflow: visible !important;
@@ -59858,6 +60002,7 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 .app-command-shell.app-scout .scout-report-detail-section,
 .app.app-scout .scout-report-detail-section {
   display: block !important;
+  flex: 0 0 auto !important;
   padding: 0 !important;
   border: 1px solid rgba(124, 231, 255, 0.14) !important;
   border-radius: 16px !important;
@@ -59915,6 +60060,43 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 .app.app-scout .scout-report-detail-admin-actions {
   display: grid !important;
   gap: 8px !important;
+}
+
+.app-scout .scout-report-detail-missing-row,
+.app-command-shell.app-scout .scout-report-detail-missing-row,
+.app.app-scout .scout-report-detail-missing-row {
+  border: 1px dashed rgba(255, 192, 93, 0.34) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 176, 59, 0.08) !important;
+}
+
+.app-scout .scout-report-proof-empty,
+.app-command-shell.app-scout .scout-report-proof-empty,
+.app.app-scout .scout-report-proof-empty {
+  display: grid !important;
+  gap: 8px !important;
+  padding-top: 0 !important;
+}
+
+.app-scout .scout-report-trust-grid,
+.app-command-shell.app-scout .scout-report-trust-grid,
+.app.app-scout .scout-report-trust-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.app-scout .scout-report-trust-card,
+.app-command-shell.app-scout .scout-report-trust-card,
+.app.app-scout .scout-report-trust-card {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  padding: 10px !important;
+  border: 1px solid rgba(255, 192, 93, 0.16) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 176, 59, 0.07) !important;
 }
 
 .scout-report-add-details-form {
@@ -59985,6 +60167,21 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 }
 
 @media (max-width: 780px) {
+  .app-scout .scout-report-detail-overview-grid,
+  .app-command-shell.app-scout .scout-report-detail-overview-grid,
+  .app.app-scout .scout-report-detail-overview-grid,
+  .app-scout .scout-report-detail-action-grid,
+  .app-command-shell.app-scout .scout-report-detail-action-grid,
+  .app.app-scout .scout-report-detail-action-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-scout .scout-report-trust-grid,
+  .app-command-shell.app-scout .scout-report-trust-grid,
+  .app.app-scout .scout-report-trust-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
   .scout-report-add-details-grid {
     grid-template-columns: minmax(0, 1fr);
   }
