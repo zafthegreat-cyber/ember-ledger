@@ -572,6 +572,19 @@ async function main() {
     await assertVisibleText(/Where and when|Post the restock essentials|Post store, status, and time|What did you see\?/i);
     await closeOpenModals();
     await assertNoHorizontalOverflow("Scout mobile");
+    await page.getByRole("button", { name: /^Stores$/ }).first().click();
+    await assertVisibleText("My Watch Stores");
+    await assertVisibleText("Choose the stores you want Scout to watch for current signals.");
+    await expectVisible(page.locator(".scout-watch-tier-summary").first(), "watched store slot summary");
+    await expectVisible(page.locator(".scout-watch-store-page").first(), "My Watch Stores management page");
+    await assertVisibleText(/Slots|Change rule|Tier-safe Scout/i);
+    await assertVisibleText(/Choose your first watched store|Choose another store|Watched store slots are full|Choose from nearby stores/i);
+    await clickFirstVisible(page.getByRole("button", { name: /^Choose Store$|^Change Store$/ }), "watched store picker action");
+    await assertVisibleText(/Choose watched store|Change watched store/i);
+    await expectVisible(page.locator(".scout-watch-picker-sheet").first(), "watched store picker sheet");
+    await assertVisibleText("Raw restock patterns stay protected.");
+    await closeOpenModals();
+    await assertNoHorizontalOverflow("Scout stores mobile");
     await page.setViewportSize({ width: 1366, height: 1600 });
   }
 

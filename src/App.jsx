@@ -5412,6 +5412,11 @@ export default function App() {
     area: "",
   });
   const [selectedStoreMapStore, setSelectedStoreMapStore] = useState(null);
+  const [watchStorePickerState, setWatchStorePickerState] = useState({
+    open: false,
+    replaceStoreId: "",
+    query: "",
+  });
   const [storeMapSightingOpen, setStoreMapSightingOpen] = useState(false);
   const [storeMapSightingForm, setStoreMapSightingForm] = useState({
     category: "Pokemon",
@@ -32465,6 +32470,63 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return store.pokemonStockLikelihood || store.pokemon_stock_likelihood || "Unknown";
   }
 
+  function scoutWatchSlotLimit() {
+    const limit = Number(tierAccess.scoutStoreSlots || 1);
+    return Number.isFinite(limit) && limit > 0 ? limit : 1;
+  }
+
+  function scoutWatchPlanLabel() {
+    return tierAccess.tierLabel || "Free";
+  }
+
+  function scoutWatchSwapWindowLabel() {
+    const days = Number(tierAccess.scoutStoreSwapDays || 0);
+    if (days > 0) return `Change one watched store every ${days} days.`;
+    return tierAccess.isAdmin ? "Admin store moderation is not rate-limited in this beta UI." : "Store changes are managed by your current access level.";
+  }
+
+  function scoutWatchNextChangeLabel(rowOrStore = {}) {
+    const store = rowOrStore.store || rowOrStore;
+    const explicit = store.nextWatchChangeAt || store.next_watch_change_at || store.nextChangeAt || store.next_change_at;
+    const changedAt = store.watchChangedAt || store.watch_changed_at || store.updatedAt || store.updated_at;
+    const days = Number(tierAccess.scoutStoreSwapDays || 0);
+    const dateOptions = { month: "short", day: "numeric" };
+    if (explicit) {
+      const date = new Date(explicit);
+      if (!Number.isNaN(date.getTime())) return `Next change: ${date.toLocaleDateString(undefined, dateOptions)}`;
+    }
+    if (days > 0 && changedAt) {
+      const date = new Date(changedAt);
+      if (!Number.isNaN(date.getTime())) {
+        date.setDate(date.getDate() + days);
+        return `Next change: ${date.toLocaleDateString(undefined, dateOptions)}`;
+      }
+    }
+    return days > 0 ? `Change window: ${days} days after a saved swap.` : "Change anytime.";
+  }
+
+  function scoutWatchSlotSummary(watchedCount = 0) {
+    const limit = scoutWatchSlotLimit();
+    if (limit >= 99) return `${watchedCount} watched stores - Admin tools`;
+    return `${watchedCount}/${limit} watched store${limit === 1 ? "" : "s"}`;
+  }
+
+  function getWatchedStoreRows(rows = buildStoreMapRows({ unfiltered: true })) {
+    return rows.filter((row) => row.watchlisted || isWatchedEmberStore(row.store));
+  }
+
+  function openWatchStorePicker(options = {}) {
+    setWatchStorePickerState({
+      open: true,
+      replaceStoreId: options.replaceStoreId || "",
+      query: "",
+    });
+  }
+
+  function closeWatchStorePicker() {
+    setWatchStorePickerState({ open: false, replaceStoreId: "", query: "" });
+  }
+
   function buildStoreMapRows(options = {}) {
     const locationText = String(locationSettings.manualLocation || locationSettings.selectedSavedLocation || "").trim();
     const origin = parseManualLocationCoordinates(locationText);
@@ -32580,34 +32642,110 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     sendEmberAssistMessage(`What should I know about ${name} and family-friendly shops?`);
   }
 
-  function toggleStoreMapWatch(rowOrStore = {}) {
-    if (blockGuestSave()) return;
+  function applyStoreMapWatchState(rowOrStore = {}, nextWatchlisted = true, options = {}) {
     const row = rowOrStore.store ? rowOrStore : { store: rowOrStore };
     const targetId = getStoreMapStoreId(row.store);
+    const replaceStoreId = options.replaceStoreId || "";
     const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
     const savedStores = saved.stores?.length ? saved.stores : scoutSnapshot.stores || [];
     const exists = savedStores.some((store) => getStoreMapStoreId(store) === targetId);
-    const nextWatchlisted = !Boolean(row.store.favorite || row.store.priority || row.store.watchlisted || row.store.watchlist);
-    const nextStores = exists
-      ? savedStores.map((store) => getStoreMapStoreId(store) === targetId ? setStoreFavoriteState(store, nextWatchlisted) : store)
-      : [setStoreFavoriteState({ ...row.store, id: row.store.id || targetId }, nextWatchlisted), ...savedStores];
+    const patchStore = (store, watched) => {
+      const patched = setStoreFavoriteState(store, watched);
+      return watched ? { ...patched, watchChangedAt: new Date().toISOString() } : patched;
+    };
+    let nextStores = savedStores.map((store) => {
+      const storeId = getStoreMapStoreId(store);
+      if (replaceStoreId && storeId === replaceStoreId && storeId !== targetId) return patchStore(store, false);
+      if (storeId === targetId) return patchStore(store, nextWatchlisted);
+      return store;
+    });
+    if (!exists && nextWatchlisted) nextStores = [patchStore({ ...row.store, id: row.store.id || targetId }, true), ...nextStores];
     const nextScout = { ...saved, stores: nextStores };
     localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(nextScout));
     setScoutSnapshot((current) => ({ ...current, stores: nextStores }));
-    setSelectedStoreMapStore((current) => current && getStoreMapStoreId(current.store) === targetId ? {
-      ...current,
-      store: setStoreFavoriteState(current.store, nextWatchlisted),
-      profile: buildStoreProfileSummary(setStoreFavoriteState(current.store, nextWatchlisted), {
-        reports: scoutReportRows,
-        guesses: scoutGuessRows,
-        predictions: scoutForecastPreviewRows,
-        tidepoolPosts,
-        admin: adminEditModeActive,
-      }),
-      watchlisted: nextWatchlisted,
-    } : current);
+    setSelectedStoreMapStore((current) => {
+      if (!current) return current;
+      const currentId = getStoreMapStoreId(current.store);
+      if (currentId !== targetId && currentId !== replaceStoreId) return current;
+      const currentWatched = currentId === targetId ? nextWatchlisted : false;
+      const currentStore = patchStore(current.store, currentWatched);
+      return {
+        ...current,
+        store: currentStore,
+        profile: buildStoreProfileSummary(currentStore, {
+          reports: scoutReportRows,
+          guesses: scoutGuessRows,
+          predictions: scoutForecastPreviewRows,
+          tidepoolPosts,
+          admin: adminEditModeActive,
+        }),
+        watchlisted: currentWatched,
+      };
+    });
     void persistScoutStoreWatchToSupabase(row.store, nextWatchlisted);
-    setVaultToast(nextWatchlisted ? `${row.name || getScoutQuickStoreName(row.store)} added to watchlist.` : `${row.name || getScoutQuickStoreName(row.store)} removed from watchlist.`);
+    if (replaceStoreId) {
+      const replaced = savedStores.find((store) => getStoreMapStoreId(store) === replaceStoreId);
+      if (replaced && getStoreMapStoreId(replaced) !== targetId) void persistScoutStoreWatchToSupabase(replaced, false);
+    }
+  }
+
+  async function selectWatchedStore(rowOrStore = {}, options = {}) {
+    if (blockGuestSave()) return;
+    const row = rowOrStore.store ? rowOrStore : { store: rowOrStore };
+    const targetId = getStoreMapStoreId(row.store);
+    const allRows = buildStoreMapRows({ unfiltered: true });
+    const watchedRows = getWatchedStoreRows(allRows);
+    const replaceStoreId = options.replaceStoreId || "";
+    const alreadyWatched = watchedRows.some((candidate) => getStoreMapStoreId(candidate.store) === targetId);
+    if (alreadyWatched && !replaceStoreId) {
+      setVaultToast(`${row.name || getScoutQuickStoreName(row.store)} is already in My Watch Stores.`);
+      return;
+    }
+    if (replaceStoreId && replaceStoreId !== targetId) {
+      const replacedRow = watchedRows.find((candidate) => getStoreMapStoreId(candidate.store) === replaceStoreId);
+      const nextChangeLabel = scoutWatchNextChangeLabel(replacedRow || {});
+      const nextChangeMessage = nextChangeLabel.startsWith("Next change:")
+        ? `until ${nextChangeLabel.replace(/^Next change:\s*/i, "")}`
+        : `under this rule: ${nextChangeLabel}`;
+      const confirmed = await requestConfirmation({
+        title: "Change watched store?",
+        message: `You may not be able to change this store again ${nextChangeMessage}.`,
+        details: `${replacedRow?.name || "Current watched store"} will be replaced with ${row.name || getScoutQuickStoreName(row.store)}. Raw restock history and pattern tools stay protected.`,
+        confirmLabel: "Change Store",
+        cancelLabel: "Cancel",
+      });
+      if (!confirmed) return;
+    } else if (!replaceStoreId && watchedRows.length >= scoutWatchSlotLimit() && !tierAccess.isAdmin) {
+      setVaultToast("You are at your watched-store limit. Change an existing store or ask admin about extra Scout store add-ons during beta.");
+      return;
+    }
+    applyStoreMapWatchState(row, true, { replaceStoreId });
+    closeWatchStorePicker();
+    setVaultToast(`${row.name || getScoutQuickStoreName(row.store)} added to My Watch Stores.`);
+  }
+
+  async function removeWatchedStore(rowOrStore = {}) {
+    if (blockGuestSave()) return;
+    const row = rowOrStore.store ? rowOrStore : { store: rowOrStore };
+    const confirmed = await requestConfirmation({
+      title: "Remove watched store?",
+      message: `${row.name || getScoutQuickStoreName(row.store)} will leave My Watch Stores. You can still submit reports and browse current public signals.`,
+      confirmLabel: "Remove Store",
+      cancelLabel: "Cancel",
+    });
+    if (!confirmed) return;
+    applyStoreMapWatchState(row, false);
+    setVaultToast(`${row.name || getScoutQuickStoreName(row.store)} removed from My Watch Stores.`);
+  }
+
+  function toggleStoreMapWatch(rowOrStore = {}) {
+    const row = rowOrStore.store ? rowOrStore : { store: rowOrStore };
+    const watched = Boolean(row.store.favorite || row.store.priority || row.store.watchlisted || row.store.watchlist);
+    if (watched) {
+      void removeWatchedStore(row);
+      return;
+    }
+    void selectWatchedStore(row);
   }
 
   function openStoreMapReport(row, reportType = "stock_on_shelf") {
@@ -41523,24 +41661,87 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderScoutStoresPanel() {
-    const storeListRows = buildStoreMapRows().slice(0, 8);
+    const allStoreRows = buildStoreMapRows({ unfiltered: true });
+    const storeListRows = buildStoreMapRows().slice(0, 12);
+    const watchedStoreRows = getWatchedStoreRows(allStoreRows);
+    const slotLimit = scoutWatchSlotLimit();
+    const slotsAreLimited = slotLimit < 99;
+    const openSlotCount = slotsAreLimited ? Math.max(0, slotLimit - watchedStoreRows.length) : 0;
+    const visibleSlotCards = slotsAreLimited && openSlotCount > 0 ? Array.from({ length: openSlotCount }) : [];
+    const atSlotLimit = slotsAreLimited && watchedStoreRows.length >= slotLimit;
+    const pickerQuery = String(watchStorePickerState.query || "").trim();
+    const pickerReplaceRow = watchedStoreRows.find((row) => getStoreMapStoreId(row.store) === watchStorePickerState.replaceStoreId);
+    const pickerRows = allStoreRows
+      .filter((row) => !pickerQuery || scoutStoreMatchesLookup(row, pickerQuery))
+      .slice(0, 12);
+    const watchSignalLabel = (row = {}) => {
+      const statusText = `${row.status || ""} ${row.confidence || ""}`.toLowerCase();
+      if (statusText.includes("stock reported") || statusText.includes("restock") || statusText.includes("high")) return "Hot";
+      if (statusText.includes("recent") || statusText.includes("low stock") || statusText.includes("medium")) return "Warm";
+      if (statusText.includes("empty") || statusText.includes("low")) return "Cool";
+      return "Calm";
+    };
+    const categorySummary = (row = {}) => row.categories?.length ? row.categories.slice(0, 3).join(", ") : "No product summary yet";
+    const renderWatchedStoreCard = (row) => (
+      <article className="scout-watch-management-card" key={`watch-${row.id}`}>
+        <div className="scout-watch-management-main">
+          <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
+          <div>
+            <h3>{row.name}</h3>
+            <p>{row.retailer} | {row.area || row.city || "Area not listed"}</p>
+          </div>
+          <span className={`scout-watch-signal scout-watch-signal--${watchSignalLabel(row).toLowerCase()}`}>{watchSignalLabel(row)}</span>
+        </div>
+        <dl className="scout-watch-store-facts">
+          <div><dt>Last confirmed</dt><dd>{row.latestReport ? scoutReportDateTimeLabel(row.latestReport) : "No current report yet"}</dd></div>
+          <div><dt>Recent categories</dt><dd>{categorySummary(row)}</dd></div>
+          <div><dt>Change window</dt><dd>{scoutWatchNextChangeLabel(row)}</dd></div>
+        </dl>
+        <div className="scout-watch-management-actions">
+          <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>View</button>
+          <button type="button" className="secondary-button" onClick={() => openWatchStorePicker({ replaceStoreId: getStoreMapStoreId(row.store) })}>Change</button>
+          <button type="button" className="ghost-button" onClick={() => void removeWatchedStore(row)}>Remove</button>
+        </div>
+      </article>
+    );
+    const renderEmptySlotCard = (_, index) => (
+      <article className="scout-watch-empty-slot" key={`empty-watch-slot-${index}`}>
+        <strong>{watchedStoreRows.length ? "Choose another store" : "Choose your first watched store."}</strong>
+        <p>Scout will keep this store&apos;s current signals close without exposing raw restock history or pattern windows.</p>
+        <button type="button" className="secondary-button" onClick={() => openWatchStorePicker()}>Choose Store</button>
+      </article>
+    );
     return (
       <section className="scout-combined-section scout-stores-combined">
-        <div className="panel scout-subpage-panel scout-combined-header">
+        <div className="panel scout-subpage-panel scout-combined-header scout-watch-stores-header">
           <div className="compact-card-header">
             <div>
-              <h2>Stores</h2>
-              <p>Store list and map are consolidated here. Open a store from either view for details.</p>
+              <h2>My Watch Stores</h2>
+              <p>Choose the stores you want Scout to watch for current signals.</p>
             </div>
             <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Suggest Store</button>
           </div>
           <div className="segmented-control scout-subtoggle" role="tablist" aria-label="Store views">
-            <button type="button" className={scoutStoresMode === "list" ? "active" : ""} onClick={() => setScoutStoresMode("list")}>List</button>
+            <button type="button" className={scoutStoresMode === "list" ? "active" : ""} onClick={() => setScoutStoresMode("list")}>My Watch Stores</button>
             <button type="button" className={scoutStoresMode === "map" ? "active" : ""} onClick={() => setScoutStoresMode("map")}>Map</button>
           </div>
+          <div className="scout-watch-tier-summary" aria-label="Watched store tier summary">
+            <div>
+              <span>Plan</span>
+              <strong>{scoutWatchPlanLabel()}</strong>
+            </div>
+            <div>
+              <span>Slots</span>
+              <strong>{scoutWatchSlotSummary(watchedStoreRows.length)}</strong>
+            </div>
+            <div>
+              <span>Change rule</span>
+              <strong>{scoutWatchSwapWindowLabel()}</strong>
+            </div>
+          </div>
           <div className="scout-store-retailer-note">
-            <strong>Retailers</strong>
-            <span>Use List for quick store checks or Map for deeper area filters.</span>
+            <strong>Tier-safe Scout</strong>
+            <span>{slotLimit >= 99 ? "Admin tools can review broader store coverage for moderation. Raw history and pattern tools stay protected from public access." : `Your plan watches ${slotLimit} selected store${slotLimit === 1 ? "" : "s"} for current signals. Higher tiers can add selected stores. Raw history and pattern tools stay protected.`}</span>
           </div>
           <div className="scout-store-retailer-chips" aria-label="Retailer filters">
             {["All", "Target", "Walmart", "GameStop"].map((retailer) => (
@@ -41560,25 +41761,48 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </label>
         </div>
         {scoutStoresMode === "map" ? renderStoreMapPanel() : (
-          <section className="store-map-card-list scout-store-list-compact" aria-label="Scout store list">
-            {storeListRows.length ? storeListRows.map((row) => (
+          <section className="scout-watch-store-page" aria-label="My Watch Stores">
+            <div className="scout-watch-store-grid">
+              {watchedStoreRows.length ? watchedStoreRows.map(renderWatchedStoreCard) : null}
+              {visibleSlotCards.map(renderEmptySlotCard)}
+              {atSlotLimit ? (
+                <article className="scout-watch-empty-slot scout-watch-empty-slot--limit">
+                  <strong>Watched store slots are full</strong>
+                  <p>Change an existing watched store, or ask admin about the Extra Scout store add-on during beta.</p>
+                  <button type="button" className="secondary-button" onClick={() => watchedStoreRows[0] ? openWatchStorePicker({ replaceStoreId: getStoreMapStoreId(watchedStoreRows[0].store) }) : openWatchStorePicker()}>Change Store</button>
+                </article>
+              ) : null}
+            </div>
+
+            <div className="scout-watch-store-picker-panel panel">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Choose from nearby stores</h3>
+                  <p>Search stores, then add one to an open slot or use Change on a watched card to replace it.</p>
+                </div>
+                <span className="status-badge">{storeListRows.length} shown</span>
+              </div>
+              <div className="store-map-card-list scout-store-list-compact" aria-label="Scout store list">
+                {storeListRows.length ? storeListRows.map((row) => (
               <article className="store-map-card scout-store-card" key={row.id}>
                 <button type="button" className="store-map-card-main" onClick={() => openStoreProfile(row)}>
                   <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
                   <span>
                     <strong>{row.name}</strong>
-                    <small>{row.retailer} | {row.city || "Area not set"}</small>
+                    <small>{row.retailer} | {row.city || row.area || "Area not set"}</small>
                   </span>
                 </button>
                 <div className="store-map-card-meta">
                   {renderStoreMapStatusBadge(row)}
                   <span>{row.reports.length} report{row.reports.length === 1 ? "" : "s"}</span>
-                  {row.watchlisted ? <span>Following</span> : null}
+                  {row.watchlisted ? <span>Watching</span> : null}
                 </div>
                 <div className="store-map-card-actions">
-                  <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>Open Store</button>
+                  <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>View</button>
                   <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "scout-store-card", store: row.profile })}>Report</button>
-                  <button type="button" className="secondary-button" onClick={() => toggleStoreMapWatch(row)}>Follow</button>
+                  <button type="button" className="secondary-button" disabled={!row.watchlisted && atSlotLimit} title={!row.watchlisted && atSlotLimit ? "Change an existing watched store to select a new one." : ""} onClick={() => row.watchlisted ? void removeWatchedStore(row) : void selectWatchedStore(row)}>
+                    {row.watchlisted ? "Remove" : atSlotLimit ? "Slots Full" : "Watch"}
+                  </button>
                 </div>
               </article>
             )) : (
@@ -41587,8 +41811,69 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <span>Reset filters or suggest a missing store.</span>
               </div>
             )}
+              </div>
+            </div>
           </section>
         )}
+        {watchStorePickerState.open ? (
+          <div className="location-modal-backdrop scout-watch-picker-backdrop" role="presentation" onClick={closeWatchStorePicker}>
+            <section className="location-modal scout-watch-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="watch-store-picker-title" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-title-row modal-sticky-header">
+                <div>
+                  <h2 id="watch-store-picker-title">{pickerReplaceRow ? "Change watched store" : "Choose watched store"}</h2>
+                  <p>{pickerReplaceRow ? `Replacing ${pickerReplaceRow.name}. You will confirm before the swap saves.` : "Pick a store for an open watched-store slot."}</p>
+                </div>
+                <button type="button" className="modal-close-button" aria-label="Close watched store picker" onClick={closeWatchStorePicker}>X</button>
+              </div>
+              <label className="scout-store-list-search scout-watch-picker-search">
+                <span>Search stores</span>
+                <input value={watchStorePickerState.query} onChange={(event) => setWatchStorePickerState((current) => ({ ...current, query: event.target.value }))} placeholder="Search store, city, ZIP, nickname, or retailer" autoFocus />
+              </label>
+              <div className="scout-watch-picker-context">
+                <strong>{scoutWatchSlotSummary(watchedStoreRows.length)}</strong>
+                <span>{scoutWatchSwapWindowLabel()} Raw restock patterns stay protected.</span>
+              </div>
+              <div className="scout-watch-picker-list">
+                {pickerRows.length ? pickerRows.map((row) => {
+                  const rowId = getStoreMapStoreId(row.store);
+                  const isCurrentReplace = rowId === watchStorePickerState.replaceStoreId;
+                  const alreadyWatched = watchedStoreRows.some((watched) => getStoreMapStoreId(watched.store) === rowId);
+                  return (
+                    <article className="scout-watch-picker-row" key={`watch-picker-${row.id}`}>
+                      <button type="button" className="store-map-card-main" onClick={() => { closeWatchStorePicker(); openStoreProfile(row); }}>
+                        <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
+                        <span>
+                          <strong>{row.name}</strong>
+                          <small>{row.retailer} | {row.area || row.city || "Area not listed"}</small>
+                        </span>
+                      </button>
+                      <div className="store-map-card-meta">
+                        {renderStoreMapStatusBadge(row)}
+                        <span>{row.latestReport ? `Last: ${scoutReportDateTimeLabel(row.latestReport)}` : "No current report"}</span>
+                      </div>
+                      <div className="store-map-card-actions">
+                        <button type="button" className="secondary-button" onClick={() => { closeWatchStorePicker(); openStoreProfile(row); }}>View</button>
+                        <button
+                          type="button"
+                          disabled={isCurrentReplace || (alreadyWatched && !watchStorePickerState.replaceStoreId)}
+                          onClick={() => void selectWatchedStore(row, { replaceStoreId: watchStorePickerState.replaceStoreId })}
+                        >
+                          {isCurrentReplace ? "Current" : alreadyWatched && !watchStorePickerState.replaceStoreId ? "Watching" : pickerReplaceRow ? "Choose Replacement" : "Choose Store"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                }) : (
+                  <div className="empty-state">
+                    <h3>No stores found</h3>
+                    <p>Try a broader search or suggest a missing store. Store suggestions go through review before they become trusted Scout locations.</p>
+                    <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Suggest Store</button>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        ) : null}
       </section>
     );
   }
