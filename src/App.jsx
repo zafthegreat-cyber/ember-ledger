@@ -1355,6 +1355,196 @@ const WORKSPACE_ROLES = [
   { value: "viewer", label: "Viewer" },
 ];
 
+const COMING_SOON_GROUPS = [
+  {
+    key: "family",
+    title: "Family & Kid Mode",
+    description: "Parent-managed family tools are planned for a later phase. The current beta stays adult-first while the safety model is refined.",
+    defaultStatus: "In Design",
+    tone: "planned",
+    features: [
+      { name: "Kid Mode", description: "A simplified, parent-managed collecting view for younger users.", status: "Safety Review", userType: "Families" },
+      { name: "Parent Control Center", description: "One place to review child profile settings, permissions, and family privacy.", status: "In Design", userType: "Parents" },
+      { name: "Child Profiles", description: "Private child profiles managed by a parent or guardian, not public accounts.", status: "Planned", userType: "Families" },
+      { name: "Parent Approvals", description: "Approval steps before children can request trades, posts, or sensitive actions.", status: "Safety Review", userType: "Parents" },
+      { name: "Family Privacy Levels", description: "Simple controls for what stays private, family-only, or visible in safe community spaces.", status: "In Design", userType: "Families" },
+      { name: "Family House Rules", description: "Parent-defined collecting rules for purchases, trades, wishlists, and community use.", status: "Future Phase", userType: "Families" },
+      { name: "Parent/Child Mode Switcher", description: "A clear switch between parent tools and child-safe views on shared devices.", status: "Safety Review", userType: "Families" },
+      { name: "Ask Parent", description: "A request flow for purchases, trades, and sensitive actions that need adult review.", status: "Planned", userType: "Kids and parents" },
+    ],
+  },
+  {
+    key: "spark",
+    title: "The Spark",
+    description: "The giving program will grow carefully around verified donations, trusted helpers, and clear impact tracking.",
+    defaultStatus: "Planned",
+    tone: "planned",
+    features: [
+      { name: "Spark Points", description: "A future recognition system for helpful giving and community support.", status: "In Design", userType: "Families" },
+      { name: "Spark Rewards", description: "Future non-gambling rewards tied to verified support, not random prizes.", status: "Safety Review", userType: "Families" },
+      { name: "Donations", description: "Structured donation intake for cards, supplies, packs, and family collecting support.", status: "Planned", userType: "Donors" },
+      { name: "Donation Drop-Off Sites", description: "Approved locations that can accept Spark donations when partnerships are ready.", status: "Needs Partner", userType: "Shops and donors" },
+      { name: "Pickup Coordination", description: "Safe coordination tools for larger donations without public location sharing.", status: "Safety Review", userType: "Donors" },
+      { name: "Kid Packs", description: "Pack-building workflows for age-appropriate collecting starter kits.", status: "Planned", userType: "Families" },
+      { name: "Impact Dashboard", description: "A careful summary of packs built, donations processed, and community support.", status: "Future Phase", userType: "Community" },
+      { name: "Trusted Family Friend Program", description: "An approval-based helper role for safe events, donations, and learning support.", status: "Safety Review", userType: "Trusted helpers" },
+      { name: "Donation Verification", description: "Review steps that confirm donation details before they count toward impact.", status: "Planned", userType: "Admins" },
+      { name: "Spark Points Ledger", description: "A future audit-friendly record of earned and used Spark Points.", status: "Future Phase", userType: "Families" },
+    ],
+  },
+  {
+    key: "friends",
+    title: "Friends, Trades, and Safety",
+    description: "Friend and trade tools will only ship after safety, consent, and review workflows are strong enough.",
+    defaultStatus: "Safety Review",
+    tone: "planned",
+    features: [
+      { name: "Trusted Circle", description: "Private, parent-aware circles for known collecting friends and family.", status: "Safety Review", userType: "Families" },
+      { name: "Verified Friend Trades", description: "Trade workflows limited to trusted relationships with clear review steps.", status: "Future Phase", userType: "Collectors" },
+      { name: "Two-Sided Trade Confirmation", description: "Both users confirm what changed hands before a trade is considered complete.", status: "Planned", userType: "Collectors" },
+      { name: "Trade Fairness Warnings", description: "Plain-language warnings when a trade may be unfair or incomplete.", status: "In Design", userType: "Families" },
+      { name: "Child-Safe Friend Approvals", description: "Parent approval before any child-safe friend connection can exist.", status: "Safety Review", userType: "Parents" },
+      { name: "Preset Kid-Safe Messages", description: "Limited, parent-approved message options instead of open chat.", status: "Safety Review", userType: "Kids and parents" },
+      { name: "Disputes / Report Problem", description: "A report flow for questionable trades, unsafe behavior, or mistaken records.", status: "Planned", userType: "Community" },
+      { name: "Proof Strength Labels", description: "Simple trust labels for receipts, photos, confirmations, and admin review.", status: "In Design", userType: "Collectors" },
+    ],
+  },
+  {
+    key: "learning",
+    title: "Tidepool & Learning",
+    description: "Learning and community activities should help families collect wisely without turning the app into a game loop.",
+    defaultStatus: "Future Phase",
+    tone: "planned",
+    features: [
+      { name: "Learning Cove", description: "Short lessons and collecting basics for parents, kids, and new collectors.", status: "Planned", userType: "Families" },
+      { name: "Binder Bingo", description: "A gentle binder organization activity without paid advantages or random rewards.", status: "In Design", userType: "Kids and families" },
+      { name: "Fair Trade Practice", description: "Practice scenarios that teach value, condition, and consent before real trades.", status: "In Design", userType: "Families" },
+      { name: "Card Care Challenge", description: "Learning prompts for sleeves, binders, storage, and condition protection.", status: "Planned", userType: "Collectors" },
+      { name: "Learn to Play Lessons", description: "Beginner-friendly lessons for learning the game side of collecting.", status: "Future Phase", userType: "Families" },
+      { name: "Parent Pokemon 101", description: "Plain-language guidance for parents who want to understand sets, rarity, and value.", status: "Planned", userType: "Parents" },
+      { name: "Community Highlights", description: "Curated, moderated highlights from safe local collecting activity.", status: "Future Phase", userType: "Community" },
+      { name: "Tidepool Activities", description: "Structured community prompts that avoid open child messaging or public child profiles.", status: "Safety Review", userType: "Community" },
+      { name: "Local Events", description: "A family-safe event surface for shops, Spark days, and learning sessions.", status: "Needs Partner", userType: "Families and shops" },
+    ],
+  },
+  {
+    key: "vault",
+    title: "Vault Expansion",
+    description: "Collection tools will expand after the core Vault, Set Mastery, and manual review flows stay stable.",
+    defaultStatus: "Planned",
+    tone: "planned",
+    features: [
+      { name: "Duplicate/Bulk Manager", description: "Tools for reviewing duplicate cards and larger collection batches.", status: "Planned", userType: "Collectors" },
+      { name: "Donate Pile", description: "A simple way to stage cards and supplies for Spark donation review.", status: "Planned", userType: "Families" },
+      { name: "Trade Pile", description: "A future holding area for cards that may be available for safe trades.", status: "Safety Review", userType: "Collectors" },
+      { name: "Sell Pile", description: "A staging area for items that may move into Forge or selling workflows.", status: "Future Phase", userType: "Sellers" },
+      { name: "Keep Pile", description: "A clearer way to protect favorites and long-term collection items.", status: "Planned", userType: "Collectors" },
+      { name: "Kid Pack Pile", description: "A staging area for items that could become child-safe Spark packs.", status: "Planned", userType: "Families" },
+      { name: "Deck Builder", description: "Tools for building and tracking playable decks from owned cards.", status: "Future Phase", userType: "Players" },
+      { name: "Practice Table / Vault Play", description: "A learning-first play surface, not a full public battle engine.", status: "Delayed", userType: "Families" },
+      { name: "Learn with My Cards", description: "Lessons and prompts based on cards already in a user's Vault.", status: "Future Phase", userType: "Families" },
+      { name: "Wishlist", description: "A deeper wishlist and chase-list surface connected to Vault and Market.", status: "Planned", userType: "Collectors" },
+      { name: "Family Gift List", description: "Private family gift ideas without exposing child profiles publicly.", status: "Safety Review", userType: "Families" },
+      { name: "Condition/Grading Helper", description: "Manual condition guidance that remains clearly separate from official grading.", status: "In Design", userType: "Collectors" },
+      { name: "Backup/Export", description: "More complete export and recovery options for collection records.", status: "Planned", userType: "All users" },
+    ],
+  },
+  {
+    key: "market-forge",
+    title: "Market & Forge Expansion",
+    description: "Market and business tools will stay practical, manual-review first, and honest about data confidence.",
+    defaultStatus: "Future Phase",
+    tone: "planned",
+    features: [
+      { name: "Advanced Trade Value Checker", description: "A review tool for comparing value in potential trades before anyone saves changes.", status: "In Design", userType: "Collectors" },
+      { name: "Family-Safe Buying Guidance", description: "Plain-language buying context for parents and newer collectors.", status: "Planned", userType: "Families" },
+      { name: "Seller Trust Signals", description: "Future signals that help buyers understand seller reliability without fake guarantees.", status: "Future Phase", userType: "Buyers and sellers" },
+      { name: "Market Listing Tools", description: "Listing preparation tools after the core app and safety model are ready.", status: "Future Phase", userType: "Sellers" },
+      { name: "Shop/Seller Profiles", description: "Profiles for approved shops or sellers when partner rules are in place.", status: "Needs Partner", userType: "Shops and sellers" },
+      { name: "Advanced Forge Reports", description: "More detailed business summaries for sales, expenses, inventory, and readiness.", status: "Planned", userType: "Sellers" },
+      { name: "Mileage/Fee/Tax Helpers", description: "Clearer support tools for business record organization, not tax advice.", status: "Planned", userType: "Sellers" },
+      { name: "Inventory Import", description: "Safer bulk import flows with review before records are saved.", status: "Planned", userType: "Collectors and sellers" },
+    ],
+  },
+  {
+    key: "partners",
+    title: "Partner Shops & Events",
+    description: "Partner features need real-world approvals, clear rules, and family-safe operating practices before launch.",
+    defaultStatus: "Needs Partner",
+    tone: "planned",
+    features: [
+      { name: "Partner Shop Applications", description: "A review path for shops that want to participate safely.", status: "Needs Partner", userType: "Shops" },
+      { name: "Donation Drop-Site Tools", description: "Tools for approved locations to manage Spark donation drop-offs.", status: "Needs Partner", userType: "Partner shops" },
+      { name: "Shop Partner Portal", description: "A future portal for approved shop profiles, events, and support tools.", status: "Future Phase", userType: "Shops" },
+      { name: "Learn to Play Days", description: "Family-friendly event support for learning and beginner play.", status: "Needs Partner", userType: "Shops and families" },
+      { name: "Trade Nights", description: "Safety-reviewed event planning for trusted local trade sessions.", status: "Safety Review", userType: "Shops and families" },
+      { name: "Spark Donation Drop Days", description: "Coordinated donation days with verified intake and family-safe copy.", status: "Needs Partner", userType: "Community" },
+      { name: "Kids Pack Events", description: "Approved events for building or distributing Spark kid packs.", status: "Safety Review", userType: "Families" },
+      { name: "Binder Sorting Events", description: "Organized collection help days for sorting, sleeves, and binder care.", status: "Needs Partner", userType: "Community" },
+      { name: "Sponsor/Reward Partner Tools", description: "Careful partner tools for support and rewards without gambling mechanics.", status: "Safety Review", userType: "Partners" },
+    ],
+  },
+  {
+    key: "admin",
+    title: "Admin & Operations",
+    description: "Operational tools stay internal and will be added only when they make moderation, safety, and data quality stronger.",
+    defaultStatus: "Planned",
+    tone: "planned",
+    features: [
+      { name: "Feature Flags", description: "Controlled switches for staged releases and testing.", status: "Planned", userType: "Admin" },
+      { name: "Admin Kill Switches", description: "Emergency controls for disabling risky surfaces quickly.", status: "Safety Review", userType: "Admin" },
+      { name: "Audit Log", description: "A record of important admin and moderation actions.", status: "Planned", userType: "Admin" },
+      { name: "Admin Notes", description: "Private moderation notes for reports, users, shops, and data repair.", status: "Planned", userType: "Admin" },
+      { name: "Moderation Queue", description: "A stronger review queue for reports, content, shop requests, and corrections.", status: "Planned", userType: "Admin" },
+      { name: "Data Cleanup Tools", description: "Safe repair tools for stale, duplicate, or test records.", status: "Planned", userType: "Admin" },
+      { name: "Merge Duplicate Stores/Products/Cards", description: "Careful merge tools that preserve history and avoid data loss.", status: "Planned", userType: "Admin" },
+      { name: "Delete Fake/Test Users", description: "A controlled cleanup flow for test accounts and fake users.", status: "Safety Review", userType: "Admin" },
+      { name: "State Expansion Dashboard", description: "Internal readiness tracking before Scout expands beyond current regions.", status: "Future Phase", userType: "Admin" },
+      { name: "Built-In Beta Feedback", description: "A more structured feedback inbox connected to app context.", status: "Planned", userType: "Beta users" },
+      { name: "App-Wide Search", description: "Search across safe app records without exposing private data.", status: "Future Phase", userType: "All users" },
+      { name: "Help/Safety Center", description: "A polished help hub for rules, safety, privacy, and support.", status: "Planned", userType: "All users" },
+      { name: "Ember & Tide Promise", description: "A clear public statement of safety, family privacy, and fair collecting rules.", status: "In Design", userType: "All users" },
+    ],
+  },
+  {
+    key: "delayed",
+    title: "Delayed / Not Yet",
+    description: "These ideas are intentionally delayed. They are not part of the near-term beta roadmap.",
+    defaultStatus: "Delayed",
+    tone: "delayed",
+    features: [
+      { name: "Full Public Marketplace Selling", description: "A public selling platform needs much stronger trust, support, and policy work.", status: "Delayed", userType: "Sellers" },
+      { name: "Public Community Feed", description: "Open feeds are delayed until moderation and child-safety controls are much stronger.", status: "Delayed", userType: "Community" },
+      { name: "Open Messaging", description: "Open direct messaging is not appropriate for the current family safety model.", status: "Delayed", userType: "Community" },
+      { name: "Public Shop Reviews", description: "Reviews require careful moderation, dispute handling, and fairness rules.", status: "Delayed", userType: "Shops" },
+      { name: "Full Vault Play Battle Engine", description: "A full battle system is outside the current core app stabilization work.", status: "Delayed", userType: "Players" },
+      { name: "Nationwide Scout", description: "Scout expansion will wait until local data quality and moderation are reliable.", status: "Delayed", userType: "Scout users" },
+      { name: "Real-Money Wallet", description: "Wallets introduce payment, compliance, and risk concerns that are not planned now.", status: "Delayed", userType: "Marketplace users" },
+      { name: "Complex Shipping System", description: "Shipping support is delayed until selling workflows are mature and safe.", status: "Delayed", userType: "Sellers" },
+    ],
+  },
+  {
+    key: "not-planned",
+    title: "Will Not Add / Safety Guardrails",
+    description: "These mechanics do not fit Ember & Tide's safety, family privacy, or fair collecting values.",
+    defaultStatus: "Not Planned",
+    tone: "guardrail",
+    features: [
+      { name: "Loot Boxes", description: "Randomized prize mechanics are not aligned with safe family collecting.", status: "Not Planned", userType: "All users" },
+      { name: "Spin Wheels", description: "Chance-based reward loops are not planned.", status: "Not Planned", userType: "All users" },
+      { name: "Mystery Rewards", description: "Hidden or random rewards create the wrong incentives for kids and families.", status: "Not Planned", userType: "All users" },
+      { name: "Random Prize Chests", description: "Randomized prize boxes are intentionally excluded.", status: "Not Planned", userType: "All users" },
+      { name: "Digital Pack Opening Rewards", description: "Pack-opening reward loops would blur collecting guidance with gambling-like mechanics.", status: "Not Planned", userType: "All users" },
+      { name: "Paid Streak Advantages", description: "Paid users should not get streak mechanics that pressure spending or daily use.", status: "Not Planned", userType: "All users" },
+      { name: "Public Child Profiles", description: "Child profiles should stay private and parent-managed.", status: "Not Planned", userType: "Families" },
+      { name: "Public Child Leaderboards", description: "Public ranking of children is not part of the safety model.", status: "Not Planned", userType: "Families" },
+      { name: "Open Marketplace Messaging With Children", description: "Children should not be exposed to open marketplace messaging.", status: "Not Planned", userType: "Families" },
+      { name: "Location Sharing Between Users", description: "User-to-user location sharing is not planned.", status: "Not Planned", userType: "All users" },
+      { name: "Nearby Friends For Kids", description: "Nearby friend discovery for children is outside Ember & Tide safety guardrails.", status: "Not Planned", userType: "Families" },
+    ],
+  },
+];
+
 function routeStateFromPath(pathname = "") {
   const segments = String(pathname || "/").split("/").filter(Boolean);
   const state = {};
@@ -1395,6 +1585,7 @@ function routeStateFromPath(pathname = "") {
   if (section === "today" || section === "daily-tide") return { activeTab: "dailyTide" };
   if (section === "whats-new" || section === "changelog") return { activeTab: "whatsNew" };
   if (section === "known-limitations") return { activeTab: "knownLimitations" };
+  if (section === "coming-soon" || section === "roadmap") return { activeTab: "comingSoon" };
   if (section === "kids-program") return { activeTab: "kidsProgram" };
   if (section === "profile") return { activeTab: subSection === "progress" ? "profileProgress" : "profile" };
   if (section === "account") return { activeTab: "account" };
@@ -6025,6 +6216,7 @@ export default function App() {
       { key: "tidepool-main", label: "Tidepool Community", target: "tidepool" },
       { key: "kids-program", label: "The Spark", target: "kidsProgram" },
       { key: "announcements", label: "Announcements", target: "whatsNew" },
+      { key: "coming-soon", label: "Coming Soon", target: "comingSoon" },
       { key: "settings", label: "Settings", target: "settings" },
     ] },
   ];
@@ -6044,6 +6236,7 @@ export default function App() {
     links: "Links",
     whatsNew: "Announcements",
     knownLimitations: "Known Limitations",
+    comingSoon: "Coming Soon",
     membership: "Membership",
     profileProgress: "Ember ID Progress",
     betaReadiness: "Beta Readiness",
@@ -6095,6 +6288,7 @@ export default function App() {
     tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe community.", icon: "pool", target: "tidepool" },
     spark: { key: "spark", label: "The Spark", helper: "Kids Program.", icon: "spark", action: () => setActiveTab("kidsProgram") },
     announcements: { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
+    comingSoon: { key: "comingSoon", label: "Coming Soon", helper: "Future roadmap and safety guardrails", icon: "calendar", action: () => setActiveTab("comingSoon") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin", helper: "Command center", icon: "settings", target: "adminReview" } : null,
     moderator: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible ? { key: "moderator", label: "Moderator", helper: "Limited review tools", icon: "settings", target: "moderator" } : null,
     "ember-watch": { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
@@ -6106,6 +6300,7 @@ export default function App() {
   const desktopMoreItems = [
     { key: "spark", label: "The Spark", helper: "Kids Program.", icon: "spark", action: () => setActiveTab("kidsProgram") },
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
+    { key: "comingSoon", label: "Coming Soon", helper: "Future roadmap and safety guardrails", icon: "calendar", action: () => setActiveTab("comingSoon") },
     { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
     { key: "profile", label: "Ember ID", helper: "Public username and trust identity", icon: "settings", action: () => openUtilityPage("profile") },
     { key: "membership", label: "Plans & Features", helper: "Beta pricing and feature gates", icon: "settings", action: () => setActiveTab("membership") },
@@ -6137,6 +6332,7 @@ export default function App() {
     tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe posts and trusted trade talk.", icon: "pool", target: "tidepool" },
     spark: { key: "spark", label: "The Spark", helper: "Kids Program requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
     announcements: { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
+    comingSoon: { key: "comingSoon", label: "Coming Soon", helper: "Future features, delayed ideas, and safety guardrails.", icon: "calendar", action: () => setActiveTab("comingSoon") },
     "emberWatch": { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
     profile: { key: "profile", label: "Ember ID", helper: "Public username and trust identity.", icon: "settings", action: () => openUtilityPage("profile") },
     account: { key: "account", label: "Account", helper: "Sign-in, beta status, and app version.", icon: "settings", action: () => openUtilityPage("account") },
@@ -6162,6 +6358,7 @@ export default function App() {
     mobileMenuByKey.forge,
     mobileMenuByKey.tidepool,
     mobileMenuByKey.spark,
+    mobileMenuByKey.comingSoon,
     { key: "collections", label: "Collections", helper: "Workspace and members.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
     mobileMenuByKey.settings,
@@ -6801,6 +6998,7 @@ export default function App() {
     if (item.key === "today") return activeTab === "dailyTide" || Boolean(dailyTideModalTask);
     if (item.key === "spark") return activeTab === "kidsProgram";
     if (item.key === "announcements") return activeTab === "whatsNew";
+    if (item.key === "comingSoon") return activeTab === "comingSoon";
     if (item.key === "ember-watch") return activeTab === "scout" && scoutView === "alerts";
     if (item.key === "profile") return activeTab === "profile" || activeTab === "profileProgress";
     if (item.key === "help") return activeTab === "help";
@@ -28853,6 +29051,7 @@ function renderForgeAccessState() {
     if (activeTab === "links") return "/links";
     if (activeTab === "whatsNew") return "/whats-new";
     if (activeTab === "knownLimitations") return "/known-limitations";
+    if (activeTab === "comingSoon") return "/coming-soon";
     if (activeTab === "settings") return "/settings";
     if (activeTab === "account") return "/account";
     if (activeTab === "collections") return "/collections";
@@ -36361,6 +36560,99 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </section>
       </>
     );
+  }
+
+  function renderComingSoonPage() {
+    const totalPlannedFeatures = COMING_SOON_GROUPS
+      .filter((group) => group.tone !== "guardrail")
+      .reduce((sum, group) => sum + group.features.length, 0);
+    const delayedCount = COMING_SOON_GROUPS.find((group) => group.key === "delayed")?.features.length || 0;
+    const notPlannedCount = COMING_SOON_GROUPS.find((group) => group.key === "not-planned")?.features.length || 0;
+    const noteInterest = (feature, group) => {
+      showToast({
+        type: "info",
+        title: "Interest noted locally",
+        message: `${feature.name} is ${String(feature.status || group.defaultStatus || "planned").toLowerCase()} and is not available yet. No notification, checkout, or waitlist was created.`,
+      });
+    };
+
+    return renderUtilityPageShell({
+      title: "Coming Soon",
+      subtitle: "Ember & Tide is growing carefully. These features are planned for future phases, but we are perfecting the core app first.",
+      className: "coming-soon-page",
+      actions: (
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => openFeedbackDialog("feature", { whatHappened: "Coming Soon roadmap feedback: " })}
+        >
+          Share roadmap feedback
+        </button>
+      ),
+      children: (
+        <>
+          <section className="panel coming-soon-hero" aria-label="Coming Soon focus">
+            <div>
+              <p className="section-kicker">Roadmap visibility</p>
+              <h2>Core app first. Future systems later.</h2>
+              <p>
+                Coming Soon is a planning view only. Nothing on this page turns on Kid Mode, Spark Points, friends, marketplace selling,
+                partner shops, Vault Play, payments, notifications, or backend workflows.
+              </p>
+            </div>
+            <dl className="coming-soon-summary">
+              <div><dt>Planned ideas</dt><dd>{totalPlannedFeatures}</dd></div>
+              <div><dt>Delayed</dt><dd>{delayedCount}</dd></div>
+              <div><dt>Not planned</dt><dd>{notPlannedCount}</dd></div>
+            </dl>
+          </section>
+
+          <div className="coming-soon-group-stack">
+            {COMING_SOON_GROUPS.map((group) => (
+              <section className={`coming-soon-group coming-soon-group--${group.tone}`} key={group.key}>
+                <div className="compact-card-header coming-soon-group-header">
+                  <div>
+                    <p className="section-kicker">{group.tone === "guardrail" ? "Safety guardrail" : group.tone === "delayed" ? "Delayed scope" : "Future phase"}</p>
+                    <h2>{group.title}</h2>
+                    <p>{group.description}</p>
+                  </div>
+                  <span className={`status-badge coming-soon-group-status coming-soon-status--${group.tone}`}>
+                    {group.defaultStatus}
+                  </span>
+                </div>
+                <div className="coming-soon-card-grid">
+                  {group.features.map((feature) => {
+                    const status = feature.status || group.defaultStatus;
+                    const disabled = group.tone === "guardrail";
+                    return (
+                      <article className={`coming-soon-card coming-soon-card--${group.tone}`} key={`${group.key}-${feature.name}`}>
+                        <div className="coming-soon-card-meta">
+                          <span className={`status-badge coming-soon-status--${group.tone}`}>{status}</span>
+                          {feature.userType ? <small>{feature.userType}</small> : null}
+                        </div>
+                        <h3>{feature.name}</h3>
+                        <p>{feature.description}</p>
+                        <small className="coming-soon-unavailable">
+                          {disabled ? "Not planned." : group.tone === "delayed" ? "Delayed - not upcoming soon." : "Not available yet."}
+                        </small>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={disabled}
+                          onClick={() => noteInterest(feature, group)}
+                        >
+                          {disabled ? "Not planned" : group.tone === "delayed" ? "Track interest" : "I'm interested"}
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        </>
+      ),
+    });
   }
 
   function renderWhatsNewPage() {
@@ -53505,6 +53797,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "links" && renderLinksPage()}
         {!activeTabLocked && activeTab === "whatsNew" && renderWhatsNewPage()}
         {!activeTabLocked && activeTab === "knownLimitations" && renderKnownLimitationsPage()}
+        {!activeTabLocked && activeTab === "comingSoon" && renderComingSoonPage()}
         {!activeTabLocked && activeTab === "settings" && renderSettingsPage()}
         {!activeTabLocked && activeTab === "account" && renderAccountPage()}
         {!activeTabLocked && activeTab === "collections" && renderCollectionsPage()}

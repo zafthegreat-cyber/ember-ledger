@@ -62206,3 +62206,377 @@ html body .app-command-shell.app-vault .ember-assist-shell {
     grid-column: 1 / -1 !important;
   }
 }
+
+/* Responsive workspace polish: keep the phone shell compact, but let tablet and desktop use the room they have. */
+.app.app-command-shell > *,
+.app.app-command-shell .main,
+.app.app-command-shell main,
+.app.app-command-shell .dashboard-layout,
+.app.app-command-shell .screen,
+.app.app-command-shell .panel,
+.app.app-command-shell .card,
+.app.app-command-shell .compact-card,
+.app.app-command-shell .standard-page-header {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .app.app-command-shell {
+    grid-template-columns: clamp(220px, 14vw, 276px) minmax(0, 1fr) !important;
+    gap: clamp(16px, 1.45vw, 26px) !important;
+    width: min(calc(100vw - clamp(28px, 4vw, 72px)), 1760px) !important;
+    max-width: none !important;
+    padding-block: clamp(18px, 1.6vw, 28px) 42px !important;
+  }
+
+  .app.app-command-shell > .web-command-sidebar,
+  .app.app-command-shell > .app-shell-header,
+  .app.app-command-shell > .topbar,
+  .app.app-command-shell > .guest-preview-banner,
+  .app.app-command-shell > .admin-mode-control-bar,
+  .app.app-command-shell > .admin-edit-mode-banner,
+  .app.app-command-shell > .main.app-shell-dark,
+  .app.app-command-shell > .main,
+  .app.app-command-shell > main,
+  .app.app-command-shell .dashboard-layout,
+  .app.app-command-shell .screen,
+  .app.app-command-shell .marketplace-section,
+  .app.app-command-shell .forge-page,
+  .app.app-command-shell .vault-page,
+  .app.app-command-shell .scout-page,
+  .app.app-command-shell .tidepool-community {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .app.app-command-shell > .topbar {
+    grid-template-columns: minmax(50px, auto) minmax(340px, 1fr) minmax(280px, auto) !important;
+    gap: clamp(10px, 1vw, 16px) !important;
+  }
+
+  .app.app-command-shell > .topbar .app-search,
+  .app.app-command-shell > .topbar:not(.topbar-search-open) .app-search {
+    justify-self: stretch !important;
+    width: 100% !important;
+    min-width: min(420px, 100%) !important;
+    max-width: none !important;
+  }
+
+  .app.app-command-shell .topbar-command-actions {
+    justify-content: flex-end !important;
+    min-width: 0 !important;
+    max-width: min(100%, 560px) !important;
+  }
+
+  .app.app-command-shell.app-home .hearth-northstar,
+  .app-home .app-command-shell .hearth-northstar {
+    grid-template-columns: minmax(0, 1.45fr) minmax(clamp(340px, 28vw, 520px), 0.72fr) !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding-inline: 0 !important;
+  }
+
+  .app.app-command-shell.app-home .hearth-primary-column,
+  .app.app-command-shell.app-home .hearth-side-column {
+    min-width: 0 !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .app.app-command-shell.app-home .hearth-northstar,
+  .app-home .app-command-shell .hearth-northstar {
+    grid-template-columns: minmax(0, 1.55fr) minmax(420px, 0.68fr) !important;
+    gap: clamp(18px, 1.4vw, 26px) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .app.app-command-shell .topbar-command-actions {
+    flex-wrap: nowrap !important;
+    max-width: none !important;
+  }
+
+  .app.app-command-shell .topbar-command-actions > * {
+    flex: 0 0 auto;
+  }
+}
+
+@media (min-width: 781px) and (max-width: 1023px) {
+  .app.app-command-shell {
+    width: min(calc(100vw - 24px), 960px) !important;
+    max-width: none !important;
+    padding-inline: 0 !important;
+  }
+
+  .app.app-command-shell > .app-shell-header,
+  .app.app-command-shell > .topbar,
+  .app.app-command-shell > .guest-preview-banner,
+  .app.app-command-shell > .admin-mode-control-bar,
+  .app.app-command-shell > .admin-edit-mode-banner,
+  .app.app-command-shell > .main.app-shell-dark,
+  .app.app-command-shell > .main,
+  .app.app-command-shell > main,
+  .app.app-command-shell .dashboard-layout,
+  .app.app-command-shell .screen {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .app.app-command-shell > .topbar {
+    gap: 10px !important;
+  }
+
+  .app.app-command-shell.app-home .hearth-northstar,
+  .app-home .app-command-shell .hearth-northstar {
+    grid-template-columns: minmax(0, 1.12fr) minmax(260px, 0.82fr) !important;
+    width: 100% !important;
+    max-width: none !important;
+    gap: 14px !important;
+    padding-inline: 0 !important;
+  }
+}
+
+/* Coming Soon roadmap page: visible future direction without enabling future systems. */
+.coming-soon-page {
+  width: 100%;
+}
+
+.coming-soon-page .utility-page-layout {
+  gap: clamp(16px, 2vw, 24px);
+}
+
+.coming-soon-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.34fr);
+  gap: clamp(16px, 2.2vw, 28px);
+  align-items: end;
+  overflow: hidden;
+  position: relative;
+}
+
+.coming-soon-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(255, 136, 36, 0.18), transparent 18rem),
+    radial-gradient(circle at 92% 15%, rgba(45, 214, 255, 0.14), transparent 17rem);
+  opacity: 0.92;
+}
+
+.coming-soon-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.coming-soon-hero h2 {
+  margin: 0;
+  color: var(--et-text, #fff4df);
+  font-size: clamp(1.65rem, 3.2vw, 3rem);
+  line-height: 1.02;
+}
+
+.coming-soon-hero p {
+  max-width: 64rem;
+  margin: 8px 0 0;
+  color: rgba(232, 246, 255, 0.76);
+}
+
+.coming-soon-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+}
+
+.coming-soon-summary div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(132, 226, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(4, 12, 26, 0.62);
+}
+
+.coming-soon-summary dt {
+  color: rgba(232, 246, 255, 0.64);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.coming-soon-summary dd {
+  margin: 4px 0 0;
+  color: #fff4df;
+  font-size: clamp(1.2rem, 2vw, 1.75rem);
+  font-weight: 950;
+}
+
+.coming-soon-group-stack {
+  display: grid;
+  gap: clamp(20px, 2.5vw, 30px);
+}
+
+.coming-soon-group {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding-block: 2px 8px;
+  border-top: 1px solid rgba(132, 226, 255, 0.14);
+}
+
+.coming-soon-group-header {
+  align-items: start;
+  padding-top: clamp(14px, 2vw, 20px);
+}
+
+.coming-soon-group-header h2 {
+  margin: 0;
+}
+
+.coming-soon-group-header p {
+  max-width: 70rem;
+}
+
+.coming-soon-group-status {
+  justify-self: end;
+}
+
+.coming-soon-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 238px), 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.coming-soon-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  min-height: 218px;
+  padding: 15px;
+  border: 1px solid rgba(132, 226, 255, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+    rgba(6, 15, 31, 0.78);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.coming-soon-card--planned {
+  border-color: rgba(255, 154, 67, 0.18);
+}
+
+.coming-soon-card--delayed {
+  border-color: rgba(255, 205, 96, 0.22);
+  background:
+    linear-gradient(145deg, rgba(255, 197, 86, 0.065), rgba(255, 255, 255, 0.018)),
+    rgba(12, 13, 25, 0.82);
+}
+
+.coming-soon-card--guardrail {
+  border-color: rgba(255, 103, 128, 0.22);
+  background:
+    linear-gradient(145deg, rgba(255, 103, 128, 0.07), rgba(255, 255, 255, 0.014)),
+    rgba(13, 10, 20, 0.82);
+}
+
+.coming-soon-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.coming-soon-card-meta small {
+  min-width: 0;
+  color: rgba(232, 246, 255, 0.62);
+  font-size: 0.7rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.coming-soon-card h3 {
+  margin: 0;
+  color: var(--et-text, #fff4df);
+  font-size: 1rem;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.coming-soon-card p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.coming-soon-unavailable {
+  color: rgba(255, 220, 154, 0.82);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.coming-soon-card button {
+  align-self: end;
+  width: 100%;
+  min-height: 40px;
+}
+
+.coming-soon-status--planned,
+.coming-soon-status--future,
+.coming-soon-status--planned.status-badge {
+  border-color: rgba(255, 154, 67, 0.3);
+  background: rgba(255, 133, 31, 0.11);
+  color: #ffdca3;
+}
+
+.coming-soon-status--delayed {
+  border-color: rgba(255, 205, 96, 0.28);
+  background: rgba(255, 205, 96, 0.1);
+  color: #ffe2a1;
+}
+
+.coming-soon-status--guardrail {
+  border-color: rgba(255, 103, 128, 0.32);
+  background: rgba(255, 103, 128, 0.1);
+  color: #ffd1d9;
+}
+
+@media (max-width: 780px) {
+  .coming-soon-hero {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px !important;
+  }
+
+  .coming-soon-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .coming-soon-summary div {
+    padding: 9px;
+  }
+
+  .coming-soon-summary dt {
+    font-size: 0.62rem;
+    line-height: 1.15;
+  }
+
+  .coming-soon-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coming-soon-group-header {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .coming-soon-group-status {
+    justify-self: start;
+  }
+}
