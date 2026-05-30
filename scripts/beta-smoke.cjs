@@ -5,8 +5,19 @@ const rawAppUrl = process.env.APP_URL || "http://127.0.0.1:5200/";
 const appUrl = new URL(rawAppUrl);
 appUrl.searchParams.set("betaLocalMode", "true");
 const APP_URL = appUrl.toString();
-const BETA_SMOKE_MODE = process.argv.includes("--regression") || process.env.BETA_SMOKE_MODE === "regression"
+const CLI_ARGS = process.argv.slice(2);
+const AREA_FLAG_INDEX = CLI_ARGS.indexOf("--area");
+const REQUESTED_AREA = String(
+  AREA_FLAG_INDEX >= 0 ? CLI_ARGS[AREA_FLAG_INDEX + 1] || "" : process.env.BETA_SMOKE_AREA || ""
+).trim().toLowerCase();
+const VALID_AREAS = new Set(["hearth", "scout", "vault", "market", "forge", "admin", "spark"]);
+if (REQUESTED_AREA && !VALID_AREAS.has(REQUESTED_AREA)) {
+  throw new Error(`Unknown beta smoke area "${REQUESTED_AREA}". Expected one of: ${[...VALID_AREAS].join(", ")}`);
+}
+const BETA_SMOKE_MODE = CLI_ARGS.includes("--regression") || process.env.BETA_SMOKE_MODE === "regression"
   ? "regression"
+  : REQUESTED_AREA
+    ? `area:${REQUESTED_AREA}`
   : "smoke";
 
 async function main() {
@@ -15,7 +26,41 @@ async function main() {
   page.setDefaultTimeout(20000);
   page.setDefaultNavigationTimeout(45000);
   const results = [];
+  const fatalBrowserErrors = [];
   console.log(`Beta smoke mode: ${BETA_SMOKE_MODE}`);
+
+  function recordFatalBrowserError(kind, message, url = "") {
+    const text = String(message || "").trim();
+    if (!text) return;
+    if (/ResizeObserver loop completed|favicon/i.test(text)) return;
+    if (/React does not recognize .* prop on a DOM element/i.test(text)) return;
+    fatalBrowserErrors.push(`${kind}: ${text}${url ? ` (${url})` : ""}`);
+  }
+
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      recordFatalBrowserError("console", message.text(), message.location()?.url || "");
+    }
+  });
+  page.on("pageerror", (error) => {
+    recordFatalBrowserError("pageerror", error.message);
+  });
+  page.on("requestfailed", (request) => {
+    const url = request.url();
+    const resourceType = request.resourceType();
+    const failureText = request.failure()?.errorText || "request failed";
+    if (/ERR_ABORTED/i.test(failureText)) return;
+    if (url.startsWith(new URL(APP_URL).origin) && ["document", "script", "stylesheet"].includes(resourceType)) {
+      recordFatalBrowserError("requestfailed", failureText, url);
+    }
+  });
+
+  async function assertNoFatalBrowserErrors() {
+    if (fatalBrowserErrors.length) {
+      const errors = fatalBrowserErrors.splice(0, fatalBrowserErrors.length);
+      throw new Error(`Fatal browser errors:\n${errors.join("\n")}`);
+    }
+  }
 
   await page.addInitScript(() => {
     const appSeed = sessionStorage.getItem("__etSmokeAppData");
@@ -39,6 +84,9 @@ async function main() {
     console.log(`START ${name}`);
     try {
       await fn();
+      if (BETA_SMOKE_MODE.startsWith("area:") || BETA_SMOKE_MODE === "smoke") {
+        await assertNoFatalBrowserErrors();
+      }
       const elapsedMs = Date.now() - startedAt;
       results.push({ name, status: "PASS", elapsedMs });
       console.log(`PASS ${name} (${elapsedMs}ms)`);
@@ -55,7 +103,11 @@ async function main() {
       const modalCount = await page.locator(".location-modal-backdrop, .catalog-detail-backdrop, .drawer-backdrop, .flow-modal-backdrop").count();
       if (!modalCount) return;
       await page.keyboard.press("Escape");
-      await page.waitForTimeout(200);
+      await page.waitForFunction(
+        () => !document.querySelector(".location-modal-backdrop, .catalog-detail-backdrop, .drawer-backdrop, .flow-modal-backdrop"),
+        null,
+        { timeout: 700 }
+      ).catch(() => {});
     }
   }
 
@@ -76,11 +128,15 @@ async function main() {
         ? "(TideTradr|Market)"
         : label === "Home"
           ? "(Home|Hearth|Hearth Home)"
-          : label === "Scout"
-            ? "(Scout|Scout Signals)"
-            : label === "Forge"
-              ? "(Forge|Forge Workshop)"
-          : label;
+            : label === "Scout"
+              ? "(Scout|Scout Signals)"
+              : label === "Forge"
+                ? "(Forge|Forge Workshop)"
+                : label === "The Spark"
+                  ? "(The Spark|Kids Program)"
+                  : label === "Admin"
+                    ? "(Admin|Admin Command Center|Admin Review)"
+                    : label;
     const navName = new RegExp(`^${visibleLabel}\\b`, "i");
     const navSelectors = [
       ".web-command-nav button",
@@ -115,6 +171,8 @@ async function main() {
         Vault: "vault",
         TideTradr: "tideTradr",
         Forge: "forge",
+        "The Spark": "kidsProgram",
+        Admin: "adminReview",
       }[label];
       if (topbarValue) {
         const changed = await topbarSection.evaluate((select, value) => {
@@ -461,6 +519,200 @@ async function main() {
     return false;
   }
 
+  async function assertNoHorizontalOverflow(label = "page") {
+    const metrics = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    assert.ok(
+      metrics.scrollWidth <= metrics.clientWidth + 2,
+      `${label} should not horizontally overflow: ${metrics.scrollWidth}px > ${metrics.clientWidth}px`
+    );
+  }
+
+  async function expectVisible(locator, label, timeout = 7000) {
+    await locator.waitFor({ state: "visible", timeout }).catch(async (error) => {
+      const bodyPreview = await page.locator("body").innerText().catch(() => "");
+      error.message = `${label} was not visible.\n${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
+      throw error;
+    });
+  }
+
+  async function focusedHearthTest() {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await nav("Hearth");
+    const sparksPanel = page.locator(".hearth-today-sparks-panel").first();
+    await expectVisible(sparksPanel, "Today’s Sparks panel");
+    await assertVisibleText("Today's Sparks");
+    await assertVisibleText("Complete helpful actions to earn Ember Points.");
+    assert.equal(await sparksPanel.locator('input[type="checkbox"]').count(), 0, "Today’s Sparks should not use manual checkboxes");
+    const sparkText = await sparksPanel.innerText();
+    assert.match(sparkText, /Start|Continue|Done|No Sparks today|Today's Sparks Complete/, "Today’s Sparks should expose an action or terminal state");
+    assert.ok(await page.locator(".hearth-feature-card").count() > 0, "Phone Hearth feature cards should render");
+    const featureText = await page.locator(".hearth-feature-list").innerText();
+    assert.equal(/Open Scout|Open Vault|Open Forge|Open The Spark/i.test(featureText), false, "Phone feature cards should not show redundant Open buttons");
+    await expectVisible(page.locator(".mobile-bottom-nav").first(), "mobile bottom nav");
+    await assertNoHorizontalOverflow("Hearth mobile");
+    await page.setViewportSize({ width: 1366, height: 1600 });
+  }
+
+  async function focusedScoutTest() {
+    await nav("Scout");
+    await assertVisibleText("Scout");
+    const submitButton = page.getByRole("button", { name: /^Submit Report$/ }).first();
+    await expectVisible(submitButton, "Scout Submit Report action");
+    await submitButton.click();
+    const form = page.locator("form.scout-report-flow").first();
+    await expectVisible(form, "Scout report form");
+    await assertVisibleText(/Where and when|Post the restock essentials|Post store, status, and time|What did you see\?/i);
+    await closeOpenModals();
+  }
+
+  async function focusedVaultTest() {
+    const vaultData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const now = new Date().toISOString();
+      data.items = [
+        ...(data.items || []).filter((item) => item.id !== "focused-vault-smoke-item"),
+        {
+          id: "focused-vault-smoke-item",
+          name: "Focused Vault Smoke Card",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          businessInventory: false,
+          vaultStatus: "personal_collection",
+          status: "Personal Collection",
+          quantity: 1,
+          unitCost: 5,
+          marketPrice: 8,
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      return data;
+    });
+    await reloadWithAppData(vaultData);
+    await nav("Vault");
+    await assertVisibleText("Vault");
+    await assertVisibleText("Focused Vault Smoke Card");
+    assert.ok(
+      await page.getByRole("button", { name: /Quick Add|Add Item|Search \/ Scan Item/i }).count() > 0,
+      "Vault should expose a primary add/search action"
+    );
+  }
+
+  async function focusedMarketTest() {
+    await nav("Market");
+    await assertVisibleText(/Market|TideTradr/i);
+    const searchForm = page.locator(".catalog-search-form").first();
+    await expectVisible(searchForm, "Market catalog search form");
+    await searchForm.locator("input").first().fill("Prismatic Evolutions Booster Bundle");
+    await searchForm.getByRole("button", { name: /Search Catalog|Search Market Watch|Search/i }).first().click();
+    await expectVisible(
+      page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first(),
+      "Market focused search result",
+      10000
+    );
+  }
+
+  async function focusedForgeTest() {
+    const forgeData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const now = new Date().toISOString();
+      data.userType = "seller";
+      data.dashboardPreset = "seller";
+      data.profile = {
+        ...(data.profile || {}),
+        userType: "seller",
+        dashboardPreset: "seller",
+      };
+      data.items = [
+        ...(data.items || []).filter((item) => item.id !== "focused-forge-smoke-item"),
+        {
+          id: "focused-forge-smoke-item",
+          name: "Focused Forge Smoke ETB",
+          destinationScope: ["forge"],
+          recordType: "forge_inventory",
+          businessInventory: true,
+          status: "In Stock",
+          quantity: 2,
+          unitCost: 40,
+          marketPrice: 55,
+          salePrice: 60,
+          physicalLocation: "At Home",
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      return data;
+    });
+    await reloadWithAppData(forgeData);
+    await nav("Forge");
+    await assertVisibleText("Forge");
+    await assertVisibleText("Focused Forge Smoke ETB");
+    await expectVisible(page.getByRole("button", { name: "Add Inventory", exact: true }).first(), "Forge Add Inventory action");
+  }
+
+  async function focusedAdminTest() {
+    const adminUrl = new URL(APP_URL);
+    adminUrl.pathname = "/admin";
+    await page.goto(adminUrl.toString(), { waitUntil: "domcontentloaded" });
+    await assertVisibleText(/Admin|Hearth|permission|Beta/i);
+    const adminModeBar = page.locator(".admin-mode-control-bar").first();
+    if (await adminModeBar.isVisible().catch(() => false)) {
+      await adminModeBar.getByRole("button", { name: "Regular" }).click();
+      await assertVisibleText("Regular preview active");
+      assert.equal(await page.locator(".admin-edit-mode-banner").count(), 0, "regular preview should not show the admin edit banner");
+      await adminModeBar.getByRole("button", { name: "Admin" }).click();
+      await assertVisibleText("Admin Mode active");
+      return;
+    }
+    assert.equal(await page.locator(".admin-edit-mode-banner").count(), 0, "non-admin users should not see admin edit controls");
+    assert.equal(await page.locator(".admin-danger-action, .admin-destructive-action").count(), 0, "non-admin users should not see destructive admin controls");
+  }
+
+  async function focusedSparkTest() {
+    await nav("The Spark").catch(async () => {
+      const sparkUrl = new URL(APP_URL);
+      sparkUrl.pathname = "/kids-program";
+      await page.goto(sparkUrl.toString(), { waitUntil: "domcontentloaded" });
+    });
+    await assertVisibleText(/The Spark|Kids Program|Igniting the spark/i);
+    assert.ok(
+      await page.getByRole("button", { name: /Apply|Request|Learn|Rules|Kids Program/i }).count() > 0,
+      "The Spark should expose a primary family-safe action"
+    );
+  }
+
+  const focusedAreaTests = {
+    hearth: focusedHearthTest,
+    scout: focusedScoutTest,
+    vault: focusedVaultTest,
+    market: focusedMarketTest,
+    forge: focusedForgeTest,
+    admin: focusedAdminTest,
+    spark: focusedSparkTest,
+  };
+
+  if (BETA_SMOKE_MODE.startsWith("area:")) {
+    await step("app opens and local beta shell loads", async () => {
+      await resetBetaData();
+      await assertVisibleText("E&T TCG");
+      await assertVisibleText("Beta");
+      await assertVisibleText("Hearth");
+    });
+
+    await step(`${REQUESTED_AREA}: focused critical path`, focusedAreaTests[REQUESTED_AREA]);
+
+    await browser.close();
+    console.log(JSON.stringify(results, null, 2));
+    return;
+  }
+
   if (BETA_SMOKE_MODE === "smoke") {
     await step("app opens and local beta shell loads", async () => {
       await resetBetaData();
@@ -475,9 +727,13 @@ async function main() {
       const commandCenterButtons = [
         page.locator('button[aria-label="Open Quick Add command center"]'),
         page.locator(".hearth-command-hero").getByRole("button", { name: "Quick Add", exact: true }),
+        page.locator(".mobile-bottom-nav .mobile-dock-add"),
       ];
-      const opened = await clickFirstVisible(commandCenterButtons[0], "").catch(() => false)
-        || await clickFirstVisible(commandCenterButtons[1], "").catch(() => false);
+      let opened = false;
+      for (const buttonLocator of commandCenterButtons) {
+        opened = await clickFirstVisible(buttonLocator, "").catch(() => false);
+        if (opened) break;
+      }
       assert.equal(opened, true, "Quick Add command entry should be visible");
       const quickAddModal = page.locator('.flow-modal[data-flow="addActionSheet"]').first();
       await quickAddModal.waitFor({ state: "visible", timeout: 5000 });
@@ -2395,6 +2651,7 @@ async function main() {
       const commandCenterButtons = [
         page.locator('button[aria-label="Open Quick Add command center"]'),
         page.locator(".hearth-command-hero").getByRole("button", { name: "Quick Add", exact: true }),
+        page.locator(".mobile-bottom-nav .mobile-dock-add"),
       ];
       let opened = false;
       for (const buttonLocator of commandCenterButtons) {
