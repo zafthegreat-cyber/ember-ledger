@@ -31,6 +31,18 @@ assert.match(app, /Community trust/, "Scout Report Detail should summarize commu
 assert.match(app, /No proof added yet\. Proof helps Scout trust this report\./, "Scout Report Detail should explain missing proof clearly");
 assert.match(app, /Protected Scout context/, "Scout Report Detail should hide raw history context from normal users");
 assert.match(app, /Add Report for Store/, "Scout Report Detail should offer a safe follow-up report action");
+assert.match(app, /Confirm Scout Report/, "Scout report action modal should support community confirmations");
+assert.match(app, /Still there/, "Scout confirmation should include a still-there option");
+assert.match(app, /Was accurate when checked/, "Scout confirmation should support checked-accurate context");
+assert.match(app, /No longer there/, "Scout confirmation should support no-longer-there context");
+assert.match(app, /Add Proof/, "Scout report action modal should support adding proof");
+assert.match(app, /Proof helps Scout trust this report\./, "Scout proof modal should explain why proof matters");
+assert.match(app, /Flag Report/, "Scout report action modal should support flagging reports");
+assert.match(app, /Duplicate/, "Scout flag modal should include duplicate as a reason");
+assert.match(app, /Wrong store/, "Scout flag modal should include wrong-store as a reason");
+assert.match(app, /Wrong time/, "Scout flag modal should include wrong-time as a reason");
+assert.match(app, /Unsafe or inappropriate/, "Scout flag modal should include safety as a reason");
+assert.match(app, /Thanks - admin will review this\./, "Scout flag success copy should route issues to admin review without deletion");
 assert.match(app, /currentUserIds\.includes\(reportUserId\)/, "Scout report ownership should use exact user-id matching");
 assert.doesNotMatch(app, /report\.userId \|\| report\.user_id \|\| report\.reportedBy \|\| report\.reported_by \|\| ""\)\.includes\(id\)/, "Scout report ownership must not use substring matching");
 assert.match(app, /Choose how you know this report before saving\./, "Scout submit should require a proof/source choice before saving");

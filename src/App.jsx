@@ -4964,6 +4964,7 @@ export default function App() {
   const [selectedScoutReport, setSelectedScoutReport] = useState(null);
   const [scoutReportDetailFocus, setScoutReportDetailFocus] = useState("");
   const [scoutReportDetailsDraft, setScoutReportDetailsDraft] = useState(null);
+  const [scoutReportActionDraft, setScoutReportActionDraft] = useState(null);
   const [scoutDateTimeEdit, setScoutDateTimeEdit] = useState({
     report: null,
     value: "",
@@ -27750,7 +27751,7 @@ function renderForgeAccessState() {
     const hasProofText = Boolean(String(report.proofText || report.proof_text || report.sourceText || report.source_text || "").trim());
     const proofType = String(report.proofType || report.proof_type || report.sourceType || report.source_type || "").toLowerCase();
     const proofCount = proofUrls.length + (hasProofText ? 1 : 0) + (["stock_photo", "receipt", "screenshot", "photo", "text_screenshot"].includes(proofType) && !proofUrls.length ? 1 : 0);
-    const flags = Number(report.flagsCount || report.flags_count || report.flagCount || report.flag_count || 0) + (report.flagged ? 1 : 0);
+    const flags = Number(report.flagsCount || report.flags_count || report.flagCount || report.flag_count || 0) + (report.flagged && !(report.localUserFlagged || report.local_user_flagged) ? 1 : 0);
     return {
       confirmations: Number.isFinite(confirmations) ? confirmations : 0,
       proofCount: Number.isFinite(proofCount) ? proofCount : 0,
@@ -31285,6 +31286,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     setScoutSectionsOpen((current) => ({ ...current, [key]: !current[key] }));
   }
 
+  const SCOUT_REPORT_CONFIRM_OPTIONS = [
+    { value: "still_there", label: "Still there", helper: "You checked recently and the report still looks current." },
+    { value: "accurate_when_checked", label: "Was accurate when checked", helper: "The report matched what you saw when you checked." },
+    { value: "no_longer_there", label: "No longer there", helper: "The item or signal appears to be gone now." },
+  ];
+
+  const SCOUT_REPORT_FLAG_REASONS = [
+    { value: "duplicate", label: "Duplicate" },
+    { value: "wrong_store", label: "Wrong store" },
+    { value: "wrong_time", label: "Wrong time" },
+    { value: "false_report", label: "False report" },
+    { value: "unsafe_or_inappropriate", label: "Unsafe or inappropriate" },
+    { value: "other", label: "Other" },
+  ];
+
+  const SCOUT_REPORT_PROOF_TYPES = [
+    { value: "screenshot", label: "Screenshot" },
+    { value: "stock_photo", label: "Photo" },
+    { value: "receipt", label: "Receipt" },
+    { value: "text_link", label: "Text/link" },
+  ];
+
   const SCOUT_ADMIN_MODERATION_ACTIONS = {
     confirm: {
       label: "Mark verified",
@@ -31596,6 +31619,218 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return Boolean(report && getScoutReportId(report) && (isCurrentUserScoutReport(report) || adminEditModeActive));
   }
 
+  function getScoutReportConfirmOptionLabel(value = "") {
+    return SCOUT_REPORT_CONFIRM_OPTIONS.find((option) => option.value === value)?.label || "Still there";
+  }
+
+  function getScoutReportFlagReasonLabel(value = "") {
+    return SCOUT_REPORT_FLAG_REASONS.find((reason) => reason.value === value)?.label || "Other";
+  }
+
+  function createScoutReportActionDraft(type, report = {}) {
+    return {
+      type,
+      reportId: getScoutReportId(report),
+      status: "still_there",
+      reason: "duplicate",
+      proofType: "screenshot",
+      proofUrl: "",
+      note: "",
+      message: "",
+      saving: false,
+    };
+  }
+
+  function updateScoutReportActionDraft(field, value) {
+    setScoutReportActionDraft((current) => current ? { ...current, [field]: value, message: "" } : current);
+  }
+
+  function openScoutReportAction(type, report = selectedScoutReport) {
+    const targetReport = findScoutReportForDetail(report, report);
+    if (!targetReport || !getScoutReportId(targetReport)) {
+      showErrorToast("Scout report unavailable.", { message: "Open the report again before adding community context." });
+      return;
+    }
+    setScoutReportActionDraft(createScoutReportActionDraft(type, targetReport));
+    openScoutReportDetail(targetReport, { fallback: targetReport });
+  }
+
+  function openScoutReportConfirmAction(report = selectedScoutReport) {
+    openScoutReportAction("confirm", report);
+  }
+
+  function openScoutReportProofAction(report = selectedScoutReport) {
+    openScoutReportAction("proof", report);
+  }
+
+  function openScoutReportFlagAction(report = selectedScoutReport) {
+    openScoutReportAction("flag", report);
+  }
+
+  function buildScoutReportActionPatch(report = {}, draft = scoutReportActionDraft) {
+    const now = new Date().toISOString();
+    const note = String(draft?.note || "").trim();
+    const type = draft?.type || "";
+    let patched = {
+      ...report,
+      updatedAt: now,
+      updated_at: now,
+    };
+
+    if (type === "confirm") {
+      const alreadyConfirmed = Boolean(report.localUserConfirmed || report.local_user_confirmed);
+      const currentConfirmations = Number(report.confirmationCount || report.confirmation_count || report.communityConfirmations || report.community_confirmations || 0);
+      const nextConfirmations = Math.max(0, Number.isFinite(currentConfirmations) ? currentConfirmations : 0) + (alreadyConfirmed ? 0 : 1);
+      const statusLabel = getScoutReportConfirmOptionLabel(draft.status);
+      patched = {
+        ...patched,
+        confirmationCount: nextConfirmations,
+        confirmation_count: nextConfirmations,
+        communityConfirmations: nextConfirmations,
+        community_confirmations: nextConfirmations,
+        localUserConfirmed: true,
+        local_user_confirmed: true,
+        localUserConfirmationStatus: draft.status,
+        local_user_confirmation_status: draft.status,
+        localUserConfirmationLabel: statusLabel,
+        local_user_confirmation_label: statusLabel,
+        localUserConfirmationNote: note,
+        local_user_confirmation_note: note,
+        lastConfirmedAt: now,
+        last_confirmed_at: now,
+        communityTrustNote: note || statusLabel,
+        community_trust_note: note || statusLabel,
+      };
+      if (draft.status === "no_longer_there") {
+        patched = {
+          ...patched,
+          needsReview: true,
+          needs_review: true,
+          status: "needs_review",
+          reportStatus: "needs_review",
+          report_status: "needs_review",
+          verificationStatus: "needs_review",
+          verification_status: "needs_review",
+        };
+      }
+    } else if (type === "proof") {
+      const proofUrl = String(draft.proofUrl || "").trim();
+      const sourceType = String(draft.proofType || "screenshot").trim() || "screenshot";
+      const existingPhotoUrls = scoutReportPhotoUrls(report);
+      const nextPhotoUrls = proofUrl
+        ? [proofUrl, ...existingPhotoUrls.filter((url) => String(url || "") !== proofUrl)]
+        : existingPhotoUrls;
+      const existingProofText = String(report.proofText || report.proof_text || report.sourceText || report.source_text || "").trim();
+      const proofText = [existingProofText, note].filter(Boolean).filter((value, index, list) => list.indexOf(value) === index).join(" | ");
+      patched = {
+        ...patched,
+        proofType: sourceType,
+        proof_type: sourceType,
+        sourceType: sourceType,
+        source_type: sourceType,
+        sourceLabel: `${scoutSourceTypeLabel(sourceType)} proof`,
+        source_label: `${scoutSourceTypeLabel(sourceType)} proof`,
+        proofText,
+        proof_text: proofText,
+        sourceText: proofText,
+        source_text: proofText,
+        photoUrls: nextPhotoUrls,
+        photo_urls: nextPhotoUrls,
+        imageUrl: proofUrl || report.imageUrl || report.image_url || "",
+        image_url: proofUrl || report.image_url || report.imageUrl || "",
+        localUserAddedProof: true,
+        local_user_added_proof: true,
+      };
+    } else if (type === "flag") {
+      const alreadyFlagged = Boolean(report.localUserFlagged || report.local_user_flagged);
+      const currentFlags = Number(report.flagsCount || report.flags_count || report.flagCount || report.flag_count || 0);
+      const nextFlags = Math.max(0, Number.isFinite(currentFlags) ? currentFlags : 0) + (alreadyFlagged ? 0 : 1);
+      patched = {
+        ...patched,
+        flagsCount: nextFlags,
+        flags_count: nextFlags,
+        flagCount: nextFlags,
+        flag_count: nextFlags,
+        localUserFlagged: true,
+        local_user_flagged: true,
+        localUserFlagReason: draft.reason,
+        local_user_flag_reason: draft.reason,
+        localUserFlagLabel: getScoutReportFlagReasonLabel(draft.reason),
+        local_user_flag_label: getScoutReportFlagReasonLabel(draft.reason),
+        localUserFlagNote: note,
+        local_user_flag_note: note,
+        needsReview: true,
+        needs_review: true,
+        status: "needs_review",
+        reportStatus: "needs_review",
+        report_status: "needs_review",
+        verificationStatus: "needs_review",
+        verification_status: "needs_review",
+      };
+    }
+
+    const reliability = evaluateScoutReportReliability(patched, { needsReview: Boolean(patched.needsReview || patched.needs_review) });
+    return {
+      ...patched,
+      confidence: reliability.key,
+      confidenceLevel: reliability.key,
+      confidence_level: reliability.key,
+      confidenceLabel: reliability.label,
+      confidence_label: reliability.label,
+      confidenceScore: reliability.score,
+      confidence_score: reliability.score,
+      confidenceReasons: reliability.reasons || [],
+      confidence_reasons: reliability.reasons || [],
+      reliabilityLabel: reliability.label,
+      reliability_label: reliability.label,
+      reliabilityReason: reliability.helper,
+      reliability_reason: reliability.helper,
+    };
+  }
+
+  function validateScoutReportActionDraft(report = {}, draft = scoutReportActionDraft) {
+    if (!report || !getScoutReportId(report)) return "Open a Scout report before saving.";
+    if (draft?.type === "proof") {
+      const hasProof = Boolean(String(draft.proofUrl || "").trim() || String(draft.note || "").trim());
+      if (!hasProof) return "Add a proof note or link before saving.";
+    }
+    if (draft?.type === "flag" && !draft.reason) return "Choose a reason before flagging this report.";
+    return "";
+  }
+
+  async function saveScoutReportAction(event) {
+    event?.preventDefault?.();
+    const report = findScoutReportForDetail(scoutReportActionDraft?.reportId, selectedScoutReport);
+    const message = validateScoutReportActionDraft(report);
+    if (message) {
+      setScoutReportActionDraft((current) => ({ ...current, message }));
+      return;
+    }
+    setScoutReportActionDraft((current) => ({ ...current, saving: true, message: "" }));
+    try {
+      const patchedReport = buildScoutReportActionPatch(report);
+      const updatedReport = saveScoutReportDetailsLocally(patchedReport);
+      setSelectedScoutReport(updatedReport);
+      const actionType = scoutReportActionDraft?.type;
+      setScoutReportActionDraft(null);
+      if (actionType === "confirm") {
+        showSuccessToast("Scout report confirmed.", { message: "Confirmations help Scout trust current reports." });
+      } else if (actionType === "proof") {
+        showSuccessToast("Proof added.", { message: "Proof helps Scout trust this report." });
+      } else if (actionType === "flag") {
+        showSuccessToast("Thanks - admin will review this.", { message: "Flagging keeps the report visible while moderation reviews it." });
+      }
+    } catch (error) {
+      logAppError("scout_report_action_update", error, { reportId: getScoutReportId(report), actionType: scoutReportActionDraft?.type }, "normal");
+      setScoutReportActionDraft((current) => ({
+        ...current,
+        saving: false,
+        message: "Report action could not be saved. Please review and try again.",
+      }));
+      showErrorToast("Report action could not be saved.", { message: "Please review and try again." });
+    }
+  }
+
   function createScoutReportDetailsDraft(report = {}) {
     const items = normalizeScoutReportItems(report);
     const firstItem = items[0] || {};
@@ -31795,6 +32030,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     setSelectedScoutReport(null);
     setScoutReportDetailFocus("");
     setScoutReportDetailsDraft(null);
+    setScoutReportActionDraft(null);
   }
 
   function openScoutReportDetail(reportOrId, options = {}) {
@@ -45124,7 +45360,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }, [selectedCatalogDetailId]);
 
   useEffect(() => {
-    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || aiAssistReview || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || selectedScoutReport || scoutDateTimeEdit.report || scoutReportModerationTarget || tidepoolFlagTarget || adminConfirmAction || feedbackDialog);
+    const modalIsOpen = Boolean(activeFlowModal || showInventoryScanner || receiptScanOpen || aiAssistReview || lockedFeatureKey || selectedWatchCalendarEvent || listingReviewOpen || dealFinderOpen || showVaultAddForm || selectedCatalogDetailId || scoutScoreModalOpen || selectedScoutReport || scoutReportActionDraft || scoutDateTimeEdit.report || scoutReportModerationTarget || tidepoolFlagTarget || adminConfirmAction || feedbackDialog);
     if (!modalIsOpen) return undefined;
     function handleModalKeyDown(event) {
       if (event.key === "Tab" && activeFlowModal && flowModalRef.current) {
@@ -45210,6 +45446,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         setScoutReportModerationTarget(null);
         return;
       }
+      if (scoutReportActionDraft) {
+        event.preventDefault();
+        if (!scoutReportActionDraft.saving) setScoutReportActionDraft(null);
+        return;
+      }
       if (scoutDateTimeEdit.report) {
         event.preventDefault();
         if (!scoutDateTimeEdit.saving) setScoutDateTimeEdit({ report: null, value: "", message: "", saving: false });
@@ -45232,7 +45473,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     document.addEventListener("keydown", handleModalKeyDown);
     return () => document.removeEventListener("keydown", handleModalKeyDown);
-  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, selectedReceiptId, aiAssistReview, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutDateTimeEdit.report, scoutDateTimeEdit.saving, scoutReportModerationTarget, tidepoolFlagTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
+  }, [activeFlowModal, showInventoryScanner, receiptScanOpen, selectedReceiptId, aiAssistReview, lockedFeatureKey, selectedWatchCalendarEvent, listingReviewOpen, dealFinderOpen, showVaultAddForm, selectedCatalogDetailId, scoutScoreModalOpen, selectedScoutReport, scoutReportActionDraft, scoutDateTimeEdit.report, scoutDateTimeEdit.saving, scoutReportModerationTarget, tidepoolFlagTarget, adminConfirmAction, feedbackDialog, feedbackForm, itemForm, saleForm, expenseForm, tripForm, marketplaceForm, forgeImportForm, tidepoolPostForm]);
 
   if (activeTab === "resetPassword") {
     return (
@@ -51221,12 +51462,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {selectedStoreMapStore.latestReport ? (
                 <button type="button" className="secondary-button" onClick={() => {
                   const report = selectedStoreMapStore.latestReport;
-                  const canAddProof = canAddScoutReportDetails(report);
                   closeStoreProfile();
-                  if (canAddProof) openScoutReportAddDetails(report);
-                  else openScoutReportDetail(report);
+                  openScoutReportProofAction(report);
                 }}>
-                  {canAddScoutReportDetails(selectedStoreMapStore.latestReport) ? "Add Proof" : "Review Recent"}
+                  Add Proof
                 </button>
               ) : null}
               <button type="button" className="secondary-button" onClick={() => {
@@ -51298,26 +51537,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <section className="scout-report-detail-action-panel" aria-label="Scout report actions">
                 <div>
                   <h3>Report actions</h3>
-                  <p>{canAddScoutReportDetails(selectedScoutReport) ? "Add proof, item details, or context without changing protected Scout history." : "Only the reporter or an admin can edit this report. You can add a fresh report for the same store."}</p>
+                  <p>{canAddScoutReportDetails(selectedScoutReport) ? "Add details, confirm, add proof, or flag issues without exposing raw Scout history." : "You can confirm, add proof, flag an issue, or add a fresh report for this store."}</p>
                 </div>
                 <div className="scout-report-detail-action-grid">
                   {canAddScoutReportDetails(selectedScoutReport) ? (
-                    <>
-                      <button type="button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>Add Details</button>
-                      <button type="button" className="secondary-button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>Add Proof</button>
-                    </>
+                    <button type="button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>Add Details</button>
                   ) : null}
+                  <button type="button" className="secondary-button" onClick={() => openScoutReportConfirmAction(selectedScoutReport)}>Confirm Report</button>
+                  <button type="button" className="secondary-button" onClick={() => openScoutReportProofAction(selectedScoutReport)}>Add Proof</button>
+                  <button type="button" className="ghost-button" onClick={() => openScoutReportFlagAction(selectedScoutReport)}>Flag Report</button>
                   <button type="button" className="secondary-button" onClick={() => {
                     const store = getScoutReportStore(selectedScoutReport);
                     closeScoutReportDetail();
                     openScoutSubmitFlow({ source: "scout-report-detail", store });
                   }}>Add Report for Store</button>
-                  {adminEditModeActive ? (
-                    <>
-                      <button type="button" className="secondary-button" onClick={() => queueScoutReportAdminModeration(selectedScoutReport, "confirm")}>Confirm Accurate</button>
-                      <button type="button" className="ghost-button" onClick={() => queueScoutReportAdminModeration(selectedScoutReport, "needsReview")}>Flag Issue</button>
-                    </>
-                  ) : null}
                 </div>
               </section>
               <div className="scout-report-detail-breakdown">
@@ -51434,7 +51667,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : null}
                 {!scoutReportPhotoUrls(selectedScoutReport).length && canAddScoutReportDetails(selectedScoutReport) ? (
                   <div className="scout-report-proof-empty">
-                    <button type="button" className="secondary-button" onClick={() => openScoutReportAddDetails(selectedScoutReport)}>Add Proof</button>
+                    <button type="button" className="secondary-button" onClick={() => openScoutReportProofAction(selectedScoutReport)}>Add Proof</button>
                   </div>
                 ) : null}
               </details>
@@ -51539,6 +51772,150 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </section>
         </div>
       ) : null}
+
+      {scoutReportActionDraft ? (() => {
+        const actionReport = findScoutReportForDetail(scoutReportActionDraft.reportId, selectedScoutReport) || selectedScoutReport || {};
+        const storeName = getScoutReportStore(actionReport).name || actionReport.storeName || "Scout report";
+        const itemSummary = scoutReportDetailItemSummary(actionReport);
+        const actionTitle = scoutReportActionDraft.type === "confirm"
+          ? "Confirm Scout Report"
+          : scoutReportActionDraft.type === "proof"
+            ? "Add Proof"
+            : "Flag Report";
+        const actionCopy = scoutReportActionDraft.type === "confirm"
+          ? "Confirmations help Scout trust current reports."
+          : scoutReportActionDraft.type === "proof"
+            ? "Proof helps Scout trust this report."
+            : "Flagging sends this report to admin review without deleting it.";
+        return (
+          <div className="location-modal-backdrop scout-report-action-backdrop" role="presentation" onClick={() => !scoutReportActionDraft.saving && setScoutReportActionDraft(null)}>
+            <form className="location-modal scout-report-action-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-report-action-title" onClick={(event) => event.stopPropagation()} onSubmit={saveScoutReportAction}>
+              <div className="modal-title-row modal-sticky-header">
+                <div>
+                  <h2 id="scout-report-action-title">{actionTitle}</h2>
+                  <p>{actionCopy} Nothing is removed from Scout by this action.</p>
+                </div>
+                <button
+                  type="button"
+                  className="modal-close-button"
+                  aria-label={`Close ${actionTitle}`}
+                  disabled={scoutReportActionDraft.saving}
+                  onClick={() => setScoutReportActionDraft(null)}
+                >
+                  X
+                </button>
+              </div>
+              <div className="scout-report-action-body">
+                <div className="scout-report-action-summary">
+                  <span>Current report only</span>
+                  <strong>{storeName}</strong>
+                  <small>{[itemSummary, scoutReportDateTimeLabel(actionReport)].filter(Boolean).join(" | ")}</small>
+                </div>
+
+                {scoutReportActionDraft.type === "confirm" ? (
+                  <section className="scout-report-action-section">
+                    <h3>What did you confirm?</h3>
+                    <div className="scout-report-action-options" role="radiogroup" aria-label="Scout confirmation status">
+                      {SCOUT_REPORT_CONFIRM_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`scout-report-action-option ${scoutReportActionDraft.status === option.value ? "is-selected" : ""}`}
+                          aria-pressed={scoutReportActionDraft.status === option.value}
+                          onClick={() => updateScoutReportActionDraft("status", option.value)}
+                        >
+                          <strong>{option.label}</strong>
+                          <span>{option.helper}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <label>
+                      <span>Optional note</span>
+                      <textarea
+                        value={scoutReportActionDraft.note}
+                        onChange={(event) => updateScoutReportActionDraft("note", event.target.value)}
+                        placeholder="Shelf changed, same display, stock was gone..."
+                      />
+                    </label>
+                  </section>
+                ) : null}
+
+                {scoutReportActionDraft.type === "proof" ? (
+                  <section className="scout-report-action-section">
+                    <h3>Add proof or context</h3>
+                    <p className="compact-subtitle">Add a proof note or image/link. Full cloud photo storage is not changed in this pass.</p>
+                    <div className="scout-report-action-fields">
+                      <label>
+                        <span>Proof type</span>
+                        <select value={scoutReportActionDraft.proofType} onChange={(event) => updateScoutReportActionDraft("proofType", event.target.value)}>
+                          {SCOUT_REPORT_PROOF_TYPES.map((proofType) => <option key={proofType.value} value={proofType.value}>{proofType.label}</option>)}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Proof image/link</span>
+                        <input
+                          value={scoutReportActionDraft.proofUrl}
+                          onChange={(event) => updateScoutReportActionDraft("proofUrl", event.target.value)}
+                          placeholder="Optional image or post link"
+                        />
+                      </label>
+                    </div>
+                    <label>
+                      <span>Proof note</span>
+                      <textarea
+                        value={scoutReportActionDraft.note}
+                        onChange={(event) => updateScoutReportActionDraft("note", event.target.value)}
+                        placeholder="What does the screenshot, photo, or receipt show?"
+                      />
+                    </label>
+                  </section>
+                ) : null}
+
+                {scoutReportActionDraft.type === "flag" ? (
+                  <section className="scout-report-action-section">
+                    <h3>Why are you flagging this?</h3>
+                    <div className="scout-report-action-options scout-report-action-options--compact" role="radiogroup" aria-label="Scout flag reason">
+                      {SCOUT_REPORT_FLAG_REASONS.map((reason) => (
+                        <button
+                          key={reason.value}
+                          type="button"
+                          className={`scout-report-action-option ${scoutReportActionDraft.reason === reason.value ? "is-selected" : ""}`}
+                          aria-pressed={scoutReportActionDraft.reason === reason.value}
+                          onClick={() => updateScoutReportActionDraft("reason", reason.value)}
+                        >
+                          <strong>{reason.label}</strong>
+                        </button>
+                      ))}
+                    </div>
+                    <label>
+                      <span>Optional note</span>
+                      <textarea
+                        value={scoutReportActionDraft.note}
+                        onChange={(event) => updateScoutReportActionDraft("note", event.target.value)}
+                        placeholder="Add context for admin review."
+                      />
+                    </label>
+                  </section>
+                ) : null}
+
+                {scoutReportActionDraft.message ? <p className="form-error">{scoutReportActionDraft.message}</p> : null}
+              </div>
+              <div className="location-modal-actions modal-sticky-footer">
+                <button type="submit" disabled={scoutReportActionDraft.saving}>
+                  {scoutReportActionDraft.saving
+                    ? "Saving..."
+                    : scoutReportActionDraft.type === "flag"
+                      ? "Flag Report"
+                      : scoutReportActionDraft.type === "proof"
+                        ? "Save Proof"
+                        : "Save Confirmation"}
+                </button>
+                <button type="button" className="ghost-button" disabled={scoutReportActionDraft.saving} onClick={() => setScoutReportActionDraft(null)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        );
+      })() : null}
 
       {scoutDateTimeEdit.report ? (
         <div className="location-modal-backdrop" role="presentation" onClick={() => !scoutDateTimeEdit.saving && setScoutDateTimeEdit({ report: null, value: "", message: "", saving: false })}>

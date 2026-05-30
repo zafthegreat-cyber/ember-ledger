@@ -473,6 +473,9 @@ async function main() {
   async function assertScoutReportDetailDeleteHidden(detailSheet) {
     await detailSheet.getByText("Current report only").first().waitFor({ state: "visible", timeout: 5000 });
     await detailSheet.getByText("Community trust").first().waitFor({ state: "visible", timeout: 5000 });
+    await detailSheet.getByRole("button", { name: /^Confirm Report$/ }).first().waitFor({ state: "visible", timeout: 5000 });
+    await detailSheet.getByRole("button", { name: /^Add Proof$/ }).first().waitFor({ state: "visible", timeout: 5000 });
+    await detailSheet.getByRole("button", { name: /^Flag Report$/ }).first().waitFor({ state: "visible", timeout: 5000 });
     await detailSheet.getByRole("button", { name: /^Add Report for Store$/ }).first().waitFor({ state: "visible", timeout: 5000 });
     await detailSheet.getByText("Protected Scout context").first().waitFor({ state: "visible", timeout: 5000 });
     assert.equal(
